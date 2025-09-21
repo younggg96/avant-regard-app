@@ -317,6 +317,7 @@ export const mockUsers: User[] = [
   {
     id: "user-1",
     nickname: "fashion_archive",
+    email: "archive@example.com",
     avatarUrl: "/placeholders/avatar-1.jpg",
     bio: "Documenting avant-garde fashion since 2020",
     joinedAt: "2020-01-15T00:00:00Z",
@@ -324,6 +325,7 @@ export const mockUsers: User[] = [
   {
     id: "user-2",
     nickname: "tokyo_vintage",
+    email: "tokyo@example.com",
     avatarUrl: "/placeholders/avatar-2.jpg",
     bio: "Japanese designer archive specialist",
     joinedAt: "2021-03-20T00:00:00Z",
@@ -331,6 +333,7 @@ export const mockUsers: User[] = [
   {
     id: "user-3",
     nickname: "runway_collector",
+    email: "collector@example.com",
     avatarUrl: "/placeholders/avatar-3.jpg",
     bio: "Collecting runway pieces from FW20 onwards",
     joinedAt: "2022-06-10T00:00:00Z",
@@ -338,6 +341,7 @@ export const mockUsers: User[] = [
   {
     id: "user-4",
     nickname: "cdg_enthusiast",
+    email: "cdg@example.com",
     avatarUrl: "/placeholders/avatar-4.jpg",
     bio: "Comme des Garçons universe explorer",
     joinedAt: "2023-01-05T00:00:00Z",

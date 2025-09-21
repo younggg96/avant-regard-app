@@ -5,11 +5,18 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
+import { useAuthStore } from "../store/authStore";
 
 const ProfileScreen = () => {
+  const navigation = useNavigation();
+  const { user, logout } = useAuthStore();
+
   const menuItems = [
     { id: "followed", label: "Followed Designers", count: 12 },
     { id: "saved", label: "Saved Looks", count: 48 },
@@ -18,17 +25,39 @@ const ProfileScreen = () => {
     { id: "settings", label: "Settings", count: null },
   ];
 
+  const handleLogout = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: logout,
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>AG</Text>
+            <Text style={styles.avatarText}>
+              {user?.nickname?.slice(0, 2).toUpperCase() || "AG"}
+            </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.username}>avant_garde_user</Text>
-            <Text style={styles.joinDate}>Member since Sep 2024</Text>
+            <Text style={styles.username}>{user?.nickname || "User"}</Text>
+            <Text style={styles.joinDate}>
+              {user?.email || "user@example.com"}
+            </Text>
           </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Ionicons
+              name="log-out-outline"
+              size={24}
+              color={theme.colors.gray400}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -39,7 +68,14 @@ const ProfileScreen = () => {
               key={item.id}
               style={styles.menuItem}
               onPress={() => {
-                /* Navigate to section */
+                if (item.id === "settings") {
+                  (navigation as any).navigate("Settings");
+                } else {
+                  Alert.alert(
+                    "Coming Soon",
+                    `${item.label} will be available soon`
+                  );
+                }
               }}
             >
               <Text style={styles.menuLabel}>{item.label}</Text>
@@ -105,6 +141,9 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+  },
+  logoutButton: {
+    padding: theme.spacing.sm,
   },
   username: {
     ...theme.typography.h3,

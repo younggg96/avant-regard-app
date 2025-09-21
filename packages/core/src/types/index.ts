@@ -111,9 +111,38 @@ export interface Note {
 export interface User {
   id: string;
   nickname: string;
+  email: string;
   avatarUrl?: string;
   bio?: string;
   joinedAt: string;
+  isVerified?: boolean;
+  preferences?: UserPreference;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  nickname: string;
+  token: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  nickname: string;
+  acceptTerms: boolean;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  message: string;
 }
 
 export interface UserPreference {

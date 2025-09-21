@@ -1,6 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
-import { theme } from "../theme";
+import { Ionicons } from "@expo/vector-icons";
 
 interface TabBarIconProps {
   name: string;
@@ -9,20 +8,40 @@ interface TabBarIconProps {
 }
 
 const TabBarIcon: React.FC<TabBarIconProps> = ({ name, color, focused }) => {
-  // Using text icons as placeholders - in production, use react-native-vector-icons
-  const iconMap: { [key: string]: string } = {
-    explore: "◉",
-    collections: "▣",
-    bookmark: "▾",
-    person: "◎",
+  // Map our custom names to fashion-appropriate Ionicons
+  const iconMap: {
+    [key: string]: {
+      focused: keyof typeof Ionicons.glyphMap;
+      unfocused: keyof typeof Ionicons.glyphMap;
+    };
+  } = {
+    explore: {
+      focused: "compass",
+      unfocused: "compass-outline",
+    },
+    collections: {
+      focused: "library",
+      unfocused: "library-outline",
+    },
+    bookmark: {
+      focused: "heart",
+      unfocused: "heart-outline",
+    },
+    person: {
+      focused: "person-circle",
+      unfocused: "person-circle-outline",
+    },
   };
 
+  const iconConfig = iconMap[name];
+  const iconName = focused ? iconConfig?.focused : iconConfig?.unfocused;
+
   return (
-    <View style={{ alignItems: "center" }}>
-      <Text style={{ color, fontSize: focused ? 24 : 20 }}>
-        {iconMap[name] || "○"}
-      </Text>
-    </View>
+    <Ionicons
+      name={iconName || "ellipse-outline"}
+      size={focused ? 26 : 24}
+      color={color}
+    />
   );
 };
 

@@ -18,11 +18,24 @@ import LookbookDetailScreen from "./src/screens/LookbookDetailScreen";
 import LookDetailScreen from "./src/screens/LookDetailScreen";
 import ItemDetailScreen from "./src/screens/ItemDetailScreen";
 
+// Auth Screens
+import WelcomeScreen from "./src/screens/WelcomeScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import RegisterScreen from "./src/screens/RegisterScreen";
+import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
+import EmailVerificationScreen from "./src/screens/EmailVerificationScreen";
+import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
+
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
 
 // Theme
 import { theme } from "./src/theme";
+
+// Store
+import { useAuthStore } from "./src/store/authStore";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -35,6 +48,26 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+function AuthNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      <Stack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+      />
+    </Stack.Navigator>
+  );
+}
 
 function TabNavigator() {
   return (
@@ -100,6 +133,78 @@ function TabNavigator() {
   );
 }
 
+function AppNavigator() {
+  const { isAuthenticated } = useAuthStore();
+
+  if (!isAuthenticated) {
+    // Show only auth flow for unauthenticated users
+    return <AuthNavigator />;
+  }
+
+  // Show main app for authenticated users
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: theme.colors.white,
+        },
+        headerTintColor: theme.colors.black,
+        headerTitleStyle: {
+          fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+          fontSize: 20,
+        },
+        headerBackTitle: "",
+      }}
+    >
+      <Stack.Screen
+        name="Main"
+        component={TabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DesignerDetail"
+        component={DesignerDetailScreen}
+        options={{ title: "Designer" }}
+      />
+      <Stack.Screen
+        name="BranchDetail"
+        component={BranchDetailScreen}
+        options={{ title: "Collection" }}
+      />
+      <Stack.Screen
+        name="LookbookDetail"
+        component={LookbookDetailScreen}
+        options={{ title: "Lookbook" }}
+      />
+      <Stack.Screen
+        name="LookDetail"
+        component={LookDetailScreen}
+        options={{ title: "Look" }}
+      />
+      <Stack.Screen
+        name="ItemDetail"
+        component={ItemDetailScreen}
+        options={{ title: "Item" }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: "Settings" }}
+      />
+      <Stack.Screen
+        name="ChangePassword"
+        component={ChangePasswordScreen}
+        options={{ title: "Change Password" }}
+      />
+      <Stack.Screen
+        name="EmailVerification"
+        component={EmailVerificationScreen}
+        options={{ title: "Verify Email" }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = React.useState(false);
 
@@ -137,50 +242,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <Stack.Navigator
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: theme.colors.white,
-              },
-              headerTintColor: theme.colors.black,
-              headerTitleStyle: {
-                fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
-                fontSize: 20,
-              },
-              headerBackTitle: "",
-            }}
-          >
-            <Stack.Screen
-              name="Main"
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="DesignerDetail"
-              component={DesignerDetailScreen}
-              options={{ title: "Designer" }}
-            />
-            <Stack.Screen
-              name="BranchDetail"
-              component={BranchDetailScreen}
-              options={{ title: "Collection" }}
-            />
-            <Stack.Screen
-              name="LookbookDetail"
-              component={LookbookDetailScreen}
-              options={{ title: "Lookbook" }}
-            />
-            <Stack.Screen
-              name="LookDetail"
-              component={LookDetailScreen}
-              options={{ title: "Look" }}
-            />
-            <Stack.Screen
-              name="ItemDetail"
-              component={ItemDetailScreen}
-              options={{ title: "Item" }}
-            />
-          </Stack.Navigator>
+          <AppNavigator />
           <StatusBar style="dark" />
         </NavigationContainer>
       </SafeAreaProvider>
