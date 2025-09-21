@@ -12,10 +12,12 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { useAlert } from "../components/AlertProvider";
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuthStore();
+  const { showConfirm, showAlert } = useAlert();
 
   const menuItems = [
     { id: "followed", label: "Followed Designers", count: 12 },
@@ -26,18 +28,11 @@ const ProfileScreen = () => {
   ];
 
   const handleLogout = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: logout,
-      },
-    ]);
+    showConfirm("Sign Out", "Are you sure you want to sign out?", logout);
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.profileInfo}>
           <View style={styles.avatar}>
@@ -71,7 +66,7 @@ const ProfileScreen = () => {
                 if (item.id === "settings") {
                   (navigation as any).navigate("Settings");
                 } else {
-                  Alert.alert(
+                  showAlert(
                     "Coming Soon",
                     `${item.label} will be available soon`
                   );

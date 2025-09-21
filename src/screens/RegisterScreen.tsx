@@ -8,17 +8,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { useAlert } from "../components/AlertProvider";
 
 const RegisterScreen = () => {
   const navigation = useNavigation();
   const { login, setLoading, isLoading } = useAuthStore();
+  const { showError } = useAlert();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -33,17 +34,17 @@ const RegisterScreen = () => {
   const handleRegister = async () => {
     // Validation
     if (!formData.email || !formData.password || !formData.nickname) {
-      Alert.alert("Error", "Please fill in all required fields");
+      showError("Error", "Please fill in all required fields");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      showError("Error", "Passwords do not match");
       return;
     }
 
     if (!formData.acceptTerms) {
-      Alert.alert("Error", "Please accept the terms and conditions");
+      showError("Error", "Please accept the terms and conditions");
       return;
     }
 
@@ -65,7 +66,7 @@ const RegisterScreen = () => {
       login(mockUser);
       // Navigation will automatically switch to main app due to auth state change
     } catch (error) {
-      Alert.alert("Registration Failed", "Please try again");
+      showError("Registration Failed", "Please try again");
     } finally {
       setLoading(false);
     }

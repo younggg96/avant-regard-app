@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { useAlert } from "../components/AlertProvider";
 
 const EmailVerificationScreen = ({ route }: any) => {
   const navigation = useNavigation();
   const { user, updateUser } = useAuthStore();
+  const { showError, showSuccess, showConfirm } = useAlert();
   const { email } = route.params || { email: user?.email };
 
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +41,7 @@ const EmailVerificationScreen = ({ route }: any) => {
       // Mock API call - replace with real implementation
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      Alert.alert("Email Sent", "Verification email has been sent again.");
+      showSuccess("Email Sent", "Verification email has been sent again.");
 
       // Restart countdown
       const timer = setInterval(() => {
@@ -53,7 +55,7 @@ const EmailVerificationScreen = ({ route }: any) => {
         });
       }, 1000);
     } catch (error) {
-      Alert.alert("Error", "Failed to resend email. Please try again.");
+      showError("Error", "Failed to resend email. Please try again.");
       setCanResend(true);
     } finally {
       setIsLoading(false);
@@ -65,29 +67,18 @@ const EmailVerificationScreen = ({ route }: any) => {
     if (user) {
       updateUser({ isVerified: true });
     }
-    Alert.alert(
+    showSuccess(
       "Email Verified",
       "Your email has been verified successfully!",
-      [
-        {
-          text: "Continue",
-          onPress: () => (navigation as any).navigate("Main"),
-        },
-      ]
+      () => (navigation as any).navigate("Main")
     );
   };
 
   const handleSkipForNow = () => {
-    Alert.alert(
+    showConfirm(
       "Skip Verification",
       "You can verify your email later in settings. Some features may be limited.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Skip",
-          onPress: () => (navigation as any).navigate("Main"),
-        },
-      ]
+      () => (navigation as any).navigate("Main")
     );
   };
 

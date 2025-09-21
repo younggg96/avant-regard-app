@@ -7,17 +7,18 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { useAlert } from "../components/AlertProvider";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const { showError, showSuccess } = useAlert();
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -37,22 +38,22 @@ const ChangePasswordScreen = () => {
       !formData.newPassword ||
       !formData.confirmPassword
     ) {
-      Alert.alert("Error", "Please fill in all fields");
+      showError("Error", "Please fill in all fields");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      Alert.alert("Error", "New passwords do not match");
+      showError("Error", "New passwords do not match");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      Alert.alert("Error", "New password must be at least 6 characters");
+      showError("Error", "New password must be at least 6 characters");
       return;
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      Alert.alert(
+      showError(
         "Error",
         "New password must be different from current password"
       );
@@ -65,18 +66,13 @@ const ChangePasswordScreen = () => {
       // Mock API call - replace with real implementation
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      Alert.alert(
+      showSuccess(
         "Password Changed",
         "Your password has been changed successfully.",
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        () => navigation.goBack()
       );
     } catch (error) {
-      Alert.alert(
+      showError(
         "Error",
         "Failed to change password. Please check your current password."
       );

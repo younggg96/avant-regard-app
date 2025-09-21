@@ -37,6 +37,9 @@ import { theme } from "./src/theme";
 // Store
 import { useAuthStore } from "./src/store/authStore";
 
+// Providers
+import { AlertProvider } from "./src/components/AlertProvider";
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
@@ -77,8 +80,8 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: theme.colors.black,
           borderTopWidth: 0,
-          height: 60,
-          paddingBottom: 8,
+          height: 76,
+          paddingBottom: 24,
           paddingTop: 8,
         },
         tabBarActiveTintColor: theme.colors.white,
@@ -241,10 +244,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <NavigationContainer>
-          <AppNavigator />
-          <StatusBar style="dark" />
-        </NavigationContainer>
+        <AlertProvider>
+          <NavigationContainer>
+            <AppNavigator />
+            <StatusBar style="dark" />
+          </NavigationContainer>
+        </AlertProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

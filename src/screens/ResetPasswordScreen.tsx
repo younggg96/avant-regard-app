@@ -7,15 +7,16 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
+import { useAlert } from "../components/AlertProvider";
 
 const ResetPasswordScreen = ({ route }: any) => {
   const navigation = useNavigation();
+  const { showError, showSuccess } = useAlert();
   const { token } = route.params || {}; // Reset token from email link
 
   const [formData, setFormData] = useState({
@@ -28,17 +29,17 @@ const ResetPasswordScreen = ({ route }: any) => {
 
   const handleResetPassword = async () => {
     if (!formData.password || !formData.confirmPassword) {
-      Alert.alert("Error", "Please fill in all fields");
+      showError("Error", "Please fill in all fields");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
+      showError("Error", "Passwords do not match");
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
+      showError("Error", "Password must be at least 6 characters");
       return;
     }
 
@@ -48,18 +49,13 @@ const ResetPasswordScreen = ({ route }: any) => {
       // Mock API call - replace with real implementation
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      Alert.alert(
+      showSuccess(
         "Password Reset Successful",
         "Your password has been reset successfully. Please sign in with your new password.",
-        [
-          {
-            text: "Sign In",
-            onPress: () => (navigation as any).navigate("Login"),
-          },
-        ]
+        () => (navigation as any).navigate("Login")
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to reset password. Please try again.");
+      showError("Error", "Failed to reset password. Please try again.");
     } finally {
       setIsLoading(false);
     }

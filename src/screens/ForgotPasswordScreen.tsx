@@ -7,29 +7,30 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
+import { useAlert } from "../components/AlertProvider";
 
 const ForgotPasswordScreen = () => {
   const navigation = useNavigation();
+  const { showError, showSuccess } = useAlert();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
   const handleSendReset = async () => {
     if (!email) {
-      Alert.alert("Error", "Please enter your email address");
+      showError("Error", "Please enter your email address");
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address");
+      showError("Error", "Please enter a valid email address");
       return;
     }
 
@@ -40,18 +41,13 @@ const ForgotPasswordScreen = () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       setEmailSent(true);
-      Alert.alert(
+      showSuccess(
         "Email Sent",
         "If an account with this email exists, you will receive a password reset link.",
-        [
-          {
-            text: "OK",
-            onPress: () => (navigation as any).navigate("Login"),
-          },
-        ]
+        () => (navigation as any).navigate("Login")
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to send reset email. Please try again.");
+      showError("Error", "Failed to send reset email. Please try again.");
     } finally {
       setIsLoading(false);
     }

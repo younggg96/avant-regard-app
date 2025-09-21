@@ -5,17 +5,18 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import AuthLayout from "../components/AuthLayout";
+import { useAlert } from "../components/AlertProvider";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
   const { login, setLoading, isLoading } = useAuthStore();
+  const { showError } = useAlert();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -25,7 +26,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!formData.email || !formData.password) {
-      Alert.alert("Error", "Please fill in all fields");
+      showError("Error", "Please fill in all fields");
       return;
     }
 
@@ -47,7 +48,7 @@ const LoginScreen = () => {
       login(mockUser);
       // Navigation will automatically switch to main app due to auth state change
     } catch (error) {
-      Alert.alert("Login Failed", "Please check your credentials");
+      showError("Login Failed", "Please check your credentials");
     } finally {
       setLoading(false);
     }

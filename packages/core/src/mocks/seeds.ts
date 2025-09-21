@@ -8,6 +8,8 @@ import {
   Listing,
   Note,
   User,
+  DesignerReview,
+  DesignerBrandHistory,
 } from "../types";
 
 // Mock Designers
@@ -17,30 +19,45 @@ export const mockDesigners: Designer[] = [
     name: "Yohji Yamamoto",
     aliases: ["Y.Y.", "山本耀司"],
     letterIndex: "Y",
-    bio: "Master of avant-garde fashion, known for oversized silhouettes and poetic black garments.",
+    bio: "Master of avant-garde fashion, known for oversized silhouettes and poetic black garments. His work explores the relationship between Eastern and Western aesthetics, creating garments that are both architectural and deeply personal.",
     foundedYear: 1972,
     country: "Japan",
     imageUrl: "/placeholders/designer-yohji.jpg",
+    coverImageUrl: "/placeholders/designer-yohji-cover.jpg",
+    rating: 4.8,
+    reviewCount: 156,
+    followerCount: 12500,
+    isFollowed: false,
   },
   {
     id: "designer-2",
     name: "Rei Kawakubo",
     aliases: ["川久保玲"],
     letterIndex: "R",
-    bio: "Founder of Comme des Garçons, revolutionary designer challenging conventional beauty.",
+    bio: "Founder of Comme des Garçons, revolutionary designer challenging conventional beauty. Her conceptual approach to fashion has redefined the boundaries of clothing and art.",
     foundedYear: 1969,
     country: "Japan",
     imageUrl: "/placeholders/designer-rei.jpg",
+    coverImageUrl: "/placeholders/designer-rei-cover.jpg",
+    rating: 4.9,
+    reviewCount: 203,
+    followerCount: 18700,
+    isFollowed: true,
   },
   {
     id: "designer-3",
     name: "Maison Margiela",
     aliases: ["Martin Margiela", "MMM"],
     letterIndex: "M",
-    bio: "Deconstructionist fashion house known for conceptual and artisanal collections.",
+    bio: "Deconstructionist fashion house known for conceptual and artisanal collections. The brand continues to challenge fashion norms through anonymity and experimental design.",
     foundedYear: 1988,
     country: "France",
     imageUrl: "/placeholders/designer-margiela.jpg",
+    coverImageUrl: "/placeholders/designer-margiela-cover.jpg",
+    rating: 4.7,
+    reviewCount: 89,
+    followerCount: 9800,
+    isFollowed: false,
   },
 ];
 
@@ -388,6 +405,180 @@ export const mockNotes: Note[] = [
   },
 ];
 
+// Mock Designer Reviews
+export const mockDesignerReviews: DesignerReview[] = [
+  {
+    id: "review-1",
+    designerId: "designer-1",
+    userId: "user-1",
+    rating: 5,
+    comment:
+      "Yamamoto's work is pure poetry in fabric. His understanding of silhouette and proportion is unmatched. Every piece tells a story of Japanese aesthetics meeting Western tailoring.",
+    createdAt: "2024-09-10T14:30:00Z",
+    updatedAt: "2024-09-10T14:30:00Z",
+    helpful: 24,
+  },
+  {
+    id: "review-2",
+    designerId: "designer-1",
+    userId: "user-3",
+    rating: 5,
+    comment:
+      "The master of black. Yamamoto's pieces are investment pieces that transcend trends. His FW24 collection was absolutely stunning.",
+    createdAt: "2024-09-08T10:15:00Z",
+    updatedAt: "2024-09-08T10:15:00Z",
+    helpful: 18,
+  },
+  {
+    id: "review-3",
+    designerId: "designer-2",
+    userId: "user-4",
+    rating: 5,
+    comment:
+      "Rei Kawakubo continues to challenge everything we think we know about fashion. CDG is not just clothing, it's conceptual art.",
+    createdAt: "2024-09-12T16:45:00Z",
+    updatedAt: "2024-09-12T16:45:00Z",
+    helpful: 31,
+  },
+  {
+    id: "review-4",
+    designerId: "designer-2",
+    userId: "user-1",
+    rating: 4,
+    comment:
+      "Innovative and thought-provoking. Some pieces are more wearable than others, but the artistic vision is always clear.",
+    createdAt: "2024-09-05T09:20:00Z",
+    updatedAt: "2024-09-05T09:20:00Z",
+    helpful: 12,
+  },
+  {
+    id: "review-5",
+    designerId: "designer-3",
+    userId: "user-2",
+    rating: 5,
+    comment:
+      "The Margiela codes are timeless. MM6 makes the house aesthetic more accessible while maintaining the deconstructed DNA.",
+    createdAt: "2024-09-07T13:10:00Z",
+    updatedAt: "2024-09-07T13:10:00Z",
+    helpful: 15,
+  },
+];
+
+// Mock Designer Brand History
+export const mockDesignerBrandHistory: DesignerBrandHistory[] = [
+  // Yohji Yamamoto's brand history
+  {
+    id: "history-1",
+    designerId: "designer-1",
+    brandName: "Yohji Yamamoto",
+    role: "Founder & Creative Director",
+    startYear: 1972,
+    description: "Founded his own label, pioneering avant-garde fashion",
+    logoUrl: "/placeholders/logo-yohji.jpg",
+    isActive: true,
+  },
+  {
+    id: "history-2",
+    designerId: "designer-1",
+    brandName: "Y's",
+    role: "Creative Director",
+    startYear: 1977,
+    description: "Diffusion line focusing on ready-to-wear",
+    logoUrl: "/placeholders/logo-ys.jpg",
+    isActive: true,
+  },
+  {
+    id: "history-3",
+    designerId: "designer-1",
+    brandName: "Ground Y",
+    role: "Creative Director",
+    startYear: 2014,
+    description:
+      "Street-inspired line merging youth culture with Yamamoto aesthetics",
+    logoUrl: "/placeholders/logo-ground-y.jpg",
+    isActive: true,
+  },
+
+  // Rei Kawakubo's brand history
+  {
+    id: "history-4",
+    designerId: "designer-2",
+    brandName: "Comme des Garçons",
+    role: "Founder & Creative Director",
+    startYear: 1969,
+    description: "Revolutionary fashion house challenging conventional beauty",
+    logoUrl: "/placeholders/logo-cdg.jpg",
+    isActive: true,
+  },
+  {
+    id: "history-5",
+    designerId: "designer-2",
+    brandName: "Comme des Garçons PLAY",
+    role: "Creative Director",
+    startYear: 2002,
+    description: "Accessible line featuring the iconic heart logo",
+    logoUrl: "/placeholders/logo-cdg-play.jpg",
+    isActive: true,
+  },
+
+  // Maison Margiela's brand history (including Hedi Slimane example)
+  {
+    id: "history-6",
+    designerId: "designer-3",
+    brandName: "Maison Margiela",
+    role: "Founder",
+    startYear: 1988,
+    endYear: 2009,
+    description: "Founded the deconstructionist fashion house",
+    logoUrl: "/placeholders/logo-margiela.jpg",
+    isActive: false,
+  },
+  {
+    id: "history-7",
+    designerId: "designer-3",
+    brandName: "MM6 Maison Margiela",
+    role: "Creative Director",
+    startYear: 1997,
+    description: "Contemporary line with accessible approach to house codes",
+    logoUrl: "/placeholders/logo-mm6.jpg",
+    isActive: true,
+  },
+
+  // Add example for Hedi Slimane style (using designer-3 as example)
+  {
+    id: "history-8",
+    designerId: "designer-3",
+    brandName: "Dior Homme",
+    role: "Creative Director",
+    startYear: 2000,
+    endYear: 2007,
+    description: "Revolutionized men's fashion with skinny silhouettes",
+    logoUrl: "/placeholders/logo-dior-homme.jpg",
+    isActive: false,
+  },
+  {
+    id: "history-9",
+    designerId: "designer-3",
+    brandName: "Saint Laurent",
+    role: "Creative Director",
+    startYear: 2012,
+    endYear: 2016,
+    description: "Brought rock'n'roll aesthetic to the French house",
+    logoUrl: "/placeholders/logo-saint-laurent.jpg",
+    isActive: false,
+  },
+  {
+    id: "history-10",
+    designerId: "designer-3",
+    brandName: "Celine",
+    role: "Creative Director",
+    startYear: 2018,
+    description: "Currently leading the Parisian house with minimalist luxury",
+    logoUrl: "/placeholders/logo-celine.jpg",
+    isActive: true,
+  },
+];
+
 // Export all mock data
 export const mockData = {
   designers: mockDesigners,
@@ -399,4 +590,6 @@ export const mockData = {
   listings: mockListings,
   users: mockUsers,
   notes: mockNotes,
+  designerReviews: mockDesignerReviews,
+  designerBrandHistory: mockDesignerBrandHistory,
 };

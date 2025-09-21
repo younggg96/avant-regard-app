@@ -58,7 +58,7 @@ const DiscoverScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>AVANT REGARD</Text>
         <Text style={styles.headerSubtitle}>Fashion Archive</Text>

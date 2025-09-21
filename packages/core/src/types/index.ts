@@ -9,6 +9,34 @@ export interface Designer {
   foundedYear?: number;
   country?: string;
   imageUrl?: string;
+  coverImageUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  followerCount?: number;
+  isFollowed?: boolean;
+}
+
+export interface DesignerReview {
+  id: string;
+  designerId: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  helpful: number;
+}
+
+export interface DesignerBrandHistory {
+  id: string;
+  designerId: string;
+  brandName: string;
+  role: string; // "Creative Director", "Founder", "Designer", etc.
+  startYear: number;
+  endYear?: number; // null if current
+  description?: string;
+  logoUrl?: string;
+  isActive: boolean;
 }
 
 export interface BrandBranch {

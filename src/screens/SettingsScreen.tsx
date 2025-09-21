@@ -6,17 +6,30 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { useAlert } from "../components/AlertProvider";
+
+interface SettingItem {
+  id: string;
+  label: string;
+  icon: string;
+  onPress?: () => void;
+  rightText?: string;
+  rightColor?: string;
+  toggle?: boolean;
+  value?: boolean;
+  onToggle?: (value: boolean) => void;
+}
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuthStore();
+  const { showAlert, showConfirm } = useAlert();
 
   const [notifications, setNotifications] = React.useState({
     newCollections: true,
@@ -25,7 +38,7 @@ const SettingsScreen = () => {
     marketingEmails: false,
   });
 
-  const settingSections = [
+  const settingSections: { title: string; items: SettingItem[] }[] = [
     {
       title: "Account",
       items: [
@@ -34,10 +47,7 @@ const SettingsScreen = () => {
           label: "Edit Profile",
           icon: "person-outline",
           onPress: () =>
-            Alert.alert(
-              "Coming Soon",
-              "Profile editing will be available soon"
-            ),
+            showAlert("Coming Soon", "Profile editing will be available soon"),
         },
         {
           id: "email",
@@ -109,49 +119,42 @@ const SettingsScreen = () => {
           label: "Help Center",
           icon: "help-circle-outline",
           onPress: () =>
-            Alert.alert("Help", "Help center will be available soon"),
+            showAlert("Help", "Help center will be available soon"),
         },
         {
           id: "feedback",
           label: "Send Feedback",
           icon: "chatbubble-outline",
           onPress: () =>
-            Alert.alert("Feedback", "Feedback form will be available soon"),
+            showAlert("Feedback", "Feedback form will be available soon"),
         },
         {
           id: "terms",
           label: "Terms of Service",
           icon: "document-text-outline",
           onPress: () =>
-            Alert.alert("Terms", "Terms of service will be available soon"),
+            showAlert("Terms", "Terms of service will be available soon"),
         },
         {
           id: "privacy",
           label: "Privacy Policy",
           icon: "shield-outline",
           onPress: () =>
-            Alert.alert("Privacy", "Privacy policy will be available soon"),
+            showAlert("Privacy", "Privacy policy will be available soon"),
         },
       ],
     },
   ];
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showConfirm(
       "Delete Account",
       "Are you sure you want to delete your account? This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            Alert.alert("Account Deleted", "Your account has been deleted.", [
-              { text: "OK", onPress: logout },
-            ]);
-          },
-        },
-      ]
+      () => {
+        showAlert("Account Deleted", "Your account has been deleted.", [
+          { text: "OK", onPress: logout },
+        ]);
+      }
     );
   };
 
