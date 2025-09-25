@@ -15,6 +15,27 @@ const TabBarIcon: React.FC<TabBarIconProps> = ({ name, color, focused }) => {
       unfocused: keyof typeof Ionicons.glyphMap;
     };
   } = {
+    home: {
+      focused: "home",
+      unfocused: "home-outline",
+    },
+    archive: {
+      focused: "library",
+      unfocused: "library-outline",
+    },
+    add: {
+      focused: "add-circle",
+      unfocused: "add-circle-outline",
+    },
+    notifications: {
+      focused: "notifications",
+      unfocused: "notifications-outline",
+    },
+    profile: {
+      focused: "person-circle",
+      unfocused: "person-circle-outline",
+    },
+    // Keep old ones for backward compatibility
     explore: {
       focused: "compass",
       unfocused: "compass-outline",

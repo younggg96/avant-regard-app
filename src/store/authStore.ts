@@ -1,7 +1,14 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AuthUser } from "@avant-regard/core/src/types";
+
+interface AuthUser {
+  id: string;
+  phone: string;
+  nickname: string;
+  avatar?: string;
+  token?: string;
+}
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -18,6 +25,32 @@ interface AuthActions {
 }
 
 type AuthStore = AuthState & AuthActions;
+
+// Create safe AsyncStorage wrapper to handle potential undefined cases
+const safeAsyncStorage = {
+  getItem: async (key: string) => {
+    try {
+      return (await AsyncStorage?.getItem(key)) || null;
+    } catch (error) {
+      console.warn("AsyncStorage getItem error:", error);
+      return null;
+    }
+  },
+  setItem: async (key: string, value: string) => {
+    try {
+      await AsyncStorage?.setItem(key, value);
+    } catch (error) {
+      console.warn("AsyncStorage setItem error:", error);
+    }
+  },
+  removeItem: async (key: string) => {
+    try {
+      await AsyncStorage?.removeItem(key);
+    } catch (error) {
+      console.warn("AsyncStorage removeItem error:", error);
+    }
+  },
+};
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -62,13 +95,17 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: "avant-regard-auth",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeAsyncStorage),
       // Only persist essential auth data
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
         token: state.token,
       }),
+      // Add error handling for storage failures
+      onRehydrateStorage: () => (state) => {
+        console.log("Auth store rehydrated:", state ? "success" : "failed");
+      },
     }
   )
 );

@@ -9,27 +9,19 @@ import * as Font from "expo-font";
 
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
-import DesignersScreen from "./src/screens/DesignersScreen";
-import FavoritesScreen from "./src/screens/FavoritesScreen";
+import ArchiveScreen from "./src/screens/ArchiveScreen";
+import PublishScreen from "./src/screens/PublishScreen";
+import NotificationsScreen from "./src/screens/NotificationsScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
-import BranchDetailScreen from "./src/screens/BranchDetailScreen";
-import LookbookDetailScreen from "./src/screens/LookbookDetailScreen";
-import LookDetailScreen from "./src/screens/LookDetailScreen";
-import ItemDetailScreen from "./src/screens/ItemDetailScreen";
-
 // Auth Screens
-import WelcomeScreen from "./src/screens/WelcomeScreen";
-import LoginScreen from "./src/screens/LoginScreen";
-import RegisterScreen from "./src/screens/RegisterScreen";
-import ForgotPasswordScreen from "./src/screens/ForgotPasswordScreen";
-import ResetPasswordScreen from "./src/screens/ResetPasswordScreen";
-import EmailVerificationScreen from "./src/screens/EmailVerificationScreen";
+import AuthScreen from "./src/screens/AuthScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
+import PublishTabButton from "./src/components/PublishTabButton";
 
 // Theme
 import { theme } from "./src/theme";
@@ -59,15 +51,7 @@ function AuthNavigator() {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-      <Stack.Screen
-        name="EmailVerification"
-        component={EmailVerificationScreen}
-      />
+      <Stack.Screen name="Auth" component={AuthScreen} />
     </Stack.Navigator>
   );
 }
@@ -78,13 +62,14 @@ function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.black,
-          borderTopWidth: 0,
+          backgroundColor: theme.colors.white,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.gray100,
           height: 76,
           paddingBottom: 24,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: theme.colors.white,
+        tabBarActiveTintColor: theme.colors.black,
         tabBarInactiveTintColor: theme.colors.gray400,
         tabBarLabelStyle: {
           fontFamily: __DEV__ ? "System" : "Inter-Regular",
@@ -93,42 +78,52 @@ function TabNavigator() {
       }}
     >
       <Tab.Screen
-        name="Discover"
+        name="Home"
         component={DiscoverScreen}
         options={{
-          tabBarLabel: "Discover",
+          tabBarLabel: "首页",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="explore" color={color} focused={focused} />
+            <TabBarIcon name="home" color={color} focused={focused} />
           ),
         }}
       />
       <Tab.Screen
-        name="Designers"
-        component={DesignersScreen}
+        name="Archive"
+        component={ArchiveScreen}
         options={{
-          tabBarLabel: "Designers",
+          tabBarLabel: "存档",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="collections" color={color} focused={focused} />
+            <TabBarIcon name="archive" color={color} focused={focused} />
           ),
         }}
       />
       <Tab.Screen
-        name="Favorites"
-        component={FavoritesScreen}
+        name="Publish"
+        component={PublishScreen}
         options={{
-          tabBarLabel: "Favorites",
+          tabBarLabel: "",
+          tabBarIcon: () => null,
+          tabBarButton: (props) => <PublishTabButton onPress={props.onPress} />,
+        }}
+      />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarLabel: "通知",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="bookmark" color={color} focused={focused} />
+            <TabBarIcon name="notifications" color={color} focused={focused} />
           ),
+          tabBarBadge: 99, // Show notification badge
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: "Me",
+          tabBarLabel: "我",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="person" color={color} focused={focused} />
+            <TabBarIcon name="profile" color={color} focused={focused} />
           ),
         }}
       />
@@ -167,42 +162,17 @@ function AppNavigator() {
       <Stack.Screen
         name="DesignerDetail"
         component={DesignerDetailScreen}
-        options={{ title: "Designer" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="BranchDetail"
-        component={BranchDetailScreen}
-        options={{ title: "Collection" }}
-      />
-      <Stack.Screen
-        name="LookbookDetail"
-        component={LookbookDetailScreen}
-        options={{ title: "Lookbook" }}
-      />
-      <Stack.Screen
-        name="LookDetail"
-        component={LookDetailScreen}
-        options={{ title: "Look" }}
-      />
-      <Stack.Screen
-        name="ItemDetail"
-        component={ItemDetailScreen}
-        options={{ title: "Item" }}
-      />
-      <Stack.Screen
-        name="Settings"
+        name="设置"
         component={SettingsScreen}
-        options={{ title: "Settings" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
-        options={{ title: "Change Password" }}
-      />
-      <Stack.Screen
-        name="EmailVerification"
-        component={EmailVerificationScreen}
-        options={{ title: "Verify Email" }}
+        options={{ title: "修改密码" }}
       />
     </Stack.Navigator>
   );

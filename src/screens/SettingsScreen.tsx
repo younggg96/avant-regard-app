@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { useAlert } from "../components/AlertProvider";
+import ScreenHeader from "../components/ScreenHeader";
 
 interface SettingItem {
   id: string;
@@ -31,146 +32,64 @@ const SettingsScreen = () => {
   const { user, logout } = useAuthStore();
   const { showAlert, showConfirm } = useAlert();
 
-  const [notifications, setNotifications] = React.useState({
-    newCollections: true,
-    priceAlerts: true,
-    followedDesigners: true,
-    marketingEmails: false,
-  });
-
   const settingSections: { title: string; items: SettingItem[] }[] = [
     {
-      title: "Account",
+      title: "账户",
       items: [
         {
           id: "profile",
-          label: "Edit Profile",
+          label: "编辑个人资料",
           icon: "person-outline",
-          onPress: () =>
-            showAlert("Coming Soon", "Profile editing will be available soon"),
+          onPress: () => showAlert("即将推出", "个人资料编辑功能即将上线"),
         },
         {
-          id: "email",
-          label: "Email Verification",
-          icon: "mail-outline",
-          onPress: () =>
-            (navigation as any).navigate("EmailVerification", {
-              email: user?.email,
-            }),
-          rightText: user?.isVerified ? "Verified" : "Verify",
-          rightColor: user?.isVerified
-            ? theme.colors.accent
-            : theme.colors.error,
+          id: "phone",
+          label: "手机号管理",
+          icon: "call-outline",
+          onPress: () => showAlert("手机号管理", "手机号管理功能即将上线"),
+          rightText: user?.phone
+            ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")
+            : "",
+          rightColor: theme.colors.gray400,
         },
         {
           id: "password",
-          label: "Change Password",
+          label: "修改密码",
           icon: "lock-closed-outline",
           onPress: () => (navigation as any).navigate("ChangePassword"),
         },
       ],
     },
     {
-      title: "Notifications",
+      title: "支持",
       items: [
-        {
-          id: "newCollections",
-          label: "New Collections",
-          icon: "notifications-outline",
-          toggle: true,
-          value: notifications.newCollections,
-          onToggle: (value: boolean) =>
-            setNotifications({ ...notifications, newCollections: value }),
-        },
-        {
-          id: "priceAlerts",
-          label: "Price Alerts",
-          icon: "pricetag-outline",
-          toggle: true,
-          value: notifications.priceAlerts,
-          onToggle: (value: boolean) =>
-            setNotifications({ ...notifications, priceAlerts: value }),
-        },
-        {
-          id: "followedDesigners",
-          label: "Followed Designers",
-          icon: "heart-outline",
-          toggle: true,
-          value: notifications.followedDesigners,
-          onToggle: (value: boolean) =>
-            setNotifications({ ...notifications, followedDesigners: value }),
-        },
-        {
-          id: "marketingEmails",
-          label: "Marketing Emails",
-          icon: "mail-outline",
-          toggle: true,
-          value: notifications.marketingEmails,
-          onToggle: (value: boolean) =>
-            setNotifications({ ...notifications, marketingEmails: value }),
-        },
-      ],
-    },
-    {
-      title: "Support",
-      items: [
-        {
-          id: "help",
-          label: "Help Center",
-          icon: "help-circle-outline",
-          onPress: () =>
-            showAlert("Help", "Help center will be available soon"),
-        },
-        {
-          id: "feedback",
-          label: "Send Feedback",
-          icon: "chatbubble-outline",
-          onPress: () =>
-            showAlert("Feedback", "Feedback form will be available soon"),
-        },
         {
           id: "terms",
-          label: "Terms of Service",
+          label: "服务条款",
           icon: "document-text-outline",
-          onPress: () =>
-            showAlert("Terms", "Terms of service will be available soon"),
+          onPress: () => showAlert("服务条款", "服务条款即将上线"),
         },
         {
           id: "privacy",
-          label: "Privacy Policy",
+          label: "隐私政策",
           icon: "shield-outline",
-          onPress: () =>
-            showAlert("Privacy", "Privacy policy will be available soon"),
+          onPress: () => showAlert("隐私政策", "隐私政策即将上线"),
         },
       ],
     },
   ];
 
   const handleDeleteAccount = () => {
-    showConfirm(
-      "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone.",
-      () => {
-        showAlert("Account Deleted", "Your account has been deleted.", [
-          { text: "OK", onPress: logout },
-        ]);
-      }
-    );
+    showConfirm("删除账户", "确定要删除您的账户吗？此操作无法撤销。", () => {
+      showAlert("账户已删除", "您的账户已被删除。", [
+        { text: "确定", onPress: logout },
+      ]);
+    });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
-        </TouchableOpacity>
-
-        <Text style={styles.title}>Settings</Text>
-      </View>
-
+      <ScreenHeader title="设置" />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
           <View key={section.title} style={styles.section}>
@@ -223,7 +142,7 @@ const SettingsScreen = () => {
         ))}
 
         <View style={styles.dangerZone}>
-          <Text style={styles.sectionTitle}>Danger Zone</Text>
+          <Text style={styles.sectionTitle}>危险操作</Text>
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={handleDeleteAccount}
@@ -233,13 +152,13 @@ const SettingsScreen = () => {
               size={20}
               color={theme.colors.error}
             />
-            <Text style={styles.deleteButtonText}>Delete Account</Text>
+            <Text style={styles.deleteButtonText}>删除账户</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Avant Regard v1.0.0</Text>
-          <Text style={styles.footerText}>© 2024 Fashion Archive</Text>
+          <Text style={styles.footerText}>© 2024 时装档案</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -250,22 +169,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.sm,
-  },
-  title: {
-    ...theme.typography.h1,
-    color: theme.colors.black,
   },
   content: {
     flex: 1,

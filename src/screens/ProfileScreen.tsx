@@ -20,15 +20,15 @@ const ProfileScreen = () => {
   const { showConfirm, showAlert } = useAlert();
 
   const menuItems = [
-    { id: "followed", label: "Followed Designers", count: 12 },
-    { id: "saved", label: "Saved Looks", count: 48 },
-    { id: "alerts", label: "Price Alerts", count: 5 },
-    { id: "drafts", label: "Draft Notes", count: 3 },
-    { id: "settings", label: "Settings", count: null },
+    { id: "followed", label: "关注的设计师", count: 12 },
+    { id: "saved", label: "收藏的搭配", count: 48 },
+    { id: "alerts", label: "价格提醒", count: 5 },
+    { id: "drafts", label: "草稿笔记", count: 3 },
+    { id: "settings", label: "设置", count: null },
   ];
 
   const handleLogout = () => {
-    showConfirm("Sign Out", "Are you sure you want to sign out?", logout);
+    showConfirm("退出登录", "确定要退出登录吗？", logout);
   };
 
   return (
@@ -41,9 +41,11 @@ const ProfileScreen = () => {
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.username}>{user?.nickname || "User"}</Text>
+            <Text style={styles.username}>{user?.nickname || "用户"}</Text>
             <Text style={styles.joinDate}>
-              {user?.email || "user@example.com"}
+              {user?.phone
+                ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")
+                : "未绑定手机"}
             </Text>
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -66,10 +68,7 @@ const ProfileScreen = () => {
                 if (item.id === "settings") {
                   (navigation as any).navigate("Settings");
                 } else {
-                  showAlert(
-                    "Coming Soon",
-                    `${item.label} will be available soon`
-                  );
+                  showAlert("即将推出", `${item.label}功能即将推出`);
                 }
               }}
             >
@@ -85,19 +84,19 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>ACTIVITY</Text>
+          <Text style={styles.sectionTitle}>活动统计</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>156</Text>
-              <Text style={styles.statLabel}>Views</Text>
+              <Text style={styles.statLabel}>浏览</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>48</Text>
-              <Text style={styles.statLabel}>Saves</Text>
+              <Text style={styles.statLabel}>收藏</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>Notes</Text>
+              <Text style={styles.statLabel}>笔记</Text>
             </View>
           </View>
         </View>

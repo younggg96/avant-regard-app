@@ -1,385 +1,341 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
+  ScrollView,
   Image,
+  TouchableOpacity,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { useQuery } from "@tanstack/react-query";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { apiClient } from "@avant-regard/core/src/api/client";
-import { mockData } from "@avant-regard/core/src/mocks/seeds";
 import { theme } from "../theme";
-import { useFavoriteStore } from "../store/favoriteStore";
-import ReviewForm from "../components/ReviewForm";
-import BrandHistoryCard from "../components/BrandHistoryCard";
 import { useAlert } from "../components/AlertProvider";
 
-const { width } = Dimensions.get("window");
-const COVER_HEIGHT = width * 0.6;
+const { width: screenWidth } = Dimensions.get("window");
 
-const DesignerDetailScreen = ({ route }: any) => {
+interface Designer {
+  id: string;
+  name: string;
+  brand: string;
+  avatar: string;
+  coverImage: string;
+  bio: string;
+  nationality: string;
+  founded: string;
+  isFollowing: boolean;
+  followers: number;
+  collections: number;
+  website?: string;
+}
+
+interface Collection {
+  id: string;
+  title: string;
+  season: string;
+  year: string;
+  coverImage: string;
+  imageCount: number;
+}
+
+interface Look {
+  id: string;
+  image: string;
+  title: string;
+  description: string;
+  likes: number;
+  isLiked: boolean;
+}
+
+const DesignerDetailScreen = () => {
+  const route = useRoute();
   const navigation = useNavigation();
-  const { id } = route.params;
-  const { addFavorite, removeFavorite, isFavorite } = useFavoriteStore();
-  const { showAlert, showSuccess } = useAlert();
+  const { showAlert } = useAlert();
+  const designerId = (route.params as any)?.id || "designer-1";
 
-  const [isFollowed, setIsFollowed] = useState(false);
-  const [showReviewForm, setShowReviewForm] = useState(false);
-
-  const { data: designer, isLoading } = useQuery({
-    queryKey: ["designer", id],
-    queryFn: () => apiClient.getDesigner(id),
+  // Mock designer data
+  const [designer, setDesigner] = useState<Designer>({
+    id: designerId,
+    name: "Virginie Viard",
+    brand: "CHANEL",
+    avatar: "https://via.placeholder.com/120x120",
+    coverImage: "https://via.placeholder.com/400x200",
+    bio: "Virginie Viard是CHANEL的艺术总监，她延续了Gabrielle Chanel和Karl Lagerfeld的创意传统，为这个传奇品牌注入现代活力。她的设计既保持了CHANEL的经典元素，又融入了当代女性的需求。",
+    nationality: "法国",
+    founded: "2019年接任艺术总监",
+    isFollowing: false,
+    followers: 2840000,
+    collections: 24,
+    website: "chanel.com",
   });
 
-  const designerData = designer?.data;
-  const reviews = mockData.designerReviews.filter((r) => r.designerId === id);
-  const brandHistory = mockData.designerBrandHistory.filter(
-    (b) => b.designerId === id
+  // Mock collections data
+  const [collections] = useState<Collection[]>([
+    {
+      id: "collection-1",
+      title: "2024春夏高级定制",
+      season: "Spring/Summer",
+      year: "2024",
+      coverImage: "https://via.placeholder.com/300x400",
+      imageCount: 45,
+    },
+    {
+      id: "collection-2",
+      title: "2024早春度假系列",
+      season: "Cruise",
+      year: "2024",
+      coverImage: "https://via.placeholder.com/300x400",
+      imageCount: 38,
+    },
+    {
+      id: "collection-3",
+      title: "2023秋冬高级定制",
+      season: "Fall/Winter",
+      year: "2023",
+      coverImage: "https://via.placeholder.com/300x400",
+      imageCount: 52,
+    },
+    {
+      id: "collection-4",
+      title: "2023春夏成衣系列",
+      season: "Spring/Summer RTW",
+      year: "2023",
+      coverImage: "https://via.placeholder.com/300x400",
+      imageCount: 41,
+    },
+  ]);
+
+  // Mock looks data
+  const [looks] = useState<Look[]>([
+    {
+      id: "look-1",
+      image: "https://via.placeholder.com/200x300",
+      title: "经典斜纹软呢套装",
+      description: "黑白配色的经典斜纹软呢套装，体现CHANEL永恒优雅",
+      likes: 1247,
+      isLiked: false,
+    },
+    {
+      id: "look-2",
+      image: "https://via.placeholder.com/200x300",
+      title: "珍珠装饰晚礼服",
+      description: "缀满珍珠的黑色晚礼服，展现奢华与精致",
+      likes: 2156,
+      isLiked: true,
+    },
+    {
+      id: "look-3",
+      image: "https://via.placeholder.com/200x300",
+      title: "现代剪裁外套",
+      description: "融入现代元素的经典外套设计",
+      likes: 892,
+      isLiked: false,
+    },
+    {
+      id: "look-4",
+      image: "https://via.placeholder.com/200x300",
+      title: "山茶花印花连衣裙",
+      description: "以山茶花为灵感的印花连衣裙",
+      likes: 1543,
+      isLiked: false,
+    },
+  ]);
+
+  const [activeTab, setActiveTab] = useState<"collections" | "looks">(
+    "collections"
   );
-  const isDesignerFavorited = designerData
-    ? isFavorite(designerData.id)
-    : false;
 
-  const handleFollow = () => {
-    setIsFollowed(!isFollowed);
-    showSuccess(
-      isFollowed ? "Unfollowed" : "Following",
-      `You are ${isFollowed ? "no longer following" : "now following"} ${
-        designerData?.name
-      }`
-    );
-  };
+  // Handle follow/unfollow
+  const handleFollow = useCallback(() => {
+    setDesigner((prev) => ({
+      ...prev,
+      isFollowing: !prev.isFollowing,
+      followers: prev.isFollowing ? prev.followers - 1 : prev.followers + 1,
+    }));
+  }, []);
 
-  const handleSubmitReview = async (rating: number, comment: string) => {
-    // Mock API call - replace with real implementation
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+  // Handle collection press
+  const handleCollectionPress = useCallback(
+    (collection: Collection) => {
+      showAlert("系列详情", `查看${collection.title}的详细内容`);
+    },
+    [showAlert]
+  );
 
-    // In real app, this would post to API and refresh data
-    console.log("Review submitted:", { rating, comment, designerId: id });
-  };
+  // Handle look press
+  const handleLookPress = useCallback(
+    (look: Look) => {
+      showAlert("造型详情", `查看${look.title}的详细信息`);
+    },
+    [showAlert]
+  );
 
-  const handleFavorite = () => {
-    if (!designerData) return;
+  // Render header
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <Image source={{ uri: designer.coverImage }} style={styles.coverImage} />
+      <View style={styles.headerOverlay}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.white} />
+        </TouchableOpacity>
+      </View>
 
-    if (isDesignerFavorited) {
-      removeFavorite(designerData.id);
-    } else {
-      addFavorite({
-        id: designerData.id,
-        type: "designer",
-        name: designerData.name,
-        data: designerData,
-      });
-    }
-  };
-
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Ionicons key={i} name="star" size={16} color={theme.colors.accent} />
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <Ionicons
-          key="half"
-          name="star-half"
-          size={16}
-          color={theme.colors.accent}
-        />
-      );
-    }
-
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <Ionicons
-          key={`empty-${i}`}
-          name="star-outline"
-          size={16}
-          color={theme.colors.gray300}
-        />
-      );
-    }
-
-    return stars;
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+      <View style={styles.designerInfo}>
+        <Image source={{ uri: designer.avatar }} style={styles.avatar} />
+        <View style={styles.designerText}>
+          <Text style={styles.brandName}>{designer.brand}</Text>
+          <Text style={styles.designerName}>{designer.name}</Text>
+          <Text style={styles.designerMeta}>
+            {designer.nationality} • {designer.founded}
+          </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+        <TouchableOpacity
+          style={[
+            styles.followButton,
+            designer.isFollowing && styles.followingButton,
+          ]}
+          onPress={handleFollow}
+        >
+          <Text
+            style={[
+              styles.followButtonText,
+              designer.isFollowing && styles.followingButtonText,
+            ]}
+          >
+            {designer.isFollowing ? "已关注" : "关注"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-  if (!designerData) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Designer not found</Text>
+      <View style={styles.stats}>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>
+            {(designer.followers / 1000000).toFixed(1)}M
+          </Text>
+          <Text style={styles.statLabel}>关注者</Text>
         </View>
-      </SafeAreaView>
-    );
-  }
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{designer.collections}</Text>
+          <Text style={styles.statLabel}>系列</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{looks.length}</Text>
+          <Text style={styles.statLabel}>造型</Text>
+        </View>
+      </View>
+
+      <Text style={styles.bio}>{designer.bio}</Text>
+    </View>
+  );
+
+  // Render tabs
+  const renderTabs = () => (
+    <View style={styles.tabContainer}>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === "collections" && styles.activeTab]}
+        onPress={() => setActiveTab("collections")}
+      >
+        <Text
+          style={[
+            styles.tabText,
+            activeTab === "collections" && styles.activeTabText,
+          ]}
+        >
+          系列
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === "looks" && styles.activeTab]}
+        onPress={() => setActiveTab("looks")}
+      >
+        <Text
+          style={[
+            styles.tabText,
+            activeTab === "looks" && styles.activeTabText,
+          ]}
+        >
+          造型
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Render collection item
+  const renderCollectionItem = ({ item }: { item: Collection }) => (
+    <TouchableOpacity
+      style={styles.collectionItem}
+      onPress={() => handleCollectionPress(item)}
+    >
+      <Image source={{ uri: item.coverImage }} style={styles.collectionImage} />
+      <View style={styles.collectionInfo}>
+        <Text style={styles.collectionTitle}>{item.title}</Text>
+        <Text style={styles.collectionMeta}>
+          {item.season} {item.year}
+        </Text>
+        <Text style={styles.collectionCount}>{item.imageCount} 张图片</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Render look item
+  const renderLookItem = ({ item }: { item: Look }) => (
+    <TouchableOpacity
+      style={styles.lookItem}
+      onPress={() => handleLookPress(item)}
+    >
+      <Image source={{ uri: item.image }} style={styles.lookImage} />
+      <View style={styles.lookOverlay}>
+        <TouchableOpacity style={styles.likeButton}>
+          <Ionicons
+            name={item.isLiked ? "heart" : "heart-outline"}
+            size={20}
+            color={item.isLiked ? "#FF3040" : theme.colors.white}
+          />
+          <Text style={styles.likeCount}>{item.likes}</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
-    <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Cover Image */}
-        <View style={styles.coverContainer}>
-          <Image
-            source={{
-              uri: designerData.coverImageUrl || designerData.imageUrl,
-            }}
-            style={styles.coverImage}
-            defaultSource={require("../../assets/placeholder.png")}
-          />
-          <View style={styles.coverOverlay}>
-            <View style={styles.coverActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleFavorite}
-              >
-                <Ionicons
-                  name={isDesignerFavorited ? "heart" : "heart-outline"}
-                  size={24}
-                  color={
-                    isDesignerFavorited
-                      ? theme.colors.accent
-                      : theme.colors.white
-                  }
-                />
-              </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderHeader()}
+        {renderTabs()}
 
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons
-                  name="share-outline"
-                  size={24}
-                  color={theme.colors.white}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Designer Profile */}
-        <View style={styles.profileSection}>
-          <View style={styles.profileHeader}>
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={{ uri: designerData.imageUrl }}
-                style={styles.profileImage}
-                defaultSource={require("../../assets/placeholder.png")}
-              />
-            </View>
-
-            <View style={styles.profileInfo}>
-              <Text style={styles.designerName}>{designerData.name}</Text>
-              {designerData.aliases && designerData.aliases.length > 0 && (
-                <Text style={styles.designerAliases}>
-                  {designerData.aliases.join(" / ")}
-                </Text>
-              )}
-
-              <View style={styles.metaInfo}>
-                <Text style={styles.metaText}>
-                  {designerData.country} • Founded {designerData.foundedYear}
-                </Text>
-              </View>
-
-              {/* Rating */}
-              <View style={styles.ratingContainer}>
-                <View style={styles.starsContainer}>
-                  {renderStars(designerData.rating || 0)}
-                </View>
-                <Text style={styles.ratingText}>
-                  {designerData.rating?.toFixed(1)} ({designerData.reviewCount}{" "}
-                  reviews)
-                </Text>
-              </View>
-
-              {/* Stats */}
-              <View style={styles.statsContainer}>
-                <Text style={styles.statText}>
-                  {designerData.followerCount?.toLocaleString()} followers
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.followButton,
-                isFollowed && styles.followButtonActive,
-              ]}
-              onPress={handleFollow}
-            >
-              <Ionicons
-                name={isFollowed ? "checkmark" : "add"}
-                size={16}
-                color={isFollowed ? theme.colors.white : theme.colors.black}
-              />
-              <Text
-                style={[
-                  styles.followButtonText,
-                  isFollowed && styles.followButtonTextActive,
-                ]}
-              >
-                {isFollowed ? "Following" : "Follow"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => setShowReviewForm(true)}
-            >
-              <Ionicons
-                name="star-outline"
-                size={16}
-                color={theme.colors.black}
-              />
-              <Text style={styles.reviewButtonText}>Write Review</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Bio */}
-          <View style={styles.bioSection}>
-            <Text style={styles.bioText}>{designerData.bio}</Text>
-          </View>
-        </View>
-
-        {/* Brand History Section */}
-        {brandHistory.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>BRAND PARTICIPATION</Text>
-            <Text style={styles.sectionDescription}>
-              Brands and houses where {designerData.name} has contributed their
-              creative vision
-            </Text>
-
-            {brandHistory
-              .sort((a, b) => {
-                // Sort by active status first, then by start year (descending)
-                if (a.isActive && !b.isActive) return -1;
-                if (!a.isActive && b.isActive) return 1;
-                return b.startYear - a.startYear;
-              })
-              .map((brand) => (
-                <BrandHistoryCard
-                  key={brand.id}
-                  brandHistory={brand}
-                  onPress={() => {
-                    showAlert(
-                      brand.brandName,
-                      `${brand.role} (${brand.startYear}${
-                        brand.endYear ? `-${brand.endYear}` : "-Present"
-                      })\n\n${brand.description}`,
-                      [{ text: "OK" }],
-                      "business",
-                      theme.colors.accent
-                    );
-                  }}
-                />
+        <View style={styles.content}>
+          {activeTab === "collections" ? (
+            <View>
+              {collections.map((item) => (
+                <View key={item.id}>{renderCollectionItem({ item })}</View>
               ))}
-          </View>
-        )}
-
-        {/* Collections Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>COLLECTIONS</Text>
-          <TouchableOpacity style={styles.sectionItem}>
-            <Text style={styles.sectionItemText}>View All Collections</Text>
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={theme.colors.gray400}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Reviews Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>REVIEWS ({reviews.length})</Text>
-            <TouchableOpacity onPress={() => setShowReviewForm(true)}>
-              <Text style={styles.sectionAction}>Write Review</Text>
-            </TouchableOpacity>
-          </View>
-
-          {reviews.slice(0, 3).map((review) => {
-            const user = mockData.users.find((u) => u.id === review.userId);
-            return (
-              <View key={review.id} style={styles.reviewItem}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewUser}>
-                    <View style={styles.reviewAvatar}>
-                      <Text style={styles.reviewAvatarText}>
-                        {user?.nickname.slice(0, 2).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.reviewUserName}>
-                        {user?.nickname}
-                      </Text>
-                      <View style={styles.reviewStars}>
-                        {renderStars(review.rating)}
-                      </View>
-                    </View>
-                  </View>
-                  <Text style={styles.reviewDate}>
-                    {new Date(review.createdAt).toLocaleDateString()}
-                  </Text>
+            </View>
+          ) : (
+            <View style={styles.looksContainer}>
+              {looks.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.lookItemWrapper,
+                    index % 2 === 1 && styles.lookItemRight,
+                  ]}
+                >
+                  {renderLookItem({ item })}
                 </View>
-
-                <Text style={styles.reviewComment}>{review.comment}</Text>
-
-                <View style={styles.reviewActions}>
-                  <TouchableOpacity style={styles.helpfulButton}>
-                    <Ionicons
-                      name="thumbs-up-outline"
-                      size={14}
-                      color={theme.colors.gray400}
-                    />
-                    <Text style={styles.helpfulText}>
-                      Helpful ({review.helpful})
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-
-          {reviews.length > 3 && (
-            <TouchableOpacity style={styles.viewAllReviews}>
-              <Text style={styles.viewAllReviewsText}>View All Reviews</Text>
-            </TouchableOpacity>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
-
-      <ReviewForm
-        visible={showReviewForm}
-        onClose={() => setShowReviewForm(false)}
-        designerName={designerData.name}
-        onSubmit={handleSubmitReview}
-      />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -388,284 +344,211 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  loadingContainer: {
+  scrollView: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  loadingText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorText: {
-    ...theme.typography.body,
-    color: theme.colors.error,
-  },
-  coverContainer: {
-    position: "relative",
-    height: COVER_HEIGHT,
+  header: {
+    paddingBottom: theme.spacing.lg,
   },
   coverImage: {
-    width: "100%",
-    height: "100%",
+    width: screenWidth,
+    height: 200,
     backgroundColor: theme.colors.gray100,
   },
-  coverOverlay: {
+  headerOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    justifyContent: "space-between",
-    padding: theme.spacing.md,
+    height: 200,
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
   },
   backButton: {
-    alignSelf: "flex-start",
-    padding: theme.spacing.sm,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: theme.borderRadius.full,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  coverActions: {
+  designerInfo: {
     flexDirection: "row",
-    alignSelf: "flex-end",
-    gap: theme.spacing.sm,
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    marginTop: -30,
   },
-  actionButton: {
-    padding: theme.spacing.sm,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    borderRadius: theme.borderRadius.full,
-  },
-  profileSection: {
-    padding: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  profileHeader: {
-    flexDirection: "row",
-    marginBottom: theme.spacing.lg,
-  },
-  profileImageContainer: {
-    marginRight: theme.spacing.md,
-    marginTop: -theme.spacing.xxl,
-  },
-  profileImage: {
+  avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: theme.colors.gray100,
     borderWidth: 3,
     borderColor: theme.colors.white,
-    backgroundColor: theme.colors.gray100,
   },
-  profileInfo: {
+  designerText: {
     flex: 1,
-    paddingTop: theme.spacing.sm,
+    marginLeft: theme.spacing.md,
+  },
+  brandName: {
+    ...theme.typography.h2,
+    color: theme.colors.black,
+    marginBottom: 2,
   },
   designerName: {
-    ...theme.typography.h1,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.xs,
+    ...theme.typography.body,
+    color: theme.colors.gray600,
+    marginBottom: 4,
   },
-  designerAliases: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    fontStyle: "italic",
-    marginBottom: theme.spacing.sm,
-  },
-  metaInfo: {
-    marginBottom: theme.spacing.sm,
-  },
-  metaText: {
+  designerMeta: {
     ...theme.typography.caption,
     color: theme.colors.gray400,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: theme.spacing.xs,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    marginRight: theme.spacing.sm,
-  },
-  ratingText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  statsContainer: {
-    marginTop: theme.spacing.xs,
-  },
-  statText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  actionButtonsContainer: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
   },
   followButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.black,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.white,
-  },
-  followButtonActive: {
     backgroundColor: theme.colors.black,
+    borderRadius: theme.borderRadius.md,
+  },
+  followingButton: {
+    backgroundColor: theme.colors.gray200,
   },
   followButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.black,
-    marginLeft: theme.spacing.xs,
-    fontSize: 14,
-  },
-  followButtonTextActive: {
+    ...theme.typography.bodySmall,
     color: theme.colors.white,
+    fontWeight: "600",
   },
-  reviewButton: {
-    flex: 1,
+  followingButtonText: {
+    color: theme.colors.gray600,
+  },
+  stats: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.sm,
+    justifyContent: "space-around",
     paddingHorizontal: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.white,
-  },
-  reviewButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.black,
-    marginLeft: theme.spacing.xs,
-    fontSize: 14,
-  },
-  bioSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  bioText: {
-    ...theme.typography.body,
-    color: theme.colors.gray500,
-    lineHeight: 24,
-  },
-  section: {
-    padding: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
   },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  statItem: {
     alignItems: "center",
-    marginBottom: theme.spacing.md,
   },
-  sectionTitle: {
+  statNumber: {
+    ...theme.typography.h2,
+    color: theme.colors.black,
+    marginBottom: 4,
+  },
+  statLabel: {
     ...theme.typography.caption,
     color: theme.colors.gray400,
-    letterSpacing: 1,
   },
-  sectionDescription: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray500,
-    marginBottom: theme.spacing.md,
-    lineHeight: 18,
-  },
-  sectionAction: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
-    textDecorationLine: "underline",
-  },
-  sectionItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: theme.spacing.sm,
-  },
-  sectionItemText: {
+  bio: {
     ...theme.typography.body,
-    color: theme.colors.black,
-  },
-  reviewItem: {
+    color: theme.colors.gray600,
+    lineHeight: 24,
+    paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
-  reviewHeader: {
+  tabContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
   },
-  reviewUser: {
-    flexDirection: "row",
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
     alignItems: "center",
   },
-  reviewAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: theme.spacing.sm,
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.black,
   },
-  reviewAvatarText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
-    fontWeight: "500",
+  tabText: {
+    ...theme.typography.body,
+    color: theme.colors.gray400,
   },
-  reviewUserName: {
-    ...theme.typography.bodySmall,
+  activeTabText: {
     color: theme.colors.black,
-    fontWeight: "500",
-    marginBottom: 2,
+    fontWeight: "600",
   },
-  reviewStars: {
+  content: {
+    flex: 1,
+    paddingTop: theme.spacing.md,
+  },
+  collectionItem: {
     flexDirection: "row",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
   },
-  reviewDate: {
+  collectionImage: {
+    width: 80,
+    height: 100,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.gray100,
+    marginRight: theme.spacing.md,
+  },
+  collectionInfo: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  collectionTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.black,
+    marginBottom: 4,
+  },
+  collectionMeta: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray400,
+    marginBottom: 4,
+  },
+  collectionCount: {
     ...theme.typography.caption,
     color: theme.colors.gray400,
   },
-  reviewComment: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray500,
-    lineHeight: 20,
-    marginBottom: theme.spacing.sm,
-  },
-  reviewActions: {
+  looksContainer: {
     flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: theme.spacing.md,
   },
-  helpfulButton: {
+  lookItemWrapper: {
+    width: (screenWidth - theme.spacing.md * 3) / 2,
+    marginBottom: theme.spacing.md,
+  },
+  lookItemRight: {
+    marginLeft: theme.spacing.md,
+  },
+  lookItem: {
+    position: "relative",
+    width: "100%",
+  },
+  lookImage: {
+    width: "100%",
+    height: 240,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: theme.colors.gray100,
+  },
+  lookOverlay: {
+    position: "absolute",
+    bottom: theme.spacing.sm,
+    right: theme.spacing.sm,
+  },
+  likeButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: theme.spacing.xs,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     paddingHorizontal: theme.spacing.sm,
-    backgroundColor: theme.colors.gray100,
+    paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.sm,
   },
-  helpfulText: {
+  likeCount: {
     ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginLeft: theme.spacing.xs,
-  },
-  viewAllReviews: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.md,
-  },
-  viewAllReviewsText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
-    textDecorationLine: "underline",
+    color: theme.colors.white,
+    marginLeft: 4,
+    fontWeight: "600",
   },
 });
 

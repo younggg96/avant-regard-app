@@ -23,7 +23,7 @@ export const theme = {
     gray400: "#444444",
     gray500: "#222222",
     gray600: "#111111",
-    accent: "#C7A27C", // Champagne gold
+    accent: "#000000", // Black
     error: "#FF3B30",
     success: "#34C759",
   },
