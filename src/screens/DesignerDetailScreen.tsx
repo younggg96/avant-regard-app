@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,40 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAlert } from "../components/AlertProvider";
+import designersData from "../data/data.json";
 
 const { width: screenWidth } = Dimensions.get("window");
+
+interface DesignerData {
+  designer: string;
+  designer_url: string;
+  collections_summary: Array<{
+    season: string;
+    category: string;
+    city: string | null;
+    collection_date: string;
+    review_title: string;
+    review_author: string | null;
+    looks_count: number;
+  }>;
+  shows: Array<{
+    show_url: string;
+    season: string;
+    category: string;
+    city: string | null;
+    collection_date: string;
+    review_title: string;
+    review_author: string | null;
+    review_text: string | null;
+    looks_count: number;
+    images: Array<{
+      image_url: string;
+      image_type: string;
+    }>;
+  }>;
+  show_count: number;
+  image_count: number;
+}
 
 interface Designer {
   id: string;
@@ -38,6 +70,10 @@ interface Collection {
   year: string;
   coverImage: string;
   imageCount: number;
+  city?: string | null;
+  author?: string | null;
+  reviewText?: string | null;
+  showUrl?: string;
 }
 
 interface Look {
@@ -47,6 +83,7 @@ interface Look {
   description: string;
   likes: number;
   isLiked: boolean;
+  imageType?: string;
 }
 
 const DesignerDetailScreen = () => {
@@ -54,94 +91,135 @@ const DesignerDetailScreen = () => {
   const navigation = useNavigation();
   const { showAlert } = useAlert();
   const designerId = (route.params as any)?.id || "designer-1";
+  const designerName = (route.params as any)?.name;
 
-  // Mock designer data
-  const [designer, setDesigner] = useState<Designer>({
-    id: designerId,
-    name: "Virginie Viard",
-    brand: "CHANEL",
-    avatar: "https://via.placeholder.com/120x120",
-    coverImage: "https://via.placeholder.com/400x200",
-    bio: "Virginie Viard是CHANEL的艺术总监，她延续了Gabrielle Chanel和Karl Lagerfeld的创意传统，为这个传奇品牌注入现代活力。她的设计既保持了CHANEL的经典元素，又融入了当代女性的需求。",
-    nationality: "法国",
-    founded: "2019年接任艺术总监",
-    isFollowing: false,
-    followers: 2840000,
-    collections: 24,
-    website: "chanel.com",
-  });
+  const [designer, setDesigner] = useState<Designer | null>(null);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [looks, setLooks] = useState<Look[]>([]);
 
-  // Mock collections data
-  const [collections] = useState<Collection[]>([
-    {
-      id: "collection-1",
-      title: "2024春夏高级定制",
-      season: "Spring/Summer",
-      year: "2024",
-      coverImage: "https://via.placeholder.com/300x400",
-      imageCount: 45,
-    },
-    {
-      id: "collection-2",
-      title: "2024早春度假系列",
-      season: "Cruise",
-      year: "2024",
-      coverImage: "https://via.placeholder.com/300x400",
-      imageCount: 38,
-    },
-    {
-      id: "collection-3",
-      title: "2023秋冬高级定制",
-      season: "Fall/Winter",
-      year: "2023",
-      coverImage: "https://via.placeholder.com/300x400",
-      imageCount: 52,
-    },
-    {
-      id: "collection-4",
-      title: "2023春夏成衣系列",
-      season: "Spring/Summer RTW",
-      year: "2023",
-      coverImage: "https://via.placeholder.com/300x400",
-      imageCount: 41,
-    },
-  ]);
+  // Find designer data by name or ID
+  useEffect(() => {
+    const findDesignerData = (): DesignerData | null => {
+      const dataArray = designersData as DesignerData[];
 
-  // Mock looks data
-  const [looks] = useState<Look[]>([
-    {
-      id: "look-1",
-      image: "https://via.placeholder.com/200x300",
-      title: "经典斜纹软呢套装",
-      description: "黑白配色的经典斜纹软呢套装，体现CHANEL永恒优雅",
-      likes: 1247,
-      isLiked: false,
-    },
-    {
-      id: "look-2",
-      image: "https://via.placeholder.com/200x300",
-      title: "珍珠装饰晚礼服",
-      description: "缀满珍珠的黑色晚礼服，展现奢华与精致",
-      likes: 2156,
-      isLiked: true,
-    },
-    {
-      id: "look-3",
-      image: "https://via.placeholder.com/200x300",
-      title: "现代剪裁外套",
-      description: "融入现代元素的经典外套设计",
-      likes: 892,
-      isLiked: false,
-    },
-    {
-      id: "look-4",
-      image: "https://via.placeholder.com/200x300",
-      title: "山茶花印花连衣裙",
-      description: "以山茶花为灵感的印花连衣裙",
-      likes: 1543,
-      isLiked: false,
-    },
-  ]);
+      if (designerName) {
+        // Try exact match first
+        let found = dataArray.find((d: DesignerData) =>
+          d.designer.toLowerCase() === designerName.toLowerCase()
+        );
+
+        // If not found, try partial match
+        if (!found) {
+          found = dataArray.find((d: DesignerData) =>
+            d.designer.toLowerCase().includes(designerName.toLowerCase()) ||
+            designerName.toLowerCase().includes(d.designer.toLowerCase())
+          );
+        }
+
+        // If still not found, try matching just the brand name (part before parentheses)
+        if (!found) {
+          found = dataArray.find((d: DesignerData) => {
+            const brandMatch = d.designer.match(/^([^(]+?)(?:\s*\(|$)/);
+            const brandName = brandMatch?.[1]?.trim();
+            return brandName && (
+              brandName.toLowerCase().includes(designerName.toLowerCase()) ||
+              designerName.toLowerCase().includes(brandName.toLowerCase())
+            );
+          });
+        }
+
+        return found || null;
+      }
+
+      // Fallback to first designer if no name provided
+      return dataArray[0] || null;
+    };
+
+    const designerData = findDesignerData();
+
+    if (designerData) {
+      // Extract brand name from designer string (handle parentheses)
+      const brandMatch = designerData.designer.match(/^([^(]+?)(?:\s*\(|$)/);
+      const designerMatch = designerData.designer.match(/\(([^)]+)\)$/);
+
+      const brand = designerMatch ? designerMatch[1] : brandMatch?.[1]?.trim() || designerData.designer;
+      const name = brandMatch?.[1]?.trim() || designerData.designer;
+
+      // Get hero image from the latest show if available
+      const heroImage = designerData.shows && designerData.shows.length > 0 ? designerData.shows[0]?.images?.find(img => img.image_type === "hero")?.image_url : null;
+      const avatarImage = designerData.shows && designerData.shows.length > 0 ? designerData.shows[0]?.images?.find(img => img.image_type === "look")?.image_url : null;
+
+      setDesigner({
+        id: designerId,
+        name: name,
+        brand: brand,
+        avatar: avatarImage || "https://via.placeholder.com/120x120",
+        coverImage: heroImage || "https://via.placeholder.com/400x200",
+        bio: `${brand}是享誉国际的时尚品牌，以独特的设计理念和创新的时尚视角而闻名。品牌共举办了${designerData.shows?.length || 0}场精彩的时装秀，收录了${designerData.image_count || 0}张珍贵的作品图片，展现了${designerData.collections_summary?.length || 0}个完整系列的设计精髓。从经典到前卫，每一件作品都体现了设计师对时尚美学的深刻理解和不懈追求。`,
+        nationality: "国际",
+        founded: "知名设计师",
+        isFollowing: false,
+        followers: Math.floor(Math.random() * 3000000) + 500000,
+        collections: designerData.collections_summary?.length || 0,
+        website: designerData.designer_url,
+      });
+
+      // Convert shows to collections
+      const convertedCollections = (designerData.shows || []).map((show, index) => {
+        const year = show.collection_date ? new Date(show.collection_date).getFullYear().toString() : "2023";
+        const coverImage = show.images?.find(img => img.image_type === "hero")?.image_url || show.images?.[0]?.image_url || "https://via.placeholder.com/300x400";
+        return {
+          id: `collection-${index}`,
+          title: show.review_title || show.season,
+          season: show.season,
+          year: year,
+          coverImage: coverImage,
+          imageCount: show.looks_count || 0,
+          city: show.city,
+          author: show.review_author,
+          reviewText: show.review_text,
+          showUrl: show.show_url,
+        };
+      });
+
+      // Convert images to looks
+      const convertedLooks: Look[] = [];
+      (designerData.shows || []).forEach((show, showIndex) => {
+        (show.images || []).forEach((image, imageIndex) => {
+          convertedLooks.push({
+            id: `look-${showIndex}-${imageIndex}`,
+            image: image.image_url,
+            title: `${show.season || 'Unknown Season'} Look ${imageIndex + 1}`,
+            description: show.review_text?.substring(0, 100) + "..." || `${show.season || 'Collection'} collection piece`,
+            likes: Math.floor(Math.random() * 2000) + 100,
+            isLiked: Math.random() > 0.7,
+            imageType: image.image_type,
+          });
+        });
+      });
+
+      setCollections(convertedCollections);
+      setLooks(convertedLooks);
+    } else {
+      // If no designer data found, create a fallback
+      setDesigner({
+        id: designerId,
+        name: designerName || "Unknown Designer",
+        brand: designerName || "Unknown Brand",
+        avatar: "https://via.placeholder.com/120x120",
+        coverImage: "https://via.placeholder.com/400x200",
+        bio: "设计师信息暂不可用。",
+        nationality: "国际",
+        founded: "设计师",
+        isFollowing: false,
+        followers: 0,
+        collections: 0,
+        website: "",
+      });
+      setCollections([]);
+      setLooks([]);
+    }
+  }, [designerId, designerName]);
 
   const [activeTab, setActiveTab] = useState<"collections" | "looks">(
     "collections"
@@ -149,17 +227,20 @@ const DesignerDetailScreen = () => {
 
   // Handle follow/unfollow
   const handleFollow = useCallback(() => {
-    setDesigner((prev) => ({
-      ...prev,
-      isFollowing: !prev.isFollowing,
-      followers: prev.isFollowing ? prev.followers - 1 : prev.followers + 1,
-    }));
-  }, []);
+    if (designer) {
+      setDesigner((prev) => prev ? ({
+        ...prev,
+        isFollowing: !prev.isFollowing,
+        followers: prev.isFollowing ? prev.followers - 1 : prev.followers + 1,
+      }) : null);
+    }
+  }, [designer]);
 
   // Handle collection press
   const handleCollectionPress = useCallback(
     (collection: Collection) => {
-      showAlert("系列详情", `查看${collection.title}的详细内容`);
+      const message = `${collection.title}\n\n📍 地点: ${collection.city || "未知"}\n✍️ 评论者: ${collection.author || "未知"}\n📸 图片数量: ${collection.imageCount}\n🔗 官方链接: ${collection.showUrl || "暂无"}\n\n📝 评论预览:\n${collection.reviewText ? collection.reviewText.substring(0, 300) + "..." : "暂无评论"}`;
+      showAlert("系列详情", message);
     },
     [showAlert]
   );
@@ -167,7 +248,8 @@ const DesignerDetailScreen = () => {
   // Handle look press
   const handleLookPress = useCallback(
     (look: Look) => {
-      showAlert("造型详情", `查看${look.title}的详细信息`);
+      const message = `${look.title}\n\n💖 ${look.likes} 个赞\n🏷️ 类型: ${look.imageType || '造型'}\n\n📝 描述:\n${look.description}`;
+      showAlert("造型详情", message);
     },
     [showAlert]
   );
@@ -175,7 +257,7 @@ const DesignerDetailScreen = () => {
   // Render header
   const renderHeader = () => (
     <View style={styles.header}>
-      <Image source={{ uri: designer.coverImage }} style={styles.coverImage} />
+      <Image source={{ uri: designer?.coverImage }} style={styles.coverImage} />
       <View style={styles.headerOverlay}>
         <TouchableOpacity
           style={styles.backButton}
@@ -186,28 +268,28 @@ const DesignerDetailScreen = () => {
       </View>
 
       <View style={styles.designerInfo}>
-        <Image source={{ uri: designer.avatar }} style={styles.avatar} />
+        <Image source={{ uri: designer?.avatar }} style={styles.avatar} />
         <View style={styles.designerText}>
-          <Text style={styles.brandName}>{designer.brand}</Text>
-          <Text style={styles.designerName}>{designer.name}</Text>
+          <Text style={styles.brandName}>{designer?.brand}</Text>
+          <Text style={styles.designerName}>{designer?.name}</Text>
           <Text style={styles.designerMeta}>
-            {designer.nationality} • {designer.founded}
+            {designer?.nationality} • {designer?.founded}
           </Text>
         </View>
         <TouchableOpacity
           style={[
             styles.followButton,
-            designer.isFollowing && styles.followingButton,
+            designer?.isFollowing && styles.followingButton,
           ]}
           onPress={handleFollow}
         >
           <Text
             style={[
               styles.followButtonText,
-              designer.isFollowing && styles.followingButtonText,
+              designer?.isFollowing && styles.followingButtonText,
             ]}
           >
-            {designer.isFollowing ? "已关注" : "关注"}
+            {designer?.isFollowing ? "已关注" : "关注"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -215,21 +297,36 @@ const DesignerDetailScreen = () => {
       <View style={styles.stats}>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {(designer.followers / 1000000).toFixed(1)}M
+            {((designer?.followers || 0) / 1000000).toFixed(1)}M
           </Text>
           <Text style={styles.statLabel}>关注者</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{designer.collections}</Text>
+          <Text style={styles.statNumber}>{designer?.collections || 0}</Text>
           <Text style={styles.statLabel}>系列</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{looks.length}</Text>
           <Text style={styles.statLabel}>造型</Text>
         </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statNumber}>{(designersData as any).find((d: any) => d.designer.includes(designer?.name || ''))?.show_count || 0}</Text>
+          <Text style={styles.statLabel}>场秀</Text>
+        </View>
       </View>
 
-      <Text style={styles.bio}>{designer.bio}</Text>
+      <Text style={styles.bio}>{designer?.bio}</Text>
+
+      {/* Website Link */}
+      {designer?.website && (
+        <TouchableOpacity
+          style={styles.websiteButton}
+          onPress={() => showAlert("官方网站", `访问 ${designer.website}`)}
+        >
+          <Ionicons name="globe-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.websiteText}>官方网站</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -246,7 +343,7 @@ const DesignerDetailScreen = () => {
             activeTab === "collections" && styles.activeTabText,
           ]}
         >
-          系列
+          系列 ({collections.length})
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -259,7 +356,7 @@ const DesignerDetailScreen = () => {
             activeTab === "looks" && styles.activeTabText,
           ]}
         >
-          造型
+          造型 ({looks.length})
         </Text>
       </TouchableOpacity>
     </View>
@@ -275,9 +372,17 @@ const DesignerDetailScreen = () => {
       <View style={styles.collectionInfo}>
         <Text style={styles.collectionTitle}>{item.title}</Text>
         <Text style={styles.collectionMeta}>
-          {item.season} {item.year}
+          {item.season} {item.year} {item.city && `• ${item.city}`}
         </Text>
         <Text style={styles.collectionCount}>{item.imageCount} 张图片</Text>
+        {item.author && (
+          <Text style={styles.collectionAuthor}>评论者: {item.author}</Text>
+        )}
+        {item.reviewText && (
+          <Text style={styles.collectionPreview} numberOfLines={2}>
+            {item.reviewText.length > 80 ? item.reviewText.substring(0, 80) + "..." : item.reviewText}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -301,6 +406,16 @@ const DesignerDetailScreen = () => {
       </View>
     </TouchableOpacity>
   );
+
+  if (!designer) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>加载设计师信息中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -508,6 +623,40 @@ const styles = StyleSheet.create({
   collectionCount: {
     ...theme.typography.caption,
     color: theme.colors.gray400,
+    marginBottom: 2,
+  },
+  collectionAuthor: {
+    ...theme.typography.caption,
+    fontSize: 11,
+    color: theme.colors.gray500,
+    fontStyle: "italic",
+  },
+  collectionPreview: {
+    ...theme.typography.caption,
+    fontSize: 11,
+    color: theme.colors.gray400,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  websiteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  websiteText: {
+    ...theme.typography.caption,
+    color: theme.colors.accent,
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: "500",
   },
   looksContainer: {
     flexDirection: "row",
@@ -549,6 +698,17 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     marginLeft: 4,
     fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: theme.spacing.xxl,
+  },
+  loadingText: {
+    ...theme.typography.body,
+    color: theme.colors.gray400,
+    marginTop: theme.spacing.sm,
   },
 });
 

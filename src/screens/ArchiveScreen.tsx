@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,71 +13,95 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import designersData from "../data/data.json";
+
+interface DesignerData {
+  designer: string;
+  designer_url: string;
+  collections_summary: Array<{
+    season: string;
+    category: string;
+    city: string | null;
+    collection_date: string;
+    review_title: string;
+    review_author: string | null;
+    looks_count: number;
+  }>;
+  shows: Array<{
+    show_url: string;
+    season: string;
+    category: string;
+    city: string | null;
+    collection_date: string;
+    review_title: string;
+    review_author: string | null;
+    review_text: string | null;
+    looks_count: number;
+    images: Array<{
+      image_url: string;
+      image_type: string;
+    }>;
+  }>;
+  show_count: number;
+  image_count: number;
+}
 
 interface Designer {
   id: string;
   name: string;
   brand: string;
   nationality: string;
-  birthYear: string;
-  avatarUrl: string;
-  coverUrl: string;
+  collections: number;
+  shows: number;
+  totalLooks: number;
   description: string;
-  famous_works: string[];
-  style: "classic" | "avant-garde" | "minimalist" | "romantic" | "streetwear";
-  isActive: boolean;
-  followersCount: number;
+  website: string;
+  latestSeason: string;
+  image?: string;
 }
 
-const DesignersScreen = () => {
+const ArchiveScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [designers, setDesigners] = useState<Designer[]>([]);
 
-  // Mock designers data (matching API client data)
-  const designers: Designer[] = [
-    {
-      id: "designer-3",
-      name: "Maison Margiela",
-      brand: "Martin Margiela / MMM",
-      nationality: "France",
-      birthYear: "1988",
-      avatarUrl: "https://via.placeholder.com/150x150",
-      coverUrl: "https://via.placeholder.com/300x200",
-      description: "解构主义时装屋，以概念性和艺术性设计著称",
-      famous_works: ["解构设计", "白色标签", "概念时装"],
-      style: "avant-garde",
-      isActive: true,
-      followersCount: 980000,
-    },
-    {
-      id: "designer-2",
-      name: "Rei Kawakubo",
-      brand: "川久保玲",
-      nationality: "Japan",
-      birthYear: "1942",
-      avatarUrl: "https://via.placeholder.com/150x150",
-      coverUrl: "https://via.placeholder.com/300x200",
-      description: "COMME des GARÇONS创始人，解构主义先锋",
-      famous_works: ["COMME des GARÇONS", "解构设计", "黑色系列"],
-      style: "avant-garde",
-      isActive: true,
-      followersCount: 1250000,
-    },
-    {
-      id: "designer-1",
-      name: "Yohji Yamamoto",
-      brand: "Y.Y. / 山本耀司",
-      nationality: "Japan",
-      birthYear: "1943",
-      avatarUrl: "https://via.placeholder.com/150x150",
-      coverUrl: "https://via.placeholder.com/300x200",
-      description: "日本著名时装设计师，以黑色和宽松剪裁著称",
-      famous_works: ["Yohji Yamamoto", "Y-3", "黑色美学"],
-      style: "avant-garde",
-      isActive: true,
-      followersCount: 1100000,
-    },
-  ];
+  // Convert designers data on component mount
+  useEffect(() => {
+    const convertedDesigners = (designersData as DesignerData[]).map((data: DesignerData, index) => {
+      // Extract brand and designer name from the designer string
+      const brandMatch = data.designer.match(/^([^(]+?)(?:\s*\(|$)/);
+      const designerMatch = data.designer.match(/\(([^)]+)\)$/);
+
+      const brand = designerMatch ? designerMatch[1] : brandMatch?.[1]?.trim() || data.designer;
+      const name = brandMatch?.[1]?.trim() || data.designer;
+
+      // Calculate total looks across all shows
+      const totalLooks = data.shows.reduce((sum, show) => sum + (show.looks_count || 0), 0);
+
+      // Get latest season from shows or collections_summary
+      const latestShow = data.shows.length > 0 ? data.shows[0] : null;
+      const latestCollection = data.collections_summary.length > 0 ? data.collections_summary[0] : null;
+      const latestSeason = latestShow?.season || latestCollection?.season || "Unknown";
+
+      // Get hero image from the latest show if available
+      const heroImage = latestShow?.images?.find(img => img.image_type === "hero")?.image_url;
+
+      return {
+        id: `designer-${index}`,
+        name: name,
+        brand: brand,
+        nationality: "国际", // Default nationality
+        collections: data.collections_summary.length,
+        shows: data.shows.length,
+        totalLooks: totalLooks,
+        description: `${brand}的时装设计，以独特的设计理念和创新的时尚视角而闻名。`,
+        website: data.designer_url,
+        latestSeason: latestSeason,
+        image: heroImage,
+      };
+    });
+    setDesigners(convertedDesigners);
+  }, []);
 
   // Filter designers by search query
   const filteredDesigners = designers.filter((designer) => {
@@ -148,16 +172,24 @@ const DesignersScreen = () => {
                 onPress={() => {
                   (navigation.navigate as any)("DesignerDetail", {
                     id: designer.id,
+                    name: designer.name,
                   });
                 }}
                 activeOpacity={0.7}
               >
+                {designer.image && (
+                  <Image
+                    source={{ uri: designer.image }}
+                    style={styles.designerImage}
+                  />
+                )}
                 <View style={styles.designerInfo}>
                   <Text style={styles.designerName}>{designer.name}</Text>
                   <Text style={styles.designerBrand}>{designer.brand}</Text>
-                  <Text style={styles.designerCountry}>
-                    {designer.nationality}
+                  <Text style={styles.designerMeta}>
+                    {designer.collections} 个系列 • {designer.shows} 场秀 • {designer.totalLooks} 个造型
                   </Text>
+                  <Text style={styles.designerSeason}>最新: {designer.latestSeason}</Text>
                 </View>
                 <Ionicons
                   name="chevron-forward"
@@ -234,6 +266,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
   },
+  designerImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: theme.spacing.md,
+    backgroundColor: theme.colors.gray100,
+  },
   designerInfo: {
     flex: 1,
   },
@@ -250,10 +289,17 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
     marginBottom: 2,
   },
-  designerCountry: {
+  designerMeta: {
     ...theme.typography.caption,
-    fontSize: 13,
+    fontSize: 12,
     color: theme.colors.gray400,
+    marginBottom: 2,
+  },
+  designerSeason: {
+    ...theme.typography.caption,
+    fontSize: 11,
+    color: theme.colors.gray500,
+    fontStyle: "italic",
   },
   emptyState: {
     flex: 1,
@@ -275,4 +321,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DesignersScreen;
+export default ArchiveScreen;

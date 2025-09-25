@@ -16,10 +16,32 @@ import PostCard, { Post } from "../components/PostCard";
 import { mockPosts } from "../data/mockPosts";
 import { mockFavoritePosts } from "../data/mockFavoritePosts";
 
+// 原始Post类型用于数据处理
+interface OriginalPost {
+  id: string;
+  type: string;
+  author: {
+    id: string;
+    name: string;
+    avatar: string;
+    isVerified?: boolean;
+  };
+  content: {
+    title: string;
+    images: string[];
+  };
+  engagement: {
+    likes: number;
+    isLiked?: boolean;
+  };
+}
+
 const DiscoverScreen = () => {
   const navigation = useNavigation();
-  const [posts, setPosts] = useState<Post[]>([] as Post[]);
-  const [favoritePosts, setFavoritePosts] = useState<Post[]>([] as Post[]);
+  const [posts, setPosts] = useState<OriginalPost[]>([] as OriginalPost[]);
+  const [favoritePosts, setFavoritePosts] = useState<OriginalPost[]>(
+    [] as OriginalPost[]
+  );
   const [activeTab, setActiveTab] = useState<"home" | "favorites">("home");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,14 +53,14 @@ const DiscoverScreen = () => {
       // Initialize home posts
       if (mockPosts && Array.isArray(mockPosts) && mockPosts.length > 0) {
         const validPosts = mockPosts.filter(
-          (post) =>
+          (post: any) =>
             post &&
             typeof post.id === "string" &&
             post.author &&
             post.content &&
             post.engagement
         );
-        setPosts(validPosts.length > 0 ? validPosts : []);
+        setPosts(validPosts.length > 0 ? (validPosts as any) : []);
       } else {
         console.warn("mockPosts is not a valid array or is empty:", mockPosts);
         setPosts([]);
@@ -51,7 +73,7 @@ const DiscoverScreen = () => {
         mockFavoritePosts.length > 0
       ) {
         const validFavoritePosts = mockFavoritePosts.filter(
-          (post) =>
+          (post: any) =>
             post &&
             typeof post.id === "string" &&
             post.author &&
@@ -59,7 +81,7 @@ const DiscoverScreen = () => {
             post.engagement
         );
         setFavoritePosts(
-          validFavoritePosts.length > 0 ? validFavoritePosts : []
+          validFavoritePosts.length > 0 ? (validFavoritePosts as any) : []
         );
       } else {
         console.warn(
@@ -77,32 +99,33 @@ const DiscoverScreen = () => {
     }
   }, []);
 
+  // Convert OriginalPost to Post format
+  const convertToPost = useCallback((post: OriginalPost): Post => {
+    return {
+      id: post.id,
+      title: post.content.title,
+      image: post.content.images[0] || "https://via.placeholder.com/300x400",
+      author: {
+        id: post.author.id,
+        name: post.author.name,
+        avatar: post.author.avatar,
+        isVerified: post.author.isVerified,
+      },
+      likes: post.engagement.likes,
+      isLiked: post.engagement.isLiked,
+    };
+  }, []);
+
   // Get current posts based on active tab with safety checks
   const getCurrentPosts = useCallback(() => {
-    if (activeTab === "home") {
-      return Array.isArray(posts) ? posts : [];
-    } else {
-      return Array.isArray(favoritePosts) ? favoritePosts : [];
-    }
-  }, [activeTab, posts, favoritePosts]);
+    const rawPosts = activeTab === "home" ? posts : favoritePosts;
+    return Array.isArray(rawPosts) ? rawPosts.map(convertToPost) : [];
+  }, [activeTab, posts, favoritePosts, convertToPost]);
 
   // Handle post interactions
-  const handlePostPress = useCallback(
-    (post: Post) => {
-      console.log("Navigate to post detail:", post.id);
-      // Navigate based on post type
-      switch (post.type) {
-        case "lookbook":
-        case "outfit":
-        case "review":
-        case "article":
-          // 简化：暂时只记录日志，不进行页面跳转
-          console.log("查看帖子详情:", post.id, post.type);
-          break;
-      }
-    },
-    [navigation]
-  );
+  const handlePostPress = useCallback((post: Post) => {
+    console.log("查看帖子详情:", post.id);
+  }, []);
 
   const handleAuthorPress = useCallback(
     (authorId: string) => {
@@ -122,7 +145,7 @@ const DiscoverScreen = () => {
   );
 
   const handleLike = useCallback((postId: string) => {
-    const updatePost = (post: Post) =>
+    const updatePost = (post: OriginalPost) =>
       post.id === postId
         ? {
             ...post,
@@ -140,29 +163,7 @@ const DiscoverScreen = () => {
     setFavoritePosts((prevPosts) => prevPosts.map(updatePost));
   }, []);
 
-  const handleSave = useCallback((postId: string) => {
-    const updatePost = (post: Post) =>
-      post.id === postId
-        ? {
-            ...post,
-            engagement: {
-              ...post.engagement,
-              isSaved: !post.engagement.isSaved,
-              saves: post.engagement.isSaved
-                ? post.engagement.saves - 1
-                : post.engagement.saves + 1,
-            },
-          }
-        : post;
-
-    setPosts((prevPosts) => prevPosts.map(updatePost));
-    setFavoritePosts((prevPosts) => prevPosts.map(updatePost));
-  }, []);
-
-  const handleComment = useCallback((postId: string) => {
-    console.log("Open comments for post:", postId);
-    // Navigate to comments screen or open comments modal
-  }, []);
+  // 移除不需要的handleSave和handleComment函数
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -183,40 +184,23 @@ const DiscoverScreen = () => {
   }, [loading]);
 
   const renderPost = useCallback(
-    ({ item, index }: { item: Post; index?: number }) => {
-      // Enhanced safety check for item
-      if (
-        !item ||
-        typeof item !== "object" ||
-        !item.id ||
-        !item.author ||
-        !item.content ||
-        !item.engagement
-      ) {
-        console.warn("Invalid post item:", item);
+    (post: Post, index: number) => {
+      // Safety check for post
+      if (!post || !post.id || !post.author) {
+        console.warn("Invalid post:", post);
         return null;
       }
 
       return (
         <PostCard
-          post={item}
+          post={post}
           onPress={handlePostPress}
           onAuthorPress={handleAuthorPress}
           onLike={handleLike}
-          onSave={handleSave}
-          onComment={handleComment}
-          onItemPress={handleItemPress}
         />
       );
     },
-    [
-      handlePostPress,
-      handleAuthorPress,
-      handleLike,
-      handleSave,
-      handleComment,
-      handleItemPress,
-    ]
+    [handlePostPress, handleAuthorPress, handleLike]
   );
 
   const renderFooter = useCallback(() => {
@@ -228,8 +212,6 @@ const DiscoverScreen = () => {
       </View>
     );
   }, [loading]);
-
-  // 移除keyExtractor，因为不再使用FlatList
 
   // Show loading state until initialized
   if (!isInitialized) {
@@ -244,34 +226,8 @@ const DiscoverScreen = () => {
     );
   }
 
-  // Only proceed if we have initialized data
-  if (!isInitialized) {
-    return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <ScreenHeader title="AVANT REGARD" subtitle="时尚内容流" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.accent} />
-          <Text style={styles.loadingText}>加载中...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Ensure we have valid current posts data
+  // Get current posts
   const currentPosts = getCurrentPosts();
-  const safeCurrentPosts =
-    Array.isArray(currentPosts) &&
-    currentPosts.every(
-      (post) =>
-        post &&
-        typeof post === "object" &&
-        post.id &&
-        post.author &&
-        post.content &&
-        post.engagement
-    )
-      ? currentPosts
-      : [];
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -322,7 +278,7 @@ const DiscoverScreen = () => {
           />
         }
       >
-        {safeCurrentPosts.length === 0 ? (
+        {currentPosts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {activeTab === "home" ? "暂无主页内容" : "暂无收藏相关内容"}
@@ -334,19 +290,38 @@ const DiscoverScreen = () => {
             </Text>
           </View>
         ) : (
-          <>
-            {safeCurrentPosts.map((post, index) => (
-              <View key={post.id || index}>
-                {renderPost({ item: post, index })}
-              </View>
-            ))}
-            {loading && (
-              <View style={styles.loadingFooter}>
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-                <Text style={styles.loadingText}>加载更多...</Text>
-              </View>
-            )}
-          </>
+          <View style={styles.waterfallContainer}>
+            <View style={styles.leftColumn}>
+              {currentPosts
+                .filter((_, index) => index % 2 === 0)
+                .map((post, index) => (
+                  <View
+                    key={post.id || `left-${index}`}
+                    style={styles.postWrapper}
+                  >
+                    {renderPost(post, index * 2)}
+                  </View>
+                ))}
+            </View>
+            <View style={styles.rightColumn}>
+              {currentPosts
+                .filter((_, index) => index % 2 === 1)
+                .map((post, index) => (
+                  <View
+                    key={post.id || `right-${index}`}
+                    style={styles.postWrapper}
+                  >
+                    {renderPost(post, index * 2 + 1)}
+                  </View>
+                ))}
+            </View>
+          </View>
+        )}
+        {loading && (
+          <View style={styles.loadingFooter}>
+            <ActivityIndicator size="small" color={theme.colors.accent} />
+            <Text style={styles.loadingText}>加载更多...</Text>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -366,6 +341,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
+  },
+  waterfallContainer: {
+    flexDirection: "row",
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+  },
+  leftColumn: {
+    flex: 1,
+    paddingRight: theme.spacing.xs,
+  },
+  rightColumn: {
+    flex: 1,
+    paddingLeft: theme.spacing.xs,
+  },
+  postWrapper: {
+    marginBottom: theme.spacing.sm,
   },
   tab: {
     paddingVertical: theme.spacing.md,
