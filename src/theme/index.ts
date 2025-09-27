@@ -17,12 +17,14 @@ export const theme = {
   colors: {
     black: "#000000",
     white: "#FFFFFF",
+    gray50: "#F9F9F9",
     gray100: "#F5F5F5",
     gray200: "#AAAAAA",
     gray300: "#666666",
     gray400: "#444444",
     gray500: "#222222",
     gray600: "#111111",
+    gray700: "#000000",
     accent: "#000000", // Black
     error: "#FF3B30",
     success: "#34C759",

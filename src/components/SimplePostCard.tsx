@@ -2,21 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-
-// 简化的Post类型
-export interface Post {
-  id: string;
-  title: string;
-  image: string;
-  author: {
-    id: string;
-    name: string;
-    avatar: string;
-    isVerified?: boolean;
-  };
-  likes: number;
-  isLiked?: boolean;
-}
+import { Post } from "./PostCard";
 
 interface PostCardProps {
   post: Post;
@@ -36,12 +22,18 @@ const PostCard: React.FC<PostCardProps> = ({
     return null;
   }
 
+  // 获取显示数据，支持新旧两种数据结构
+  const displayTitle = post.content?.title || post.title || "";
+  const displayImage = post.content?.images?.[0] || post.image || "";
+  const displayLikes = post.engagement?.likes || post.likes || 0;
+  const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
+
   return (
     <View style={styles.container}>
       {/* 图片 */}
       <TouchableOpacity onPress={() => onPress?.(post)} activeOpacity={0.95}>
         <Image
-          source={{ uri: post.image }}
+          source={{ uri: displayImage }}
           style={styles.image}
           resizeMode="cover"
         />
@@ -54,7 +46,7 @@ const PostCard: React.FC<PostCardProps> = ({
         activeOpacity={0.95}
       >
         <Text style={styles.title} numberOfLines={2}>
-          {post.title}
+          {displayTitle}
         </Text>
       </TouchableOpacity>
 
@@ -85,12 +77,14 @@ const PostCard: React.FC<PostCardProps> = ({
           activeOpacity={0.8}
         >
           <Ionicons
-            name={post.isLiked ? "heart" : "heart-outline"}
+            name={displayIsLiked ? "heart" : "heart-outline"}
             size={16}
-            color={post.isLiked ? "#FF3040" : theme.colors.gray400}
+            color={displayIsLiked ? "#FF3040" : theme.colors.gray400}
           />
-          <Text style={[styles.likeText, post.isLiked && { color: "#FF3040" }]}>
-            {post.likes}
+          <Text
+            style={[styles.likeText, displayIsLiked && { color: "#FF3040" }]}
+          >
+            {displayLikes}
           </Text>
         </TouchableOpacity>
       </View>

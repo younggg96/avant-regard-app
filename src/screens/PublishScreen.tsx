@@ -123,9 +123,8 @@ const PublishScreen = () => {
         showBackButton
         rightActions={[
           {
-            text: "发布",
+            icon: "save",
             onPress: handlePublish,
-            style: "primary" as const,
           },
         ]}
       />
@@ -224,6 +223,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    marginTop: theme.spacing.md,
   },
   contentContainer: {
     paddingBottom: theme.spacing.lg,

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { useAlert } from "../components/AlertProvider";
+import ScreenHeader from "../components/ScreenHeader";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
@@ -38,25 +39,22 @@ const ChangePasswordScreen = () => {
       !formData.newPassword ||
       !formData.confirmPassword
     ) {
-      showError("Error", "Please fill in all fields");
+      showError("错误", "请填写所有字段");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      showError("Error", "New passwords do not match");
+      showError("错误", "新密码不匹配");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      showError("Error", "New password must be at least 6 characters");
+      showError("错误", "新密码至少需要6个字符");
       return;
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      showError(
-        "Error",
-        "New password must be different from current password"
-      );
+      showError("错误", "新密码必须与当前密码不同");
       return;
     }
 
@@ -66,16 +64,11 @@ const ChangePasswordScreen = () => {
       // Mock API call - replace with real implementation
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      showSuccess(
-        "Password Changed",
-        "Your password has been changed successfully.",
-        () => navigation.goBack()
+      showSuccess("密码已更改", "您的密码已成功更改。", () =>
+        navigation.goBack()
       );
     } catch (error) {
-      showError(
-        "Error",
-        "Failed to change password. Please check your current password."
-      );
+      showError("错误", "密码更改失败。请检查您的当前密码。");
     } finally {
       setIsLoading(false);
     }
@@ -83,27 +76,14 @@ const ChangePasswordScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScreenHeader title="更改密码" showBack={true} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
-          </TouchableOpacity>
-
-          <Text style={styles.title}>Change Password</Text>
-          <Text style={styles.subtitle}>
-            Update your password to keep your account secure
-          </Text>
-        </View>
-
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Current Password</Text>
+            <Text style={styles.label}>当前密码</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -111,7 +91,7 @@ const ChangePasswordScreen = () => {
                 onChangeText={(currentPassword) =>
                   setFormData({ ...formData, currentPassword })
                 }
-                placeholder="Enter current password"
+                placeholder="输入当前密码"
                 placeholderTextColor={theme.colors.gray300}
                 secureTextEntry={!showPasswords.current}
                 autoCapitalize="none"
@@ -136,7 +116,7 @@ const ChangePasswordScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>New Password</Text>
+            <Text style={styles.label}>新密码</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -144,7 +124,7 @@ const ChangePasswordScreen = () => {
                 onChangeText={(newPassword) =>
                   setFormData({ ...formData, newPassword })
                 }
-                placeholder="Enter new password"
+                placeholder="输入新密码"
                 placeholderTextColor={theme.colors.gray300}
                 secureTextEntry={!showPasswords.new}
                 autoCapitalize="none"
@@ -169,7 +149,7 @@ const ChangePasswordScreen = () => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm New Password</Text>
+            <Text style={styles.label}>确认新密码</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -177,7 +157,7 @@ const ChangePasswordScreen = () => {
                 onChangeText={(confirmPassword) =>
                   setFormData({ ...formData, confirmPassword })
                 }
-                placeholder="Confirm new password"
+                placeholder="确认新密码"
                 placeholderTextColor={theme.colors.gray300}
                 secureTextEntry={!showPasswords.confirm}
                 autoCapitalize="none"
@@ -208,8 +188,7 @@ const ChangePasswordScreen = () => {
               color={theme.colors.accent}
             />
             <Text style={styles.securityText}>
-              Choose a strong password with a mix of letters, numbers, and
-              symbols
+              选择一个包含字母、数字和符号的强密码
             </Text>
           </View>
 
@@ -222,7 +201,7 @@ const ChangePasswordScreen = () => {
             disabled={isLoading}
           >
             <Text style={styles.changeButtonText}>
-              {isLoading ? "Changing..." : "Change Password"}
+              {isLoading ? "更改中..." : "更改密码"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -239,34 +218,10 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    alignItems: "center",
-    position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    left: theme.spacing.md,
-    top: theme.spacing.lg,
-    padding: theme.spacing.sm,
-  },
-  title: {
-    ...theme.typography.h1,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    paddingHorizontal: theme.spacing.md,
-    lineHeight: 20,
-  },
   form: {
     flex: 1,
     paddingHorizontal: theme.spacing.md,
-    justifyContent: "center",
+    paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.xxl,
   },
   inputContainer: {

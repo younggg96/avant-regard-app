@@ -67,39 +67,52 @@ const ArchiveScreen = () => {
 
   // Convert designers data on component mount
   useEffect(() => {
-    const convertedDesigners = (designersData as DesignerData[]).map((data: DesignerData, index) => {
-      // Extract brand and designer name from the designer string
-      const brandMatch = data.designer.match(/^([^(]+?)(?:\s*\(|$)/);
-      const designerMatch = data.designer.match(/\(([^)]+)\)$/);
+    const convertedDesigners = (designersData as DesignerData[]).map(
+      (data: DesignerData, index) => {
+        // Extract brand and designer name from the designer string
+        const brandMatch = data.designer.match(/^([^(]+?)(?:\s*\(|$)/);
+        const designerMatch = data.designer.match(/\(([^)]+)\)$/);
 
-      const brand = designerMatch ? designerMatch[1] : brandMatch?.[1]?.trim() || data.designer;
-      const name = brandMatch?.[1]?.trim() || data.designer;
+        const brand = designerMatch
+          ? designerMatch[1]
+          : brandMatch?.[1]?.trim() || data.designer;
+        const name = brandMatch?.[1]?.trim() || data.designer;
 
-      // Calculate total looks across all shows
-      const totalLooks = data.shows.reduce((sum, show) => sum + (show.looks_count || 0), 0);
+        // Calculate total looks across all shows
+        const totalLooks = data.shows.reduce(
+          (sum, show) => sum + (show.looks_count || 0),
+          0
+        );
 
-      // Get latest season from shows or collections_summary
-      const latestShow = data.shows.length > 0 ? data.shows[0] : null;
-      const latestCollection = data.collections_summary.length > 0 ? data.collections_summary[0] : null;
-      const latestSeason = latestShow?.season || latestCollection?.season || "Unknown";
+        // Get latest season from shows or collections_summary
+        const latestShow = data.shows.length > 0 ? data.shows[0] : null;
+        const latestCollection =
+          data.collections_summary.length > 0
+            ? data.collections_summary[0]
+            : null;
+        const latestSeason =
+          latestShow?.season || latestCollection?.season || "Unknown";
 
-      // Get hero image from the latest show if available
-      const heroImage = latestShow?.images?.find(img => img.image_type === "hero")?.image_url;
+        // Get hero image from the latest show if available
+        const heroImage = latestShow?.images?.find(
+          (img) => img.image_type === "hero"
+        )?.image_url;
 
-      return {
-        id: `designer-${index}`,
-        name: name,
-        brand: brand,
-        nationality: "国际", // Default nationality
-        collections: data.collections_summary.length,
-        shows: data.shows.length,
-        totalLooks: totalLooks,
-        description: `${brand}的时装设计，以独特的设计理念和创新的时尚视角而闻名。`,
-        website: data.designer_url,
-        latestSeason: latestSeason,
-        image: heroImage,
-      };
-    });
+        return {
+          id: `designer-${index}`,
+          name: name,
+          brand: brand,
+          nationality: "国际", // Default nationality
+          collections: data.collections_summary.length,
+          shows: data.shows.length,
+          totalLooks: totalLooks,
+          description: `${brand}的时装设计，以独特的设计理念和创新的时尚视角而闻名。`,
+          website: data.designer_url,
+          latestSeason: latestSeason,
+          image: heroImage,
+        };
+      }
+    );
     setDesigners(convertedDesigners);
   }, []);
 
@@ -137,6 +150,7 @@ const ArchiveScreen = () => {
       <ScreenHeader
         title="DESIGNERS"
         subtitle="探索时装界的传奇人物"
+        boldTitle={true}
         borderless
       />
 
@@ -187,9 +201,12 @@ const ArchiveScreen = () => {
                   <Text style={styles.designerName}>{designer.name}</Text>
                   <Text style={styles.designerBrand}>{designer.brand}</Text>
                   <Text style={styles.designerMeta}>
-                    {designer.collections} 个系列 • {designer.shows} 场秀 • {designer.totalLooks} 个造型
+                    {designer.collections} 个系列 • {designer.shows} 场秀 •{" "}
+                    {designer.totalLooks} 个造型
                   </Text>
-                  <Text style={styles.designerSeason}>最新: {designer.latestSeason}</Text>
+                  <Text style={styles.designerSeason}>
+                    最新: {designer.latestSeason}
+                  </Text>
                 </View>
                 <Ionicons
                   name="chevron-forward"

@@ -14,10 +14,19 @@ import PublishScreen from "./src/screens/PublishScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
+import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
+import LookDetailScreen from "./src/screens/LookDetailScreen";
 // Auth Screens
 import AuthScreen from "./src/screens/AuthScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import EditProfileScreen from "./src/screens/EditProfileScreen";
+import PhoneManagementScreen from "./src/screens/PhoneManagementScreen";
+import TermsScreen from "./src/screens/TermsScreen";
+import PrivacyScreen from "./src/screens/PrivacyScreen";
+import FavoritesScreen from "./src/screens/FavoritesScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
+import DraftsScreen from "./src/screens/DraftsScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -165,6 +174,16 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="CollectionDetail"
+        component={CollectionDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="LookDetail"
+        component={LookDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="设置"
         component={SettingsScreen}
         options={{ headerShown: false }}
@@ -172,7 +191,42 @@ function AppNavigator() {
       <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
-        options={{ title: "修改密码" }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PhoneManagement"
+        component={PhoneManagementScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Terms"
+        component={TermsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Drafts"
+        component={DraftsScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

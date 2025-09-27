@@ -20,11 +20,15 @@ const ProfileScreen = () => {
   const { showConfirm, showAlert } = useAlert();
 
   const menuItems = [
-    { id: "followed", label: "关注的设计师", count: 12 },
-    { id: "saved", label: "收藏的搭配", count: 48 },
-    { id: "alerts", label: "价格提醒", count: 5 },
-    { id: "drafts", label: "草稿笔记", count: 3 },
-    { id: "settings", label: "设置", count: null },
+    { id: "followed", label: "关注的设计师", count: 12, icon: "heart-outline" },
+    { id: "saved", label: "收藏的搭配", count: 48, icon: "bookmark-outline" },
+    {
+      id: "drafts",
+      label: "草稿笔记",
+      count: 3,
+      icon: "document-text-outline",
+    },
+    { id: "settings", label: "设置", count: null, icon: "settings-outline" },
   ];
 
   const handleLogout = () => {
@@ -65,14 +69,33 @@ const ProfileScreen = () => {
               key={item.id}
               style={styles.menuItem}
               onPress={() => {
-                if (item.id === "settings") {
-                  (navigation as any).navigate("Settings");
-                } else {
-                  showAlert("即将推出", `${item.label}功能即将推出`);
+                switch (item.id) {
+                  case "settings":
+                    (navigation as any).navigate("设置");
+                    break;
+                  case "favorites":
+                    (navigation as any).navigate("Favorites");
+                    break;
+                  case "history":
+                    (navigation as any).navigate("History");
+                    break;
+                  case "drafts":
+                    (navigation as any).navigate("Drafts");
+                    break;
+                  default:
+                    showAlert("即将推出", `${item.label}功能即将推出`);
                 }
               }}
             >
-              <Text style={styles.menuLabel}>{item.label}</Text>
+              <View style={styles.menuLeft}>
+                <Ionicons
+                  name={item.icon as any}
+                  size={20}
+                  color={theme.colors.gray400}
+                  style={styles.menuIcon}
+                />
+                <Text style={styles.menuLabel}>{item.label}</Text>
+              </View>
               <View style={styles.menuRight}>
                 {item.count !== null && (
                   <Text style={styles.menuCount}>{item.count}</Text>
@@ -162,6 +185,13 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
+  },
+  menuLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  menuIcon: {
+    marginRight: theme.spacing.sm,
   },
   menuLabel: {
     ...theme.typography.body,

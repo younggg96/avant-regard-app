@@ -18,39 +18,49 @@ export interface HeaderAction {
   style?: "primary" | "secondary";
 }
 
-interface ScreenHeaderProps {
+export interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
+  showBack?: boolean;
   showBackButton?: boolean;
   showCloseButton?: boolean;
   rightActions?: HeaderAction[];
+  rightComponent?: React.ReactNode;
   variant?: "default" | "large" | "minimal";
   style?: ViewStyle;
   titleStyle?: TextStyle;
   borderless?: boolean;
+  onBackPress?: () => void;
+  boldTitle?: boolean;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   subtitle,
+  showBack = false,
   showBackButton = false,
   showCloseButton = false,
   rightActions = [],
+  rightComponent,
   variant = "default",
   style,
   titleStyle,
   borderless = false,
+  onBackPress,
+  boldTitle = false,
 }) => {
   const navigation = useNavigation();
 
   const handleBackPress = () => {
-    if (navigation.canGoBack()) {
+    if (onBackPress) {
+      onBackPress();
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
     }
   };
 
   const renderLeftButton = () => {
-    if (showBackButton) {
+    if (showBack || showBackButton) {
       return (
         <TouchableOpacity
           style={styles.leftButton}
@@ -78,6 +88,10 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   };
 
   const renderRightActions = () => {
+    if (rightComponent) {
+      return <View style={styles.rightActions}>{rightComponent}</View>;
+    }
+
     if (rightActions.length === 0) {
       return <View style={styles.rightActions} />;
     }
@@ -146,7 +160,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {renderLeftButton()}
 
         <View style={styles.titleContainer}>
-          <Text style={getTitleStyle()}>{title}</Text>
+          <Text style={[boldTitle ? styles.boldTitle : getTitleStyle()]}>
+            {title}
+          </Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
 
@@ -192,10 +208,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
   },
   title: {
-    ...theme.typography.h2,
+    ...theme.typography.h3,
     color: theme.colors.black,
-    fontWeight: "600",
     textAlign: "center",
+  },
+  boldTitle: {
+    ...theme.typography.h1,
+    fontWeight: "600",
   },
   titleLarge: {
     ...theme.typography.hero,

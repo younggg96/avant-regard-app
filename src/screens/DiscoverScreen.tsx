@@ -217,7 +217,13 @@ const DiscoverScreen = () => {
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <ScreenHeader title="AVANT REGARD" subtitle="时尚内容流" />
+        <ScreenHeader
+          title="AVANT REGARD"
+          subtitle="时尚内容流"
+          boldTitle={true}
+          borderless
+        />
+
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.accent} />
           <Text style={styles.loadingText}>加载中...</Text>
@@ -231,7 +237,12 @@ const DiscoverScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScreenHeader title="AVANT REGARD" subtitle="时尚内容流" />
+      <ScreenHeader
+        title="AVANT REGARD"
+        subtitle="时尚内容流"
+        boldTitle={true}
+        borderless
+      />
 
       {/* Simple Tab View */}
       <View style={styles.tabContainer}>

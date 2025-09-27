@@ -40,13 +40,13 @@ const SettingsScreen = () => {
           id: "profile",
           label: "编辑个人资料",
           icon: "person-outline",
-          onPress: () => showAlert("即将推出", "个人资料编辑功能即将上线"),
+          onPress: () => (navigation as any).navigate("EditProfile"),
         },
         {
           id: "phone",
           label: "手机号管理",
           icon: "call-outline",
-          onPress: () => showAlert("手机号管理", "手机号管理功能即将上线"),
+          onPress: () => (navigation as any).navigate("PhoneManagement"),
           rightText: user?.phone
             ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")
             : "",
@@ -67,13 +67,13 @@ const SettingsScreen = () => {
           id: "terms",
           label: "服务条款",
           icon: "document-text-outline",
-          onPress: () => showAlert("服务条款", "服务条款即将上线"),
+          onPress: () => (navigation as any).navigate("Terms"),
         },
         {
           id: "privacy",
           label: "隐私政策",
           icon: "shield-outline",
-          onPress: () => showAlert("隐私政策", "隐私政策即将上线"),
+          onPress: () => (navigation as any).navigate("Privacy"),
         },
       ],
     },
@@ -89,7 +89,7 @@ const SettingsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="设置" />
+      <ScreenHeader title="设置" showBack={true} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
           <View key={section.title} style={styles.section}>

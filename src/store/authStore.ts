@@ -6,6 +6,10 @@ interface AuthUser {
   id: string;
   phone: string;
   nickname: string;
+  name?: string;
+  bio?: string;
+  website?: string;
+  location?: string;
   avatar?: string;
   token?: string;
 }
@@ -21,6 +25,7 @@ interface AuthActions {
   login: (user: AuthUser) => void;
   logout: () => void;
   updateUser: (user: Partial<AuthUser>) => void;
+  updateProfile: (profileData: Partial<AuthUser>) => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -85,6 +90,15 @@ export const useAuthStore = create<AuthStore>()(
         if (currentUser) {
           set({
             user: { ...currentUser, ...userData },
+          });
+        }
+      },
+
+      updateProfile: (profileData: Partial<AuthUser>) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({
+            user: { ...currentUser, ...profileData },
           });
         }
       },
