@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Font from "expo-font";
+import { GluestackUIProvider } from "@gluestack-ui/themed";
+import { config } from "./gluestack.config";
 
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
@@ -39,7 +41,7 @@ import { theme } from "./src/theme";
 import { useAuthStore } from "./src/store/authStore";
 
 // Providers
-import { AlertProvider } from "./src/components/AlertProvider";
+import { ToastProvider } from "./src/components/ToastProvider";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -107,13 +109,18 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Publish"
-        component={PublishScreen}
+        name="PublishTab"
+        component={DiscoverScreen} // Placeholder, won't be used
         options={{
           tabBarLabel: "",
           tabBarIcon: () => null,
-          tabBarButton: (props) => <PublishTabButton onPress={props.onPress} />,
+          tabBarButton: (props) => <PublishTabButton />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault(); // Prevent default tab behavior
+          },
+        })}
       />
       <Tab.Screen
         name="Notifications"
@@ -228,6 +235,14 @@ function AppNavigator() {
         component={DraftsScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="Publish"
+        component={PublishScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -266,15 +281,17 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <AlertProvider>
-          <NavigationContainer>
-            <AppNavigator />
-            <StatusBar style="dark" />
-          </NavigationContainer>
-        </AlertProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <GluestackUIProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <NavigationContainer>
+              <AppNavigator />
+              <StatusBar style="dark" />
+            </NavigationContainer>
+          </ToastProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GluestackUIProvider>
   );
 }

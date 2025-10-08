@@ -13,13 +13,12 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
-import { useAlert } from "../components/AlertProvider";
+import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
-  const { showError, showSuccess } = useAlert();
 
   const [formData, setFormData] = useState({
     currentPassword: "",
@@ -39,22 +38,22 @@ const ChangePasswordScreen = () => {
       !formData.newPassword ||
       !formData.confirmPassword
     ) {
-      showError("错误", "请填写所有字段");
+      Alert.show("错误: 请填写所有字段");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      showError("错误", "新密码不匹配");
+      Alert.show("错误: 新密码不匹配");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      showError("错误", "新密码至少需要6个字符");
+      Alert.show("错误: 新密码至少需要6个字符");
       return;
     }
 
     if (formData.currentPassword === formData.newPassword) {
-      showError("错误", "新密码必须与当前密码不同");
+      Alert.show("错误: 新密码必须与当前密码不同");
       return;
     }
 
@@ -64,11 +63,10 @@ const ChangePasswordScreen = () => {
       // Mock API call - replace with real implementation
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      showSuccess("密码已更改", "您的密码已成功更改。", () =>
-        navigation.goBack()
-      );
+      Alert.show("密码已更改: 您的密码已成功更改", "", 1000);
+      setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
-      showError("错误", "密码更改失败。请检查您的当前密码。");
+      Alert.show("错误: 密码更改失败。请检查您的当前密码");
     } finally {
       setIsLoading(false);
     }

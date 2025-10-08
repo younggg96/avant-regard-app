@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
-  Alert,
 } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -144,37 +144,15 @@ const HistoryScreen = () => {
   };
 
   const handleClearSelected = () => {
-    Alert.alert(
-      "删除历史记录",
-      `确定要删除选中的 ${selectedItems.size} 条记录吗？`,
-      [
-        { text: "取消", style: "cancel" },
-        {
-          text: "删除",
-          style: "destructive",
-          onPress: () => {
-            // Here you would delete the selected items
-            setSelectedItems(new Set());
-            setIsSelectionMode(false);
-            Alert.alert("删除成功", "选中的历史记录已删除");
-          },
-        },
-      ]
-    );
+    // Here you would delete the selected items
+    setSelectedItems(new Set());
+    setIsSelectionMode(false);
+    Alert.show("删除成功: 选中的 " + selectedItems.size + " 条历史记录已删除");
   };
 
   const handleClearAll = () => {
-    Alert.alert("清空历史记录", "确定要清空所有浏览历史吗？此操作无法撤销。", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "清空",
-        style: "destructive",
-        onPress: () => {
-          // Here you would clear all history
-          Alert.alert("清空成功", "所有历史记录已清空");
-        },
-      },
-    ]);
+    // Here you would clear all history
+    Alert.show("清空成功: 所有历史记录已清空");
   };
 
   const getTypeIcon = (type: string) => {

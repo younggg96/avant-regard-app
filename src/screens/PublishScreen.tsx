@@ -1,19 +1,24 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Image,
-  Alert,
-} from "react-native";
+import { StyleSheet, Modal } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import {
+  Box,
+  Text,
+  ScrollView,
+  Pressable,
+  VStack,
+  HStack,
+  Image,
+  Input,
+} from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { ImageCropper } from "../components/ImageCropper";
+import ImageEditMenu from "../components/ImageEditMenu";
 
 type ContentType = "lookbook" | "outfit" | "review" | "article";
 
@@ -23,12 +28,119 @@ interface ContentOption {
   subtitle: string;
 }
 
+// State interfaces for different content types
+interface LookbookState {
+  title: string;
+  coverImage: string | null;
+  description: string;
+  images: string[];
+  tags: string[];
+  customTags: string;
+}
+
+interface OutfitState {
+  title: string;
+  images: string[];
+  description: string;
+  tags: string[];
+  customTags: string;
+  occasions: string[];
+  hashtags: string;
+  linkedItems: string[];
+}
+
+interface ReviewState {
+  title: string;
+  productName: string;
+  brand: string;
+  rating: number;
+  reviewText: string;
+  images: string[];
+  pros: string;
+  cons: string;
+  priceRange: string;
+}
+
+interface ArticleState {
+  title: string;
+  content: string;
+  coverImage: string | null;
+  tags: string[];
+  customTags: string;
+  references: string;
+}
+
 const PublishScreen = () => {
   const navigation = useNavigation();
-  const [selectedType, setSelectedType] = useState<ContentType | null>(null);
+  const [selectedType, setSelectedType] = useState<ContentType | null>(null); // Start with type selection
+
+  // Common state for the new unified UI
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [tags, setTags] = useState("");
+  const [location, setLocation] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Image picker states
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showImageEditMenu, setShowImageEditMenu] = useState(false);
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
+    null
+  );
+  const [croppingImageUri, setCroppingImageUri] = useState<string | null>(null);
+  const [croppingImageIndex, setCroppingImageIndex] = useState<number | null>(
+    null
+  );
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const MAX_IMAGES = 9;
+
+  // State for different content types (keeping for compatibility)
+  const [lookbookData, setLookbookData] = useState<LookbookState>({
+    title: "",
+    coverImage: null,
+    description: "",
+    images: [],
+    tags: [],
+    customTags: "",
+  });
+
+  const [outfitData, setOutfitData] = useState<OutfitState>({
+    title: "",
+    images: [],
+    description: "",
+    tags: [],
+    customTags: "",
+    occasions: [],
+    hashtags: "",
+    linkedItems: [],
+  });
+
+  const [reviewData, setReviewData] = useState<ReviewState>({
+    title: "",
+    productName: "",
+    brand: "",
+    rating: 0,
+    reviewText: "",
+    images: [],
+    pros: "",
+    cons: "",
+    priceRange: "",
+  });
+
+  const [articleData, setArticleData] = useState<ArticleState>({
+    title: "",
+    content: "",
+    coverImage: null,
+    tags: [],
+    customTags: "",
+    references: "",
+  });
 
   const contentOptions: ContentOption[] = [
     {
@@ -53,80 +165,723 @@ const PublishScreen = () => {
     },
   ];
 
+  const validateForm = (): boolean => {
+    if (!selectedType) {
+      Alert.show("提示: 请选择内容类型");
+      return false;
+    }
+
+    if (!title.trim()) {
+      Alert.show("提示: 请填写标题");
+      return false;
+    }
+
+    // Type-specific validation
+    switch (selectedType) {
+      case "lookbook":
+        if (images.length === 0) {
+          Alert.show("提示: Lookbook需要至少上传一张图片");
+          return false;
+        }
+        break;
+
+      case "outfit":
+        if (images.length === 0) {
+          Alert.show("提示: 分享搭配需要至少上传一张图片");
+          return false;
+        }
+        break;
+
+      case "review":
+        if (!description.trim()) {
+          Alert.show("提示: 单品评价需要填写评价内容");
+          return false;
+        }
+        break;
+
+      case "article":
+        if (!description.trim()) {
+          Alert.show("提示: 时尚文章需要填写正文内容");
+          return false;
+        }
+        break;
+    }
+
+    return true;
+  };
+
   const handlePublish = () => {
-    if (!selectedType || !title.trim()) {
-      Alert.alert("提示", "请选择内容类型并填写标题");
+    if (!validateForm()) {
       return;
     }
 
     // Here you would typically send the data to your backend
-    Alert.alert("发布成功", "您的内容已成功发布！", [
-      {
-        text: "确定",
-        onPress: () => {
-          // Reset form and navigate back
-          setSelectedType(null);
-          setTitle("");
-          setDescription("");
-          setTags("");
-          navigation.goBack();
-        },
-      },
-    ]);
+    const publishData = {
+      type: selectedType,
+      title,
+      description,
+      images,
+      coverImage,
+      tags,
+      location,
+      selectedTags,
+    };
+
+    console.log("Publishing:", publishData);
+
+    Alert.show("发布成功: 您的内容已成功发布！", "", 1000);
+    setTimeout(() => {
+      // Reset form and navigate back
+      resetForm();
+      navigation.goBack();
+    }, 1000);
   };
 
-  if (!selectedType) {
-    return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <ScreenHeader
-          title="创建内容"
-          subtitle="选择您要发布的内容类型"
-          showCloseButton
-        />
+  const handleSaveDraft = () => {
+    const draftData = {
+      type: selectedType,
+      title,
+      description,
+      images,
+      coverImage,
+      tags,
+      location,
+      selectedTags,
+    };
 
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contentContainer}
+    console.log("Saving draft:", draftData);
+    Alert.show("草稿已保存: 您的内容已保存为草稿");
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setImages([]);
+    setCoverImage(null);
+    setTags("");
+    setLocation("");
+    setSelectedTags([]);
+  };
+
+  const handleAddImage = () => {
+    if (images.length >= MAX_IMAGES) {
+      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "张图片");
+      return;
+    }
+    setShowImagePicker(true);
+  };
+
+  const handleEditCover = () => {
+    if (images.length === 0) {
+      handleAddImage();
+    } else {
+      // Open cropper for current cover image
+      const coverIndex = images.findIndex((img) => img === coverImage);
+      if (coverIndex !== -1) {
+        setCroppingImageUri(coverImage);
+        setCroppingImageIndex(coverIndex);
+        setShowImageCropper(true);
+      }
+    }
+  };
+
+  const handleImageSelection = async (source: "camera" | "gallery") => {
+    setShowImagePicker(false);
+
+    try {
+      let result;
+
+      if (source === "camera") {
+        // Request camera permission
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.show("权限需要: 需要相机权限才能拍照");
+          return;
+        }
+
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 1,
+        });
+      } else {
+        // Request media library permission
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.show("权限需要: 需要访问相册权限才能选择图片");
+          return;
+        }
+
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          allowsMultipleSelection: true,
+          selectionLimit: Math.min(5, MAX_IMAGES - images.length),
+          quality: 1,
+        });
+      }
+
+      if (!result.canceled && result.assets.length > 0) {
+        // Add selected images
+        const newImageUris = result.assets.map((asset) => asset.uri);
+        const newImages = [
+          ...images,
+          ...newImageUris.slice(0, MAX_IMAGES - images.length),
+        ];
+        setImages(newImages);
+
+        // Set first image as cover if no cover exists
+        if (!coverImage && newImages.length > 0) {
+          setCoverImage(newImages[0]);
+        }
+
+        // If only one image selected, open cropper immediately
+        if (result.assets.length === 1) {
+          setCroppingImageUri(result.assets[0].uri);
+          setCroppingImageIndex(newImages.length - 1);
+          setShowImageCropper(true);
+        }
+      }
+    } catch (error) {
+      console.error("Image selection error:", error);
+      Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleImagePress = (index: number) => {
+    setSelectedImageUri(images[index]);
+    setSelectedImageIndex(index);
+    setShowImageEditMenu(true);
+  };
+
+  // Handle image edit menu actions
+  const handleEditImage = () => {
+    setShowImageEditMenu(false);
+    // 打开裁剪器
+    if (selectedImageIndex !== null) {
+      setCroppingImageUri(selectedImageUri);
+      setCroppingImageIndex(selectedImageIndex);
+      setShowImageCropper(true);
+    }
+  };
+
+  const handleSetCover = () => {
+    setShowImageEditMenu(false);
+    if (selectedImageUri) {
+      setCoverImage(selectedImageUri);
+      Alert.show("设置成功: 已将此图片设为封面");
+    }
+  };
+
+  const handleDeleteImage = () => {
+    setShowImageEditMenu(false);
+
+    if (selectedImageIndex !== null) {
+      const imageToRemove = images[selectedImageIndex];
+      const newImages = images.filter(
+        (_, index) => index !== selectedImageIndex
+      );
+      setImages(newImages);
+
+      // If removed image was cover, set new cover
+      if (coverImage === imageToRemove) {
+        setCoverImage(newImages.length > 0 ? newImages[0] : null);
+      }
+
+      Alert.show("删除成功: 图片已删除");
+    }
+
+    // Reset selected image
+    setSelectedImageUri(null);
+    setSelectedImageIndex(null);
+  };
+
+  const handleCloseEditMenu = () => {
+    setShowImageEditMenu(false);
+    setSelectedImageUri(null);
+    setSelectedImageIndex(null);
+  };
+
+  // Handle ImageCropper callbacks
+  const handleCropperCancel = () => {
+    setShowImageCropper(false);
+    setCroppingImageUri(null);
+    setCroppingImageIndex(null);
+  };
+
+  const handleCropperDone = (resultUri: string) => {
+    setShowImageCropper(false);
+
+    // Handle cropped image
+    if (croppingImageIndex !== null) {
+      const newImages = [...images];
+      newImages[croppingImageIndex] = resultUri;
+      setImages(newImages);
+
+      // Update cover image if it was the cropped one
+      if (coverImage === images[croppingImageIndex]) {
+        setCoverImage(resultUri);
+      }
+
+      Alert.show("裁剪成功: 图片已更新");
+    }
+
+    setCroppingImageUri(null);
+    setCroppingImageIndex(null);
+  };
+
+  const handleReorderImages = (fromIndex: number, toIndex: number) => {
+    const newImages = [...images];
+    const [movedImage] = newImages.splice(fromIndex, 1);
+    newImages.splice(toIndex, 0, movedImage);
+    setImages(newImages);
+  };
+
+  const handleDragStart = (index: number) => {
+    setIsDragging(true);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    setDraggedIndex(null);
+  };
+
+  // Render the type selector
+  const renderTypeSelector = () => (
+    <VStack mx="$md" mt="$lg">
+      {contentOptions.map((option) => (
+        <Pressable
+          key={option.id}
+          px="$lg"
+          py="$md"
+          borderWidth={1}
+          borderColor={selectedType === option.id ? "$accent" : "$gray200"}
+          rounded="$md"
+          mb="$md"
+          bg={selectedType === option.id ? "$gray50" : "$white"}
+          onPress={() => setSelectedType(option.id)}
         >
-          {contentOptions.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={styles.optionItem}
-              onPress={() => setSelectedType(option.id)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.optionInfo}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
-              </View>
+          <HStack justifyContent="between" alignItems="center">
+            <VStack flex={1}>
+              <Text fontSize="$lg" fontWeight="$semibold" color="$black" mb={2}>
+                {option.title}
+              </Text>
+              <Text fontSize="$sm" color="$gray500">
+                {option.subtitle}
+              </Text>
+            </VStack>
+            {selectedType === option.id && (
               <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.gray400}
+                name="checkmark-circle"
+                size={24}
+                color={theme.colors.accent}
               />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </SafeAreaView>
+            )}
+          </HStack>
+        </Pressable>
+      ))}
+    </VStack>
+  );
+
+  // Render the main preview section
+  const renderPreviewSection = () => (
+    <Box h={300} mx="$md" my="$md">
+      <Pressable
+        flex={1}
+        rounded="$md"
+        overflow="hidden"
+        position="relative"
+        onPress={handleEditCover}
+      >
+        {coverImage ? (
+          <Image source={{ uri: coverImage }} style={styles.previewImage} />
+        ) : (
+          <Box
+            flex={1}
+            bg="$gray100"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Ionicons
+              name="image-outline"
+              size={48}
+              color={theme.colors.gray400}
+            />
+          </Box>
+        )}
+      </Pressable>
+    </Box>
+  );
+
+  // Render the image gallery section
+  const renderImageGallery = () => (
+    <Box mx="$md" mb="$md">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {images.map((image, index) => (
+          <Pressable
+            key={`${image}-${index}`}
+            w={60}
+            h={60}
+            rounded="$sm"
+            mr="$sm"
+            overflow="hidden"
+            borderWidth={coverImage === image ? 2 : 0}
+            borderColor="#FF3B30"
+            opacity={draggedIndex === index ? 0.5 : 1}
+            sx={
+              draggedIndex === index
+                ? { transform: [{ scale: 1.1 }] }
+                : undefined
+            }
+            onPress={() => handleImagePress(index)}
+            onLongPress={() => handleDragStart(index)}
+          >
+            <Image source={{ uri: image }} style={styles.thumbnail} />
+            {coverImage === image && (
+              <Box
+                position="absolute"
+                bottom={2}
+                left={2}
+                right={2}
+                bg="rgba(0,0,0,0.7)"
+                rounded="$sm"
+                py={2}
+                alignItems="center"
+              >
+                <Text color="$white" fontSize={10} fontWeight="$medium">
+                  封面
+                </Text>
+              </Box>
+            )}
+          </Pressable>
+        ))}
+        {images.length < MAX_IMAGES && (
+          <Pressable
+            w={60}
+            h={60}
+            rounded="$sm"
+            bg="$gray100"
+            alignItems="center"
+            justifyContent="center"
+            mr="$sm"
+            onPress={handleAddImage}
+          >
+            <Ionicons name="add" size={24} color={theme.colors.gray400} />
+          </Pressable>
+        )}
+      </ScrollView>
+      {images.length > 1 && (
+        <Text color="$gray400" fontSize="$xs" textAlign="center" mt="$xs">
+          点击图片进入编辑器，长按可拖拽调整顺序
+        </Text>
+      )}
+    </Box>
+  );
+
+  // Render the action buttons section
+  const renderActionButtons = () => (
+    <HStack mx="$md" mb="$md" py="$sm" alignItems="center">
+      <Pressable mr="$lg">
+        <Text color="$gray600" fontSize="$md">
+          # 话题
+        </Text>
+      </Pressable>
+      <Pressable mr="$lg">
+        <Text color="$gray600" fontSize="$md">
+          @ 朋友
+        </Text>
+      </Pressable>
+      <Pressable mr="$lg">
+        <Text color="$gray600" fontSize="$md">
+          ⚏ 模板
+        </Text>
+      </Pressable>
+      <Box ml="auto">
+        <Pressable>
+          <Ionicons name="chevron-up" size={20} color={theme.colors.gray400} />
+        </Pressable>
+      </Box>
+    </HStack>
+  );
+
+  // Render the predefined tags section based on content type
+  const renderPredefinedTags = () => {
+    let predefinedTags: string[] = [];
+
+    switch (selectedType) {
+      case "lookbook":
+        predefinedTags = ["春夏", "秋冬", "经典", "时尚"];
+        break;
+      case "outfit":
+        predefinedTags = ["日常", "工作", "约会", "派对"];
+        break;
+      case "review":
+        predefinedTags = ["推荐", "性价比", "质量", "设计"];
+        break;
+      case "article":
+        predefinedTags = ["趋势", "分析", "观点", "专业"];
+        break;
+      default:
+        predefinedTags = ["技术分享", "日常生活", "电商", "我服了"];
+    }
+
+    return (
+      <Box mx="$md" mb="$md" sx={{ flexDirection: "row", flexWrap: "wrap" }}>
+        {predefinedTags.map((tag, index) => (
+          <Pressable
+            key={index}
+            bg={selectedTags.includes(tag) ? "$accent" : "$gray100"}
+            px="$md"
+            py="$sm"
+            rounded="$full"
+            mr="$sm"
+            mb="$sm"
+            onPress={() => {
+              if (selectedTags.includes(tag)) {
+                setSelectedTags(selectedTags.filter((t) => t !== tag));
+              } else {
+                setSelectedTags([...selectedTags, tag]);
+              }
+            }}
+          >
+            <Text
+              color={selectedTags.includes(tag) ? "$white" : "$gray600"}
+              fontSize="$sm"
+            >
+              # {tag}
+            </Text>
+          </Pressable>
+        ))}
+      </Box>
     );
-  }
+  };
+
+  // Render the location section
+  const renderLocationSection = () => (
+    <Pressable
+      mx="$md"
+      py="$md"
+      borderBottomWidth={1}
+      borderBottomColor="$gray100"
+    >
+      <HStack alignItems="center">
+        <Ionicons
+          name="location-outline"
+          size={20}
+          color={theme.colors.gray400}
+        />
+        <Text color="$gray600" flex={1} ml="$sm">
+          你在哪里
+        </Text>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.colors.gray400}
+        />
+      </HStack>
+    </Pressable>
+  );
+
+  // Render the labels section
+  const renderLabelsSection = () => (
+    <Pressable
+      mx="$md"
+      py="$md"
+      borderBottomWidth={1}
+      borderBottomColor="$gray100"
+    >
+      <HStack alignItems="center">
+        <Ionicons
+          name="pricetag-outline"
+          size={20}
+          color={theme.colors.gray400}
+        />
+        <Text color="$gray600" flex={1} ml="$sm">
+          添加标签
+        </Text>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={theme.colors.gray400}
+        />
+      </HStack>
+    </Pressable>
+  );
+
+  // Render the bottom buttons
+  const renderBottomButtons = () => (
+    <Box
+      position="absolute"
+      bottom={6}
+      left={0}
+      right={0}
+      bg="$white"
+      px="$lg"
+      py="$md"
+      borderTopWidth={1}
+      borderTopColor="$gray100"
+    >
+      <HStack>
+        <Pressable
+          flex={1}
+          py="$md"
+          mr="$sm"
+          bg="$gray100"
+          rounded="$md"
+          onPress={handleSaveDraft}
+        >
+          <HStack justifyContent="center" alignItems="center" gap="$xs">
+            <Ionicons
+              name="bookmark-outline"
+              size={20}
+              color={theme.colors.gray600}
+            />
+            <Text color="$gray600" ml="$xs" fontWeight="$medium">
+              存草稿
+            </Text>
+          </HStack>
+        </Pressable>
+        <Pressable
+          flex={2}
+          py="$md"
+          ml="$sm"
+          bg="$accent"
+          rounded="$md"
+          onPress={handlePublish}
+        >
+          <HStack justifyContent="center" alignItems="center" gap="$xs">
+            <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
+            <Text color="$white" ml="$xs" fontWeight="$medium">
+              发布
+            </Text>
+          </HStack>
+        </Pressable>
+      </HStack>
+    </Box>
+  );
+
+  // Render image picker bottom sheet
+  const renderImagePickerModal = () => (
+    <Modal
+      visible={showImagePicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowImagePicker(false)}
+    >
+      <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
+        <Pressable flex={1} onPress={() => setShowImagePicker(false)} />
+        <Box
+          bg="$white"
+          borderTopLeftRadius="$lg"
+          borderTopRightRadius="$lg"
+          pb={34}
+        >
+          <HStack
+            px="$lg"
+            py="$md"
+            borderBottomWidth={1}
+            borderBottomColor="$gray100"
+            alignItems="center"
+            justifyContent="between"
+          >
+            <Text fontSize="$lg" color="$black" fontWeight="$medium">
+              选择图片
+            </Text>
+            <Pressable p="$xs" onPress={() => setShowImagePicker(false)}>
+              <Ionicons name="close" size={24} color={theme.colors.gray600} />
+            </Pressable>
+          </HStack>
+
+          <Pressable
+            px="$lg"
+            py="$lg"
+            onPress={() => handleImageSelection("camera")}
+          >
+            <HStack alignItems="center">
+              <Ionicons name="camera" size={24} color={theme.colors.accent} />
+              <Text color="$black" fontSize="$md" ml="$md">
+                拍照
+              </Text>
+            </HStack>
+          </Pressable>
+
+          <Pressable
+            px="$lg"
+            py="$lg"
+            onPress={() => handleImageSelection("gallery")}
+          >
+            <HStack alignItems="center">
+              <Ionicons name="images" size={24} color={theme.colors.accent} />
+              <Text color="$black" fontSize="$md" ml="$md">
+                从相册选择
+              </Text>
+            </HStack>
+          </Pressable>
+        </Box>
+      </Box>
+    </Modal>
+  );
 
   const selectedOption = contentOptions.find(
     (option) => option.id === selectedType
-  )!;
+  );
+
+  const getPlaceholderText = () => {
+    switch (selectedType) {
+      case "lookbook":
+        return "请输入您的 Lookbook 标题（例：2025 我的春夏穿搭合集）";
+      case "outfit":
+        return "分享您的搭配灵感和穿搭心得";
+      case "review":
+        return "为这个单品写一个标题";
+      case "article":
+        return "文章标题，支持长标题";
+      default:
+        return "添加标题";
+    }
+  };
+
+  const getDescriptionPlaceholder = () => {
+    switch (selectedType) {
+      case "lookbook":
+        return "请简单介绍您的 Lookbook 灵感或主题（可选）";
+      case "outfit":
+        return "详细描述您的搭配...";
+      case "review":
+        return "输入简短点评（50-200字）";
+      case "article":
+        return "支持段落、加粗、引用、插图（Markdown/富文本编辑器）";
+      default:
+        return "添加作品描述...";
+    }
+  };
+
+  if (showImageCropper && croppingImageUri) {
+    return (
+      <ImageCropper
+        sourceUri={croppingImageUri}
+        aspect="free"
+        onCancel={handleCropperCancel}
+        onDone={handleCropperDone}
+        minBoxSize={80}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={selectedOption.title}
+        title={selectedOption ? selectedOption.title : "发布内容"}
         showBackButton
-        rightActions={[
-          {
-            icon: "save",
-            onPress: handlePublish,
-          },
-        ]}
+        onBackPress={() => {
+          if (selectedType) {
+            setSelectedType(null);
+          } else {
+            navigation.goBack();
+          }
+        }}
       />
 
       <ScrollView
@@ -134,84 +889,92 @@ const PublishScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Title Input */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>标题 *</Text>
-          <TextInput
-            style={styles.titleInput}
-            placeholder="为您的内容添加一个吸引人的标题"
-            placeholderTextColor={theme.colors.gray400}
-            value={title}
-            onChangeText={setTitle}
-            multiline
-          />
-        </View>
+        {!selectedType ? (
+          /* Type Selection */
+          renderTypeSelector()
+        ) : (
+          <>
+            {/* Preview Section */}
+            {renderPreviewSection()}
 
-        {/* Image Upload Section */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>添加图片</Text>
-          <TouchableOpacity style={styles.imageUpload} activeOpacity={0.8}>
-            <Ionicons
-              name="camera-outline"
-              size={32}
-              color={theme.colors.gray400}
-            />
-            <Text style={styles.imageUploadText}>点击上传图片</Text>
-            <Text style={styles.imageUploadSubtext}>支持JPG, PNG格式</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Image Gallery */}
+            {renderImageGallery()}
 
-        {/* Description Input */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>描述</Text>
-          <TextInput
-            style={styles.descriptionInput}
-            placeholder="详细描述您的内容..."
-            placeholderTextColor={theme.colors.gray400}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
+            {/* Title Input */}
+            <Box mx="$md" mb="$md">
+              <Input
+                value={title}
+                onChangeText={setTitle}
+                placeholder={getPlaceholderText()}
+                placeholderTextColor={theme.colors.gray400}
+                multiline
+                variant="filled"
+                sx={{
+                  fontSize: 18,
+                  fontWeight: "500",
+                  minHeight: 50,
+                  textAlignVertical: "top",
+                  borderWidth: 0,
+                  backgroundColor: "transparent",
+                  padding: 0,
+                }}
+              />
+            </Box>
 
-        {/* Tags Input */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>标签</Text>
-          <TextInput
-            style={styles.tagsInput}
-            placeholder="添加相关标签，用逗号分隔"
-            placeholderTextColor={theme.colors.gray400}
-            value={tags}
-            onChangeText={setTags}
-          />
-          <Text style={styles.tagsHint}>例如: 时尚, 搭配, 春夏, 经典</Text>
-        </View>
+            {/* Description Input */}
+            <Box mx="$md" mb="$md">
+              <Input
+                value={description}
+                onChangeText={setDescription}
+                placeholder={getDescriptionPlaceholder()}
+                placeholderTextColor={theme.colors.gray400}
+                multiline
+                variant="filled"
+                sx={{
+                  color: theme.colors.gray600,
+                  minHeight: 80,
+                  textAlignVertical: "top",
+                  borderWidth: 0,
+                  backgroundColor: "transparent",
+                  padding: 0,
+                }}
+              />
+            </Box>
 
-        {/* Category specific options */}
-        {selectedType === "outfit" && (
-          <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>搭配场合</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.occasionTags}
-            >
-              {["日常", "工作", "约会", "派对", "正式", "度假"].map(
-                (occasion) => (
-                  <TouchableOpacity
-                    key={occasion}
-                    style={styles.occasionTag}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.occasionTagText}>{occasion}</Text>
-                  </TouchableOpacity>
-                )
-              )}
-            </ScrollView>
-          </View>
+            {/* Action Buttons */}
+            {renderActionButtons()}
+
+            {/* Predefined Tags */}
+            {renderPredefinedTags()}
+
+            {/* Location Section - Only show for certain types */}
+            {(selectedType === "lookbook" || selectedType === "outfit") &&
+              renderLocationSection()}
+
+            {/* Labels Section */}
+            {renderLabelsSection()}
+          </>
         )}
       </ScrollView>
+
+      {/* Bottom Buttons - Only show when type is selected */}
+      {selectedType && renderBottomButtons()}
+
+      {/* Modals */}
+      {renderImagePickerModal()}
+
+      {/* Image Edit Menu */}
+      {selectedImageUri && (
+        <ImageEditMenu
+          visible={showImageEditMenu}
+          imageUri={selectedImageUri}
+          isCover={selectedImageUri === coverImage}
+          onClose={handleCloseEditMenu}
+          onEdit={handleEditImage}
+          onSetCover={handleSetCover}
+          onDelete={handleDeleteImage}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -223,107 +986,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: theme.spacing.md,
   },
   contentContainer: {
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: 100, // Space for bottom buttons
   },
-  optionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
-  optionInfo: {
-    flex: 1,
-  },
-  optionTitle: {
-    ...theme.typography.body,
-    fontSize: 17,
-    fontWeight: "400",
-    color: theme.colors.black,
-    marginBottom: 2,
-  },
-  optionSubtitle: {
-    ...theme.typography.bodySmall,
-    fontSize: 14,
-    color: theme.colors.gray500,
-  },
-  inputSection: {
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  inputLabel: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-  },
-  titleInput: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    minHeight: 60,
-  },
-  imageUpload: {
-    borderWidth: 2,
-    borderColor: theme.colors.gray200,
-    borderStyle: "dashed",
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.xxl,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  imageUploadText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
-  },
-  imageUploadSubtext: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.xs,
-  },
-  descriptionInput: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    minHeight: 120,
-  },
-  tagsInput: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-  },
-  tagsHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.xs,
-  },
-  occasionTags: {
-    maxHeight: 50,
-  },
-  occasionTag: {
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-    marginRight: theme.spacing.sm,
-  },
-  occasionTagText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray600,
+  thumbnail: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
 });
 

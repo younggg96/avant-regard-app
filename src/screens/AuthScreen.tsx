@@ -6,10 +6,10 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
@@ -49,7 +49,7 @@ const AuthScreen = () => {
   // 发送验证码
   const sendVerificationCode = async () => {
     if (!validatePhone(formData.phone)) {
-      Alert.alert("提示", "请输入正确的手机号码");
+      Alert.show("提示: 请输入正确的手机号码");
       return;
     }
 
@@ -70,9 +70,9 @@ const AuthScreen = () => {
         });
       }, 1000);
 
-      Alert.alert("验证码已发送", `验证码已发送至 ${formData.phone}`);
+      Alert.show("验证码已发送至 " + formData.phone);
     } catch (error) {
-      Alert.alert("发送失败", "验证码发送失败，请稍后重试");
+      Alert.show("发送失败: 验证码发送失败，请稍后重试");
     } finally {
       setLoading(false);
     }
@@ -81,12 +81,12 @@ const AuthScreen = () => {
   // 处理登录
   const handleLogin = async () => {
     if (!validatePhone(formData.phone)) {
-      Alert.alert("提示", "请输入正确的手机号码");
+      Alert.show("提示: 请输入正确的手机号码");
       return;
     }
 
     if (!formData.password) {
-      Alert.alert("提示", "请输入密码");
+      Alert.show("提示: 请输入密码");
       return;
     }
 
@@ -103,7 +103,7 @@ const AuthScreen = () => {
         avatar: "https://via.placeholder.com/100x100",
       });
     } catch (error) {
-      Alert.alert("登录失败", "手机号或密码错误");
+      Alert.show("登录失败: 手机号或密码错误");
     } finally {
       setLoading(false);
     }
@@ -112,27 +112,27 @@ const AuthScreen = () => {
   // 处理注册
   const handleRegister = async () => {
     if (!validatePhone(formData.phone)) {
-      Alert.alert("提示", "请输入正确的手机号码");
+      Alert.show("提示: 请输入正确的手机号码");
       return;
     }
 
     if (!formData.verificationCode) {
-      Alert.alert("提示", "请输入验证码");
+      Alert.show("提示: 请输入验证码");
       return;
     }
 
     if (!formData.password || formData.password.length < 6) {
-      Alert.alert("提示", "密码长度至少6位");
+      Alert.show("提示: 密码长度至少6位");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("提示", "两次输入的密码不一致");
+      Alert.show("提示: 两次输入的密码不一致");
       return;
     }
 
     if (!formData.agreement) {
-      Alert.alert("提示", "请阅读并同意用户协议和隐私政策");
+      Alert.show("提示: 请阅读并同意用户协议和隐私政策");
       return;
     }
 
@@ -141,21 +141,17 @@ const AuthScreen = () => {
       // 模拟注册请求
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      Alert.alert("注册成功", "欢迎使用AVANT REGARD！", [
-        {
-          text: "确定",
-          onPress: () => {
-            login({
-              id: "user-1",
-              phone: formData.phone,
-              nickname: "用户" + formData.phone.slice(-4),
-              avatar: "https://via.placeholder.com/100x100",
-            });
-          },
-        },
-      ]);
+      Alert.show("注册成功: 欢迎使用AVANT REGARD！", "", 1000);
+      setTimeout(() => {
+        login({
+          id: "user-1",
+          phone: formData.phone,
+          nickname: "用户" + formData.phone.slice(-4),
+          avatar: "https://via.placeholder.com/100x100",
+        });
+      }, 1000);
     } catch (error) {
-      Alert.alert("注册失败", "注册过程中出现错误，请稍后重试");
+      Alert.show("注册失败: 注册过程中出现错误，请稍后重试");
     } finally {
       setLoading(false);
     }
@@ -164,22 +160,22 @@ const AuthScreen = () => {
   // 处理忘记密码
   const handleForgotPassword = async () => {
     if (!validatePhone(formData.phone)) {
-      Alert.alert("提示", "请输入正确的手机号码");
+      Alert.show("提示: 请输入正确的手机号码");
       return;
     }
 
     if (!formData.verificationCode) {
-      Alert.alert("提示", "请输入验证码");
+      Alert.show("提示: 请输入验证码");
       return;
     }
 
     if (!formData.password || formData.password.length < 6) {
-      Alert.alert("提示", "新密码长度至少6位");
+      Alert.show("提示: 新密码长度至少6位");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert("提示", "两次输入的密码不一致");
+      Alert.show("提示: 两次输入的密码不一致");
       return;
     }
 
@@ -188,14 +184,10 @@ const AuthScreen = () => {
       // 模拟重置密码请求
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      Alert.alert("密码重置成功", "请使用新密码登录", [
-        {
-          text: "确定",
-          onPress: () => setMode("login"),
-        },
-      ]);
+      Alert.show("密码重置成功: 请使用新密码登录", "", 1000);
+      setTimeout(() => setMode("login"), 1000);
     } catch (error) {
-      Alert.alert("重置失败", "密码重置失败，请稍后重试");
+      Alert.show("重置失败: 密码重置失败，请稍后重试");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Box, Text, Image, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
 
 // Post类型定义
@@ -69,127 +70,114 @@ const PostCard: React.FC<PostCardProps> = ({
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
 
   return (
-    <View style={styles.container}>
+    <Box
+      bg="$white"
+      rounded="$md"
+      overflow="hidden"
+      sx={{
+        shadowColor: '$black',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+      }}
+    >
       {/* 图片 */}
-      <TouchableOpacity onPress={() => onPress?.(post)} activeOpacity={0.95}>
+      <Pressable onPress={() => onPress?.(post)}>
         <Image
           source={{ uri: displayImage }}
           style={styles.image}
           resizeMode="cover"
         />
-      </TouchableOpacity>
+      </Pressable>
 
       {/* 标题 */}
-      <TouchableOpacity
-        style={styles.titleContainer}
+      <Pressable
+        px="$sm"
+        pt="$sm"
+        pb="$xs"
         onPress={() => onPress?.(post)}
-        activeOpacity={0.95}
       >
-        <Text style={styles.title} numberOfLines={2}>
+        <Text
+          color="$black"
+          fontWeight="$semibold"
+          fontSize="$sm"
+          lineHeight="$sm"
+          numberOfLines={2}
+        >
           {displayTitle}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       {/* 底部：用户信息和点赞 */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.authorInfo}
+      <HStack
+        px="$sm"
+        pb="$sm"
+        justifyContent="between"
+        alignItems="center"
+      >
+        <Pressable
           onPress={() => onAuthorPress?.(post.author.id)}
-          activeOpacity={0.8}
+          flex={1}
+          mr="$sm"
         >
-          <Image source={{ uri: post.author.avatar }} style={styles.avatar} />
-          <Text style={styles.authorName} numberOfLines={1}>
-            {post.author.name}
-          </Text>
-          {post.author.isVerified && (
-            <Ionicons
-              name="checkmark-circle"
-              size={12}
-              color={theme.colors.accent}
-              style={{ marginLeft: 2 }}
+          <HStack space="xs" alignItems="center">
+            <Image 
+              source={{ uri: post.author.avatar }} 
+              style={styles.avatar} 
             />
-          )}
-        </TouchableOpacity>
+            <Text
+              color="$gray600"
+              fontWeight="$medium"
+              fontSize="$xs"
+              numberOfLines={1}
+              flex={1}
+            >
+              {post.author.name}
+            </Text>
+            {post.author.isVerified && (
+              <Ionicons
+                name="checkmark-circle"
+                size={12}
+                color={theme.colors.accent}
+                style={{ marginLeft: 2 }}
+              />
+            )}
+          </HStack>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.likeButton}
-          onPress={() => onLike?.(post.id)}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={displayIsLiked ? "heart" : "heart-outline"}
-            size={16}
-            color={displayIsLiked ? "#FF3040" : theme.colors.gray400}
-          />
-          <Text
-            style={[styles.likeText, displayIsLiked && { color: "#FF3040" }]}
-          >
-            {displayLikes}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        <Pressable onPress={() => onLike?.(post.id)}>
+          <HStack space="xs" alignItems="center">
+            <Ionicons
+              name={displayIsLiked ? "heart" : "heart-outline"}
+              size={16}
+              color={displayIsLiked ? "#FF3040" : theme.colors.gray400}
+            />
+            <Text
+              color={displayIsLiked ? "#FF3040" : "$gray400"}
+              fontWeight="$semibold"
+              fontSize="$xs"
+            >
+              {displayLikes}
+            </Text>
+          </HStack>
+        </Pressable>
+      </HStack>
+    </Box>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.md,
-    overflow: "hidden",
-    ...theme.shadows.sm,
-  },
   image: {
     width: "100%",
     aspectRatio: 3 / 4, // 3:4比例，类似小红书
     backgroundColor: theme.colors.gray100,
   },
-  titleContainer: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
-  },
-  title: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-  },
-  authorInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
   avatar: {
     width: 20,
     height: 20,
     borderRadius: theme.borderRadius.full,
-    marginRight: theme.spacing.xs,
     backgroundColor: theme.colors.gray100,
-  },
-  authorName: {
-    ...theme.typography.caption,
-    color: theme.colors.gray600,
-    fontWeight: "500",
-    flex: 1,
-  },
-  likeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  likeText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginLeft: theme.spacing.xs / 2,
-    fontWeight: "600",
   },
 });
 

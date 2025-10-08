@@ -1,6 +1,7 @@
 import React from "react";
 import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { theme } from "../theme";
 
 interface PublishTabButtonProps {
@@ -8,10 +9,17 @@ interface PublishTabButtonProps {
 }
 
 const PublishTabButton: React.FC<PublishTabButtonProps> = ({ onPress }) => {
+  const navigation = useNavigation();
+
+  const handlePress = () => {
+    // @ts-ignore - navigation types
+    navigation.navigate("Publish");
+  };
+
   return (
     <TouchableOpacity
       style={styles.container}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.8}
     >
       <View style={styles.button}>

@@ -12,7 +12,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
-import { useAlert } from "../components/AlertProvider";
+import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
 
 interface SettingItem {
@@ -30,7 +30,6 @@ interface SettingItem {
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuthStore();
-  const { showAlert, showConfirm } = useAlert();
 
   const settingSections: { title: string; items: SettingItem[] }[] = [
     {
@@ -80,11 +79,10 @@ const SettingsScreen = () => {
   ];
 
   const handleDeleteAccount = () => {
-    showConfirm("删除账户", "确定要删除您的账户吗？此操作无法撤销。", () => {
-      showAlert("账户已删除", "您的账户已被删除。", [
-        { text: "确定", onPress: logout },
-      ]);
-    });
+    Alert.show("账户已删除");
+    setTimeout(() => {
+      logout();
+    }, 1000);
   };
 
   return (

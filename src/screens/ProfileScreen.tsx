@@ -5,19 +5,17 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
-import { useAlert } from "../components/AlertProvider";
+import { Alert } from "../utils/Alert";
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout } = useAuthStore();
-  const { showConfirm, showAlert } = useAlert();
 
   const menuItems = [
     { id: "followed", label: "关注的设计师", count: 12, icon: "heart-outline" },
@@ -32,7 +30,11 @@ const ProfileScreen = () => {
   ];
 
   const handleLogout = () => {
-    showConfirm("退出登录", "确定要退出登录吗？", logout);
+    // Simple confirmation - just show message and logout after delay
+    Alert.show("正在退出...");
+    setTimeout(() => {
+      logout();
+    }, 500);
   };
 
   return (
@@ -83,7 +85,7 @@ const ProfileScreen = () => {
                     (navigation as any).navigate("Drafts");
                     break;
                   default:
-                    showAlert("即将推出", `${item.label}功能即将推出`);
+                    Alert.show(`${item.label}功能即将推出`);
                 }
               }}
             >

@@ -1,15 +1,12 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
-  ScrollView,
   RefreshControl,
   ActivityIndicator,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
@@ -206,10 +203,12 @@ const DiscoverScreen = () => {
   const renderFooter = useCallback(() => {
     if (!loading) return null;
     return (
-      <View style={styles.loadingFooter}>
+      <HStack justifyContent="center" alignItems="center" py="$lg">
         <ActivityIndicator size="small" color={theme.colors.accent} />
-        <Text style={styles.loadingText}>加载更多...</Text>
-      </View>
+        <Text color="$gray400" fontSize="$sm" ml="$sm">
+          加载更多...
+        </Text>
+      </HStack>
     );
   }, [loading]);
 
@@ -224,10 +223,12 @@ const DiscoverScreen = () => {
           borderless
         />
 
-        <View style={styles.loadingContainer}>
+        <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
           <ActivityIndicator size="large" color={theme.colors.accent} />
-          <Text style={styles.loadingText}>加载中...</Text>
-        </View>
+          <Text color="$gray400" fontSize="$sm" mt="$sm">
+            加载中...
+          </Text>
+        </VStack>
       </SafeAreaView>
     );
   }
@@ -245,40 +246,42 @@ const DiscoverScreen = () => {
       />
 
       {/* Simple Tab View */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "home" && styles.activeTab]}
+      <HStack px="$md" borderBottomWidth={1} borderBottomColor="$gray100">
+        <Pressable
+          py="$md"
+          px="$lg"
+          mr="$md"
+          borderBottomWidth={activeTab === "home" ? 2 : 0}
+          borderBottomColor="$black"
           onPress={() => setActiveTab("home")}
-          activeOpacity={0.8}
         >
           <Text
-            style={[
-              styles.tabText,
-              activeTab === "home" && styles.activeTabText,
-            ]}
+            color={activeTab === "home" ? "$black" : "$gray400"}
+            fontWeight={activeTab === "home" ? "$semibold" : "$normal"}
           >
             主页 ({Array.isArray(posts) ? posts.length : 0})
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "favorites" && styles.activeTab]}
+        </Pressable>
+        <Pressable
+          py="$md"
+          px="$lg"
+          mr="$md"
+          borderBottomWidth={activeTab === "favorites" ? 2 : 0}
+          borderBottomColor="$black"
           onPress={() => setActiveTab("favorites")}
-          activeOpacity={0.8}
         >
           <Text
-            style={[
-              styles.tabText,
-              activeTab === "favorites" && styles.activeTabText,
-            ]}
+            color={activeTab === "favorites" ? "$black" : "$gray400"}
+            fontWeight={activeTab === "favorites" ? "$semibold" : "$normal"}
           >
             收藏相关 ({Array.isArray(favoritePosts) ? favoritePosts.length : 0})
           </Text>
-        </TouchableOpacity>
-      </View>
+        </Pressable>
+      </HStack>
 
       {/* Content List */}
       <ScrollView
-        style={styles.scrollView}
+        flex={1}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -290,49 +293,45 @@ const DiscoverScreen = () => {
         }
       >
         {currentPosts.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+          <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
+            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" textAlign="center">
               {activeTab === "home" ? "暂无主页内容" : "暂无收藏相关内容"}
             </Text>
-            <Text style={styles.emptyDescription}>
+            <Text color="$gray400" textAlign="center" lineHeight="$lg">
               {activeTab === "home"
                 ? "当有新的时尚内容时，您会在这里看到它们"
                 : "收藏一些单品后，相关的搭配和评测会在这里显示"}
             </Text>
-          </View>
+          </VStack>
         ) : (
-          <View style={styles.waterfallContainer}>
-            <View style={styles.leftColumn}>
+          <HStack px="$sm" pt="$sm">
+            <VStack flex={1} pr="$xs">
               {currentPosts
                 .filter((_, index) => index % 2 === 0)
                 .map((post, index) => (
-                  <View
-                    key={post.id || `left-${index}`}
-                    style={styles.postWrapper}
-                  >
+                  <Box key={post.id || `left-${index}`} mb="$sm">
                     {renderPost(post, index * 2)}
-                  </View>
+                  </Box>
                 ))}
-            </View>
-            <View style={styles.rightColumn}>
+            </VStack>
+            <VStack flex={1} pl="$xs">
               {currentPosts
                 .filter((_, index) => index % 2 === 1)
                 .map((post, index) => (
-                  <View
-                    key={post.id || `right-${index}`}
-                    style={styles.postWrapper}
-                  >
+                  <Box key={post.id || `right-${index}`} mb="$sm">
                     {renderPost(post, index * 2 + 1)}
-                  </View>
+                  </Box>
                 ))}
-            </View>
-          </View>
+            </VStack>
+          </HStack>
         )}
         {loading && (
-          <View style={styles.loadingFooter}>
+          <HStack justifyContent="center" alignItems="center" py="$lg">
             <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={styles.loadingText}>加载更多...</Text>
-          </View>
+            <Text color="$gray400" fontSize="$sm" ml="$sm">
+              加载更多...
+            </Text>
+          </HStack>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -343,90 +342,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  waterfallContainer: {
-    flexDirection: "row",
-    paddingHorizontal: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-  },
-  leftColumn: {
-    flex: 1,
-    paddingRight: theme.spacing.xs,
-  },
-  rightColumn: {
-    flex: 1,
-    paddingLeft: theme.spacing.xs,
-  },
-  postWrapper: {
-    marginBottom: theme.spacing.sm,
-  },
-  tab: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    marginRight: theme.spacing.md,
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.black,
-  },
-  tabText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-  },
-  activeTabText: {
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  contentContainer: {
-    paddingTop: theme.spacing.sm,
-  },
-  emptyContentContainer: {
-    flexGrow: 1,
-    paddingTop: theme.spacing.sm,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
-  },
-  loadingFooter: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: theme.spacing.lg,
-  },
-  loadingText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginLeft: theme.spacing.sm,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
-  },
-  emptyText: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-    textAlign: "center",
-  },
-  emptyDescription: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    lineHeight: 20,
   },
 });
 

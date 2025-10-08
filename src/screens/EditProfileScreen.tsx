@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   Image,
 } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,7 +33,7 @@ const EditProfileScreen = () => {
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert("提示", "请输入姓名");
+      Alert.show("提示: 请输入姓名");
       return;
     }
 
@@ -48,11 +48,10 @@ const EditProfileScreen = () => {
         avatar,
       });
 
-      Alert.alert("成功", "个人资料已更新", [
-        { text: "确定", onPress: () => navigation.goBack() },
-      ]);
+      Alert.show("成功: 个人资料已更新", "", 1000);
+      setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
-      Alert.alert("错误", "更新失败，请重试");
+      Alert.show("错误: 更新失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -62,7 +61,7 @@ const EditProfileScreen = () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== "granted") {
-      Alert.alert("权限不足", "需要访问相册权限来更换头像");
+      Alert.show("权限不足: 需要访问相册权限来更换头像");
       return;
     }
 

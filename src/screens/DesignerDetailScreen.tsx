@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import { useAlert } from "../components/AlertProvider";
+import { Alert } from "../utils/Alert";
 import designersData from "../data/data.json";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -85,7 +85,6 @@ interface Look {
 const DesignerDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { showAlert } = useAlert();
   const designerId = (route.params as any)?.id || "designer-1";
   const designerName = (route.params as any)?.name;
 

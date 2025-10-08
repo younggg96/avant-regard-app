@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
-  Alert,
 } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -100,23 +100,10 @@ const DraftsScreen = () => {
   };
 
   const handleDeleteSelected = () => {
-    Alert.alert(
-      "删除草稿",
-      `确定要删除选中的 ${selectedItems.size} 个草稿吗？`,
-      [
-        { text: "取消", style: "cancel" },
-        {
-          text: "删除",
-          style: "destructive",
-          onPress: () => {
-            // Here you would delete the selected drafts
-            setSelectedItems(new Set());
-            setIsSelectionMode(false);
-            Alert.alert("删除成功", "选中的草稿已删除");
-          },
-        },
-      ]
-    );
+    // Here you would delete the selected drafts
+    setSelectedItems(new Set());
+    setIsSelectionMode(false);
+    Alert.show("删除成功: 选中的 " + selectedItems.size + " 个草稿已删除");
   };
 
   const getTypeInfo = (type: string) => {

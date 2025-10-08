@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
 } from "react-native";
+import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,12 +45,12 @@ const PhoneManagementScreen = () => {
 
   const handleSendCode = async () => {
     if (!newPhone.trim()) {
-      Alert.alert("提示", "请输入手机号");
+      Alert.show("提示: 请输入手机号");
       return;
     }
 
     if (!/^1[3-9]\d{9}$/.test(newPhone)) {
-      Alert.alert("提示", "请输入正确的手机号格式");
+      Alert.show("提示: 请输入正确的手机号格式");
       return;
     }
 
@@ -60,9 +60,9 @@ const PhoneManagementScreen = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       startCountdown();
       setStep("verify");
-      Alert.alert("验证码已发送", `验证码已发送到 ${newPhone}`);
+      Alert.show("验证码已发送到 " + newPhone);
     } catch (error) {
-      Alert.alert("发送失败", "验证码发送失败，请重试");
+      Alert.show("发送失败: 验证码发送失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -70,12 +70,12 @@ const PhoneManagementScreen = () => {
 
   const handleVerifyCode = async () => {
     if (!verificationCode.trim()) {
-      Alert.alert("提示", "请输入验证码");
+      Alert.show("提示: 请输入验证码");
       return;
     }
 
     if (verificationCode.length !== 6) {
-      Alert.alert("提示", "请输入6位验证码");
+      Alert.show("提示: 请输入6位验证码");
       return;
     }
 
@@ -87,36 +87,22 @@ const PhoneManagementScreen = () => {
       // Update phone number
       updateProfile({ phone: newPhone });
 
-      Alert.alert("更换成功", "手机号已更换成功", [
-        { text: "确定", onPress: () => navigation.goBack() },
-      ]);
+      Alert.show("更换成功: 手机号已更换成功", "", 1000);
+      setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
-      Alert.alert("验证失败", "验证码错误或已过期");
+      Alert.show("验证失败: 验证码错误或已过期");
     } finally {
       setLoading(false);
     }
   };
 
   const handleUnbindPhone = () => {
-    Alert.alert(
-      "解绑手机号",
-      "解绑后将无法通过手机号找回密码，确定要解绑吗？",
-      [
-        { text: "取消", style: "cancel" },
-        {
-          text: "确定解绑",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              updateProfile({ phone: "" });
-              Alert.alert("解绑成功", "手机号已解绑");
-            } catch (error) {
-              Alert.alert("解绑失败", "请重试");
-            }
-          },
-        },
-      ]
-    );
+    try {
+      updateProfile({ phone: "" });
+      Alert.show("解绑成功: 手机号已解绑");
+    } catch (error) {
+      Alert.show("解绑失败: 请重试");
+    }
   };
 
   const renderMainScreen = () => (
