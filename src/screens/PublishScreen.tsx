@@ -4,7 +4,7 @@ import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
+import ImageCropPicker from "react-native-image-crop-picker";
 import {
   Box,
   Text,
@@ -17,7 +17,6 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import { ImageCropper } from "../components/ImageCropper";
 import ImageEditMenu from "../components/ImageEditMenu";
 
 type ContentType = "lookbook" | "outfit" | "review" | "article";
@@ -86,13 +85,8 @@ const PublishScreen = () => {
   // Image picker states
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageEditMenu, setShowImageEditMenu] = useState(false);
-  const [showImageCropper, setShowImageCropper] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
-    null
-  );
-  const [croppingImageUri, setCroppingImageUri] = useState<string | null>(null);
-  const [croppingImageIndex, setCroppingImageIndex] = useState<number | null>(
     null
   );
   const [isDragging, setIsDragging] = useState(false);
@@ -277,10 +271,31 @@ const PublishScreen = () => {
     } else {
       // Open cropper for current cover image
       const coverIndex = images.findIndex((img) => img === coverImage);
-      if (coverIndex !== -1) {
-        setCroppingImageUri(coverImage);
-        setCroppingImageIndex(coverIndex);
-        setShowImageCropper(true);
+      if (coverIndex !== -1 && coverImage) {
+        ImageCropPicker.openCropper({
+          path: coverImage,
+          mediaType: 'photo',
+          width: 1080,
+          height: 1080,
+          cropping: true,
+          cropperToolbarTitle: '裁剪封面',
+          cropperActiveWidgetColor: '#000000',
+          cropperToolbarColor: '#000000',
+          cropperToolbarWidgetColor: '#FFFFFF',
+          freeStyleCropEnabled: true,
+          cropperChooseText: '选择',
+          cropperCancelText: '取消',
+          compressImageQuality: 0.9,
+        }).then(image => {
+          // Update cropped image
+          const newImages = [...images];
+          newImages[coverIndex] = image.path;
+          setImages(newImages);
+          setCoverImage(image.path);
+          Alert.show("裁剪成功", "", 1500);
+        }).catch(error => {
+          console.log('取消裁剪或错误:', error);
+        });
       }
     }
   };
@@ -289,59 +304,59 @@ const PublishScreen = () => {
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        // Request camera permission
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") {
-          Alert.show("权限需要: 需要相机权限才能拍照");
-          return;
-        }
+        // Open camera with cropping
+        ImageCropPicker.openCamera({
+          width: 1080,
+          height: 1080,
+          cropping: true,
+          cropperToolbarTitle: '裁剪照片',
+          cropperActiveWidgetColor: '#000000',
+          cropperToolbarColor: '#000000',
+          cropperToolbarWidgetColor: '#FFFFFF',
+          freeStyleCropEnabled: true,
+          cropperChooseText: '选择',
+          cropperCancelText: '取消',
+          compressImageQuality: 0.9,
+        }).then(image => {
+          const newImages = [...images, image.path];
+          setImages(newImages);
 
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 1,
+          // Set first image as cover if no cover exists
+          if (!coverImage) {
+            setCoverImage(image.path);
+          }
+          Alert.show("照片已添加", "", 1500);
+        }).catch(error => {
+          console.log('拍摄取消或错误:', error);
         });
       } else {
-        // Request media library permission
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-          Alert.show("权限需要: 需要访问相册权限才能选择图片");
-          return;
-        }
+        // Open gallery with cropping
+        ImageCropPicker.openPicker({
+          width: 1080,
+          height: 1080,
+          cropping: true,
+          multiple: false,
+          cropperToolbarTitle: '裁剪图片',
+          cropperActiveWidgetColor: '#000000',
+          cropperToolbarColor: '#000000',
+          cropperToolbarWidgetColor: '#FFFFFF',
+          freeStyleCropEnabled: true,
+          cropperChooseText: '选择',
+          cropperCancelText: '取消',
+          compressImageQuality: 0.9,
+        }).then(image => {
+          const newImages = [...images, image.path];
+          setImages(newImages);
 
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          allowsMultipleSelection: true,
-          selectionLimit: Math.min(5, MAX_IMAGES - images.length),
-          quality: 1,
+          // Set first image as cover if no cover exists
+          if (!coverImage) {
+            setCoverImage(image.path);
+          }
+          Alert.show("图片已添加", "", 1500);
+        }).catch(error => {
+          console.log('选择取消或错误:', error);
         });
-      }
-
-      if (!result.canceled && result.assets.length > 0) {
-        // Add selected images
-        const newImageUris = result.assets.map((asset) => asset.uri);
-        const newImages = [
-          ...images,
-          ...newImageUris.slice(0, MAX_IMAGES - images.length),
-        ];
-        setImages(newImages);
-
-        // Set first image as cover if no cover exists
-        if (!coverImage && newImages.length > 0) {
-          setCoverImage(newImages[0]);
-        }
-
-        // If only one image selected, open cropper immediately
-        if (result.assets.length === 1) {
-          setCroppingImageUri(result.assets[0].uri);
-          setCroppingImageIndex(newImages.length - 1);
-          setShowImageCropper(true);
-        }
       }
     } catch (error) {
       console.error("Image selection error:", error);
@@ -359,10 +374,38 @@ const PublishScreen = () => {
   const handleEditImage = () => {
     setShowImageEditMenu(false);
     // 打开裁剪器
-    if (selectedImageIndex !== null) {
-      setCroppingImageUri(selectedImageUri);
-      setCroppingImageIndex(selectedImageIndex);
-      setShowImageCropper(true);
+    if (selectedImageIndex !== null && selectedImageUri) {
+      ImageCropPicker.openCropper({
+        path: selectedImageUri,
+        mediaType: 'photo',
+        width: 1080,
+        height: 1080,
+        cropping: true,
+        cropperToolbarTitle: '编辑图片',
+        cropperActiveWidgetColor: '#000000',
+        cropperToolbarColor: '#000000',
+        cropperToolbarWidgetColor: '#FFFFFF',
+        freeStyleCropEnabled: true,
+        cropperChooseText: '选择',
+        cropperCancelText: '取消',
+        compressImageQuality: 0.9,
+      }).then(image => {
+        // Update cropped image
+        const newImages = [...images];
+        newImages[selectedImageIndex] = image.path;
+        setImages(newImages);
+        
+        // Update cover if it was the edited image
+        if (coverImage === selectedImageUri) {
+          setCoverImage(image.path);
+        }
+        
+        Alert.show("编辑成功", "", 1500);
+        setSelectedImageUri(null);
+        setSelectedImageIndex(null);
+      }).catch(error => {
+        console.log('取消裁剪或错误:', error);
+      });
     }
   };
 
@@ -403,33 +446,6 @@ const PublishScreen = () => {
     setSelectedImageIndex(null);
   };
 
-  // Handle ImageCropper callbacks
-  const handleCropperCancel = () => {
-    setShowImageCropper(false);
-    setCroppingImageUri(null);
-    setCroppingImageIndex(null);
-  };
-
-  const handleCropperDone = (resultUri: string) => {
-    setShowImageCropper(false);
-
-    // Handle cropped image
-    if (croppingImageIndex !== null) {
-      const newImages = [...images];
-      newImages[croppingImageIndex] = resultUri;
-      setImages(newImages);
-
-      // Update cover image if it was the cropped one
-      if (coverImage === images[croppingImageIndex]) {
-        setCoverImage(resultUri);
-      }
-
-      Alert.show("裁剪成功: 图片已更新");
-    }
-
-    setCroppingImageUri(null);
-    setCroppingImageIndex(null);
-  };
 
   const handleReorderImages = (fromIndex: number, toIndex: number) => {
     const newImages = [...images];
@@ -858,17 +874,6 @@ const PublishScreen = () => {
     }
   };
 
-  if (showImageCropper && croppingImageUri) {
-    return (
-      <ImageCropper
-        sourceUri={croppingImageUri}
-        aspect="free"
-        onCancel={handleCropperCancel}
-        onDone={handleCropperDone}
-        minBoxSize={80}
-      />
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>

@@ -102,55 +102,67 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   }, [imageDimensions]);
 
   // Handle image load
-  const handleImageLoad = useCallback((event: any) => {
-    const { width: imgWidth, height: imgHeight } = event.source;
-    setOriginalImageSize({ width: imgWidth, height: imgHeight });
+  const handleImageLoad = useCallback(
+    (event: any) => {
+      const { width: imgWidth, height: imgHeight } = event.source;
+      setOriginalImageSize({ width: imgWidth, height: imgHeight });
 
-    // Calculate display dimensions (fit-contain)
-    const containerWidth = SCREEN_WIDTH;
-    const containerHeight = SCREEN_HEIGHT - 200; // Account for UI elements
-    const imageAspectRatio = imgWidth / imgHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
+      // Calculate display dimensions (fit-contain)
+      const containerWidth = SCREEN_WIDTH;
+      const containerHeight = SCREEN_HEIGHT - 200; // Account for UI elements
+      const imageAspectRatio = imgWidth / imgHeight;
+      const containerAspectRatio = containerWidth / containerHeight;
 
-    let displayWidth, displayHeight, displayX, displayY;
+      let displayWidth, displayHeight, displayX, displayY;
 
-    if (imageAspectRatio > containerAspectRatio) {
-      displayWidth = containerWidth;
-      displayHeight = containerWidth / imageAspectRatio;
-      displayX = 0;
-      displayY = (containerHeight - displayHeight) / 2;
-    } else {
-      displayHeight = containerHeight;
-      displayWidth = containerHeight * imageAspectRatio;
-      displayX = (containerWidth - displayWidth) / 2;
-      displayY = 0;
-    }
+      if (imageAspectRatio > containerAspectRatio) {
+        displayWidth = containerWidth;
+        displayHeight = containerWidth / imageAspectRatio;
+        displayX = 0;
+        displayY = (containerHeight - displayHeight) / 2;
+      } else {
+        displayHeight = containerHeight;
+        displayWidth = containerHeight * imageAspectRatio;
+        displayX = (containerWidth - displayWidth) / 2;
+        displayY = 0;
+      }
 
-    const imgDims: ImageDimensions = {
-      width: displayWidth,
-      height: displayHeight,
-      x: displayX,
-      y: displayY,
-    };
+      const imgDims: ImageDimensions = {
+        width: displayWidth,
+        height: displayHeight,
+        x: displayX,
+        y: displayY,
+      };
 
-    setImageDimensions(imgDims);
-    
-    // Update shared values immediately
-    imageBoundsX.value = displayX;
-    imageBoundsY.value = displayY;
-    imageBoundsWidth.value = displayWidth;
-    imageBoundsHeight.value = displayHeight;
+      setImageDimensions(imgDims);
 
-    // Initialize crop box
-    const initialSize = Math.min(displayWidth, displayHeight) * 0.8;
-    const centerX = displayX + (displayWidth - initialSize) / 2;
-    const centerY = displayY + (displayHeight - initialSize) / 2;
+      // Update shared values immediately
+      imageBoundsX.value = displayX;
+      imageBoundsY.value = displayY;
+      imageBoundsWidth.value = displayWidth;
+      imageBoundsHeight.value = displayHeight;
 
-    cropX.value = centerX;
-    cropY.value = centerY;
-    cropWidth.value = initialSize;
-    cropHeight.value = initialSize;
-  }, [imageBoundsX, imageBoundsY, imageBoundsWidth, imageBoundsHeight, cropX, cropY, cropWidth, cropHeight]);
+      // Initialize crop box
+      const initialSize = Math.min(displayWidth, displayHeight) * 0.8;
+      const centerX = displayX + (displayWidth - initialSize) / 2;
+      const centerY = displayY + (displayHeight - initialSize) / 2;
+
+      cropX.value = centerX;
+      cropY.value = centerY;
+      cropWidth.value = initialSize;
+      cropHeight.value = initialSize;
+    },
+    [
+      imageBoundsX,
+      imageBoundsY,
+      imageBoundsWidth,
+      imageBoundsHeight,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+    ]
+  );
 
   // Pan gesture handler for moving crop box
   const panGestureHandler =
@@ -161,15 +173,17 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
       },
       onActive: (event) => {
         "worklet";
-        
+
         let newX = startX.value + event.translationX;
         let newY = startY.value + event.translationY;
 
         // Constrain within image bounds using shared values
         const minX = imageBoundsX.value;
-        const maxX = imageBoundsX.value + imageBoundsWidth.value - cropWidth.value;
+        const maxX =
+          imageBoundsX.value + imageBoundsWidth.value - cropWidth.value;
         const minY = imageBoundsY.value;
-        const maxY = imageBoundsY.value + imageBoundsHeight.value - cropHeight.value;
+        const maxY =
+          imageBoundsY.value + imageBoundsHeight.value - cropHeight.value;
 
         // Clamp to bounds
         newX = Math.max(minX, Math.min(maxX, newX));
@@ -265,8 +279,10 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
         newY = Math.max(imageBoundsY.value, newY);
 
         // Ensure right and bottom don't exceed
-        const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-        const finalMaxHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
+        const finalMaxWidth =
+          imageBoundsX.value + imageBoundsWidth.value - newX;
+        const finalMaxHeight =
+          imageBoundsY.value + imageBoundsHeight.value - newY;
 
         newWidth = Math.min(newWidth, finalMaxWidth);
         newHeight = Math.min(newHeight, finalMaxHeight);
@@ -409,7 +425,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
         }
 
         // Bottom boundary
-        const maxHeight = imageBoundsY.value + imageBoundsHeight.value - anchorY;
+        const maxHeight =
+          imageBoundsY.value + imageBoundsHeight.value - anchorY;
         if (newHeight > maxHeight) {
           newHeight = maxHeight;
           if (config.ratio) {
@@ -428,7 +445,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
         newX = Math.max(imageBoundsX.value, newX);
 
         // Ensure right edge doesn't exceed
-        const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
+        const finalMaxWidth =
+          imageBoundsX.value + imageBoundsWidth.value - newX;
         newWidth = Math.min(newWidth, finalMaxWidth);
 
         // Ensure bottom edge doesn't exceed (anchor is at top)
@@ -468,8 +486,10 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
         }
 
         // Calculate maximum available space
-        const maxWidth = imageBoundsX.value + imageBoundsWidth.value - startX.value;
-        const maxHeight = imageBoundsY.value + imageBoundsHeight.value - startY.value;
+        const maxWidth =
+          imageBoundsX.value + imageBoundsWidth.value - startX.value;
+        const maxHeight =
+          imageBoundsY.value + imageBoundsHeight.value - startY.value;
 
         // Constrain to image bounds
         if (newWidth > maxWidth) {
