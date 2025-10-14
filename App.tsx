@@ -12,7 +12,6 @@ import { config } from "./gluestack.config";
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/ArchiveScreen";
-import PublishScreen from "./src/screens/PublishScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
@@ -29,6 +28,12 @@ import PrivacyScreen from "./src/screens/PrivacyScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import DraftsScreen from "./src/screens/DraftsScreen";
+// Publish Screens
+import PublishTypeScreen from "./src/screens/PublishTypeScreen";
+import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
+import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
+import PublishReviewScreen from "./src/screens/PublishReviewScreen";
+import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -236,8 +241,40 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="Publish"
-        component={PublishScreen}
+        name="PublishType"
+        component={PublishTypeScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
+      <Stack.Screen
+        name="PublishLookbook"
+        component={PublishLookbookScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
+      <Stack.Screen
+        name="PublishOutfit"
+        component={PublishOutfitScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
+      <Stack.Screen
+        name="PublishReview"
+        component={PublishReviewScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
+      <Stack.Screen
+        name="PublishArticle"
+        component={PublishArticleScreen}
         options={{
           headerShown: false,
           presentation: "fullScreenModal",

@@ -10,12 +10,11 @@ import {
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import {
-  PanGestureHandler,
   GestureHandlerRootView,
-  PanGestureHandlerGestureEvent,
+  Gesture,
+  GestureDetector,
 } from "react-native-gesture-handler";
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -72,6 +71,10 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     width: number;
     height: number;
   } | null>(null);
+  const [containerSize, setContainerSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Animated values for crop box
   const cropX = useSharedValue(50);
@@ -101,15 +104,23 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     }
   }, [imageDimensions]);
 
+  // Handle container layout
+  const handleContainerLayout = useCallback((event: any) => {
+    const { width, height } = event.nativeEvent.layout;
+    setContainerSize({ width, height });
+  }, []);
+
   // Handle image load
   const handleImageLoad = useCallback(
     (event: any) => {
+      if (!containerSize) return;
+
       const { width: imgWidth, height: imgHeight } = event.source;
       setOriginalImageSize({ width: imgWidth, height: imgHeight });
 
-      // Calculate display dimensions (fit-contain)
-      const containerWidth = SCREEN_WIDTH;
-      const containerHeight = SCREEN_HEIGHT - 200; // Account for UI elements
+      // Calculate display dimensions (fit-contain) using actual container size
+      const containerWidth = containerSize.width;
+      const containerHeight = containerSize.height;
       const imageAspectRatio = imgWidth / imgHeight;
       const containerAspectRatio = containerWidth / containerHeight;
 
@@ -153,6 +164,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
       cropHeight.value = initialSize;
     },
     [
+      containerSize,
       imageBoundsX,
       imageBoundsY,
       imageBoundsWidth,
@@ -164,370 +176,347 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     ]
   );
 
-  // Pan gesture handler for moving crop box
-  const panGestureHandler =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-      },
-      onActive: (event) => {
-        "worklet";
-
-        let newX = startX.value + event.translationX;
-        let newY = startY.value + event.translationY;
-
-        // Constrain within image bounds using shared values
-        const minX = imageBoundsX.value;
-        const maxX =
-          imageBoundsX.value + imageBoundsWidth.value - cropWidth.value;
-        const minY = imageBoundsY.value;
-        const maxY =
-          imageBoundsY.value + imageBoundsHeight.value - cropHeight.value;
-
-        // Clamp to bounds
-        newX = Math.max(minX, Math.min(maxX, newX));
-        newY = Math.max(minY, Math.min(maxY, newY));
-
-        cropX.value = newX;
-        cropY.value = newY;
-      },
-    });
-
   // Resize handlers
-  const resizeHandlerNW =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-        startWidth.value = cropWidth.value;
-        startHeight.value = cropHeight.value;
-      },
-      onActive: (event) => {
-        "worklet";
+  const resizeGestureNW = Gesture.Pan()
+    .onStart(() => {
+      startX.value = cropX.value;
+      startY.value = cropY.value;
+      startWidth.value = cropWidth.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((event) => {
+      const config = ASPECT_CONFIGS[selectedAspect];
 
-        const config = ASPECT_CONFIGS[selectedAspect];
+      // Fixed anchor point (bottom-right corner)
+      const anchorX = startX.value + startWidth.value;
+      const anchorY = startY.value + startHeight.value;
 
-        // Fixed anchor point (bottom-right corner)
-        const anchorX = startX.value + startWidth.value;
-        const anchorY = startY.value + startHeight.value;
+      // Calculate new dimensions based on drag
+      let newWidth = startWidth.value - event.translationX;
+      let newHeight = startHeight.value - event.translationY;
 
-        // Calculate new dimensions based on drag
-        let newWidth = startWidth.value - event.translationX;
-        let newHeight = startHeight.value - event.translationY;
+      // Apply minimum size
+      newWidth = Math.max(minBoxSize, newWidth);
+      newHeight = Math.max(minBoxSize, newHeight);
 
-        // Apply minimum size
-        newWidth = Math.max(minBoxSize, newWidth);
-        newHeight = Math.max(minBoxSize, newHeight);
+      // Apply aspect ratio
+      if (config.ratio) {
+        // When dragging NW corner, prioritize width
+        newHeight = newWidth / config.ratio;
+      }
 
-        // Apply aspect ratio
+      // Calculate new position (top-left moves, bottom-right stays fixed)
+      let newX = anchorX - newWidth;
+      let newY = anchorY - newHeight;
+
+      // Constrain to image boundaries using shared values
+      // Ensure we don't go beyond left edge
+      if (newX < imageBoundsX.value) {
+        newX = imageBoundsX.value;
+        newWidth = anchorX - newX;
         if (config.ratio) {
-          // When dragging NW corner, prioritize width
           newHeight = newWidth / config.ratio;
+          newY = anchorY - newHeight;
         }
+      }
 
-        // Calculate new position (top-left moves, bottom-right stays fixed)
-        let newX = anchorX - newWidth;
-        let newY = anchorY - newHeight;
-
-        // Constrain to image boundaries using shared values
-        // Ensure we don't go beyond left edge
-        if (newX < imageBoundsX.value) {
-          newX = imageBoundsX.value;
-          newWidth = anchorX - newX;
-          if (config.ratio) {
+      // Ensure we don't go beyond top edge
+      if (newY < imageBoundsY.value) {
+        newY = imageBoundsY.value;
+        newHeight = anchorY - newY;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
+          newX = anchorX - newWidth;
+          // Re-check left boundary
+          if (newX < imageBoundsX.value) {
+            newX = imageBoundsX.value;
+            newWidth = anchorX - newX;
             newHeight = newWidth / config.ratio;
             newY = anchorY - newHeight;
           }
         }
+      }
 
-        // Ensure we don't go beyond top edge
-        if (newY < imageBoundsY.value) {
-          newY = imageBoundsY.value;
-          newHeight = anchorY - newY;
-          if (config.ratio) {
-            newWidth = newHeight * config.ratio;
-            newX = anchorX - newWidth;
-            // Re-check left boundary
-            if (newX < imageBoundsX.value) {
-              newX = imageBoundsX.value;
-              newWidth = anchorX - newX;
-              newHeight = newWidth / config.ratio;
-              newY = anchorY - newHeight;
-            }
-          }
-        }
-
-        // Ensure anchor doesn't exceed image bounds
-        if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
-          newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-          if (config.ratio) {
-            newHeight = newWidth / config.ratio;
-          }
-        }
-
-        if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
-          newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
-          if (config.ratio) {
-            newWidth = newHeight * config.ratio;
-            newX = anchorX - newWidth;
-          }
-        }
-
-        // Final boundary check - ensure crop box is completely within image
-        newX = Math.max(imageBoundsX.value, newX);
-        newY = Math.max(imageBoundsY.value, newY);
-
-        // Ensure right and bottom don't exceed
-        const finalMaxWidth =
-          imageBoundsX.value + imageBoundsWidth.value - newX;
-        const finalMaxHeight =
-          imageBoundsY.value + imageBoundsHeight.value - newY;
-
-        newWidth = Math.min(newWidth, finalMaxWidth);
-        newHeight = Math.min(newHeight, finalMaxHeight);
-
-        cropX.value = newX;
-        cropY.value = newY;
-        cropWidth.value = Math.max(minBoxSize, newWidth);
-        cropHeight.value = Math.max(minBoxSize, newHeight);
-      },
-    });
-
-  const resizeHandlerNE =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-        startWidth.value = cropWidth.value;
-        startHeight.value = cropHeight.value;
-      },
-      onActive: (event) => {
-        "worklet";
-
-        const config = ASPECT_CONFIGS[selectedAspect];
-
-        // Fixed anchor point (bottom-left corner)
-        const anchorX = startX.value;
-        const anchorY = startY.value + startHeight.value;
-
-        let newWidth = startWidth.value + event.translationX;
-        let newHeight = startHeight.value - event.translationY;
-
-        newWidth = Math.max(minBoxSize, newWidth);
-        newHeight = Math.max(minBoxSize, newHeight);
-
+      // Ensure anchor doesn't exceed image bounds
+      if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
+        newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
         if (config.ratio) {
           newHeight = newWidth / config.ratio;
         }
+      }
 
-        let newY = anchorY - newHeight;
+      if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
+        newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
+          newX = anchorX - newWidth;
+        }
+      }
 
-        // Right boundary
-        const maxWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
-        if (newWidth > maxWidth) {
-          newWidth = maxWidth;
-          if (config.ratio) {
+      // Final boundary check - ensure crop box is completely within image
+      newX = Math.max(imageBoundsX.value, newX);
+      newY = Math.max(imageBoundsY.value, newY);
+
+      // Ensure right and bottom don't exceed
+      const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
+      const finalMaxHeight =
+        imageBoundsY.value + imageBoundsHeight.value - newY;
+
+      newWidth = Math.min(newWidth, finalMaxWidth);
+      newHeight = Math.min(newHeight, finalMaxHeight);
+
+      cropX.value = newX;
+      cropY.value = newY;
+      cropWidth.value = Math.max(minBoxSize, newWidth);
+      cropHeight.value = Math.max(minBoxSize, newHeight);
+    });
+
+  const resizeGestureNE = Gesture.Pan()
+    .onStart(() => {
+      startX.value = cropX.value;
+      startY.value = cropY.value;
+      startWidth.value = cropWidth.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((event) => {
+      const config = ASPECT_CONFIGS[selectedAspect];
+
+      // Fixed anchor point (bottom-left corner)
+      const anchorX = startX.value;
+      const anchorY = startY.value + startHeight.value;
+
+      let newWidth = startWidth.value + event.translationX;
+      let newHeight = startHeight.value - event.translationY;
+
+      newWidth = Math.max(minBoxSize, newWidth);
+      newHeight = Math.max(minBoxSize, newHeight);
+
+      if (config.ratio) {
+        newHeight = newWidth / config.ratio;
+      }
+
+      let newY = anchorY - newHeight;
+
+      // Right boundary
+      const maxWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
+      if (newWidth > maxWidth) {
+        newWidth = maxWidth;
+        if (config.ratio) {
+          newHeight = newWidth / config.ratio;
+          newY = anchorY - newHeight;
+        }
+      }
+
+      // Top boundary
+      if (newY < imageBoundsY.value) {
+        newY = imageBoundsY.value;
+        newHeight = anchorY - newY;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
+          // Re-check right boundary
+          if (
+            anchorX + newWidth >
+            imageBoundsX.value + imageBoundsWidth.value
+          ) {
+            newWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
             newHeight = newWidth / config.ratio;
             newY = anchorY - newHeight;
           }
         }
+      }
 
-        // Top boundary
-        if (newY < imageBoundsY.value) {
-          newY = imageBoundsY.value;
-          newHeight = anchorY - newY;
-          if (config.ratio) {
-            newWidth = newHeight * config.ratio;
-            // Re-check right boundary
-            if (
-              anchorX + newWidth >
-              imageBoundsX.value + imageBoundsWidth.value
-            ) {
-              newWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
-              newHeight = newWidth / config.ratio;
-              newY = anchorY - newHeight;
-            }
-          }
+      // Bottom boundary (anchor shouldn't exceed)
+      if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
+        newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
         }
+      }
 
-        // Bottom boundary (anchor shouldn't exceed)
-        if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
-          newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
-          if (config.ratio) {
-            newWidth = newHeight * config.ratio;
-          }
-        }
+      // Final boundary check - ensure crop box is completely within image
+      newY = Math.max(imageBoundsY.value, newY);
 
-        // Final boundary check - ensure crop box is completely within image
-        newY = Math.max(imageBoundsY.value, newY);
+      // Ensure right edge doesn't exceed
+      const finalMaxWidth =
+        imageBoundsX.value + imageBoundsWidth.value - anchorX;
+      newWidth = Math.min(newWidth, finalMaxWidth);
 
-        // Ensure right edge doesn't exceed
-        const finalMaxWidth =
-          imageBoundsX.value + imageBoundsWidth.value - anchorX;
-        newWidth = Math.min(newWidth, finalMaxWidth);
+      // Ensure bottom edge doesn't exceed
+      const finalMaxHeight =
+        imageBoundsY.value + imageBoundsHeight.value - newY;
+      newHeight = Math.min(newHeight, finalMaxHeight);
 
-        // Ensure bottom edge doesn't exceed
-        const finalMaxHeight =
-          imageBoundsY.value + imageBoundsHeight.value - newY;
-        newHeight = Math.min(newHeight, finalMaxHeight);
-
-        cropY.value = newY;
-        cropWidth.value = Math.max(minBoxSize, newWidth);
-        cropHeight.value = Math.max(minBoxSize, newHeight);
-      },
+      cropY.value = newY;
+      cropWidth.value = Math.max(minBoxSize, newWidth);
+      cropHeight.value = Math.max(minBoxSize, newHeight);
     });
 
-  const resizeHandlerSW =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-        startWidth.value = cropWidth.value;
-        startHeight.value = cropHeight.value;
-      },
-      onActive: (event) => {
-        "worklet";
+  const resizeGestureSW = Gesture.Pan()
+    .onStart(() => {
+      startX.value = cropX.value;
+      startY.value = cropY.value;
+      startWidth.value = cropWidth.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((event) => {
+      const config = ASPECT_CONFIGS[selectedAspect];
 
-        const config = ASPECT_CONFIGS[selectedAspect];
+      // Fixed anchor point (top-right corner)
+      const anchorX = startX.value + startWidth.value;
+      const anchorY = startY.value;
 
-        // Fixed anchor point (top-right corner)
-        const anchorX = startX.value + startWidth.value;
-        const anchorY = startY.value;
+      let newWidth = startWidth.value - event.translationX;
+      let newHeight = startHeight.value + event.translationY;
 
-        let newWidth = startWidth.value - event.translationX;
-        let newHeight = startHeight.value + event.translationY;
+      newWidth = Math.max(minBoxSize, newWidth);
+      newHeight = Math.max(minBoxSize, newHeight);
 
-        newWidth = Math.max(minBoxSize, newWidth);
-        newHeight = Math.max(minBoxSize, newHeight);
+      if (config.ratio) {
+        newHeight = newWidth / config.ratio;
+      }
 
+      let newX = anchorX - newWidth;
+
+      // Left boundary
+      if (newX < imageBoundsX.value) {
+        newX = imageBoundsX.value;
+        newWidth = anchorX - newX;
         if (config.ratio) {
           newHeight = newWidth / config.ratio;
         }
+      }
 
-        let newX = anchorX - newWidth;
-
-        // Left boundary
-        if (newX < imageBoundsX.value) {
-          newX = imageBoundsX.value;
-          newWidth = anchorX - newX;
-          if (config.ratio) {
-            newHeight = newWidth / config.ratio;
-          }
-        }
-
-        // Right boundary (anchor shouldn't exceed)
-        if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
-          newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-          if (config.ratio) {
-            newHeight = newWidth / config.ratio;
-          }
-        }
-
-        // Bottom boundary
-        const maxHeight =
-          imageBoundsY.value + imageBoundsHeight.value - anchorY;
-        if (newHeight > maxHeight) {
-          newHeight = maxHeight;
-          if (config.ratio) {
-            newWidth = newHeight * config.ratio;
-            newX = anchorX - newWidth;
-            // Re-check left boundary
-            if (newX < imageBoundsX.value) {
-              newX = imageBoundsX.value;
-              newWidth = anchorX - newX;
-              newHeight = newWidth / config.ratio;
-            }
-          }
-        }
-
-        // Final boundary check - ensure crop box is completely within image
-        newX = Math.max(imageBoundsX.value, newX);
-
-        // Ensure right edge doesn't exceed
-        const finalMaxWidth =
-          imageBoundsX.value + imageBoundsWidth.value - newX;
-        newWidth = Math.min(newWidth, finalMaxWidth);
-
-        // Ensure bottom edge doesn't exceed (anchor is at top)
-        const finalMaxHeight =
-          imageBoundsY.value + imageBoundsHeight.value - anchorY;
-        newHeight = Math.min(newHeight, finalMaxHeight);
-
-        cropX.value = newX;
-        cropWidth.value = Math.max(minBoxSize, newWidth);
-        cropHeight.value = Math.max(minBoxSize, newHeight);
-      },
-    });
-
-  const resizeHandlerSE =
-    useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-      onStart: () => {
-        startX.value = cropX.value;
-        startY.value = cropY.value;
-        startWidth.value = cropWidth.value;
-        startHeight.value = cropHeight.value;
-      },
-      onActive: (event) => {
-        "worklet";
-
-        const config = ASPECT_CONFIGS[selectedAspect];
-
-        // Top-left corner is fixed
-        let newWidth = startWidth.value + event.translationX;
-        let newHeight = startHeight.value + event.translationY;
-
-        newWidth = Math.max(minBoxSize, newWidth);
-        newHeight = Math.max(minBoxSize, newHeight);
-
+      // Right boundary (anchor shouldn't exceed)
+      if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
+        newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
         if (config.ratio) {
-          // Prioritize width when dragging SE
           newHeight = newWidth / config.ratio;
         }
+      }
 
-        // Calculate maximum available space
-        const maxWidth =
-          imageBoundsX.value + imageBoundsWidth.value - startX.value;
-        const maxHeight =
-          imageBoundsY.value + imageBoundsHeight.value - startY.value;
-
-        // Constrain to image bounds
-        if (newWidth > maxWidth) {
-          newWidth = maxWidth;
-          if (config.ratio) {
+      // Bottom boundary
+      const maxHeight = imageBoundsY.value + imageBoundsHeight.value - anchorY;
+      if (newHeight > maxHeight) {
+        newHeight = maxHeight;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
+          newX = anchorX - newWidth;
+          // Re-check left boundary
+          if (newX < imageBoundsX.value) {
+            newX = imageBoundsX.value;
+            newWidth = anchorX - newX;
             newHeight = newWidth / config.ratio;
-            // If height exceeds, recalculate from height
-            if (newHeight > maxHeight) {
-              newHeight = maxHeight;
-              newWidth = newHeight * config.ratio;
-              // Final check
-              if (newWidth > maxWidth) {
-                newWidth = maxWidth;
-                newHeight = newWidth / config.ratio;
-              }
-            }
           }
         }
+      }
 
-        if (newHeight > maxHeight) {
-          newHeight = maxHeight;
-          if (config.ratio) {
+      // Final boundary check - ensure crop box is completely within image
+      newX = Math.max(imageBoundsX.value, newX);
+
+      // Ensure right edge doesn't exceed
+      const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
+      newWidth = Math.min(newWidth, finalMaxWidth);
+
+      // Ensure bottom edge doesn't exceed (anchor is at top)
+      const finalMaxHeight =
+        imageBoundsY.value + imageBoundsHeight.value - anchorY;
+      newHeight = Math.min(newHeight, finalMaxHeight);
+
+      cropX.value = newX;
+      cropWidth.value = Math.max(minBoxSize, newWidth);
+      cropHeight.value = Math.max(minBoxSize, newHeight);
+    });
+
+  const resizeGestureSE = Gesture.Pan()
+    .onStart(() => {
+      startX.value = cropX.value;
+      startY.value = cropY.value;
+      startWidth.value = cropWidth.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((event) => {
+      const config = ASPECT_CONFIGS[selectedAspect];
+
+      // Top-left corner is fixed
+      let newWidth = startWidth.value + event.translationX;
+      let newHeight = startHeight.value + event.translationY;
+
+      newWidth = Math.max(minBoxSize, newWidth);
+      newHeight = Math.max(minBoxSize, newHeight);
+
+      if (config.ratio) {
+        // Prioritize width when dragging SE
+        newHeight = newWidth / config.ratio;
+      }
+
+      // Calculate maximum available space
+      const maxWidth =
+        imageBoundsX.value + imageBoundsWidth.value - startX.value;
+      const maxHeight =
+        imageBoundsY.value + imageBoundsHeight.value - startY.value;
+
+      // Constrain to image bounds
+      if (newWidth > maxWidth) {
+        newWidth = maxWidth;
+        if (config.ratio) {
+          newHeight = newWidth / config.ratio;
+          // If height exceeds, recalculate from height
+          if (newHeight > maxHeight) {
+            newHeight = maxHeight;
             newWidth = newHeight * config.ratio;
-            // Re-check width
+            // Final check
             if (newWidth > maxWidth) {
               newWidth = maxWidth;
               newHeight = newWidth / config.ratio;
             }
           }
         }
+      }
 
-        // Final boundary check - absolutely ensure we're within bounds
-        newWidth = Math.min(newWidth, maxWidth);
-        newHeight = Math.min(newHeight, maxHeight);
+      if (newHeight > maxHeight) {
+        newHeight = maxHeight;
+        if (config.ratio) {
+          newWidth = newHeight * config.ratio;
+          // Re-check width
+          if (newWidth > maxWidth) {
+            newWidth = maxWidth;
+            newHeight = newWidth / config.ratio;
+          }
+        }
+      }
 
-        cropWidth.value = Math.max(minBoxSize, newWidth);
-        cropHeight.value = Math.max(minBoxSize, newHeight);
-      },
+      // Final boundary check - absolutely ensure we're within bounds
+      newWidth = Math.min(newWidth, maxWidth);
+      newHeight = Math.min(newHeight, maxHeight);
+
+      cropWidth.value = Math.max(minBoxSize, newWidth);
+      cropHeight.value = Math.max(minBoxSize, newHeight);
+    });
+
+  // Pan gesture handler for moving crop box
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startX.value = cropX.value;
+      startY.value = cropY.value;
+    })
+    .onUpdate((event) => {
+      let newX = startX.value + event.translationX;
+      let newY = startY.value + event.translationY;
+
+      // Constrain within image bounds using shared values
+      const minX = imageBoundsX.value;
+      const maxX =
+        imageBoundsX.value + imageBoundsWidth.value - cropWidth.value;
+      const minY = imageBoundsY.value;
+      const maxY =
+        imageBoundsY.value + imageBoundsHeight.value - cropHeight.value;
+
+      // Clamp to bounds
+      newX = Math.max(minX, Math.min(maxX, newX));
+      newY = Math.max(minY, Math.min(maxY, newY));
+
+      cropX.value = newX;
+      cropY.value = newY;
     });
 
   // Animated styles
@@ -687,9 +676,9 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <StatusBar barStyle="light-content" backgroundColor="black" />
-      <GestureHandlerRootView style={styles.container}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <StatusBar barStyle="light-content" backgroundColor="black" />
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
@@ -698,9 +687,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
           <Text style={styles.headerTitle}>裁剪图片</Text>
           <View style={styles.headerButton} />
         </View>
-
         {/* Image and crop area */}
-        <View style={styles.imageContainer}>
+        <View style={styles.imageContainer} onLayout={handleContainerLayout}>
           <Image
             source={{ uri: sourceUri }}
             style={styles.image}
@@ -713,7 +701,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
 
           {/* Crop box */}
           {imageDimensions && (
-            <PanGestureHandler onGestureEvent={panGestureHandler}>
+            <GestureDetector gesture={panGesture}>
               <Animated.View style={cropBoxStyle}>
                 {/* Grid lines */}
                 <View style={styles.gridContainer}>
@@ -724,20 +712,20 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
                 </View>
 
                 {/* Corner handles */}
-                <PanGestureHandler onGestureEvent={resizeHandlerNW}>
+                <GestureDetector gesture={resizeGestureNW}>
                   <Animated.View style={[styles.handle, styles.handleNW]} />
-                </PanGestureHandler>
-                <PanGestureHandler onGestureEvent={resizeHandlerNE}>
+                </GestureDetector>
+                <GestureDetector gesture={resizeGestureNE}>
                   <Animated.View style={[styles.handle, styles.handleNE]} />
-                </PanGestureHandler>
-                <PanGestureHandler onGestureEvent={resizeHandlerSW}>
+                </GestureDetector>
+                <GestureDetector gesture={resizeGestureSW}>
                   <Animated.View style={[styles.handle, styles.handleSW]} />
-                </PanGestureHandler>
-                <PanGestureHandler onGestureEvent={resizeHandlerSE}>
+                </GestureDetector>
+                <GestureDetector gesture={resizeGestureSE}>
                   <Animated.View style={[styles.handle, styles.handleSE]} />
-                </PanGestureHandler>
+                </GestureDetector>
               </Animated.View>
-            </PanGestureHandler>
+            </GestureDetector>
           )}
         </View>
 
@@ -772,8 +760,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </GestureHandlerRootView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 };
 

@@ -193,6 +193,16 @@ const AuthScreen = () => {
     }
   };
 
+  // 渲染品牌logo
+  const renderBrandLogo = () => {
+    return (
+      <View style={styles.brandContainer}>
+        <Text style={styles.brandName}>AVANT REGARD</Text>
+        <Text style={styles.brandTagline}>Redefining Fashion Narrative</Text>
+      </View>
+    );
+  };
+
   // 渲染标题
   const renderTitle = () => {
     const titles = {
@@ -202,15 +212,17 @@ const AuthScreen = () => {
       verification: "验证码登录",
     };
 
+    const subtitles = {
+      login: "欢迎回来",
+      register: "创建您的账户",
+      forgotPassword: "重置您的密码",
+      verification: "输入验证码",
+    };
+
     return (
       <View style={styles.titleContainer}>
         <Text style={styles.title}>{titles[mode]}</Text>
-        <Text style={styles.subtitle}>
-          {mode === "login" && "欢迎回来"}
-          {mode === "register" && "创建您的账户"}
-          {mode === "forgotPassword" && "重置您的密码"}
-          {mode === "verification" && "输入验证码"}
-        </Text>
+        <Text style={styles.subtitle}>{subtitles[mode]}</Text>
       </View>
     );
   };
@@ -449,7 +461,9 @@ const AuthScreen = () => {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
+          {renderBrandLogo()}
           {renderTitle()}
           {renderForm()}
           {renderActions()}
@@ -462,7 +476,7 @@ const AuthScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: "#FAFAFA",
   },
   keyboardAvoid: {
     flex: 1,
@@ -472,56 +486,85 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xxl,
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 40,
   },
+  // 品牌Logo样式
+  brandContainer: {
+    alignItems: "center",
+    marginBottom: 48,
+  },
+  brandName: {
+    fontSize: 22,
+    fontFamily: "PlayfairDisplay-Bold",
+    color: theme.colors.black,
+    letterSpacing: 3,
+    marginBottom: 4,
+  },
+  brandTagline: {
+    fontSize: 11,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray400,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
+  // 标题样式
   titleContainer: {
     alignItems: "center",
-    marginBottom: theme.spacing.xxl,
+    marginBottom: 32,
   },
   title: {
-    ...theme.typography.hero,
+    fontSize: 28,
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   subtitle: {
-    ...theme.typography.body,
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
     color: theme.colors.gray400,
+    letterSpacing: 0.5,
   },
+  // 表单样式
   formContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 24,
   },
   inputContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
   inputLabel: {
-    ...theme.typography.bodySmall,
+    fontSize: 13,
+    fontFamily: "Inter-Medium",
     color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-    fontWeight: "600",
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
   },
   countryCode: {
-    ...theme.typography.body,
+    fontSize: 16,
+    fontFamily: "Inter-Regular",
     color: theme.colors.gray400,
-    marginRight: theme.spacing.sm,
+    marginRight: 12,
+    paddingRight: 12,
+    borderRightWidth: 1,
+    borderRightColor: "#D8D8D8",
   },
   input: {
-    ...theme.typography.body,
+    fontSize: 16,
+    fontFamily: "Inter-Regular",
     flex: 1,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 16,
     color: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
   },
   verificationContainer: {
     flexDirection: "row",
@@ -529,21 +572,22 @@ const styles = StyleSheet.create({
   },
   verificationInput: {
     flex: 1,
-    marginRight: theme.spacing.md,
+    marginRight: 12,
   },
   sendCodeButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.accent,
-    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    backgroundColor: theme.colors.black,
+    borderRadius: 12,
   },
   sendCodeButtonDisabled: {
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: "#E8E8E8",
   },
   sendCodeText: {
-    ...theme.typography.bodySmall,
+    fontSize: 13,
+    fontFamily: "Inter-Medium",
     color: theme.colors.white,
-    fontWeight: "600",
+    letterSpacing: 0.3,
   },
   sendCodeTextDisabled: {
     color: theme.colors.gray400,
@@ -551,86 +595,95 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingRight: theme.spacing.md,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    paddingRight: 16,
   },
   passwordInput: {
-    ...theme.typography.body,
+    fontSize: 16,
+    fontFamily: "Inter-Regular",
     flex: 1,
-    paddingVertical: theme.spacing.md,
-    paddingLeft: theme.spacing.md,
+    paddingVertical: 16,
+    paddingLeft: 16,
     color: theme.colors.black,
   },
   eyeButton: {
-    padding: theme.spacing.xs,
+    padding: 8,
   },
   agreementContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginTop: theme.spacing.md,
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
   checkbox: {
-    marginRight: theme.spacing.sm,
+    marginRight: 8,
     marginTop: 2,
   },
   agreementText: {
-    ...theme.typography.bodySmall,
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
     color: theme.colors.gray400,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   agreementLink: {
-    color: theme.colors.accent,
-    fontWeight: "600",
+    color: theme.colors.black,
+    fontFamily: "Inter-Medium",
   },
+  // 按钮和操作样式
   actionsContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 24,
   },
   mainButton: {
     backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.md,
+    borderRadius: 16,
+    paddingVertical: 18,
     alignItems: "center",
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
   mainButtonDisabled: {
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: "#E8E8E8",
   },
   mainButtonText: {
-    ...theme.typography.button,
+    fontSize: 16,
+    fontFamily: "Inter-Bold",
     color: theme.colors.white,
+    letterSpacing: 0.5,
   },
   linksContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: theme.spacing.lg,
+    marginBottom: 24,
+    paddingHorizontal: 4,
   },
   linkText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.accent,
-    fontWeight: "600",
+    fontSize: 13,
+    fontFamily: "Inter-Medium",
+    color: theme.colors.gray400,
+    letterSpacing: 0.2,
   },
   switchContainer: {
     alignItems: "center",
-    paddingTop: theme.spacing.lg,
+    paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: "#E8E8E8",
   },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   switchText: {
-    ...theme.typography.body,
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
     color: theme.colors.gray400,
-    marginRight: theme.spacing.sm,
+    marginRight: 6,
   },
   switchLink: {
-    ...theme.typography.body,
-    color: theme.colors.accent,
-    fontWeight: "600",
+    fontSize: 14,
+    fontFamily: "Inter-Bold",
+    color: theme.colors.black,
+    letterSpacing: 0.3,
   },
 });
 

@@ -13,7 +13,7 @@ const PublishTabButton: React.FC<PublishTabButtonProps> = ({ onPress }) => {
 
   const handlePress = () => {
     // @ts-ignore - navigation types
-    navigation.navigate("Publish");
+    navigation.navigate("PublishType");
   };
 
   return (
