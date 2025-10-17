@@ -595,7 +595,7 @@ const PublishOutfitScreen = () => {
         contentContainerStyle={styles.contentContainer}
       >
         {renderPreviewSection()}
-        {renderImageGallery()}
+        {images.length > 0 && renderImageGallery()}
 
         <Box mx="$md" mb="$md">
           <Input

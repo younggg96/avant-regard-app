@@ -10,7 +10,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "designer-1",
           name: "Virginie Viard",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/64/60/60",
           isVerified: true,
         },
         content: {
@@ -18,9 +18,9 @@ const createMockPosts = (): Post[] => {
           description:
             "在经典与创新之间寻找平衡，呈现现代女性的优雅风范。此次系列融合了香奈儿经典的斜纹软呢与现代剪裁，为当代女性打造既舒适又优雅的着装选择。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/180/600/800",
+            "https://picsum.photos/id/183/600/800",
+            "https://picsum.photos/id/191/600/800",
           ],
           tags: ["chanel", "春夏", "经典", "优雅"],
         },
@@ -41,7 +41,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "user-1",
           name: "Emma Chen",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/91/60/60",
           isVerified: false,
         },
         content: {
@@ -49,8 +49,8 @@ const createMockPosts = (): Post[] => {
           description:
             "经典风衣与现代配饰的完美结合，适合春日漫步的优雅造型。这套搭配将经典的英式风衣与现代感的配饰相结合，既保持了优雅的气质，又不失时尚感。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/203/600/800",
+            "https://picsum.photos/id/225/600/800",
           ],
           tags: ["街头", "优雅", "春日", "经典"],
         },
@@ -68,21 +68,21 @@ const createMockPosts = (): Post[] => {
             name: "经典风衣",
             brand: "BURBERRY",
             price: "¥18,900",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/302/150/200",
           },
           {
             id: "item-2",
             name: "链条包",
             brand: "CHANEL",
             price: "¥32,500",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/326/150/200",
           },
           {
             id: "item-3",
             name: "踝靴",
             brand: "SAINT LAURENT",
             price: "¥9,800",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/381/150/200",
           },
         ],
       },
@@ -92,7 +92,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "user-2",
           name: "Sophie Liu",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/65/60/60",
           isVerified: true,
         },
         content: {
@@ -100,10 +100,10 @@ const createMockPosts = (): Post[] => {
           description:
             "经典回归的马鞍包，从设计到实用性的全方位评价。这款包包在保持经典设计的同时，在实用性和现代感方面都有不错的表现。皮质手感极佳，做工精细。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/292/600/800",
+            "https://picsum.photos/id/367/600/800",
+            "https://picsum.photos/id/379/600/800",
+            "https://picsum.photos/id/390/600/800",
           ],
           tags: ["dior", "马鞍包", "评测", "经典"],
         },
@@ -123,14 +123,14 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "editor-1",
           name: "Alice Wang",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/77/60/60",
           isVerified: true,
         },
         content: {
           title: "2024春夏时装周趋势解析",
           description:
             "从巴黎到米兰，解读本季最重要的时尚趋势。今年春夏的关键词是'回归自然'，设计师们用更加环保的材料和工艺，展现对可持续时尚的思考。",
-          images: ["https://via.placeholder.com/400x300"],
+          images: ["https://picsum.photos/id/432/600/800"],
           tags: ["时装周", "趋势", "2024", "可持续"],
         },
         engagement: {
@@ -149,7 +149,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "designer-2",
           name: "Anthony Vaccarello",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/84/60/60",
           isVerified: true,
         },
         content: {
@@ -157,8 +157,8 @@ const createMockPosts = (): Post[] => {
           description:
             "摇滚精神与巴黎优雅的完美融合，展现叛逆中的精致美学。这一季我们继续探索YSL标志性的轮廓，将70年代的摇滚精神注入现代设计。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/453/600/800",
+            "https://picsum.photos/id/485/600/800",
           ],
           tags: ["saint laurent", "秋冬", "摇滚", "精致"],
         },
@@ -179,14 +179,14 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "user-3",
           name: "Lily Zhang",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/99/60/60",
           isVerified: false,
         },
         content: {
           title: "现代极简主义通勤装",
           description:
             "简约线条与高级面料的时尚表达，适合现代都市女性的通勤造型。整体以黑白灰为主色调，通过不同材质的对比营造层次感。",
-          images: ["https://via.placeholder.com/400x300"],
+          images: ["https://picsum.photos/id/502/600/800"],
           tags: ["极简", "通勤", "现代", "都市"],
         },
         engagement: {
@@ -203,14 +203,14 @@ const createMockPosts = (): Post[] => {
             name: "羊毛大衣",
             brand: "THE ROW",
             price: "¥28,600",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/403/150/200",
           },
           {
             id: "item-5",
             name: "皮革靴",
             brand: "BOTTEGA VENETA",
             price: "¥12,800",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/427/150/200",
           },
         ],
       },
@@ -220,7 +220,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "user-4",
           name: "Grace Kim",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/103/60/60",
           isVerified: false,
         },
         content: {
@@ -228,8 +228,8 @@ const createMockPosts = (): Post[] => {
           description:
             "经过3个月的日常使用，分享这款网红包包的真实感受。包包的编织工艺确实精美，但在实用性方面还是有一些需要注意的地方。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/513/600/800",
+            "https://picsum.photos/id/524/600/800",
           ],
           tags: ["bottega veneta", "cassette", "使用体验", "评测"],
         },
@@ -249,7 +249,7 @@ const createMockPosts = (): Post[] => {
         author: {
           id: "editor-2",
           name: "Victoria Chen",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/117/60/60",
           isVerified: true,
         },
         content: {
@@ -257,8 +257,8 @@ const createMockPosts = (): Post[] => {
           description:
             "探讨时尚产业的可持续发展之路，从材料选择到生产工艺的全方位思考。越来越多的品牌开始关注环保和可持续性，这或许是时尚产业的未来方向。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/545/600/800",
+            "https://picsum.photos/id/562/600/800",
           ],
           tags: ["可持续", "环保", "时尚", "未来"],
         },

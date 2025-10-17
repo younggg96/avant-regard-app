@@ -26,6 +26,7 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
+import ImageGallery from "../components/ImageGallery";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -37,7 +38,6 @@ const PublishLookbookScreen = () => {
   const [images, setImages] = useState<string[]>([]);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -54,8 +54,6 @@ const PublishLookbookScreen = () => {
 
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
-
-  const previewFlatListRef = useRef<FlatList>(null);
 
   const MAX_IMAGES = 9;
 
@@ -116,7 +114,6 @@ const PublishLookbookScreen = () => {
     setImages([]);
     setCoverImage(null);
     setSelectedTags([]);
-    setCurrentImageIndex(0);
   };
 
   const handleAddImage = () => {
@@ -183,7 +180,6 @@ const PublishLookbookScreen = () => {
         const [movedImage] = newImages.splice(selectedImageIndex, 1);
         newImages.unshift(movedImage);
         setImages(newImages);
-        setCurrentImageIndex(0);
       }
 
       Alert.show("设置成功: 已将此图片设为封面");
@@ -332,76 +328,18 @@ const PublishLookbookScreen = () => {
     }
 
     return (
-      <Box h={previewHeight} mx="$md" my="$md" position="relative">
-        <FlatList
-          ref={previewFlatListRef}
-          data={images}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => `${item}-${index}`}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(
-              event.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32)
-            );
-            setCurrentImageIndex(index);
-          }}
-          renderItem={({ item }) => {
-            return (
-              <View
-                style={{
-                  width: SCREEN_WIDTH - 32,
-                  height: previewHeight,
-                  borderRadius: 8,
-                  overflow: "hidden",
-                  backgroundColor: "transparent",
-                }}
-              >
-                <Image
-                  source={{ uri: item }}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    resizeMode: "cover",
-                  }}
-                />
-              </View>
-            );
-          }}
-        />
-
-        {images.length > 1 && (
-          <Box
-            position="absolute"
-            bottom={12}
-            left={0}
-            right={0}
-            flexDirection="row"
-            justifyContent="center"
-            alignItems="center"
-            gap="$xs"
-          >
-            {images.map((_, index) => (
-              <Box
-                key={index}
-                w={currentImageIndex === index ? 20 : 6}
-                h={6}
-                rounded="$full"
-                bg={
-                  currentImageIndex === index
-                    ? "$white"
-                    : "rgba(255,255,255,0.5)"
-                }
-              />
-            ))}
-          </Box>
-        )}
-      </Box>
+      <ImageGallery
+        images={images}
+        imageHeight={previewHeight}
+        showThumbnails={false}
+        showFullscreenOnPress={false}
+        onImagePress={(index) => handleImagePress(index)}
+      />
     );
   };
 
   const renderImageGallery = () => (
-    <Box mx="$md" mb="$md">
+    <Box mx="$md" mb="$md" mt="$md">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {images.map((image, index) => (
           <Pressable
@@ -596,7 +534,7 @@ const PublishLookbookScreen = () => {
         contentContainerStyle={styles.contentContainer}
       >
         {renderPreviewSection()}
-        {renderImageGallery()}
+        {images.length > 0 && renderImageGallery()}
 
         <Box mx="$md" mb="$md">
           <Input

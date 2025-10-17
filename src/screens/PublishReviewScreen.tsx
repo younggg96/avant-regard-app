@@ -427,7 +427,7 @@ const PublishReviewScreen = () => {
 
         {renderRatingSection()}
 
-        {renderImageGallery()}
+        {images.length > 0 && renderImageGallery()}
 
         <Box mx="$md" mb="$md">
           <Text color="$gray600" fontSize="$sm" mb="$sm">

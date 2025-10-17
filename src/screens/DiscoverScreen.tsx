@@ -1,12 +1,16 @@
 import React, { useState, useCallback, useEffect } from "react";
-import {
-  StyleSheet,
-  RefreshControl,
-  ActivityIndicator,
-} from "react-native";
+import { StyleSheet, RefreshControl, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../components/ui";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Box,
+  Text,
+  ScrollView,
+  Pressable,
+  VStack,
+  HStack,
+} from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
@@ -21,7 +25,6 @@ interface OriginalPost {
     id: string;
     name: string;
     avatar: string;
-    isVerified?: boolean;
   };
   content: {
     title: string;
@@ -101,12 +104,11 @@ const DiscoverScreen = () => {
     return {
       id: post.id,
       title: post.content.title,
-      image: post.content.images[0] || "https://via.placeholder.com/300x400",
+      image: post.content.images[0] || "https://picsum.photos/id/1/600/800",
       author: {
         id: post.author.id,
         name: post.author.name,
         avatar: post.author.avatar,
-        isVerified: post.author.isVerified,
       },
       likes: post.engagement.likes,
       isLiked: post.engagement.isLiked,
@@ -120,23 +122,26 @@ const DiscoverScreen = () => {
   }, [activeTab, posts, favoritePosts, convertToPost]);
 
   // Handle post interactions
-  const handlePostPress = useCallback((post: Post) => {
-    console.log("查看帖子详情:", post.id);
-  }, []);
+  const handlePostPress = useCallback(
+    (post: Post) => {
+      console.log("查看帖子详情:", post.id);
+      // 查找完整的原始帖子数据
+      const rawPosts = activeTab === "home" ? posts : favoritePosts;
+      const fullPost = rawPosts.find((p) => p.id === post.id);
+
+      // 传递完整的帖子数据到详情页
+      if (fullPost) {
+        (navigation.navigate as any)("PostDetail", { post: fullPost });
+      }
+    },
+    [navigation, activeTab, posts, favoritePosts]
+  );
 
   const handleAuthorPress = useCallback(
     (authorId: string) => {
       console.log("查看作者资料:", authorId);
       // 导航到设计师详情页面
       (navigation.navigate as any)("DesignerDetail", { id: authorId });
-    },
-    [navigation]
-  );
-
-  const handleItemPress = useCallback(
-    (itemId: string) => {
-      console.log("查看商品详情:", itemId);
-      // 简化：暂时只记录日志
     },
     [navigation]
   );
@@ -160,7 +165,10 @@ const DiscoverScreen = () => {
     setFavoritePosts((prevPosts) => prevPosts.map(updatePost));
   }, []);
 
-  // 移除不需要的handleSave和handleComment函数
+  // 处理搜索按钮点击
+  const handleSearchPress = useCallback(() => {
+    (navigation.navigate as any)("Search");
+  }, [navigation]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -246,36 +254,56 @@ const DiscoverScreen = () => {
       />
 
       {/* Simple Tab View */}
-      <HStack px="$md" borderBottomWidth={1} borderBottomColor="$gray100">
-        <Pressable
-          py="$md"
-          px="$lg"
-          mr="$md"
-          borderBottomWidth={activeTab === "home" ? 2 : 0}
-          borderBottomColor="$black"
-          onPress={() => setActiveTab("home")}
-        >
-          <Text
-            color={activeTab === "home" ? "$black" : "$gray400"}
-            fontWeight={activeTab === "home" ? "$semibold" : "$normal"}
+      <HStack
+        px="$md"
+        borderBottomWidth={1}
+        borderBottomColor="$gray100"
+        justifyContent="between"
+        alignItems="center"
+      >
+        <HStack flex={1}>
+          <Pressable
+            py="$md"
+            px="$lg"
+            mr="$md"
+            borderBottomWidth={activeTab === "home" ? 2 : 0}
+            borderBottomColor="$black"
+            onPress={() => setActiveTab("home")}
           >
-            主页 ({Array.isArray(posts) ? posts.length : 0})
-          </Text>
-        </Pressable>
-        <Pressable
-          py="$md"
-          px="$lg"
-          mr="$md"
-          borderBottomWidth={activeTab === "favorites" ? 2 : 0}
-          borderBottomColor="$black"
-          onPress={() => setActiveTab("favorites")}
-        >
-          <Text
-            color={activeTab === "favorites" ? "$black" : "$gray400"}
-            fontWeight={activeTab === "favorites" ? "$semibold" : "$normal"}
+            <Text
+              color={activeTab === "home" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "home" ? "$semibold" : "$normal"}
+            >
+              主页 ({Array.isArray(posts) ? posts.length : 0})
+            </Text>
+          </Pressable>
+          <Pressable
+            py="$md"
+            px="$lg"
+            mr="$md"
+            borderBottomWidth={activeTab === "favorites" ? 2 : 0}
+            borderBottomColor="$black"
+            onPress={() => setActiveTab("favorites")}
           >
-            收藏相关 ({Array.isArray(favoritePosts) ? favoritePosts.length : 0})
-          </Text>
+            <Text
+              color={activeTab === "favorites" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "favorites" ? "$semibold" : "$normal"}
+            >
+              收藏相关 (
+              {Array.isArray(favoritePosts) ? favoritePosts.length : 0})
+            </Text>
+          </Pressable>
+        </HStack>
+
+        {/* Search Button */}
+        <Pressable
+          onPress={handleSearchPress}
+          px="$md"
+          py="$sm"
+          rounded="$md"
+          ml="$sm"
+        >
+          <Ionicons name="search" size={18} color={theme.colors.gray700} />
         </Pressable>
       </HStack>
 
@@ -293,8 +321,19 @@ const DiscoverScreen = () => {
         }
       >
         {currentPosts.length === 0 ? (
-          <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
-            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" textAlign="center">
+          <VStack
+            flex={1}
+            justifyContent="center"
+            alignItems="center"
+            py="$2xl"
+          >
+            <Text
+              fontSize="$lg"
+              color="$black"
+              fontWeight="$medium"
+              mb="$sm"
+              textAlign="center"
+            >
               {activeTab === "home" ? "暂无主页内容" : "暂无收藏相关内容"}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">

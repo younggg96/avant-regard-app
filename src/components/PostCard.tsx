@@ -14,7 +14,6 @@ export interface Post {
     id: string;
     name: string;
     avatar: string;
-    isVerified?: boolean;
   };
   content?: {
     title: string;
@@ -75,7 +74,7 @@ const PostCard: React.FC<PostCardProps> = ({
       rounded="$md"
       overflow="hidden"
       sx={{
-        shadowColor: '$black',
+        shadowColor: "$black",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
@@ -92,12 +91,7 @@ const PostCard: React.FC<PostCardProps> = ({
       </Pressable>
 
       {/* 标题 */}
-      <Pressable
-        px="$sm"
-        pt="$sm"
-        pb="$xs"
-        onPress={() => onPress?.(post)}
-      >
+      <Pressable px="$sm" pt="$sm" pb="$xs" onPress={() => onPress?.(post)}>
         <Text
           color="$black"
           fontWeight="$semibold"
@@ -110,22 +104,14 @@ const PostCard: React.FC<PostCardProps> = ({
       </Pressable>
 
       {/* 底部：用户信息和点赞 */}
-      <HStack
-        px="$sm"
-        pb="$sm"
-        justifyContent="between"
-        alignItems="center"
-      >
+      <HStack px="$sm" pb="$sm" justifyContent="between" alignItems="center">
         <Pressable
           onPress={() => onAuthorPress?.(post.author.id)}
           flex={1}
           mr="$sm"
         >
           <HStack space="xs" alignItems="center">
-            <Image 
-              source={{ uri: post.author.avatar }} 
-              style={styles.avatar} 
-            />
+            <Image source={{ uri: post.author.avatar }} style={styles.avatar} />
             <Text
               color="$gray600"
               fontWeight="$medium"
@@ -135,14 +121,6 @@ const PostCard: React.FC<PostCardProps> = ({
             >
               {post.author.name}
             </Text>
-            {post.author.isVerified && (
-              <Ionicons
-                name="checkmark-circle"
-                size={12}
-                color={theme.colors.accent}
-                style={{ marginLeft: 2 }}
-              />
-            )}
           </HStack>
         </Pressable>
 

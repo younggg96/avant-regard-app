@@ -10,7 +10,7 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "user-5",
           name: "时尚博主 Anna",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/122/60/60",
           isVerified: true,
         },
         content: {
@@ -18,9 +18,9 @@ const createMockFavoritePosts = (): Post[] => {
           description:
             "最近收藏了CHANEL的经典链条包，分享几种不同场合的搭配方法。从日常通勤到晚宴派对，一包多用，展现不同风格的魅力。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/583/600/800",
+            "https://picsum.photos/id/593/600/800",
+            "https://picsum.photos/id/601/600/800",
           ],
           tags: ["chanel", "链条包", "搭配", "收藏单品"],
         },
@@ -38,21 +38,21 @@ const createMockFavoritePosts = (): Post[] => {
             name: "经典链条包",
             brand: "CHANEL",
             price: "¥32,500",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/447/150/200",
           },
           {
             id: "fav-item-2",
             name: "羊毛西装",
             brand: "CHANEL",
             price: "¥28,900",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/463/150/200",
           },
           {
             id: "fav-item-3",
             name: "珍珠耳环",
             brand: "CHANEL",
             price: "¥8,600",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/478/150/200",
           },
         ],
       },
@@ -62,7 +62,7 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "user-6",
           name: "Fashion Critic",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/133/60/60",
           isVerified: true,
         },
         content: {
@@ -70,10 +70,10 @@ const createMockFavoritePosts = (): Post[] => {
           description:
             "使用了半年的Kelly包，从材质做工到日常实用性的全方位评测。对于考虑入手这款经典包包的朋友，希望能提供一些参考。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/612/600/800",
+            "https://picsum.photos/id/628/600/800",
+            "https://picsum.photos/id/635/600/800",
+            "https://picsum.photos/id/646/600/800",
           ],
           tags: ["hermès", "kelly包", "评测", "奢侈品"],
         },
@@ -93,7 +93,7 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "user-7",
           name: "Style Maven",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/146/60/60",
           isVerified: false,
         },
         content: {
@@ -101,8 +101,8 @@ const createMockFavoritePosts = (): Post[] => {
           description:
             "分享几套以YSL踝靴为重点的秋冬搭配，展现摇滚与优雅并存的风格。这双靴子真的是投资级单品，怎么搭都很有型。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/659/600/800",
+            "https://picsum.photos/id/674/600/800",
           ],
           tags: ["saint laurent", "踝靴", "秋冬", "摇滚风"],
         },
@@ -120,21 +120,21 @@ const createMockFavoritePosts = (): Post[] => {
             name: "Wyatt踝靴",
             brand: "SAINT LAURENT",
             price: "¥9,800",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/494/150/200",
           },
           {
             id: "fav-item-5",
             name: "皮革外套",
             brand: "SAINT LAURENT",
             price: "¥24,600",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/506/150/200",
           },
           {
             id: "fav-item-6",
             name: "紧身牛仔裤",
             brand: "SAINT LAURENT",
             price: "¥4,200",
-            imageUrl: "https://via.placeholder.com/150x200",
+            imageUrl: "https://picsum.photos/id/531/150/200",
           },
         ],
       },
@@ -144,14 +144,14 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "editor-3",
           name: "Luxury Editor",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/152/60/60",
           isVerified: true,
         },
         content: {
           title: "2024年值得投资的经典包包",
           description:
             "盘点本年度最值得投资的经典包包，从保值性、实用性和时尚度三个维度分析。这些包包不仅是配饰，更是投资品。",
-          images: ["https://via.placeholder.com/400x300"],
+          images: ["https://picsum.photos/id/687/600/800"],
           tags: ["投资", "包包", "经典", "保值"],
         },
         engagement: {
@@ -170,7 +170,7 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "designer-3",
           name: "Gabriela Hearst",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/166/60/60",
           isVerified: true,
         },
         content: {
@@ -178,9 +178,9 @@ const createMockFavoritePosts = (): Post[] => {
           description:
             "展示我们最新的可持续时尚系列，使用环保材料制作的优雅单品。时尚与环保的完美结合，为地球负责的美丽选择。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/701/600/800",
+            "https://picsum.photos/id/718/600/800",
+            "https://picsum.photos/id/733/600/800",
           ],
           tags: ["可持续", "环保", "时尚", "责任"],
         },
@@ -201,7 +201,7 @@ const createMockFavoritePosts = (): Post[] => {
         author: {
           id: "user-8",
           name: "Luxury Lover",
-          avatar: "https://via.placeholder.com/60x60",
+          avatar: "https://picsum.photos/id/177/60/60",
           isVerified: false,
         },
         content: {
@@ -209,8 +209,8 @@ const createMockFavoritePosts = (): Post[] => {
           description:
             "入手BV的Arco包已经8个月了，分享真实的使用体验。从日常搭配到保养心得，全面解析这个网红包包的优缺点。",
           images: [
-            "https://via.placeholder.com/400x300",
-            "https://via.placeholder.com/400x300",
+            "https://picsum.photos/id/747/600/800",
+            "https://picsum.photos/id/762/600/800",
           ],
           tags: ["bottega veneta", "编织包", "使用体验", "奢侈品"],
         },

@@ -61,14 +61,6 @@ const PostCard: React.FC<PostCardProps> = ({
           <Text style={styles.authorName} numberOfLines={1}>
             {post.author.name}
           </Text>
-          {post.author.isVerified && (
-            <Ionicons
-              name="checkmark-circle"
-              size={12}
-              color={theme.colors.accent}
-              style={{ marginLeft: 2 }}
-            />
-          )}
         </TouchableOpacity>
 
         <TouchableOpacity

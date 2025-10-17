@@ -50,7 +50,6 @@ interface Designer {
   id: string;
   name: string;
   brand: string;
-  nationality: string;
   collections: number;
   shows: number;
   totalLooks: number;
@@ -102,7 +101,6 @@ const ArchiveScreen = () => {
           id: `designer-${index}`,
           name: name,
           brand: brand,
-          nationality: "国际", // Default nationality
           collections: data.collections_summary.length,
           shows: data.shows.length,
           totalLooks: totalLooks,
@@ -120,8 +118,7 @@ const ArchiveScreen = () => {
   const filteredDesigners = designers.filter((designer) => {
     const matchesSearch =
       designer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      designer.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      designer.nationality.toLowerCase().includes(searchQuery.toLowerCase());
+      designer.brand.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
@@ -201,8 +198,7 @@ const ArchiveScreen = () => {
                   <Text style={styles.designerName}>{designer.name}</Text>
                   <Text style={styles.designerBrand}>{designer.brand}</Text>
                   <Text style={styles.designerMeta}>
-                    {designer.collections} 个系列 • {designer.shows} 场秀 •{" "}
-                    {designer.totalLooks} 个造型
+                    {designer.shows} 场秀 • {designer.totalLooks} 个造型
                   </Text>
                   <Text style={styles.designerSeason}>
                     最新: {designer.latestSeason}

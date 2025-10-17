@@ -85,7 +85,7 @@ const PublishTypeScreen = () => {
             onPress={() => handleSelectType(type)}
             bg="$white"
             borderWidth={1}
-            borderColor="$gray200"
+            borderColor="$gray100"
             rounded="$lg"
             p="$lg"
             sx={{
@@ -142,7 +142,7 @@ const PublishTypeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: theme.colors.white,
   },
 });
 

@@ -12,7 +12,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import { Alert } from "../utils/Alert";
 import designersData from "../data/data.json";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -377,7 +376,7 @@ const DesignerDetailScreen = () => {
             activeTab === "collections" && styles.activeTabText,
           ]}
         >
-          系列 ({collections.length})
+          秀场 ({collections.length})
         </Text>
       </TouchableOpacity>
       <TouchableOpacity

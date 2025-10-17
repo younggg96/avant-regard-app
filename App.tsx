@@ -17,6 +17,8 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
 import LookDetailScreen from "./src/screens/LookDetailScreen";
+import PostDetailScreen from "./src/screens/PostDetailScreen";
+import SearchScreen from "./src/screens/SearchScreen";
 // Auth Screens
 import AuthScreen from "./src/screens/AuthScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
@@ -34,6 +36,7 @@ import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
 import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
+import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -191,8 +194,23 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="AllComments"
+        component={AllCommentsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="LookDetail"
         component={LookDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="PostDetail"
+        component={PostDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Search"
+        component={SearchScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
