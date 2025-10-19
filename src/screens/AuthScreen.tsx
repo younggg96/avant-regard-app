@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -197,8 +198,11 @@ const AuthScreen = () => {
   const renderBrandLogo = () => {
     return (
       <View style={styles.brandContainer}>
-        <Text style={styles.brandName}>AVANT REGARD</Text>
-        <Text style={styles.brandTagline}>Redefining Fashion Narrative</Text>
+        <Image
+          source={require("../../assets/images/logo.jpg")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </View>
     );
   };
@@ -476,7 +480,7 @@ const AuthScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "white",
   },
   keyboardAvoid: {
     flex: 1,
@@ -494,6 +498,10 @@ const styles = StyleSheet.create({
   brandContainer: {
     alignItems: "center",
     marginBottom: 48,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   brandName: {
     fontSize: 22,
