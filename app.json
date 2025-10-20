@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Avant Regard 需要访问您的相册来选择图片",
         "NSCameraUsageDescription": "Avant Regard 需要访问相机来拍摄照片",
-        "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要保存编辑后的图片到相册"
+        "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要保存编辑后的图片到相册",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.yanggg96.avant-regard"
     },
@@ -39,6 +40,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3e890188-f159-4285-81fb-790e46fce869"
+      }
+    }
   }
 }

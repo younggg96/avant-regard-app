@@ -37,8 +37,6 @@ const PublishArticleScreen = () => {
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const predefinedTags = ["趋势", "分析", "观点", "专业", "搭配", "推荐"];
-
   // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
     const textContent = content.replace(/<[^>]*>/g, "").trim();
