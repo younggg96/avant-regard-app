@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Modal,
@@ -18,15 +18,39 @@ import {
   ScrollView,
   Pressable,
   HStack,
-  Image,
   Input,
+  Image,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
+import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
+import LookSelectorModal from "../components/LookSelectorModal";
+import ImagePreviewModal from "../components/ImagePreviewModal";
+import ImagePickerModal from "../components/ImagePickerModal";
+import PublishButtons from "../components/PublishButtons";
+import { saveDraft } from "../services/draftService";
+import showsData from "../data/data.json";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+
+interface LookImage {
+  image_url: string;
+  image_type: string;
+}
+
+interface Show {
+  show_url: string;
+  season: string;
+  category: string;
+  images: LookImage[];
+}
+
+interface DesignerData {
+  designer: string;
+  shows: Show[];
+}
 
 const PublishOutfitScreen = () => {
   const navigation = useNavigation();
@@ -37,6 +61,7 @@ const PublishOutfitScreen = () => {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedLooks, setSelectedLooks] = useState<SelectedLook[]>([]);
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -54,26 +79,61 @@ const PublishOutfitScreen = () => {
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
 
+  const [showLookSelector, setShowLookSelector] = useState(false);
+  const [showLookPreview, setShowLookPreview] = useState(false);
+  const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
+  const [allLooks, setAllLooks] = useState<
+    Array<{ designer: string; season: string; imageUrl: string }>
+  >([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const previewFlatListRef = useRef<FlatList>(null);
 
   const MAX_IMAGES = 9;
+  const MAX_LOOKS = 6;
 
   const predefinedTags = ["日常", "工作", "约会", "派对", "度假", "运动"];
 
-  const validateForm = (): boolean => {
-    if (!title.trim()) {
-      Alert.show("提示: 请填写搭配标题");
-      return false;
-    }
-    if (images.length === 0) {
-      Alert.show("提示: 分享搭配需要至少上传一张图片");
-      return false;
-    }
-    return true;
+  // 加载所有 look 数据
+  useEffect(() => {
+    const looks: Array<{
+      designer: string;
+      season: string;
+      imageUrl: string;
+    }> = [];
+
+    (showsData as DesignerData[]).forEach((designerData) => {
+      designerData.shows.forEach((show) => {
+        if (show.images && show.images.length > 0) {
+          show.images.forEach((img) => {
+            if (img.image_type === "look") {
+              looks.push({
+                designer: designerData.designer,
+                season: show.season,
+                imageUrl: img.image_url,
+              });
+            }
+          });
+        }
+      });
+    });
+
+    setAllLooks(looks);
+  }, []);
+
+  // 检查是否满足发布标准
+  const canPublish = () => {
+    return (
+      title.trim().length > 0 &&
+      description.trim().length > 0 &&
+      images.length > 0 &&
+      selectedLooks.length > 0
+    );
   };
 
-  const handlePublish = () => {
-    if (!validateForm()) {
+  const handlePublish = async () => {
+    if (!canPublish()) {
+      Alert.show("提示: 请完成所有必填项");
       return;
     }
 
@@ -84,29 +144,50 @@ const PublishOutfitScreen = () => {
       images,
       coverImage,
       tags: selectedTags,
+      associatedLooks: selectedLooks,
     };
 
     console.log("Publishing:", publishData);
 
-    Alert.show("发布成功: 您的搭配已成功发布！", "", 1000);
+    Alert.show("发布成功: 您的搭配已成功发布！", "", 1500);
     setTimeout(() => {
       resetForm();
       navigation.goBack();
-    }, 1000);
+    }, 1500);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    // 验证是否有内容可以保存
+    if (
+      !title &&
+      !description &&
+      images.length === 0 &&
+      selectedLooks.length === 0
+    ) {
+      Alert.show("提示: 请至少填写一些内容再保存草稿");
+      return;
+    }
+
+    // 将 outfit 数据格式化为 review 格式以便保存
     const draftData = {
-      type: "outfit",
-      title,
-      description,
+      type: "review" as const,
+      title: title || "搭配草稿",
+      productName: "搭配分享",
+      brand: "",
+      rating: 0,
+      reviewText: description,
       images,
-      coverImage,
-      tags: selectedTags,
+      associatedLooks: selectedLooks,
     };
 
-    console.log("Saving draft:", draftData);
-    Alert.show("草稿已保存: 您的内容已保存为草稿");
+    try {
+      const draftId = await saveDraft(draftData);
+      console.log("Draft saved with ID:", draftId);
+      Alert.show("草稿已保存: 您的内容已保存为草稿", "", 1500);
+    } catch (error) {
+      console.error("Save draft error:", error);
+      Alert.show("保存失败: 请重试");
+    }
   };
 
   const resetForm = () => {
@@ -115,6 +196,7 @@ const PublishOutfitScreen = () => {
     setImages([]);
     setCoverImage(null);
     setSelectedTags([]);
+    setSelectedLooks([]);
     setCurrentImageIndex(0);
   };
 
@@ -291,6 +373,44 @@ const PublishOutfitScreen = () => {
     setSelectedImageIndex(null);
   };
 
+  const handleSelectLook = (look: SelectedLook) => {
+    if (selectedLooks.length >= MAX_LOOKS) {
+      Alert.show("提示: 最多只能关联" + MAX_LOOKS + "个造型");
+      return;
+    }
+
+    // 检查是否已经添加过相同的 look
+    const isDuplicate = selectedLooks.some(
+      (item) =>
+        item.designer === look.designer &&
+        item.season === look.season &&
+        item.imageUrl === look.imageUrl
+    );
+
+    if (isDuplicate) {
+      Alert.show("提示: 该造型已经添加过了");
+      return;
+    }
+
+    setSelectedLooks([...selectedLooks, look]);
+    setShowLookSelector(false);
+    Alert.show("已关联造型", "", 1500);
+  };
+
+  const handleRemoveLook = (index: number) => {
+    const newLooks = selectedLooks.filter((_, i) => i !== index);
+    setSelectedLooks(newLooks);
+    Alert.show("已取消关联");
+  };
+
+  const filteredLooks = searchQuery
+    ? allLooks.filter(
+        (look) =>
+          look.designer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          look.season.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : allLooks;
+
   const previewHeight = useMemo(() => {
     if (!coverImage || !imageDimensions[coverImage]) {
       return 300;
@@ -458,118 +578,6 @@ const PublishOutfitScreen = () => {
     </Box>
   );
 
-  const renderBottomButtons = () => (
-    <Box
-      position="absolute"
-      bottom={6}
-      left={0}
-      right={0}
-      bg="$white"
-      px="$lg"
-      py="$md"
-      borderTopWidth={1}
-      borderTopColor="$gray100"
-    >
-      <HStack>
-        <Pressable
-          flex={1}
-          py="$md"
-          mr="$sm"
-          bg="$gray100"
-          rounded="$md"
-          onPress={handleSaveDraft}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons
-              name="bookmark-outline"
-              size={20}
-              color={theme.colors.gray600}
-            />
-            <Text color="$gray600" ml="$xs" fontWeight="$medium">
-              存草稿
-            </Text>
-          </HStack>
-        </Pressable>
-        <Pressable
-          flex={2}
-          py="$md"
-          ml="$sm"
-          bg="$accent"
-          rounded="$md"
-          onPress={handlePublish}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium">
-              发布
-            </Text>
-          </HStack>
-        </Pressable>
-      </HStack>
-    </Box>
-  );
-
-  const renderImagePickerModal = () => (
-    <Modal
-      visible={showImagePicker}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setShowImagePicker(false)}
-    >
-      <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
-        <Pressable flex={1} onPress={() => setShowImagePicker(false)} />
-        <Box
-          bg="$white"
-          borderTopLeftRadius="$lg"
-          borderTopRightRadius="$lg"
-          pb={34}
-        >
-          <HStack
-            px="$lg"
-            py="$md"
-            borderBottomWidth={1}
-            borderBottomColor="$gray100"
-            alignItems="center"
-            justifyContent="between"
-          >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              选择图片
-            </Text>
-            <Pressable p="$xs" onPress={() => setShowImagePicker(false)}>
-              <Ionicons name="close" size={24} color={theme.colors.gray600} />
-            </Pressable>
-          </HStack>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("camera")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="camera" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                拍照
-              </Text>
-            </HStack>
-          </Pressable>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("gallery")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="images" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择
-              </Text>
-            </HStack>
-          </Pressable>
-        </Box>
-      </Box>
-    </Modal>
-  );
-
   if (showImageCropper && cropperImageUri) {
     return (
       <ImageCropper
@@ -598,13 +606,21 @@ const PublishOutfitScreen = () => {
         {images.length > 0 && renderImageGallery()}
 
         <Box mx="$md" mb="$md">
+          <HStack mb="$sm" alignItems="center">
+            <Text color="$gray600" fontSize="$sm">
+              标题
+            </Text>
+            <Text color="$red500" fontSize="$sm" ml="$xs">
+              *
+            </Text>
+          </HStack>
           <Input
             value={title}
             onChangeText={setTitle}
             placeholder="分享您的搭配灵感和穿搭心得"
             placeholderTextColor={theme.colors.gray400}
             multiline
-            variant="filled"
+            variant="outline"
             sx={{
               fontSize: 18,
               fontWeight: "500",
@@ -618,13 +634,21 @@ const PublishOutfitScreen = () => {
         </Box>
 
         <Box mx="$md" mb="$md">
+          <HStack mb="$sm" alignItems="center">
+            <Text color="$gray600" fontSize="$sm">
+              搭配详情
+            </Text>
+            <Text color="$red500" fontSize="$sm" ml="$xs">
+              *
+            </Text>
+          </HStack>
           <Input
             value={description}
             onChangeText={setDescription}
             placeholder="详细描述您的搭配..."
             placeholderTextColor={theme.colors.gray400}
             multiline
-            variant="filled"
+            variant="outline"
             sx={{
               color: theme.colors.gray600,
               minHeight: 80,
@@ -635,10 +659,51 @@ const PublishOutfitScreen = () => {
             }}
           />
         </Box>
+
+        {/* 关联造型 */}
+        <LookGridSelector
+          selectedLooks={selectedLooks}
+          onLookPress={(look) => {
+            setPreviewLook(look);
+            setShowLookPreview(true);
+          }}
+          onRemoveLook={handleRemoveLook}
+          onAddLook={() => setShowLookSelector(true)}
+          maxLooks={MAX_LOOKS}
+          label="关联造型"
+          required
+        />
       </ScrollView>
 
-      {renderBottomButtons()}
-      {renderImagePickerModal()}
+      <PublishButtons
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        publishDisabled={!canPublish()}
+      />
+
+      <ImagePickerModal
+        visible={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelectCamera={() => handleImageSelection("camera")}
+        onSelectGallery={() => handleImageSelection("gallery")}
+      />
+
+      <ImagePreviewModal
+        visible={showLookPreview}
+        imageUrl={previewLook?.imageUrl || ""}
+        title={previewLook?.designer}
+        subtitle={previewLook?.season}
+        onClose={() => setShowLookPreview(false)}
+      />
+
+      <LookSelectorModal
+        visible={showLookSelector}
+        looks={filteredLooks}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSelectLook={handleSelectLook}
+        onClose={() => setShowLookSelector(false)}
+      />
 
       {selectedImageUri && (
         <ImageEditMenu

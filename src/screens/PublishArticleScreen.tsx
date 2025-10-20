@@ -1,10 +1,15 @@
-import React, { useState } from "react";
-import { StyleSheet, Modal } from "react-native";
+import React, { useState, useRef } from "react";
+import { StyleSheet, Modal, Keyboard, Platform } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import {
+  RichEditor,
+  RichToolbar,
+  actions,
+} from "react-native-pell-rich-editor";
 import {
   Box,
   Text,
@@ -16,25 +21,38 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import ImagePickerModal from "../components/ImagePickerModal";
+import PublishButtons from "../components/PublishButtons";
+import SingleImageUploader from "../components/SingleImageUploader";
 
 const PublishArticleScreen = () => {
   const navigation = useNavigation();
+  const richText = useRef<RichEditor>(null);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [htmlContent, setHtmlContent] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showContentImagePicker, setShowContentImagePicker] = useState(false);
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const predefinedTags = ["趋势", "分析", "观点", "专业", "搭配", "推荐"];
+
+  // 检查表单是否完整（用于禁用发布按钮）
+  const canPublish = (): boolean => {
+    const textContent = content.replace(/<[^>]*>/g, "").trim();
+    return title.trim().length > 0 && textContent.length >= 100;
+  };
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
       Alert.show("提示: 请填写标题");
       return false;
     }
-    if (!content.trim() || content.trim().length < 100) {
+    // 移除 HTML 标签来计算纯文本长度
+    const textContent = content.replace(/<[^>]*>/g, "").trim();
+    if (!textContent || textContent.length < 100) {
       Alert.show("提示: 文章内容至少需要100字");
       return false;
     }
@@ -49,7 +67,7 @@ const PublishArticleScreen = () => {
     const publishData = {
       type: "article",
       title,
-      content,
+      content: htmlContent, // 使用 HTML 格式的内容
       coverImage,
       tags: selectedTags,
     };
@@ -67,7 +85,7 @@ const PublishArticleScreen = () => {
     const draftData = {
       type: "article",
       title,
-      content,
+      content: htmlContent, // 使用 HTML 格式的内容
       coverImage,
       tags: selectedTags,
     };
@@ -79,16 +97,20 @@ const PublishArticleScreen = () => {
   const resetForm = () => {
     setTitle("");
     setContent("");
+    setHtmlContent("");
     setCoverImage(null);
     setSelectedTags([]);
+    richText.current?.setContentHTML("");
   };
 
-  const handleAddCoverImage = () => {
-    setShowImagePicker(true);
+  // 处理文章内容中插入图片
+  const handleInsertContentImage = () => {
+    Keyboard.dismiss();
+    setShowContentImagePicker(true);
   };
 
-  const handleImageSelection = async (source: "camera" | "gallery") => {
-    setShowImagePicker(false);
+  const handleContentImageSelection = async (source: "camera" | "gallery") => {
+    setShowContentImagePicker(false);
 
     try {
       let result;
@@ -96,21 +118,22 @@ const PublishArticleScreen = () => {
       if (source === "camera") {
         result = await ImagePicker.launchCameraAsync({
           allowsEditing: true,
-          aspect: [16, 9],
+          aspect: [4, 3],
           quality: 1.0,
         });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
-          aspect: [16, 9],
+          aspect: [4, 3],
           quality: 1.0,
         });
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setCoverImage(result.assets[0].uri);
-        Alert.show("封面已设置", "", 1500);
+        const imageUri = result.assets[0].uri;
+        richText.current?.insertImage(imageUri);
+        Alert.show("图片已插入", "", 1500);
       }
     } catch (error) {
       console.error("Image selection error:", error);
@@ -118,185 +141,13 @@ const PublishArticleScreen = () => {
     }
   };
 
-  const handleRemoveCoverImage = () => {
-    setCoverImage(null);
-    Alert.show("封面已移除");
+  // 处理富文本编辑器内容变化
+  const handleContentChange = (html: string) => {
+    setHtmlContent(html);
+    // 移除 HTML 标签以获取纯文本用于计数
+    const text = html.replace(/<[^>]*>/g, "");
+    setContent(text);
   };
-
-  // Render cover image section
-  const renderCoverImageSection = () => {
-    if (!coverImage) {
-      return (
-        <Box mx="$md" mb="$md">
-          <Pressable
-            h={180}
-            rounded="$md"
-            overflow="hidden"
-            bg="$gray100"
-            alignItems="center"
-            justifyContent="center"
-            borderWidth={1}
-            borderColor="$gray200"
-            borderStyle="dashed"
-            onPress={handleAddCoverImage}
-          >
-            <Ionicons
-              name="image-outline"
-              size={40}
-              color={theme.colors.gray400}
-            />
-            <Text color="$gray500" mt="$sm" fontSize="$sm">
-              添加封面图（可选）
-            </Text>
-            <Text color="$gray400" fontSize="$xs" mt="$xs">
-              建议尺寸 16:9
-            </Text>
-          </Pressable>
-        </Box>
-      );
-    }
-
-    return (
-      <Box mx="$md" mb="$md" position="relative">
-        <Box h={180} rounded="$md" overflow="hidden">
-          <Image
-            source={{ uri: coverImage }}
-            style={{ width: "100%", height: "100%", resizeMode: "cover" }}
-          />
-        </Box>
-
-        {/* Remove button */}
-        <Pressable
-          position="absolute"
-          top={8}
-          right={8}
-          w={32}
-          h={32}
-          rounded="$full"
-          bg="rgba(0,0,0,0.6)"
-          alignItems="center"
-          justifyContent="center"
-          onPress={handleRemoveCoverImage}
-        >
-          <Ionicons name="close" size={20} color={theme.colors.white} />
-        </Pressable>
-      </Box>
-    );
-  };
-
-  // Render the bottom buttons
-  const renderBottomButtons = () => (
-    <Box
-      position="absolute"
-      bottom={6}
-      left={0}
-      right={0}
-      bg="$white"
-      px="$lg"
-      py="$md"
-      borderTopWidth={1}
-      borderTopColor="$gray100"
-    >
-      <HStack>
-        <Pressable
-          flex={1}
-          py="$md"
-          mr="$sm"
-          bg="$gray100"
-          rounded="$md"
-          onPress={handleSaveDraft}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons
-              name="bookmark-outline"
-              size={20}
-              color={theme.colors.gray600}
-            />
-            <Text color="$gray600" ml="$xs" fontWeight="$medium">
-              存草稿
-            </Text>
-          </HStack>
-        </Pressable>
-        <Pressable
-          flex={2}
-          py="$md"
-          ml="$sm"
-          bg="$accent"
-          rounded="$md"
-          onPress={handlePublish}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium">
-              发布
-            </Text>
-          </HStack>
-        </Pressable>
-      </HStack>
-    </Box>
-  );
-
-  // Render image picker bottom sheet
-  const renderImagePickerModal = () => (
-    <Modal
-      visible={showImagePicker}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setShowImagePicker(false)}
-    >
-      <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
-        <Pressable flex={1} onPress={() => setShowImagePicker(false)} />
-        <Box
-          bg="$white"
-          borderTopLeftRadius="$lg"
-          borderTopRightRadius="$lg"
-          pb={34}
-        >
-          <HStack
-            px="$lg"
-            py="$md"
-            borderBottomWidth={1}
-            borderBottomColor="$gray100"
-            alignItems="center"
-            justifyContent="between"
-          >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              选择封面图
-            </Text>
-            <Pressable p="$xs" onPress={() => setShowImagePicker(false)}>
-              <Ionicons name="close" size={24} color={theme.colors.gray600} />
-            </Pressable>
-          </HStack>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("camera")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="camera" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                拍照
-              </Text>
-            </HStack>
-          </Pressable>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("gallery")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="images" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择
-              </Text>
-            </HStack>
-          </Pressable>
-        </Box>
-      </Box>
-    </Modal>
-  );
 
   const wordCount = content.trim().length;
 
@@ -314,7 +165,15 @@ const PublishArticleScreen = () => {
         contentContainerStyle={styles.contentContainer}
       >
         {/* Cover Image */}
-        {renderCoverImageSection()}
+        <SingleImageUploader
+          imageUri={coverImage}
+          onImageSelected={setCoverImage}
+          onImageRemoved={() => setCoverImage(null)}
+          placeholder="添加封面图（可选）"
+          subtitle="建议尺寸 1:1"
+          height={300}
+          aspectRatio={[1, 1]}
+        />
 
         {/* Title Input */}
         <Box mx="$md" mb="$md">
@@ -337,26 +196,74 @@ const PublishArticleScreen = () => {
           />
         </Box>
 
-        {/* Content Input */}
-        <Box mx="$md" mb="$md" flex={1}>
-          <Input
-            value={content}
-            onChangeText={setContent}
-            placeholder="支持段落、加粗、引用、插图...&#10;&#10;分享你的时尚观点、趋势分析或专业见解。最少需要100字。"
-            placeholderTextColor={theme.colors.gray400}
-            multiline
-            variant="filled"
-            sx={{
-              color: theme.colors.gray600,
-              fontSize: 16,
-              lineHeight: 24,
-              minHeight: 300,
-              textAlignVertical: "top",
-              borderWidth: 0,
-              backgroundColor: "transparent",
-              padding: 0,
-            }}
-          />
+        {/* Rich Text Editor */}
+        <Box mx="$md" mb="$md">
+          {/* Toolbar */}
+          <Box
+            mb="$sm"
+            borderWidth={1}
+            borderColor="$gray200"
+            borderRadius="$md"
+            overflow="hidden"
+          >
+            <RichToolbar
+              editor={richText}
+              actions={[
+                actions.setBold,
+                actions.setItalic,
+                actions.setUnderline,
+                actions.heading1,
+                actions.insertBulletsList,
+                actions.insertOrderedList,
+                actions.blockquote,
+                actions.alignLeft,
+                actions.alignCenter,
+                actions.alignRight,
+                actions.code,
+                actions.line,
+                "insertImage",
+              ]}
+              iconMap={{
+                insertImage: ({ tintColor }: { tintColor: string }) => (
+                  <Ionicons name="image" size={20} color={tintColor} />
+                ),
+              }}
+              onPressAddImage={handleInsertContentImage}
+              style={styles.richToolbar}
+              selectedIconTint={theme.colors.accent}
+              disabledIconTint={theme.colors.gray300}
+              iconTint={theme.colors.gray600}
+            />
+          </Box>
+
+          {/* Editor */}
+          <Box
+            borderWidth={1}
+            borderColor="$gray200"
+            borderRadius="$md"
+            overflow="hidden"
+            minHeight={300}
+          >
+            <RichEditor
+              ref={richText}
+              onChange={handleContentChange}
+              placeholder="支持段落、加粗、引用、插图...分享你的时尚观点、趋势分析或专业见解。最少需要100字。"
+              style={styles.richEditor}
+              initialHeight={300}
+              useContainer={true}
+              editorStyle={{
+                backgroundColor: theme.colors.white,
+                color: theme.colors.gray700,
+                placeholderColor: theme.colors.gray400,
+                contentCSSText: `
+                  font-size: 16px;
+                  line-height: 1.6;
+                  padding: 12px;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                `,
+              }}
+            />
+          </Box>
         </Box>
 
         {/* Word Count */}
@@ -372,10 +279,20 @@ const PublishArticleScreen = () => {
       </ScrollView>
 
       {/* Bottom Buttons */}
-      {renderBottomButtons()}
+      <PublishButtons
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        publishDisabled={!canPublish()}
+      />
 
       {/* Modals */}
-      {renderImagePickerModal()}
+      <ImagePickerModal
+        visible={showContentImagePicker}
+        onClose={() => setShowContentImagePicker(false)}
+        onSelectCamera={() => handleContentImageSelection("camera")}
+        onSelectGallery={() => handleContentImageSelection("gallery")}
+        title="插入图片"
+      />
     </SafeAreaView>
   );
 };
@@ -390,6 +307,16 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 100,
+  },
+  richToolbar: {
+    backgroundColor: theme.colors.white,
+    borderBottomWidth: 0,
+    minHeight: 50,
+  },
+  richEditor: {
+    backgroundColor: theme.colors.white,
+    flex: 1,
+    minHeight: 300,
   },
 });
 

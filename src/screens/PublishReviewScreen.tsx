@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Modal, Dimensions } from "react-native";
+import { StyleSheet, Modal } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -12,16 +12,20 @@ import {
   Pressable,
   HStack,
   Input,
-  Image,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageCropper from "../components/ImageCropper";
 import LookSelectorModal from "../components/LookSelectorModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
+import RatingSelector from "../components/RatingSelector";
+import ImageGridSelector from "../components/ImageGridSelector";
+import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
+import PublishButtons from "../components/PublishButtons";
+import ImagePickerModal from "../components/ImagePickerModal";
+import { saveDraft } from "../services/draftService";
+import { publishReview, validateReviewData } from "../services/publishService";
 import showsData from "../data/data.json";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 interface LookImage {
   image_url: string;
@@ -38,12 +42,6 @@ interface Show {
 interface DesignerData {
   designer: string;
   shows: Show[];
-}
-
-interface SelectedLook {
-  designer: string;
-  season: string;
-  imageUrl: string;
 }
 
 const PublishReviewScreen = () => {
@@ -74,8 +72,6 @@ const PublishReviewScreen = () => {
   const MAX_IMAGES = 6;
   const MAX_LOOKS = 6;
 
-  const predefinedTags = ["推荐", "性价比", "质量", "设计", "舒适", "值得"];
-
   // 加载所有 look 数据
   useEffect(() => {
     const looks: Array<{
@@ -103,75 +99,88 @@ const PublishReviewScreen = () => {
     setAllLooks(looks);
   }, []);
 
-  const validateForm = (): boolean => {
-    if (!title.trim()) {
-      Alert.show("提示: 请填写评价标题");
-      return false;
-    }
-    if (!productName.trim()) {
-      Alert.show("提示: 请填写产品名称");
-      return false;
-    }
-    if (rating === 0) {
-      Alert.show("提示: 请给出评分");
-      return false;
-    }
-    if (images.length === 0) {
-      Alert.show("提示: 请至少上传一张产品图片");
-      return false;
-    }
-    if (selectedLooks.length === 0) {
-      Alert.show("提示: 请至少关联一个相关造型");
-      return false;
-    }
-    if (!reviewText.trim()) {
-      Alert.show("提示: 请填写评价内容");
-      return false;
-    }
-    return true;
+  // 检查是否满足发布标准
+  const canPublish = () => {
+    return (
+      title.trim().length > 0 &&
+      productName.trim().length > 0 &&
+      rating > 0 &&
+      images.length > 0 &&
+      selectedLooks.length > 0 &&
+      reviewText.trim().length >= 10 &&
+      reviewText.trim().length <= 500
+    );
   };
 
-  const handlePublish = () => {
-    if (!validateForm()) {
+  const handlePublish = async () => {
+    const publishData = {
+      type: "review" as const,
+      title,
+      productName,
+      brand,
+      rating,
+      reviewText,
+      images,
+      associatedLooks: selectedLooks,
+    };
+
+    // 验证数据
+    const validation = validateReviewData(publishData);
+    if (!validation.isValid) {
+      Alert.show(validation.errors[0]);
       return;
     }
 
-    const publishData = {
-      type: "review",
-      title,
-      productName,
-      brand,
-      rating,
-      reviewText,
-      images,
-      tags: selectedTags,
-      associatedLooks: selectedLooks,
-    };
+    try {
+      Alert.show("正在发布...");
+      const response = await publishReview(publishData);
 
-    console.log("Publishing:", publishData);
-
-    Alert.show("发布成功: 您的评价已成功发布！", "", 1000);
-    setTimeout(() => {
-      resetForm();
-      navigation.goBack();
-    }, 1000);
+      if (response.success) {
+        Alert.show("发布成功: 您的评价已成功发布！", "", 1500);
+        setTimeout(() => {
+          resetForm();
+          navigation.goBack();
+        }, 1500);
+      } else {
+        Alert.show(`发布失败: ${response.message || "请重试"}`);
+      }
+    } catch (error) {
+      console.error("Publish error:", error);
+      Alert.show("发布失败: 网络错误，请重试");
+    }
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
+    // 验证是否有内容可以保存
+    if (
+      !title &&
+      !productName &&
+      images.length === 0 &&
+      selectedLooks.length === 0
+    ) {
+      Alert.show("提示: 请至少填写一些内容再保存草稿");
+      return;
+    }
+
     const draftData = {
-      type: "review",
+      type: "review" as const,
       title,
       productName,
       brand,
       rating,
       reviewText,
       images,
-      tags: selectedTags,
       associatedLooks: selectedLooks,
     };
 
-    console.log("Saving draft:", draftData);
-    Alert.show("草稿已保存: 您的内容已保存为草稿");
+    try {
+      const draftId = await saveDraft(draftData);
+      console.log("Draft saved with ID:", draftId);
+      Alert.show("草稿已保存: 您的内容已保存为草稿", "", 1500);
+    } catch (error) {
+      console.error("Save draft error:", error);
+      Alert.show("保存失败: 请重试");
+    }
   };
 
   const resetForm = () => {
@@ -280,315 +289,6 @@ const PublishReviewScreen = () => {
       )
     : allLooks;
 
-  // 评分组件
-  const renderRatingSection = () => (
-    <Box mx="$md" mb="$md">
-      <HStack mb="$sm" alignItems="center">
-        <Text color="$gray600" fontSize="$sm">
-          评分
-        </Text>
-        <Text color="$red500" fontSize="$sm" ml="$xs">
-          *
-        </Text>
-      </HStack>
-      <HStack gap="$sm" pl="$md">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Pressable key={star} onPress={() => setRating(star)}>
-            <Ionicons
-              name={star <= rating ? "star" : "star-outline"}
-              size={32}
-              color={star <= rating ? "#FFD700" : theme.colors.gray300}
-            />
-          </Pressable>
-        ))}
-      </HStack>
-    </Box>
-  );
-
-  // 产品图片组件
-  const renderImageGallery = () => {
-    const itemWidth = (screenWidth - 48 - 16) / 3; // 减去左右边距和间距
-
-    return (
-      <Box mx="$md" mb="$md">
-        <HStack mb="$sm" alignItems="center">
-          <Text color="$gray600" fontSize="$sm">
-            产品图片
-          </Text>
-          <Text color="$red500" fontSize="$sm" ml="$xs">
-            *
-          </Text>
-        </HStack>
-        <HStack flexWrap="wrap" gap="$sm" pl="$md">
-          {images.map((image, index) => (
-            <Box
-              key={`image-${index}`}
-              w={itemWidth}
-              h={itemWidth}
-              position="relative"
-            >
-              <Pressable
-                onPress={() => {
-                  setPreviewImageIndex(index);
-                  setShowImagePreview(true);
-                }}
-              >
-                <Image
-                  source={{ uri: image }}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: 8,
-                  }}
-                />
-              </Pressable>
-              <Pressable
-                position="absolute"
-                top={4}
-                right={4}
-                w={24}
-                h={24}
-                rounded="$full"
-                bg="rgba(0,0,0,0.6)"
-                alignItems="center"
-                justifyContent="center"
-                onPress={() => handleRemoveImage(index)}
-              >
-                <Ionicons name="close" size={16} color={theme.colors.white} />
-              </Pressable>
-            </Box>
-          ))}
-          {images.length < MAX_IMAGES && (
-            <Pressable
-              w={itemWidth}
-              h={itemWidth}
-              rounded="$sm"
-              bg="$gray100"
-              alignItems="center"
-              justifyContent="center"
-              onPress={handleAddImage}
-            >
-              <Ionicons name="add" size={24} color={theme.colors.gray400} />
-            </Pressable>
-          )}
-        </HStack>
-      </Box>
-    );
-  };
-
-  // 关联造型组件
-  const renderSelectedLook = () => {
-    const lookWidth = (screenWidth - 48 - 16) / 3; // 减去左右边距和间距
-
-    return (
-      <Box mx="$md" mb="$md">
-        <HStack mb="$sm" alignItems="center">
-          <Text color="$gray600" fontSize="$sm">
-            关联造型
-          </Text>
-          <Text color="$red500" fontSize="$sm" ml="$xs">
-            *
-          </Text>
-        </HStack>
-
-        <HStack flexWrap="wrap" gap="$sm" pl="$md">
-          {/* 已选择的 Look 列表 */}
-          {selectedLooks.map((look, index) => (
-            <Box key={`look-${index}`} w={lookWidth} position="relative">
-              <Pressable
-                onPress={() => {
-                  setPreviewLook(look);
-                  setShowLookPreview(true);
-                }}
-              >
-                <Box
-                  borderWidth={1}
-                  borderColor="$gray200"
-                  rounded="$md"
-                  overflow="hidden"
-                  bg="$white"
-                >
-                  <Image
-                    source={{ uri: look.imageUrl }}
-                    style={{
-                      width: "100%",
-                      height: lookWidth * 1.5,
-                    }}
-                  />
-                  <Box p="$xs" bg="$white">
-                    <Text
-                      fontSize="$xs"
-                      color="$black"
-                      fontWeight="$medium"
-                      numberOfLines={1}
-                    >
-                      {look.designer}
-                    </Text>
-                    <Text fontSize={10} color="$gray400" numberOfLines={1}>
-                      {look.season}
-                    </Text>
-                  </Box>
-                </Box>
-              </Pressable>
-
-              {/* 删除按钮 */}
-              <Pressable
-                position="absolute"
-                top={4}
-                right={4}
-                w={24}
-                h={24}
-                rounded="$full"
-                bg="rgba(0,0,0,0.7)"
-                alignItems="center"
-                justifyContent="center"
-                onPress={() => handleRemoveLook(index)}
-              >
-                <Ionicons name="close" size={14} color={theme.colors.white} />
-              </Pressable>
-            </Box>
-          ))}
-
-          {/* 添加按钮 */}
-          {selectedLooks.length < MAX_LOOKS && (
-            <Pressable
-              w={lookWidth}
-              h={lookWidth * 1.5 + 44}
-              rounded="$sm"
-              bg="$gray100"
-              alignItems="center"
-              justifyContent="center"
-              onPress={() => setShowLookSelector(true)}
-            >
-              <Ionicons
-                name="add-circle-outline"
-                size={32}
-                color={theme.colors.gray400}
-              />
-              <Text color="$gray400" fontSize="$xs" mt="$xs">
-                添加造型
-              </Text>
-            </Pressable>
-          )}
-        </HStack>
-      </Box>
-    );
-  };
-
-  // 底部按钮组件
-  const renderBottomButtons = () => (
-    <Box
-      position="absolute"
-      bottom={6}
-      left={0}
-      right={0}
-      bg="$white"
-      px="$lg"
-      py="$md"
-      borderTopWidth={1}
-      borderTopColor="$gray100"
-    >
-      <HStack>
-        <Pressable
-          flex={1}
-          py="$md"
-          mr="$sm"
-          bg="$gray100"
-          rounded="$md"
-          onPress={handleSaveDraft}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons
-              name="bookmark-outline"
-              size={20}
-              color={theme.colors.gray600}
-            />
-            <Text color="$gray600" ml="$xs" fontWeight="$medium">
-              存草稿
-            </Text>
-          </HStack>
-        </Pressable>
-        <Pressable
-          flex={2}
-          py="$md"
-          ml="$sm"
-          bg="$accent"
-          rounded="$md"
-          onPress={handlePublish}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium">
-              发布
-            </Text>
-          </HStack>
-        </Pressable>
-      </HStack>
-    </Box>
-  );
-
-  // 图片选择器组件
-  const renderImagePickerModal = () => (
-    <Modal
-      visible={showImagePicker}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setShowImagePicker(false)}
-    >
-      <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
-        <Pressable flex={1} onPress={() => setShowImagePicker(false)} />
-        <Box
-          bg="$white"
-          borderTopLeftRadius="$lg"
-          borderTopRightRadius="$lg"
-          pb={34}
-        >
-          <HStack
-            px="$lg"
-            py="$md"
-            borderBottomWidth={1}
-            borderBottomColor="$gray100"
-            alignItems="center"
-            justifyContent="between"
-          >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              选择图片
-            </Text>
-            <Pressable p="$xs" onPress={() => setShowImagePicker(false)}>
-              <Ionicons name="close" size={24} color={theme.colors.gray600} />
-            </Pressable>
-          </HStack>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("camera")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="camera" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                拍照
-              </Text>
-            </HStack>
-          </Pressable>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("gallery")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="images" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择
-              </Text>
-            </HStack>
-          </Pressable>
-        </Box>
-      </Box>
-    </Modal>
-  );
-
   // 图片裁剪组件
   if (showImageCropper && cropperImageUri) {
     return (
@@ -640,7 +340,18 @@ const PublishReviewScreen = () => {
         </Box>
 
         {/* 产品图片 */}
-        <Box key="image-gallery-section">{renderImageGallery()}</Box>
+        <ImageGridSelector
+          images={images}
+          onImagePress={(index) => {
+            setPreviewImageIndex(index);
+            setShowImagePreview(true);
+          }}
+          onRemoveImage={handleRemoveImage}
+          onAddImage={handleAddImage}
+          maxImages={MAX_IMAGES}
+          label="产品图片"
+          required
+        />
 
         <Box mx="$md" mb="$md">
           <HStack mb="$sm" alignItems="center">
@@ -683,10 +394,21 @@ const PublishReviewScreen = () => {
           />
         </Box>
 
-        {renderRatingSection()}
+        <RatingSelector rating={rating} onRatingChange={setRating} required />
 
         {/* 关联造型 */}
-        <Box key="selected-look-section">{renderSelectedLook()}</Box>
+        <LookGridSelector
+          selectedLooks={selectedLooks}
+          onLookPress={(look) => {
+            setPreviewLook(look);
+            setShowLookPreview(true);
+          }}
+          onRemoveLook={handleRemoveLook}
+          onAddLook={() => setShowLookSelector(true)}
+          maxLooks={MAX_LOOKS}
+          label="关联造型"
+          required
+        />
 
         {/* 评价内容 */}
         <Box mx="$md" mb="$md">
@@ -717,8 +439,18 @@ const PublishReviewScreen = () => {
         </Box>
       </ScrollView>
 
-      {renderBottomButtons()}
-      {renderImagePickerModal()}
+      <PublishButtons
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        publishDisabled={!canPublish()}
+      />
+
+      <ImagePickerModal
+        visible={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelectCamera={() => handleImageSelection("camera")}
+        onSelectGallery={() => handleImageSelection("gallery")}
+      />
 
       <ImagePreviewModal
         visible={showLookPreview}

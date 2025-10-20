@@ -27,6 +27,9 @@ import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
 import ImageGallery from "../components/ImageGallery";
+import ImagePickerModal from "../components/ImagePickerModal";
+import PublishButtons from "../components/PublishButtons";
+import ImagePreviewModal from "../components/ImagePreviewModal";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -55,17 +58,33 @@ const PublishLookbookScreen = () => {
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
 
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
+
   const MAX_IMAGES = 9;
 
   const predefinedTags = ["春夏", "秋冬", "经典", "时尚", "高级", "复古"];
 
+  // 检查表单是否完整（用于禁用发布按钮）
+  const canPublish = (): boolean => {
+    return (
+      images.length > 0 &&
+      title.trim().length > 0 &&
+      description.trim().length > 0
+    );
+  };
+
   const validateForm = (): boolean => {
+    if (images.length === 0) {
+      Alert.show("提示: Lookbook需要至少上传一张图片");
+      return false;
+    }
     if (!title.trim()) {
       Alert.show("提示: 请填写Lookbook标题");
       return false;
     }
-    if (images.length === 0) {
-      Alert.show("提示: Lookbook需要至少上传一张图片");
+    if (!description.trim()) {
+      Alert.show("提示: 请填写Lookbook简介");
       return false;
     }
     return true;
@@ -154,7 +173,14 @@ const PublishLookbookScreen = () => {
     }
   };
 
+  // 点击图片预览
   const handleImagePress = (index: number) => {
+    setPreviewInitialIndex(index);
+    setShowImagePreview(true);
+  };
+
+  // 长按图片打开编辑菜单
+  const handleImageLongPress = (index: number) => {
     setSelectedImageUri(images[index]);
     setSelectedImageIndex(index);
     setShowImageEditMenu(true);
@@ -352,7 +378,7 @@ const PublishLookbookScreen = () => {
             borderWidth={coverImage === image ? 2 : 0}
             borderColor="$black"
             opacity={draggedIndex === index ? 0.5 : 1}
-            onPress={() => handleImagePress(index)}
+            onPress={() => handleImageLongPress(index)}
             onLongPress={() => handleDragStart(index)}
           >
             <Image source={{ uri: image }} style={styles.thumbnail} />
@@ -391,122 +417,10 @@ const PublishLookbookScreen = () => {
       </ScrollView>
       {images.length > 1 && (
         <Text color="$gray400" fontSize="$xs" textAlign="center" mt="$xs">
-          点击图片进入编辑器，长按可拖拽调整顺序
+          点击缩略图编辑，长按可拖拽调整顺序
         </Text>
       )}
     </Box>
-  );
-
-  const renderBottomButtons = () => (
-    <Box
-      position="absolute"
-      bottom={6}
-      left={0}
-      right={0}
-      bg="$white"
-      px="$lg"
-      py="$md"
-      borderTopWidth={1}
-      borderTopColor="$gray100"
-    >
-      <HStack>
-        <Pressable
-          flex={1}
-          py="$md"
-          mr="$sm"
-          bg="$gray100"
-          rounded="$md"
-          onPress={handleSaveDraft}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons
-              name="bookmark-outline"
-              size={20}
-              color={theme.colors.gray600}
-            />
-            <Text color="$gray600" ml="$xs" fontWeight="$medium">
-              存草稿
-            </Text>
-          </HStack>
-        </Pressable>
-        <Pressable
-          flex={2}
-          py="$md"
-          ml="$sm"
-          bg="$accent"
-          rounded="$md"
-          onPress={handlePublish}
-        >
-          <HStack justifyContent="center" alignItems="center" gap="$xs">
-            <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium">
-              发布
-            </Text>
-          </HStack>
-        </Pressable>
-      </HStack>
-    </Box>
-  );
-
-  const renderImagePickerModal = () => (
-    <Modal
-      visible={showImagePicker}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setShowImagePicker(false)}
-    >
-      <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
-        <Pressable flex={1} onPress={() => setShowImagePicker(false)} />
-        <Box
-          bg="$white"
-          borderTopLeftRadius="$lg"
-          borderTopRightRadius="$lg"
-          pb={34}
-        >
-          <HStack
-            px="$lg"
-            py="$md"
-            borderBottomWidth={1}
-            borderBottomColor="$gray100"
-            alignItems="center"
-            justifyContent="between"
-          >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              选择图片
-            </Text>
-            <Pressable p="$xs" onPress={() => setShowImagePicker(false)}>
-              <Ionicons name="close" size={24} color={theme.colors.gray600} />
-            </Pressable>
-          </HStack>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("camera")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="camera" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                拍照
-              </Text>
-            </HStack>
-          </Pressable>
-
-          <Pressable
-            px="$lg"
-            py="$lg"
-            onPress={() => handleImageSelection("gallery")}
-          >
-            <HStack alignItems="center">
-              <Ionicons name="images" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择
-              </Text>
-            </HStack>
-          </Pressable>
-        </Box>
-      </Box>
-    </Modal>
   );
 
   if (showImageCropper && cropperImageUri) {
@@ -560,7 +474,7 @@ const PublishLookbookScreen = () => {
           <Input
             value={description}
             onChangeText={setDescription}
-            placeholder="请简单介绍您的 Lookbook 灵感或主题（可选）"
+            placeholder="请简单介绍您的 Lookbook 灵感或主题"
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="filled"
@@ -576,8 +490,18 @@ const PublishLookbookScreen = () => {
         </Box>
       </ScrollView>
 
-      {renderBottomButtons()}
-      {renderImagePickerModal()}
+      <PublishButtons
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        publishDisabled={!canPublish()}
+      />
+
+      <ImagePickerModal
+        visible={showImagePicker}
+        onClose={() => setShowImagePicker(false)}
+        onSelectCamera={() => handleImageSelection("camera")}
+        onSelectGallery={() => handleImageSelection("gallery")}
+      />
 
       {selectedImageUri && (
         <ImageEditMenu
@@ -590,6 +514,14 @@ const PublishLookbookScreen = () => {
           onDelete={handleDeleteImage}
         />
       )}
+
+      <ImagePreviewModal
+        visible={showImagePreview}
+        imageUrls={images}
+        initialIndex={previewInitialIndex}
+        title={title || "Lookbook 预览"}
+        onClose={() => setShowImagePreview(false)}
+      />
     </SafeAreaView>
   );
 };
