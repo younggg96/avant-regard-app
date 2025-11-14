@@ -51,6 +51,11 @@ export const theme = {
       fontSize: 18,
       lineHeight: 24,
     },
+    h4: {
+      fontFamily: getFontFamily("Inter-Medium", "sans-serif"),
+      fontSize: 16,
+      lineHeight: 22,
+    },
     body: {
       fontFamily: getFontFamily("Inter-Regular", "sans-serif"),
       fontSize: 16,
@@ -85,6 +90,7 @@ export const theme = {
     sm: 4,
     md: 8,
     lg: 12,
+    xl: 16,
     full: 9999,
   },
   shadows: {

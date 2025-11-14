@@ -15,7 +15,6 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
 import { mockPosts } from "../data/mockPosts";
-import { mockFavoritePosts } from "../data/mockFavoritePosts";
 
 // 原始Post类型用于数据处理
 interface OriginalPost {
@@ -36,13 +35,12 @@ interface OriginalPost {
   };
 }
 
+type TabType = "home" | "lookbook" | "outfit" | "review" | "article";
+
 const DiscoverScreen = () => {
   const navigation = useNavigation();
   const [posts, setPosts] = useState<OriginalPost[]>([] as OriginalPost[]);
-  const [favoritePosts, setFavoritePosts] = useState<OriginalPost[]>(
-    [] as OriginalPost[]
-  );
-  const [activeTab, setActiveTab] = useState<"home" | "favorites">("home");
+  const [activeTab, setActiveTab] = useState<TabType>("home");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -65,35 +63,9 @@ const DiscoverScreen = () => {
         console.warn("mockPosts is not a valid array or is empty:", mockPosts);
         setPosts([]);
       }
-
-      // Initialize favorite posts
-      if (
-        mockFavoritePosts &&
-        Array.isArray(mockFavoritePosts) &&
-        mockFavoritePosts.length > 0
-      ) {
-        const validFavoritePosts = mockFavoritePosts.filter(
-          (post: any) =>
-            post &&
-            typeof post.id === "string" &&
-            post.author &&
-            post.content &&
-            post.engagement
-        );
-        setFavoritePosts(
-          validFavoritePosts.length > 0 ? (validFavoritePosts as any) : []
-        );
-      } else {
-        console.warn(
-          "mockFavoritePosts is not a valid array or is empty:",
-          mockFavoritePosts
-        );
-        setFavoritePosts([]);
-      }
     } catch (error) {
       console.error("Error initializing posts:", error);
       setPosts([]);
-      setFavoritePosts([]);
     } finally {
       setIsInitialized(true);
     }
@@ -117,24 +89,32 @@ const DiscoverScreen = () => {
 
   // Get current posts based on active tab with safety checks
   const getCurrentPosts = useCallback(() => {
-    const rawPosts = activeTab === "home" ? posts : favoritePosts;
+    let rawPosts: OriginalPost[] = [];
+
+    if (activeTab === "home") {
+      // 主页显示所有帖子
+      rawPosts = posts;
+    } else {
+      // 根据类型筛选帖子
+      rawPosts = posts.filter((post: any) => post.type === activeTab);
+    }
+
     return Array.isArray(rawPosts) ? rawPosts.map(convertToPost) : [];
-  }, [activeTab, posts, favoritePosts, convertToPost]);
+  }, [activeTab, posts, convertToPost]);
 
   // Handle post interactions
   const handlePostPress = useCallback(
     (post: Post) => {
       console.log("查看帖子详情:", post.id);
       // 查找完整的原始帖子数据
-      const rawPosts = activeTab === "home" ? posts : favoritePosts;
-      const fullPost = rawPosts.find((p) => p.id === post.id);
+      const fullPost = posts.find((p) => p.id === post.id);
 
       // 传递完整的帖子数据到详情页
       if (fullPost) {
         (navigation.navigate as any)("PostDetail", { post: fullPost });
       }
     },
-    [navigation, activeTab, posts, favoritePosts]
+    [navigation, posts]
   );
 
   const handleAuthorPress = useCallback(
@@ -162,8 +142,18 @@ const DiscoverScreen = () => {
         : post;
 
     setPosts((prevPosts) => prevPosts.map(updatePost));
-    setFavoritePosts((prevPosts) => prevPosts.map(updatePost));
   }, []);
+
+  // 获取各类型的帖子数量
+  const getPostCountByType = useCallback(
+    (type: TabType) => {
+      if (type === "home") {
+        return posts.length;
+      }
+      return posts.filter((post: any) => post.type === type).length;
+    },
+    [posts]
+  );
 
   // 处理搜索按钮点击
   const handleSearchPress = useCallback(() => {
@@ -208,18 +198,6 @@ const DiscoverScreen = () => {
     [handlePostPress, handleAuthorPress, handleLike]
   );
 
-  const renderFooter = useCallback(() => {
-    if (!loading) return null;
-    return (
-      <HStack justifyContent="center" alignItems="center" py="$lg">
-        <ActivityIndicator size="small" color={theme.colors.accent} />
-        <Text color="$gray400" fontSize="$sm" ml="$sm">
-          加载更多...
-        </Text>
-      </HStack>
-    );
-  }, [loading]);
-
   // Show loading state until initialized
   if (!isInitialized) {
     return (
@@ -253,18 +231,21 @@ const DiscoverScreen = () => {
         borderless
       />
 
-      {/* Simple Tab View */}
+      {/* Tab View with Types */}
       <HStack
-        px="$md"
         borderBottomWidth={1}
         borderBottomColor="$gray100"
         justifyContent="between"
         alignItems="center"
       >
-        <HStack flex={1}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+        >
           <Pressable
             py="$md"
-            px="$lg"
+            px="$md"
             mr="$md"
             borderBottomWidth={activeTab === "home" ? 2 : 0}
             borderBottomColor="$black"
@@ -273,27 +254,80 @@ const DiscoverScreen = () => {
             <Text
               color={activeTab === "home" ? "$black" : "$gray400"}
               fontWeight={activeTab === "home" ? "$semibold" : "$normal"}
+              fontSize="$sm"
             >
-              主页 ({Array.isArray(posts) ? posts.length : 0})
+              主页 ({getPostCountByType("home")})
             </Text>
           </Pressable>
+
           <Pressable
             py="$md"
-            px="$lg"
+            px="$md"
             mr="$md"
-            borderBottomWidth={activeTab === "favorites" ? 2 : 0}
+            borderBottomWidth={activeTab === "lookbook" ? 2 : 0}
             borderBottomColor="$black"
-            onPress={() => setActiveTab("favorites")}
+            onPress={() => setActiveTab("lookbook")}
           >
             <Text
-              color={activeTab === "favorites" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "favorites" ? "$semibold" : "$normal"}
+              color={activeTab === "lookbook" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "lookbook" ? "$semibold" : "$normal"}
+              fontSize="$sm"
             >
-              收藏相关 (
-              {Array.isArray(favoritePosts) ? favoritePosts.length : 0})
+              Lookbook ({getPostCountByType("lookbook")})
             </Text>
           </Pressable>
-        </HStack>
+
+          <Pressable
+            py="$md"
+            px="$md"
+            mr="$md"
+            borderBottomWidth={activeTab === "outfit" ? 2 : 0}
+            borderBottomColor="$black"
+            onPress={() => setActiveTab("outfit")}
+          >
+            <Text
+              color={activeTab === "outfit" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "outfit" ? "$semibold" : "$normal"}
+              fontSize="$sm"
+            >
+              搭配 ({getPostCountByType("outfit")})
+            </Text>
+          </Pressable>
+
+          <Pressable
+            py="$md"
+            px="$md"
+            mr="$md"
+            borderBottomWidth={activeTab === "review" ? 2 : 0}
+            borderBottomColor="$black"
+            onPress={() => setActiveTab("review")}
+          >
+            <Text
+              color={activeTab === "review" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "review" ? "$semibold" : "$normal"}
+              fontSize="$sm"
+            >
+              评测 ({getPostCountByType("review")})
+            </Text>
+          </Pressable>
+
+          <Pressable
+            py="$md"
+            px="$md"
+            mr="$md"
+            borderBottomWidth={activeTab === "article" ? 2 : 0}
+            borderBottomColor="$black"
+            onPress={() => setActiveTab("article")}
+          >
+            <Text
+              color={activeTab === "article" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "article" ? "$semibold" : "$normal"}
+              fontSize="$sm"
+            >
+              文章 ({getPostCountByType("article")})
+            </Text>
+          </Pressable>
+        </ScrollView>
 
         {/* Search Button */}
         <Pressable
@@ -334,12 +368,18 @@ const DiscoverScreen = () => {
               mb="$sm"
               textAlign="center"
             >
-              {activeTab === "home" ? "暂无主页内容" : "暂无收藏相关内容"}
+              {activeTab === "home" && "暂无主页内容"}
+              {activeTab === "lookbook" && "暂无 Lookbook 内容"}
+              {activeTab === "outfit" && "暂无搭配内容"}
+              {activeTab === "review" && "暂无评测内容"}
+              {activeTab === "article" && "暂无文章内容"}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">
-              {activeTab === "home"
-                ? "当有新的时尚内容时，您会在这里看到它们"
-                : "收藏一些单品后，相关的搭配和评测会在这里显示"}
+              {activeTab === "home" && "当有新的时尚内容时，您会在这里看到它们"}
+              {activeTab === "lookbook" && "精彩的秀场系列即将到来"}
+              {activeTab === "outfit" && "优秀的搭配灵感即将到来"}
+              {activeTab === "review" && "详细的产品评测即将到来"}
+              {activeTab === "article" && "深度的时尚文章即将到来"}
             </Text>
           </VStack>
         ) : (

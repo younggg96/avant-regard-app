@@ -11,15 +11,14 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Avant Regard 需要访问您的相册来选择图片",
         "NSCameraUsageDescription": "Avant Regard 需要访问相机来拍摄照片",
         "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要保存编辑后的图片到相册",
+        "NSLocationWhenInUseUsageDescription": "Avant Regard 需要访问您的位置来显示附近的买手店",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.yanggg96.avant-regard"
@@ -32,15 +31,16 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.yanggg96.avantregard"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-font"
-    ],
+    "plugins": ["expo-font"],
     "extra": {
       "eas": {
         "projectId": "3e890188-f159-4285-81fb-790e46fce869"

@@ -13,6 +13,7 @@ import { config } from "./gluestack.config";
 import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/ArchiveScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
+import BuyerMapScreen from "./src/screens/BuyerMapScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
@@ -131,14 +132,13 @@ function TabNavigator() {
         })}
       />
       <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
+        name="Map"
+        component={BuyerMapScreen}
         options={{
-          tabBarLabel: "通知",
+          tabBarLabel: "地图",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="notifications" color={color} focused={focused} />
+            <TabBarIcon name="map" color={color} focused={focused} />
           ),
-          tabBarBadge: 99, // Show notification badge
         }}
       />
       <Tab.Screen
@@ -256,6 +256,11 @@ function AppNavigator() {
       <Stack.Screen
         name="Drafts"
         component={DraftsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

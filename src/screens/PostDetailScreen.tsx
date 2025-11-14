@@ -24,12 +24,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, Image } from "../components/ui";
 import { theme } from "../theme";
 import { Post } from "../components/PostCard";
+import { useAuthStore } from "../store/authStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface PostDetailRouteParams {
   postId?: string;
   post?: Post;
+  postStatus?: "draft" | "pending" | "published";
 }
 
 // 模拟评论数据
@@ -79,11 +81,16 @@ const PostDetailScreen = () => {
   const params = route.params as PostDetailRouteParams;
   const scrollViewRef = useRef<RNScrollView>(null);
   const commentInputRef = useRef<TextInput>(null);
+  const { user } = useAuthStore();
 
   // 这里应该根据postId从API获取post数据，暂时使用传入的post
   const [post, setPost] = useState<Post | null>(params.post || null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [comments, setComments] = useState<Comment[]>(mockComments);
+  const postStatus = params.postStatus || "published";
+
+  // 判断是否是本人的帖子
+  const isOwnPost = user?.id === post?.author?.id;
   const [commentInput, setCommentInput] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -289,6 +296,16 @@ const PostDetailScreen = () => {
   const displayIsLiked = post.engagement?.isLiked || false;
   const displayIsSaved = post.engagement?.isSaved || false;
 
+  // 判断是否显示评论区：草稿和审核中的帖子不显示评论
+  const showComments = postStatus === "published";
+
+  // 处理继续编辑（草稿）
+  const handleContinueEdit = useCallback(() => {
+    // 根据 post 类型跳转到对应的编辑页面
+    Alert.alert("编辑", "跳转到编辑页面");
+    // TODO: 实现跳转到对应的编辑页面
+  }, [post]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
@@ -338,31 +355,68 @@ const PostDetailScreen = () => {
             </VStack>
           </HStack>
 
-          {/* Right: Follow + Share */}
+          {/* Right: Actions based on status */}
           <HStack space="xs" alignItems="center">
-            <Pressable
-              onPress={handleFollow}
-              px="$md"
-              py="$xs"
-              bg={isFollowing ? "$gray100" : "$black"}
-              rounded="$md"
-            >
-              <Text
-                fontSize="$xs"
-                fontWeight="$semibold"
-                color={isFollowing ? "$black" : "$white"}
+            {postStatus === "draft" ? (
+              // 草稿状态：显示继续修改按钮
+              <Pressable
+                onPress={handleContinueEdit}
+                px="$md"
+                py="$xs"
+                bg="$black"
+                rounded="$md"
               >
-                {isFollowing ? "已关注" : "关注"}
-              </Text>
-            </Pressable>
+                <Text fontSize="$xs" fontWeight="$semibold" color="$white">
+                  继续修改
+                </Text>
+              </Pressable>
+            ) : postStatus === "pending" ? (
+              // 审核中状态：显示审核状态标签
+              <View
+                style={{
+                  paddingHorizontal: theme.spacing.md,
+                  paddingVertical: theme.spacing.xs,
+                  backgroundColor: theme.colors.accent,
+                  borderRadius: theme.borderRadius.md,
+                }}
+              >
+                <Text fontSize="$xs" fontWeight="$semibold" color="$white">
+                  审核中
+                </Text>
+              </View>
+            ) : (
+              // 已发布状态：根据是否是本人决定显示内容
+              <>
+                {!isOwnPost && (
+                  <Pressable
+                    onPress={handleFollow}
+                    px="$md"
+                    py="$xs"
+                    bg={isFollowing ? "$gray100" : "$black"}
+                    rounded="$md"
+                  >
+                    <Text
+                      fontSize="$xs"
+                      fontWeight="$semibold"
+                      color={isFollowing ? "$black" : "$white"}
+                    >
+                      {isFollowing ? "已关注" : "关注"}
+                    </Text>
+                  </Pressable>
+                )}
 
-            <Pressable onPress={handleShare} pl="$sm">
-              <Ionicons
-                name="share-outline"
-                size={20}
-                color={theme.colors.black}
-              />
-            </Pressable>
+                <Pressable
+                  onPress={handleShare}
+                  pl={isOwnPost ? "$none" : "$sm"}
+                >
+                  <Ionicons
+                    name="share-outline"
+                    size={20}
+                    color={theme.colors.black}
+                  />
+                </Pressable>
+              </>
+            )}
           </HStack>
         </HStack>
 
@@ -523,203 +577,249 @@ const PostDetailScreen = () => {
             </VStack>
           )}
 
-          {/* Comments Section */}
-          <VStack
-            space="md"
-            px="$md"
-            py="$lg"
-            mt="$md"
-            borderTopWidth={8}
-            borderTopColor="$gray100"
-          >
-            <Text fontSize="$lg" fontWeight="$semibold" color="$black">
-              评论 ({comments.length})
-            </Text>
+          {/* Comments Section - Only show for published posts */}
+          {showComments && (
+            <VStack
+              space="md"
+              px="$md"
+              py="$lg"
+              mt="$md"
+              borderTopWidth={8}
+              borderTopColor="$gray100"
+            >
+              <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+                评论 ({comments.length})
+              </Text>
 
-            {/* Comments List */}
-            {comments.map((comment) => (
-              <HStack key={comment.id} space="sm" mt="$md">
-                <Image
-                  source={{ uri: comment.userAvatar }}
-                  style={styles.commentAvatar}
-                />
-                <VStack flex={1} space="xs">
-                  <HStack justifyContent="between" alignItems="center">
-                    <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-                      {comment.userName}
-                    </Text>
-                    <Text fontSize="$xs" color="$gray600">
-                      {comment.timestamp}
-                    </Text>
-                  </HStack>
-                  <Text fontSize="$sm" color="$gray800" lineHeight="$md">
-                    {comment.content}
-                  </Text>
-                  <HStack space="md" mt="$xs">
-                    <Pressable onPress={() => handleCommentLike(comment.id)}>
-                      <HStack space="xs" alignItems="center">
-                        <Ionicons
-                          name={comment.isLiked ? "heart" : "heart-outline"}
-                          size={16}
-                          color={
-                            comment.isLiked ? "#FF3040" : theme.colors.gray400
-                          }
-                        />
-                        <Text
-                          fontSize="$xs"
-                          color={comment.isLiked ? "#FF3040" : "$gray600"}
-                        >
-                          {comment.likes}
-                        </Text>
-                      </HStack>
-                    </Pressable>
-                    <Pressable>
-                      <Text fontSize="$xs" color="$gray600">
-                        回复
+              {/* Comments List */}
+              {comments.map((comment) => (
+                <HStack key={comment.id} space="sm" mt="$md">
+                  <Image
+                    source={{ uri: comment.userAvatar }}
+                    style={styles.commentAvatar}
+                  />
+                  <VStack flex={1} space="xs">
+                    <HStack justifyContent="between" alignItems="center">
+                      <Text
+                        fontSize="$sm"
+                        fontWeight="$semibold"
+                        color="$black"
+                      >
+                        {comment.userName}
                       </Text>
-                    </Pressable>
-                  </HStack>
-                </VStack>
-              </HStack>
-            ))}
-          </VStack>
+                      <Text fontSize="$xs" color="$gray600">
+                        {comment.timestamp}
+                      </Text>
+                    </HStack>
+                    <Text fontSize="$sm" color="$gray800" lineHeight="$md">
+                      {comment.content}
+                    </Text>
+                    <HStack space="md" mt="$xs">
+                      <Pressable onPress={() => handleCommentLike(comment.id)}>
+                        <HStack space="xs" alignItems="center">
+                          <Ionicons
+                            name={comment.isLiked ? "heart" : "heart-outline"}
+                            size={16}
+                            color={
+                              comment.isLiked ? "#FF3040" : theme.colors.gray400
+                            }
+                          />
+                          <Text
+                            fontSize="$xs"
+                            color={comment.isLiked ? "#FF3040" : "$gray600"}
+                          >
+                            {comment.likes}
+                          </Text>
+                        </HStack>
+                      </Pressable>
+                      <Pressable>
+                        <Text fontSize="$xs" color="$gray600">
+                          回复
+                        </Text>
+                      </Pressable>
+                    </HStack>
+                  </VStack>
+                </HStack>
+              ))}
+            </VStack>
+          )}
+
+          {/* Status Message for Draft/Pending */}
+          {!showComments && (
+            <VStack
+              space="md"
+              px="$md"
+              py="$xl"
+              mt="$md"
+              alignItems="center"
+              borderTopWidth={8}
+              borderTopColor="$gray100"
+            >
+              <Ionicons
+                name={
+                  postStatus === "draft" ? "create-outline" : "time-outline"
+                }
+                size={48}
+                color={theme.colors.gray300}
+              />
+              <Text fontSize="$md" color="$gray600" textAlign="center">
+                {postStatus === "draft"
+                  ? "草稿暂不支持评论，请先完成编辑并发布"
+                  : "内容正在审核中，审核通过后可以查看评论"}
+              </Text>
+            </VStack>
+          )}
 
           {/* Bottom spacing */}
           <Box height={80} />
         </RNScrollView>
 
         {/* Gray Overlay when focused */}
-        {isCommentFocused && (
+        {isCommentFocused && showComments && (
           <TouchableWithoutFeedback onPress={handleOverlayPress}>
             <View style={styles.overlay} />
           </TouchableWithoutFeedback>
         )}
 
-        {/* Fixed Bottom Bar with Engagement + Input */}
-        <View
-          style={[
-            styles.bottomBar,
-            isCommentFocused && styles.bottomBarExpanded,
-          ]}
-        >
-          {/* Expanded Input Area when focused */}
-          {isCommentFocused && (
-            <View style={styles.expandedInputContainer}>
-              <View style={styles.expandedTextInputWrapper}>
-                <TextInput
-                  ref={commentInputRef}
-                  style={styles.expandedTextInput}
-                  placeholder="写评论..."
-                  placeholderTextColor={theme.colors.gray600}
-                  value={commentInput}
-                  onChangeText={(text) => {
-                    const singleLineText = text.replace(/[\r\n]/g, "");
-                    setCommentInput(singleLineText);
-                  }}
-                  onBlur={handleInputBlur}
-                  maxLength={500}
-                  returnKeyType="send"
-                  onSubmitEditing={handleSubmitComment}
-                  multiline={false}
-                />
+        {/* Fixed Bottom Bar with Engagement + Input - Only for published posts */}
+        {showComments && (
+          <View
+            style={[
+              styles.bottomBar,
+              isCommentFocused && styles.bottomBarExpanded,
+            ]}
+          >
+            {/* Expanded Input Area when focused */}
+            {isCommentFocused && (
+              <View style={styles.expandedInputContainer}>
+                <View style={styles.expandedTextInputWrapper}>
+                  <TextInput
+                    ref={commentInputRef}
+                    style={styles.expandedTextInput}
+                    placeholder="写评论..."
+                    placeholderTextColor={theme.colors.gray600}
+                    value={commentInput}
+                    onChangeText={(text) => {
+                      const singleLineText = text.replace(/[\r\n]/g, "");
+                      setCommentInput(singleLineText);
+                    }}
+                    onBlur={handleInputBlur}
+                    maxLength={500}
+                    returnKeyType="send"
+                    onSubmitEditing={handleSubmitComment}
+                    multiline={false}
+                  />
+                  <TouchableOpacity
+                    onPress={handleSubmitComment}
+                    disabled={isSubmittingComment || !commentInput.trim()}
+                    style={styles.expandedSendButton}
+                  >
+                    {isSubmittingComment ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.colors.accent}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="send"
+                        size={20}
+                        color={
+                          commentInput.trim()
+                            ? theme.colors.accent
+                            : theme.colors.gray400
+                        }
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Compact Bottom Bar */}
+            <View style={styles.compactBottomBar}>
+              {/* Engagement Icons */}
+              {!isCommentFocused && (
+                <View style={styles.engagementSection}>
+                  <Pressable
+                    onPress={handleLike}
+                    style={styles.engagementButton}
+                  >
+                    <VStack alignItems="center" space="xs">
+                      <Ionicons
+                        name={displayIsLiked ? "heart" : "heart-outline"}
+                        size={20}
+                        color={
+                          displayIsLiked ? "#FF3040" : theme.colors.gray600
+                        }
+                      />
+                      <Text
+                        fontSize="$xs"
+                        color={displayIsLiked ? "#FF3040" : "$gray600"}
+                        fontWeight="$medium"
+                      >
+                        {displayLikes}
+                      </Text>
+                    </VStack>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={handleSave}
+                    style={styles.engagementButton}
+                  >
+                    <VStack alignItems="center" space="xs">
+                      <Ionicons
+                        name={displayIsSaved ? "bookmark" : "bookmark-outline"}
+                        size={20}
+                        color={
+                          displayIsSaved
+                            ? theme.colors.accent
+                            : theme.colors.gray600
+                        }
+                      />
+                      <Text
+                        fontSize="$xs"
+                        color={displayIsSaved ? "$accent" : "$gray600"}
+                        fontWeight="$medium"
+                      >
+                        {displaySaves}
+                      </Text>
+                    </VStack>
+                  </Pressable>
+
+                  <Pressable style={styles.engagementButton}>
+                    <VStack alignItems="center" space="xs">
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={20}
+                        color={theme.colors.gray600}
+                      />
+                      <Text
+                        fontSize="$xs"
+                        color="$gray600"
+                        fontWeight="$medium"
+                      >
+                        {displayComments}
+                      </Text>
+                    </VStack>
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Comment Input */}
+              {!isCommentFocused && (
                 <TouchableOpacity
-                  onPress={handleSubmitComment}
-                  disabled={isSubmittingComment || !commentInput.trim()}
-                  style={styles.expandedSendButton}
+                  onPress={handleInputPress}
+                  style={styles.compactInputWrapper}
+                  activeOpacity={0.7}
                 >
-                  {isSubmittingComment ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.accent}
-                    />
-                  ) : (
-                    <Ionicons
-                      name="send"
-                      size={20}
-                      color={
-                        commentInput.trim()
-                          ? theme.colors.accent
-                          : theme.colors.gray400
-                      }
-                    />
-                  )}
+                  <Text fontSize="$sm" color="$gray600">
+                    写评论...
+                  </Text>
                 </TouchableOpacity>
-              </View>
+              )}
             </View>
-          )}
-
-          {/* Compact Bottom Bar */}
-          <View style={styles.compactBottomBar}>
-            {/* Engagement Icons */}
-            {!isCommentFocused && (
-              <View style={styles.engagementSection}>
-                <Pressable onPress={handleLike} style={styles.engagementButton}>
-                  <VStack alignItems="center" space="xs">
-                    <Ionicons
-                      name={displayIsLiked ? "heart" : "heart-outline"}
-                      size={20}
-                      color={displayIsLiked ? "#FF3040" : theme.colors.gray600}
-                    />
-                    <Text
-                      fontSize="$xs"
-                      color={displayIsLiked ? "#FF3040" : "$gray600"}
-                      fontWeight="$medium"
-                    >
-                      {displayLikes}
-                    </Text>
-                  </VStack>
-                </Pressable>
-
-                <Pressable onPress={handleSave} style={styles.engagementButton}>
-                  <VStack alignItems="center" space="xs">
-                    <Ionicons
-                      name={displayIsSaved ? "bookmark" : "bookmark-outline"}
-                      size={20}
-                      color={
-                        displayIsSaved
-                          ? theme.colors.accent
-                          : theme.colors.gray600
-                      }
-                    />
-                    <Text
-                      fontSize="$xs"
-                      color={displayIsSaved ? "$accent" : "$gray600"}
-                      fontWeight="$medium"
-                    >
-                      {displaySaves}
-                    </Text>
-                  </VStack>
-                </Pressable>
-
-                <Pressable style={styles.engagementButton}>
-                  <VStack alignItems="center" space="xs">
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={20}
-                      color={theme.colors.gray600}
-                    />
-                    <Text fontSize="$xs" color="$gray600" fontWeight="$medium">
-                      {displayComments}
-                    </Text>
-                  </VStack>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Comment Input */}
-            {!isCommentFocused && (
-              <TouchableOpacity
-                onPress={handleInputPress}
-                style={styles.compactInputWrapper}
-                activeOpacity={0.7}
-              >
-                <Text fontSize="$sm" color="$gray600">
-                  写评论...
-                </Text>
-              </TouchableOpacity>
-            )}
           </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
 
       {/* Fullscreen Image Viewer */}
