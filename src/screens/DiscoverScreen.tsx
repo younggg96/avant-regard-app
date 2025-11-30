@@ -14,65 +14,134 @@ import {
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
-import { mockPosts } from "../data/mockPosts";
+import {
+  getPosts,
+  Post as ApiPost,
+  likePost,
+  unlikePost,
+} from "../services/postService";
+import { useAuthStore } from "../store/authStore";
 
-// 原始Post类型用于数据处理
-interface OriginalPost {
+// 用于展示的Post类型（与PostCard组件兼容）
+interface DisplayPost {
   id: string;
   type: string;
   author: {
     id: string;
     name: string;
     avatar: string;
+    isVerified?: boolean;
   };
   content: {
     title: string;
+    description?: string;
     images: string[];
+    tags?: string[];
   };
   engagement: {
     likes: number;
+    saves: number;
+    comments: number;
     isLiked?: boolean;
+    isSaved?: boolean;
   };
+  timestamp: string;
 }
 
 type TabType = "home" | "lookbook" | "outfit" | "review" | "article";
 
+// API Post类型到前端Post类型的映射
+const mapApiPostToDisplayPost = (apiPost: ApiPost): DisplayPost => {
+  // 计算相对时间
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+    if (diffInMinutes < 1) return "刚刚";
+    if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
+    if (diffInHours < 24) return `${diffInHours}小时前`;
+    if (diffInDays < 7) return `${diffInDays}天前`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}周前`;
+    return `${Math.floor(diffInDays / 30)}个月前`;
+  };
+
+  return {
+    id: String(apiPost.id),
+    type: apiPost.postType.toLowerCase(), // "OUTFIT" -> "outfit"
+    author: {
+      id: String(apiPost.userId),
+      name: apiPost.username || "匿名用户",
+      avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+      isVerified: false,
+    },
+    content: {
+      title: apiPost.title || "无标题",
+      description: apiPost.contentText || "",
+      images:
+        apiPost.imageUrls && apiPost.imageUrls.length > 0
+          ? apiPost.imageUrls
+          : ["https://picsum.photos/id/1/600/800"],
+      tags: [],
+    },
+    engagement: {
+      likes: apiPost.likeCount || 0,
+      saves: apiPost.favoriteCount || 0,
+      comments: apiPost.commentCount || 0,
+      isLiked: false, // 后端暂不支持，默认false
+      isSaved: false,
+    },
+    timestamp: getRelativeTime(apiPost.createdAt),
+  };
+};
+
 const DiscoverScreen = () => {
   const navigation = useNavigation();
-  const [posts, setPosts] = useState<OriginalPost[]>([] as OriginalPost[]);
+  const { user } = useAuthStore();
+  const [posts, setPosts] = useState<DisplayPost[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("home");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize posts data safely
-  useEffect(() => {
+  // 从后端获取帖子数据
+  const fetchPosts = useCallback(async () => {
     try {
-      // Initialize home posts
-      if (mockPosts && Array.isArray(mockPosts) && mockPosts.length > 0) {
-        const validPosts = mockPosts.filter(
-          (post: any) =>
-            post &&
-            typeof post.id === "string" &&
-            post.author &&
-            post.content &&
-            post.engagement
-        );
-        setPosts(validPosts.length > 0 ? (validPosts as any) : []);
-      } else {
-        console.warn("mockPosts is not a valid array or is empty:", mockPosts);
-        setPosts([]);
-      }
-    } catch (error) {
-      console.error("Error initializing posts:", error);
+      setError(null);
+      console.log("开始获取帖子数据...");
+      const apiPosts = await getPosts();
+      console.log("获取到帖子数量:", apiPosts.length);
+
+      // 只显示已发布的帖子
+      const publishedPosts = apiPosts.filter(
+        (post) => post.status === "PUBLISHED"
+      );
+
+      // 转换为前端展示格式
+      const displayPosts = publishedPosts.map(mapApiPostToDisplayPost);
+      setPosts(displayPosts);
+    } catch (err) {
+      console.error("获取帖子失败:", err);
+      setError(err instanceof Error ? err.message : "获取帖子失败");
       setPosts([]);
-    } finally {
-      setIsInitialized(true);
     }
   }, []);
 
-  // Convert OriginalPost to Post format
-  const convertToPost = useCallback((post: OriginalPost): Post => {
+  // 初始化加载数据
+  useEffect(() => {
+    const initData = async () => {
+      await fetchPosts();
+      setIsInitialized(true);
+    };
+    initData();
+  }, [fetchPosts]);
+
+  // Convert DisplayPost to PostCard Post format
+  const convertToPost = useCallback((post: DisplayPost): Post => {
     return {
       id: post.id,
       title: post.content.title,
@@ -89,14 +158,14 @@ const DiscoverScreen = () => {
 
   // Get current posts based on active tab with safety checks
   const getCurrentPosts = useCallback(() => {
-    let rawPosts: OriginalPost[] = [];
+    let rawPosts: DisplayPost[] = [];
 
     if (activeTab === "home") {
       // 主页显示所有帖子
       rawPosts = posts;
     } else {
       // 根据类型筛选帖子
-      rawPosts = posts.filter((post: any) => post.type === activeTab);
+      rawPosts = posts.filter((post) => post.type === activeTab);
     }
 
     return Array.isArray(rawPosts) ? rawPosts.map(convertToPost) : [];
@@ -120,29 +189,75 @@ const DiscoverScreen = () => {
   const handleAuthorPress = useCallback(
     (authorId: string) => {
       console.log("查看作者资料:", authorId);
-      // 导航到设计师详情页面
-      (navigation.navigate as any)("DesignerDetail", { id: authorId });
+      // 查找作者信息
+      const post = posts.find((p) => p.author.id === authorId);
+      // 导航到用户主页
+      (navigation.navigate as any)("UserProfile", {
+        userId: parseInt(authorId, 10),
+        username: post?.author.name,
+        avatar: post?.author.avatar,
+      });
     },
-    [navigation]
+    [navigation, posts]
   );
 
-  const handleLike = useCallback((postId: string) => {
-    const updatePost = (post: OriginalPost) =>
-      post.id === postId
-        ? {
-            ...post,
-            engagement: {
-              ...post.engagement,
-              isLiked: !post.engagement.isLiked,
-              likes: post.engagement.isLiked
-                ? post.engagement.likes - 1
-                : post.engagement.likes + 1,
-            },
-          }
-        : post;
+  const handleLike = useCallback(
+    async (postId: string) => {
+      const targetPost = posts.find((p) => p.id === postId);
+      if (!targetPost) return;
 
-    setPosts((prevPosts) => prevPosts.map(updatePost));
-  }, []);
+      const isCurrentlyLiked = targetPost.engagement.isLiked;
+
+      // 先乐观更新UI
+      const updatePost = (post: DisplayPost) =>
+        post.id === postId
+          ? {
+              ...post,
+              engagement: {
+                ...post.engagement,
+                isLiked: !isCurrentlyLiked,
+                likes: isCurrentlyLiked
+                  ? post.engagement.likes - 1
+                  : post.engagement.likes + 1,
+              },
+            }
+          : post;
+
+      setPosts((prevPosts) => prevPosts.map(updatePost));
+
+      // 然后调用API
+      try {
+        const numericPostId = parseInt(postId, 10);
+        const userId = user?.id ? parseInt(user.id, 10) : 0;
+
+        if (isCurrentlyLiked) {
+          await unlikePost(numericPostId, userId);
+        } else {
+          await likePost(numericPostId, userId);
+        }
+      } catch (err) {
+        console.error("点赞操作失败:", err);
+        // 如果API调用失败，回滚UI状态
+        setPosts((prevPosts) =>
+          prevPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  engagement: {
+                    ...post.engagement,
+                    isLiked: isCurrentlyLiked,
+                    likes: isCurrentlyLiked
+                      ? post.engagement.likes + 1
+                      : post.engagement.likes - 1,
+                  },
+                }
+              : post
+          )
+        );
+      }
+    },
+    [posts, user]
+  );
 
   // 获取各类型的帖子数量
   const getPostCountByType = useCallback(
@@ -150,7 +265,7 @@ const DiscoverScreen = () => {
       if (type === "home") {
         return posts.length;
       }
-      return posts.filter((post: any) => post.type === type).length;
+      return posts.filter((post) => post.type === type).length;
     },
     [posts]
   );
@@ -162,11 +277,9 @@ const DiscoverScreen = () => {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // In real app, fetch latest posts from API
+    await fetchPosts();
     setRefreshing(false);
-  }, []);
+  }, [fetchPosts]);
 
   const handleLoadMore = useCallback(async () => {
     if (loading) return;
@@ -354,18 +467,61 @@ const DiscoverScreen = () => {
           />
         }
       >
-        {currentPosts.length === 0 ? (
+        {error ? (
           <VStack
             flex={1}
             justifyContent="center"
             alignItems="center"
             py="$2xl"
           >
+            <Ionicons
+              name="cloud-offline-outline"
+              size={48}
+              color={theme.colors.gray400}
+            />
             <Text
               fontSize="$lg"
               color="$black"
               fontWeight="$medium"
               mb="$sm"
+              mt="$md"
+              textAlign="center"
+            >
+              加载失败
+            </Text>
+            <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
+              {error}
+            </Text>
+            <Pressable
+              onPress={handleRefresh}
+              px="$lg"
+              py="$sm"
+              bg="$black"
+              rounded="$md"
+            >
+              <Text color="$white" fontWeight="$medium">
+                点击重试
+              </Text>
+            </Pressable>
+          </VStack>
+        ) : currentPosts.length === 0 ? (
+          <VStack
+            flex={1}
+            justifyContent="center"
+            alignItems="center"
+            py="$2xl"
+          >
+            <Ionicons
+              name="newspaper-outline"
+              size={48}
+              color={theme.colors.gray400}
+            />
+            <Text
+              fontSize="$lg"
+              color="$black"
+              fontWeight="$medium"
+              mb="$sm"
+              mt="$md"
               textAlign="center"
             >
               {activeTab === "home" && "暂无主页内容"}
@@ -375,7 +531,7 @@ const DiscoverScreen = () => {
               {activeTab === "article" && "暂无文章内容"}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">
-              {activeTab === "home" && "当有新的时尚内容时，您会在这里看到它们"}
+              {activeTab === "home" && "下拉刷新获取最新内容"}
               {activeTab === "lookbook" && "精彩的秀场系列即将到来"}
               {activeTab === "outfit" && "优秀的搭配灵感即将到来"}
               {activeTab === "review" && "详细的产品评测即将到来"}

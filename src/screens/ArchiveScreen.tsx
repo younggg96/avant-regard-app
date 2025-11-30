@@ -153,13 +153,21 @@ const ArchiveScreen = () => {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search designers..."
-          placeholderTextColor={theme.colors.gray400}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <View style={styles.searchBar}>
+          <Ionicons
+            name="search"
+            size={20}
+            color={theme.colors.gray400}
+            style={{ marginRight: 8 }}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="搜索设计师..."
+            placeholderTextColor={theme.colors.gray400}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
       {/* Designers List */}
@@ -240,17 +248,22 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   searchContainer: {
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
   },
   searchInput: {
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.sm,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    ...theme.typography.body,
+    flex: 1,
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.black,
-    backgroundColor: theme.colors.white,
+    paddingVertical: 8,
   },
   content: {
     flex: 1,

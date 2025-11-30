@@ -1,32 +1,44 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authService, LoginResponse } from "../services/authService";
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
+  userId: number;
   phone: string;
+  username: string;
   nickname: string;
   name?: string;
   bio?: string;
   website?: string;
   location?: string;
   avatar?: string;
-  token?: string;
+  admin: boolean;
+  userType: string;
+}
+
+interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: AuthUser | null;
-  token: string | null;
+  tokens: AuthTokens | null;
   isLoading: boolean;
 }
 
 interface AuthActions {
-  login: (user: AuthUser) => void;
+  loginWithResponse: (response: LoginResponse) => void;
+  login: (user: AuthUser, tokens?: AuthTokens) => void;
   logout: () => void;
   updateUser: (user: Partial<AuthUser>) => void;
   updateProfile: (profileData: Partial<AuthUser>) => void;
   setLoading: (loading: boolean) => void;
+  refreshTokens: () => Promise<boolean>;
+  getAccessToken: () => string | null;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -63,15 +75,40 @@ export const useAuthStore = create<AuthStore>()(
       // Initial state
       isAuthenticated: false,
       user: null,
-      token: null,
+      tokens: null,
       isLoading: false,
 
       // Actions
-      login: (user: AuthUser) => {
+      loginWithResponse: (response: LoginResponse) => {
+        const user: AuthUser = {
+          id: String(response.userId),
+          userId: response.userId,
+          phone: response.phone,
+          username: response.username,
+          nickname: response.username,
+          admin: response.admin,
+          userType: response.userType,
+          avatar: "https://via.placeholder.com/100x100",
+        };
+        
+        const tokens: AuthTokens = {
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        };
+
         set({
           isAuthenticated: true,
           user,
-          token: user.token,
+          tokens,
+          isLoading: false,
+        });
+      },
+
+      login: (user: AuthUser, tokens?: AuthTokens) => {
+        set({
+          isAuthenticated: true,
+          user,
+          tokens: tokens || null,
           isLoading: false,
         });
       },
@@ -80,7 +117,7 @@ export const useAuthStore = create<AuthStore>()(
         set({
           isAuthenticated: false,
           user: null,
-          token: null,
+          tokens: null,
           isLoading: false,
         });
       },
@@ -106,6 +143,51 @@ export const useAuthStore = create<AuthStore>()(
       setLoading: (loading: boolean) => {
         set({ isLoading: loading });
       },
+
+      refreshTokens: async () => {
+        const currentTokens = get().tokens;
+        if (!currentTokens?.refreshToken) {
+          return false;
+        }
+
+        try {
+          const response = await authService.refreshToken({
+            refreshToken: currentTokens.refreshToken,
+          });
+
+          const user: AuthUser = {
+            id: String(response.userId),
+            userId: response.userId,
+            phone: response.phone,
+            username: response.username,
+            nickname: response.username,
+            admin: response.admin,
+            userType: response.userType,
+            avatar: get().user?.avatar || "https://via.placeholder.com/100x100",
+          };
+
+          const tokens: AuthTokens = {
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken,
+          };
+
+          set({
+            user,
+            tokens,
+          });
+
+          return true;
+        } catch (error) {
+          console.error("Token refresh failed:", error);
+          // Token 刷新失败，清除登录状态
+          get().logout();
+          return false;
+        }
+      },
+
+      getAccessToken: () => {
+        return get().tokens?.accessToken || null;
+      },
     }),
     {
       name: "avant-regard-auth",
@@ -114,7 +196,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
-        token: state.token,
+        tokens: state.tokens,
       }),
       // Add error handling for storage failures
       onRehydrateStorage: () => (state) => {

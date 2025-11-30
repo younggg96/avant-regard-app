@@ -144,19 +144,6 @@ const EditProfileScreen = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>网站</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.website}
-              onChangeText={(text) => updateFormData("website", text)}
-              placeholder="https://example.com"
-              placeholderTextColor={theme.colors.gray400}
-              keyboardType="url"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
             <Text style={styles.label}>所在地</Text>
             <TextInput
               style={styles.input}

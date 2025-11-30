@@ -22,10 +22,9 @@ import PostDetailScreen from "./src/screens/PostDetailScreen";
 import SearchScreen from "./src/screens/SearchScreen";
 // Auth Screens
 import AuthScreen from "./src/screens/AuthScreen";
-import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
-import PhoneManagementScreen from "./src/screens/PhoneManagementScreen";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
 import TermsScreen from "./src/screens/TermsScreen";
 import PrivacyScreen from "./src/screens/PrivacyScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
@@ -219,18 +218,13 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="ChangePassword"
-        component={ChangePasswordScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="PhoneManagement"
-        component={PhoneManagementScreen}
+        name="UserProfile"
+        component={UserProfileScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

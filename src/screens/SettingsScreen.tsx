@@ -12,7 +12,6 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
-import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
 
 interface SettingItem {
@@ -29,7 +28,7 @@ interface SettingItem {
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const settingSections: { title: string; items: SettingItem[] }[] = [
     {
@@ -40,22 +39,6 @@ const SettingsScreen = () => {
           label: "编辑个人资料",
           icon: "person-outline",
           onPress: () => (navigation as any).navigate("EditProfile"),
-        },
-        {
-          id: "phone",
-          label: "手机号管理",
-          icon: "call-outline",
-          onPress: () => (navigation as any).navigate("PhoneManagement"),
-          rightText: user?.phone
-            ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")
-            : "",
-          rightColor: theme.colors.gray400,
-        },
-        {
-          id: "password",
-          label: "修改密码",
-          icon: "lock-closed-outline",
-          onPress: () => (navigation as any).navigate("ChangePassword"),
         },
       ],
     },
@@ -77,13 +60,6 @@ const SettingsScreen = () => {
       ],
     },
   ];
-
-  const handleDeleteAccount = () => {
-    Alert.show("账户已删除");
-    setTimeout(() => {
-      logout();
-    }, 1000);
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -139,21 +115,6 @@ const SettingsScreen = () => {
           </View>
         ))}
 
-        <View style={styles.dangerZone}>
-          <Text style={styles.sectionTitle}>危险操作</Text>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDeleteAccount}
-          >
-            <Ionicons
-              name="trash-outline"
-              size={20}
-              color={theme.colors.error}
-            />
-            <Text style={styles.deleteButtonText}>删除账户</Text>
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.footer}>
           <Text style={styles.footerText}>Avant Regard v1.0.0</Text>
           <Text style={styles.footerText}>© 2024 时装档案</Text>
@@ -206,21 +167,6 @@ const styles = StyleSheet.create({
   rightText: {
     ...theme.typography.caption,
     fontWeight: "500",
-  },
-  dangerZone: {
-    paddingVertical: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-  },
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-  },
-  deleteButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.error,
-    marginLeft: theme.spacing.md,
   },
   footer: {
     alignItems: "center",

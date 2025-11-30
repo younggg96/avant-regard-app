@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
+import { authService } from "../services/authService";
 
 type AuthMode = "login" | "register" | "forgotPassword" | "verification";
 
@@ -39,7 +40,7 @@ const AuthScreen = () => {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  const { login } = useAuthStore();
+  const { loginWithResponse } = useAuthStore();
 
   // 验证手机号格式
   const validatePhone = (phone: string) => {
@@ -56,8 +57,8 @@ const AuthScreen = () => {
 
     setLoading(true);
     try {
-      // 模拟发送验证码
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // 调用发送验证码 API
+      await authService.sendSms({ phone: formData.phone });
 
       // 开始倒计时
       setCountdown(60);
@@ -73,13 +74,15 @@ const AuthScreen = () => {
 
       Alert.show("验证码已发送至 " + formData.phone);
     } catch (error) {
-      Alert.show("发送失败: 验证码发送失败，请稍后重试");
+      const message =
+        error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
+      Alert.show("发送失败: " + message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 处理登录
+  // 处理密码登录
   const handleLogin = async () => {
     if (!validatePhone(formData.phone)) {
       Alert.show("提示: 请输入正确的手机号码");
@@ -93,18 +96,52 @@ const AuthScreen = () => {
 
     setLoading(true);
     try {
-      // 模拟登录请求
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // 登录成功
-      login({
-        id: "user-1",
+      // 调用密码登录 API
+      const response = await authService.login({
         phone: formData.phone,
-        nickname: "用户" + formData.phone.slice(-4),
-        avatar: "https://via.placeholder.com/100x100",
+        password: formData.password,
       });
+
+      // 登录成功，存储用户信息
+      loginWithResponse(response);
+      console.log("response", response);
+      Alert.show("登录成功: 欢迎回来！", "", 1000);
     } catch (error) {
-      Alert.show("登录失败: 手机号或密码错误");
+      const message =
+        error instanceof Error ? error.message : "手机号或密码错误";
+      Alert.show("登录失败: " + message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 处理验证码登录
+  const handleSmsLogin = async () => {
+    if (!validatePhone(formData.phone)) {
+      Alert.show("提示: 请输入正确的手机号码");
+      return;
+    }
+
+    if (!formData.verificationCode) {
+      Alert.show("提示: 请输入验证码");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 调用验证码登录 API
+      const response = await authService.loginSms({
+        phone: formData.phone,
+        code: formData.verificationCode,
+      });
+
+      // 登录成功，存储用户信息
+      loginWithResponse(response);
+      Alert.show("登录成功: 欢迎回来！", "", 1000);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "验证码错误或已过期";
+      Alert.show("登录失败: " + message);
     } finally {
       setLoading(false);
     }
@@ -139,20 +176,25 @@ const AuthScreen = () => {
 
     setLoading(true);
     try {
-      // 模拟注册请求
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 调用注册 API
+      const response = await authService.register({
+        phone: formData.phone,
+        password: formData.password,
+        code: formData.verificationCode,
+      });
 
       Alert.show("注册成功: 欢迎使用AVANT REGARD！", "", 1000);
+
+      // 注册成功后自动登录
       setTimeout(() => {
-        login({
-          id: "user-1",
-          phone: formData.phone,
-          nickname: "用户" + formData.phone.slice(-4),
-          avatar: "https://via.placeholder.com/100x100",
-        });
+        loginWithResponse(response);
       }, 1000);
     } catch (error) {
-      Alert.show("注册失败: 注册过程中出现错误，请稍后重试");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "注册过程中出现错误，请稍后重试";
+      Alert.show("注册失败: " + message);
     } finally {
       setLoading(false);
     }
@@ -182,13 +224,30 @@ const AuthScreen = () => {
 
     setLoading(true);
     try {
-      // 模拟重置密码请求
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 调用忘记密码 API
+      await authService.forgetPassword({
+        phone: formData.phone,
+        password: formData.password,
+        code: formData.verificationCode,
+      });
 
       Alert.show("密码重置成功: 请使用新密码登录", "", 1000);
-      setTimeout(() => setMode("login"), 1000);
+
+      // 重置成功后跳转到登录页面
+      setTimeout(() => {
+        setMode("login");
+        // 清空密码相关字段
+        setFormData((prev) => ({
+          ...prev,
+          password: "",
+          confirmPassword: "",
+          verificationCode: "",
+        }));
+      }, 1000);
     } catch (error) {
-      Alert.show("重置失败: 密码重置失败，请稍后重试");
+      const message =
+        error instanceof Error ? error.message : "密码重置失败，请稍后重试";
+      Alert.show("重置失败: " + message);
     } finally {
       setLoading(false);
     }
@@ -399,7 +458,7 @@ const AuthScreen = () => {
         case "forgotPassword":
           return handleForgotPassword();
         case "verification":
-          return handleLogin(); // 验证码登录
+          return handleSmsLogin();
       }
     };
 

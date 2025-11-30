@@ -227,6 +227,16 @@ const PostDetailScreen = () => {
     Alert.alert("成功", isFollowing ? "已取消关注" : "已关注");
   }, [isFollowing]);
 
+  // 处理点击作者头像
+  const handleAuthorPress = useCallback(() => {
+    if (!post?.author?.id) return;
+    (navigation as any).navigate("UserProfile", {
+      userId: parseInt(post.author.id, 10),
+      username: post.author.name,
+      avatar: post.author.avatar,
+    });
+  }, [navigation, post]);
+
   // 处理评论点赞
   const handleCommentLike = useCallback((commentId: string) => {
     setComments((prev) =>
@@ -333,26 +343,30 @@ const PostDetailScreen = () => {
               />
             </Pressable>
 
-            <Image
-              source={{ uri: post.author.avatar }}
-              style={styles.headerAvatar}
-            />
+            <Pressable onPress={handleAuthorPress}>
+              <Image
+                source={{ uri: post.author.avatar }}
+                style={styles.headerAvatar}
+              />
+            </Pressable>
 
-            <VStack flex={1}>
-              <HStack space="xs" alignItems="center">
-                <Text
-                  fontSize="$sm"
-                  fontWeight="$semibold"
-                  color="$black"
-                  numberOfLines={1}
-                >
-                  {post.author.name}
+            <Pressable onPress={handleAuthorPress} flex={1}>
+              <VStack>
+                <HStack space="xs" alignItems="center">
+                  <Text
+                    fontSize="$sm"
+                    fontWeight="$semibold"
+                    color="$black"
+                    numberOfLines={1}
+                  >
+                    {post.author.name}
+                  </Text>
+                </HStack>
+                <Text fontSize="$xs" color="$gray600">
+                  {post.timestamp}
                 </Text>
-              </HStack>
-              <Text fontSize="$xs" color="$gray600">
-                {post.timestamp}
-              </Text>
-            </VStack>
+              </VStack>
+            </Pressable>
           </HStack>
 
           {/* Right: Actions based on status */}
