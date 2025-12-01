@@ -12,40 +12,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import designersData from "../data/data.json";
+import { designerService, ApiDesigner, ApiShow } from "../services/designerService";
 
 const { width: screenWidth } = Dimensions.get("window");
-
-interface DesignerData {
-  designer: string;
-  designer_url: string;
-  collections_summary: Array<{
-    season: string;
-    category: string;
-    city: string | null;
-    collection_date: string;
-    review_title: string;
-    review_author: string | null;
-    looks_count: number;
-  }>;
-  shows: Array<{
-    show_url: string;
-    season: string;
-    category: string;
-    city: string | null;
-    collection_date: string;
-    review_title: string;
-    review_author: string | null;
-    review_text: string | null;
-    looks_count: number;
-    images: Array<{
-      image_url: string;
-      image_type: string;
-    }>;
-  }>;
-  show_count: number;
-  image_count: number;
-}
 
 interface Designer {
   id: string;
@@ -84,151 +53,152 @@ interface Look {
 const DesignerDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const designerId = (route.params as any)?.id || "designer-1";
+  const designerId = (route.params as any)?.id || "1";
   const designerName = (route.params as any)?.name;
 
   const [designer, setDesigner] = useState<Designer | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [looks, setLooks] = useState<Look[]>([]);
+  const [designerApiData, setDesignerApiData] = useState<ApiDesigner | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find designer data by name or ID
+  // Find designer data by name or ID from API
   useEffect(() => {
-    const findDesignerData = (): DesignerData | null => {
-      const dataArray = designersData as DesignerData[];
+    const loadDesignerData = async () => {
+      setLoading(true);
+      try {
+        let designerData: ApiDesigner | null = null;
 
-      if (designerName) {
-        // Try exact match first
-        let found = dataArray.find(
-          (d: DesignerData) =>
-            d.designer.toLowerCase() === designerName.toLowerCase()
-        );
-
-        // If not found, try partial match
-        if (!found) {
-          found = dataArray.find(
-            (d: DesignerData) =>
-              d.designer.toLowerCase().includes(designerName.toLowerCase()) ||
-              designerName.toLowerCase().includes(d.designer.toLowerCase())
-          );
+        if (designerName) {
+          designerData = await designerService.getDesignerByName(designerName);
         }
 
-        // If still not found, try matching just the brand name (part before parentheses)
-        if (!found) {
-          found = dataArray.find((d: DesignerData) => {
-            const brandMatch = d.designer.match(/^([^(]+?)(?:\s*\(|$)/);
-            const brandName = brandMatch?.[1]?.trim();
-            return (
-              brandName &&
-              (brandName.toLowerCase().includes(designerName.toLowerCase()) ||
-                designerName.toLowerCase().includes(brandName.toLowerCase()))
-            );
+        if (!designerData && designerId) {
+          designerData = await designerService.getDesignerById(Number(designerId));
+        }
+
+        if (!designerData) {
+          // 尝试获取第一个设计师作为默认
+          const allDesigners = await designerService.getAllDesigners();
+          designerData = allDesigners[0] || null;
+        }
+
+        setDesignerApiData(designerData);
+
+        if (designerData) {
+          // Extract brand name from designer string (handle parentheses)
+          const brandMatch = designerData.name.match(/^([^(]+?)(?:\s*\(|$)/);
+          const designerMatch = designerData.name.match(/\(([^)]+)\)$/);
+
+          const brand = designerMatch
+            ? designerMatch[1]
+            : brandMatch?.[1]?.trim() || designerData.name;
+          const name = brandMatch?.[1]?.trim() || designerData.name;
+
+          // Get hero image from the latest show if available
+          const heroImage =
+            designerData.shows && designerData.shows.length > 0
+              ? designerData.shows[0]?.images?.find(
+                  (img) => img.imageType === "hero"
+                )?.imageUrl
+              : null;
+          const avatarImage =
+            designerData.shows && designerData.shows.length > 0
+              ? designerData.shows[0]?.images?.find(
+                  (img) => img.imageType === "look"
+                )?.imageUrl
+              : null;
+
+          setDesigner({
+            id: String(designerData.id),
+            name: name,
+            brand: brand,
+            avatar: avatarImage || "https://via.placeholder.com/120x120",
+            coverImage: heroImage || "https://via.placeholder.com/400x200",
+            isFollowing: false,
+            collections: designerData.shows?.length || 0,
+            website: designerData.designerUrl,
           });
+
+          // Convert shows to collections
+          const convertedCollections = (designerData.shows || []).map(
+            (show, index) => {
+              const year = show.collectionTs
+                ? new Date(show.collectionTs).getFullYear().toString()
+                : "2023";
+              const coverImage =
+                show.images?.find((img) => img.imageType === "hero")?.imageUrl ||
+                show.images?.[0]?.imageUrl ||
+                "https://via.placeholder.com/300x400";
+              return {
+                id: `collection-${index}`,
+                title: show.reviewTitle || show.season,
+                season: show.season,
+                year: year,
+                coverImage: coverImage,
+                imageCount: show.images?.length || 0,
+                city: show.city,
+                author: show.reviewAuthor,
+                reviewText: show.reviewText,
+                showUrl: show.showUrl,
+              };
+            }
+          );
+
+          // Convert images to looks
+          const convertedLooks: Look[] = [];
+          (designerData.shows || []).forEach((show, showIndex) => {
+            (show.images || []).forEach((image, imageIndex) => {
+              convertedLooks.push({
+                id: `look-${showIndex}-${imageIndex}`,
+                image: image.imageUrl,
+                title: `${show.season || "Unknown Season"} Look ${imageIndex + 1}`,
+                description:
+                  show.reviewText?.substring(0, 100) + "..." ||
+                  `${show.season || "Collection"} collection piece`,
+                likes: Math.floor(Math.random() * 2000) + 100,
+                isLiked: Math.random() > 0.7,
+                imageType: image.imageType,
+              });
+            });
+          });
+
+          setCollections(convertedCollections);
+          setLooks(convertedLooks);
+        } else {
+          // If no designer data found, create a fallback
+          setDesigner({
+            id: designerId,
+            name: designerName || "Unknown Designer",
+            brand: designerName || "Unknown Brand",
+            avatar: "https://via.placeholder.com/120x120",
+            coverImage: "https://via.placeholder.com/400x200",
+            isFollowing: false,
+            collections: 0,
+            website: "",
+          });
+          setCollections([]);
+          setLooks([]);
         }
-
-        return found || null;
+      } catch (error) {
+        console.error("Failed to load designer data:", error);
+        // 出错时设置默认值
+        setDesigner({
+          id: designerId,
+          name: designerName || "Unknown Designer",
+          brand: designerName || "Unknown Brand",
+          avatar: "https://via.placeholder.com/120x120",
+          coverImage: "https://via.placeholder.com/400x200",
+          isFollowing: false,
+          collections: 0,
+          website: "",
+        });
+      } finally {
+        setLoading(false);
       }
-
-      // Fallback to first designer if no name provided
-      return dataArray[0] || null;
     };
 
-    const designerData = findDesignerData();
-
-    if (designerData) {
-      // Extract brand name from designer string (handle parentheses)
-      const brandMatch = designerData.designer.match(/^([^(]+?)(?:\s*\(|$)/);
-      const designerMatch = designerData.designer.match(/\(([^)]+)\)$/);
-
-      const brand = designerMatch
-        ? designerMatch[1]
-        : brandMatch?.[1]?.trim() || designerData.designer;
-      const name = brandMatch?.[1]?.trim() || designerData.designer;
-
-      // Get hero image from the latest show if available
-      const heroImage =
-        designerData.shows && designerData.shows.length > 0
-          ? designerData.shows[0]?.images?.find(
-              (img) => img.image_type === "hero"
-            )?.image_url
-          : null;
-      const avatarImage =
-        designerData.shows && designerData.shows.length > 0
-          ? designerData.shows[0]?.images?.find(
-              (img) => img.image_type === "look"
-            )?.image_url
-          : null;
-
-      setDesigner({
-        id: designerId,
-        name: name,
-        brand: brand,
-        avatar: avatarImage || "https://via.placeholder.com/120x120",
-        coverImage: heroImage || "https://via.placeholder.com/400x200",
-        isFollowing: false,
-        collections: designerData.collections_summary?.length || 0,
-        website: designerData.designer_url,
-      });
-
-      // Convert shows to collections
-      const convertedCollections = (designerData.shows || []).map(
-        (show, index) => {
-          const year = show.collection_date
-            ? new Date(show.collection_date).getFullYear().toString()
-            : "2023";
-          const coverImage =
-            show.images?.find((img) => img.image_type === "hero")?.image_url ||
-            show.images?.[0]?.image_url ||
-            "https://via.placeholder.com/300x400";
-          return {
-            id: `collection-${index}`,
-            title: show.review_title || show.season,
-            season: show.season,
-            year: year,
-            coverImage: coverImage,
-            imageCount: show.looks_count || 0,
-            city: show.city,
-            author: show.review_author,
-            reviewText: show.review_text,
-            showUrl: show.show_url,
-          };
-        }
-      );
-
-      // Convert images to looks
-      const convertedLooks: Look[] = [];
-      (designerData.shows || []).forEach((show, showIndex) => {
-        (show.images || []).forEach((image, imageIndex) => {
-          convertedLooks.push({
-            id: `look-${showIndex}-${imageIndex}`,
-            image: image.image_url,
-            title: `${show.season || "Unknown Season"} Look ${imageIndex + 1}`,
-            description:
-              show.review_text?.substring(0, 100) + "..." ||
-              `${show.season || "Collection"} collection piece`,
-            likes: Math.floor(Math.random() * 2000) + 100,
-            isLiked: Math.random() > 0.7,
-            imageType: image.image_type,
-          });
-        });
-      });
-
-      setCollections(convertedCollections);
-      setLooks(convertedLooks);
-    } else {
-      // If no designer data found, create a fallback
-      setDesigner({
-        id: designerId,
-        name: designerName || "Unknown Designer",
-        brand: designerName || "Unknown Brand",
-        avatar: "https://via.placeholder.com/120x120",
-        coverImage: "https://via.placeholder.com/400x200",
-        isFollowing: false,
-        collections: 0,
-        website: "",
-      });
-      setCollections([]);
-      setLooks([]);
-    }
+    loadDesignerData();
   }, [designerId, designerName]);
 
   const [activeTab, setActiveTab] = useState<"collections" | "looks">(
@@ -252,21 +222,20 @@ const DesignerDetailScreen = () => {
   // Handle collection press
   const handleCollectionPress = useCallback(
     (collection: Collection) => {
-      // Find the corresponding show data to get images
-      const designerData = (designersData as DesignerData[]).find(
-        (d: DesignerData) =>
-          d.designer.toLowerCase().includes(designer?.name.toLowerCase() || "")
-      );
-
+      // Find the corresponding show data to get images from cached API data
       let images: any[] = [];
-      if (designerData && designerData.shows) {
-        const show = designerData.shows.find(
-          (s: any) =>
-            s.review_title === collection.title ||
+      if (designerApiData && designerApiData.shows) {
+        const show = designerApiData.shows.find(
+          (s) =>
+            s.reviewTitle === collection.title ||
             s.season === collection.season
         );
         if (show && show.images) {
-          images = show.images;
+          // 转换为统一格式
+          images = show.images.map((img) => ({
+            imageUrl: img.imageUrl,
+            imageType: img.imageType,
+          }));
         }
       }
 
@@ -276,7 +245,7 @@ const DesignerDetailScreen = () => {
         images,
       });
     },
-    [navigation, designer]
+    [navigation, designer, designerApiData]
   );
 
   // Handle look press
@@ -353,9 +322,7 @@ const DesignerDetailScreen = () => {
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {(designersData as any).find((d: any) =>
-              d.designer.includes(designer?.name || "")
-            )?.show_count || 0}
+            {designerApiData?.shows?.length || 0}
           </Text>
           <Text style={styles.statLabel}>场秀</Text>
         </View>

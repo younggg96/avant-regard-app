@@ -24,9 +24,12 @@ import ScreenHeader from "../components/ScreenHeader";
 import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
+import { postService } from "../services/postService";
+import { useAuthStore } from "../store/authStore";
 
 const PublishArticleScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const richText = useRef<RichEditor>(null);
 
   const [title, setTitle] = useState("");
@@ -34,6 +37,9 @@ const PublishArticleScreen = () => {
   const [htmlContent, setHtmlContent] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [showContentImagePicker, setShowContentImagePicker] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -57,39 +63,99 @@ const PublishArticleScreen = () => {
     return true;
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!validateForm()) {
       return;
     }
 
-    const publishData = {
-      type: "article",
-      title,
-      content: htmlContent, // 使用 HTML 格式的内容
-      coverImage,
-      tags: selectedTags,
-    };
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-    console.log("Publishing:", publishData);
+    setIsPublishing(true);
+    try {
+      let uploadedUrls: string[] = [];
 
-    Alert.show("发布成功: 您的时尚文章已成功发布！", "", 1000);
-    setTimeout(() => {
-      resetForm();
-      navigation.goBack();
-    }, 1000);
+      // 如果有封面图，先上传
+      if (coverImage) {
+        setUploadProgress("上传封面图片...");
+        const coverUrl = await postService.uploadImage(coverImage);
+        uploadedUrls = [coverUrl];
+      }
+
+      // 创建帖子
+      setUploadProgress("正在发布...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "ARTICLES",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: htmlContent,
+        imageUrls: uploadedUrls,
+      });
+
+      setUploadProgress(null);
+      Alert.show("发布成功！", "", 1500);
+      setTimeout(() => {
+        resetForm();
+        (navigation as any).reset({
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+        });
+      }, 1500);
+    } catch (error) {
+      console.error("Publish error:", error);
+      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
+    } finally {
+      setIsPublishing(false);
+      setUploadProgress(null);
+    }
   };
 
-  const handleSaveDraft = () => {
-    const draftData = {
-      type: "article",
-      title,
-      content: htmlContent, // 使用 HTML 格式的内容
-      coverImage,
-      tags: selectedTags,
-    };
+  const handleSaveDraft = async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-    console.log("Saving draft:", draftData);
-    Alert.show("草稿已保存: 您的内容已保存为草稿");
+    // 草稿至少需要有标题或内容
+    if (!title.trim() && !content.trim()) {
+      Alert.show("请至少填写标题或内容");
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      let uploadedUrls: string[] = [];
+
+      // 如果有封面图，先上传
+      if (coverImage) {
+        setUploadProgress("上传封面图片...");
+        const coverUrl = await postService.uploadImage(coverImage);
+        uploadedUrls = [coverUrl];
+      }
+
+      // 保存草稿
+      setUploadProgress("正在保存...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "ARTICLES",
+        postStatus: "DRAFT",
+        title: title.trim() || "文章草稿",
+        contentText: htmlContent,
+        imageUrls: uploadedUrls,
+      });
+
+      setUploadProgress(null);
+      Alert.show("草稿已保存", "", 1500);
+    } catch (error) {
+      console.error("Save draft error:", error);
+      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+    } finally {
+      setIsSavingDraft(false);
+      setUploadProgress(null);
+    }
   };
 
   const resetForm = () => {
@@ -280,7 +346,14 @@ const PublishArticleScreen = () => {
       <PublishButtons
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
-        publishDisabled={!canPublish()}
+        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+        draftDisabled={isPublishing || isSavingDraft}
+        publishButtonText={
+          isPublishing ? uploadProgress || "发布中..." : "发布"
+        }
+        draftButtonText={
+          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+        }
       />
 
       {/* Modals */}

@@ -7,47 +7,18 @@ import {
   Image,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import designersData from "../data/data.json";
+import { designerService, ApiDesigner } from "../services/designerService";
 
-interface DesignerData {
-  designer: string;
-  designer_url: string;
-  collections_summary: Array<{
-    season: string;
-    category: string;
-    city: string | null;
-    collection_date: string;
-    review_title: string;
-    review_author: string | null;
-    looks_count: number;
-  }>;
-  shows: Array<{
-    show_url: string;
-    season: string;
-    category: string;
-    city: string | null;
-    collection_date: string;
-    review_title: string;
-    review_author: string | null;
-    review_text: string | null;
-    looks_count: number;
-    images: Array<{
-      image_url: string;
-      image_type: string;
-    }>;
-  }>;
-  show_count: number;
-  image_count: number;
-}
-
+// 转换后的设计师类型
 interface Designer {
-  id: string;
+  id: number;
   name: string;
   brand: string;
   collections: number;
@@ -63,56 +34,70 @@ const ArchiveScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [designers, setDesigners] = useState<Designer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Convert designers data on component mount
-  useEffect(() => {
-    const convertedDesigners = (designersData as DesignerData[]).map(
-      (data: DesignerData, index) => {
-        // Extract brand and designer name from the designer string
-        const brandMatch = data.designer.match(/^([^(]+?)(?:\s*\(|$)/);
-        const designerMatch = data.designer.match(/\(([^)]+)\)$/);
+  // Fetch designers data from API
+  const fetchDesigners = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const allDesigners = await designerService.getAllDesigners();
+
+      // Convert API data to Designer format
+      const convertedDesigners = allDesigners.map((data: ApiDesigner) => {
+        // Extract brand and designer name from the name string
+        const brandMatch = data.name.match(/^([^(]+?)(?:\s*\(|$)/);
+        const designerMatch = data.name.match(/\(([^)]+)\)$/);
 
         const brand = designerMatch
           ? designerMatch[1]
-          : brandMatch?.[1]?.trim() || data.designer;
-        const name = brandMatch?.[1]?.trim() || data.designer;
+          : brandMatch?.[1]?.trim() || data.name;
+        const name = brandMatch?.[1]?.trim() || data.name;
 
-        // Calculate total looks across all shows
+        // Calculate total looks across all shows (count images per show)
         const totalLooks = data.shows.reduce(
-          (sum, show) => sum + (show.looks_count || 0),
+          (sum, show) => sum + (show.images?.length || 0),
           0
         );
 
-        // Get latest season from shows or collections_summary
+        // Get latest season from shows
         const latestShow = data.shows.length > 0 ? data.shows[0] : null;
-        const latestCollection =
-          data.collections_summary.length > 0
-            ? data.collections_summary[0]
-            : null;
-        const latestSeason =
-          latestShow?.season || latestCollection?.season || "Unknown";
+        const latestSeason = latestShow?.season || "Unknown";
 
         // Get hero image from the latest show if available
         const heroImage = latestShow?.images?.find(
-          (img) => img.image_type === "hero"
-        )?.image_url;
+          (img) => img.imageType === "hero"
+        )?.imageUrl;
 
         return {
-          id: `designer-${index}`,
+          id: data.id,
           name: name,
           brand: brand,
-          collections: data.collections_summary.length,
+          collections: data.shows.length,
           shows: data.shows.length,
           totalLooks: totalLooks,
           description: `${brand}的时装设计，以独特的设计理念和创新的时尚视角而闻名。`,
-          website: data.designer_url,
+          website: data.designerUrl,
           latestSeason: latestSeason,
           image: heroImage,
         };
-      }
-    );
-    setDesigners(convertedDesigners);
-  }, []);
+      });
+
+      setDesigners(convertedDesigners);
+    } catch (err) {
+      console.error("Failed to fetch designers:", err);
+      setError(err instanceof Error ? err.message : "获取数据失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDesigners();
+  }, [retryCount]);
 
   // Filter designers by search query
   const filteredDesigners = designers.filter((designer) => {
@@ -170,74 +155,103 @@ const ArchiveScreen = () => {
         </View>
       </View>
 
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.black} />
+          <Text style={styles.loadingText}>加载中...</Text>
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={theme.colors.gray400}
+          />
+          <Text style={styles.errorTitle}>加载失败</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setRetryCount((prev) => prev + 1);
+            }}
+          >
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Designers List */}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
-      >
-        {sortedGroups.map((group) => (
-          <View key={group.letter}>
-            {/* Letter Header */}
-            <View style={styles.letterHeader}>
-              <Text style={styles.letterText}>{group.letter}</Text>
-            </View>
+      {!loading && !error && (
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+        >
+          {sortedGroups.map((group) => (
+            <View key={group.letter}>
+              {/* Letter Header */}
+              <View style={styles.letterHeader}>
+                <Text style={styles.letterText}>{group.letter}</Text>
+              </View>
 
-            {/* Designers in this group */}
-            {group.designers.map((designer) => (
-              <TouchableOpacity
-                key={designer.id}
-                style={styles.designerItem}
-                onPress={() => {
-                  (navigation.navigate as any)("DesignerDetail", {
-                    id: designer.id,
-                    name: designer.name,
-                  });
-                }}
-                activeOpacity={0.7}
-              >
-                {designer.image && (
-                  <Image
-                    source={{ uri: designer.image }}
-                    style={styles.designerImage}
+              {/* Designers in this group */}
+              {group.designers.map((designer) => (
+                <TouchableOpacity
+                  key={designer.id}
+                  style={styles.designerItem}
+                  onPress={() => {
+                    (navigation.navigate as any)("DesignerDetail", {
+                      id: designer.id.toString(),
+                      name: designer.name,
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {designer.image && (
+                    <Image
+                      source={{ uri: designer.image }}
+                      style={styles.designerImage}
+                    />
+                  )}
+                  <View style={styles.designerInfo}>
+                    <Text style={styles.designerName}>{designer.name}</Text>
+                    <Text style={styles.designerBrand}>{designer.brand}</Text>
+                    <Text style={styles.designerMeta}>
+                      {designer.shows} 场秀 • {designer.totalLooks} 个造型
+                    </Text>
+                    <Text style={styles.designerSeason}>
+                      最新: {designer.latestSeason}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.colors.gray400}
                   />
-                )}
-                <View style={styles.designerInfo}>
-                  <Text style={styles.designerName}>{designer.name}</Text>
-                  <Text style={styles.designerBrand}>{designer.brand}</Text>
-                  <Text style={styles.designerMeta}>
-                    {designer.shows} 场秀 • {designer.totalLooks} 个造型
-                  </Text>
-                  <Text style={styles.designerSeason}>
-                    最新: {designer.latestSeason}
-                  </Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={theme.colors.gray400}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
 
-        {filteredDesigners.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="person-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text style={styles.emptyTitle}>No designers found</Text>
-            <Text style={styles.emptyText}>
-              {searchQuery
-                ? "No designers match your search"
-                : "Designers list is being updated"}
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          {filteredDesigners.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name="person-outline"
+                size={48}
+                color={theme.colors.gray400}
+              />
+              <Text style={styles.emptyTitle}>未找到设计师</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery ? "没有匹配的设计师" : "设计师列表正在更新中"}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -344,6 +358,45 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     color: theme.colors.gray400,
     textAlign: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    ...theme.typography.body,
+    color: theme.colors.gray500,
+    marginTop: theme.spacing.md,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.xl,
+  },
+  errorTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.black,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  errorText: {
+    ...theme.typography.body,
+    color: theme.colors.gray400,
+    textAlign: "center",
+    marginBottom: theme.spacing.lg,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.black,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+  },
+  retryButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.white,
+    fontWeight: "600",
   },
 });
 

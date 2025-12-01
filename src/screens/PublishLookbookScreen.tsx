@@ -172,7 +172,7 @@ const PublishLookbookScreen = () => {
       setUploadProgress("正在保存...");
       await postService.createPost({
         userId: user.userId,
-        postType: "LOOKBOOK",
+        postType: "OUTFIT",
         postStatus: "DRAFT",
         title: title.trim() || "未命名草稿",
         contentText: description.trim(),

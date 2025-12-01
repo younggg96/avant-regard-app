@@ -128,7 +128,7 @@ export const initializeMockUserPosts = async (): Promise<void> => {
     const mockPosts: UserPost[] = [
       {
         id: "user-post-1",
-        type: "outfit",
+        type: "DAILY_SHARE",
         status: "published",
         content: {
           title: "春日通勤穿搭分享",
@@ -149,7 +149,7 @@ export const initializeMockUserPosts = async (): Promise<void> => {
       },
       {
         id: "user-post-2",
-        type: "review",
+        type: "ITEM_REVIEW",
         status: "pending",
         content: {
           title: "GUCCI 新款包包体验",
@@ -171,7 +171,7 @@ export const initializeMockUserPosts = async (): Promise<void> => {
       },
       {
         id: "user-post-3",
-        type: "article",
+        type: "ARTICLES",
         status: "draft",
         content: {
           title: "2024秋冬流行趋势预测",
@@ -193,7 +193,7 @@ export const initializeMockUserPosts = async (): Promise<void> => {
       },
       {
         id: "user-post-4",
-        type: "outfit",
+        type: "DAILY_SHARE",
         status: "published",
         content: {
           title: "周末休闲穿搭",
@@ -214,7 +214,7 @@ export const initializeMockUserPosts = async (): Promise<void> => {
       },
       {
         id: "user-post-5",
-        type: "lookbook",
+        type: "OUTFIT",
         status: "draft",
         content: {
           title: "夏日度假穿搭灵感",

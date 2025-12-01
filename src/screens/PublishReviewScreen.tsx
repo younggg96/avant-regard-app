@@ -23,29 +23,13 @@ import ImageGridSelector from "../components/ImageGridSelector";
 import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
 import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
-import { saveDraft } from "../services/draftService";
-import { publishReview, validateReviewData } from "../services/publishService";
-import showsData from "../data/data.json";
-
-interface LookImage {
-  image_url: string;
-  image_type: string;
-}
-
-interface Show {
-  show_url: string;
-  season: string;
-  category: string;
-  images: LookImage[];
-}
-
-interface DesignerData {
-  designer: string;
-  shows: Show[];
-}
+import { postService } from "../services/postService";
+import { useAuthStore } from "../store/authStore";
+import { designerService } from "../services/designerService";
 
 const PublishReviewScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
 
   const [title, setTitle] = useState("");
   const [productName, setProductName] = useState("");
@@ -55,6 +39,9 @@ const PublishReviewScreen = () => {
   const [images, setImages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedLooks, setSelectedLooks] = useState<SelectedLook[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageCropper, setShowImageCropper] = useState(false);
@@ -74,29 +61,22 @@ const PublishReviewScreen = () => {
 
   // 加载所有 look 数据
   useEffect(() => {
-    const looks: Array<{
-      designer: string;
-      season: string;
-      imageUrl: string;
-    }> = [];
+    const loadLooks = async () => {
+      try {
+        const looks = await designerService.getAllLooks();
+        setAllLooks(
+          looks.map((look) => ({
+            designer: look.designer,
+            season: look.season,
+            imageUrl: look.imageUrl,
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load looks:", error);
+      }
+    };
 
-    (showsData as DesignerData[]).forEach((designerData) => {
-      designerData.shows.forEach((show) => {
-        if (show.images && show.images.length > 0) {
-          show.images.forEach((img) => {
-            if (img.image_type === "look") {
-              looks.push({
-                designer: designerData.designer,
-                season: show.season,
-                imageUrl: img.image_url,
-              });
-            }
-          });
-        }
-      });
-    });
-
-    setAllLooks(looks);
+    loadLooks();
   }, []);
 
   // 检查是否满足发布标准
@@ -113,44 +93,66 @@ const PublishReviewScreen = () => {
   };
 
   const handlePublish = async () => {
-    const publishData = {
-      type: "review" as const,
-      title,
-      productName,
-      brand,
-      rating,
-      reviewText,
-      images,
-      associatedLooks: selectedLooks,
-    };
-
-    // 验证数据
-    const validation = validateReviewData(publishData);
-    if (!validation.isValid) {
-      Alert.show(validation.errors[0]);
+    if (!canPublish()) {
+      Alert.show("提示: 请完成所有必填项");
       return;
     }
 
-    try {
-      Alert.show("正在发布...");
-      const response = await publishReview(publishData);
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-      if (response.success) {
-        Alert.show("发布成功: 您的评价已成功发布！", "", 1500);
-        setTimeout(() => {
-          resetForm();
-          navigation.goBack();
-        }, 1500);
-      } else {
-        Alert.show(`发布失败: ${response.message || "请重试"}`);
-      }
+    setIsPublishing(true);
+    try {
+      // 1. 先上传所有图片
+      setUploadProgress(`上传图片 0/${images.length}`);
+      const uploadedUrls = await postService.uploadImages(
+        images,
+        (completed, total) => {
+          setUploadProgress(`上传图片 ${completed}/${total}`);
+        }
+      );
+
+      // 2. 创建帖子
+      setUploadProgress("正在发布...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "ITEM_REVIEW",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: reviewText.trim(),
+        imageUrls: uploadedUrls,
+        productName: productName.trim(),
+        brandName: brand.trim(),
+        rating: rating,
+        showImageId: 0, // 暂时设为 0，后续可关联秀场图片 ID
+      });
+
+      setUploadProgress(null);
+      Alert.show("发布成功！", "", 1500);
+      setTimeout(() => {
+        resetForm();
+        (navigation as any).reset({
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+        });
+      }, 1500);
     } catch (error) {
       console.error("Publish error:", error);
-      Alert.show("发布失败: 网络错误，请重试");
+      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
+    } finally {
+      setIsPublishing(false);
+      setUploadProgress(null);
     }
   };
 
   const handleSaveDraft = async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
+
     // 验证是否有内容可以保存
     if (
       !title &&
@@ -162,24 +164,44 @@ const PublishReviewScreen = () => {
       return;
     }
 
-    const draftData = {
-      type: "review" as const,
-      title,
-      productName,
-      brand,
-      rating,
-      reviewText,
-      images,
-      associatedLooks: selectedLooks,
-    };
-
+    setIsSavingDraft(true);
     try {
-      const draftId = await saveDraft(draftData);
-      console.log("Draft saved with ID:", draftId);
-      Alert.show("草稿已保存: 您的内容已保存为草稿", "", 1500);
+      let uploadedUrls: string[] = [];
+
+      // 如果有图片，先上传
+      if (images.length > 0) {
+        setUploadProgress(`上传图片 0/${images.length}`);
+        uploadedUrls = await postService.uploadImages(
+          images,
+          (completed, total) => {
+            setUploadProgress(`上传图片 ${completed}/${total}`);
+          }
+        );
+      }
+
+      // 保存草稿
+      setUploadProgress("正在保存...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "ITEM_REVIEW",
+        postStatus: "DRAFT",
+        title: title.trim() || "单品评价草稿",
+        contentText: reviewText.trim(),
+        imageUrls: uploadedUrls,
+        productName: productName.trim(),
+        brandName: brand.trim(),
+        rating: rating,
+        showImageId: 0,
+      });
+
+      setUploadProgress(null);
+      Alert.show("草稿已保存", "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show("保存失败: 请重试");
+      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+    } finally {
+      setIsSavingDraft(false);
+      setUploadProgress(null);
     }
   };
 
@@ -423,7 +445,7 @@ const PublishReviewScreen = () => {
           <Input
             value={reviewText}
             onChangeText={setReviewText}
-            placeholder="输入简短点评（50-200字）"
+            placeholder="请输入评价内容（至少10字，最多500字）"
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="outline"
@@ -436,13 +458,37 @@ const PublishReviewScreen = () => {
               padding: 0,
             }}
           />
+          <Text
+            color={
+              reviewText.trim().length < 10
+                ? "$red500"
+                : reviewText.trim().length > 500
+                ? "$red500"
+                : "$gray400"
+            }
+            fontSize="$xs"
+            mt="$xs"
+            textAlign="right"
+          >
+            {reviewText.trim().length}/500
+            {reviewText.trim().length > 0 && reviewText.trim().length < 10
+              ? " (至少需要10字)"
+              : ""}
+          </Text>
         </Box>
       </ScrollView>
 
       <PublishButtons
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
-        publishDisabled={!canPublish()}
+        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+        draftDisabled={isPublishing || isSavingDraft}
+        publishButtonText={
+          isPublishing ? uploadProgress || "发布中..." : "发布"
+        }
+        draftButtonText={
+          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+        }
       />
 
       <ImagePickerModal

@@ -31,29 +31,15 @@ import ImagePreviewModal from "../components/ImagePreviewModal";
 import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import { saveDraft } from "../services/draftService";
-import showsData from "../data/data.json";
+import { postService } from "../services/postService";
+import { useAuthStore } from "../store/authStore";
+import { designerService } from "../services/designerService";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-interface LookImage {
-  image_url: string;
-  image_type: string;
-}
-
-interface Show {
-  show_url: string;
-  season: string;
-  category: string;
-  images: LookImage[];
-}
-
-interface DesignerData {
-  designer: string;
-  shows: Show[];
-}
-
 const PublishOutfitScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -62,6 +48,9 @@ const PublishOutfitScreen = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedLooks, setSelectedLooks] = useState<SelectedLook[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -96,29 +85,22 @@ const PublishOutfitScreen = () => {
 
   // 加载所有 look 数据
   useEffect(() => {
-    const looks: Array<{
-      designer: string;
-      season: string;
-      imageUrl: string;
-    }> = [];
+    const loadLooks = async () => {
+      try {
+        const looks = await designerService.getAllLooks();
+        setAllLooks(
+          looks.map((look) => ({
+            designer: look.designer,
+            season: look.season,
+            imageUrl: look.imageUrl,
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load looks:", error);
+      }
+    };
 
-    (showsData as DesignerData[]).forEach((designerData) => {
-      designerData.shows.forEach((show) => {
-        if (show.images && show.images.length > 0) {
-          show.images.forEach((img) => {
-            if (img.image_type === "look") {
-              looks.push({
-                designer: designerData.designer,
-                season: show.season,
-                imageUrl: img.image_url,
-              });
-            }
-          });
-        }
-      });
-    });
-
-    setAllLooks(looks);
+    loadLooks();
   }, []);
 
   // 检查是否满足发布标准
@@ -137,26 +119,58 @@ const PublishOutfitScreen = () => {
       return;
     }
 
-    const publishData = {
-      type: "outfit",
-      title,
-      description,
-      images,
-      coverImage,
-      tags: selectedTags,
-      associatedLooks: selectedLooks,
-    };
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-    console.log("Publishing:", publishData);
+    setIsPublishing(true);
+    try {
+      // 1. 先上传所有图片
+      setUploadProgress(`上传图片 0/${images.length}`);
+      const uploadedUrls = await postService.uploadImages(
+        images,
+        (completed, total) => {
+          setUploadProgress(`上传图片 ${completed}/${total}`);
+        }
+      );
 
-    Alert.show("发布成功: 您的搭配已成功发布！", "", 1500);
-    setTimeout(() => {
-      resetForm();
-      navigation.goBack();
-    }, 1500);
+      // 2. 创建帖子
+      setUploadProgress("正在发布...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "DAILY_SHARE",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: description.trim(),
+        imageUrls: uploadedUrls,
+        showImageId: 0, // 暂时设为 0，后续可关联秀场图片 ID
+      });
+
+      setUploadProgress(null);
+      Alert.show("发布成功！", "", 1500);
+      setTimeout(() => {
+        resetForm();
+        (navigation as any).reset({
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+        });
+      }, 1500);
+    } catch (error) {
+      console.error("Publish error:", error);
+      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
+    } finally {
+      setIsPublishing(false);
+      setUploadProgress(null);
+    }
   };
 
   const handleSaveDraft = async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
+
     // 验证是否有内容可以保存
     if (
       !title &&
@@ -168,25 +182,41 @@ const PublishOutfitScreen = () => {
       return;
     }
 
-    // 将 outfit 数据格式化为 review 格式以便保存
-    const draftData = {
-      type: "review" as const,
-      title: title || "搭配草稿",
-      productName: "搭配分享",
-      brand: "",
-      rating: 0,
-      reviewText: description,
-      images,
-      associatedLooks: selectedLooks,
-    };
-
+    setIsSavingDraft(true);
     try {
-      const draftId = await saveDraft(draftData);
-      console.log("Draft saved with ID:", draftId);
-      Alert.show("草稿已保存: 您的内容已保存为草稿", "", 1500);
+      let uploadedUrls: string[] = [];
+
+      // 如果有图片，先上传
+      if (images.length > 0) {
+        setUploadProgress(`上传图片 0/${images.length}`);
+        uploadedUrls = await postService.uploadImages(
+          images,
+          (completed, total) => {
+            setUploadProgress(`上传图片 ${completed}/${total}`);
+          }
+        );
+      }
+
+      // 保存草稿
+      setUploadProgress("正在保存...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "DAILY_SHARE",
+        postStatus: "DRAFT",
+        title: title.trim() || "搭配草稿",
+        contentText: description.trim(),
+        imageUrls: uploadedUrls,
+        showImageId: 0,
+      });
+
+      setUploadProgress(null);
+      Alert.show("草稿已保存", "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show("保存失败: 请重试");
+      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+    } finally {
+      setIsSavingDraft(false);
+      setUploadProgress(null);
     }
   };
 
@@ -678,7 +708,14 @@ const PublishOutfitScreen = () => {
       <PublishButtons
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
-        publishDisabled={!canPublish()}
+        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+        draftDisabled={isPublishing || isSavingDraft}
+        publishButtonText={
+          isPublishing ? uploadProgress || "发布中..." : "发布"
+        }
+        draftButtonText={
+          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+        }
       />
 
       <ImagePickerModal

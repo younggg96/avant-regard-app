@@ -19,8 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import designersData from "../data/data.json";
 import ImageGallery from "../components/ImageGallery";
+import { designerService, ApiDesigner } from "../services/designerService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -50,8 +50,8 @@ interface Collection {
 }
 
 interface ShowImage {
-  image_url: string;
-  image_type: string;
+  imageUrl: string;
+  imageType: string;
 }
 
 interface Comment {
@@ -81,26 +81,38 @@ const CollectionDetailScreen = () => {
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
 
   useEffect(() => {
-    if (images) {
-      setCollectionImages(images);
-    } else {
-      // Try to find images from the data
-      const dataArray = designersData as any[];
-      const designerData = dataArray.find((d: any) =>
-        d.designer.toLowerCase().includes(designerName?.toLowerCase() || "")
-      );
+    const loadImages = async () => {
+      if (images) {
+        setCollectionImages(images);
+      } else if (designerName) {
+        // Try to find images from API
+        try {
+          const designerData = await designerService.getDesignerByName(
+            designerName
+          );
 
-      if (designerData && designerData.shows) {
-        const show = designerData.shows.find(
-          (s: any) =>
-            s.review_title === collection.title ||
-            s.season === collection.season
-        );
-        if (show && show.images) {
-          setCollectionImages(show.images);
+          if (designerData && designerData.shows) {
+            const show = designerData.shows.find(
+              (s) =>
+                s.reviewTitle === collection.title ||
+                s.season === collection.season
+            );
+            if (show && show.images) {
+              // 转换 API 数据格式
+              const convertedImages = show.images.map((img) => ({
+                imageUrl: img.imageUrl,
+                imageType: img.imageType,
+              }));
+              setCollectionImages(convertedImages);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load images:", error);
         }
       }
-    }
+    };
+
+    loadImages();
 
     // Add mock rating data if not exists
     if (!collection.rating) {
@@ -187,7 +199,7 @@ const CollectionDetailScreen = () => {
   const renderImageGallery = () => {
     const imagesToShow =
       collectionImages.length > 0
-        ? collectionImages.map((img) => img.image_url)
+        ? collectionImages.map((img) => img.imageUrl)
         : [collection.coverImage];
 
     return (

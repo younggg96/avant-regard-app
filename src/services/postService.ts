@@ -14,7 +14,7 @@ interface ApiResponse<T> {
 }
 
 // 帖子类型
-export type PostType = "OUTFIT" | "LOOKBOOK" | "REVIEW" | "ARTICLE";
+export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
 
 // 帖子状态
 export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN";
@@ -42,8 +42,14 @@ export interface CreatePostParams {
   postType: PostType;
   postStatus: PostStatus;
   title: string;
-  contentText: string;
+  contentText?: string;
   imageUrls: string[];
+  // 单品评价专用字段
+  productName?: string;
+  brandName?: string;
+  rating?: number;
+  // 关联秀场图片 ID
+  showImageId?: number;
 }
 
 // 更新帖子请求参数

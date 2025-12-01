@@ -13,8 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
 import { theme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
-import { mockPosts } from "../data/mockPosts";
-import { mockFavoritePosts } from "../data/mockFavoritePosts";
+import { getPosts } from "../services/postService";
 
 interface SearchHistory {
   id: string;
@@ -28,22 +27,31 @@ const SearchScreen = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
+  const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 加载帖子数据
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        setIsLoading(true);
+        const posts = await getPosts();
+        setAllPosts(posts);
+      } catch (error) {
+        console.error("Failed to load posts:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadPosts();
+  }, []);
 
   // 加载搜索历史
   useEffect(() => {
     // 这里应该从 AsyncStorage 加载历史记录
-    // 暂时使用模拟数据
-    const mockHistory: SearchHistory[] = [
-      { id: "1", keyword: "CHANEL", timestamp: Date.now() - 3600000 },
-      { id: "2", keyword: "春夏系列", timestamp: Date.now() - 7200000 },
-      { id: "3", keyword: "街头优雅", timestamp: Date.now() - 86400000 },
-      { id: "4", keyword: "Saint Laurent", timestamp: Date.now() - 172800000 },
-    ];
-    setSearchHistory(mockHistory);
+    // 暂时使用空数组
+    setSearchHistory([]);
   }, []);
-
-  // 合并所有帖子
-  const allPosts = [...mockPosts, ...mockFavoritePosts];
 
   // 执行搜索
   const handleSearch = useCallback(() => {
@@ -56,27 +64,20 @@ const SearchScreen = () => {
     Keyboard.dismiss();
     setIsSearching(true);
 
-    // 搜索逻辑：匹配标题、描述、标签、品牌名、作者名
+    // 搜索逻辑：匹配标题、内容、作者名
     const query = searchQuery.toLowerCase().trim();
     const results = allPosts.filter((post) => {
       // 搜索标题
-      if (post.content?.title?.toLowerCase().includes(query)) return true;
+      if (post.title?.toLowerCase().includes(query)) return true;
 
-      // 搜索描述
-      if (post.content?.description?.toLowerCase().includes(query)) return true;
-
-      // 搜索标签
-      if (post.content?.tags?.some((tag) => tag.toLowerCase().includes(query)))
-        return true;
-
-      // 搜索品牌名
-      if (post.brandName?.toLowerCase().includes(query)) return true;
+      // 搜索内容
+      if (post.contentText?.toLowerCase().includes(query)) return true;
 
       // 搜索作者名
-      if (post.author?.name?.toLowerCase().includes(query)) return true;
+      if (post.username?.toLowerCase().includes(query)) return true;
 
-      // 搜索系列
-      if (post.season?.toLowerCase().includes(query)) return true;
+      // 搜索帖子类型
+      if (post.postType?.toLowerCase().includes(query)) return true;
 
       return false;
     });
@@ -117,16 +118,10 @@ const SearchScreen = () => {
       setTimeout(() => {
         const query = keyword.toLowerCase().trim();
         const results = allPosts.filter((post) => {
-          if (post.content?.title?.toLowerCase().includes(query)) return true;
-          if (post.content?.description?.toLowerCase().includes(query))
-            return true;
-          if (
-            post.content?.tags?.some((tag) => tag.toLowerCase().includes(query))
-          )
-            return true;
-          if (post.brandName?.toLowerCase().includes(query)) return true;
-          if (post.author?.name?.toLowerCase().includes(query)) return true;
-          if (post.season?.toLowerCase().includes(query)) return true;
+          if (post.title?.toLowerCase().includes(query)) return true;
+          if (post.contentText?.toLowerCase().includes(query)) return true;
+          if (post.username?.toLowerCase().includes(query)) return true;
+          if (post.postType?.toLowerCase().includes(query)) return true;
           return false;
         });
         setSearchResults(results);
@@ -175,16 +170,16 @@ const SearchScreen = () => {
   // 转换帖子格式
   const convertToPost = (post: any): Post => {
     return {
-      id: post.id,
-      title: post.content?.title || "",
-      image: post.content?.images?.[0] || "https://picsum.photos/id/1/600/800",
+      id: post.id?.toString() || "",
+      title: post.title || "",
+      image: post.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
       author: {
-        id: post.author?.id || "",
-        name: post.author?.name || "",
-        avatar: post.author?.avatar || "",
+        id: post.userId?.toString() || "",
+        name: post.username || "",
+        avatar: "",
       },
-      likes: post.engagement?.likes || 0,
-      isLiked: post.engagement?.isLiked,
+      likes: post.likeCount || 0,
+      isLiked: false,
     };
   };
 

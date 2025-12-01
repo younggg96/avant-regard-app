@@ -49,7 +49,7 @@ interface DisplayPost {
   timestamp: string;
 }
 
-type TabType = "home" | "lookbook" | "outfit" | "review" | "article";
+type TabType = "home" | "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
 
 // 计算相对时间
 const getRelativeTime = (dateString: string): string => {
@@ -81,7 +81,7 @@ const mapApiPostToDisplayPost = (
 
   return {
     id: String(apiPost.id),
-    type: apiPost.postType.toLowerCase(), // "OUTFIT" -> "outfit"
+    type: apiPost.postType, // Uses the exact Enum value
     author: {
       id: String(apiPost.userId),
       name: userInfo?.username || apiPost.username || "匿名用户",
@@ -425,16 +425,16 @@ const DiscoverScreen = () => {
             py="$md"
             px="$md"
             mr="$md"
-            borderBottomWidth={activeTab === "lookbook" ? 2 : 0}
+            borderBottomWidth={activeTab === "OUTFIT" ? 2 : 0}
             borderBottomColor="$black"
-            onPress={() => setActiveTab("lookbook")}
+            onPress={() => setActiveTab("OUTFIT")}
           >
             <Text
-              color={activeTab === "lookbook" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "lookbook" ? "$semibold" : "$normal"}
+              color={activeTab === "OUTFIT" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "OUTFIT" ? "$semibold" : "$normal"}
               fontSize="$sm"
             >
-              Lookbook ({getPostCountByType("lookbook")})
+              Lookbook ({getPostCountByType("OUTFIT")})
             </Text>
           </Pressable>
 
@@ -442,16 +442,16 @@ const DiscoverScreen = () => {
             py="$md"
             px="$md"
             mr="$md"
-            borderBottomWidth={activeTab === "outfit" ? 2 : 0}
+            borderBottomWidth={activeTab === "DAILY_SHARE" ? 2 : 0}
             borderBottomColor="$black"
-            onPress={() => setActiveTab("outfit")}
+            onPress={() => setActiveTab("DAILY_SHARE")}
           >
             <Text
-              color={activeTab === "outfit" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "outfit" ? "$semibold" : "$normal"}
+              color={activeTab === "DAILY_SHARE" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "DAILY_SHARE" ? "$semibold" : "$normal"}
               fontSize="$sm"
             >
-              搭配 ({getPostCountByType("outfit")})
+              搭配 ({getPostCountByType("DAILY_SHARE")})
             </Text>
           </Pressable>
 
@@ -459,16 +459,16 @@ const DiscoverScreen = () => {
             py="$md"
             px="$md"
             mr="$md"
-            borderBottomWidth={activeTab === "review" ? 2 : 0}
+            borderBottomWidth={activeTab === "ITEM_REVIEW" ? 2 : 0}
             borderBottomColor="$black"
-            onPress={() => setActiveTab("review")}
+            onPress={() => setActiveTab("ITEM_REVIEW")}
           >
             <Text
-              color={activeTab === "review" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "review" ? "$semibold" : "$normal"}
+              color={activeTab === "ITEM_REVIEW" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "ITEM_REVIEW" ? "$semibold" : "$normal"}
               fontSize="$sm"
             >
-              评测 ({getPostCountByType("review")})
+              评测 ({getPostCountByType("ITEM_REVIEW")})
             </Text>
           </Pressable>
 
@@ -476,16 +476,16 @@ const DiscoverScreen = () => {
             py="$md"
             px="$md"
             mr="$md"
-            borderBottomWidth={activeTab === "article" ? 2 : 0}
+            borderBottomWidth={activeTab === "ARTICLES" ? 2 : 0}
             borderBottomColor="$black"
-            onPress={() => setActiveTab("article")}
+            onPress={() => setActiveTab("ARTICLES")}
           >
             <Text
-              color={activeTab === "article" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "article" ? "$semibold" : "$normal"}
+              color={activeTab === "ARTICLES" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "ARTICLES" ? "$semibold" : "$normal"}
               fontSize="$sm"
             >
-              文章 ({getPostCountByType("article")})
+              文章 ({getPostCountByType("ARTICLES")})
             </Text>
           </Pressable>
         </ScrollView>
@@ -574,17 +574,17 @@ const DiscoverScreen = () => {
               textAlign="center"
             >
               {activeTab === "home" && "暂无主页内容"}
-              {activeTab === "lookbook" && "暂无 Lookbook 内容"}
-              {activeTab === "outfit" && "暂无搭配内容"}
-              {activeTab === "review" && "暂无评测内容"}
-              {activeTab === "article" && "暂无文章内容"}
+              {activeTab === "OUTFIT" && "暂无 Lookbook 内容"}
+              {activeTab === "DAILY_SHARE" && "暂无搭配内容"}
+              {activeTab === "ITEM_REVIEW" && "暂无评测内容"}
+              {activeTab === "ARTICLES" && "暂无文章内容"}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">
               {activeTab === "home" && "下拉刷新获取最新内容"}
-              {activeTab === "lookbook" && "精彩的秀场系列即将到来"}
-              {activeTab === "outfit" && "优秀的搭配灵感即将到来"}
-              {activeTab === "review" && "详细的产品评测即将到来"}
-              {activeTab === "article" && "深度的时尚文章即将到来"}
+              {activeTab === "OUTFIT" && "精彩的秀场系列即将到来"}
+              {activeTab === "DAILY_SHARE" && "优秀的搭配灵感即将到来"}
+              {activeTab === "ITEM_REVIEW" && "详细的产品评测即将到来"}
+              {activeTab === "ARTICLES" && "深度的时尚文章即将到来"}
             </Text>
           </VStack>
         ) : (

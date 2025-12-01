@@ -110,7 +110,7 @@ function TabNavigator() {
         name="Archive"
         component={ArchiveScreen}
         options={{
-          tabBarLabel: "存档",
+          tabBarLabel: "设计师",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="archive" color={color} focused={focused} />
           ),
@@ -171,7 +171,7 @@ function AppNavigator() {
         },
         headerTintColor: theme.colors.black,
         headerTitleStyle: {
-          fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+          fontFamily: "PlayfairDisplay-Bold",
           fontSize: 20,
         },
         headerBackTitle: "",
@@ -307,12 +307,12 @@ export default function App() {
   useEffect(() => {
     async function loadFonts() {
       try {
-        // In development, we'll skip custom font loading to avoid errors with placeholder files
-        if (__DEV__) {
-          console.log("Development mode: Skipping custom font loading");
-          setFontsLoaded(true);
-          return;
-        }
+        // // In development, we'll skip custom font loading to avoid errors with placeholder files
+        // if (__DEV__) {
+        //   console.log("Development mode: Skipping custom font loading");
+        //   setFontsLoaded(true);
+        //   return;
+        // }
 
         await Font.loadAsync({
           "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),

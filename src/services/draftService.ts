@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface ReviewDraft {
   id: string;
-  type: "review";
+  type: "ITEM_REVIEW";
   title: string;
   productName: string;
   brand: string;
