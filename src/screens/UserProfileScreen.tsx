@@ -8,6 +8,8 @@ import {
   Image,
   RefreshControl,
   Linking,
+  Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -19,21 +21,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
-import { postService, Post } from "../services/postService";
+import { postService, Post as ApiPost } from "../services/postService";
+import { Post as DisplayPost } from "../components/PostCard";
 import {
   followService,
   isFollowingUser,
   getFollowersCount,
   getFollowingCount,
 } from "../services/followService";
+import { userInfoService, UserInfo } from "../services/userInfoService";
 import SimplePostCard from "../components/SimplePostCard";
-import ScreenHeader from "../components/ScreenHeader";
 
-// 用户资料类型
-interface UserProfile {
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// 用户资料类型（扩展自 API 返回的 UserInfo）
+interface UserProfile extends Partial<UserInfo> {
   id: number;
   username: string;
-  nickname?: string;
   avatar?: string;
   bio?: string;
   website?: string;
@@ -62,7 +66,7 @@ const UserProfileScreen = () => {
     username: username || "用户",
     avatar: avatar,
   });
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<DisplayPost[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -73,29 +77,83 @@ const UserProfileScreen = () => {
   // 判断是否是当前用户自己
   const isCurrentUser = currentUser?.userId === userId;
 
+  // 将 API 帖子转换为展示格式
+  const convertToDisplayPost = (
+    apiPost: ApiPost,
+    authorInfo: { name: string; avatar: string }
+  ): DisplayPost => {
+    return {
+      id: String(apiPost.id),
+      title: apiPost.title || "无标题",
+      image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+      author: {
+        id: String(apiPost.userId),
+        name: authorInfo.name,
+        avatar: authorInfo.avatar,
+      },
+      content: {
+        title: apiPost.title || "无标题",
+        description: apiPost.contentText || "",
+        images: apiPost.imageUrls || [],
+      },
+      engagement: {
+        likes: apiPost.likeCount || 0,
+        saves: apiPost.favoriteCount || 0,
+        comments: apiPost.commentCount || 0,
+      },
+      likes: apiPost.likeCount || 0,
+    };
+  };
+
   // 加载用户数据
   const loadUserData = async () => {
     try {
       setLoading(true);
 
       // 并行加载数据
-      const [postsData, followers, following] = await Promise.all([
-        postService.getPostsByUserId(userId, "PUBLISHED"),
-        getFollowersCount(userId).catch(() => 0),
-        getFollowingCount(userId).catch(() => 0),
-      ]);
+      const [userInfoData, postsData, followers, following] = await Promise.all(
+        [
+          userInfoService.getUserInfo(userId).catch(() => null),
+          postService.getPostsByUserId(userId, "PUBLISHED").catch(() => []),
+          getFollowersCount(userId).catch(() => 0),
+          getFollowingCount(userId).catch(() => 0),
+        ]
+      );
 
-      setPosts(postsData || []);
+      // 获取用户信息
+      const authorName = userInfoData?.username || username || "用户";
+      const authorAvatar =
+        userInfoData?.avatarUrl ||
+        avatar ||
+        `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`;
+
+      // 更新用户资料（从 API 获取）
+      if (userInfoData) {
+        setUserProfile((prev) => ({
+          ...prev,
+          id: userInfoData.userId,
+          username: userInfoData.username || prev.username,
+          bio: userInfoData.bio,
+          location: userInfoData.location,
+          avatar: userInfoData.avatarUrl || prev.avatar,
+        }));
+      }
+
+      // 转换帖子数据为展示格式
+      const displayPosts = (postsData || []).map((post) =>
+        convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
+      );
+      setPosts(displayPosts);
       setFollowersCount(followers);
       setFollowingCount(following);
 
       // 检查是否关注
       if (currentUser?.userId && !isCurrentUser) {
-        const following = await isFollowingUser(
+        const isFollowingResult = await isFollowingUser(
           currentUser.userId,
           userId
         ).catch(() => false);
-        setIsFollowing(following);
+        setIsFollowing(isFollowingResult);
       }
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -133,7 +191,7 @@ const UserProfileScreen = () => {
       if (isFollowing) {
         await followService.unfollowUser({
           followerId: currentUser.userId,
-          followingId: userId,
+          targetUserId: userId,
         });
         setIsFollowing(false);
         setFollowersCount((prev) => Math.max(0, prev - 1));
@@ -141,7 +199,7 @@ const UserProfileScreen = () => {
       } else {
         await followService.followUser({
           followerId: currentUser.userId,
-          followingId: userId,
+          targetUserId: userId,
         });
         setIsFollowing(true);
         setFollowersCount((prev) => prev + 1);
@@ -186,41 +244,37 @@ const UserProfileScreen = () => {
   };
 
   // 帖子点击
-  const handlePostPress = (post: Post) => {
+  const handlePostPress = (post: DisplayPost) => {
     (navigation as any).navigate("PostDetail", {
       post: post,
       postStatus: "published",
     });
   };
 
-  // 渲染统计数据
-  const renderStats = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statItem}>
-        <Text style={styles.statNumber}>{posts.length}</Text>
-        <Text style={styles.statLabel}>帖子</Text>
-      </View>
-      <View style={styles.statDivider} />
-      <TouchableOpacity style={styles.statItem}>
-        <Text style={styles.statNumber}>{followersCount}</Text>
-        <Text style={styles.statLabel}>粉丝</Text>
-      </TouchableOpacity>
-      <View style={styles.statDivider} />
-      <TouchableOpacity style={styles.statItem}>
-        <Text style={styles.statNumber}>{followingCount}</Text>
-        <Text style={styles.statLabel}>关注</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   // 渲染社交媒体链接
   const renderSocialLinks = () => {
     const socialLinks = [
-      { platform: "instagram", icon: "logo-instagram", handle: userProfile.instagram },
-      { platform: "twitter", icon: "logo-twitter", handle: userProfile.twitter },
+      {
+        platform: "instagram",
+        icon: "logo-instagram",
+        handle: userProfile.instagram,
+      },
+      {
+        platform: "twitter",
+        icon: "logo-twitter",
+        handle: userProfile.twitter,
+      },
       { platform: "weibo", icon: "globe-outline", handle: userProfile.weibo },
-      { platform: "xiaohongshu", icon: "leaf-outline", handle: userProfile.xiaohongshu },
-      { platform: "website", icon: "link-outline", handle: userProfile.website },
+      {
+        platform: "xiaohongshu",
+        icon: "leaf-outline",
+        handle: userProfile.xiaohongshu,
+      },
+      {
+        platform: "website",
+        icon: "link-outline",
+        handle: userProfile.website,
+      },
     ].filter((item) => item.handle);
 
     if (socialLinks.length === 0) return null;
@@ -246,10 +300,25 @@ const UserProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader
-        title={userProfile.nickname || userProfile.username}
-        showBack
-      />
+      {/* 顶部导航栏 - 小红书风格 */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+        </TouchableOpacity>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={22}
+              color={theme.colors.black}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <ScrollView
         style={styles.content}
@@ -258,10 +327,11 @@ const UserProfileScreen = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* 用户信息头部 */}
-        <View style={styles.profileHeader}>
-          {/* 头像 */}
-          <View style={styles.avatarContainer}>
+        {/* 用户信息区域 - 小红书风格 */}
+        <View style={styles.profileSection}>
+          {/* 头像和关注按钮行 */}
+          <View style={styles.profileTopRow}>
+            {/* 头像 */}
             {userProfile.avatar ? (
               <Image
                 source={{ uri: userProfile.avatar }}
@@ -270,26 +340,65 @@ const UserProfileScreen = () => {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>
-                  {(userProfile.nickname || userProfile.username)
-                    ?.slice(0, 2)
-                    .toUpperCase()}
+                  {userProfile.username?.slice(0, 2).toUpperCase()}
                 </Text>
               </View>
             )}
+
+            {/* 关注/编辑按钮 */}
+            <View style={styles.actionButtons}>
+              {!isCurrentUser ? (
+                <TouchableOpacity
+                  style={[
+                    styles.followButton,
+                    isFollowing && styles.followingButton,
+                  ]}
+                  onPress={handleFollowToggle}
+                  disabled={followLoading}
+                >
+                  {followLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.white}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.followButtonText,
+                        isFollowing && styles.followingButtonText,
+                      ]}
+                    >
+                      {isFollowing ? "已关注" : "关注"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => (navigation as any).navigate("EditProfile")}
+                >
+                  <Text style={styles.editButtonText}>编辑资料</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
-          {/* 用户名和简介 */}
-          <Text style={styles.username}>
-            {userProfile.nickname || userProfile.username}
-          </Text>
-          <Text style={styles.handle}>@{userProfile.username}</Text>
+          {/* 用户名 */}
+          <Text style={styles.username}>{userProfile.username}</Text>
 
-          {userProfile.bio && (
+          {/* 小红书号/ID */}
+          <Text style={styles.userId}>ID: {userId}</Text>
+
+          {/* 个人简介 */}
+          {userProfile.bio ? (
             <Text style={styles.bio}>{userProfile.bio}</Text>
+          ) : (
+            <Text style={styles.bioPlaceholder}>暂无简介</Text>
           )}
 
+          {/* 位置信息 */}
           {userProfile.location && (
-            <View style={styles.locationContainer}>
+            <View style={styles.locationRow}>
               <Ionicons
                 name="location-outline"
                 size={14}
@@ -299,95 +408,87 @@ const UserProfileScreen = () => {
             </View>
           )}
 
-          {/* 统计数据 */}
-          {renderStats()}
-
           {/* 社交媒体链接 */}
           {renderSocialLinks()}
 
-          {/* 关注按钮 */}
-          {!isCurrentUser && (
-            <TouchableOpacity
-              style={[
-                styles.followButton,
-                isFollowing && styles.followingButton,
-              ]}
-              onPress={handleFollowToggle}
-              disabled={followLoading}
-            >
-              {followLoading ? (
-                <Text
-                  style={[
-                    styles.followButtonText,
-                    isFollowing && styles.followingButtonText,
-                  ]}
-                >
-                  处理中...
-                </Text>
-              ) : (
-                <>
-                  <Ionicons
-                    name={isFollowing ? "checkmark" : "add"}
-                    size={18}
-                    color={isFollowing ? theme.colors.gray600 : theme.colors.white}
-                  />
-                  <Text
-                    style={[
-                      styles.followButtonText,
-                      isFollowing && styles.followingButtonText,
-                    ]}
-                  >
-                    {isFollowing ? "已关注" : "关注"}
-                  </Text>
-                </>
-              )}
+          {/* 统计数据 - 小红书风格（关注/粉丝/获赞） */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity style={styles.statItem}>
+              <Text style={styles.statNumber}>{followingCount}</Text>
+              <Text style={styles.statLabel}>关注</Text>
             </TouchableOpacity>
-          )}
-
-          {isCurrentUser && (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => (navigation as any).navigate("EditProfile")}
-            >
-              <Ionicons
-                name="pencil-outline"
-                size={16}
-                color={theme.colors.black}
-              />
-              <Text style={styles.editButtonText}>编辑资料</Text>
+            <TouchableOpacity style={styles.statItem}>
+              <Text style={styles.statNumber}>{followersCount}</Text>
+              <Text style={styles.statLabel}>粉丝</Text>
             </TouchableOpacity>
-          )}
-        </View>
-
-        {/* 帖子区域 */}
-        <View style={styles.postsSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>全部帖子</Text>
-            <Text style={styles.postCount}>{posts.length} 篇</Text>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {posts.reduce((sum, p) => sum + (p.likes || 0), 0)}
+              </Text>
+              <Text style={styles.statLabel}>获赞</Text>
+            </View>
           </View>
-
-          {posts.length > 0 ? (
-            <View style={styles.postsGrid}>
-              {posts.map((post) => (
-                <View key={post.id} style={styles.postItem}>
-                  <SimplePostCard
-                    post={post}
-                    onPress={() => handlePostPress(post)}
-                  />
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="document-text-outline"
-                size={48}
-                color={theme.colors.gray300}
-              />
-              <Text style={styles.emptyText}>暂无帖子</Text>
-            </View>
-          )}
         </View>
+
+        {/* 帖子标签切换 */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity style={[styles.tabItem, styles.tabItemActive]}>
+            <Ionicons
+              name="grid-outline"
+              size={20}
+              color={theme.colors.black}
+            />
+            <Text style={[styles.tabText, styles.tabTextActive]}>笔记</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabItem}>
+            <Ionicons
+              name="bookmark-outline"
+              size={20}
+              color={theme.colors.gray400}
+            />
+            <Text style={styles.tabText}>收藏</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabItem}>
+            <Ionicons
+              name="heart-outline"
+              size={20}
+              color={theme.colors.gray400}
+            />
+            <Text style={styles.tabText}>赞过</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 帖子网格 */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.gray400} />
+          </View>
+        ) : posts.length > 0 ? (
+          <View style={styles.postsGrid}>
+            {posts.map((post) => (
+              <View key={post.id} style={styles.postItem}>
+                <SimplePostCard
+                  post={post}
+                  onPress={() => handlePostPress(post)}
+                />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons
+              name="camera-outline"
+              size={56}
+              color={theme.colors.gray200}
+            />
+            <Text style={styles.emptyTitle}>暂无笔记</Text>
+            <Text style={styles.emptySubtitle}>
+              {isCurrentUser
+                ? "快去发布你的第一篇笔记吧"
+                : "TA 还没有发布任何笔记"}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -398,185 +499,216 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    height: 44,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerRight: {
+    flexDirection: "row",
+  },
   content: {
     flex: 1,
   },
-  profileHeader: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+  profileSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
-  avatarContainer: {
-    marginBottom: theme.spacing.md,
+  profileTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   avatarPlaceholder: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: theme.colors.black,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: "700",
     color: theme.colors.white,
   },
-  username: {
-    ...theme.typography.h2,
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  handle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginBottom: theme.spacing.sm,
-  },
-  bio: {
-    ...theme.typography.body,
-    color: theme.colors.gray600,
-    textAlign: "center",
-    marginTop: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
-    lineHeight: 20,
-  },
-  locationContainer: {
+  actionButtons: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: theme.spacing.sm,
-  },
-  locationText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginLeft: 4,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
-  },
-  statItem: {
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.lg,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.black,
-  },
-  statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: theme.colors.gray200,
-  },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
-  socialButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.gray100,
-    justifyContent: "center",
-    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
   },
   followButton: {
-    flexDirection: "row",
+    backgroundColor: "#FF2442",
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 80,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 24,
-    marginTop: theme.spacing.lg,
-    minWidth: 120,
   },
   followingButton: {
     backgroundColor: theme.colors.gray100,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
   },
   followButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.white,
+    fontSize: 14,
     fontWeight: "600",
-    marginLeft: 4,
+    color: theme.colors.white,
   },
   followingButtonText: {
     color: theme.colors.gray600,
   },
   editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: theme.colors.white,
     borderWidth: 1,
     borderColor: theme.colors.gray200,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 24,
-    marginTop: theme.spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   editButtonText: {
-    ...theme.typography.body,
+    fontSize: 14,
+    fontWeight: "500",
+    color: theme.colors.black,
+  },
+  username: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: theme.colors.black,
+    marginBottom: 4,
+  },
+  userId: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    marginBottom: 8,
+  },
+  bio: {
+    fontSize: 14,
+    color: theme.colors.gray700,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  bioPlaceholder: {
+    fontSize: 14,
+    color: theme.colors.gray300,
+    marginBottom: 8,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    marginLeft: 4,
+  },
+  socialContainer: {
+    flexDirection: "row",
+    marginTop: 4,
+    marginBottom: 12,
+    gap: 12,
+  },
+  socialButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.gray50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statsRow: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 20,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: theme.colors.black,
+    marginRight: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: theme.colors.gray500,
+  },
+  tabBar: {
+    flexDirection: "row",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+    backgroundColor: theme.colors.white,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    gap: 6,
+  },
+  tabItemActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.black,
+  },
+  tabText: {
+    fontSize: 14,
+    color: theme.colors.gray400,
+  },
+  tabTextActive: {
     color: theme.colors.black,
     fontWeight: "500",
-    marginLeft: 6,
   },
-  postsSection: {
-    paddingTop: theme.spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  loadingContainer: {
+    paddingVertical: 60,
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  sectionTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-  },
-  postCount: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
   },
   postsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: theme.spacing.md,
-    justifyContent: "space-between",
+    padding: 4,
   },
   postItem: {
-    width: "48%",
-    marginBottom: theme.spacing.md,
+    width: (SCREEN_WIDTH - 12) / 2,
+    padding: 4,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
+    paddingVertical: 80,
   },
-  emptyText: {
-    ...theme.typography.body,
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "500",
     color: theme.colors.gray400,
-    marginTop: theme.spacing.md,
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: theme.colors.gray300,
+    marginTop: 8,
   },
 });
 
 export default UserProfileScreen;
-

@@ -8,7 +8,6 @@ export interface AuthUser {
   userId: number;
   phone: string;
   username: string;
-  nickname: string;
   name?: string;
   bio?: string;
   website?: string;
@@ -85,12 +84,11 @@ export const useAuthStore = create<AuthStore>()(
           userId: response.userId,
           phone: response.phone,
           username: response.username,
-          nickname: response.username,
           admin: response.admin,
           userType: response.userType,
           avatar: "https://via.placeholder.com/100x100",
         };
-        
+
         const tokens: AuthTokens = {
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
@@ -160,7 +158,6 @@ export const useAuthStore = create<AuthStore>()(
             userId: response.userId,
             phone: response.phone,
             username: response.username,
-            nickname: response.username,
             admin: response.admin,
             userType: response.userType,
             avatar: get().user?.avatar || "https://via.placeholder.com/100x100",

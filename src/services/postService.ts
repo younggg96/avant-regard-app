@@ -135,6 +135,130 @@ async function request<T>(
   }
 }
 
+// 文件上传请求方法
+async function uploadRequest<T>(
+  endpoint: string,
+  formData: FormData
+): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    Accept: "*/*",
+  };
+
+  const token = useAuthStore.getState().getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const config: RequestInit = {
+    method: "POST",
+    headers,
+    body: formData,
+  };
+
+  try {
+    const response = await fetch(url, config);
+    const contentType = response.headers.get("content-type");
+
+    if (!response.ok) {
+      let errorMessage = "上传失败";
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text || `HTTP ${response.status}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (contentType?.includes("application/json")) {
+      const jsonResponse = await response.json();
+      console.log("upload response:", jsonResponse);
+
+      if (
+        jsonResponse &&
+        typeof jsonResponse === "object" &&
+        "code" in jsonResponse
+      ) {
+        const apiResponse = jsonResponse as ApiResponse<T>;
+        if (apiResponse.code !== 0) {
+          throw new Error(apiResponse.message || "上传失败");
+        }
+        if ("data" in apiResponse) {
+          return apiResponse.data;
+        }
+      }
+      return jsonResponse as T;
+    }
+
+    const text = await response.text();
+    return text as unknown as T;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("上传失败，请检查网络连接");
+  }
+}
+
+// ==================== 图片上传 ====================
+
+/**
+ * 上传单张图片
+ * POST /api/files/upload-image
+ * @param imageUri 本地图片 URI
+ * @returns 上传后的图片 URL
+ */
+export async function uploadImage(imageUri: string): Promise<string> {
+  const formData = new FormData();
+
+  const filename = imageUri.split("/").pop() || "image.jpg";
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : "image/jpeg";
+
+  formData.append("file", {
+    uri: imageUri,
+    name: filename,
+    type,
+  } as any);
+
+  // 返回上传后的图片 URL
+  // API 响应格式: { code: 0, message: "string", data: { url: "string" } }
+  const result = await uploadRequest<{ url: string }>(
+    "/api/files/upload-image",
+    formData
+  );
+
+  if (result && typeof result === "object" && "url" in result) {
+    return result.url;
+  }
+  throw new Error("图片上传返回格式错误");
+}
+
+/**
+ * 批量上传图片
+ * @param imageUris 本地图片 URI 数组
+ * @param onProgress 进度回调 (已完成数量, 总数)
+ * @returns 上传后的图片 URL 数组
+ */
+export async function uploadImages(
+  imageUris: string[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<string[]> {
+  const urls: string[] = [];
+  const total = imageUris.length;
+
+  for (let i = 0; i < total; i++) {
+    const url = await uploadImage(imageUris[i]);
+    urls.push(url);
+    onProgress?.(i + 1, total);
+  }
+
+  return urls;
+}
+
 // ==================== 帖子 CRUD ====================
 
 /**
@@ -268,6 +392,9 @@ export async function getPostsByUserId(
 
 // 导出 postService 对象
 export const postService = {
+  // 图片上传
+  uploadImage,
+  uploadImages,
   // CRUD
   getPosts,
   getPostById,

@@ -1,11 +1,9 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import {
   StyleSheet,
-  Modal,
   Image as RNImage,
   Dimensions,
-  FlatList,
-  View,
+  ActivityIndicator,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,8 +15,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  VStack,
-  HStack,
   Image,
   Input,
 } from "../components/ui";
@@ -30,17 +26,22 @@ import ImageGallery from "../components/ImageGallery";
 import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import ImagePreviewModal from "../components/ImagePreviewModal";
+import { postService } from "../services/postService";
+import { useAuthStore } from "../store/authStore";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const PublishLookbookScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -52,8 +53,9 @@ const PublishLookbookScreen = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
     null
   );
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  // 移动模式：长按选中图片，点击另一张交换位置
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [reorderFromIndex, setReorderFromIndex] = useState<number | null>(null);
 
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
@@ -62,8 +64,6 @@ const PublishLookbookScreen = () => {
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
 
   const MAX_IMAGES = 9;
-
-  const predefinedTags = ["春夏", "秋冬", "经典", "时尚", "高级", "复古"];
 
   // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
@@ -90,41 +90,104 @@ const PublishLookbookScreen = () => {
     return true;
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!validateForm()) {
       return;
     }
 
-    const publishData = {
-      type: "lookbook",
-      title,
-      description,
-      images,
-      coverImage,
-      tags: selectedTags,
-    };
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-    console.log("Publishing:", publishData);
+    setIsPublishing(true);
+    try {
+      // 1. 先上传所有图片
+      setUploadProgress(`上传图片 0/${images.length}`);
+      const uploadedUrls = await postService.uploadImages(
+        images,
+        (completed, total) => {
+          setUploadProgress(`上传图片 ${completed}/${total}`);
+        }
+      );
 
-    Alert.show("发布成功: 您的Lookbook已成功发布！", "", 1000);
-    setTimeout(() => {
-      resetForm();
-      navigation.goBack();
-    }, 1000);
+      // 2. 创建帖子
+      setUploadProgress("正在发布...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "OUTFIT",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: description.trim(),
+        imageUrls: uploadedUrls,
+      });
+
+      setUploadProgress(null);
+      Alert.show("发布成功！", "", 1500);
+      setTimeout(() => {
+        resetForm();
+        // 跳转到 Discover 页面
+        (navigation as any).reset({
+          index: 0,
+          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+        });
+      }, 1500);
+    } catch (error) {
+      console.error("Publish error:", error);
+      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
+    } finally {
+      setIsPublishing(false);
+      setUploadProgress(null);
+    }
   };
 
-  const handleSaveDraft = () => {
-    const draftData = {
-      type: "lookbook",
-      title,
-      description,
-      images,
-      coverImage,
-      tags: selectedTags,
-    };
+  const handleSaveDraft = async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
 
-    console.log("Saving draft:", draftData);
-    Alert.show("草稿已保存: 您的内容已保存为草稿");
+    // 草稿至少需要有图片或标题
+    if (images.length === 0 && !title.trim()) {
+      Alert.show("请至少添加一张图片或填写标题");
+      return;
+    }
+
+    setIsSavingDraft(true);
+    try {
+      let uploadedUrls: string[] = [];
+
+      // 如果有图片，先上传
+      if (images.length > 0) {
+        setUploadProgress(`上传图片 0/${images.length}`);
+        uploadedUrls = await postService.uploadImages(
+          images,
+          (completed, total) => {
+            setUploadProgress(`上传图片 ${completed}/${total}`);
+          }
+        );
+      }
+
+      // 保存草稿
+      setUploadProgress("正在保存...");
+      await postService.createPost({
+        userId: user.userId,
+        postType: "LOOKBOOK",
+        postStatus: "DRAFT",
+        title: title.trim() || "未命名草稿",
+        contentText: description.trim(),
+        imageUrls: uploadedUrls,
+      });
+
+      setUploadProgress(null);
+      Alert.show("草稿已保存", "", 1500);
+    } catch (error) {
+      console.error("Save draft error:", error);
+      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+    } finally {
+      setIsSavingDraft(false);
+      setUploadProgress(null);
+    }
   };
 
   const resetForm = () => {
@@ -132,7 +195,6 @@ const PublishLookbookScreen = () => {
     setDescription("");
     setImages([]);
     setCoverImage(null);
-    setSelectedTags([]);
   };
 
   const handleAddImage = () => {
@@ -239,14 +301,51 @@ const PublishLookbookScreen = () => {
     setSelectedImageIndex(null);
   };
 
-  const handleDragStart = (index: number) => {
-    setIsDragging(true);
-    setDraggedIndex(index);
+  // 长按进入移动模式
+  const handleEnterReorderMode = (index: number) => {
+    if (isReorderMode && reorderFromIndex === index) {
+      // 再次长按同一张图片，退出移动模式
+      handleExitReorderMode();
+      return;
+    }
+    setIsReorderMode(true);
+    setReorderFromIndex(index);
+    Alert.show("已选中，点击其他图片交换位置", "", 1500);
   };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    setDraggedIndex(null);
+  // 退出移动模式
+  const handleExitReorderMode = () => {
+    setIsReorderMode(false);
+    setReorderFromIndex(null);
+  };
+
+  // 处理移动模式下的点击（交换位置）
+  const handleReorderTap = (toIndex: number) => {
+    if (!isReorderMode || reorderFromIndex === null) return;
+
+    if (reorderFromIndex === toIndex) {
+      // 点击自己，打开编辑菜单
+      handleExitReorderMode();
+      handleImageLongPress(toIndex);
+      return;
+    }
+
+    // 交换两张图片的位置
+    const newImages = [...images];
+    const temp = newImages[reorderFromIndex];
+    newImages[reorderFromIndex] = newImages[toIndex];
+    newImages[toIndex] = temp;
+    setImages(newImages);
+
+    // 更新封面（如果封面是被移动的图片）
+    if (coverImage === images[reorderFromIndex]) {
+      setCoverImage(newImages[toIndex]);
+    } else if (coverImage === images[toIndex]) {
+      setCoverImage(newImages[reorderFromIndex]);
+    }
+
+    Alert.show("位置已调换", "", 1000);
+    handleExitReorderMode();
   };
 
   const handleCropDone = (croppedUri: string) => {
@@ -366,58 +465,111 @@ const PublishLookbookScreen = () => {
 
   const renderImageGallery = () => (
     <Box mx="$md" mb="$md" mt="$md">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {images.map((image, index) => (
-          <Pressable
-            key={`${image}-${index}`}
-            w={60}
-            h={60}
-            rounded="$sm"
-            mr="$sm"
-            overflow="hidden"
-            borderWidth={coverImage === image ? 2 : 0}
-            borderColor="$black"
-            opacity={draggedIndex === index ? 0.5 : 1}
-            onPress={() => handleImageLongPress(index)}
-            onLongPress={() => handleDragStart(index)}
-          >
-            <Image source={{ uri: image }} style={styles.thumbnail} />
-            {coverImage === image && (
-              <Box
-                position="absolute"
-                bottom={2}
-                left={2}
-                right={2}
-                bg="rgba(0,0,0,0.7)"
+      <Box h={60}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ alignItems: "center" }}
+        >
+          {images.map((image, index) => {
+            const isSelected = isReorderMode && reorderFromIndex === index;
+            const isCover = coverImage === image;
+
+            return (
+              <Pressable
+                key={`thumbnail-${index}`}
+                w={60}
+                h={60}
                 rounded="$sm"
-                py={2}
-                alignItems="center"
+                mr="$sm"
+                overflow="hidden"
+                borderWidth={isSelected ? 3 : isCover ? 2 : 0}
+                borderColor={isSelected ? "$accent" : "$black"}
+                opacity={isSelected ? 0.8 : 1}
+                onPress={() => {
+                  if (isReorderMode) {
+                    handleReorderTap(index);
+                  } else {
+                    handleImageLongPress(index);
+                  }
+                }}
+                onLongPress={() => handleEnterReorderMode(index)}
               >
-                <Text color="$white" fontSize={10} fontWeight="$medium">
-                  封面
-                </Text>
-              </Box>
-            )}
-          </Pressable>
-        ))}
-        {images.length < MAX_IMAGES && (
-          <Pressable
-            w={60}
-            h={60}
-            rounded="$sm"
-            bg="$gray100"
-            alignItems="center"
-            justifyContent="center"
-            mr="$sm"
-            onPress={handleAddImage}
-          >
-            <Ionicons name="add" size={24} color={theme.colors.gray400} />
-          </Pressable>
-        )}
-      </ScrollView>
+                <Image source={{ uri: image }} style={styles.thumbnail} />
+
+                {/* 选中状态指示器 */}
+                {isSelected && (
+                  <Box
+                    position="absolute"
+                    top={0}
+                    left={0}
+                    right={0}
+                    bottom={0}
+                    bg="rgba(0,0,0,0.3)"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Ionicons name="swap-horizontal" size={24} color="white" />
+                  </Box>
+                )}
+
+                {/* 封面标签 */}
+                {isCover && !isSelected && (
+                  <Box
+                    position="absolute"
+                    bottom={2}
+                    left={2}
+                    right={2}
+                    bg="rgba(0,0,0,0.7)"
+                    rounded="$sm"
+                    py={2}
+                    alignItems="center"
+                  >
+                    <Text color="$white" fontSize={10} fontWeight="$medium">
+                      封面
+                    </Text>
+                  </Box>
+                )}
+              </Pressable>
+            );
+          })}
+
+          {/* 添加图片按钮 */}
+          {images.length < MAX_IMAGES && (
+            <Pressable
+              w={60}
+              h={60}
+              rounded="$sm"
+              bg="$gray100"
+              alignItems="center"
+              justifyContent="center"
+              mr="$sm"
+              onPress={() => {
+                if (isReorderMode) {
+                  handleExitReorderMode();
+                }
+                handleAddImage();
+              }}
+            >
+              <Ionicons name="add" size={24} color={theme.colors.gray400} />
+            </Pressable>
+          )}
+        </ScrollView>
+      </Box>
+
+      {/* 提示文字 */}
       {images.length > 1 && (
-        <Text color="$gray400" fontSize="$xs" textAlign="center" mt="$xs">
-          点击缩略图编辑，长按可拖拽调整顺序
+        <Text
+          color={isReorderMode ? "$accent" : "$gray400"}
+          fontSize="$xs"
+          textAlign="center"
+          mt="$xs"
+          fontWeight={isReorderMode ? "$medium" : "$normal"}
+        >
+          {isReorderMode
+            ? "点击其他图片交换位置，或点击 + 取消"
+            : "点击缩略图编辑，长按调整顺序"}
         </Text>
       )}
     </Box>
@@ -493,7 +645,14 @@ const PublishLookbookScreen = () => {
       <PublishButtons
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
-        publishDisabled={!canPublish()}
+        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+        draftDisabled={isPublishing || isSavingDraft}
+        publishButtonText={
+          isPublishing ? uploadProgress || "发布中..." : "发布"
+        }
+        draftButtonText={
+          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+        }
       />
 
       <ImagePickerModal

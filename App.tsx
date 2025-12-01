@@ -213,7 +213,7 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="设置"
+        name="Settings"
         component={SettingsScreen}
         options={{ headerShown: false }}
       />

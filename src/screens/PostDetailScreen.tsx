@@ -25,6 +25,8 @@ import { Box, Text, Pressable, HStack, VStack, Image } from "../components/ui";
 import { theme } from "../theme";
 import { Post } from "../components/PostCard";
 import { useAuthStore } from "../store/authStore";
+import { commentService, PostComment } from "../services/commentService";
+import { userInfoService } from "../services/userInfoService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -34,9 +36,10 @@ interface PostDetailRouteParams {
   postStatus?: "draft" | "pending" | "published";
 }
 
-// 模拟评论数据
+// 评论显示类型
 interface Comment {
   id: string;
+  userId: number;
   userName: string;
   userAvatar: string;
   content: string;
@@ -45,35 +48,22 @@ interface Comment {
   isLiked?: boolean;
 }
 
-const mockComments: Comment[] = [
-  {
-    id: "comment-1",
-    userName: "时尚达人小美",
-    userAvatar: "https://picsum.photos/id/213/40/40",
-    content: "这个系列真的太棒了！设计师的创意完全超出了我的想象。",
-    timestamp: "1小时前",
-    likes: 23,
-    isLiked: false,
-  },
-  {
-    id: "comment-2",
-    userName: "Fashion Lover",
-    userAvatar: "https://picsum.photos/id/227/40/40",
-    content: "配色很高级，期待能看到更多这样的作品。",
-    timestamp: "3小时前",
-    likes: 15,
-    isLiked: true,
-  },
-  {
-    id: "comment-3",
-    userName: "设计师Emma",
-    userAvatar: "https://picsum.photos/id/239/40/40",
-    content: "作为同行，必须点赞！工艺水准真的很高。",
-    timestamp: "5小时前",
-    likes: 42,
-    isLiked: false,
-  },
-];
+// 格式化时间显示
+const formatTimestamp = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMinutes < 1) return "刚刚";
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
+  if (diffHours < 24) return `${diffHours}小时前`;
+  if (diffDays < 7) return `${diffDays}天前`;
+
+  return date.toLocaleDateString("zh-CN");
+};
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -86,7 +76,8 @@ const PostDetailScreen = () => {
   // 这里应该根据postId从API获取post数据，暂时使用传入的post
   const [post, setPost] = useState<Post | null>(params.post || null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [comments, setComments] = useState<Comment[]>(mockComments);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
   const postStatus = params.postStatus || "published";
 
   // 判断是否是本人的帖子
@@ -123,6 +114,62 @@ const PostDetailScreen = () => {
       keyboardWillHide.remove();
     };
   }, []);
+
+  // 加载评论数据
+  const loadComments = useCallback(async () => {
+    if (!post?.id || postStatus !== "published") return;
+
+    setIsLoadingComments(true);
+    try {
+      // 获取帖子 ID（可能是字符串或数字）
+      const postId =
+        typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+      if (isNaN(postId)) return;
+
+      // 获取评论列表
+      const apiComments = await commentService.getPostComments(postId);
+
+      // 获取评论者的用户信息（头像等）
+      const userIds = [...new Set(apiComments.map((c) => c.userId))];
+      const userInfoPromises = userIds.map((id) =>
+        userInfoService.getUserInfo(id).catch(() => null)
+      );
+      const usersInfo = await Promise.all(userInfoPromises);
+      const userInfoMap = new Map(
+        usersInfo
+          .filter((info) => info !== null)
+          .map((info) => [info!.userId, info!])
+      );
+
+      // 转换为显示格式
+      const displayComments: Comment[] = apiComments.map((apiComment) => {
+        const userInfo = userInfoMap.get(apiComment.userId);
+        return {
+          id: String(apiComment.id),
+          userId: apiComment.userId,
+          userName: userInfo?.username || apiComment.username || "用户",
+          userAvatar:
+            userInfo?.avatarUrl ||
+            `https://api.dicebear.com/7.x/avataaars/png?seed=${apiComment.userId}`,
+          content: apiComment.content,
+          timestamp: formatTimestamp(apiComment.createdAt),
+          likes: apiComment.likeCount || 0,
+          isLiked: false, // TODO: 后端暂无此字段
+        };
+      });
+
+      setComments(displayComments);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  }, [post?.id, postStatus]);
+
+  // 初始化加载评论
+  useEffect(() => {
+    loadComments();
+  }, [loadComments]);
 
   // 处理输入框点击
   const handleInputPress = useCallback(() => {
@@ -238,36 +285,102 @@ const PostDetailScreen = () => {
   }, [navigation, post]);
 
   // 处理评论点赞
-  const handleCommentLike = useCallback((commentId: string) => {
-    setComments((prev) =>
-      prev.map((comment) =>
-        comment.id === commentId
-          ? {
-              ...comment,
-              isLiked: !comment.isLiked,
-              likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1,
-            }
-          : comment
-      )
-    );
-  }, []);
+  const handleCommentLike = useCallback(
+    async (commentId: string) => {
+      if (!user?.userId) {
+        Alert.alert("提示", "请先登录");
+        return;
+      }
+
+      // 先乐观更新 UI
+      const targetComment = comments.find((c) => c.id === commentId);
+      if (!targetComment) return;
+
+      const newIsLiked = !targetComment.isLiked;
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                isLiked: newIsLiked,
+                likes: newIsLiked ? comment.likes + 1 : comment.likes - 1,
+              }
+            : comment
+        )
+      );
+
+      // 调用 API
+      try {
+        const numericCommentId = parseInt(commentId, 10);
+        if (newIsLiked) {
+          await commentService.likeComment(numericCommentId, user.userId);
+        } else {
+          await commentService.unlikeComment(numericCommentId, user.userId);
+        }
+      } catch (error) {
+        console.error("Error toggling comment like:", error);
+        // 回滚 UI
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  isLiked: !newIsLiked,
+                  likes: newIsLiked ? comment.likes - 1 : comment.likes + 1,
+                }
+              : comment
+          )
+        );
+      }
+    },
+    [user?.userId, comments]
+  );
 
   // 处理提交评论
-  const handleSubmitComment = useCallback(() => {
+  const handleSubmitComment = useCallback(async () => {
     if (!commentInput.trim()) return;
+
+    if (!user?.userId) {
+      Alert.alert("提示", "请先登录");
+      return;
+    }
+
+    if (!post?.id) return;
 
     // 关闭键盘和输入框
     Keyboard.dismiss();
     setIsCommentFocused(false);
     setIsSubmittingComment(true);
 
-    // 模拟API调用
-    setTimeout(() => {
+    try {
+      const postId =
+        typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+      if (isNaN(postId)) throw new Error("无效的帖子 ID");
+
+      // 调用 API 发布评论
+      const newApiComment = await commentService.createComment(postId, {
+        userId: user.userId,
+        content: commentInput.trim(),
+      });
+
+      // 获取当前用户信息用于显示
+      let userAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
+      try {
+        const userInfo = await userInfoService.getUserInfo(user.userId);
+        if (userInfo?.avatarUrl) {
+          userAvatar = userInfo.avatarUrl;
+        }
+      } catch {
+        // 忽略获取用户信息失败
+      }
+
+      // 将新评论添加到列表顶部
       const newComment: Comment = {
-        id: `comment-${Date.now()}`,
-        userName: "我",
-        userAvatar: "https://picsum.photos/id/251/40/40",
-        content: commentInput,
+        id: String(newApiComment.id),
+        userId: newApiComment.userId,
+        userName: user.username || "我",
+        userAvatar: userAvatar,
+        content: newApiComment.content,
         timestamp: "刚刚",
         likes: 0,
         isLiked: false,
@@ -275,7 +388,6 @@ const PostDetailScreen = () => {
 
       setComments((prev) => [newComment, ...prev]);
       setCommentInput("");
-      setIsSubmittingComment(false);
 
       // 显示成功提示
       Alert.alert("成功", "评论已发布");
@@ -284,8 +396,16 @@ const PostDetailScreen = () => {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 500);
-  }, [commentInput]);
+    } catch (error) {
+      console.error("Error submitting comment:", error);
+      Alert.alert(
+        "错误",
+        error instanceof Error ? error.message : "评论发布失败"
+      );
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  }, [commentInput, user?.userId, user?.username, post?.id]);
 
   if (!post) {
     return (
@@ -605,56 +725,108 @@ const PostDetailScreen = () => {
                 评论 ({comments.length})
               </Text>
 
-              {/* Comments List */}
-              {comments.map((comment) => (
-                <HStack key={comment.id} space="sm" mt="$md">
-                  <Image
-                    source={{ uri: comment.userAvatar }}
-                    style={styles.commentAvatar}
+              {/* Loading State */}
+              {isLoadingComments && (
+                <Box py="$lg" alignItems="center">
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.gray400}
                   />
-                  <VStack flex={1} space="xs">
-                    <HStack justifyContent="between" alignItems="center">
-                      <Text
-                        fontSize="$sm"
-                        fontWeight="$semibold"
-                        color="$black"
-                      >
-                        {comment.userName}
-                      </Text>
-                      <Text fontSize="$xs" color="$gray600">
-                        {comment.timestamp}
-                      </Text>
-                    </HStack>
-                    <Text fontSize="$sm" color="$gray800" lineHeight="$md">
-                      {comment.content}
-                    </Text>
-                    <HStack space="md" mt="$xs">
-                      <Pressable onPress={() => handleCommentLike(comment.id)}>
-                        <HStack space="xs" alignItems="center">
-                          <Ionicons
-                            name={comment.isLiked ? "heart" : "heart-outline"}
-                            size={16}
-                            color={
-                              comment.isLiked ? "#FF3040" : theme.colors.gray400
-                            }
-                          />
+                  <Text fontSize="$sm" color="$gray400" mt="$sm">
+                    加载评论中...
+                  </Text>
+                </Box>
+              )}
+
+              {/* Empty State */}
+              {!isLoadingComments && comments.length === 0 && (
+                <Box py="$lg" alignItems="center">
+                  <Ionicons
+                    name="chatbubble-outline"
+                    size={32}
+                    color={theme.colors.gray300}
+                  />
+                  <Text fontSize="$sm" color="$gray400" mt="$sm">
+                    暂无评论，快来发表第一条评论吧
+                  </Text>
+                </Box>
+              )}
+
+              {/* Comments List */}
+              {!isLoadingComments &&
+                comments.map((comment) => (
+                  <HStack key={comment.id} space="sm" mt="$md">
+                    <Pressable
+                      onPress={() =>
+                        (navigation as any).navigate("UserProfile", {
+                          userId: comment.userId,
+                          username: comment.userName,
+                          avatar: comment.userAvatar,
+                        })
+                      }
+                    >
+                      <Image
+                        source={{ uri: comment.userAvatar }}
+                        style={styles.commentAvatar}
+                      />
+                    </Pressable>
+                    <VStack flex={1} space="xs">
+                      <HStack justifyContent="between" alignItems="center">
+                        <Pressable
+                          onPress={() =>
+                            (navigation as any).navigate("UserProfile", {
+                              userId: comment.userId,
+                              username: comment.userName,
+                              avatar: comment.userAvatar,
+                            })
+                          }
+                        >
                           <Text
-                            fontSize="$xs"
-                            color={comment.isLiked ? "#FF3040" : "$gray600"}
+                            fontSize="$sm"
+                            fontWeight="$semibold"
+                            color="$black"
                           >
-                            {comment.likes}
+                            {comment.userName}
                           </Text>
-                        </HStack>
-                      </Pressable>
-                      <Pressable>
+                        </Pressable>
                         <Text fontSize="$xs" color="$gray600">
-                          回复
+                          {comment.timestamp}
                         </Text>
-                      </Pressable>
-                    </HStack>
-                  </VStack>
-                </HStack>
-              ))}
+                      </HStack>
+                      <Text fontSize="$sm" color="$gray800" lineHeight="$md">
+                        {comment.content}
+                      </Text>
+                      <HStack space="md" mt="$xs">
+                        <Pressable
+                          onPress={() => handleCommentLike(comment.id)}
+                        >
+                          <HStack space="xs" alignItems="center">
+                            <Ionicons
+                              name={comment.isLiked ? "heart" : "heart-outline"}
+                              size={16}
+                              color={
+                                comment.isLiked
+                                  ? "#FF3040"
+                                  : theme.colors.gray400
+                              }
+                            />
+                            <Text
+                              fontSize="$xs"
+                              color={comment.isLiked ? "#FF3040" : "$gray600"}
+                            >
+                              {comment.likes}
+                            </Text>
+                          </HStack>
+                        </Pressable>
+                        <Pressable>
+                          <Text fontSize="$xs" color="$gray600">
+                            回复
+                          </Text>
+                        </Pressable>
+                      </HStack>
+                    </VStack>
+                  </HStack>
+                ))}
             </VStack>
           )}
 

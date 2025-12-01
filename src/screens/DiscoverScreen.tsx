@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { StyleSheet, RefreshControl, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -20,6 +20,7 @@ import {
   likePost,
   unlikePost,
 } from "../services/postService";
+import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
 
 // 用于展示的Post类型（与PostCard组件兼容）
@@ -50,32 +51,41 @@ interface DisplayPost {
 
 type TabType = "home" | "lookbook" | "outfit" | "review" | "article";
 
-// API Post类型到前端Post类型的映射
-const mapApiPostToDisplayPost = (apiPost: ApiPost): DisplayPost => {
-  // 计算相对时间
-  const getRelativeTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+// 计算相对时间
+const getRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-    if (diffInMinutes < 1) return "刚刚";
-    if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
-    if (diffInHours < 24) return `${diffInHours}小时前`;
-    if (diffInDays < 7) return `${diffInDays}天前`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}周前`;
-    return `${Math.floor(diffInDays / 30)}个月前`;
-  };
+  if (diffInMinutes < 1) return "刚刚";
+  if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
+  if (diffInHours < 24) return `${diffInHours}小时前`;
+  if (diffInDays < 7) return `${diffInDays}天前`;
+  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}周前`;
+  return `${Math.floor(diffInDays / 30)}个月前`;
+};
+
+// API Post类型到前端Post类型的映射
+const mapApiPostToDisplayPost = (
+  apiPost: ApiPost,
+  userInfoMap: Map<number, UserInfo>
+): DisplayPost => {
+  // 获取用户信息
+  const userInfo = userInfoMap.get(apiPost.userId);
+
+  // 生成默认头像（如果没有用户信息或没有头像）
+  const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`;
 
   return {
     id: String(apiPost.id),
     type: apiPost.postType.toLowerCase(), // "OUTFIT" -> "outfit"
     author: {
       id: String(apiPost.userId),
-      name: apiPost.username || "匿名用户",
-      avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+      name: userInfo?.username || apiPost.username || "匿名用户",
+      avatar: userInfo?.avatarUrl || defaultAvatar,
       isVerified: false,
     },
     content: {
@@ -108,6 +118,9 @@ const DiscoverScreen = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 缓存用户信息
+  const userInfoCache = useRef<Map<number, UserInfo>>(new Map());
+
   // 从后端获取帖子数据
   const fetchPosts = useCallback(async () => {
     try {
@@ -121,8 +134,38 @@ const DiscoverScreen = () => {
         (post) => post.status === "PUBLISHED"
       );
 
-      // 转换为前端展示格式
-      const displayPosts = publishedPosts.map(mapApiPostToDisplayPost);
+      // 收集所有不同的 userId
+      const userIds = [...new Set(publishedPosts.map((post) => post.userId))];
+
+      // 获取所有用户信息（只获取缓存中没有的）
+      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      const uncachedUserIds = userIds.filter((id) => !userInfoMap.has(id));
+
+      if (uncachedUserIds.length > 0) {
+        // 并行获取用户信息
+        const userInfoPromises = uncachedUserIds.map(async (userId) => {
+          try {
+            const info = await userInfoService.getUserInfo(userId);
+            return { userId, info };
+          } catch (err) {
+            console.warn(`获取用户 ${userId} 信息失败:`, err);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(userInfoPromises);
+        results.forEach((result) => {
+          if (result && result.info) {
+            userInfoMap.set(result.userId, result.info);
+            userInfoCache.current.set(result.userId, result.info);
+          }
+        });
+      }
+
+      // 转换为前端展示格式（带用户信息）
+      const displayPosts = publishedPosts.map((post) =>
+        mapApiPostToDisplayPost(post, userInfoMap)
+      );
       setPosts(displayPosts);
     } catch (err) {
       console.error("获取帖子失败:", err);
@@ -191,11 +234,16 @@ const DiscoverScreen = () => {
       console.log("查看作者资料:", authorId);
       // 查找作者信息
       const post = posts.find((p) => p.author.id === authorId);
+      const userId = parseInt(authorId, 10);
+
+      // 从缓存获取用户信息
+      const cachedUserInfo = userInfoCache.current.get(userId);
+
       // 导航到用户主页
       (navigation.navigate as any)("UserProfile", {
-        userId: parseInt(authorId, 10),
-        username: post?.author.name,
-        avatar: post?.author.avatar,
+        userId,
+        username: cachedUserInfo?.username || post?.author.name,
+        avatar: cachedUserInfo?.avatarUrl || post?.author.avatar,
       });
     },
     [navigation, posts]
@@ -458,6 +506,7 @@ const DiscoverScreen = () => {
       <ScrollView
         flex={1}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -539,7 +588,7 @@ const DiscoverScreen = () => {
             </Text>
           </VStack>
         ) : (
-          <HStack px="$sm" pt="$sm">
+          <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
               {currentPosts
                 .filter((_, index) => index % 2 === 0)

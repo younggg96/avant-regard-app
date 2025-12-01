@@ -16,7 +16,7 @@ interface ApiResponse<T> {
 // 关注用户请求参数
 export interface FollowUserParams {
   followerId: number;
-  followingId: number;
+  targetUserId: number;
 }
 
 // 关注设计师请求参数

@@ -10,6 +10,7 @@ interface PublishButtonsProps {
   publishButtonText?: string;
   showDraftButton?: boolean;
   publishDisabled?: boolean;
+  draftDisabled?: boolean;
 }
 
 const PublishButtons: React.FC<PublishButtonsProps> = ({
@@ -19,6 +20,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
   publishButtonText = "发布",
   showDraftButton = true,
   publishDisabled = false,
+  draftDisabled = false,
 }) => {
   return (
     <Box
@@ -40,7 +42,9 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
             mr="$sm"
             bg="$gray100"
             rounded="$md"
-            onPress={onSaveDraft}
+            onPress={draftDisabled ? undefined : onSaveDraft}
+            opacity={draftDisabled ? 0.6 : 1}
+            disabled={draftDisabled}
           >
             <HStack justifyContent="center" alignItems="center" gap="$xs">
               <Ionicons
