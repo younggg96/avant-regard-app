@@ -8,7 +8,6 @@ import {
   View,
   Image as RNImage,
   Share,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   TextInput,
@@ -27,6 +26,7 @@ import { Post } from "../components/PostCard";
 import { useAuthStore } from "../store/authStore";
 import { commentService, PostComment } from "../services/commentService";
 import { userInfoService } from "../services/userInfoService";
+import { Alert } from "../utils/Alert";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -271,7 +271,7 @@ const PostDetailScreen = () => {
   // 处理关注
   const handleFollow = useCallback(() => {
     setIsFollowing((prev) => !prev);
-    Alert.alert("成功", isFollowing ? "已取消关注" : "已关注");
+    Alert.show("成功", isFollowing ? "已取消关注" : "已关注");
   }, [isFollowing]);
 
   // 处理点击作者头像
@@ -288,7 +288,7 @@ const PostDetailScreen = () => {
   const handleCommentLike = useCallback(
     async (commentId: string) => {
       if (!user?.userId) {
-        Alert.alert("提示", "请先登录");
+        Alert.show("提示", "请先登录");
         return;
       }
 
@@ -341,7 +341,7 @@ const PostDetailScreen = () => {
     if (!commentInput.trim()) return;
 
     if (!user?.userId) {
-      Alert.alert("提示", "请先登录");
+      Alert.show("提示", "请先登录");
       return;
     }
 
@@ -390,7 +390,7 @@ const PostDetailScreen = () => {
       setCommentInput("");
 
       // 显示成功提示
-      Alert.alert("成功", "评论已发布");
+      Alert.show("成功", "评论已发布");
 
       // 滚动到评论区顶部，显示新评论
       setTimeout(() => {
@@ -398,7 +398,7 @@ const PostDetailScreen = () => {
       }, 100);
     } catch (error) {
       console.error("Error submitting comment:", error);
-      Alert.alert(
+      Alert.show(
         "错误",
         error instanceof Error ? error.message : "评论发布失败"
       );
@@ -432,7 +432,7 @@ const PostDetailScreen = () => {
   // 处理继续编辑（草稿）
   const handleContinueEdit = useCallback(() => {
     // 根据 post 类型跳转到对应的编辑页面
-    Alert.alert("编辑", "跳转到编辑页面");
+    Alert.show("编辑", "跳转到编辑页面");
     // TODO: 实现跳转到对应的编辑页面
   }, [post]);
 
@@ -560,12 +560,51 @@ const PostDetailScreen = () => {
           showsVerticalScrollIndicator={false}
           style={styles.scrollView}
         >
+          {/* Lookbook: 大图轮播在顶部 */}
+          {post.type === "lookbook" && images.length > 0 && (
+            <View style={styles.lookbookImageSection}>
+              <FlatList
+                data={images}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(event) => {
+                  const newIndex = Math.round(
+                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+                  );
+                  setCurrentImageIndex(newIndex);
+                }}
+                renderItem={({ item, index }) => (
+                  <Pressable
+                    onPress={() => handleOpenFullscreen(index)}
+                    style={styles.lookbookImageWrapper}
+                  >
+                    <RNImage
+                      source={{ uri: item }}
+                      style={styles.lookbookImage}
+                      resizeMode="cover"
+                    />
+                  </Pressable>
+                )}
+                keyExtractor={(item, index) => `lookbook-img-${index}`}
+              />
+              {/* 图片指示器 */}
+              {images.length > 1 && (
+                <View style={styles.imageIndicator}>
+                  <Text style={styles.imageIndicatorText}>
+                    {currentImageIndex + 1} / {images.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Title and Description Section */}
           <VStack
             px="$md"
             py="$md"
             space="md"
-            borderBottomWidth={1}
+            borderBottomWidth={post.type === "lookbook" ? 0 : 1}
             borderBottomColor="$gray100"
           >
             {/* Title */}
@@ -615,6 +654,19 @@ const PostDetailScreen = () => {
               </VStack>
             )}
 
+            {/* Tags for lookbook */}
+            {post.type === "lookbook" &&
+              post.content?.tags &&
+              post.content.tags.length > 0 && (
+                <HStack flexWrap="wrap" mt="$sm">
+                  {post.content.tags.map((tag, index) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>#{tag}</Text>
+                    </View>
+                  ))}
+                </HStack>
+              )}
+
             {post.type === "article" && post.readTime && (
               <HStack space="xs" alignItems="center" mt="$xs">
                 <Ionicons
@@ -638,8 +690,8 @@ const PostDetailScreen = () => {
             )}
           </VStack>
 
-          {/* Image Grid - 3 columns */}
-          {images.length > 0 && (
+          {/* Image Grid - 3 columns (非 lookbook 类型) */}
+          {post.type !== "lookbook" && images.length > 0 && (
             <View style={styles.imageGrid}>
               {images.map((image, index) => (
                 <Pressable
@@ -1082,6 +1134,47 @@ const styles = StyleSheet.create({
     height: SCREEN_WIDTH * 1.25, // 4:5 aspect ratio
     backgroundColor: theme.colors.gray100,
   },
+  // Lookbook 大图样式
+  lookbookImageSection: {
+    position: "relative",
+    backgroundColor: theme.colors.gray100,
+  },
+  lookbookImageWrapper: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.25, // 4:5 比例
+  },
+  lookbookImage: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: theme.colors.gray100,
+  },
+  imageIndicator: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  imageIndicatorText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  tag: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: {
+    fontSize: 12,
+    color: theme.colors.gray600,
+  },
+  // 普通图片网格样式
   imageGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

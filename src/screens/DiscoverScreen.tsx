@@ -1,5 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { StyleSheet, RefreshControl, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  Animated,
+  View,
+  Dimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -217,7 +224,7 @@ const DiscoverScreen = () => {
   // Handle post interactions
   const handlePostPress = useCallback(
     (post: Post) => {
-      console.log("查看帖子详情:", post.id);
+      console.log("查看帖子详情:", post);
       // 查找完整的原始帖子数据
       const fullPost = posts.find((p) => p.id === post.id);
 
@@ -359,7 +366,97 @@ const DiscoverScreen = () => {
     [handlePostPress, handleAuthorPress, handleLike]
   );
 
-  // Show loading state until initialized
+  // 骨架屏动画
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isInitialized) {
+      const shimmerAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      shimmerAnimation.start();
+      return () => shimmerAnimation.stop();
+    }
+  }, [isInitialized, shimmerAnim]);
+
+  const skeletonOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  // 骨架屏组件
+  const SkeletonBox = ({
+    width,
+    height,
+    style,
+  }: {
+    width: number | string;
+    height: number;
+    style?: any;
+  }) => (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.colors.gray200,
+          borderRadius: 4,
+          opacity: skeletonOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+
+  // 骨架屏帖子卡片
+  const SkeletonPostCard = () => {
+    const screenWidth = Dimensions.get("window").width;
+    return (
+      <View style={styles.skeletonCard}>
+        {/* 头部：头像 + 用户名 */}
+        <View style={styles.skeletonCardHeader}>
+          <Animated.View
+            style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
+          />
+          <View style={styles.skeletonUserInfo}>
+            <SkeletonBox width={100} height={14} style={{ marginBottom: 4 }} />
+            <SkeletonBox width={60} height={10} />
+          </View>
+        </View>
+        {/* 图片区域 */}
+        <Animated.View
+          style={[
+            styles.skeletonImage,
+            { width: screenWidth - 32, opacity: skeletonOpacity },
+          ]}
+        />
+        {/* 标题和描述 */}
+        <View style={styles.skeletonContent}>
+          <SkeletonBox width="90%" height={18} style={{ marginBottom: 8 }} />
+          <SkeletonBox width="70%" height={14} style={{ marginBottom: 12 }} />
+          {/* 互动栏 */}
+          <View style={styles.skeletonActions}>
+            <SkeletonBox width={50} height={20} />
+            <SkeletonBox width={50} height={20} />
+            <SkeletonBox width={50} height={20} />
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  // Show loading state until initialized (Skeleton)
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -370,12 +467,31 @@ const DiscoverScreen = () => {
           borderless
         />
 
-        <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
-          <ActivityIndicator size="large" color={theme.colors.accent} />
-          <Text color="$gray400" fontSize="$sm" mt="$sm">
-            加载中...
-          </Text>
-        </VStack>
+        {/* Tab 栏骨架 */}
+        <HStack
+          borderBottomWidth={1}
+          borderBottomColor="$gray100"
+          px="$md"
+          py="$md"
+          gap="$md"
+        >
+          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
+          <SkeletonBox width={80} height={20} style={{ borderRadius: 4 }} />
+          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
+          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
+          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
+        </HStack>
+
+        {/* 帖子列表骨架 */}
+        <ScrollView
+          flex={1}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingVertical: 16 }}
+        >
+          <SkeletonPostCard />
+          <SkeletonPostCard />
+          <SkeletonPostCard />
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -626,6 +742,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  // 骨架屏样式
+  skeletonCard: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  skeletonCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  skeletonAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.gray200,
+    marginRight: 12,
+  },
+  skeletonUserInfo: {
+    flex: 1,
+  },
+  skeletonImage: {
+    height: 300,
+    backgroundColor: theme.colors.gray200,
+    borderRadius: 8,
+    marginHorizontal: 12,
+  },
+  skeletonContent: {
+    padding: 12,
+  },
+  skeletonActions: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 8,
   },
 });
 

@@ -299,8 +299,6 @@ const BuyerMapScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="买手店地图" />
-
       {/* 搜索栏 */}
       <View style={styles.headerContainer}>
         <View style={styles.searchContainer}>

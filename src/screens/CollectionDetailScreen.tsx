@@ -438,7 +438,6 @@ const CollectionDetailScreen = () => {
         {renderHeader()}
         {renderImageGallery()}
         {renderCollectionInfo()}
-        {renderRating()}
         {renderReview()}
       </ScrollView>
     </SafeAreaView>

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Alert,
   Dimensions,
   FlatList,
   RefreshControl,
@@ -15,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
+import { Alert } from "../utils/Alert";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -164,7 +164,7 @@ const AllCommentsScreen = () => {
 
   const handleSubmitComment = () => {
     if (newCommentText.trim().length < 10) {
-      Alert.alert("提示", "评论内容至少需要10个字符");
+      Alert.show("提示", "评论内容至少需要10个字符");
       return;
     }
 
@@ -180,7 +180,7 @@ const AllCommentsScreen = () => {
     setNewCommentText("");
     setNewCommentRating(5);
     setIsWritingComment(false);
-    Alert.alert("成功", "评论发布成功！");
+    Alert.show("成功", "评论发布成功！");
   };
 
   const onRefresh = async () => {

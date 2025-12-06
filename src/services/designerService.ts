@@ -79,6 +79,58 @@ export async function getAllDesigners(): Promise<ApiDesigner[]> {
 }
 
 /**
+ * 递归简化数据，移除深度嵌套以避免 JSON 解析限制
+ * 用于处理 "Maximum nesting level in JSON parser exceeded" 错误
+ */
+function simplifyJsonText(text: string): string {
+  // 移除所有 followers 数组内容（支持嵌套括号）
+  let result = text;
+  
+  // 使用多次替换来处理 followers 数组
+  // 匹配 "followers":[ 开始，然后找到对应的结束 ]
+  let prevResult = "";
+  while (prevResult !== result) {
+    prevResult = result;
+    // 替换简单的空 followers 或只有基本元素的 followers
+    result = result.replace(/"followers"\s*:\s*\[\s*\]/g, '"followers":[]');
+    // 替换包含对象的 followers（不含嵌套数组）
+    result = result.replace(/"followers"\s*:\s*\[\s*\{[^[\]]*\}\s*(,\s*\{[^[\]]*\}\s*)*\]/g, '"followers":[]');
+  }
+  
+  // 如果 followers 仍然很复杂，使用更激进的方法
+  // 找到 "followers":[ 然后计数括号直到匹配
+  const followersRegex = /"followers"\s*:\s*\[/g;
+  let match;
+  const replacements: { start: number; end: number }[] = [];
+  
+  while ((match = followersRegex.exec(result)) !== null) {
+    const startIdx = match.index;
+    const arrayStart = result.indexOf('[', startIdx);
+    if (arrayStart === -1) continue;
+    
+    let depth = 1;
+    let i = arrayStart + 1;
+    while (i < result.length && depth > 0) {
+      if (result[i] === '[') depth++;
+      else if (result[i] === ']') depth--;
+      i++;
+    }
+    
+    if (depth === 0) {
+      replacements.push({ start: arrayStart, end: i });
+    }
+  }
+  
+  // 从后往前替换，避免索引偏移
+  for (let i = replacements.length - 1; i >= 0; i--) {
+    const { start, end } = replacements[i];
+    result = result.slice(0, start) + '[]' + result.slice(end);
+  }
+  
+  return result;
+}
+
+/**
  * 从 API 获取设计师数据
  */
 async function fetchDesignersFromApi(): Promise<ApiDesigner[]> {
@@ -102,17 +154,44 @@ async function fetchDesignersFromApi(): Promise<ApiDesigner[]> {
     throw new Error(`HTTP ${response.status}`);
   }
 
-  const result: ApiResponse<ApiDesigner[]> = await response.json();
+  // 使用 text() 然后手动解析，避免嵌套层级过深的问题
+  const text = await response.text();
+  
+  let result: ApiResponse<ApiDesigner[]>;
+  try {
+    result = JSON.parse(text);
+  } catch (parseError) {
+    console.error("JSON parse error, trying to simplify data...");
+    // 如果解析失败，先简化数据再尝试解析
+    try {
+      const simplifiedText = simplifyJsonText(text);
+      result = JSON.parse(simplifiedText);
+    } catch (secondError) {
+      console.error("Second JSON parse attempt failed:", secondError);
+      // 最后尝试：只提取基本结构
+      throw new Error("无法解析服务器返回的数据，数据结构过于复杂");
+    }
+  }
 
   if (result.code !== 0) {
     throw new Error(result.message || "获取数据失败");
   }
 
+  // 简化数据，移除不需要的深度嵌套字段
+  const simplifiedData = result.data.map((designer) => ({
+    ...designer,
+    followers: [], // 清空 followers 避免嵌套过深
+    shows: designer.shows?.map((show) => ({
+      ...show,
+      images: show.images || [],
+    })) || [],
+  }));
+
   // 更新缓存
-  cachedDesigners = result.data;
+  cachedDesigners = simplifiedData;
   cacheTimestamp = Date.now();
 
-  return result.data;
+  return simplifiedData;
 }
 
 /**

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -127,6 +128,116 @@ const ArchiveScreen = () => {
       ),
     }));
 
+  // 骨架屏动画
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (loading) {
+      const shimmerAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      shimmerAnimation.start();
+      return () => shimmerAnimation.stop();
+    }
+  }, [loading, shimmerAnim]);
+
+  const skeletonOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  // 骨架屏组件
+  const SkeletonBox = ({
+    width,
+    height,
+    style,
+  }: {
+    width: number | string;
+    height: number;
+    style?: any;
+  }) => (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.colors.gray200,
+          borderRadius: 4,
+          opacity: skeletonOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+
+  // 渲染骨架屏
+  const renderSkeleton = () => (
+    <ScrollView
+      style={styles.content}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.contentContainer}
+    >
+      {["A", "B", "C", "D", "E"].map((letter) => (
+        <View key={letter}>
+          {/* Letter Header Skeleton */}
+          <View style={styles.letterHeader}>
+            <SkeletonBox width={20} height={14} />
+          </View>
+
+          {/* Designer Items Skeleton */}
+          {[1, 2, 3].map((item) => (
+            <View key={item} style={styles.designerItem}>
+              {/* Image Skeleton */}
+              <Animated.View
+                style={[
+                  styles.designerImage,
+                  {
+                    backgroundColor: theme.colors.gray200,
+                    opacity: skeletonOpacity,
+                  },
+                ]}
+              />
+
+              {/* Info Skeleton */}
+              <View style={styles.designerInfo}>
+                <SkeletonBox
+                  width={120}
+                  height={20}
+                  style={{ marginBottom: 6 }}
+                />
+                <SkeletonBox
+                  width={80}
+                  height={16}
+                  style={{ marginBottom: 6 }}
+                />
+                <SkeletonBox
+                  width={140}
+                  height={14}
+                  style={{ marginBottom: 4 }}
+                />
+                <SkeletonBox width={100} height={12} />
+              </View>
+
+              {/* Arrow Skeleton */}
+              <SkeletonBox width={16} height={16} style={{ borderRadius: 8 }} />
+            </View>
+          ))}
+        </View>
+      ))}
+    </ScrollView>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
@@ -155,13 +266,8 @@ const ArchiveScreen = () => {
         </View>
       </View>
 
-      {/* Loading State */}
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.black} />
-          <Text style={styles.loadingText}>加载中...</Text>
-        </View>
-      )}
+      {/* Loading State (Skeleton) */}
+      {loading && renderSkeleton()}
 
       {/* Error State */}
       {error && !loading && (

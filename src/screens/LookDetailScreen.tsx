@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,20 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-  Share,
   Modal,
   StatusBar,
+  TextInput,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
+import { showImageService, ImageReview } from "../services/showImageService";
+import { useAuthStore } from "../store/authStore";
+import { Alert } from "../utils/Alert";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -26,40 +32,136 @@ interface Look {
   likes: number;
   isLiked: boolean;
   imageType?: string;
+  imageId?: number; // API 图片 ID
 }
 
 interface LookDetailParams {
   look: Look;
   designerName?: string;
   collectionTitle?: string;
+  imageId?: number; // API 图片 ID
 }
 
 const LookDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const params = route.params as LookDetailParams;
-  const { look, designerName, collectionTitle } = params;
+  const { look, designerName, collectionTitle, imageId: paramImageId } = params;
 
   const [currentLook, setCurrentLook] = useState<Look>(look);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
 
-  const handleLike = useCallback(() => {
-    setCurrentLook((prev) => ({
-      ...prev,
-      isLiked: !prev.isLiked,
-      likes: prev.isLiked ? prev.likes - 1 : prev.likes + 1,
-    }));
-  }, []);
+  // 评论相关状态
+  const [reviews, setReviews] = useState<ImageReview[]>([]);
+  const [userReview, setUserReview] = useState<ImageReview | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [myRating, setMyRating] = useState(0);
+  const [myContent, setMyContent] = useState("");
+  const [showReviewInput, setShowReviewInput] = useState(false);
 
-  const handleShare = async () => {
+  // 获取图片 ID
+  const imageId = paramImageId || look.imageId;
+
+  // 加载评论
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!imageId) return;
+
+      setReviewsLoading(true);
+      try {
+        const data = await showImageService.getImageReviews(imageId);
+        setReviews(data);
+
+        // 查找当前用户的评论
+        if (user?.userId) {
+          const myReview = data.find((r) => r.userId === user.userId);
+          if (myReview) {
+            setUserReview(myReview);
+            setMyRating(myReview.rating);
+            setMyContent(myReview.content);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load reviews:", error);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    loadReviews();
+  }, [imageId, user?.userId]);
+
+  // 提交评论
+  const handleSubmitReview = async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
+    }
+
+    if (!imageId) {
+      Alert.show("无法获取造型信息");
+      return;
+    }
+
+    if (myRating === 0) {
+      Alert.show("请选择评分");
+      return;
+    }
+
+    if (myContent.trim().length < 5) {
+      Alert.show("评论内容至少5个字");
+      return;
+    }
+
+    setSubmitLoading(true);
     try {
-      await Share.share({
-        message: `查看这个精彩的造型：${currentLook.title}${
-          designerName ? ` - ${designerName}` : ""
-        }`,
+      const newReview = await showImageService.createImageReview(imageId, {
+        userId: user.userId,
+        rating: myRating,
+        content: myContent.trim(),
       });
+
+      // 更新评论列表
+      if (userReview) {
+        // 更新已有评论
+        setReviews((prev) =>
+          prev.map((r) => (r.id === userReview.id ? newReview : r))
+        );
+      } else {
+        // 添加新评论
+        setReviews((prev) => [newReview, ...prev]);
+      }
+
+      setUserReview(newReview);
+      setShowReviewInput(false);
+      Alert.show(userReview ? "评论已更新" : "评论成功", "", 1500);
     } catch (error) {
-      console.log("分享失败:", error);
+      console.error("Submit review error:", error);
+      Alert.show(error instanceof Error ? error.message : "提交失败，请重试");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  // 删除评论
+  const handleDeleteReview = async () => {
+    if (!userReview) return;
+
+    setSubmitLoading(true);
+    try {
+      await showImageService.deleteImageReview(userReview.id);
+      setReviews((prev) => prev.filter((r) => r.id !== userReview.id));
+      setUserReview(null);
+      setMyRating(0);
+      setMyContent("");
+      Alert.show("评论已删除", "", 1500);
+    } catch (error) {
+      console.error("Delete review error:", error);
+      Alert.show(error instanceof Error ? error.message : "删除失败，请重试");
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -80,9 +182,6 @@ const LookDetailScreen = () => {
       >
         <Ionicons name="arrow-back" size={24} color={theme.colors.white} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <Ionicons name="share-outline" size={24} color={theme.colors.white} />
-      </TouchableOpacity>
     </View>
   );
 
@@ -99,15 +198,6 @@ const LookDetailScreen = () => {
       />
       <View style={styles.imageOverlay} pointerEvents="box-none">
         {renderHeader()}
-        <View style={styles.imageActions}>
-          <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-            <Ionicons
-              name={currentLook.isLiked ? "heart" : "heart-outline"}
-              size={28}
-              color={currentLook.isLiked ? "#ff4757" : theme.colors.white}
-            />
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -123,12 +213,6 @@ const LookDetailScreen = () => {
       </View>
 
       <View style={styles.statsSection}>
-        <View style={styles.statItem}>
-          <Ionicons name="heart" size={16} color="#ff4757" />
-          <Text style={styles.statText}>
-            {currentLook.likes.toLocaleString()} 个赞
-          </Text>
-        </View>
         {currentLook.imageType && (
           <View style={styles.statItem}>
             <Ionicons
@@ -139,48 +223,242 @@ const LookDetailScreen = () => {
             <Text style={styles.statText}>{currentLook.imageType}</Text>
           </View>
         )}
-      </View>
-
-      <View style={styles.actionButtons}>
-        <TouchableOpacity
-          style={[
-            styles.actionButton,
-            styles.likeActionButton,
-            currentLook.isLiked && styles.likedActionButton,
-          ]}
-          onPress={handleLike}
-        >
+        <View style={styles.statItem}>
           <Ionicons
-            name={currentLook.isLiked ? "heart" : "heart-outline"}
-            size={20}
-            color={
-              currentLook.isLiked ? theme.colors.white : theme.colors.gray600
-            }
-          />
-          <Text
-            style={[
-              styles.actionButtonText,
-              currentLook.isLiked && styles.likedActionButtonText,
-            ]}
-          >
-            {currentLook.isLiked ? "已点赞" : "点赞"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.shareActionButton]}
-          onPress={handleShare}
-        >
-          <Ionicons
-            name="share-outline"
-            size={20}
+            name="chatbubble-outline"
+            size={16}
             color={theme.colors.gray600}
           />
-          <Text style={styles.shareActionButtonText}>分享</Text>
-        </TouchableOpacity>
+          <Text style={styles.statText}>{reviews.length} 条评论</Text>
+        </View>
       </View>
     </View>
   );
+
+  // 渲染评分选择器
+  const renderRatingSelector = () => (
+    <View style={styles.ratingSelector}>
+      <Text style={styles.ratingSelectorLabel}>我的评分</Text>
+      <View style={styles.starsRow}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity
+            key={star}
+            onPress={() => setMyRating(star)}
+            style={styles.starButton}
+          >
+            <Ionicons
+              name={star <= myRating ? "star" : "star-outline"}
+              size={28}
+              color={star <= myRating ? "#FFD700" : theme.colors.gray300}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
+  // 渲染评论输入区域
+  const renderReviewInput = () => {
+    if (!imageId) {
+      return null;
+    }
+
+    if (!showReviewInput && !userReview) {
+      return (
+        <View style={styles.reviewSection}>
+          <TouchableOpacity
+            style={styles.addReviewButton}
+            onPress={() => {
+              if (!user?.userId) {
+                Alert.show("请先登录");
+                return;
+              }
+              setShowReviewInput(true);
+            }}
+          >
+            <Ionicons
+              name="create-outline"
+              size={20}
+              color={theme.colors.black}
+            />
+            <Text style={styles.addReviewButtonText}>写评论</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (userReview && !showReviewInput) {
+      // 显示用户已有的评论
+      return (
+        <View style={styles.reviewSection}>
+          <Text style={styles.reviewSectionTitle}>我的评论</Text>
+          <View style={styles.myReviewCard}>
+            <View style={styles.myReviewHeader}>
+              <View style={styles.myReviewStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= userReview.rating ? "star" : "star-outline"}
+                    size={16}
+                    color={
+                      star <= userReview.rating
+                        ? "#FFD700"
+                        : theme.colors.gray300
+                    }
+                  />
+                ))}
+              </View>
+              <Text style={styles.myReviewDate}>
+                {new Date(userReview.createdAt).toLocaleDateString()}
+              </Text>
+            </View>
+            <Text style={styles.myReviewContent}>{userReview.content}</Text>
+            <View style={styles.myReviewActions}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setShowReviewInput(true)}
+              >
+                <Text style={styles.editButtonText}>编辑</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteReview}
+                disabled={submitLoading}
+              >
+                <Text style={styles.deleteButtonText}>
+                  {submitLoading ? "删除中..." : "删除"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    // 显示评论输入表单
+    return (
+      <View style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>
+          {userReview ? "编辑评论" : "发表评论"}
+        </Text>
+        {renderRatingSelector()}
+        <TextInput
+          style={styles.reviewInput}
+          placeholder="分享你对这个造型的看法..."
+          placeholderTextColor={theme.colors.gray400}
+          value={myContent}
+          onChangeText={setMyContent}
+          multiline
+          maxLength={500}
+        />
+        <Text style={styles.charCount}>{myContent.length}/500</Text>
+        <View style={styles.reviewInputActions}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => {
+              setShowReviewInput(false);
+              if (userReview) {
+                setMyRating(userReview.rating);
+                setMyContent(userReview.content);
+              } else {
+                setMyRating(0);
+                setMyContent("");
+              }
+            }}
+          >
+            <Text style={styles.cancelButtonText}>取消</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              (myRating === 0 ||
+                myContent.trim().length < 5 ||
+                submitLoading) &&
+                styles.submitButtonDisabled,
+            ]}
+            onPress={handleSubmitReview}
+            disabled={
+              myRating === 0 || myContent.trim().length < 5 || submitLoading
+            }
+          >
+            <Text style={styles.submitButtonText}>
+              {submitLoading ? "提交中..." : "提交"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // 渲染评论列表
+  const renderReviewsList = () => {
+    if (!imageId) {
+      return null;
+    }
+
+    const otherReviews = reviews.filter((r) => r.userId !== user?.userId);
+
+    if (reviewsLoading) {
+      return (
+        <View style={styles.reviewsLoading}>
+          <ActivityIndicator size="small" color={theme.colors.gray400} />
+          <Text style={styles.reviewsLoadingText}>加载评论中...</Text>
+        </View>
+      );
+    }
+
+    if (otherReviews.length === 0) {
+      return (
+        <View style={styles.noReviews}>
+          <Ionicons
+            name="chatbubble-outline"
+            size={32}
+            color={theme.colors.gray300}
+          />
+          <Text style={styles.noReviewsText}>暂无其他评论</Text>
+          <Text style={styles.noReviewsSubtext}>成为第一个评论的人吧</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.reviewsList}>
+        <Text style={styles.reviewsListTitle}>
+          全部评论 ({otherReviews.length})
+        </Text>
+        {otherReviews.map((review) => (
+          <View key={review.id} style={styles.reviewItem}>
+            <View style={styles.reviewHeader}>
+              <View style={styles.reviewUser}>
+                <View style={styles.reviewAvatar}>
+                  <Text style={styles.reviewAvatarText}>
+                    {review.username?.charAt(0)?.toUpperCase() || "U"}
+                  </Text>
+                </View>
+                <Text style={styles.reviewUsername}>{review.username}</Text>
+              </View>
+              <View style={styles.reviewRating}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= review.rating ? "star" : "star-outline"}
+                    size={12}
+                    color={
+                      star <= review.rating ? "#FFD700" : theme.colors.gray300
+                    }
+                  />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.reviewContent}>{review.content}</Text>
+            <Text style={styles.reviewDate}>
+              {new Date(review.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   const renderRelatedSection = () => (
     <View style={styles.relatedSection}>
@@ -230,13 +508,21 @@ const LookDetailScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {renderImage()}
-        {renderLookInfo()}
-      </ScrollView>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderImage()}
+          {renderLookInfo()}
+          {renderReviewInput()}
+          {renderReviewsList()}
+        </ScrollView>
+      </KeyboardAvoidingView>
       {renderImageModal()}
     </SafeAreaView>
   );
@@ -252,7 +538,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     position: "relative",
-    height: screenWidth * 1.3,
+    height: screenWidth * 1.5, // Increased height for bigger image impact
     width: screenWidth,
   },
   mainImage: {
@@ -289,6 +575,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 20,
     right: 20,
+    display: "none", // Hide image actions
   },
   likeButton: {
     padding: 12,
@@ -458,6 +745,238 @@ const styles = StyleSheet.create({
   modalImage: {
     width: "100%",
     height: "100%",
+  },
+  // 评论相关样式
+  reviewSection: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
+  },
+  reviewSectionTitle: {
+    fontSize: 18,
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    color: theme.colors.black,
+    marginBottom: 16,
+  },
+  addReviewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    backgroundColor: theme.colors.gray100,
+    borderRadius: 8,
+    gap: 8,
+  },
+  addReviewButtonText: {
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.black,
+  },
+  ratingSelector: {
+    marginBottom: 16,
+  },
+  ratingSelectorLabel: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray600,
+    marginBottom: 8,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  starButton: {
+    padding: 4,
+  },
+  reviewInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 100,
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.black,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    textAlign: "right",
+    marginTop: 4,
+  },
+  reviewInputActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 12,
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray300,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray600,
+  },
+  submitButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: theme.colors.black,
+  },
+  submitButtonDisabled: {
+    backgroundColor: theme.colors.gray300,
+  },
+  submitButtonText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.white,
+  },
+  // 我的评论卡片
+  myReviewCard: {
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 8,
+    padding: 16,
+  },
+  myReviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  myReviewStars: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  myReviewDate: {
+    fontSize: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+  },
+  myReviewContent: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray600,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  myReviewActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  editButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: theme.colors.gray200,
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray600,
+  },
+  deleteButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: "#ff4757",
+  },
+  // 评论列表
+  reviewsLoading: {
+    padding: 20,
+    alignItems: "center",
+  },
+  reviewsLoadingText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    marginTop: 8,
+  },
+  noReviews: {
+    padding: 40,
+    alignItems: "center",
+  },
+  noReviewsText: {
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray400,
+    marginTop: 12,
+  },
+  noReviewsSubtext: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray300,
+    marginTop: 4,
+  },
+  reviewsList: {
+    padding: 20,
+    paddingTop: 0,
+  },
+  reviewsListTitle: {
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.black,
+    marginBottom: 16,
+  },
+  reviewItem: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  reviewUser: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  reviewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.gray200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  reviewAvatarText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Bold",
+    color: theme.colors.gray600,
+  },
+  reviewUsername: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.black,
+  },
+  reviewRating: {
+    flexDirection: "row",
+    gap: 2,
+  },
+  reviewContent: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray600,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  reviewDate: {
+    fontSize: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
   },
 });
 

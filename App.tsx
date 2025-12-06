@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useState } from "react";
+import { View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -6,8 +7,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as Font from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { config } from "./gluestack.config";
+
+// Splash Video
+import SplashVideo from "./src/components/SplashVideo";
 
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
@@ -50,6 +55,9 @@ import { useAuthStore } from "./src/store/authStore";
 
 // Providers
 import { ToastProvider } from "./src/components/ToastProvider";
+
+// 防止原生 splash screen 自动隐藏
+SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -302,18 +310,14 @@ function AppNavigator() {
 }
 
 export default function App() {
-  const [fontsLoaded, setFontsLoaded] = React.useState(false);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [showSplashVideo, setShowSplashVideo] = useState(true);
 
   useEffect(() => {
-    async function loadFonts() {
+    async function prepare() {
       try {
-        // // In development, we'll skip custom font loading to avoid errors with placeholder files
-        // if (__DEV__) {
-        //   console.log("Development mode: Skipping custom font loading");
-        //   setFontsLoaded(true);
-        //   return;
-        // }
-
+        // 加载字体
         await Font.loadAsync({
           "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),
           "PlayfairDisplay-Bold": require("./assets/fonts/PlayfairDisplay-Bold.ttf"),
@@ -325,12 +329,20 @@ export default function App() {
       } catch (error) {
         console.log("Font loading failed, using system fonts:", error);
         setFontsLoaded(true);
+      } finally {
+        // 隐藏原生 splash screen，显示我们的视频
+        await SplashScreen.hideAsync();
+        setAppIsReady(true);
       }
     }
-    loadFonts();
+    prepare();
   }, []);
 
-  if (!fontsLoaded) {
+  const handleSplashVideoFinish = useCallback(() => {
+    setShowSplashVideo(false);
+  }, []);
+
+  if (!appIsReady) {
     return null;
   }
 
@@ -339,10 +351,15 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <ToastProvider>
-            <NavigationContainer>
-              <AppNavigator />
-              <StatusBar style="dark" />
-            </NavigationContainer>
+            <View style={{ flex: 1 }}>
+              <NavigationContainer>
+                <AppNavigator />
+                <StatusBar style="dark" />
+              </NavigationContainer>
+              {showSplashVideo && (
+                <SplashVideo onFinish={handleSplashVideoFinish} />
+              )}
+            </View>
           </ToastProvider>
         </SafeAreaProvider>
       </QueryClientProvider>

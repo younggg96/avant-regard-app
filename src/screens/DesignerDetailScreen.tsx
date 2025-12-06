@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,20 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import { designerService, ApiDesigner, ApiShow } from "../services/designerService";
+import {
+  designerService,
+  ApiDesigner,
+  ApiShow,
+} from "../services/designerService";
+import { followService } from "../services/followService";
+import { useAuthStore } from "../store/authStore";
+import { Alert } from "../utils/Alert";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -48,19 +56,25 @@ interface Look {
   likes: number;
   isLiked: boolean;
   imageType?: string;
+  imageId?: number; // API 图片 ID
 }
 
 const DesignerDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const designerId = (route.params as any)?.id || "1";
   const designerName = (route.params as any)?.name;
 
   const [designer, setDesigner] = useState<Designer | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [looks, setLooks] = useState<Look[]>([]);
-  const [designerApiData, setDesignerApiData] = useState<ApiDesigner | null>(null);
+  const [designerApiData, setDesignerApiData] = useState<ApiDesigner | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
 
   // Find designer data by name or ID from API
   useEffect(() => {
@@ -74,7 +88,9 @@ const DesignerDetailScreen = () => {
         }
 
         if (!designerData && designerId) {
-          designerData = await designerService.getDesignerById(Number(designerId));
+          designerData = await designerService.getDesignerById(
+            Number(designerId)
+          );
         }
 
         if (!designerData) {
@@ -109,13 +125,36 @@ const DesignerDetailScreen = () => {
                 )?.imageUrl
               : null;
 
+          // 查询用户是否已关注该设计师
+          let isFollowing = false;
+          if (user?.userId) {
+            try {
+              isFollowing = await followService.isFollowingDesigner(
+                user.userId,
+                designerData.id
+              );
+            } catch (error) {
+              console.error("Failed to check follow status:", error);
+            }
+          }
+
+          // 查询设计师被关注的用户人数
+          try {
+            const count = await followService.getDesignerFollowersCount(
+              designerData.id
+            );
+            setFollowersCount(count);
+          } catch (error) {
+            console.error("Failed to get followers count:", error);
+          }
+
           setDesigner({
             id: String(designerData.id),
             name: name,
             brand: brand,
             avatar: avatarImage || "https://via.placeholder.com/120x120",
             coverImage: heroImage || "https://via.placeholder.com/400x200",
-            isFollowing: false,
+            isFollowing: isFollowing,
             collections: designerData.shows?.length || 0,
             website: designerData.designerUrl,
           });
@@ -127,7 +166,8 @@ const DesignerDetailScreen = () => {
                 ? new Date(show.collectionTs).getFullYear().toString()
                 : "2023";
               const coverImage =
-                show.images?.find((img) => img.imageType === "hero")?.imageUrl ||
+                show.images?.find((img) => img.imageType === "hero")
+                  ?.imageUrl ||
                 show.images?.[0]?.imageUrl ||
                 "https://via.placeholder.com/300x400";
               return {
@@ -152,13 +192,16 @@ const DesignerDetailScreen = () => {
               convertedLooks.push({
                 id: `look-${showIndex}-${imageIndex}`,
                 image: image.imageUrl,
-                title: `${show.season || "Unknown Season"} Look ${imageIndex + 1}`,
+                title: `${show.season || "Unknown Season"} Look ${
+                  imageIndex + 1
+                }`,
                 description:
                   show.reviewText?.substring(0, 100) + "..." ||
                   `${show.season || "Collection"} collection piece`,
                 likes: Math.floor(Math.random() * 2000) + 100,
                 isLiked: Math.random() > 0.7,
                 imageType: image.imageType,
+                imageId: image.id, // 保存 API 图片 ID
               });
             });
           });
@@ -199,25 +242,55 @@ const DesignerDetailScreen = () => {
     };
 
     loadDesignerData();
-  }, [designerId, designerName]);
+  }, [designerId, designerName, user?.userId]);
 
   const [activeTab, setActiveTab] = useState<"collections" | "looks">(
     "collections"
   );
 
   // Handle follow/unfollow
-  const handleFollow = useCallback(() => {
-    if (designer) {
-      setDesigner((prev) =>
-        prev
-          ? {
-              ...prev,
-              isFollowing: !prev.isFollowing,
-            }
-          : null
-      );
+  const handleFollow = useCallback(async () => {
+    if (!user?.userId) {
+      Alert.show("请先登录");
+      return;
     }
-  }, [designer]);
+
+    if (!designer || !designerApiData) {
+      return;
+    }
+
+    if (isFollowLoading) {
+      return;
+    }
+
+    setIsFollowLoading(true);
+
+    try {
+      const params = {
+        userId: user.userId,
+        designerId: designerApiData.id,
+      };
+
+      if (designer.isFollowing) {
+        // 取消关注
+        await followService.unfollowDesigner(params);
+        setDesigner((prev) => (prev ? { ...prev, isFollowing: false } : null));
+        setFollowersCount((prev) => Math.max(0, prev - 1));
+        Alert.show("已取消关注", "", 1500);
+      } else {
+        // 关注
+        await followService.followDesigner(params);
+        setDesigner((prev) => (prev ? { ...prev, isFollowing: true } : null));
+        setFollowersCount((prev) => prev + 1);
+        Alert.show("关注成功", "", 1500);
+      }
+    } catch (error) {
+      console.error("Follow/unfollow error:", error);
+      Alert.show(error instanceof Error ? error.message : "操作失败，请重试");
+    } finally {
+      setIsFollowLoading(false);
+    }
+  }, [designer, designerApiData, user, isFollowLoading]);
 
   // Handle collection press
   const handleCollectionPress = useCallback(
@@ -227,8 +300,7 @@ const DesignerDetailScreen = () => {
       if (designerApiData && designerApiData.shows) {
         const show = designerApiData.shows.find(
           (s) =>
-            s.reviewTitle === collection.title ||
-            s.season === collection.season
+            s.reviewTitle === collection.title || s.season === collection.season
         );
         if (show && show.images) {
           // 转换为统一格式
@@ -269,6 +341,7 @@ const DesignerDetailScreen = () => {
         look,
         designerName: designer?.name,
         collectionTitle,
+        imageId: look.imageId,
       });
     },
     [navigation, designer, collections, looks]
@@ -297,8 +370,10 @@ const DesignerDetailScreen = () => {
           style={[
             styles.followButton,
             designer?.isFollowing && styles.followingButton,
+            isFollowLoading && styles.followButtonLoading,
           ]}
           onPress={handleFollow}
+          disabled={isFollowLoading}
         >
           <Text
             style={[
@@ -306,15 +381,19 @@ const DesignerDetailScreen = () => {
               designer?.isFollowing && styles.followingButtonText,
             ]}
           >
-            {designer?.isFollowing ? "已关注" : "关注"}
+            {isFollowLoading
+              ? "..."
+              : designer?.isFollowing
+              ? "已关注"
+              : "关注"}
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{designer?.collections || 0}</Text>
-          <Text style={styles.statLabel}>系列</Text>
+          <Text style={styles.statNumber}>{followersCount}</Text>
+          <Text style={styles.statLabel}>关注</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>{looks.length}</Text>
@@ -396,27 +475,175 @@ const DesignerDetailScreen = () => {
       onPress={() => handleLookPress(item)}
     >
       <Image source={{ uri: item.image }} style={styles.lookImage} />
-      <View style={styles.lookOverlay}>
-        <TouchableOpacity style={styles.likeButton}>
-          <Ionicons
-            name={item.isLiked ? "heart" : "heart-outline"}
-            size={20}
-            color={item.isLiked ? "#FF3040" : theme.colors.white}
-          />
-          <Text style={styles.likeCount}>{item.likes}</Text>
-        </TouchableOpacity>
-      </View>
     </TouchableOpacity>
   );
 
-  if (!designer) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>加载设计师信息中...</Text>
+  // 骨架屏动画
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (loading) {
+      const shimmerAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      shimmerAnimation.start();
+      return () => shimmerAnimation.stop();
+    }
+  }, [loading, shimmerAnim]);
+
+  const skeletonOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  // 骨架屏组件
+  const SkeletonBox = ({
+    width,
+    height,
+    style,
+  }: {
+    width: number | string;
+    height: number;
+    style?: any;
+  }) => (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.colors.gray200,
+          borderRadius: 4,
+          opacity: skeletonOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+
+  // 渲染骨架屏
+  const renderSkeleton = () => (
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 封面骨架 */}
+        <View style={styles.header}>
+          <Animated.View
+            style={[
+              styles.coverImage,
+              {
+                backgroundColor: theme.colors.gray200,
+                opacity: skeletonOpacity,
+              },
+            ]}
+          />
+          <View style={styles.headerOverlay}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* 设计师信息骨架 */}
+          <View style={styles.designerInfo}>
+            <Animated.View
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: theme.colors.gray200,
+                  opacity: skeletonOpacity,
+                },
+              ]}
+            />
+            <View style={styles.designerText}>
+              <SkeletonBox
+                width={120}
+                height={24}
+                style={{ marginBottom: 8 }}
+              />
+              <SkeletonBox width={80} height={16} />
+            </View>
+            <SkeletonBox width={70} height={36} style={{ borderRadius: 8 }} />
+          </View>
+
+          {/* 统计骨架 */}
+          <View style={styles.stats}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={styles.statItem}>
+                <SkeletonBox
+                  width={40}
+                  height={28}
+                  style={{ marginBottom: 4 }}
+                />
+                <SkeletonBox width={30} height={14} />
+              </View>
+            ))}
+          </View>
         </View>
-      </SafeAreaView>
-    );
+
+        {/* 标签骨架 */}
+        <View style={styles.tabContainer}>
+          <View style={[styles.tab, { alignItems: "center" }]}>
+            <SkeletonBox width={80} height={20} />
+          </View>
+          <View style={[styles.tab, { alignItems: "center" }]}>
+            <SkeletonBox width={80} height={20} />
+          </View>
+        </View>
+
+        {/* 列表骨架 */}
+        <View style={styles.content}>
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={styles.collectionItem}>
+              <Animated.View
+                style={[
+                  styles.collectionImage,
+                  {
+                    backgroundColor: theme.colors.gray200,
+                    opacity: skeletonOpacity,
+                  },
+                ]}
+              />
+              <View style={styles.collectionInfo}>
+                <SkeletonBox
+                  width="80%"
+                  height={20}
+                  style={{ marginBottom: 8 }}
+                />
+                <SkeletonBox
+                  width="60%"
+                  height={14}
+                  style={{ marginBottom: 6 }}
+                />
+                <SkeletonBox width="40%" height={12} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+
+  if (loading || !designer) {
+    return renderSkeleton();
   }
 
   return (
@@ -529,6 +756,9 @@ const styles = StyleSheet.create({
   },
   followingButton: {
     backgroundColor: theme.colors.gray200,
+  },
+  followButtonLoading: {
+    opacity: 0.6,
   },
   followButtonText: {
     ...theme.typography.bodySmall,
@@ -690,17 +920,6 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     marginLeft: 4,
     fontWeight: "600",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
-  },
-  loadingText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
   },
 });
 

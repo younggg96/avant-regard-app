@@ -66,7 +66,6 @@ const ProfileScreen = () => {
       icon: "notifications-outline",
     },
     { id: "followed", label: "关注的设计师", count: 12, icon: "heart-outline" },
-    { id: "saved", label: "收藏的搭配", count: 48, icon: "bookmark-outline" },
     { id: "settings", label: "设置", count: null, icon: "settings-outline" },
   ];
 
