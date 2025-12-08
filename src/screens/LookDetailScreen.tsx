@@ -212,7 +212,7 @@ const LookDetailScreen = () => {
         )}
       </View>
 
-      <View style={styles.statsSection}>
+      {/* <View style={styles.statsSection}>
         {currentLook.imageType && (
           <View style={styles.statItem}>
             <Ionicons
@@ -231,7 +231,7 @@ const LookDetailScreen = () => {
           />
           <Text style={styles.statText}>{reviews.length} 条评论</Text>
         </View>
-      </View>
+      </View> */}
     </View>
   );
 
@@ -519,8 +519,6 @@ const LookDetailScreen = () => {
         >
           {renderImage()}
           {renderLookInfo()}
-          {renderReviewInput()}
-          {renderReviewsList()}
         </ScrollView>
       </KeyboardAvoidingView>
       {renderImageModal()}

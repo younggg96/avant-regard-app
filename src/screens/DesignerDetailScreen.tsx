@@ -106,8 +106,9 @@ const DesignerDetailScreen = () => {
         }
 
         // 3. 获取设计师详情（包含 shows 和 images）
-        const designerData =
-          await designerService.getDesignerShowAndImages(targetDesignerId);
+        const designerData = await designerService.getDesignerShowAndImages(
+          targetDesignerId
+        );
 
         setDesignerApiData(designerData);
 
@@ -122,7 +123,9 @@ const DesignerDetailScreen = () => {
 
         // Get first image as avatar/cover
         const firstImage =
-          designerData.images.length > 0 ? designerData.images[0].imageUrl : null;
+          designerData.images.length > 0
+            ? designerData.images[0].imageUrl
+            : null;
 
         // 使用 API 返回的 following 状态
         const isFollowing = designerData.following;
@@ -140,14 +143,23 @@ const DesignerDetailScreen = () => {
         });
 
         // Convert shows to collections
+        // 根据 imageCount 从 images 数组中分配封面图片
+        let imageOffset = 0;
         const convertedCollections = (designerData.shows || []).map(
           (show, index) => {
+            // 取当前 show 对应的第一张图片作为封面
+            const coverImage =
+              designerData.images[imageOffset]?.imageUrl ||
+              "https://via.placeholder.com/300x400";
+            // 移动偏移量到下一个 show 的图片起始位置
+            imageOffset += show.imageCount;
+
             return {
               id: `collection-${show.id}`,
               title: show.season,
               season: show.season,
-              year: "", // 新 API 不返回年份
-              coverImage: "https://via.placeholder.com/300x400", // 需要从 images 中获取
+              year: "",
+              coverImage: coverImage,
               imageCount: show.imageCount,
               city: null,
               author: show.reviewAuthor,
@@ -218,20 +230,21 @@ const DesignerDetailScreen = () => {
     setIsFollowLoading(true);
 
     try {
-      const params = {
-        userId: user.userId,
-        designerId: designerApiData.id,
-      };
-
       if (designer.isFollowing) {
         // 取消关注
-        await followService.unfollowDesigner(params);
+        await followService.followDesigner({
+          method: "DELETE",
+          designerId: designerApiData.id,
+        });
         setDesigner((prev) => (prev ? { ...prev, isFollowing: false } : null));
         setFollowersCount((prev) => Math.max(0, prev - 1));
         Alert.show("已取消关注", "", 1500);
       } else {
         // 关注
-        await followService.followDesigner(params);
+        await followService.followDesigner({
+          method: "POST",
+          designerId: designerApiData.id,
+        });
         setDesigner((prev) => (prev ? { ...prev, isFollowing: true } : null));
         setFollowersCount((prev) => prev + 1);
         Alert.show("关注成功", "", 1500);

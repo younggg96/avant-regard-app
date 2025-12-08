@@ -21,7 +21,7 @@ export interface FollowUserParams {
 
 // 关注设计师请求参数
 export interface FollowDesignerParams {
-  userId: number;
+  method: "POST" | "DELETE";
   designerId: number;
 }
 
@@ -48,6 +48,7 @@ async function request<T>(
     headers,
   };
 
+  console.log("request", url, config);
   try {
     const response = await fetch(url, config);
     const contentType = response.headers.get("content-type");
@@ -64,27 +65,9 @@ async function request<T>(
       throw new Error(errorMessage);
     }
 
-    if (contentType?.includes("application/json")) {
-      const jsonResponse = await response.json();
-      
-      // 处理包装的 API 响应格式 { code, message, data }
-      if (jsonResponse && typeof jsonResponse === 'object' && 'code' in jsonResponse) {
-        const apiResponse = jsonResponse as ApiResponse<T>;
-        
-        if (apiResponse.code !== 0) {
-          throw new Error(apiResponse.message || "请求失败");
-        }
-        
-        if ('data' in apiResponse) {
-          return apiResponse.data;
-        }
-      }
-      
-      return jsonResponse as T;
-    }
+    const jsonResponse = await response.json();
 
-    const text = await response.text();
-    return text as unknown as T;
+    return jsonResponse as T;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -126,25 +109,11 @@ export async function unfollowUser(params: FollowUserParams): Promise<void> {
 export async function followDesigner(
   params: FollowDesignerParams
 ): Promise<void> {
-  return request<void>("/api/follow/designer", {
-    method: "POST",
-    body: JSON.stringify(params),
+  console.log("followDesigner", params);
+  return request<void>(`/api/follow/designers/${params.designerId}`, {
+    method: params.method,
   });
 }
-
-/**
- * 取消关注设计师
- * DELETE /api/follow/designer
- */
-export async function unfollowDesigner(
-  params: FollowDesignerParams
-): Promise<void> {
-  return request<void>("/api/follow/designer", {
-    method: "DELETE",
-    body: JSON.stringify(params),
-  });
-}
-
 // ==================== 用户关注统计 ====================
 
 /**
@@ -235,7 +204,6 @@ export const followService = {
   unfollowUser,
   // 设计师关注
   followDesigner,
-  unfollowDesigner,
   // 统计
   getFollowingCount,
   getFollowingDesignersCount,
@@ -247,8 +215,3 @@ export const followService = {
 };
 
 export default followService;
-
-
-
-
-

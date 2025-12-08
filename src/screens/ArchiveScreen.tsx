@@ -28,9 +28,8 @@ interface Designer {
   collections: number;
   shows: number;
   totalLooks: number;
-  website: string;
   latestSeason: string;
-  image?: string;
+  designerUrl: string; // vogue.com 链接
 }
 
 const ArchiveScreen = () => {
@@ -48,7 +47,6 @@ const ArchiveScreen = () => {
       setError(null);
 
       const allDesigners = await designerService.getAllDesignerDetails();
-
       // Convert API data to Designer format
       const convertedDesigners = allDesigners.map((data: DesignerDetailDto) => {
         // Extract brand and designer name from the name string
@@ -67,9 +65,8 @@ const ArchiveScreen = () => {
           collections: data.showCount,
           shows: data.showCount,
           totalLooks: data.totalImages,
-          website: data.designerUrl,
           latestSeason: data.latestSeason || "Unknown",
-          image: undefined,
+          designerUrl: data.designerUrl,
         };
       });
 
@@ -303,12 +300,6 @@ const ArchiveScreen = () => {
                   }}
                   activeOpacity={0.7}
                 >
-                  {designer.image && (
-                    <Image
-                      source={{ uri: designer.image }}
-                      style={styles.designerImage}
-                    />
-                  )}
                   <View style={styles.designerInfo}>
                     <Text style={styles.designerName}>{designer.name}</Text>
                     <Text style={styles.designerBrand}>{designer.brand}</Text>
@@ -404,6 +395,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: theme.spacing.md,
     backgroundColor: theme.colors.gray100,
+  },
+  designerImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: theme.spacing.md,
+    backgroundColor: theme.colors.gray200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  designerImagePlaceholderText: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: theme.colors.gray500,
   },
   designerInfo: {
     flex: 1,
