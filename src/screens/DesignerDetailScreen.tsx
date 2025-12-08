@@ -15,8 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import {
   designerService,
-  ApiDesigner,
-  ApiShow,
+  DesignerShowAndImageDetailDto,
 } from "../services/designerService";
 import { followService } from "../services/followService";
 import { useAuthStore } from "../store/authStore";
@@ -69,9 +68,8 @@ const DesignerDetailScreen = () => {
   const [designer, setDesigner] = useState<Designer | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [looks, setLooks] = useState<Look[]>([]);
-  const [designerApiData, setDesignerApiData] = useState<ApiDesigner | null>(
-    null
-  );
+  const [designerApiData, setDesignerApiData] =
+    useState<DesignerShowAndImageDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -81,148 +79,100 @@ const DesignerDetailScreen = () => {
     const loadDesignerData = async () => {
       setLoading(true);
       try {
-        let designerData: ApiDesigner | null = null;
+        // 1. 先获取所有设计师列表
+        const allDesigners = await designerService.getAllDesignerDetails();
+        let targetDesignerId: number | null = null;
 
+        // 2. 根据名称或 ID 找到目标设计师
         if (designerName) {
-          designerData = await designerService.getDesignerByName(designerName);
-        }
-
-        if (!designerData && designerId) {
-          designerData = await designerService.getDesignerById(
-            Number(designerId)
+          const found = allDesigners.find(
+            (d) =>
+              d.name.toLowerCase() === designerName.toLowerCase() ||
+              d.name.toLowerCase().includes(designerName.toLowerCase())
           );
+          if (found) targetDesignerId = found.id;
         }
 
-        if (!designerData) {
-          // 尝试获取第一个设计师作为默认
-          const allDesigners = await designerService.getAllDesigners();
-          designerData = allDesigners[0] || null;
+        if (!targetDesignerId && designerId) {
+          targetDesignerId = Number(designerId);
         }
+
+        if (!targetDesignerId && allDesigners.length > 0) {
+          targetDesignerId = allDesigners[0].id;
+        }
+
+        if (!targetDesignerId) {
+          throw new Error("未找到设计师");
+        }
+
+        // 3. 获取设计师详情（包含 shows 和 images）
+        const designerData =
+          await designerService.getDesignerShowAndImages(targetDesignerId);
 
         setDesignerApiData(designerData);
 
-        if (designerData) {
-          // Extract brand name from designer string (handle parentheses)
-          const brandMatch = designerData.name.match(/^([^(]+?)(?:\s*\(|$)/);
-          const designerMatch = designerData.name.match(/\(([^)]+)\)$/);
+        // Extract brand name from designer string (handle parentheses)
+        const brandMatch = designerData.name.match(/^([^(]+?)(?:\s*\(|$)/);
+        const designerMatch = designerData.name.match(/\(([^)]+)\)$/);
 
-          const brand = designerMatch
-            ? designerMatch[1]
-            : brandMatch?.[1]?.trim() || designerData.name;
-          const name = brandMatch?.[1]?.trim() || designerData.name;
+        const brand = designerMatch
+          ? designerMatch[1]
+          : brandMatch?.[1]?.trim() || designerData.name;
+        const name = brandMatch?.[1]?.trim() || designerData.name;
 
-          // Get hero image from the latest show if available
-          const heroImage =
-            designerData.shows && designerData.shows.length > 0
-              ? designerData.shows[0]?.images?.find(
-                  (img) => img.imageType === "hero"
-                )?.imageUrl
-              : null;
-          const avatarImage =
-            designerData.shows && designerData.shows.length > 0
-              ? designerData.shows[0]?.images?.find(
-                  (img) => img.imageType === "look"
-                )?.imageUrl
-              : null;
+        // Get first image as avatar/cover
+        const firstImage =
+          designerData.images.length > 0 ? designerData.images[0].imageUrl : null;
 
-          // 查询用户是否已关注该设计师
-          let isFollowing = false;
-          if (user?.userId) {
-            try {
-              isFollowing = await followService.isFollowingDesigner(
-                user.userId,
-                designerData.id
-              );
-            } catch (error) {
-              console.error("Failed to check follow status:", error);
-            }
+        // 使用 API 返回的 following 状态
+        const isFollowing = designerData.following;
+        setFollowersCount(designerData.followerCount);
+
+        setDesigner({
+          id: String(designerData.id),
+          name: name,
+          brand: brand,
+          avatar: firstImage || "https://via.placeholder.com/120x120",
+          coverImage: firstImage || "https://via.placeholder.com/400x200",
+          isFollowing: isFollowing,
+          collections: designerData.showCount,
+          website: designerData.designerUrl,
+        });
+
+        // Convert shows to collections
+        const convertedCollections = (designerData.shows || []).map(
+          (show, index) => {
+            return {
+              id: `collection-${show.id}`,
+              title: show.season,
+              season: show.season,
+              year: "", // 新 API 不返回年份
+              coverImage: "https://via.placeholder.com/300x400", // 需要从 images 中获取
+              imageCount: show.imageCount,
+              city: null,
+              author: show.reviewAuthor,
+              reviewText: show.reviewText,
+              showUrl: "",
+            };
           }
+        );
 
-          // 查询设计师被关注的用户人数
-          try {
-            const count = await followService.getDesignerFollowersCount(
-              designerData.id
-            );
-            setFollowersCount(count);
-          } catch (error) {
-            console.error("Failed to get followers count:", error);
-          }
+        // Convert images to looks
+        const convertedLooks: Look[] = (designerData.images || []).map(
+          (image, index) => ({
+            id: `look-${image.id}`,
+            image: image.imageUrl,
+            title: `Look ${index + 1}`,
+            description: "",
+            likes: image.likeCount,
+            isLiked: image.likedByMe,
+            imageType: "look",
+            imageId: image.id,
+          })
+        );
 
-          setDesigner({
-            id: String(designerData.id),
-            name: name,
-            brand: brand,
-            avatar: avatarImage || "https://via.placeholder.com/120x120",
-            coverImage: heroImage || "https://via.placeholder.com/400x200",
-            isFollowing: isFollowing,
-            collections: designerData.shows?.length || 0,
-            website: designerData.designerUrl,
-          });
-
-          // Convert shows to collections
-          const convertedCollections = (designerData.shows || []).map(
-            (show, index) => {
-              const year = show.collectionTs
-                ? new Date(show.collectionTs).getFullYear().toString()
-                : "2023";
-              const coverImage =
-                show.images?.find((img) => img.imageType === "hero")
-                  ?.imageUrl ||
-                show.images?.[0]?.imageUrl ||
-                "https://via.placeholder.com/300x400";
-              return {
-                id: `collection-${index}`,
-                title: show.reviewTitle || show.season,
-                season: show.season,
-                year: year,
-                coverImage: coverImage,
-                imageCount: show.images?.length || 0,
-                city: show.city,
-                author: show.reviewAuthor,
-                reviewText: show.reviewText,
-                showUrl: show.showUrl,
-              };
-            }
-          );
-
-          // Convert images to looks
-          const convertedLooks: Look[] = [];
-          (designerData.shows || []).forEach((show, showIndex) => {
-            (show.images || []).forEach((image, imageIndex) => {
-              convertedLooks.push({
-                id: `look-${showIndex}-${imageIndex}`,
-                image: image.imageUrl,
-                title: `${show.season || "Unknown Season"} Look ${
-                  imageIndex + 1
-                }`,
-                description:
-                  show.reviewText?.substring(0, 100) + "..." ||
-                  `${show.season || "Collection"} collection piece`,
-                likes: Math.floor(Math.random() * 2000) + 100,
-                isLiked: Math.random() > 0.7,
-                imageType: image.imageType,
-                imageId: image.id, // 保存 API 图片 ID
-              });
-            });
-          });
-
-          setCollections(convertedCollections);
-          setLooks(convertedLooks);
-        } else {
-          // If no designer data found, create a fallback
-          setDesigner({
-            id: designerId,
-            name: designerName || "Unknown Designer",
-            brand: designerName || "Unknown Brand",
-            avatar: "https://via.placeholder.com/120x120",
-            coverImage: "https://via.placeholder.com/400x200",
-            isFollowing: false,
-            collections: 0,
-            website: "",
-          });
-          setCollections([]);
-          setLooks([]);
-        }
+        setCollections(convertedCollections);
+        setLooks(convertedLooks);
       } catch (error) {
         console.error("Failed to load designer data:", error);
         // 出错时设置默认值
@@ -236,13 +186,15 @@ const DesignerDetailScreen = () => {
           collections: 0,
           website: "",
         });
+        setCollections([]);
+        setLooks([]);
       } finally {
         setLoading(false);
       }
     };
 
     loadDesignerData();
-  }, [designerId, designerName, user?.userId]);
+  }, [designerId, designerName]);
 
   const [activeTab, setActiveTab] = useState<"collections" | "looks">(
     "collections"
@@ -295,29 +247,17 @@ const DesignerDetailScreen = () => {
   // Handle collection press
   const handleCollectionPress = useCallback(
     (collection: Collection) => {
-      // Find the corresponding show data to get images from cached API data
-      let images: any[] = [];
-      if (designerApiData && designerApiData.shows) {
-        const show = designerApiData.shows.find(
-          (s) =>
-            s.reviewTitle === collection.title || s.season === collection.season
-        );
-        if (show && show.images) {
-          // 转换为统一格式
-          images = show.images.map((img) => ({
-            imageUrl: img.imageUrl,
-            imageType: img.imageType,
-          }));
-        }
-      }
+      // 从 collection id 中提取 showId
+      const showIdMatch = collection.id.match(/collection-(\d+)/);
+      const showId = showIdMatch ? Number(showIdMatch[1]) : null;
 
       (navigation as any).navigate("CollectionDetail", {
         collection,
         designerName: designer?.name,
-        images,
+        showId, // 传递 showId，让 CollectionDetail 自己获取图片
       });
     },
-    [navigation, designer, designerApiData]
+    [navigation, designer]
   );
 
   // Handle look press
@@ -401,7 +341,7 @@ const DesignerDetailScreen = () => {
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statNumber}>
-            {designerApiData?.shows?.length || 0}
+            {designerApiData?.showCount || 0}
           </Text>
           <Text style={styles.statLabel}>场秀</Text>
         </View>

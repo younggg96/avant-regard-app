@@ -33,7 +33,10 @@ import PublishButtons from "../components/PublishButtons";
 import { saveDraft } from "../services/draftService";
 import { postService } from "../services/postService";
 import { useAuthStore } from "../store/authStore";
-import { designerService } from "../services/designerService";
+import {
+  designerService,
+  DesignerDetailDto,
+} from "../services/designerService";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -74,7 +77,9 @@ const PublishOutfitScreen = () => {
   const [allLooks, setAllLooks] = useState<
     Array<{ designer: string; season: string; imageUrl: string }>
   >([]);
+  const [designers, setDesigners] = useState<DesignerDetailDto[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingLooks, setIsLoadingLooks] = useState(false);
 
   const previewFlatListRef = useRef<FlatList>(null);
 
@@ -83,25 +88,63 @@ const PublishOutfitScreen = () => {
 
   const predefinedTags = ["日常", "工作", "约会", "派对", "度假", "运动"];
 
-  // 加载所有 look 数据
+  // 加载设计师列表
   useEffect(() => {
-    const loadLooks = async () => {
+    const loadDesigners = async () => {
       try {
-        const looks = await designerService.getAllLooks();
-        setAllLooks(
-          looks.map((look) => ({
-            designer: look.designer,
-            season: look.season,
-            imageUrl: look.imageUrl,
-          }))
-        );
+        const data = await designerService.getAllDesignerDetails();
+        setDesigners(data);
       } catch (error) {
-        console.error("Failed to load looks:", error);
+        console.error("Failed to load designers:", error);
       }
     };
 
-    loadLooks();
+    loadDesigners();
   }, []);
+
+  // 当搜索时加载对应设计师的造型
+  useEffect(() => {
+    const loadLooksForDesigner = async () => {
+      if (!searchQuery.trim()) {
+        setAllLooks([]);
+        return;
+      }
+
+      // 找到匹配的设计师
+      const matchedDesigner = designers.find(
+        (d) =>
+          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          searchQuery.toLowerCase().includes(d.name.toLowerCase())
+      );
+
+      if (!matchedDesigner) {
+        setAllLooks([]);
+        return;
+      }
+
+      setIsLoadingLooks(true);
+      try {
+        const designerData = await designerService.getDesignerShowAndImages(
+          matchedDesigner.id
+        );
+        const looks = designerData.images.map((img) => ({
+          designer: designerData.name,
+          season: designerData.shows[0]?.season || "",
+          imageUrl: img.imageUrl,
+        }));
+        setAllLooks(looks);
+      } catch (error) {
+        console.error("Failed to load looks:", error);
+        setAllLooks([]);
+      } finally {
+        setIsLoadingLooks(false);
+      }
+    };
+
+    // 防抖处理
+    const timer = setTimeout(loadLooksForDesigner, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, designers]);
 
   // 检查是否满足发布标准
   const canPublish = () => {
@@ -433,13 +476,8 @@ const PublishOutfitScreen = () => {
     Alert.show("已取消关联");
   };
 
-  const filteredLooks = searchQuery
-    ? allLooks.filter(
-        (look) =>
-          look.designer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          look.season.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : allLooks;
+  // 造型已在搜索时过滤，直接使用
+  const filteredLooks = allLooks;
 
   const previewHeight = useMemo(() => {
     if (!coverImage || !imageDimensions[coverImage]) {

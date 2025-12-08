@@ -20,7 +20,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
-import { designerService, ApiDesigner } from "../services/designerService";
+import { designerService } from "../services/designerService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -69,42 +69,32 @@ interface CollectionDetailParams {
   collection: Collection;
   designerName?: string;
   images?: ShowImage[];
+  showId?: number; // 新增：用于获取 show 详情
 }
 
 const CollectionDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as CollectionDetailParams;
-  const { collection, designerName, images } = params;
+  const { collection, designerName, images, showId } = params;
 
   const [collectionImages, setCollectionImages] = useState<ShowImage[]>([]);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
 
   useEffect(() => {
     const loadImages = async () => {
-      if (images) {
+      if (images && images.length > 0) {
         setCollectionImages(images);
-      } else if (designerName) {
-        // Try to find images from API
+      } else if (showId) {
+        // 使用新 API 获取 show 详情
         try {
-          const designerData = await designerService.getDesignerByName(
-            designerName
-          );
-
-          if (designerData && designerData.shows) {
-            const show = designerData.shows.find(
-              (s) =>
-                s.reviewTitle === collection.title ||
-                s.season === collection.season
-            );
-            if (show && show.images) {
-              // 转换 API 数据格式
-              const convertedImages = show.images.map((img) => ({
-                imageUrl: img.imageUrl,
-                imageType: img.imageType,
-              }));
-              setCollectionImages(convertedImages);
-            }
+          const showData = await designerService.getSingleShow(showId);
+          if (showData && showData.images) {
+            const convertedImages = showData.images.map((img) => ({
+              imageUrl: img.imageUrl,
+              imageType: img.imageType,
+            }));
+            setCollectionImages(convertedImages);
           }
         } catch (error) {
           console.error("Failed to load images:", error);
@@ -156,7 +146,7 @@ const CollectionDetailScreen = () => {
         },
       ];
     }
-  }, [collection, designerName, images]);
+  }, [collection, images, showId]);
 
   const handleShare = async () => {
     try {

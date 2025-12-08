@@ -15,7 +15,10 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import { designerService, ApiDesigner } from "../services/designerService";
+import {
+  designerService,
+  DesignerDetailDto,
+} from "../services/designerService";
 
 // 转换后的设计师类型
 interface Designer {
@@ -25,7 +28,6 @@ interface Designer {
   collections: number;
   shows: number;
   totalLooks: number;
-  description: string;
   website: string;
   latestSeason: string;
   image?: string;
@@ -45,10 +47,10 @@ const ArchiveScreen = () => {
       setLoading(true);
       setError(null);
 
-      const allDesigners = await designerService.getAllDesigners();
+      const allDesigners = await designerService.getAllDesignerDetails();
 
       // Convert API data to Designer format
-      const convertedDesigners = allDesigners.map((data: ApiDesigner) => {
+      const convertedDesigners = allDesigners.map((data: DesignerDetailDto) => {
         // Extract brand and designer name from the name string
         const brandMatch = data.name.match(/^([^(]+?)(?:\s*\(|$)/);
         const designerMatch = data.name.match(/\(([^)]+)\)$/);
@@ -58,32 +60,16 @@ const ArchiveScreen = () => {
           : brandMatch?.[1]?.trim() || data.name;
         const name = brandMatch?.[1]?.trim() || data.name;
 
-        // Calculate total looks across all shows (count images per show)
-        const totalLooks = data.shows.reduce(
-          (sum, show) => sum + (show.images?.length || 0),
-          0
-        );
-
-        // Get latest season from shows
-        const latestShow = data.shows.length > 0 ? data.shows[0] : null;
-        const latestSeason = latestShow?.season || "Unknown";
-
-        // Get hero image from the latest show if available
-        const heroImage = latestShow?.images?.find(
-          (img) => img.imageType === "hero"
-        )?.imageUrl;
-
         return {
           id: data.id,
           name: name,
           brand: brand,
-          collections: data.shows.length,
-          shows: data.shows.length,
-          totalLooks: totalLooks,
-          description: `${brand}的时装设计，以独特的设计理念和创新的时尚视角而闻名。`,
+          collections: data.showCount,
+          shows: data.showCount,
+          totalLooks: data.totalImages,
           website: data.designerUrl,
-          latestSeason: latestSeason,
-          image: heroImage,
+          latestSeason: data.latestSeason || "Unknown",
+          image: undefined,
         };
       });
 
