@@ -2,7 +2,9 @@
  * 认证服务 - 处理所有认证相关的 API 调用
  */
 
-const API_BASE_URL = "http://42.193.122.67:8080";
+import { config } from "../config/env";
+
+const API_BASE_URL = config.API_BASE_URL;
 
 // API 响应包装类型
 export interface ApiResponse<T> {

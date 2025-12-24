@@ -8,6 +8,17 @@ module.exports = function (api) {
       // 如果你需要 gluestack，可以把下面这行取消注释
       // "@gluestack-style/babel-plugin-styled-resolver",
 
+      // 环境变量支持
+      [
+        "module:react-native-dotenv",
+        {
+          moduleName: "@env",
+          path: ".env",
+          safe: false,
+          allowUndefined: true,
+        },
+      ],
+
       // ⚠️ 一定要放在最后
       "react-native-reanimated/plugin",
     ],

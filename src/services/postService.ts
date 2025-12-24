@@ -3,8 +3,9 @@
  */
 
 import { useAuthStore } from "../store/authStore";
+import { config } from "../config/env";
 
-const API_BASE_URL = "http://42.193.122.67:8080";
+const API_BASE_URL = config.API_BASE_URL;
 
 // API 响应包装类型
 interface ApiResponse<T> {
