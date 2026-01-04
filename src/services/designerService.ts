@@ -5,7 +5,7 @@
 import { useAuthStore } from "../store/authStore";
 import { config } from "../config/env";
 
-const API_BASE_URL = config.API_BASE_URL;
+const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
 // API 响应类型
 interface ApiResponse<T> {
@@ -106,7 +106,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
   const token = useAuthStore.getState().getAccessToken();
 
   const headers: Record<string, string> = {

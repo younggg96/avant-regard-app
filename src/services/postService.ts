@@ -5,7 +5,7 @@
 import { useAuthStore } from "../store/authStore";
 import { config } from "../config/env";
 
-const API_BASE_URL = config.API_BASE_URL;
+const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
 // API 响应包装类型
 interface ApiResponse<T> {
@@ -87,7 +87,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -166,7 +166,7 @@ async function uploadRequest<T>(
   endpoint: string,
   formData: FormData
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
 
   const headers: Record<string, string> = {
     Accept: "*/*",

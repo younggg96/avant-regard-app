@@ -4,7 +4,7 @@
 
 import { config } from "../config/env";
 
-const API_BASE_URL = config.API_BASE_URL;
+const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
 // API 响应包装类型
 export interface ApiResponse<T> {
@@ -66,7 +66,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
 
   const config: RequestInit = {
     ...options,
@@ -100,22 +100,26 @@ async function request<T>(
     // 处理成功响应
     if (contentType?.includes("application/json")) {
       const jsonResponse = await response.json();
-      
+
       // 处理包装的 API 响应格式 { code, message, data }
-      if (jsonResponse && typeof jsonResponse === 'object' && 'code' in jsonResponse) {
+      if (
+        jsonResponse &&
+        typeof jsonResponse === "object" &&
+        "code" in jsonResponse
+      ) {
         const apiResponse = jsonResponse as ApiResponse<T>;
-        
+
         // 检查业务错误码
         if (apiResponse.code !== 0) {
           throw new Error(apiResponse.message || "请求失败");
         }
-        
+
         // 返回 data 字段（如果存在）
-        if ('data' in apiResponse) {
+        if ("data" in apiResponse) {
           return apiResponse.data;
         }
       }
-      
+
       // 如果不是包装格式，直接返回
       return jsonResponse as T;
     }
