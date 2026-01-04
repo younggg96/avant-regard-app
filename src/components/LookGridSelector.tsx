@@ -7,6 +7,7 @@ import { theme } from "../theme";
 const { width: screenWidth } = Dimensions.get("window");
 
 export interface SelectedLook {
+  id: number;
   designer: string;
   season: string;
   imageUrl: string;

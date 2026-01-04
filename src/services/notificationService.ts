@@ -19,63 +19,8 @@ export interface Notification {
   };
 }
 
-// Mock notifications data
-let mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "like",
-    title: "新的点赞",
-    message: "Marie Claire 赞了您的搭配分享",
-    timestamp: "2分钟前",
-    isRead: false,
-    avatar: "https://via.placeholder.com/50x50",
-    image: "https://via.placeholder.com/60x80",
-  },
-  {
-    id: "2",
-    type: "comment",
-    title: "新评论",
-    message: "Fashion Editor 评论了您的 '春日优雅穿搭'",
-    timestamp: "15分钟前",
-    isRead: false,
-    avatar: "https://via.placeholder.com/50x50",
-  },
-  {
-    id: "3",
-    type: "follow",
-    title: "新关注者",
-    message: "Style Icon 开始关注您",
-    timestamp: "1小时前",
-    isRead: false,
-    avatar: "https://via.placeholder.com/50x50",
-  },
-  {
-    id: "4",
-    type: "collection",
-    title: "新系列发布",
-    message: "CHANEL 发布了 2024 春夏新系列",
-    timestamp: "2小时前",
-    isRead: true,
-    image: "https://via.placeholder.com/60x80",
-  },
-  {
-    id: "5",
-    type: "mention",
-    title: "提及您",
-    message: "Vogue Editor 在时尚趋势分析中提到了您",
-    timestamp: "3小时前",
-    isRead: true,
-    avatar: "https://via.placeholder.com/50x50",
-  },
-  {
-    id: "6",
-    type: "system",
-    title: "系统通知",
-    message: "您的内容获得了本周最佳搭配奖",
-    timestamp: "1天前",
-    isRead: true,
-  },
-];
+// 通知数据（暂时为空，后续接入真实 API）
+let mockNotifications: Notification[] = [];
 
 /**
  * 获取所有通知

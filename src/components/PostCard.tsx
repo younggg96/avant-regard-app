@@ -4,10 +4,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
 
+// 关联造型类型
+export interface ShowImageInfo {
+  id: number;
+  imageUrl: string;
+  designerName?: string;
+  season?: string;
+}
+
 // Post类型定义
 export interface Post {
   id: string;
   type?: string;
+  auditStatus?: string; // 审核状态: PENDING, APPROVED, REJECTED
   title?: string;
   image?: string;
   author: {
@@ -42,6 +51,8 @@ export interface Post {
     price: string;
     imageUrl: string;
   }>;
+  // 关联的秀场造型
+  showImages?: ShowImageInfo[];
 }
 
 interface PostCardProps {
@@ -68,6 +79,9 @@ const PostCard: React.FC<PostCardProps> = ({
   const displayLikes = post.engagement?.likes || post.likes || 0;
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
 
+  // 是否为待审核状态
+  const isPending = post.auditStatus === "PENDING";
+
   return (
     <Box
       bg="$white"
@@ -83,11 +97,29 @@ const PostCard: React.FC<PostCardProps> = ({
     >
       {/* 图片 */}
       <Pressable onPress={() => onPress?.(post)}>
-        <Image
-          source={{ uri: displayImage }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+        <Box position="relative">
+          <Image
+            source={{ uri: displayImage }}
+            style={[styles.image, isPending && styles.pendingImage]}
+            resizeMode="cover"
+          />
+          {/* 待审核标签 */}
+          {isPending && (
+            <Box
+              position="absolute"
+              top={8}
+              left={8}
+              bg="rgba(255, 165, 0, 0.9)"
+              px="$sm"
+              py="$xs"
+              rounded="$sm"
+            >
+              <Text color="$white" fontSize="$xs" fontWeight="$semibold">
+                审核中
+              </Text>
+            </Box>
+          )}
+        </Box>
       </Pressable>
 
       {/* 标题 */}
@@ -150,6 +182,9 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 3 / 4, // 3:4比例，类似小红书
     backgroundColor: theme.colors.gray100,
+  },
+  pendingImage: {
+    opacity: 0.85, // 待审核图片轻微降低透明度
   },
   avatar: {
     width: 20,

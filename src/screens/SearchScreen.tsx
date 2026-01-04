@@ -169,14 +169,15 @@ const SearchScreen = () => {
 
   // 转换帖子格式
   const convertToPost = (post: any): Post => {
+    const userId = post.userId?.toString() || "0";
     return {
       id: post.id?.toString() || "",
       title: post.title || "",
       image: post.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
       author: {
-        id: post.userId?.toString() || "",
-        name: post.username || "",
-        avatar: "",
+        id: userId,
+        name: post.username || "用户",
+        avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
       },
       likes: post.likeCount || 0,
       isLiked: false,

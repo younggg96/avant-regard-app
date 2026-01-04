@@ -14,6 +14,7 @@ import { theme } from "../theme";
 const { width: screenWidth } = Dimensions.get("window");
 
 interface Look {
+  id: number;
   designer: string;
   season: string;
   imageUrl: string;
@@ -23,20 +24,32 @@ interface LookSelectorModalProps {
   visible: boolean;
   looks: Look[];
   searchQuery: string;
+  isLoading?: boolean;
+  hasMore?: boolean;
   onSearchChange: (query: string) => void;
   onSelectLook: (look: Look) => void;
   onClose: () => void;
+  onLoadMore?: () => void;
 }
 
 const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
   visible,
   looks,
   searchQuery,
+  isLoading = false,
+  hasMore = false,
   onSearchChange,
   onSelectLook,
   onClose,
+  onLoadMore,
 }) => {
   const lookWidth = (screenWidth - 48) / 3;
+
+  const handleEndReached = () => {
+    if (!isLoading && hasMore && onLoadMore) {
+      onLoadMore();
+    }
+  };
 
   return (
     <Modal
@@ -93,6 +106,8 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
               contentContainerStyle={styles.listContent}
               columnWrapperStyle={styles.columnWrapper}
               showsVerticalScrollIndicator={false}
+              onEndReached={handleEndReached}
+              onEndReachedThreshold={0.5}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => onSelectLook(item)}
@@ -117,6 +132,15 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
                   </VStack>
                 </Pressable>
               )}
+              ListFooterComponent={
+                isLoading && looks.length > 0 ? (
+                  <Box py="$md" alignItems="center">
+                    <Text color="$gray400" fontSize="$sm">
+                      加载中...
+                    </Text>
+                  </Box>
+                ) : null
+              }
               ListEmptyComponent={
                 <Box
                   flex={1}
@@ -131,7 +155,7 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray400" mt="$md">
-                    {searchQuery ? "未找到相关造型" : "加载中..."}
+                    {isLoading ? "加载中..." : "未找到相关造型"}
                   </Text>
                 </Box>
               }

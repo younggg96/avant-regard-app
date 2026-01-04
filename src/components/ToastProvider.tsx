@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Animated, StyleSheet, Dimensions } from "react-native";
+import { Animated, StyleSheet, Dimensions, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { toastEmitter, ToastConfig } from "../utils/Alert";
 import { theme } from "../theme";
 
@@ -83,19 +84,43 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     ? `${config.title}: ${config.message}`
     : config.title;
 
+  // 判断是否为成功消息
+  const isSuccess = displayText.includes("成功") || displayText.includes("已");
+  const isError = displayText.includes("失败") || displayText.includes("错误");
+
   return (
     <>
       {children}
       <Animated.View
         style={[
           styles.toast,
+          isSuccess && styles.successToast,
+          isError && styles.errorToast,
           {
             opacity: fadeAnim,
             transform: [{ translateY }],
           },
         ]}
       >
-        <Animated.Text style={styles.toastText}>{displayText}</Animated.Text>
+        <View style={styles.toastContent}>
+          {isSuccess && (
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color="#ffffff"
+              style={styles.toastIcon}
+            />
+          )}
+          {isError && (
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color="#ffffff"
+              style={styles.toastIcon}
+            />
+          )}
+          <Animated.Text style={styles.toastText}>{displayText}</Animated.Text>
+        </View>
       </Animated.View>
     </>
   );
@@ -123,11 +148,26 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     maxWidth: width - 32,
   },
+  successToast: {
+    backgroundColor: "rgba(34, 197, 94, 0.95)", // 绿色背景
+  },
+  errorToast: {
+    backgroundColor: "rgba(239, 68, 68, 0.95)", // 红色背景
+  },
+  toastContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toastIcon: {
+    marginRight: 8,
+  },
   toastText: {
     color: "#ffffff",
     fontSize: 15,
     textAlign: "center",
     lineHeight: 20,
+    fontWeight: "500",
   },
 });
 

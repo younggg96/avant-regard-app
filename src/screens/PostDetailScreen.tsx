@@ -22,13 +22,14 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, Image } from "../components/ui";
 import { theme } from "../theme";
-import { Post } from "../components/PostCard";
+import { Post, ShowImageInfo } from "../components/PostCard";
 import { useAuthStore } from "../store/authStore";
 import { commentService, PostComment } from "../services/commentService";
 import { userInfoService } from "../services/userInfoService";
+import { postService } from "../services/postService";
 import { Alert } from "../utils/Alert";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface PostDetailRouteParams {
   postId?: string;
@@ -89,6 +90,9 @@ const PostDetailScreen = () => {
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const fullscreenFlatListRef = useRef<FlatList>(null);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 监听键盘事件
   useEffect(() => {
@@ -436,6 +440,90 @@ const PostDetailScreen = () => {
     // TODO: 实现跳转到对应的编辑页面
   }, [post]);
 
+  // 处理删除帖子
+  const handleDeletePost = useCallback(() => {
+    if (!post?.id || !user?.userId) return;
+    setShowDeleteDialog(true);
+  }, [post?.id, user?.userId]);
+
+  // 确认删除帖子
+  const handleConfirmDelete = useCallback(async () => {
+    if (!post?.id || !user?.userId) {
+      Alert.show("错误", "缺少必要的参数");
+      setShowDeleteDialog(false);
+      return;
+    }
+
+    // 开始删除
+    setIsDeleting(true);
+
+    try {
+      // 验证帖子 ID
+      const postId =
+        typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+
+      if (isNaN(postId) || postId <= 0) {
+        throw new Error("无效的帖子 ID");
+      }
+
+      // 验证用户 ID
+      if (!user.userId || user.userId <= 0) {
+        throw new Error("无效的用户 ID");
+      }
+
+      console.log(`正在删除帖子 ID: ${postId}, 用户 ID: ${user.userId}`);
+
+      // 调用删除 API
+      await postService.deletePost(postId, user.userId);
+
+      // 关闭对话框
+      setShowDeleteDialog(false);
+
+      // 显示成功提示
+      Alert.show("成功", "帖子已删除");
+
+      // 延迟返回上一页，让用户看到成功提示
+      setTimeout(() => {
+        navigation.goBack();
+      }, 300);
+    } catch (error) {
+      console.error("删除帖子时出错:", error);
+
+      // 根据错误类型显示不同的错误信息
+      let errorMessage = "请稍后重试";
+
+      if (error instanceof Error) {
+        if (
+          error.message.includes("网络") ||
+          error.message.includes("Network")
+        ) {
+          errorMessage = "网络连接失败，请检查网络后重试";
+        } else if (
+          error.message.includes("权限") ||
+          error.message.includes("Permission")
+        ) {
+          errorMessage = "没有删除权限";
+        } else if (error.message.includes("无效")) {
+          errorMessage = error.message;
+        } else if (
+          error.message.includes("找不到") ||
+          error.message.includes("not found")
+        ) {
+          errorMessage = "帖子不存在或已被删除";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      Alert.show("删除失败", errorMessage);
+
+      // 保持对话框打开，让用户可以重试或取消
+    } finally {
+      // 清理加载状态
+      setIsDeleting(false);
+    }
+  }, [post, user?.userId, navigation]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
@@ -492,32 +580,54 @@ const PostDetailScreen = () => {
           {/* Right: Actions based on status */}
           <HStack space="xs" alignItems="center">
             {postStatus === "draft" ? (
-              // 草稿状态：显示继续修改按钮
-              <Pressable
-                onPress={handleContinueEdit}
-                px="$md"
-                py="$xs"
-                bg="$black"
-                rounded="$md"
-              >
-                <Text fontSize="$xs" fontWeight="$semibold" color="$white">
-                  继续修改
-                </Text>
-              </Pressable>
+              // 草稿状态：显示继续修改按钮和删除按钮
+              <>
+                <Pressable
+                  onPress={handleContinueEdit}
+                  px="$md"
+                  py="$xs"
+                  bg="$black"
+                  rounded="$md"
+                >
+                  <Text fontSize="$xs" fontWeight="$semibold" color="$white">
+                    继续修改
+                  </Text>
+                </Pressable>
+                {isOwnPost && (
+                  <Pressable onPress={() => setShowOptionsMenu(true)} p="$xs">
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={theme.colors.black}
+                    />
+                  </Pressable>
+                )}
+              </>
             ) : postStatus === "pending" ? (
-              // 审核中状态：显示审核状态标签
-              <View
-                style={{
-                  paddingHorizontal: theme.spacing.md,
-                  paddingVertical: theme.spacing.xs,
-                  backgroundColor: theme.colors.accent,
-                  borderRadius: theme.borderRadius.md,
-                }}
-              >
-                <Text fontSize="$xs" fontWeight="$semibold" color="$white">
-                  审核中
-                </Text>
-              </View>
+              // 审核中状态：显示审核状态标签和删除按钮
+              <>
+                <View
+                  style={{
+                    paddingHorizontal: theme.spacing.md,
+                    paddingVertical: theme.spacing.xs,
+                    backgroundColor: theme.colors.accent,
+                    borderRadius: theme.borderRadius.md,
+                  }}
+                >
+                  <Text fontSize="$xs" fontWeight="$semibold" color="$white">
+                    审核中
+                  </Text>
+                </View>
+                {isOwnPost && (
+                  <Pressable onPress={() => setShowOptionsMenu(true)} p="$xs">
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={theme.colors.black}
+                    />
+                  </Pressable>
+                )}
+              </>
             ) : (
               // 已发布状态：根据是否是本人决定显示内容
               <>
@@ -536,6 +646,16 @@ const PostDetailScreen = () => {
                     >
                       {isFollowing ? "已关注" : "关注"}
                     </Text>
+                  </Pressable>
+                )}
+
+                {isOwnPost && (
+                  <Pressable onPress={() => setShowOptionsMenu(true)} p="$xs">
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={theme.colors.black}
+                    />
                   </Pressable>
                 )}
 
@@ -560,138 +680,153 @@ const PostDetailScreen = () => {
           showsVerticalScrollIndicator={false}
           style={styles.scrollView}
         >
-          {/* Lookbook: 大图轮播在顶部 */}
-          {post.type === "lookbook" && images.length > 0 && (
-            <View style={styles.lookbookImageSection}>
-              <FlatList
-                data={images}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => {
-                  const newIndex = Math.round(
-                    event.nativeEvent.contentOffset.x / SCREEN_WIDTH
-                  );
-                  setCurrentImageIndex(newIndex);
-                }}
-                renderItem={({ item, index }) => (
-                  <Pressable
-                    onPress={() => handleOpenFullscreen(index)}
-                    style={styles.lookbookImageWrapper}
-                  >
-                    <RNImage
-                      source={{ uri: item }}
-                      style={styles.lookbookImage}
-                      resizeMode="cover"
-                    />
-                  </Pressable>
+          {/* Lookbook: 小红书风格 - 大图轮播在顶部 */}
+          {post.type === "OUTFIT" && images.length > 0 && (
+            <View style={styles.lookbookContainer}>
+              {/* 图片轮播 */}
+              <View style={styles.lookbookImageSection}>
+                <FlatList
+                  data={images}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(event) => {
+                    const newIndex = Math.round(
+                      event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+                    );
+                    setCurrentImageIndex(newIndex);
+                  }}
+                  renderItem={({ item, index }) => (
+                    <Pressable
+                      onPress={() => handleOpenFullscreen(index)}
+                      style={styles.lookbookImageWrapper}
+                    >
+                      <RNImage
+                        source={{ uri: item }}
+                        style={styles.lookbookImage}
+                        resizeMode="cover"
+                      />
+                    </Pressable>
+                  )}
+                  keyExtractor={(item, index) => `lookbook-img-${index}`}
+                />
+                {/* 圆点指示器 */}
+                {images.length > 1 && (
+                  <View style={styles.dotIndicatorContainer}>
+                    {images.map((_, index) => (
+                      <View
+                        key={index}
+                        style={[
+                          styles.dotIndicator,
+                          currentImageIndex === index &&
+                            styles.dotIndicatorActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
                 )}
-                keyExtractor={(item, index) => `lookbook-img-${index}`}
-              />
-              {/* 图片指示器 */}
-              {images.length > 1 && (
-                <View style={styles.imageIndicator}>
-                  <Text style={styles.imageIndicatorText}>
-                    {currentImageIndex + 1} / {images.length}
+              </View>
+
+              {/* 小红书风格的内容区域 */}
+              <View style={styles.lookbookContentSection}>
+                {/* 标题 */}
+                <Text style={styles.lookbookTitle}>{post.content?.title}</Text>
+
+                {/* 描述 */}
+                {post.content?.description && (
+                  <Text style={styles.lookbookDescription}>
+                    {post.content.description}
                   </Text>
-                </View>
-              )}
+                )}
+
+                {/* 品牌和季节信息 */}
+                {(post.brandName || post.season) && (
+                  <View style={styles.lookbookMeta}>
+                    {post.brandName && (
+                      <View style={styles.lookbookMetaItem}>
+                        <Text style={styles.lookbookMetaLabel}>品牌</Text>
+                        <Text style={styles.lookbookMetaValue}>
+                          {post.brandName}
+                        </Text>
+                      </View>
+                    )}
+                    {post.season && (
+                      <View style={styles.lookbookMetaItem}>
+                        <Text style={styles.lookbookMetaLabel}>系列</Text>
+                        <Text style={styles.lookbookMetaValue}>
+                          {post.season}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* 标签 */}
+                {post.content?.tags && post.content.tags.length > 0 && (
+                  <View style={styles.lookbookTagsContainer}>
+                    {post.content.tags.map((tag, index) => (
+                      <View key={index} style={styles.lookbookTag}>
+                        <Text style={styles.lookbookTagText}>#{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
-          {/* Title and Description Section */}
-          <VStack
-            px="$md"
-            py="$md"
-            space="md"
-            borderBottomWidth={post.type === "lookbook" ? 0 : 1}
-            borderBottomColor="$gray100"
-          >
-            {/* Title */}
-            <Text fontSize="$xl" fontWeight="$bold" color="$black">
-              {post.content?.title}
-            </Text>
-
-            {/* Description */}
-            {post.content?.description && (
-              <Text
-                fontSize="$md"
-                color="$gray800"
-                lineHeight="$lg"
-                style={{ letterSpacing: 0.3 }}
-              >
-                {post.content.description}
+          {/* 非 Lookbook 类型的标题和描述 */}
+          {post.type !== "OUTFIT" && (
+            <VStack
+              px="$md"
+              py="$md"
+              space="md"
+              borderBottomWidth={1}
+              borderBottomColor="$gray100"
+            >
+              {/* Title */}
+              <Text fontSize="$xl" fontWeight="$bold" color="$black">
+                {post.content?.title}
               </Text>
-            )}
 
-            {/* Type-specific content */}
-            {post.type === "lookbook" && (post.brandName || post.season) && (
-              <VStack space="xs" mt="$xs">
-                {post.brandName && (
-                  <HStack space="xs" alignItems="center">
-                    <Ionicons
-                      name="business-outline"
-                      size={16}
-                      color={theme.colors.gray600}
-                    />
-                    <Text fontSize="$sm" color="$gray600">
-                      品牌: {post.brandName}
-                    </Text>
-                  </HStack>
-                )}
-                {post.season && (
-                  <HStack space="xs" alignItems="center">
-                    <Ionicons
-                      name="calendar-outline"
-                      size={16}
-                      color={theme.colors.gray600}
-                    />
-                    <Text fontSize="$sm" color="$gray600">
-                      系列: {post.season}
-                    </Text>
-                  </HStack>
-                )}
-              </VStack>
-            )}
+              {/* Description */}
+              {post.content?.description && (
+                <Text
+                  fontSize="$md"
+                  color="$gray800"
+                  lineHeight="$lg"
+                  style={{ letterSpacing: 0.3 }}
+                >
+                  {post.content.description}
+                </Text>
+              )}
 
-            {/* Tags for lookbook */}
-            {post.type === "lookbook" &&
-              post.content?.tags &&
-              post.content.tags.length > 0 && (
-                <HStack flexWrap="wrap" mt="$sm">
-                  {post.content.tags.map((tag, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>#{tag}</Text>
-                    </View>
-                  ))}
+              {post.type === "article" && post.readTime && (
+                <HStack space="xs" alignItems="center" mt="$xs">
+                  <Ionicons
+                    name="time-outline"
+                    size={16}
+                    color={theme.colors.gray600}
+                  />
+                  <Text fontSize="$sm" color="$gray600">
+                    {post.readTime}
+                  </Text>
                 </HStack>
               )}
 
-            {post.type === "article" && post.readTime && (
-              <HStack space="xs" alignItems="center" mt="$xs">
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color={theme.colors.gray600}
-                />
-                <Text fontSize="$sm" color="$gray600">
-                  {post.readTime}
-                </Text>
-              </HStack>
-            )}
-
-            {post.type === "review" && post.rating !== undefined && (
-              <HStack space="xs" alignItems="center" mt="$xs">
-                <Ionicons name="star" size={16} color={theme.colors.accent} />
-                <Text fontSize="$sm" color="$gray800" fontWeight="$medium">
-                  评分: {post.rating}/5
-                </Text>
-              </HStack>
-            )}
-          </VStack>
+              {post.type === "review" && post.rating !== undefined && (
+                <HStack space="xs" alignItems="center" mt="$xs">
+                  <Ionicons name="star" size={16} color={theme.colors.accent} />
+                  <Text fontSize="$sm" color="$gray800" fontWeight="$medium">
+                    评分: {post.rating}/5
+                  </Text>
+                </HStack>
+              )}
+            </VStack>
+          )}
 
           {/* Image Grid - 3 columns (非 lookbook 类型) */}
-          {post.type !== "lookbook" && images.length > 0 && (
+          {post.type !== "OUTFIT" && images.length > 0 && (
             <View style={styles.imageGrid}>
               {images.map((image, index) => (
                 <Pressable
@@ -762,6 +897,63 @@ const PostDetailScreen = () => {
               )}
             </VStack>
           )}
+
+          {/* 关联造型区域 - 仅 DAILY_SHARE 类型显示 */}
+          {post.type === "DAILY_SHARE" &&
+            post.showImages &&
+            post.showImages.length > 0 && (
+              <VStack
+                px="$md"
+                py="$md"
+                space="md"
+                borderTopWidth={1}
+                borderTopColor="$gray100"
+              >
+                <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+                  关联造型
+                </Text>
+                <RNScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingRight: 16 }}
+                >
+                  {post.showImages.map((showImage, index) => (
+                    <Pressable
+                      key={`show-image-${showImage.id || index}`}
+                      style={styles.showImageCard}
+                      onPress={() => {
+                        // 可以跳转到造型详情页
+                        (navigation as any).navigate("LookDetail", {
+                          imageId: showImage.id,
+                          imageUrl: showImage.imageUrl,
+                          designer: showImage.designerName,
+                          season: showImage.season,
+                        });
+                      }}
+                    >
+                      <RNImage
+                        source={{ uri: showImage.imageUrl }}
+                        style={styles.showImagePhoto}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.showImageInfo}>
+                        <Text
+                          fontSize="$xs"
+                          fontWeight="$medium"
+                          color="$black"
+                          numberOfLines={1}
+                        >
+                          {showImage.designerName || "设计师"}
+                        </Text>
+                        <Text fontSize={10} color="$gray500" numberOfLines={1}>
+                          {showImage.season || ""}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </RNScrollView>
+              </VStack>
+            )}
 
           {/* Comments Section - Only show for published posts */}
           {showComments && (
@@ -1117,6 +1309,218 @@ const PostDetailScreen = () => {
           />
         </View>
       </Modal>
+
+      {/* Options Menu Modal */}
+      <Modal
+        visible={showOptionsMenu}
+        transparent={true}
+        onRequestClose={() => setShowOptionsMenu(false)}
+        animationType="slide"
+      >
+        <TouchableWithoutFeedback onPress={() => setShowOptionsMenu(false)}>
+          <View style={styles.optionsMenuOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.optionsMenuContainer}>
+                <View style={styles.optionsMenuHeader}>
+                  <Text style={styles.optionsMenuTitle}>管理帖子</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowOptionsMenu(false)}
+                    style={styles.optionsMenuCloseButton}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color={theme.colors.gray400}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.optionsMenuContent}>
+                  {/* 删除选项 */}
+                  <TouchableOpacity
+                    style={styles.optionsMenuItem}
+                    onPress={() => {
+                      setShowOptionsMenu(false);
+                      setTimeout(() => {
+                        handleDeletePost();
+                      }, 300);
+                    }}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={22}
+                      color="#FF3040"
+                      style={styles.optionsMenuIcon}
+                    />
+                    <Text style={styles.optionsMenuItemTextDanger}>
+                      删除帖子
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* 取消按钮 */}
+                  <TouchableOpacity
+                    style={[
+                      styles.optionsMenuItem,
+                      styles.optionsMenuItemCancel,
+                    ]}
+                    onPress={() => setShowOptionsMenu(false)}
+                  >
+                    <Text style={styles.optionsMenuItemText}>取消</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <Modal
+        visible={showDeleteDialog}
+        transparent={true}
+        onRequestClose={() => {
+          if (!isDeleting) {
+            setShowDeleteDialog(false);
+          }
+        }}
+        animationType="fade"
+      >
+        <TouchableWithoutFeedback
+          onPress={() => {
+            if (!isDeleting) {
+              setShowDeleteDialog(false);
+            }
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: theme.colors.white,
+                  borderRadius: 16,
+                  marginHorizontal: 40,
+                  width: SCREEN_WIDTH - 80,
+                  overflow: "hidden",
+                }}
+              >
+                {/* 标题 */}
+                <View
+                  style={{
+                    paddingHorizontal: 24,
+                    paddingTop: 24,
+                    paddingBottom: 16,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "600",
+                      color: theme.colors.black,
+                      textAlign: "center",
+                    }}
+                  >
+                    确认删除
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.colors.gray600,
+                      textAlign: "center",
+                      marginTop: 8,
+                    }}
+                  >
+                    删除后将无法恢复，确定要删除这篇帖子吗？
+                  </Text>
+                </View>
+
+                {/* 分割线 */}
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: theme.colors.gray100,
+                  }}
+                />
+
+                {/* 按钮区域 */}
+                <View style={{ flexDirection: "row" }}>
+                  {/* 取消按钮 */}
+                  <TouchableOpacity
+                    onPress={() => setShowDeleteDialog(false)}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                      borderRightWidth: 1,
+                      borderRightColor: theme.colors.gray100,
+                      opacity: isDeleting ? 0.5 : 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "500",
+                        color: theme.colors.gray600,
+                      }}
+                    >
+                      取消
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* 删除按钮 */}
+                  <TouchableOpacity
+                    onPress={handleConfirmDelete}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <ActivityIndicator
+                          size="small"
+                          color="#FF3040"
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "600",
+                            color: "#FF3040",
+                          }}
+                        >
+                          删除中...
+                        </Text>
+                      </>
+                    ) : (
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "600",
+                          color: "#FF3040",
+                        }}
+                      >
+                        删除
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1134,34 +1538,103 @@ const styles = StyleSheet.create({
     height: SCREEN_WIDTH * 1.25, // 4:5 aspect ratio
     backgroundColor: theme.colors.gray100,
   },
-  // Lookbook 大图样式
+  // Lookbook 小红书风格样式
+  lookbookContainer: {
+    backgroundColor: theme.colors.white,
+  },
   lookbookImageSection: {
     position: "relative",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: theme.colors.black,
   },
   lookbookImageWrapper: {
     width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 1.25, // 4:5 比例
+    height: SCREEN_HEIGHT * 0.55, // 占屏幕高度的55%，更沉浸
   },
   lookbookImage: {
     width: "100%",
     height: "100%",
     backgroundColor: theme.colors.gray100,
   },
-  imageIndicator: {
+  // 圆点指示器
+  dotIndicatorContainer: {
     position: "absolute",
-    bottom: 16,
-    right: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dotIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    marginHorizontal: 4,
+  },
+  dotIndicatorActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#fff",
+  },
+  // 小红书风格内容区域
+  lookbookContentSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  lookbookTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: theme.colors.black,
+    lineHeight: 26,
+    marginBottom: 10,
+  },
+  lookbookDescription: {
+    fontSize: 15,
+    color: theme.colors.gray600,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  lookbookMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 12,
+    gap: 16,
+  },
+  lookbookMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  lookbookMetaLabel: {
+    fontSize: 13,
+    color: theme.colors.gray400,
+    marginRight: 4,
+  },
+  lookbookMetaValue: {
+    fontSize: 13,
+    color: theme.colors.black,
+    fontWeight: "500",
+  },
+  lookbookTagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  lookbookTag: {
+    backgroundColor: "#F5F5F5",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
   },
-  imageIndicatorText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  lookbookTagText: {
+    fontSize: 13,
+    color: "#666",
   },
+  // 保留旧的 tag 样式用于非 lookbook 类型
   tag: {
     backgroundColor: theme.colors.gray100,
     paddingHorizontal: 10,
@@ -1328,6 +1801,83 @@ const styles = StyleSheet.create({
   fullscreenImage: {
     width: SCREEN_WIDTH,
     height: "100%",
+  },
+  // 关联造型样式
+  showImageCard: {
+    width: 100,
+    marginRight: 12,
+    backgroundColor: theme.colors.white,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  showImagePhoto: {
+    width: "100%",
+    height: 130,
+    backgroundColor: theme.colors.gray100,
+  },
+  showImageInfo: {
+    padding: 8,
+  },
+  // 选项菜单样式
+  optionsMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  optionsMenuContainer: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+  },
+  optionsMenuHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  optionsMenuTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: theme.colors.black,
+  },
+  optionsMenuCloseButton: {
+    padding: 4,
+  },
+  optionsMenuContent: {
+    paddingTop: 8,
+  },
+  optionsMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  optionsMenuItemCancel: {
+    justifyContent: "center",
+    borderBottomWidth: 0,
+    marginTop: 8,
+  },
+  optionsMenuIcon: {
+    marginRight: 12,
+  },
+  optionsMenuItemText: {
+    fontSize: 16,
+    color: theme.colors.black,
+    fontWeight: "500",
+  },
+  optionsMenuItemTextDanger: {
+    fontSize: 16,
+    color: "#FF3040",
+    fontWeight: "500",
   },
 });
 

@@ -17,12 +17,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import { theme } from "../theme";
-import ScreenHeader from "../components/ScreenHeader";
 import {
   BuyerStore,
   getAllStores,
   getAllCities,
-  getAllStyles,
   filterStores,
 } from "../services/buyerStoreService";
 
@@ -403,14 +401,6 @@ const BuyerMapScreen = () => {
                 >
                   {city}
                 </Text>
-                {/* <Text
-                  style={[
-                    styles.quickFilterCount,
-                    filters.city === city && styles.quickFilterCountActive,
-                  ]}
-                >
-                  {cityStoreCounts[city] || 0}
-                </Text> */}
               </TouchableOpacity>
             ))}
           </ScrollView>

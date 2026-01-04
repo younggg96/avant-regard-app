@@ -20,10 +20,25 @@ export interface FollowUserParams {
   targetUserId: number;
 }
 
-// 关注设计师请求参数
-export interface FollowDesignerParams {
-  method: "POST" | "DELETE";
-  designerId: number;
+// 关注的用户信息
+export interface FollowingUser {
+  userId: number;
+  username: string;
+  avatar: string;
+  bio: string;
+  location: string;
+}
+
+// 关注的设计师信息
+export interface FollowingDesigner {
+  id: number;
+  name: string;
+  slug: string;
+  designerUrl: string;
+  showCount: number;
+  totalImages: number;
+  latestSeason: string;
+  followerCount: number;
 }
 
 // 通用请求方法
@@ -101,19 +116,64 @@ export async function unfollowUser(params: FollowUserParams): Promise<void> {
   });
 }
 
+/**
+ * 获取用户关注的用户列表
+ * GET /api/follow/users/{userId}/following-users
+ */
+export async function getFollowingUsers(
+  userId: number
+): Promise<FollowingUser[]> {
+  const response = await request<ApiResponse<FollowingUser[]>>(
+    `/api/follow/users/${userId}/following-users`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
 // ==================== 设计师关注 ====================
 
 /**
  * 关注设计师
- * POST /api/follow/designer
+ * POST /api/follow/designers/{designerId}
  */
-export async function followDesigner(
-  params: FollowDesignerParams
-): Promise<void> {
-  console.log("followDesigner", params);
-  return request<void>(`/api/follow/designers/${params.designerId}`, {
-    method: params.method,
-  });
+export async function followDesigner(designerId: number): Promise<void> {
+  const response = await request<ApiResponse<{}>>(
+    `/api/follow/designers/${designerId}`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+/**
+ * 取消关注设计师
+ * DELETE /api/follow/designers/{designerId}
+ */
+export async function unfollowDesigner(designerId: number): Promise<void> {
+  const response = await request<ApiResponse<{}>>(
+    `/api/follow/designers/${designerId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+/**
+ * 获取用户关注的设计师列表
+ * GET /api/follow/users/{userId}/following-designers
+ */
+export async function getFollowingDesigners(
+  userId: number
+): Promise<FollowingDesigner[]> {
+  const response = await request<ApiResponse<FollowingDesigner[]>>(
+    `/api/follow/users/${userId}/following-designers`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
 }
 // ==================== 用户关注统计 ====================
 
@@ -122,24 +182,29 @@ export async function followDesigner(
  * GET /api/follow/user/{userId}/following/count
  */
 export async function getFollowingCount(userId: number): Promise<number> {
-  return request<number>(`/api/follow/user/${userId}/following/count`, {
-    method: "GET",
-  });
-}
-
-/**
- * 查询用户关注的设计师人数
- * GET /api/follow/user/{userId}/following-designers/count
- */
-export async function getFollowingDesignersCount(
-  userId: number
-): Promise<number> {
-  return request<number>(
-    `/api/follow/user/${userId}/following-designers/count`,
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/user/${userId}/following/count`,
     {
       method: "GET",
     }
   );
+  return response.data;
+}
+
+/**
+ * 查询用户关注的设计师人数
+ * GET /api/follow/users/{userId}/following-designers/count
+ */
+export async function getFollowingDesignersCount(
+  userId: number
+): Promise<number> {
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/users/${userId}/following-designers/count`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
 }
 
 /**
@@ -147,9 +212,13 @@ export async function getFollowingDesignersCount(
  * GET /api/follow/user/{userId}/followers/count
  */
 export async function getFollowersCount(userId: number): Promise<number> {
-  return request<number>(`/api/follow/user/${userId}/followers/count`, {
-    method: "GET",
-  });
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/user/${userId}/followers/count`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
 }
 
 // ==================== 关注状态查询 ====================
@@ -162,12 +231,13 @@ export async function isFollowingUser(
   followerId: number,
   targetUserId: number
 ): Promise<boolean> {
-  return request<boolean>(
+  const response = await request<ApiResponse<boolean>>(
     `/api/follow/user/${followerId}/is-following/${targetUserId}`,
     {
       method: "GET",
     }
   );
+  return response.data;
 }
 
 /**
@@ -178,12 +248,13 @@ export async function isFollowingDesigner(
   userId: number,
   designerId: number
 ): Promise<boolean> {
-  return request<boolean>(
+  const response = await request<ApiResponse<boolean>>(
     `/api/follow/designer/${userId}/is-following/${designerId}`,
     {
       method: "GET",
     }
   );
+  return response.data;
 }
 
 /**
@@ -193,9 +264,13 @@ export async function isFollowingDesigner(
 export async function getDesignerFollowersCount(
   designerId: number
 ): Promise<number> {
-  return request<number>(`/api/follow/designer/${designerId}/followers/count`, {
-    method: "GET",
-  });
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/designer/${designerId}/followers/count`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
 }
 
 // 导出 followService 对象
@@ -203,8 +278,11 @@ export const followService = {
   // 用户关注
   followUser,
   unfollowUser,
+  getFollowingUsers,
   // 设计师关注
   followDesigner,
+  unfollowDesigner,
+  getFollowingDesigners,
   // 统计
   getFollowingCount,
   getFollowingDesignersCount,

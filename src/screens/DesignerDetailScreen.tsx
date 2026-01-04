@@ -232,19 +232,13 @@ const DesignerDetailScreen = () => {
     try {
       if (designer.isFollowing) {
         // 取消关注
-        await followService.followDesigner({
-          method: "DELETE",
-          designerId: designerApiData.id,
-        });
+        await followService.unfollowDesigner(designerApiData.id);
         setDesigner((prev) => (prev ? { ...prev, isFollowing: false } : null));
         setFollowersCount((prev) => Math.max(0, prev - 1));
         Alert.show("已取消关注", "", 1500);
       } else {
         // 关注
-        await followService.followDesigner({
-          method: "POST",
-          designerId: designerApiData.id,
-        });
+        await followService.followDesigner(designerApiData.id);
         setDesigner((prev) => (prev ? { ...prev, isFollowing: true } : null));
         setFollowersCount((prev) => prev + 1);
         Alert.show("关注成功", "", 1500);

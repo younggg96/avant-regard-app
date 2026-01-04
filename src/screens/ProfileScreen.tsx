@@ -8,6 +8,9 @@ import {
   RefreshControl,
   Image,
   ActivityIndicator,
+  Modal,
+  TouchableWithoutFeedback,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -22,10 +25,16 @@ import {
 } from "../services/postService";
 import { getUnreadCount } from "../services/notificationService";
 import { userInfoService, UserInfo } from "../services/userInfoService";
+import {
+  getFollowingCount,
+  getFollowingDesignersCount,
+} from "../services/followService";
 import SimplePostCard from "../components/SimplePostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 
-type TabType = "published" | "draft" | "saved" | "liked";
+type TabType = "published" | "pending" | "draft" | "saved" | "liked";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -35,13 +44,23 @@ const ProfileScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 用户信息状态
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
+  // 关注的用户数量
+  const [followingUsersCount, setFollowingUsersCount] = useState(0);
+
+  // 关注的设计师数量
+  const [followingDesignersCount, setFollowingDesignersCount] = useState(0);
+
   // 各标签的帖子数量
   const [postCounts, setPostCounts] = useState({
     published: 0,
+    pending: 0,
     draft: 0,
     saved: 0,
     liked: 0,
@@ -53,19 +72,31 @@ const ProfileScreen = () => {
       label: "已发布",
       count: postCounts.published,
     },
+    { id: "pending" as TabType, label: "待审核", count: postCounts.pending },
     { id: "liked" as TabType, label: "我喜欢的", count: postCounts.liked },
     { id: "saved" as TabType, label: "我收藏的", count: postCounts.saved },
     { id: "draft" as TabType, label: "草稿", count: postCounts.draft },
   ];
 
   const menuItems = [
+    // {
+    //   id: "notifications",
+    //   label: "通知",
+    //   count: unreadNotifications,
+    //   icon: "notifications-outline",
+    // },
     {
-      id: "notifications",
-      label: "通知",
-      count: unreadNotifications,
-      icon: "notifications-outline",
+      id: "followedUsers",
+      label: "关注的用户",
+      count: followingUsersCount,
+      icon: "people-outline",
     },
-    { id: "followed", label: "关注的设计师", count: 12, icon: "heart-outline" },
+    {
+      id: "followedDesigners",
+      label: "关注的设计师",
+      count: followingDesignersCount,
+      icon: "heart-outline",
+    },
     { id: "settings", label: "设置", count: null, icon: "settings-outline" },
   ];
 
@@ -104,6 +135,8 @@ const ProfileScreen = () => {
     loadUnreadNotifications();
     loadUserInfo();
     loadAllPostCounts();
+    loadFollowingUsersCount();
+    loadFollowingDesignersCount();
   }, [user?.userId]);
 
   // 加载用户信息
@@ -138,21 +171,59 @@ const ProfileScreen = () => {
     }
   };
 
+  // 加载关注的用户数量
+  const loadFollowingUsersCount = async () => {
+    if (!user?.userId) return;
+
+    try {
+      const count = await getFollowingCount(user.userId);
+      setFollowingUsersCount(count);
+    } catch (error) {
+      console.error("Error loading following users count:", error);
+    }
+  };
+
+  // 加载关注的设计师数量
+  const loadFollowingDesignersCount = async () => {
+    if (!user?.userId) return;
+
+    try {
+      const count = await getFollowingDesignersCount(user.userId);
+      setFollowingDesignersCount(count);
+    } catch (error) {
+      console.error("Error loading following designers count:", error);
+    }
+  };
+
   // 加载所有标签的帖子数量
   const loadAllPostCounts = async () => {
     if (!user?.userId) return;
 
     try {
-      const [publishedPosts, draftPosts] = await Promise.all([
-        postService.getPostsByUserId(user.userId, "PUBLISHED").catch(() => []),
-        postService.getPostsByUserId(user.userId, "DRAFT").catch(() => []),
-      ]);
+      const [publishedPosts, draftPosts, likedPosts, favoritePosts] =
+        await Promise.all([
+          postService
+            .getPostsByUserId(user.userId, "PUBLISHED")
+            .catch(() => []),
+          postService.getPostsByUserId(user.userId, "DRAFT").catch(() => []),
+          postService.getLikedPostsByUserId(user.userId).catch(() => []),
+          postService.getFavoritePostsByUserId(user.userId).catch(() => []),
+        ]);
+
+      // 从已发布的帖子中筛选出待审核和已通过的
+      const approvedPosts = publishedPosts.filter(
+        (post: ApiPost) => post.auditStatus === "APPROVED"
+      );
+      const pendingPosts = publishedPosts.filter(
+        (post: ApiPost) => post.auditStatus === "PENDING"
+      );
 
       setPostCounts({
-        published: publishedPosts.length,
+        published: approvedPosts.length,
+        pending: pendingPosts.length,
         draft: draftPosts.length,
-        saved: 0, // TODO: 后端暂无获取收藏列表的 API
-        liked: 0, // TODO: 后端暂无获取点赞列表的 API
+        saved: favoritePosts.length,
+        liked: likedPosts.length,
       });
     } catch (error) {
       console.error("Error loading post counts:", error);
@@ -175,25 +246,59 @@ const ProfileScreen = () => {
         `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
 
       if (activeTab === "saved") {
-        // TODO: 后端暂无获取收藏列表的 API
-        // 暂时返回空数组
-        loadedPosts = [];
+        // 加载用户收藏的帖子
+        const apiPosts = await postService.getFavoritePostsByUserId(
+          user.userId
+        );
+        // 转换为展示格式
+        loadedPosts = apiPosts.map((post) =>
+          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
+        );
       } else if (activeTab === "liked") {
-        // TODO: 后端暂无获取点赞列表的 API
-        // 暂时返回空数组
-        loadedPosts = [];
-      } else {
-        // 加载用户发布/草稿的帖子
-        const statusMap: Record<"published" | "draft", ApiPostStatus> = {
-          published: "PUBLISHED",
-          draft: "DRAFT",
-        };
-
+        // 加载用户点赞的帖子
+        const apiPosts = await postService.getLikedPostsByUserId(user.userId);
+        // 转换为展示格式
+        loadedPosts = apiPosts.map((post) =>
+          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
+        );
+      } else if (activeTab === "pending") {
+        // 加载待审核的帖子
         const apiPosts = await postService.getPostsByUserId(
           user.userId,
-          statusMap[activeTab as "published" | "draft"]
+          "PUBLISHED"
         );
-
+        // 筛选出待审核的帖子
+        const pendingPosts = apiPosts.filter(
+          (post: ApiPost) => post.auditStatus === "PENDING"
+        );
+        // 转换为展示格式
+        loadedPosts = pendingPosts.map((post) => ({
+          ...convertToDisplayPost(post, {
+            name: authorName,
+            avatar: authorAvatar,
+          }),
+          auditStatus: post.auditStatus,
+        }));
+      } else if (activeTab === "published") {
+        // 加载已审核通过的帖子
+        const apiPosts = await postService.getPostsByUserId(
+          user.userId,
+          "PUBLISHED"
+        );
+        // 筛选出已审核通过的帖子
+        const approvedPosts = apiPosts.filter(
+          (post: ApiPost) => post.auditStatus === "APPROVED"
+        );
+        // 转换为展示格式
+        loadedPosts = approvedPosts.map((post) =>
+          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
+        );
+      } else if (activeTab === "draft") {
+        // 加载草稿帖子
+        const apiPosts = await postService.getPostsByUserId(
+          user.userId,
+          "DRAFT"
+        );
         // 转换为展示格式
         loadedPosts = apiPosts.map((post) =>
           convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
@@ -218,15 +323,25 @@ const ProfileScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadUserInfo();
+      loadAllPostCounts();
       loadPosts();
       loadUnreadNotifications();
+      loadFollowingUsersCount();
+      loadFollowingDesignersCount();
     }, [activeTab, user?.userId])
   );
 
   // 下拉刷新
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadUserInfo(), loadPosts(), loadUnreadNotifications()]);
+    await Promise.all([
+      loadUserInfo(),
+      loadAllPostCounts(),
+      loadPosts(),
+      loadUnreadNotifications(),
+      loadFollowingUsersCount(),
+      loadFollowingDesignersCount(),
+    ]);
     setRefreshing(false);
   };
 
@@ -240,21 +355,116 @@ const ProfileScreen = () => {
 
   const handlePostPress = (post: DisplayPost) => {
     // 判断帖子状态
-    let postStatus: "draft" | "published" = "published";
+    let postStatus: "draft" | "pending" | "published" = "published";
 
-    if ("status" in post) {
+    // 根据当前标签页或帖子属性判断状态
+    if (activeTab === "pending") {
+      postStatus = "pending";
+    } else if (activeTab === "draft") {
+      postStatus = "draft";
+    } else if ("status" in post) {
       const status = (post as any).status;
       if (status === "DRAFT") {
         postStatus = "draft";
       }
-    } else if (activeTab === "draft") {
-      postStatus = "draft";
+    } else if ("auditStatus" in post) {
+      const auditStatus = (post as any).auditStatus;
+      if (auditStatus === "PENDING") {
+        postStatus = "pending";
+      }
     }
 
     (navigation as any).navigate("PostDetail", {
       post: post,
       postStatus: postStatus,
     });
+  };
+
+  // 处理长按删除帖子
+  const handleDeletePost = (post: DisplayPost) => {
+    setPostToDelete(post);
+    setShowDeleteDialog(true);
+  };
+
+  // 确认删除帖子
+  const handleConfirmDelete = async () => {
+    if (!postToDelete || !user?.userId) {
+      Alert.show("错误", "缺少必要的参数");
+      setShowDeleteDialog(false);
+      setPostToDelete(null);
+      return;
+    }
+
+    // 开始删除
+    setIsDeleting(true);
+
+    try {
+      // 验证帖子 ID
+      const postId =
+        typeof postToDelete.id === "string"
+          ? parseInt(postToDelete.id, 10)
+          : Number(postToDelete.id);
+
+      if (isNaN(postId) || postId <= 0) {
+        throw new Error("无效的帖子 ID");
+      }
+
+      // 验证用户 ID
+      if (!user.userId || user.userId <= 0) {
+        throw new Error("无效的用户 ID");
+      }
+
+      console.log(`正在删除帖子 ID: ${postId}, 用户 ID: ${user.userId}`);
+
+      // 调用删除 API
+      await postService.deletePost(postId, user.userId);
+
+      // 关闭对话框
+      setShowDeleteDialog(false);
+
+      // 显示成功提示
+      Alert.show("成功", "帖子已删除");
+
+      // 重新加载数据
+      try {
+        await Promise.all([loadAllPostCounts(), loadPosts()]);
+      } catch (refreshError) {
+        console.warn("删除成功但刷新数据失败:", refreshError);
+        // 即使刷新失败，也手动从列表中移除已删除的帖子
+        setPosts((prevPosts) =>
+          prevPosts.filter((p) => p.id !== postToDelete.id)
+        );
+      }
+    } catch (error) {
+      console.error("删除帖子时出错:", error);
+
+      // 根据错误类型显示不同的错误信息
+      let errorMessage = "请稍后重试";
+
+      if (error instanceof Error) {
+        if (
+          error.message.includes("网络") ||
+          error.message.includes("Network")
+        ) {
+          errorMessage = "网络连接失败，请检查网络后重试";
+        } else if (
+          error.message.includes("权限") ||
+          error.message.includes("Permission")
+        ) {
+          errorMessage = "没有删除权限";
+        } else if (error.message.includes("无效")) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      Alert.show("删除失败", errorMessage);
+    } finally {
+      // 清理状态
+      setIsDeleting(false);
+      setPostToDelete(null);
+    }
   };
 
   return (
@@ -330,6 +540,16 @@ const ProfileScreen = () => {
                   case "notifications":
                     (navigation as any).navigate("Notifications");
                     break;
+                  case "followedUsers":
+                    (navigation as any).navigate("FollowingUsers", {
+                      userId: user?.userId,
+                    });
+                    break;
+                  case "followedDesigners":
+                    (navigation as any).navigate("FollowingDesigners", {
+                      userId: user?.userId,
+                    });
+                    break;
                   case "settings":
                     (navigation as any).navigate("Settings");
                     break;
@@ -404,10 +624,41 @@ const ProfileScreen = () => {
             <View style={styles.postsGrid}>
               {posts.map((post) => (
                 <View key={post.id} style={styles.postItem}>
-                  <SimplePostCard
-                    post={post}
+                  <TouchableOpacity
                     onPress={() => handlePostPress(post)}
-                  />
+                    onLongPress={() => {
+                      // 只有自己的帖子才能删除（published、draft、pending）
+                      if (
+                        activeTab === "published" ||
+                        activeTab === "draft" ||
+                        activeTab === "pending"
+                      ) {
+                        handleDeletePost(post);
+                      }
+                    }}
+                    activeOpacity={0.95}
+                  >
+                    <SimplePostCard
+                      post={post}
+                      onPress={() => handlePostPress(post)}
+                    />
+                  </TouchableOpacity>
+
+                  {/* 显示删除按钮（只对自己的帖子） */}
+                  {(activeTab === "published" ||
+                    activeTab === "draft" ||
+                    activeTab === "pending") && (
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeletePost(post)}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={16}
+                        color={theme.colors.white}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
             </View>
@@ -419,6 +670,8 @@ const ProfileScreen = () => {
                     ? "bookmark-outline"
                     : activeTab === "liked"
                     ? "heart-outline"
+                    : activeTab === "pending"
+                    ? "time-outline"
                     : "document-text-outline"
                 }
                 size={48}
@@ -426,6 +679,7 @@ const ProfileScreen = () => {
               />
               <Text style={styles.emptyText}>
                 {activeTab === "published" && "还没有发布内容"}
+                {activeTab === "pending" && "没有待审核的帖子"}
                 {activeTab === "draft" && "还没有草稿"}
                 {activeTab === "saved" && "还没有收藏帖子"}
                 {activeTab === "liked" && "还没有点赞帖子"}
@@ -434,6 +688,148 @@ const ProfileScreen = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Dialog */}
+      <Modal
+        visible={showDeleteDialog}
+        transparent={true}
+        onRequestClose={() => setShowDeleteDialog(false)}
+        animationType="fade"
+      >
+        <TouchableWithoutFeedback onPress={() => setShowDeleteDialog(false)}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: theme.colors.white,
+                  borderRadius: 16,
+                  marginHorizontal: 40,
+                  width: SCREEN_WIDTH - 80,
+                  overflow: "hidden",
+                }}
+              >
+                {/* 标题 */}
+                <View
+                  style={{
+                    paddingHorizontal: 24,
+                    paddingTop: 24,
+                    paddingBottom: 16,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: "600",
+                      color: theme.colors.black,
+                      textAlign: "center",
+                    }}
+                  >
+                    确认删除
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.colors.gray600,
+                      textAlign: "center",
+                      marginTop: 8,
+                    }}
+                  >
+                    删除后将无法恢复，确定要删除这篇帖子吗？
+                  </Text>
+                </View>
+
+                {/* 分割线 */}
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: theme.colors.gray100,
+                  }}
+                />
+
+                {/* 按钮区域 */}
+                <View style={{ flexDirection: "row" }}>
+                  {/* 取消按钮 */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (isDeleting) return; // 删除中不允许取消
+                      setShowDeleteDialog(false);
+                      setPostToDelete(null);
+                    }}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                      borderRightWidth: 1,
+                      borderRightColor: theme.colors.gray100,
+                      opacity: isDeleting ? 0.5 : 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "500",
+                        color: theme.colors.gray600,
+                      }}
+                    >
+                      取消
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* 删除按钮 */}
+                  <TouchableOpacity
+                    onPress={handleConfirmDelete}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 16,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <ActivityIndicator
+                          size="small"
+                          color="#FF3040"
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "600",
+                            color: "#FF3040",
+                          }}
+                        >
+                          删除中...
+                        </Text>
+                      </>
+                    ) : (
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "600",
+                          color: "#FF3040",
+                        }}
+                      >
+                        删除
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -577,6 +973,19 @@ const styles = StyleSheet.create({
   postItem: {
     width: "48%",
     marginBottom: theme.spacing.md,
+    position: "relative",
+  },
+  deleteButton: {
+    position: "absolute",
+    top: theme.spacing.xs,
+    right: theme.spacing.xs,
+    backgroundColor: "rgba(255, 48, 64, 0.9)",
+    borderRadius: theme.borderRadius.full,
+    width: 28,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    ...theme.shadows.sm,
   },
   loadingState: {
     alignItems: "center",

@@ -55,11 +55,12 @@ const PublishReviewScreen = () => {
   const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
   const [allLooks, setAllLooks] = useState<
-    Array<{ designer: string; season: string; imageUrl: string }>
+    Array<{ id: number; designer: string; season: string; imageUrl: string }>
   >([]);
   const [designers, setDesigners] = useState<DesignerDetailDto[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingLooks, setIsLoadingLooks] = useState(false);
+  const [loadedDesignerCount, setLoadedDesignerCount] = useState(3); // 追踪已加载的设计师数量
 
   const MAX_IMAGES = 6;
   const MAX_LOOKS = 6;
@@ -81,34 +82,63 @@ const PublishReviewScreen = () => {
   // 当搜索时加载对应设计师的造型
   useEffect(() => {
     const loadLooksForDesigner = async () => {
-      if (!searchQuery.trim()) {
-        setAllLooks([]);
-        return;
-      }
-
-      // 找到匹配的设计师
-      const matchedDesigner = designers.find(
-        (d) =>
-          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          searchQuery.toLowerCase().includes(d.name.toLowerCase())
-      );
-
-      if (!matchedDesigner) {
-        setAllLooks([]);
+      // 如果没有设计师数据，先等待
+      if (designers.length === 0) {
         return;
       }
 
       setIsLoadingLooks(true);
       try {
-        const designerData = await designerService.getDesignerShowAndImages(
-          matchedDesigner.id
-        );
-        const looks = designerData.images.map((img) => ({
-          designer: designerData.name,
-          season: designerData.shows[0]?.season || "",
-          imageUrl: img.imageUrl,
-        }));
-        setAllLooks(looks);
+        if (!searchQuery.trim()) {
+          // 没有搜索词时，默认加载前3个设计师的造型
+          setLoadedDesignerCount(3);
+          const targetDesigners = designers.slice(0, 3);
+          const allLooksData = await Promise.all(
+            targetDesigners.map(async (designer) => {
+              try {
+                const designerData =
+                  await designerService.getDesignerShowAndImages(designer.id);
+                return designerData.images.map((img) => ({
+                  id: img.id,
+                  designer: designerData.name,
+                  season: designerData.shows[0]?.season || "",
+                  imageUrl: img.imageUrl,
+                }));
+              } catch (error) {
+                console.error(
+                  `Failed to load looks for designer ${designer.name}:`,
+                  error
+                );
+                return [];
+              }
+            })
+          );
+          // 合并所有造型数据
+          setAllLooks(allLooksData.flat());
+        } else {
+          // 找到匹配的设计师
+          const targetDesigner = designers.find(
+            (d) =>
+              d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              searchQuery.toLowerCase().includes(d.name.toLowerCase())
+          );
+
+          if (!targetDesigner) {
+            setAllLooks([]);
+            return;
+          }
+
+          const designerData = await designerService.getDesignerShowAndImages(
+            targetDesigner.id
+          );
+          const looks = designerData.images.map((img) => ({
+            id: img.id,
+            designer: designerData.name,
+            season: designerData.shows[0]?.season || "",
+            imageUrl: img.imageUrl,
+          }));
+          setAllLooks(looks);
+        }
       } catch (error) {
         console.error("Failed to load looks:", error);
         setAllLooks([]);
@@ -121,6 +151,44 @@ const PublishReviewScreen = () => {
     const timer = setTimeout(loadLooksForDesigner, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, designers]);
+
+  // 加载更多设计师的造型
+  const handleLoadMoreLooks = async () => {
+    // 如果正在搜索，不触发加载更多
+    if (searchQuery.trim() || isLoadingLooks) {
+      return;
+    }
+
+    // 检查是否还有更多设计师可以加载
+    if (loadedDesignerCount >= designers.length) {
+      return;
+    }
+
+    setIsLoadingLooks(true);
+    try {
+      // 加载下一个设计师
+      const nextDesigner = designers[loadedDesignerCount];
+      if (nextDesigner) {
+        const designerData = await designerService.getDesignerShowAndImages(
+          nextDesigner.id
+        );
+        const newLooks = designerData.images.map((img) => ({
+          id: img.id,
+          designer: designerData.name,
+          season: designerData.shows[0]?.season || "",
+          imageUrl: img.imageUrl,
+        }));
+
+        // 追加新的造型到现有列表
+        setAllLooks((prevLooks) => [...prevLooks, ...newLooks]);
+        setLoadedDesignerCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Failed to load more looks:", error);
+    } finally {
+      setIsLoadingLooks(false);
+    }
+  };
 
   // 检查是否满足发布标准
   const canPublish = () => {
@@ -159,6 +227,7 @@ const PublishReviewScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
+      const showImageIds = selectedLooks.map((look) => look.id);
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -169,18 +238,18 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showImageId: 0, // 暂时设为 0，后续可关联秀场图片 ID
+        showImageIds: showImageIds,
       });
 
       setUploadProgress(null);
-      Alert.show("发布成功！", "", 1500);
+      Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
         (navigation as any).reset({
           index: 0,
-          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+          routes: [{ name: "Main", params: { screen: "Home" } }],
         });
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error("Publish error:", error);
       Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
@@ -224,6 +293,7 @@ const PublishReviewScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
+      const showImageIds = selectedLooks.map((look) => look.id);
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -234,7 +304,7 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showImageId: 0,
+        showImageIds: showImageIds.length > 0 ? showImageIds : undefined,
       });
 
       setUploadProgress(null);
@@ -354,7 +424,7 @@ const PublishReviewScreen = () => {
     return (
       <ImageCropper
         sourceUri={cropperImageUri}
-        aspect="1:1"
+        aspect="free"
         onCancel={handleCropCancel}
         onDone={handleCropDone}
       />
@@ -556,9 +626,12 @@ const PublishReviewScreen = () => {
         visible={showLookSelector}
         looks={filteredLooks}
         searchQuery={searchQuery}
+        isLoading={isLoadingLooks}
+        hasMore={!searchQuery.trim() && loadedDesignerCount < designers.length}
         onSearchChange={setSearchQuery}
         onSelectLook={handleSelectLook}
         onClose={() => setShowLookSelector(false)}
+        onLoadMore={handleLoadMoreLooks}
       />
     </SafeAreaView>
   );

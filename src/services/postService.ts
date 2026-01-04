@@ -20,6 +20,17 @@ export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
 // 帖子状态
 export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN";
 
+// 审核状态
+export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+// 关联的秀场造型详情
+export interface ShowImageDetail {
+  id: number;
+  imageUrl: string;
+  designerName?: string;
+  season?: string;
+}
+
 // 帖子响应类型
 export interface Post {
   id: number;
@@ -27,6 +38,7 @@ export interface Post {
   username: string;
   postType: PostType;
   status: PostStatus;
+  auditStatus?: AuditStatus;
   title: string;
   contentText: string;
   imageUrls: string[];
@@ -35,6 +47,13 @@ export interface Post {
   commentCount: number;
   createdAt: string;
   updatedAt: string;
+  // 单品评价专用字段
+  productName?: string;
+  brandName?: string;
+  rating?: number;
+  // 关联秀场图片
+  showImageIds?: number[];
+  showImages?: ShowImageDetail[];
 }
 
 // 创建帖子请求参数
@@ -49,8 +68,8 @@ export interface CreatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场图片 ID
-  showImageId?: number;
+  // 关联秀场图片 ID 数组
+  showImageIds?: number[];
 }
 
 // 更新帖子请求参数
@@ -397,6 +416,30 @@ export async function getPostsByUserId(
   });
 }
 
+/**
+ * 获取用户点赞的帖子列表
+ * GET /api/posts/user/{userId}/liked
+ * @param userId 用户ID
+ */
+export async function getLikedPostsByUserId(userId: number): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/user/${userId}/liked`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 获取用户收藏的帖子列表
+ * GET /api/posts/user/{userId}/favorites
+ * @param userId 用户ID
+ */
+export async function getFavoritePostsByUserId(
+  userId: number
+): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/user/${userId}/favorites`, {
+    method: "GET",
+  });
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -416,6 +459,8 @@ export const postService = {
   unfavoritePost,
   // 用户帖子
   getPostsByUserId,
+  getLikedPostsByUserId,
+  getFavoritePostsByUserId,
 };
 
 export default postService;

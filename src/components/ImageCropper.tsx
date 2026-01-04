@@ -153,15 +153,11 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
       imageBoundsWidth.value = displayWidth;
       imageBoundsHeight.value = displayHeight;
 
-      // Initialize crop box
-      const initialSize = Math.min(displayWidth, displayHeight) * 0.8;
-      const centerX = displayX + (displayWidth - initialSize) / 2;
-      const centerY = displayY + (displayHeight - initialSize) / 2;
-
-      cropX.value = centerX;
-      cropY.value = centerY;
-      cropWidth.value = initialSize;
-      cropHeight.value = initialSize;
+      // Initialize crop box - default to full image
+      cropX.value = displayX;
+      cropY.value = displayY;
+      cropWidth.value = displayWidth;
+      cropHeight.value = displayHeight;
     },
     [
       containerSize,

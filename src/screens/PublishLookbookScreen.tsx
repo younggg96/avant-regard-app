@@ -123,15 +123,15 @@ const PublishLookbookScreen = () => {
       });
 
       setUploadProgress(null);
-      Alert.show("发布成功！", "", 1500);
+      Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
         // 跳转到 Discover 页面
         (navigation as any).reset({
           index: 0,
-          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+          routes: [{ name: "Main", params: { screen: "Home" } }],
         });
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error("Publish error:", error);
       Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
@@ -579,7 +579,7 @@ const PublishLookbookScreen = () => {
     return (
       <ImageCropper
         sourceUri={cropperImageUri}
-        aspect="1:1"
+        aspect="free"
         onCancel={handleCropCancel}
         onDone={handleCropDone}
       />

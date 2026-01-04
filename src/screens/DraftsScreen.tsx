@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { useAuthStore } from "../store/authStore";
+import { postService, Post as ApiPost } from "../services/postService";
 
 interface DraftItem {
   id: string;
@@ -22,57 +25,101 @@ interface DraftItem {
   content?: string;
   images: string[];
   lastModified: string;
+  // 保留原始数据用于编辑
+  originalPost?: ApiPost;
 }
 
 const DraftsScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
 
-  // Mock drafts data
-  const [drafts] = useState<DraftItem[]>([
-    {
-      id: "1",
-      type: "lookbook",
-      title: "春季搭配指南",
-      content: "探索春季时尚趋势，分享实用的搭配技巧...",
-      images: [
-        "https://via.placeholder.com/300x400",
-        "https://via.placeholder.com/300x400",
-      ],
-      lastModified: "2小时前",
-    },
-    {
-      id: "2",
-      type: "outfit",
-      title: "周末休闲装",
-      content: "舒适又时尚的周末穿搭分享",
-      images: ["https://via.placeholder.com/300x400"],
-      lastModified: "昨天",
-    },
-    {
-      id: "3",
-      type: "review",
-      title: "CHANEL 新款包包评测",
-      content: "详细评测这款备受瞩目的新品...",
-      images: ["https://via.placeholder.com/300x200"],
-      lastModified: "3天前",
-    },
-    {
-      id: "4",
-      type: "article",
-      title: "可持续时尚的未来",
-      content: "深入探讨时尚行业的可持续发展...",
-      images: [],
-      lastModified: "1周前",
-    },
-  ]);
+  // 将 API 帖子类型转换为草稿类型
+  const convertPostTypeToDraftType = (
+    postType: string
+  ): "lookbook" | "outfit" | "review" | "article" => {
+    switch (postType) {
+      case "OUTFIT":
+        return "outfit";
+      case "DAILY_SHARE":
+        return "lookbook";
+      case "ITEM_REVIEW":
+        return "review";
+      case "ARTICLES":
+        return "article";
+      default:
+        return "outfit";
+    }
+  };
+
+  // 格式化时间显示
+  const formatTimeAgo = (dateString: string): string => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) {
+      return `${diffMins}分钟前`;
+    } else if (diffHours < 24) {
+      return `${diffHours}小时前`;
+    } else if (diffDays < 7) {
+      return `${diffDays}天前`;
+    } else {
+      return `${Math.floor(diffDays / 7)}周前`;
+    }
+  };
+
+  // 将 API 帖子转换为草稿项
+  const convertApiPostToDraftItem = (post: ApiPost): DraftItem => {
+    return {
+      id: String(post.id),
+      type: convertPostTypeToDraftType(post.postType),
+      title: post.title || "无标题",
+      content: post.contentText || "",
+      images: post.imageUrls || [],
+      lastModified: formatTimeAgo(post.updatedAt),
+      originalPost: post,
+    };
+  };
+
+  // 加载草稿列表
+  const loadDrafts = async () => {
+    if (!user?.userId) return;
+
+    try {
+      const apiPosts = await postService.getPostsByUserId(user.userId, "DRAFT");
+      const draftItems = apiPosts.map(convertApiPostToDraftItem);
+      setDrafts(draftItems);
+    } catch (error) {
+      console.error("Error loading drafts:", error);
+      Alert.show("加载草稿失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始加载
+  useEffect(() => {
+    loadDrafts();
+  }, [user?.userId]);
+
+  // 页面获得焦点时刷新
+  useFocusEffect(
+    useCallback(() => {
+      loadDrafts();
+    }, [user?.userId])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await loadDrafts();
     setRefreshing(false);
   };
 
@@ -99,11 +146,25 @@ const DraftsScreen = () => {
     setSelectedItems(newSelection);
   };
 
-  const handleDeleteSelected = () => {
-    // Here you would delete the selected drafts
-    setSelectedItems(new Set());
-    setIsSelectionMode(false);
-    Alert.show("删除成功: 选中的 " + selectedItems.size + " 个草稿已删除");
+  const handleDeleteSelected = async () => {
+    if (!user?.userId || selectedItems.size === 0) return;
+
+    try {
+      // 批量删除选中的草稿
+      const deletePromises = Array.from(selectedItems).map((postId) =>
+        postService.deletePost(Number(postId), user.userId)
+      );
+      await Promise.all(deletePromises);
+
+      // 刷新列表
+      await loadDrafts();
+      setSelectedItems(new Set());
+      setIsSelectionMode(false);
+      Alert.show(`删除成功: 已删除 ${selectedItems.size} 个草稿`);
+    } catch (error) {
+      console.error("Error deleting drafts:", error);
+      Alert.show("删除失败，请重试");
+    }
   };
 
   const getTypeInfo = (type: string) => {
@@ -277,7 +338,12 @@ const DraftsScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {drafts.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={theme.colors.gray400} />
+            <Text style={styles.loadingText}>加载中...</Text>
+          </View>
+        ) : drafts.length > 0 ? (
           <View style={styles.draftsList}>{drafts.map(renderDraftItem)}</View>
         ) : (
           renderEmptyState()
@@ -428,6 +494,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: __DEV__ ? "System" : "Inter-Medium",
     color: theme.colors.white,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    marginTop: 12,
   },
   emptyState: {
     flex: 1,

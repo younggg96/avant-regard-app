@@ -35,6 +35,8 @@ import PrivacyScreen from "./src/screens/PrivacyScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import DraftsScreen from "./src/screens/DraftsScreen";
+import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
+import FollowingDesignersScreen from "./src/screens/FollowingDesignersScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
@@ -215,11 +217,12 @@ function AppNavigator() {
         component={PostDetailScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen
+      {/* Search 页面暂时隐藏 */}
+      {/* <Stack.Screen
         name="Search"
         component={SearchScreen}
         options={{ headerShown: false }}
-      />
+      /> */}
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
@@ -263,6 +266,16 @@ function AppNavigator() {
       <Stack.Screen
         name="Notifications"
         component={NotificationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FollowingUsers"
+        component={FollowingUsersScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="FollowingDesigners"
+        component={FollowingDesignersScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

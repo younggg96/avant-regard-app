@@ -37,6 +37,7 @@ import {
   designerService,
   DesignerDetailDto,
 } from "../services/designerService";
+import localDesignersData from "../data/designers.json";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -75,27 +76,68 @@ const PublishOutfitScreen = () => {
   const [showLookPreview, setShowLookPreview] = useState(false);
   const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
   const [allLooks, setAllLooks] = useState<
-    Array<{ designer: string; season: string; imageUrl: string }>
+    Array<{ id: number; designer: string; season: string; imageUrl: string }>
   >([]);
   const [designers, setDesigners] = useState<DesignerDetailDto[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingLooks, setIsLoadingLooks] = useState(false);
+  const [loadedDesignerCount, setLoadedDesignerCount] = useState(3); // 追踪已加载的设计师数量
 
   const previewFlatListRef = useRef<FlatList>(null);
 
   const MAX_IMAGES = 9;
   const MAX_LOOKS = 6;
 
-  const predefinedTags = ["日常", "工作", "约会", "派对", "度假", "运动"];
-
   // 加载设计师列表
   useEffect(() => {
     const loadDesigners = async () => {
       try {
         const data = await designerService.getAllDesignerDetails();
-        setDesigners(data);
+        if (data && data.length > 0) {
+          setDesigners(data);
+        } else {
+          // API 返回空数据时，使用本地数据作为 fallback
+          console.log("API 返回空数据，使用本地设计师数据");
+          const localDesigners: DesignerDetailDto[] = localDesignersData.map(
+            (d, index) => ({
+              id: index + 1,
+              name: d.designer,
+              slug: d.designer.toLowerCase().replace(/\s+/g, "-"),
+              designerUrl: d.designer_url,
+              showCount: d.collections?.length || 0,
+              totalImages:
+                d.collections?.reduce(
+                  (acc, c) => acc + (c.looks_count || 0),
+                  0
+                ) || 0,
+              latestSeason: d.collections?.[0]?.season || "",
+              followerCount: 0,
+              following: false,
+            })
+          );
+          setDesigners(localDesigners);
+        }
       } catch (error) {
         console.error("Failed to load designers:", error);
+        // 出错时也使用本地数据
+        const localDesigners: DesignerDetailDto[] = localDesignersData.map(
+          (d, index) => ({
+            id: index + 1,
+            name: d.designer,
+            slug: d.designer.toLowerCase().replace(/\s+/g, "-"),
+            designerUrl: d.designer_url,
+            showCount: d.collections?.length || 0,
+            totalImages:
+              d.collections?.reduce(
+                (acc, c) => acc + (c.looks_count || 0),
+                0
+              ) || 0,
+            latestSeason: d.collections?.[0]?.season || "",
+            followerCount: 0,
+            following: false,
+          })
+        );
+        setDesigners(localDesigners);
       }
     };
 
@@ -105,34 +147,63 @@ const PublishOutfitScreen = () => {
   // 当搜索时加载对应设计师的造型
   useEffect(() => {
     const loadLooksForDesigner = async () => {
-      if (!searchQuery.trim()) {
-        setAllLooks([]);
-        return;
-      }
-
-      // 找到匹配的设计师
-      const matchedDesigner = designers.find(
-        (d) =>
-          d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          searchQuery.toLowerCase().includes(d.name.toLowerCase())
-      );
-
-      if (!matchedDesigner) {
-        setAllLooks([]);
+      // 如果没有设计师数据，先等待
+      if (designers.length === 0) {
         return;
       }
 
       setIsLoadingLooks(true);
       try {
-        const designerData = await designerService.getDesignerShowAndImages(
-          matchedDesigner.id
-        );
-        const looks = designerData.images.map((img) => ({
-          designer: designerData.name,
-          season: designerData.shows[0]?.season || "",
-          imageUrl: img.imageUrl,
-        }));
-        setAllLooks(looks);
+        if (!searchQuery.trim()) {
+          // 没有搜索词时，默认加载前3个设计师的造型
+          setLoadedDesignerCount(3);
+          const targetDesigners = designers.slice(0, 3);
+          const allLooksData = await Promise.all(
+            targetDesigners.map(async (designer) => {
+              try {
+                const designerData =
+                  await designerService.getDesignerShowAndImages(designer.id);
+                return designerData.images.map((img) => ({
+                  id: img.id,
+                  designer: designerData.name,
+                  season: designerData.shows[0]?.season || "",
+                  imageUrl: img.imageUrl,
+                }));
+              } catch (error) {
+                console.error(
+                  `Failed to load looks for designer ${designer.name}:`,
+                  error
+                );
+                return [];
+              }
+            })
+          );
+          // 合并所有造型数据
+          setAllLooks(allLooksData.flat());
+        } else {
+          // 找到匹配的设计师
+          const targetDesigner = designers.find(
+            (d) =>
+              d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              searchQuery.toLowerCase().includes(d.name.toLowerCase())
+          );
+
+          if (!targetDesigner) {
+            setAllLooks([]);
+            return;
+          }
+
+          const designerData = await designerService.getDesignerShowAndImages(
+            targetDesigner.id
+          );
+          const looks = designerData.images.map((img) => ({
+            id: img.id,
+            designer: designerData.name,
+            season: designerData.shows[0]?.season || "",
+            imageUrl: img.imageUrl,
+          }));
+          setAllLooks(looks);
+        }
       } catch (error) {
         console.error("Failed to load looks:", error);
         setAllLooks([]);
@@ -145,6 +216,44 @@ const PublishOutfitScreen = () => {
     const timer = setTimeout(loadLooksForDesigner, 300);
     return () => clearTimeout(timer);
   }, [searchQuery, designers]);
+
+  // 加载更多设计师的造型
+  const handleLoadMoreLooks = async () => {
+    // 如果正在搜索，不触发加载更多
+    if (searchQuery.trim() || isLoadingLooks) {
+      return;
+    }
+
+    // 检查是否还有更多设计师可以加载
+    if (loadedDesignerCount >= designers.length) {
+      return;
+    }
+
+    setIsLoadingLooks(true);
+    try {
+      // 加载下一个设计师
+      const nextDesigner = designers[loadedDesignerCount];
+      if (nextDesigner) {
+        const designerData = await designerService.getDesignerShowAndImages(
+          nextDesigner.id
+        );
+        const newLooks = designerData.images.map((img) => ({
+          id: img.id,
+          designer: designerData.name,
+          season: designerData.shows[0]?.season || "",
+          imageUrl: img.imageUrl,
+        }));
+
+        // 追加新的造型到现有列表
+        setAllLooks((prevLooks) => [...prevLooks, ...newLooks]);
+        setLoadedDesignerCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Failed to load more looks:", error);
+    } finally {
+      setIsLoadingLooks(false);
+    }
+  };
 
   // 检查是否满足发布标准
   const canPublish = () => {
@@ -180,6 +289,7 @@ const PublishOutfitScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
+      const showImageIds = selectedLooks.map((look) => look.id);
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
@@ -187,18 +297,18 @@ const PublishOutfitScreen = () => {
         title: title.trim(),
         contentText: description.trim(),
         imageUrls: uploadedUrls,
-        showImageId: 0, // 暂时设为 0，后续可关联秀场图片 ID
+        showImageIds: showImageIds,
       });
 
       setUploadProgress(null);
-      Alert.show("发布成功！", "", 1500);
+      Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
         (navigation as any).reset({
           index: 0,
-          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+          routes: [{ name: "Main", params: { screen: "Home" } }],
         });
-      }, 1500);
+      }, 2000);
     } catch (error) {
       console.error("Publish error:", error);
       Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
@@ -242,6 +352,7 @@ const PublishOutfitScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
+      const showImageIds = selectedLooks.map((look) => look.id);
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
@@ -249,7 +360,7 @@ const PublishOutfitScreen = () => {
         title: title.trim() || "搭配草稿",
         contentText: description.trim(),
         imageUrls: uploadedUrls,
-        showImageId: 0,
+        showImageIds: showImageIds.length > 0 ? showImageIds : undefined,
       });
 
       setUploadProgress(null);
@@ -452,13 +563,8 @@ const PublishOutfitScreen = () => {
       return;
     }
 
-    // 检查是否已经添加过相同的 look
-    const isDuplicate = selectedLooks.some(
-      (item) =>
-        item.designer === look.designer &&
-        item.season === look.season &&
-        item.imageUrl === look.imageUrl
-    );
+    // 检查是否已经添加过相同的 look（通过 id 判断）
+    const isDuplicate = selectedLooks.some((item) => item.id === look.id);
 
     if (isDuplicate) {
       Alert.show("提示: 该造型已经添加过了");
@@ -650,7 +756,7 @@ const PublishOutfitScreen = () => {
     return (
       <ImageCropper
         sourceUri={cropperImageUri}
-        aspect="1:1"
+        aspect="free"
         onCancel={handleCropCancel}
         onDone={handleCropDone}
       />
@@ -775,9 +881,12 @@ const PublishOutfitScreen = () => {
         visible={showLookSelector}
         looks={filteredLooks}
         searchQuery={searchQuery}
+        isLoading={isLoadingLooks}
+        hasMore={!searchQuery.trim() && loadedDesignerCount < designers.length}
         onSearchChange={setSearchQuery}
         onSelectLook={handleSelectLook}
         onClose={() => setShowLookSelector(false)}
+        onLoadMore={handleLoadMoreLooks}
       />
 
       {selectedImageUri && (

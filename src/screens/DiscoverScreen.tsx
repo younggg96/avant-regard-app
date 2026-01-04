@@ -24,6 +24,7 @@ import PostCard, { Post } from "../components/PostCard";
 import {
   getPosts,
   Post as ApiPost,
+  ShowImageDetail,
   likePost,
   unlikePost,
 } from "../services/postService";
@@ -34,6 +35,7 @@ import { useAuthStore } from "../store/authStore";
 interface DisplayPost {
   id: string;
   type: string;
+  auditStatus?: string; // 审核状态
   author: {
     id: string;
     name: string;
@@ -54,6 +56,8 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
+  // 关联的秀场造型
+  showImages?: ShowImageDetail[];
 }
 
 type TabType = "home" | "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
@@ -89,6 +93,7 @@ const mapApiPostToDisplayPost = (
   return {
     id: String(apiPost.id),
     type: apiPost.postType, // Uses the exact Enum value
+    auditStatus: apiPost.auditStatus, // 审核状态
     author: {
       id: String(apiPost.userId),
       name: userInfo?.username || apiPost.username || "匿名用户",
@@ -112,6 +117,8 @@ const mapApiPostToDisplayPost = (
       isSaved: false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
+    // 关联的秀场造型
+    showImages: apiPost.showImages,
   };
 };
 
@@ -196,6 +203,7 @@ const DiscoverScreen = () => {
       id: post.id,
       title: post.content.title,
       image: post.content.images[0] || "https://picsum.photos/id/1/600/800",
+      auditStatus: post.auditStatus, // 传递审核状态
       author: {
         id: post.author.id,
         name: post.author.name,
@@ -606,8 +614,8 @@ const DiscoverScreen = () => {
           </Pressable>
         </ScrollView>
 
-        {/* Search Button */}
-        <Pressable
+        {/* Search Button - 暂时隐藏 */}
+        {/* <Pressable
           onPress={handleSearchPress}
           px="$md"
           py="$sm"
@@ -615,7 +623,7 @@ const DiscoverScreen = () => {
           ml="$sm"
         >
           <Ionicons name="search" size={18} color={theme.colors.gray700} />
-        </Pressable>
+        </Pressable> */}
       </HStack>
 
       {/* Content List */}

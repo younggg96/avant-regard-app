@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,18 @@ import {
   TouchableOpacity,
   RefreshControl,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { useAuthStore } from "../store/authStore";
+import { postService, Post as ApiPost } from "../services/postService";
+import SimplePostCard from "../components/SimplePostCard";
+import { Post as DisplayPost } from "../components/PostCard";
+import { Alert } from "../utils/Alert";
 
 interface FavoriteItem {
   id: string;
@@ -26,22 +32,69 @@ interface FavoriteItem {
 
 const FavoritesScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
     "all" | "looks" | "designers" | "collections"
   >("all");
+  const [favoritePosts, setFavoritePosts] = useState<DisplayPost[]>([]);
 
-  // Mock favorites data
+  // 将 API 帖子转换为展示格式
+  const convertToDisplayPost = (apiPost: ApiPost): DisplayPost => {
+    return {
+      id: String(apiPost.id),
+      title: apiPost.title || "无标题",
+      image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+      author: {
+        id: String(apiPost.userId),
+        name: apiPost.username || "用户",
+        avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+      },
+      content: {
+        title: apiPost.title || "无标题",
+        description: apiPost.contentText || "",
+        images: apiPost.imageUrls || [],
+      },
+      engagement: {
+        likes: apiPost.likeCount || 0,
+        saves: apiPost.favoriteCount || 0,
+        comments: apiPost.commentCount || 0,
+      },
+      likes: apiPost.likeCount || 0,
+    } as DisplayPost;
+  };
+
+  // 加载收藏的帖子
+  const loadFavoritePosts = async () => {
+    if (!user?.userId) return;
+
+    try {
+      const apiPosts = await postService.getFavoritePostsByUserId(user.userId);
+      const displayPosts = apiPosts.map(convertToDisplayPost);
+      setFavoritePosts(displayPosts);
+    } catch (error) {
+      console.error("Error loading favorite posts:", error);
+      Alert.show("加载收藏失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始加载
+  useEffect(() => {
+    loadFavoritePosts();
+  }, [user?.userId]);
+
+  // 页面获得焦点时刷新
+  useFocusEffect(
+    useCallback(() => {
+      loadFavoritePosts();
+    }, [user?.userId])
+  );
+
+  // Mock favorites data for designers and collections (暂时保留)
   const [favorites] = useState<FavoriteItem[]>([
-    {
-      id: "1",
-      type: "look",
-      title: "春日优雅套装",
-      subtitle: "CHANEL 2024春夏",
-      image: "https://via.placeholder.com/300x400",
-      timestamp: "2天前",
-      isLiked: true,
-    },
     {
       id: "2",
       type: "designer",
@@ -61,15 +114,6 @@ const FavoritesScreen = () => {
       isLiked: true,
     },
     {
-      id: "4",
-      type: "look",
-      title: "街头休闲风",
-      subtitle: "个人搭配分享",
-      image: "https://via.placeholder.com/300x400",
-      timestamp: "3周前",
-      isLiked: true,
-    },
-    {
       id: "5",
       type: "designer",
       title: "Karl Lagerfeld",
@@ -81,12 +125,12 @@ const FavoritesScreen = () => {
   ]);
 
   const tabs = [
-    { key: "all", label: "全部", count: favorites.length },
     {
-      key: "looks",
-      label: "造型",
-      count: favorites.filter((f) => f.type === "look").length,
+      key: "all",
+      label: "全部",
+      count: favoritePosts.length + favorites.length,
     },
+    { key: "looks", label: "造型", count: favoritePosts.length },
     {
       key: "designers",
       label: "设计师",
@@ -106,8 +150,7 @@ const FavoritesScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await loadFavoritePosts();
     setRefreshing(false);
   };
 
@@ -136,6 +179,13 @@ const FavoritesScreen = () => {
         });
         break;
     }
+  };
+
+  const handlePostPress = (post: DisplayPost) => {
+    (navigation as any).navigate("PostDetail", {
+      post: post,
+      postStatus: "published",
+    });
   };
 
   const getTypeIcon = (type: string) => {
@@ -267,7 +317,54 @@ const FavoritesScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {filteredFavorites.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={theme.colors.gray400} />
+            <Text style={styles.loadingText}>加载中...</Text>
+          </View>
+        ) : activeTab === "looks" ? (
+          // 显示帖子列表
+          favoritePosts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {favoritePosts.map((post) => (
+                <View key={post.id} style={styles.postItem}>
+                  <SimplePostCard
+                    post={post}
+                    onPress={() => handlePostPress(post)}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : (
+            renderEmptyState()
+          )
+        ) : activeTab === "all" ? (
+          // 显示所有收藏（帖子 + 其他类型）
+          favoritePosts.length + filteredFavorites.length > 0 ? (
+            <>
+              {favoritePosts.length > 0 && (
+                <View style={styles.postsGrid}>
+                  {favoritePosts.map((post) => (
+                    <View key={post.id} style={styles.postItem}>
+                      <SimplePostCard
+                        post={post}
+                        onPress={() => handlePostPress(post)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+              {filteredFavorites.length > 0 && (
+                <View style={styles.favoritesList}>
+                  {filteredFavorites.map(renderFavoriteItem)}
+                </View>
+              )}
+            </>
+          ) : (
+            renderEmptyState()
+          )
+        ) : filteredFavorites.length > 0 ? (
+          // 显示设计师或系列
           <View style={styles.favoritesList}>
             {filteredFavorites.map(renderFavoriteItem)}
           </View>
@@ -283,6 +380,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    marginTop: 12,
+  },
+  postsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    justifyContent: "space-between",
+  },
+  postItem: {
+    width: "48%",
+    marginBottom: theme.spacing.md,
   },
   tabBar: {
     borderBottomWidth: 1,

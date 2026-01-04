@@ -101,7 +101,7 @@ const PublishArticleScreen = () => {
         resetForm();
         (navigation as any).reset({
           index: 0,
-          routes: [{ name: "MainTabs", params: { screen: "Discover" } }],
+          routes: [{ name: "Main", params: { screen: "Home" } }],
         });
       }, 1500);
     } catch (error) {
