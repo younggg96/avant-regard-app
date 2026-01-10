@@ -6,6 +6,9 @@ import {
   Animated,
   View,
   Dimensions,
+  ScrollView as RNScrollView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -30,6 +33,7 @@ import {
 } from "../services/postService";
 import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
+import { getFollowingUsers, FollowingUser } from "../services/followService";
 
 // 用于展示的Post类型（与PostCard组件兼容）
 interface DisplayPost {
@@ -60,7 +64,9 @@ interface DisplayPost {
   showImages?: ShowImageDetail[];
 }
 
-type TabType = "home" | "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
+type TabType = "recommend" | "following";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // 计算相对时间
 const getRelativeTime = (dateString: string): string => {
@@ -126,7 +132,8 @@ const DiscoverScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [posts, setPosts] = useState<DisplayPost[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>("home");
+  const [followingUserIds, setFollowingUserIds] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("recommend");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -134,6 +141,14 @@ const DiscoverScreen = () => {
 
   // 缓存用户信息
   const userInfoCache = useRef<Map<number, UserInfo>>(new Map());
+
+  // 滑动视图引用
+  const scrollViewRef = useRef<RNScrollView>(null);
+
+  // Header 动画值
+  const headerHeight = useRef(new Animated.Value(1)).current; // 1 = 显示, 0 = 隐藏
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const isHeaderVisible = useRef(true); // 追踪 header 当前状态，避免重复动画
 
   // 从后端获取帖子数据
   const fetchPosts = useCallback(async () => {
@@ -191,11 +206,27 @@ const DiscoverScreen = () => {
   // 初始化加载数据
   useEffect(() => {
     const initData = async () => {
-      await fetchPosts();
+      await Promise.all([fetchPosts(), fetchFollowingUsers()]);
       setIsInitialized(true);
     };
     initData();
   }, [fetchPosts]);
+
+  // 获取关注的用户列表
+  const fetchFollowingUsers = useCallback(async () => {
+    if (!user?.userId) return;
+
+    try {
+      const followingList = await getFollowingUsers(user.userId);
+      // 提取关注的用户 ID 列表
+      const userIds = followingList.map((item: FollowingUser) => item.userId);
+      setFollowingUserIds(userIds);
+      console.log("关注的用户数量:", userIds.length);
+    } catch (err) {
+      console.error("获取关注列表失败:", err);
+      setFollowingUserIds([]);
+    }
+  }, [user?.userId]);
 
   // Convert DisplayPost to PostCard Post format
   const convertToPost = useCallback((post: DisplayPost): Post => {
@@ -213,21 +244,6 @@ const DiscoverScreen = () => {
       isLiked: post.engagement.isLiked,
     };
   }, []);
-
-  // Get current posts based on active tab with safety checks
-  const getCurrentPosts = useCallback(() => {
-    let rawPosts: DisplayPost[] = [];
-
-    if (activeTab === "home") {
-      // 主页显示所有帖子
-      rawPosts = posts;
-    } else {
-      // 根据类型筛选帖子
-      rawPosts = posts.filter((post) => post.type === activeTab);
-    }
-
-    return Array.isArray(rawPosts) ? rawPosts.map(convertToPost) : [];
-  }, [activeTab, posts, convertToPost]);
 
   // Handle post interactions
   const handlePostPress = useCallback(
@@ -322,13 +338,10 @@ const DiscoverScreen = () => {
     [posts, user]
   );
 
-  // 获取各类型的帖子数量
+  // 获取各类型的帖子数量（暂时不需要，因为不显示数量）
   const getPostCountByType = useCallback(
     (type: TabType) => {
-      if (type === "home") {
-        return posts.length;
-      }
-      return posts.filter((post) => post.type === type).length;
+      return posts.length;
     },
     [posts]
   );
@@ -340,9 +353,91 @@ const DiscoverScreen = () => {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPosts();
+    if (activeTab === "recommend") {
+      await fetchPosts();
+    } else {
+      // 关注标签页也刷新帖子和关注列表
+      await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+    }
     setRefreshing(false);
-  }, [fetchPosts]);
+  }, [fetchPosts, fetchFollowingUsers, activeTab]);
+
+  // 处理垂直滚动（控制 header 显示/隐藏）
+  const lastScrollY = useRef(0);
+  const handleVerticalScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const currentScrollY = event.nativeEvent.contentOffset.y;
+      const scrollThreshold = 50; // 滚动阈值
+
+      // 向下滚动且超过阈值 - 隐藏 header
+      if (
+        currentScrollY > scrollThreshold &&
+        currentScrollY > lastScrollY.current &&
+        isHeaderVisible.current
+      ) {
+        isHeaderVisible.current = false;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+      // 向上滚动或接近顶部 - 显示 header
+      else if (
+        (currentScrollY < lastScrollY.current || currentScrollY <= 10) &&
+        !isHeaderVisible.current
+      ) {
+        isHeaderVisible.current = true;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+
+      lastScrollY.current = currentScrollY;
+    },
+    [headerHeight, headerOpacity]
+  );
+
+  // 处理标签切换
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    // 滑动到对应页面
+    const pageIndex = tab === "recommend" ? 0 : 1;
+    scrollViewRef.current?.scrollTo({
+      x: pageIndex * SCREEN_WIDTH,
+      animated: true,
+    });
+  }, []);
+
+  // 处理滑动结束
+  const handleScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
+      const newTab: TabType = pageIndex === 0 ? "recommend" : "following";
+
+      if (newTab !== activeTab) {
+        setActiveTab(newTab);
+      }
+    },
+    [activeTab]
+  );
 
   const handleLoadMore = useCallback(async () => {
     if (loading) return;
@@ -372,6 +467,159 @@ const DiscoverScreen = () => {
       );
     },
     [handlePostPress, handleAuthorPress, handleLike]
+  );
+
+  // 渲染标签页内容
+  const renderTabContent = useCallback(
+    (tab: TabType) => {
+      // 根据标签获取对应的帖子
+      let tabPosts: DisplayPost[] = [];
+      if (tab === "recommend") {
+        // 推荐显示所有帖子
+        tabPosts = posts;
+      } else if (tab === "following") {
+        // 关注标签只显示关注用户的帖子
+        tabPosts = posts.filter((post) => {
+          const authorId = parseInt(post.author.id, 10);
+          return followingUserIds.includes(authorId);
+        });
+      }
+
+      const currentPosts = Array.isArray(tabPosts)
+        ? tabPosts.map(convertToPost)
+        : [];
+
+      return (
+        <View style={{ width: SCREEN_WIDTH }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            onScroll={handleVerticalScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[theme.colors.accent]}
+                tintColor={theme.colors.accent}
+              />
+            }
+          >
+            {error ? (
+              <VStack
+                flex={1}
+                justifyContent="center"
+                alignItems="center"
+                py="$2xl"
+              >
+                <Ionicons
+                  name="cloud-offline-outline"
+                  size={48}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$lg"
+                  color="$black"
+                  fontWeight="$medium"
+                  mb="$sm"
+                  mt="$md"
+                  textAlign="center"
+                >
+                  加载失败
+                </Text>
+                <Text
+                  color="$gray400"
+                  textAlign="center"
+                  lineHeight="$lg"
+                  mb="$md"
+                >
+                  {error}
+                </Text>
+                <Pressable
+                  onPress={handleRefresh}
+                  px="$lg"
+                  py="$sm"
+                  bg="$black"
+                  rounded="$md"
+                >
+                  <Text color="$white" fontWeight="$medium">
+                    点击重试
+                  </Text>
+                </Pressable>
+              </VStack>
+            ) : currentPosts.length === 0 ? (
+              <VStack
+                flex={1}
+                justifyContent="center"
+                alignItems="center"
+                py="$2xl"
+              >
+                <Ionicons
+                  name="newspaper-outline"
+                  size={48}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$lg"
+                  color="$black"
+                  fontWeight="$medium"
+                  mb="$sm"
+                  mt="$md"
+                  textAlign="center"
+                >
+                  {tab === "recommend" && "暂无推荐内容"}
+                  {tab === "following" && "暂无关注内容"}
+                </Text>
+                <Text color="$gray400" textAlign="center" lineHeight="$lg">
+                  {tab === "recommend" && "下拉刷新获取最新内容"}
+                  {tab === "following" && "关注更多用户查看他们的动态"}
+                </Text>
+              </VStack>
+            ) : (
+              <HStack px="$sm" pt="$sm" alignItems="start">
+                <VStack flex={1} pr="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 0)
+                    .map((post, index) => (
+                      <Box key={post.id || `left-${index}`} mb="$sm">
+                        {renderPost(post, index * 2)}
+                      </Box>
+                    ))}
+                </VStack>
+                <VStack flex={1} pl="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 1)
+                    .map((post, index) => (
+                      <Box key={post.id || `right-${index}`} mb="$sm">
+                        {renderPost(post, index * 2 + 1)}
+                      </Box>
+                    ))}
+                </VStack>
+              </HStack>
+            )}
+            {loading && (
+              <HStack justifyContent="center" alignItems="center" py="$lg">
+                <ActivityIndicator size="small" color={theme.colors.accent} />
+                <Text color="$gray400" fontSize="$sm" ml="$sm">
+                  加载更多...
+                </Text>
+              </HStack>
+            )}
+          </ScrollView>
+        </View>
+      );
+    },
+    [
+      posts,
+      followingUserIds,
+      convertToPost,
+      error,
+      refreshing,
+      handleRefresh,
+      handleVerticalScroll,
+      renderPost,
+      loading,
+    ]
   );
 
   // 骨架屏动画
@@ -485,9 +733,6 @@ const DiscoverScreen = () => {
         >
           <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
           <SkeletonBox width={80} height={20} style={{ borderRadius: 4 }} />
-          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
-          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
-          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
         </HStack>
 
         {/* 帖子列表骨架 */}
@@ -504,244 +749,97 @@ const DiscoverScreen = () => {
     );
   }
 
-  // Get current posts
-  const currentPosts = getCurrentPosts();
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScreenHeader
-        title="AVANT REGARD"
-        subtitle="时尚内容流"
-        boldTitle={true}
-        borderless
-      />
-
-      {/* Tab View with Types */}
-      <HStack
-        borderBottomWidth={1}
-        borderBottomColor="$gray100"
-        justifyContent="between"
-        alignItems="center"
+      {/* 动画 Header */}
+      <Animated.View
+        style={{
+          height: headerHeight.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 80], // 根据实际 header 高度调整
+          }),
+          opacity: headerOpacity,
+          overflow: "hidden",
+        }}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-        >
+        <ScreenHeader
+          title="AVANT REGARD"
+          subtitle="时尚内容流"
+          boldTitle={true}
+          borderless
+        />
+      </Animated.View>
+
+      {/* Tab View with Types - 吸顶 */}
+      <Box borderBottomWidth={1} borderBottomColor="$gray100">
+        <HStack justifyContent="center" alignItems="center" py="$sm" gap="$sm">
           <Pressable
-            py="$md"
+            py="$sm"
             px="$md"
-            mr="$md"
-            borderBottomWidth={activeTab === "home" ? 2 : 0}
-            borderBottomColor="$black"
-            onPress={() => setActiveTab("home")}
+            position="relative"
+            onPress={() => handleTabChange("recommend")}
           >
             <Text
-              color={activeTab === "home" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "home" ? "$semibold" : "$normal"}
-              fontSize="$sm"
+              color={activeTab === "recommend" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "recommend" ? "$semibold" : "$normal"}
+              fontSize="$md"
             >
-              主页 ({getPostCountByType("home")})
+              推荐
             </Text>
+            {activeTab === "recommend" && (
+              <Box
+                position="absolute"
+                bottom={-4}
+                left={0}
+                right={0}
+                height={3}
+                bg="#000"
+                borderRadius="$full"
+              />
+            )}
           </Pressable>
 
           <Pressable
-            py="$md"
+            py="$sm"
             px="$md"
-            mr="$md"
-            borderBottomWidth={activeTab === "OUTFIT" ? 2 : 0}
-            borderBottomColor="$black"
-            onPress={() => setActiveTab("OUTFIT")}
+            position="relative"
+            onPress={() => handleTabChange("following")}
           >
             <Text
-              color={activeTab === "OUTFIT" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "OUTFIT" ? "$semibold" : "$normal"}
-              fontSize="$sm"
+              color={activeTab === "following" ? "$black" : "$gray400"}
+              fontWeight={activeTab === "following" ? "$semibold" : "$normal"}
+              fontSize="$md"
             >
-              Lookbook ({getPostCountByType("OUTFIT")})
+              关注
             </Text>
+            {activeTab === "following" && (
+              <Box
+                position="absolute"
+                bottom={-4}
+                left={0}
+                right={0}
+                height={3}
+                bg="#000"
+                borderRadius="$full"
+              />
+            )}
           </Pressable>
+        </HStack>
+      </Box>
 
-          <Pressable
-            py="$md"
-            px="$md"
-            mr="$md"
-            borderBottomWidth={activeTab === "DAILY_SHARE" ? 2 : 0}
-            borderBottomColor="$black"
-            onPress={() => setActiveTab("DAILY_SHARE")}
-          >
-            <Text
-              color={activeTab === "DAILY_SHARE" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "DAILY_SHARE" ? "$semibold" : "$normal"}
-              fontSize="$sm"
-            >
-              搭配 ({getPostCountByType("DAILY_SHARE")})
-            </Text>
-          </Pressable>
-
-          <Pressable
-            py="$md"
-            px="$md"
-            mr="$md"
-            borderBottomWidth={activeTab === "ITEM_REVIEW" ? 2 : 0}
-            borderBottomColor="$black"
-            onPress={() => setActiveTab("ITEM_REVIEW")}
-          >
-            <Text
-              color={activeTab === "ITEM_REVIEW" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "ITEM_REVIEW" ? "$semibold" : "$normal"}
-              fontSize="$sm"
-            >
-              评测 ({getPostCountByType("ITEM_REVIEW")})
-            </Text>
-          </Pressable>
-
-          <Pressable
-            py="$md"
-            px="$md"
-            mr="$md"
-            borderBottomWidth={activeTab === "ARTICLES" ? 2 : 0}
-            borderBottomColor="$black"
-            onPress={() => setActiveTab("ARTICLES")}
-          >
-            <Text
-              color={activeTab === "ARTICLES" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "ARTICLES" ? "$semibold" : "$normal"}
-              fontSize="$sm"
-            >
-              文章 ({getPostCountByType("ARTICLES")})
-            </Text>
-          </Pressable>
-        </ScrollView>
-
-        {/* Search Button - 暂时隐藏 */}
-        {/* <Pressable
-          onPress={handleSearchPress}
-          px="$md"
-          py="$sm"
-          rounded="$md"
-          ml="$sm"
-        >
-          <Ionicons name="search" size={18} color={theme.colors.gray700} />
-        </Pressable> */}
-      </HStack>
-
-      {/* Content List */}
-      <ScrollView
-        flex={1}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
-          />
-        }
+      {/* 水平滑动容器 */}
+      <RNScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
+        style={{ flex: 1 }}
       >
-        {error ? (
-          <VStack
-            flex={1}
-            justifyContent="center"
-            alignItems="center"
-            py="$2xl"
-          >
-            <Ionicons
-              name="cloud-offline-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
-              加载失败
-            </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
-              {error}
-            </Text>
-            <Pressable
-              onPress={handleRefresh}
-              px="$lg"
-              py="$sm"
-              bg="$black"
-              rounded="$md"
-            >
-              <Text color="$white" fontWeight="$medium">
-                点击重试
-              </Text>
-            </Pressable>
-          </VStack>
-        ) : currentPosts.length === 0 ? (
-          <VStack
-            flex={1}
-            justifyContent="center"
-            alignItems="center"
-            py="$2xl"
-          >
-            <Ionicons
-              name="newspaper-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
-              {activeTab === "home" && "暂无主页内容"}
-              {activeTab === "OUTFIT" && "暂无 Lookbook 内容"}
-              {activeTab === "DAILY_SHARE" && "暂无搭配内容"}
-              {activeTab === "ITEM_REVIEW" && "暂无评测内容"}
-              {activeTab === "ARTICLES" && "暂无文章内容"}
-            </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg">
-              {activeTab === "home" && "下拉刷新获取最新内容"}
-              {activeTab === "OUTFIT" && "精彩的秀场系列即将到来"}
-              {activeTab === "DAILY_SHARE" && "优秀的搭配灵感即将到来"}
-              {activeTab === "ITEM_REVIEW" && "详细的产品评测即将到来"}
-              {activeTab === "ARTICLES" && "深度的时尚文章即将到来"}
-            </Text>
-          </VStack>
-        ) : (
-          <HStack px="$sm" pt="$sm" alignItems="start">
-            <VStack flex={1} pr="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 0)
-                .map((post, index) => (
-                  <Box key={post.id || `left-${index}`} mb="$sm">
-                    {renderPost(post, index * 2)}
-                  </Box>
-                ))}
-            </VStack>
-            <VStack flex={1} pl="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 1)
-                .map((post, index) => (
-                  <Box key={post.id || `right-${index}`} mb="$sm">
-                    {renderPost(post, index * 2 + 1)}
-                  </Box>
-                ))}
-            </VStack>
-          </HStack>
-        )}
-        {loading && (
-          <HStack justifyContent="center" alignItems="center" py="$lg">
-            <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text color="$gray400" fontSize="$sm" ml="$sm">
-              加载更多...
-            </Text>
-          </HStack>
-        )}
-      </ScrollView>
+        {renderTabContent("recommend")}
+        {renderTabContent("following")}
+      </RNScrollView>
     </SafeAreaView>
   );
 };

@@ -98,6 +98,16 @@ export interface SingleShowDto {
   images: SingleShowImage[];
 }
 
+/**
+ * 设计师选项（用于用户补全资料时选择）
+ */
+export interface DesignerOption {
+  id: number;
+  name: string;
+  slug: string;
+  designerUrl: string;
+}
+
 // ------------------------------------------------------------------
 // 通用请求方法
 // ------------------------------------------------------------------
@@ -208,6 +218,14 @@ export async function getSingleShow(showId: number): Promise<SingleShowDto> {
   return request<SingleShowDto>(`/api/designer/getSingleShow?showId=${showId}`);
 }
 
+/**
+ * 获取设计师选项列表（用于用户补全资料时选择 0~5 个设计师）
+ * GET /api/designer/options
+ */
+export async function getDesignerOptions(): Promise<DesignerOption[]> {
+  return request<DesignerOption[]>("/api/designer/options");
+}
+
 // ------------------------------------------------------------------
 // 导出服务对象
 // ------------------------------------------------------------------
@@ -216,4 +234,5 @@ export const designerService = {
   getAllDesignerDetails,
   getDesignerShowAndImages,
   getSingleShow,
+  getDesignerOptions,
 };

@@ -43,6 +43,7 @@ export interface LoginSmsParams {
 
 export interface RegisterParams {
   phone: string;
+  username: string;
   password: string;
   code: string;
 }

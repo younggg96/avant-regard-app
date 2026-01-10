@@ -14,6 +14,17 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// 性别枚举
+export type Gender = "MALE" | "FEMALE" | "OTHER";
+
+// 设计师信息类型
+export interface DesignerInfo {
+  id: number;
+  name: string;
+  slug: string;
+  designerUrl: string;
+}
+
 // 用户信息类型
 export interface UserInfo {
   userId: number;
@@ -24,12 +35,38 @@ export interface UserInfo {
   avatarUrl: string;
 }
 
+// 用户完整资料类型（包含性别、年龄、偏好等）
+export interface UserProfileInfo {
+  userId: number;
+  infoId: number;
+  username: string;
+  bio: string;
+  location: string;
+  avatarUrl: string;
+  gender: Gender;
+  age: number;
+  preference: string;
+  possibleDesigners: DesignerInfo[];
+}
+
 // 更新用户信息请求参数
 export interface UpdateUserInfoParams {
   username?: string;
   bio?: string;
   location?: string;
   avatarUrl?: string;
+}
+
+// 更新用户资料请求参数（注册后填写）
+export interface UpdateUserProfileParams {
+  username?: string;
+  bio?: string;
+  location?: string;
+  avatarUrl?: string;
+  gender?: Gender;
+  age?: number;
+  preference?: string;
+  possibleDesignerIds?: number[];
 }
 
 // 通用请求方法
@@ -224,11 +261,40 @@ export async function uploadAvatar(
   return uploadRequest<UserInfo>(`/api/user-info/${userId}/avatar`, formData);
 }
 
+/**
+ * 更新用户完整资料（注册成功后填写）
+ * PUT /api/user-info/{userId}/profile
+ * @param userId 用户ID
+ * @param params 用户资料参数（性别/年龄/偏好/地区/可能喜欢的设计师等）
+ */
+export async function updateUserProfile(
+  userId: number,
+  params: UpdateUserProfileParams
+): Promise<UserProfileInfo> {
+  return request<UserProfileInfo>(`/api/user-info/${userId}/profile`, {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 获取用户完整资料
+ * GET /api/user-info/{userId}/profile
+ * @param userId 用户ID
+ */
+export async function getUserProfile(userId: number): Promise<UserProfileInfo> {
+  return request<UserProfileInfo>(`/api/user-info/${userId}/profile`, {
+    method: "GET",
+  });
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
   updateUserInfo,
   uploadAvatar,
+  updateUserProfile,
+  getUserProfile,
 };
 
 export default userInfoService;

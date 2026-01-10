@@ -21,6 +21,7 @@ type AuthMode = "login" | "register" | "forgotPassword" | "verification";
 
 interface FormData {
   phone: string;
+  username: string;
   password: string;
   confirmPassword: string;
   verificationCode: string;
@@ -31,6 +32,7 @@ const AuthScreen = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [formData, setFormData] = useState<FormData>({
     phone: "",
+    username: "",
     password: "",
     confirmPassword: "",
     verificationCode: "",
@@ -159,6 +161,11 @@ const AuthScreen = () => {
       return;
     }
 
+    if (!formData.username || formData.username.trim().length < 2) {
+      Alert.show("提示: 用户名长度至少2个字符");
+      return;
+    }
+
     if (!formData.password || formData.password.length < 6) {
       Alert.show("提示: 密码长度至少6位");
       return;
@@ -179,6 +186,7 @@ const AuthScreen = () => {
       // 调用注册 API
       const response = await authService.register({
         phone: formData.phone,
+        username: formData.username.trim(),
         password: formData.password,
         code: formData.verificationCode,
       });
@@ -345,6 +353,23 @@ const AuthScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {/* 用户名输入（注册时显示） */}
+        {mode === "register" && (
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>用户名</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="请输入用户名"
+              value={formData.username}
+              onChangeText={(text) =>
+                setFormData({ ...formData, username: text })
+              }
+              maxLength={20}
+              autoCapitalize="none"
+            />
           </View>
         )}
 
