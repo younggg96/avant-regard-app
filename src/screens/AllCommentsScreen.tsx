@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Dimensions,
   FlatList,
   RefreshControl,
 } from "react-native";
@@ -15,8 +14,6 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
-
-const { width: screenWidth } = Dimensions.get("window");
 
 interface Comment {
   id: string;

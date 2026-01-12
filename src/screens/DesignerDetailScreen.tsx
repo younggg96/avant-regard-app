@@ -47,17 +47,6 @@ interface Collection {
   showUrl?: string;
 }
 
-interface Look {
-  id: string;
-  image: string;
-  title: string;
-  description: string;
-  likes: number;
-  isLiked: boolean;
-  imageType?: string;
-  imageId?: number; // API 图片 ID
-}
-
 const DesignerDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
@@ -67,12 +56,12 @@ const DesignerDetailScreen = () => {
 
   const [designer, setDesigner] = useState<Designer | null>(null);
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [looks, setLooks] = useState<Look[]>([]);
   const [designerApiData, setDesignerApiData] =
     useState<DesignerShowAndImageDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
+  const [totalLooksCount, setTotalLooksCount] = useState(0);
 
   // Find designer data by name or ID from API
   useEffect(() => {
@@ -169,22 +158,8 @@ const DesignerDetailScreen = () => {
           }
         );
 
-        // Convert images to looks
-        const convertedLooks: Look[] = (designerData.images || []).map(
-          (image, index) => ({
-            id: `look-${image.id}`,
-            image: image.imageUrl,
-            title: `Look ${index + 1}`,
-            description: "",
-            likes: image.likeCount,
-            isLiked: image.likedByMe,
-            imageType: "look",
-            imageId: image.id,
-          })
-        );
-
         setCollections(convertedCollections);
-        setLooks(convertedLooks);
+        setTotalLooksCount(designerData.images?.length || 0);
       } catch (error) {
         console.error("Failed to load designer data:", error);
         // 出错时设置默认值
@@ -199,7 +174,7 @@ const DesignerDetailScreen = () => {
           website: "",
         });
         setCollections([]);
-        setLooks([]);
+        setTotalLooksCount(0);
       } finally {
         setLoading(false);
       }
@@ -207,10 +182,6 @@ const DesignerDetailScreen = () => {
 
     loadDesignerData();
   }, [designerId, designerName]);
-
-  const [activeTab, setActiveTab] = useState<"collections" | "looks">(
-    "collections"
-  );
 
   // Handle follow/unfollow
   const handleFollow = useCallback(async () => {
@@ -267,33 +238,6 @@ const DesignerDetailScreen = () => {
     [navigation, designer]
   );
 
-  // Handle look press
-  const handleLookPress = useCallback(
-    (look: Look) => {
-      // Find the collection title for this look
-      let collectionTitle = "";
-      const lookIndex = looks.findIndex((l) => l.id === look.id);
-      if (lookIndex >= 0 && collections.length > 0) {
-        // Try to match look to collection based on season or title
-        const lookTitle = look.title.toLowerCase();
-        const matchingCollection = collections.find(
-          (c) =>
-            lookTitle.includes(c.season.toLowerCase()) ||
-            lookTitle.includes(c.title.toLowerCase())
-        );
-        collectionTitle = matchingCollection?.title || "";
-      }
-
-      (navigation as any).navigate("LookDetail", {
-        look,
-        designerName: designer?.name,
-        collectionTitle,
-        imageId: look.imageId,
-      });
-    },
-    [navigation, designer, collections, looks]
-  );
-
   // Render header
   const renderHeader = () => (
     <View style={styles.header}>
@@ -343,10 +287,6 @@ const DesignerDetailScreen = () => {
           <Text style={styles.statLabel}>关注</Text>
         </View>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{looks.length}</Text>
-          <Text style={styles.statLabel}>造型</Text>
-        </View>
-        <View style={styles.statItem}>
           <Text style={styles.statNumber}>
             {designerApiData?.showCount || 0}
           </Text>
@@ -356,35 +296,10 @@ const DesignerDetailScreen = () => {
     </View>
   );
 
-  // Render tabs
-  const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === "collections" && styles.activeTab]}
-        onPress={() => setActiveTab("collections")}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            activeTab === "collections" && styles.activeTabText,
-          ]}
-        >
-          秀场 ({collections.length})
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === "looks" && styles.activeTab]}
-        onPress={() => setActiveTab("looks")}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            activeTab === "looks" && styles.activeTabText,
-          ]}
-        >
-          造型 ({looks.length})
-        </Text>
-      </TouchableOpacity>
+  // Render section title
+  const renderSectionTitle = () => (
+    <View style={styles.sectionTitleContainer}>
+      <Text style={styles.sectionTitle}>秀场 ({collections.length})</Text>
     </View>
   );
 
@@ -400,7 +315,6 @@ const DesignerDetailScreen = () => {
         <Text style={styles.collectionMeta}>
           {item.season} {item.year} {item.city && `• ${item.city}`}
         </Text>
-        <Text style={styles.collectionCount}>{item.imageCount} 张图片</Text>
         {item.author && (
           <Text style={styles.collectionAuthor}>评论者: {item.author}</Text>
         )}
@@ -412,16 +326,6 @@ const DesignerDetailScreen = () => {
           </Text>
         )}
       </View>
-    </TouchableOpacity>
-  );
-
-  // Render look item
-  const renderLookItem = ({ item }: { item: Look }) => (
-    <TouchableOpacity
-      style={styles.lookItem}
-      onPress={() => handleLookPress(item)}
-    >
-      <Image source={{ uri: item.image }} style={styles.lookImage} />
     </TouchableOpacity>
   );
 
@@ -546,14 +450,9 @@ const DesignerDetailScreen = () => {
           </View>
         </View>
 
-        {/* 标签骨架 */}
-        <View style={styles.tabContainer}>
-          <View style={[styles.tab, { alignItems: "center" }]}>
-            <SkeletonBox width={80} height={20} />
-          </View>
-          <View style={[styles.tab, { alignItems: "center" }]}>
-            <SkeletonBox width={80} height={20} />
-          </View>
+        {/* 标题骨架 */}
+        <View style={styles.sectionTitleContainer}>
+          <SkeletonBox width={100} height={20} />
         </View>
 
         {/* 列表骨架 */}
@@ -600,30 +499,12 @@ const DesignerDetailScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {renderHeader()}
-        {renderTabs()}
+        {renderSectionTitle()}
 
         <View style={styles.content}>
-          {activeTab === "collections" ? (
-            <View>
-              {collections.map((item) => (
-                <View key={item.id}>{renderCollectionItem({ item })}</View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.looksContainer}>
-              {looks.map((item, index) => (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.lookItemWrapper,
-                    index % 2 === 1 && styles.lookItemRight,
-                  ]}
-                >
-                  {renderLookItem({ item })}
-                </View>
-              ))}
-            </View>
-          )}
+          {collections.map((item) => (
+            <View key={item.id}>{renderCollectionItem({ item })}</View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -735,25 +616,14 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: theme.colors.gray400,
   },
-  tabContainer: {
-    flexDirection: "row",
+  sectionTitleContainer: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    alignItems: "center",
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.black,
-  },
-  tabText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-  },
-  activeTabText: {
+  sectionTitle: {
+    ...theme.typography.h3,
     color: theme.colors.black,
     fontWeight: "600",
   },
@@ -789,11 +659,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray400,
     marginBottom: 4,
   },
-  collectionCount: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginBottom: 2,
-  },
   collectionAuthor: {
     ...theme.typography.caption,
     fontSize: 11,
@@ -826,47 +691,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 12,
     fontWeight: "500",
-  },
-  looksContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: theme.spacing.md,
-  },
-  lookItemWrapper: {
-    width: (screenWidth - theme.spacing.md * 3) / 2,
-    marginBottom: theme.spacing.md,
-  },
-  lookItemRight: {
-    marginLeft: theme.spacing.md,
-  },
-  lookItem: {
-    position: "relative",
-    width: "100%",
-  },
-  lookImage: {
-    width: "100%",
-    height: 240,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.gray100,
-  },
-  lookOverlay: {
-    position: "absolute",
-    bottom: theme.spacing.sm,
-    right: theme.spacing.sm,
-  },
-  likeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  likeCount: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
-    marginLeft: 4,
-    fontWeight: "600",
   },
 });
 

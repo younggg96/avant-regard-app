@@ -30,7 +30,8 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
-  const settingSections: { title: string; items: SettingItem[] }[] = [
+  // 基础设置项
+  const baseSections: { title: string; items: SettingItem[] }[] = [
     {
       title: "账户",
       items: [
@@ -60,6 +61,26 @@ const SettingsScreen = () => {
       ],
     },
   ];
+
+  // 如果用户是管理员，添加管理员设置项
+  const settingSections = user?.admin
+    ? [
+        {
+          title: "管理员",
+          items: [
+            {
+              id: "admin",
+              label: "管理员后台",
+              icon: "shield-checkmark-outline",
+              onPress: () => (navigation as any).navigate("Admin"),
+              rightText: "Admin",
+              rightColor: theme.colors.error,
+            },
+          ],
+        },
+        ...baseSections,
+      ]
+    : baseSections;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

@@ -304,7 +304,7 @@ const ArchiveScreen = () => {
                     <Text style={styles.designerName}>{designer.name}</Text>
                     <Text style={styles.designerBrand}>{designer.brand}</Text>
                     <Text style={styles.designerMeta}>
-                      {designer.shows} 场秀 • {designer.totalLooks} 个造型
+                      {designer.shows} 场秀
                     </Text>
                     <Text style={styles.designerSeason}>
                       最新: {designer.latestSeason}

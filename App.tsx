@@ -37,6 +37,7 @@ import HistoryScreen from "./src/screens/HistoryScreen";
 import DraftsScreen from "./src/screens/DraftsScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowingDesignersScreen from "./src/screens/FollowingDesignersScreen";
+import AdminScreen from "./src/screens/AdminScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
@@ -276,6 +277,11 @@ function AppNavigator() {
       <Stack.Screen
         name="FollowingDesigners"
         component={FollowingDesignersScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Admin"
+        component={AdminScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

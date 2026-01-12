@@ -27,8 +27,14 @@ export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface ShowImageDetail {
   id: number;
   imageUrl: string;
-  designerName?: string;
+  sortOrder?: number;
+  showId?: number;
   season?: string;
+  category?: string;
+  city?: string;
+  collectionTs?: string;
+  designerId?: number;
+  designerName?: string;
 }
 
 // 帖子响应类型
@@ -54,6 +60,9 @@ export interface Post {
   // 关联秀场图片
   showImageIds?: number[];
   showImages?: ShowImageDetail[];
+  // 当前用户交互状态
+  likedByMe?: boolean;
+  favoritedByMe?: boolean;
 }
 
 // 创建帖子请求参数
@@ -440,6 +449,20 @@ export async function getFavoritePostsByUserId(
   });
 }
 
+// ==================== 秀场关联帖子 ====================
+
+/**
+ * 获取某个秀场关联的帖子
+ * GET /api/posts/show/{showId}
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param showId 秀场ID
+ */
+export async function getPostsByShowId(showId: number): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/show/${showId}`, {
+    method: "GET",
+  });
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -461,6 +484,8 @@ export const postService = {
   getPostsByUserId,
   getLikedPostsByUserId,
   getFavoritePostsByUserId,
+  // 秀场关联帖子
+  getPostsByShowId,
 };
 
 export default postService;

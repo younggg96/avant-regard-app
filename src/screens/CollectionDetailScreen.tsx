@@ -13,6 +13,7 @@ import {
   FlatList,
   Modal,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -21,6 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
 import { designerService } from "../services/designerService";
+import { getPostsByShowId, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -80,6 +82,8 @@ const CollectionDetailScreen = () => {
 
   const [collectionImages, setCollectionImages] = useState<ShowImage[]>([]);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
+  const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -103,6 +107,23 @@ const CollectionDetailScreen = () => {
     };
 
     loadImages();
+
+    // Load related posts
+    const loadRelatedPosts = async () => {
+      if (showId) {
+        setPostsLoading(true);
+        try {
+          const posts = await getPostsByShowId(showId);
+          setRelatedPosts(posts);
+        } catch (error) {
+          console.error("Failed to load related posts:", error);
+        } finally {
+          setPostsLoading(false);
+        }
+      }
+    };
+
+    loadRelatedPosts();
 
     // Add mock rating data if not exists
     if (!collection.rating) {
@@ -419,6 +440,73 @@ const CollectionDetailScreen = () => {
     );
   };
 
+  // Handle post press
+  const handlePostPress = (post: Post) => {
+    (navigation as any).navigate("PostDetail", { postId: post.id });
+  };
+
+  // Render related posts section
+  const renderRelatedPosts = () => {
+    if (!showId) return null;
+
+    return (
+      <View style={styles.relatedPostsContainer}>
+        <Text style={styles.relatedPostsTitle}>相关帖子</Text>
+
+        {postsLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={theme.colors.gray400} />
+          </View>
+        ) : relatedPosts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="document-text-outline"
+              size={40}
+              color={theme.colors.gray300}
+            />
+            <Text style={styles.emptyText}>暂无相关帖子</Text>
+          </View>
+        ) : (
+          <View style={styles.postsGrid}>
+            {relatedPosts.map((post) => (
+              <TouchableOpacity
+                key={post.id}
+                style={styles.postItem}
+                onPress={() => handlePostPress(post)}
+              >
+                <Image
+                  source={{
+                    uri:
+                      post.imageUrls?.[0] ||
+                      post.showImages?.[0]?.imageUrl ||
+                      "https://via.placeholder.com/150",
+                  }}
+                  style={styles.postImage}
+                />
+                <View style={styles.postInfo}>
+                  <Text style={styles.postTitle} numberOfLines={2}>
+                    {post.title}
+                  </Text>
+                  <View style={styles.postMeta}>
+                    <Text style={styles.postUsername}>@{post.username}</Text>
+                    <View style={styles.postStats}>
+                      <Ionicons
+                        name="heart"
+                        size={12}
+                        color={theme.colors.gray400}
+                      />
+                      <Text style={styles.postStatText}>{post.likeCount}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -429,6 +517,7 @@ const CollectionDetailScreen = () => {
         {renderImageGallery()}
         {renderCollectionInfo()}
         {renderReview()}
+        {renderRelatedPosts()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -634,6 +723,82 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: __DEV__ ? "System" : "Inter-Medium",
     color: theme.colors.black,
+  },
+  // Related posts styles
+  relatedPostsContainer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
+  },
+  relatedPostsTitle: {
+    fontSize: 18,
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    color: theme.colors.black,
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    marginTop: 12,
+  },
+  postsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
+  },
+  postItem: {
+    width: (screenWidth - 40 - 12) / 2,
+    marginHorizontal: 6,
+    marginBottom: 16,
+    backgroundColor: theme.colors.white,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+  },
+  postImage: {
+    width: "100%",
+    height: 120,
+    backgroundColor: theme.colors.gray100,
+  },
+  postInfo: {
+    padding: 10,
+  },
+  postTitle: {
+    fontSize: 13,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.black,
+    marginBottom: 6,
+    lineHeight: 18,
+  },
+  postMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  postUsername: {
+    fontSize: 11,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray500,
+  },
+  postStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  postStatText: {
+    fontSize: 11,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  LayoutChangeEvent,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,7 +22,15 @@ import * as ImagePicker from "expo-image-picker";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
-import { userInfoService } from "../services/userInfoService";
+import { userInfoService, Gender } from "../services/userInfoService";
+import { designerService, DesignerOption } from "../services/designerService";
+
+// 性别选项
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: "MALE", label: "男" },
+  { value: "FEMALE", label: "女" },
+  { value: "OTHER", label: "其他" },
+];
 
 // 中国所有省份列表
 const PROVINCES = [
@@ -68,41 +79,101 @@ const EditProfileScreen = () => {
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [gender, setGender] = useState<Gender>("OTHER");
+  const [age, setAge] = useState<string>("");
+  const [preference, setPreference] = useState("");
+  const [selectedDesignerIds, setSelectedDesignerIds] = useState<number[]>([]);
+
+  // 设计师选项
+  const [designerOptions, setDesignerOptions] = useState<DesignerOption[]>([]);
 
   // UI 状态
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showProvinceModal, setShowProvinceModal] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showDesignerModal, setShowDesignerModal] = useState(false);
 
-  // 从 API 加载用户信息
+  // 输入框引用
+  const usernameInputRef = useRef<TextInput>(null);
+  const bioInputRef = useRef<TextInput>(null);
+
+  // ScrollView 引用和输入框位置跟踪
+  const scrollViewRef = useRef<ScrollView>(null);
+  const inputPositions = useRef<{ [key: string]: number }>({});
+
+  // 记录输入框位置
+  const handleInputLayout = (key: string) => (event: LayoutChangeEvent) => {
+    inputPositions.current[key] = event.nativeEvent.layout.y;
+  };
+
+  // 输入框获得焦点时滚动到可见区域
+  const scrollToInput = (key: string) => {
+    const yOffset = inputPositions.current[key];
+    if (yOffset !== undefined && scrollViewRef.current) {
+      // 滚动到输入框位置，预留一些顶部空间
+      scrollViewRef.current.scrollTo({
+        y: Math.max(0, yOffset - 120),
+        animated: true,
+      });
+    }
+  };
+
+  // 从 API 加载用户信息和设计师选项
   useEffect(() => {
-    const loadUserInfo = async () => {
+    const loadData = async () => {
       if (!user?.userId) {
         setInitialLoading(false);
         return;
       }
 
+      // 先加载设计师选项（不依赖认证也可能成功）
       try {
-        const userInfo = await userInfoService.getUserInfo(user.userId);
-        // 设置表单数据
-        setUsername(userInfo.username || user.username || "");
-        setBio(userInfo.bio || "");
-        setLocation(userInfo.location || "");
-        setAvatar(userInfo.avatarUrl || user.avatar || "");
-      } catch (error) {
-        console.error("加载用户信息失败:", error);
-        // 使用本地数据作为后备
-        setUsername(user.username || "");
-        setBio(user.bio || "");
-        setLocation(user.location || "");
-        setAvatar(user.avatar || "");
-      } finally {
-        setInitialLoading(false);
+        const designers = await designerService.getDesignerOptions();
+        setDesignerOptions(designers || []);
+      } catch (err) {
+        console.warn("加载设计师选项失败:", err);
       }
+
+      // 尝试加载完整用户资料
+      try {
+        const userProfile = await userInfoService.getUserProfile(user.userId);
+        // 设置表单数据
+        setUsername(userProfile.username || user.username || "");
+        setBio(userProfile.bio || "");
+        setLocation(userProfile.location || "");
+        setAvatar(userProfile.avatarUrl || user.avatar || "");
+        setGender(userProfile.gender || "OTHER");
+        setAge(userProfile.age ? String(userProfile.age) : "");
+        setPreference(userProfile.preference || "");
+        setSelectedDesignerIds(
+          userProfile.possibleDesigners?.map((d) => d.id) || []
+        );
+      } catch (error) {
+        console.warn("加载完整用户资料失败，尝试加载基本信息:", error);
+
+        // 回退：尝试加载基本用户信息
+        try {
+          const userInfo = await userInfoService.getUserInfo(user.userId);
+          setUsername(userInfo.username || user.username || "");
+          setBio(userInfo.bio || "");
+          setLocation(userInfo.location || "");
+          setAvatar(userInfo.avatarUrl || user.avatar || "");
+        } catch (fallbackError) {
+          console.warn("加载基本用户信息也失败，使用本地数据:", fallbackError);
+          // 使用本地数据作为后备
+          setUsername(user.username || "");
+          setBio(user.bio || "");
+          setLocation(user.location || "");
+          setAvatar(user.avatar || "");
+        }
+      }
+
+      setInitialLoading(false);
     };
 
-    loadUserInfo();
+    loadData();
   }, [user?.userId]);
 
   // 保存用户资料
@@ -117,13 +188,25 @@ const EditProfileScreen = () => {
       return;
     }
 
+    // 验证年龄
+    const ageNum = age ? parseInt(age, 10) : 0;
+    if (age && (isNaN(ageNum) || ageNum < 0 || ageNum > 150)) {
+      Alert.show("提示: 请输入有效的年龄");
+      return;
+    }
+
     setLoading(true);
     try {
-      // 调用 API 更新用户资料
-      const updatedInfo = await userInfoService.updateUserInfo(user.userId, {
+      // 尝试调用 API 更新用户完整资料
+      const updatedInfo = await userInfoService.updateUserProfile(user.userId, {
         username: username.trim(),
         bio: bio.trim(),
         location: location,
+        avatarUrl: avatar,
+        gender: gender,
+        age: ageNum,
+        preference: preference.trim(),
+        possibleDesignerIds: selectedDesignerIds,
       });
 
       // 更新本地状态
@@ -137,9 +220,33 @@ const EditProfileScreen = () => {
       Alert.show("成功: 个人资料已更新", "", 1000);
       setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "更新失败，请重试";
-      Alert.show("错误: " + message);
+      console.warn("更新完整资料失败，尝试更新基本信息:", error);
+
+      // 回退：尝试更新基本用户信息
+      try {
+        const updatedInfo = await userInfoService.updateUserInfo(user.userId, {
+          username: username.trim(),
+          bio: bio.trim(),
+          location: location,
+        });
+
+        // 更新本地状态
+        updateProfile({
+          username: updatedInfo.username,
+          bio: updatedInfo.bio,
+          location: updatedInfo.location,
+          avatar: updatedInfo.avatarUrl || avatar,
+        });
+
+        Alert.show("成功: 基本资料已更新", "", 1000);
+        setTimeout(() => navigation.goBack(), 1000);
+      } catch (fallbackError) {
+        const message =
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : "更新失败，请重试";
+        Alert.show("错误: " + message);
+      }
     } finally {
       setLoading(false);
     }
@@ -203,6 +310,40 @@ const EditProfileScreen = () => {
     setShowProvinceModal(false);
   };
 
+  // 选择性别
+  const handleSelectGender = (selectedGender: Gender) => {
+    setGender(selectedGender);
+    setShowGenderModal(false);
+  };
+
+  // 切换设计师选择
+  const handleToggleDesigner = (designerId: number) => {
+    setSelectedDesignerIds((prev) => {
+      if (prev.includes(designerId)) {
+        return prev.filter((id) => id !== designerId);
+      } else {
+        if (prev.length >= 5) {
+          Alert.show("提示: 最多选择 5 个设计师");
+          return prev;
+        }
+        return [...prev, designerId];
+      }
+    });
+  };
+
+  // 获取性别标签
+  const getGenderLabel = (value: Gender) => {
+    return GENDER_OPTIONS.find((opt) => opt.value === value)?.label || "其他";
+  };
+
+  // 获取已选设计师名称
+  const getSelectedDesignerNames = () => {
+    return designerOptions
+      .filter((d) => selectedDesignerIds.includes(d.id))
+      .map((d) => d.name)
+      .join(", ");
+  };
+
   // 加载中页面
   if (initialLoading) {
     return (
@@ -229,96 +370,214 @@ const EditProfileScreen = () => {
         ]}
       />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 头像区域 */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handlePickImage}
-            disabled={uploadingAvatar}
-          >
-            <Image
-              source={{
-                uri:
-                  avatar ||
-                  "https://api.dicebear.com/7.x/avataaars/png?seed=default",
-              }}
-              style={styles.avatar}
-            />
-            {uploadingAvatar ? (
-              <View style={styles.avatarLoadingOverlay}>
-                <ActivityIndicator size="small" color={theme.colors.white} />
-              </View>
-            ) : (
-              <View style={styles.avatarEditIcon}>
-                <Ionicons name="camera" size={20} color={theme.colors.white} />
-              </View>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.avatarHint}>
-            {uploadingAvatar ? "上传中..." : "点击更换头像"}
-          </Text>
-        </View>
-
-        {/* 表单区域 */}
-        <View style={styles.formSection}>
-          {/* 用户名 */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>用户名 *</Text>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="请输入用户名"
-              placeholderTextColor={theme.colors.gray400}
-              maxLength={20}
-            />
-          </View>
-
-          {/* 个人简介 */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>个人简介</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="介绍一下自己..."
-              placeholderTextColor={theme.colors.gray400}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              maxLength={200}
-            />
-            <Text style={styles.charCount}>{bio.length}/200</Text>
-          </View>
-
-          {/* 所在地 */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>所在地</Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          {/* 头像区域 */}
+          <View style={styles.avatarSection}>
             <TouchableOpacity
-              style={styles.selectInput}
-              onPress={() => setShowProvinceModal(true)}
+              style={styles.avatarContainer}
+              onPress={handlePickImage}
+              disabled={uploadingAvatar}
             >
-              <Text
-                style={[
-                  styles.selectInputText,
-                  !location && styles.selectInputPlaceholder,
-                ]}
-              >
-                {location || "请选择所在省份"}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={20}
-                color={theme.colors.gray400}
+              <Image
+                source={{
+                  uri:
+                    avatar ||
+                    "https://api.dicebear.com/7.x/avataaars/png?seed=default",
+                }}
+                style={styles.avatar}
               />
+              {uploadingAvatar ? (
+                <View style={styles.avatarLoadingOverlay}>
+                  <ActivityIndicator size="small" color={theme.colors.white} />
+                </View>
+              ) : (
+                <View style={styles.avatarEditIcon}>
+                  <Ionicons
+                    name="camera"
+                    size={20}
+                    color={theme.colors.white}
+                  />
+                </View>
+              )}
             </TouchableOpacity>
+            <Text style={styles.avatarHint}>
+              {uploadingAvatar ? "上传中..." : "点击更换头像"}
+            </Text>
           </View>
-        </View>
 
-        {/* 底部留白 */}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+          {/* 表单区域 */}
+          <View style={styles.formSection}>
+            {/* 用户名 */}
+            <View
+              style={styles.inputGroup}
+              onLayout={handleInputLayout("username")}
+            >
+              <Text style={styles.label}>用户名 *</Text>
+              <TextInput
+                ref={usernameInputRef}
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="请输入用户名"
+                placeholderTextColor={theme.colors.gray400}
+                maxLength={20}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => bioInputRef.current?.focus()}
+                onFocus={() => scrollToInput("username")}
+                autoComplete="username"
+                textContentType="username"
+              />
+            </View>
+
+            {/* 个人简介 */}
+            <View style={styles.inputGroup} onLayout={handleInputLayout("bio")}>
+              <Text style={styles.label}>个人简介</Text>
+              <TextInput
+                ref={bioInputRef}
+                style={[styles.input, styles.textArea]}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="介绍一下自己..."
+                placeholderTextColor={theme.colors.gray400}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                maxLength={200}
+                returnKeyType="default"
+                blurOnSubmit={false}
+                onFocus={() => scrollToInput("bio")}
+              />
+              <Text style={styles.charCount}>{bio.length}/200</Text>
+            </View>
+
+            {/* 所在地 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>所在地</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setShowProvinceModal(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectInputText,
+                    !location && styles.selectInputPlaceholder,
+                  ]}
+                >
+                  {location || "请选择所在省份"}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={theme.colors.gray400}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* 性别 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>性别</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setShowGenderModal(true)}
+              >
+                <Text style={styles.selectInputText}>
+                  {getGenderLabel(gender)}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={theme.colors.gray400}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* 年龄 */}
+            <View style={styles.inputGroup} onLayout={handleInputLayout("age")}>
+              <Text style={styles.label}>年龄</Text>
+              <TextInput
+                style={styles.input}
+                value={age}
+                onChangeText={setAge}
+                placeholder="请输入年龄"
+                placeholderTextColor={theme.colors.gray400}
+                keyboardType="number-pad"
+                maxLength={3}
+                returnKeyType="next"
+                onFocus={() => scrollToInput("age")}
+              />
+            </View>
+
+            {/* 偏好 */}
+            <View
+              style={styles.inputGroup}
+              onLayout={handleInputLayout("preference")}
+            >
+              <Text style={styles.label}>时尚偏好</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={preference}
+                onChangeText={setPreference}
+                placeholder="描述你的时尚偏好..."
+                placeholderTextColor={theme.colors.gray400}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                maxLength={200}
+                returnKeyType="default"
+                blurOnSubmit={false}
+                onFocus={() => scrollToInput("preference")}
+              />
+              <Text style={styles.charCount}>{preference.length}/200</Text>
+            </View>
+
+            {/* 喜欢的设计师 */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>喜欢的设计师（最多5个）</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setShowDesignerModal(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectInputText,
+                    selectedDesignerIds.length === 0 &&
+                      styles.selectInputPlaceholder,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {selectedDesignerIds.length > 0
+                    ? getSelectedDesignerNames()
+                    : "请选择喜欢的设计师"}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={theme.colors.gray400}
+                />
+              </TouchableOpacity>
+              {selectedDesignerIds.length > 0 && (
+                <Text style={styles.selectedCount}>
+                  已选择 {selectedDesignerIds.length}/5
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* 底部留白 */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* 省份选择弹窗 */}
       <Modal
@@ -379,6 +638,147 @@ const EditProfileScreen = () => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* 性别选择弹窗 */}
+      <Modal
+        visible={showGenderModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowGenderModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowGenderModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.genderModalContainer}
+            onPress={() => {}}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>选择性别</Text>
+              <TouchableOpacity
+                onPress={() => setShowGenderModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.black} />
+              </TouchableOpacity>
+            </View>
+            {GENDER_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.provinceItem,
+                  gender === option.value && styles.provinceItemSelected,
+                ]}
+                onPress={() => handleSelectGender(option.value)}
+              >
+                <Text
+                  style={[
+                    styles.provinceItemText,
+                    gender === option.value && styles.provinceItemTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                {gender === option.value && (
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={theme.colors.black}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 设计师选择弹窗 */}
+      <Modal
+        visible={showDesignerModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDesignerModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDesignerModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.modalContainer}
+            onPress={() => {}}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                选择喜欢的设计师（{selectedDesignerIds.length}/5）
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowDesignerModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.black} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={designerOptions}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => {
+                const isSelected = selectedDesignerIds.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.designerItem,
+                      isSelected && styles.designerItemSelected,
+                    ]}
+                    onPress={() => handleToggleDesigner(item.id)}
+                  >
+                    <View style={styles.designerInfo}>
+                      <Text
+                        style={[
+                          styles.designerName,
+                          isSelected && styles.designerNameSelected,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.checkbox,
+                        isSelected && styles.checkboxSelected,
+                      ]}
+                    >
+                      {isSelected && (
+                        <Ionicons
+                          name="checkmark"
+                          size={16}
+                          color={theme.colors.white}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={styles.emptyList}>
+                  <Text style={styles.emptyListText}>暂无设计师选项</Text>
+                </View>
+              }
+            />
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={() => setShowDesignerModal(false)}
+            >
+              <Text style={styles.confirmButtonText}>确定</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -387,6 +787,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
   content: {
     flex: 1,
@@ -544,6 +947,73 @@ const styles = StyleSheet.create({
   },
   provinceItemTextSelected: {
     fontWeight: "600",
+  },
+  selectedCount: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    marginTop: 6,
+  },
+  // 性别弹窗
+  genderModalContainer: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  // 设计师选择
+  designerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+  },
+  designerItemSelected: {
+    backgroundColor: theme.colors.gray50,
+  },
+  designerInfo: {
+    flex: 1,
+  },
+  designerName: {
+    fontSize: 15,
+    color: theme.colors.black,
+  },
+  designerNameSelected: {
+    fontWeight: "600",
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.gray300,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  emptyList: {
+    padding: 40,
+    alignItems: "center",
+  },
+  emptyListText: {
+    fontSize: 14,
+    color: theme.colors.gray500,
+  },
+  confirmButton: {
+    margin: 20,
+    backgroundColor: theme.colors.black,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: theme.colors.white,
   },
 });
 
