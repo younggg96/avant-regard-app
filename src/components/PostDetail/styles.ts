@@ -286,7 +286,7 @@ export const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: "100%",
   },
-  // 关联造型样式
+  // 关联秀场样式
   showImageCard: {
     width: 100,
     marginRight: 12,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { StyleSheet, Modal } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,7 +16,7 @@ import {
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageCropper from "../components/ImageCropper";
-import LookSelectorModal from "../components/LookSelectorModal";
+import ShowSelectorModal, { Show } from "../components/ShowSelectorModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import RatingSelector from "../components/RatingSelector";
 import ImageGridSelector from "../components/ImageGridSelector";
@@ -25,10 +25,7 @@ import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
 import { postService } from "../services/postService";
 import { useAuthStore } from "../store/authStore";
-import {
-  designerService,
-  DesignerDetailDto,
-} from "../services/designerService";
+import showsData from "../data/shows.json";
 
 const PublishReviewScreen = () => {
   const navigation = useNavigation();
@@ -54,140 +51,87 @@ const PublishReviewScreen = () => {
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
   const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
-  const [allLooks, setAllLooks] = useState<
-    Array<{ id: number; designer: string; season: string; imageUrl: string }>
-  >([]);
-  const [designers, setDesigners] = useState<DesignerDetailDto[]>([]);
+  const [allShows, setAllShows] = useState<Show[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoadingLooks, setIsLoadingLooks] = useState(false);
-  const [loadedDesignerCount, setLoadedDesignerCount] = useState(3); // 追踪已加载的设计师数量
+  const [isLoadingShows, setIsLoadingShows] = useState(false);
+  const [displayCount, setDisplayCount] = useState(20); // 当前显示的秀数量
 
   const MAX_IMAGES = 6;
   const MAX_LOOKS = 6;
 
-  // 加载设计师列表
+  // 加载秀场数据
   useEffect(() => {
-    const loadDesigners = async () => {
-      try {
-        const data = await designerService.getAllDesignerDetails();
-        setDesigners(data);
-      } catch (error) {
-        console.error("Failed to load designers:", error);
-      }
-    };
-
-    loadDesigners();
+    const shows: Show[] = (showsData as any[]).map((show) => ({
+      designer: show.designer,
+      season: show.season,
+      title: show.title,
+      cover_image: show.cover_image,
+      show_url: show.show_url,
+      year: show.year,
+      category: show.category,
+    }));
+    setAllShows(shows);
   }, []);
 
-  // 当搜索时加载对应设计师的造型
-  useEffect(() => {
-    const loadLooksForDesigner = async () => {
-      // 如果没有设计师数据，先等待
-      if (designers.length === 0) {
-        return;
-      }
+  // 根据搜索词过滤秀场
+  const filteredShows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return allShows.slice(0, displayCount);
+    }
+    return allShows.filter(
+      (show) =>
+        show.designer.toLowerCase().includes(query) ||
+        show.season.toLowerCase().includes(query) ||
+        show.category.toLowerCase().includes(query)
+    );
+  }, [allShows, searchQuery, displayCount]);
 
-      setIsLoadingLooks(true);
-      try {
-        if (!searchQuery.trim()) {
-          // 没有搜索词时，默认加载前3个设计师的造型
-          setLoadedDesignerCount(3);
-          const targetDesigners = designers.slice(0, 3);
-          const allLooksData = await Promise.all(
-            targetDesigners.map(async (designer) => {
-              try {
-                const designerData =
-                  await designerService.getDesignerShowAndImages(designer.id);
-                return designerData.images.map((img) => ({
-                  id: img.id,
-                  designer: designerData.name,
-                  season: designerData.shows[0]?.season || "",
-                  imageUrl: img.imageUrl,
-                }));
-              } catch (error) {
-                console.error(
-                  `Failed to load looks for designer ${designer.name}:`,
-                  error
-                );
-                return [];
-              }
-            })
-          );
-          // 合并所有造型数据
-          setAllLooks(allLooksData.flat());
-        } else {
-          // 找到匹配的设计师
-          const targetDesigner = designers.find(
-            (d) =>
-              d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              searchQuery.toLowerCase().includes(d.name.toLowerCase())
-          );
+  const hasMoreShows = !searchQuery.trim() && displayCount < allShows.length;
 
-          if (!targetDesigner) {
-            setAllLooks([]);
-            return;
-          }
+  // 加载更多秀场
+  const handleLoadMoreShows = () => {
+    if (searchQuery.trim() || isLoadingShows) {
+      return;
+    }
+    if (displayCount >= allShows.length) {
+      return;
+    }
+    setIsLoadingShows(true);
+    setTimeout(() => {
+      setDisplayCount((prev) => Math.min(prev + 20, allShows.length));
+      setIsLoadingShows(false);
+    }, 300);
+  };
 
-          const designerData = await designerService.getDesignerShowAndImages(
-            targetDesigner.id
-          );
-          const looks = designerData.images.map((img) => ({
-            id: img.id,
-            designer: designerData.name,
-            season: designerData.shows[0]?.season || "",
-            imageUrl: img.imageUrl,
-          }));
-          setAllLooks(looks);
-        }
-      } catch (error) {
-        console.error("Failed to load looks:", error);
-        setAllLooks([]);
-      } finally {
-        setIsLoadingLooks(false);
-      }
+  // 选择秀场
+  const handleSelectShow = (show: Show) => {
+    if (selectedLooks.length >= MAX_LOOKS) {
+      Alert.show("提示: 最多只能关联" + MAX_LOOKS + "个秀场");
+      return;
+    }
+
+    // 检查是否已经添加过相同的秀
+    const isDuplicate = selectedLooks.some(
+      (item) => item.designer === show.designer && item.season === show.season
+    );
+
+    if (isDuplicate) {
+      Alert.show("提示: 该秀场已经添加过了");
+      return;
+    }
+
+    // 将 Show 转换为 SelectedLook 格式
+    const selectedLook: SelectedLook = {
+      id: 0, // 秀场没有 id，使用 0
+      designer: show.designer,
+      season: show.season,
+      imageUrl: show.cover_image,
     };
 
-    // 防抖处理
-    const timer = setTimeout(loadLooksForDesigner, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, designers]);
-
-  // 加载更多设计师的造型
-  const handleLoadMoreLooks = async () => {
-    // 如果正在搜索，不触发加载更多
-    if (searchQuery.trim() || isLoadingLooks) {
-      return;
-    }
-
-    // 检查是否还有更多设计师可以加载
-    if (loadedDesignerCount >= designers.length) {
-      return;
-    }
-
-    setIsLoadingLooks(true);
-    try {
-      // 加载下一个设计师
-      const nextDesigner = designers[loadedDesignerCount];
-      if (nextDesigner) {
-        const designerData = await designerService.getDesignerShowAndImages(
-          nextDesigner.id
-        );
-        const newLooks = designerData.images.map((img) => ({
-          id: img.id,
-          designer: designerData.name,
-          season: designerData.shows[0]?.season || "",
-          imageUrl: img.imageUrl,
-        }));
-
-        // 追加新的造型到现有列表
-        setAllLooks((prevLooks) => [...prevLooks, ...newLooks]);
-        setLoadedDesignerCount((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Failed to load more looks:", error);
-    } finally {
-      setIsLoadingLooks(false);
-    }
+    setSelectedLooks([...selectedLooks, selectedLook]);
+    setShowLookSelector(false);
+    Alert.show("已关联秀场", "", 1500);
   };
 
   // 检查是否满足发布标准
@@ -386,38 +330,11 @@ const PublishReviewScreen = () => {
     setCropperImageUri(null);
   };
 
-  const handleSelectLook = (look: SelectedLook) => {
-    if (selectedLooks.length >= MAX_LOOKS) {
-      Alert.show("提示: 最多只能关联" + MAX_LOOKS + "个造型");
-      return;
-    }
-
-    // 检查是否已经添加过相同的 look
-    const isDuplicate = selectedLooks.some(
-      (item) =>
-        item.designer === look.designer &&
-        item.season === look.season &&
-        item.imageUrl === look.imageUrl
-    );
-
-    if (isDuplicate) {
-      Alert.show("提示: 该造型已经添加过了");
-      return;
-    }
-
-    setSelectedLooks([...selectedLooks, look]);
-    setShowLookSelector(false);
-    Alert.show("已关联造型", "", 1500);
-  };
-
   const handleRemoveLook = (index: number) => {
     const newLooks = selectedLooks.filter((_, i) => i !== index);
     setSelectedLooks(newLooks);
     Alert.show("已取消关联");
   };
-
-  // 造型已在搜索时过滤，直接使用
-  const filteredLooks = allLooks;
 
   // 图片裁剪组件
   if (showImageCropper && cropperImageUri) {
@@ -526,7 +443,7 @@ const PublishReviewScreen = () => {
 
         <RatingSelector rating={rating} onRatingChange={setRating} required />
 
-        {/* 关联造型 */}
+        {/* 关联秀场 */}
         <LookGridSelector
           selectedLooks={selectedLooks}
           onLookPress={(look) => {
@@ -536,7 +453,7 @@ const PublishReviewScreen = () => {
           onRemoveLook={handleRemoveLook}
           onAddLook={() => setShowLookSelector(true)}
           maxLooks={MAX_LOOKS}
-          label="关联造型"
+          label="关联秀场"
           required
         />
 
@@ -622,16 +539,16 @@ const PublishReviewScreen = () => {
         onClose={() => setShowImagePreview(false)}
       />
 
-      <LookSelectorModal
+      <ShowSelectorModal
         visible={showLookSelector}
-        looks={filteredLooks}
+        shows={filteredShows}
         searchQuery={searchQuery}
-        isLoading={isLoadingLooks}
-        hasMore={!searchQuery.trim() && loadedDesignerCount < designers.length}
+        isLoading={isLoadingShows}
+        hasMore={hasMoreShows}
         onSearchChange={setSearchQuery}
-        onSelectLook={handleSelectLook}
+        onSelectShow={handleSelectShow}
         onClose={() => setShowLookSelector(false)}
-        onLoadMore={handleLoadMoreLooks}
+        onLoadMore={handleLoadMoreShows}
       />
     </SafeAreaView>
   );

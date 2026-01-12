@@ -28,7 +28,7 @@ export const RelatedLooks: React.FC<RelatedLooksProps> = ({
       borderTopColor="$gray100"
     >
       <Text fontSize="$lg" fontWeight="$semibold" color="$black">
-        关联造型
+        关联秀场
       </Text>
       <RNScrollView
         horizontal

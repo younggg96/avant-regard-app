@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
 
-// 关联造型类型
+// 关联秀场类型
 export interface ShowImageInfo {
   id: number;
   imageUrl: string;

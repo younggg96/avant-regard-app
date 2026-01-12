@@ -29,7 +29,7 @@ const LookGridSelector: React.FC<LookGridSelectorProps> = ({
   onRemoveLook,
   onAddLook,
   maxLooks = 6,
-  label = "关联造型",
+  label = "关联秀场",
   required = false,
 }) => {
   const lookWidth = (screenWidth - 48 - 16) / 3;
@@ -114,7 +114,7 @@ const LookGridSelector: React.FC<LookGridSelectorProps> = ({
               color={theme.colors.gray400}
             />
             <Text color="$gray400" fontSize="$xs" mt="$xs">
-              添加造型
+              添加秀场
             </Text>
           </Pressable>
         )}

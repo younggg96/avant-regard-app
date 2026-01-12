@@ -14,8 +14,10 @@ interface SplashVideoProps {
 
 export default function SplashVideo({ onFinish }: SplashVideoProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const overlayFadeAnim = useRef(new Animated.Value(1)).current; // 黑色遮罩的透明度
   const [hasFinished, setHasFinished] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState<boolean | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false); // 追踪视频是否真正在播放
 
   useEffect(() => {
     checkFirstOpen();
@@ -41,16 +43,29 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
   };
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && status.didJustFinish && !hasFinished) {
-      setHasFinished(true);
-      // 视频播放完成，执行淡出动画
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        onFinish();
-      });
+    if (status.isLoaded) {
+      // 检测视频是否真正开始播放（有进度且正在播放）
+      if (status.isPlaying && status.positionMillis > 0 && !isVideoPlaying) {
+        setIsVideoPlaying(true);
+        // 视频真正开始播放后，快速淡出黑色遮罩
+        Animated.timing(overlayFadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      }
+
+      if (status.didJustFinish && !hasFinished) {
+        setHasFinished(true);
+        // 视频播放完成，执行淡出动画
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          onFinish();
+        });
+      }
     }
   };
 
@@ -82,6 +97,11 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         onError={handleError}
       />
+      {/* 黑色遮罩，覆盖在视频上方，防止加载时显示黄色帧 */}
+      <Animated.View
+        style={[styles.overlay, { opacity: overlayFadeAnim }]}
+        pointerEvents="none"
+      />
     </Animated.View>
   );
 }
@@ -101,5 +121,13 @@ const styles = StyleSheet.create({
   video: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#000000",
   },
 });

@@ -60,7 +60,7 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
-  // 关联的秀场造型
+  // 关联的秀场
   showImages?: ShowImageDetail[];
 }
 
@@ -123,7 +123,7 @@ const mapApiPostToDisplayPost = (
       isSaved: false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
-    // 关联的秀场造型
+    // 关联的秀场
     showImages: apiPost.showImages,
   };
 };
@@ -367,7 +367,14 @@ const DiscoverScreen = () => {
   const handleVerticalScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const currentScrollY = event.nativeEvent.contentOffset.y;
+      const contentHeight = event.nativeEvent.contentSize.height;
+      const layoutHeight = event.nativeEvent.layoutMeasurement.height;
       const scrollThreshold = 50; // 滚动阈值
+      const bottomThreshold = 100; // 距离底部的阈值
+
+      // 检测是否接近底部
+      const isNearBottom =
+        currentScrollY + layoutHeight >= contentHeight - bottomThreshold;
 
       // 向下滚动且超过阈值 - 隐藏 header
       if (
@@ -389,10 +396,11 @@ const DiscoverScreen = () => {
           }),
         ]).start();
       }
-      // 向上滚动或接近顶部 - 显示 header
+      // 向上滚动或接近顶部 - 显示 header（但如果在底部附近则不显示）
       else if (
         (currentScrollY < lastScrollY.current || currentScrollY <= 10) &&
-        !isHeaderVisible.current
+        !isHeaderVisible.current &&
+        !isNearBottom // 在底部附近时不显示 header
       ) {
         isHeaderVisible.current = true;
         Animated.parallel([

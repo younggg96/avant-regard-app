@@ -13,37 +13,40 @@ import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-interface Look {
-  id: number;
+export interface Show {
   designer: string;
   season: string;
-  imageUrl: string;
+  title: string;
+  cover_image: string;
+  show_url: string;
+  year: number;
+  category: string;
 }
 
-interface LookSelectorModalProps {
+interface ShowSelectorModalProps {
   visible: boolean;
-  looks: Look[];
+  shows: Show[];
   searchQuery: string;
   isLoading?: boolean;
   hasMore?: boolean;
   onSearchChange: (query: string) => void;
-  onSelectLook: (look: Look) => void;
+  onSelectShow: (show: Show) => void;
   onClose: () => void;
   onLoadMore?: () => void;
 }
 
-const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
+const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
   visible,
-  looks,
+  shows,
   searchQuery,
   isLoading = false,
   hasMore = false,
   onSearchChange,
-  onSelectLook,
+  onSelectShow,
   onClose,
   onLoadMore,
 }) => {
-  const lookWidth = (screenWidth - 48) / 3;
+  const showWidth = (screenWidth - 48) / 2;
 
   const handleEndReached = () => {
     if (!isLoading && hasMore && onLoadMore) {
@@ -74,7 +77,7 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
                 <Text fontSize="$lg" color="$black" fontWeight="$medium">
-                  选择相关造型
+                  选择相关秀场
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
                   <Ionicons
@@ -87,7 +90,7 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
               <Input
                 value={searchQuery}
                 onChangeText={onSearchChange}
-                placeholder="搜索设计师或系列..."
+                placeholder="搜索设计师或季节..."
                 placeholderTextColor={theme.colors.gray400}
                 variant="outline"
                 sx={{
@@ -98,11 +101,11 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
             </Box>
 
             <FlatList
-              data={looks}
+              data={shows}
               keyExtractor={(item, index) =>
                 `${item.designer}-${item.season}-${index}`
               }
-              numColumns={3}
+              numColumns={2}
               contentContainerStyle={styles.listContent}
               columnWrapperStyle={styles.columnWrapper}
               showsVerticalScrollIndicator={false}
@@ -110,30 +113,33 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
               onEndReachedThreshold={0.5}
               renderItem={({ item }) => (
                 <Pressable
-                  onPress={() => onSelectLook(item)}
-                  style={[styles.lookItem, { width: lookWidth }]}
+                  onPress={() => onSelectShow(item)}
+                  style={[styles.showItem, { width: showWidth }]}
                 >
                   <Image
-                    source={{ uri: item.imageUrl }}
-                    style={[styles.lookImage, { height: lookWidth * 1.5 }]}
+                    source={{ uri: item.cover_image }}
+                    style={[styles.showImage, { height: showWidth * 0.6 }]}
                   />
                   <VStack mt="$xs" px="$xs">
                     <Text
-                      fontSize="$xs"
+                      fontSize="$sm"
                       color="$black"
                       fontWeight="$medium"
                       numberOfLines={1}
                     >
                       {item.designer}
                     </Text>
-                    <Text fontSize={10} color="$gray400" numberOfLines={1}>
+                    <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
                       {item.season}
+                    </Text>
+                    <Text fontSize={10} color="$gray400" numberOfLines={1}>
+                      {item.category}
                     </Text>
                   </VStack>
                 </Pressable>
               )}
               ListFooterComponent={
-                isLoading && looks.length > 0 ? (
+                isLoading && shows.length > 0 ? (
                   <Box py="$md" alignItems="center">
                     <Text color="$gray400" fontSize="$sm">
                       加载中...
@@ -150,12 +156,12 @@ const LookSelectorModal: React.FC<LookSelectorModalProps> = ({
                   minHeight={400}
                 >
                   <Ionicons
-                    name="search-outline"
+                    name="albums-outline"
                     size={48}
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray400" mt="$md">
-                    {isLoading ? "加载中..." : "未找到相关造型"}
+                    {isLoading ? "加载中..." : "未找到相关秀场"}
                   </Text>
                 </Box>
               }
@@ -201,13 +207,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 6,
   },
-  lookItem: {
+  showItem: {
     marginBottom: 16,
   },
-  lookImage: {
+  showImage: {
     width: "100%",
     borderRadius: 8,
   },
 });
 
-export default LookSelectorModal;
+export default ShowSelectorModal;
