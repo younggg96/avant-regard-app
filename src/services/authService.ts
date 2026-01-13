@@ -1,5 +1,5 @@
 /**
- * 认证服务 - 处理所有认证相关的 API 调用
+ * 认证服务 - 使用 Supabase Auth
  */
 
 import { config } from "../config/env";
@@ -22,6 +22,7 @@ export interface LoginResponse {
   userType: string;
   accessToken: string;
   refreshToken: string;
+  expiresAt?: number;
 }
 
 export interface ApiError {
@@ -39,6 +40,7 @@ export interface LoginParams {
 export interface LoginSmsParams {
   phone: string;
   code: string;
+  username?: string; // 首次登录时可设置用户名
 }
 
 export interface RegisterParams {
@@ -148,8 +150,9 @@ export async function login(params: LoginParams): Promise<LoginResponse> {
 }
 
 /**
- * 短信验证码登录
+ * 短信验证码登录（自动注册）
  * POST /api/auth/login-sms
+ * 如果用户不存在会自动创建账号
  */
 export async function loginSms(params: LoginSmsParams): Promise<LoginResponse> {
   return request<LoginResponse>("/api/auth/login-sms", {
@@ -159,7 +162,7 @@ export async function loginSms(params: LoginSmsParams): Promise<LoginResponse> {
 }
 
 /**
- * 用户注册
+ * 用户注册（带密码）
  * POST /api/auth/register
  */
 export async function register(params: RegisterParams): Promise<LoginResponse> {
@@ -172,6 +175,7 @@ export async function register(params: RegisterParams): Promise<LoginResponse> {
 /**
  * 发送短信验证码
  * POST /api/auth/sms/send
+ * 使用 Supabase Phone Auth 发送 OTP
  */
 export async function sendSms(params: SendSmsParams): Promise<string> {
   return request<string>("/api/auth/sms/send", {
@@ -196,6 +200,7 @@ export async function forgetPassword(
 /**
  * 刷新 Token
  * POST /api/auth/refresh
+ * 使用 Supabase refresh token
  */
 export async function refreshToken(
   params: RefreshTokenParams
@@ -203,6 +208,16 @@ export async function refreshToken(
   return request<LoginResponse>("/api/auth/refresh", {
     method: "POST",
     body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 登出
+ * POST /api/auth/logout
+ */
+export async function logout(): Promise<void> {
+  return request<void>("/api/auth/logout", {
+    method: "POST",
   });
 }
 
@@ -214,6 +229,7 @@ export const authService = {
   sendSms,
   forgetPassword,
   refreshToken,
+  logout,
 };
 
 export default authService;

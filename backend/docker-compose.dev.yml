@@ -1,0 +1,38 @@
+# =====================================================
+# Avant Regard API - Docker Compose (开发模式)
+# =====================================================
+# 使用方法: docker-compose -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avant-regard-api-dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DEBUG=true
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+    volumes:
+      # 挂载代码目录实现热重载
+      - ./app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    networks:
+      - avant-regard-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: avant-regard-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - avant-regard-network
+
+networks:
+  avant-regard-network:
+    driver: bridge

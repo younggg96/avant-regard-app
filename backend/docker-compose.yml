@@ -1,0 +1,74 @@
+# =====================================================
+# Avant Regard API - Docker Compose
+# =====================================================
+
+services:
+  # =====================================================
+  # API 服务
+  # =====================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avant-regard-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Supabase 配置（认证完全由 Supabase Auth 处理）
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      # Redis 配置
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      # 服务器配置
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - DEBUG=${DEBUG:-false}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["*"]}
+    volumes:
+      # 开发模式：挂载代码目录实现热重载
+      - ./app:/app/app:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - avant-regard-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =====================================================
+  # Redis 缓存（可选，用于速率限制）
+  # =====================================================
+  redis:
+    image: redis:7-alpine
+    container_name: avant-regard-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - avant-regard-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# =====================================================
+# 网络
+# =====================================================
+networks:
+  avant-regard-network:
+    driver: bridge
+
+# =====================================================
+# 数据卷
+# =====================================================
+volumes:
+  redis_data:

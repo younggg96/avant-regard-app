@@ -1,0 +1,27 @@
+# FastAPI and Server
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+
+# Supabase (使用最新稳定版)
+supabase>=2.4.0
+
+# Password Hashing
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+
+# Validation
+pydantic==2.6.1
+pydantic-settings==2.1.0
+email-validator==2.1.0.post1
+
+# File handling
+python-magic==0.4.27
+Pillow==10.2.0
+aiofiles==23.2.1
+
+# Redis (for rate limiting and caching)
+redis==5.0.1
+
+# Utilities
+python-dotenv==1.0.1

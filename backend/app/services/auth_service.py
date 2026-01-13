@@ -1,0 +1,311 @@
+"""
+认证服务 - 完全使用 Supabase Auth
+"""
+from datetime import datetime
+from typing import Optional, Tuple
+from app.db.supabase import get_supabase, get_supabase_admin
+from app.core.security import hash_password, verify_password
+from gotrue.errors import AuthApiError
+
+
+class AuthService:
+    def __init__(self):
+        self.db = get_supabase()
+        self.db_admin = get_supabase_admin()
+
+    def _format_phone(self, phone: str) -> str:
+        """格式化手机号为国际格式"""
+        if phone.startswith("+"):
+            return phone
+        if len(phone) == 11 and phone.startswith("1"):
+            return f"+86{phone}"
+        return f"+{phone}"
+
+    def _get_or_create_app_user(self, supabase_user_id: str, phone: str, username: str = None) -> dict:
+        """获取或创建应用用户记录"""
+        # 先查找是否已有用户记录
+        result = self.db.table("users").select("*").eq("supabase_uid", supabase_user_id).execute()
+        
+        if result.data:
+            return result.data[0]
+        
+        # 创建新用户记录
+        user_data = {
+            "supabase_uid": supabase_user_id,
+            "phone": phone.replace("+86", ""),  # 存储不带国际前缀的手机号
+            "username": username or f"用户{phone[-4:]}",
+            "is_admin": False,
+            "user_type": "USER",
+            "status": "ACTIVE"
+        }
+        
+        result = self.db.table("users").insert(user_data).execute()
+        
+        if result.data:
+            user = result.data[0]
+            # 创建用户信息记录
+            self.db.table("user_info").insert({
+                "user_id": user["id"],
+                "bio": "",
+                "location": "",
+                "avatar_url": ""
+            }).execute()
+            return user
+        
+        return None
+
+    def send_sms_otp(self, phone: str) -> Tuple[bool, str]:
+        """
+        发送短信验证码
+        使用 Supabase Auth OTP
+        """
+        try:
+            formatted_phone = self._format_phone(phone)
+            
+            # 使用 Supabase 发送 OTP
+            response = self.db.auth.sign_in_with_otp({
+                "phone": formatted_phone
+            })
+            
+            return True, "验证码发送成功"
+            
+        except AuthApiError as e:
+            return False, f"发送失败: {str(e)}"
+        except Exception as e:
+            return False, f"发送失败: {str(e)}"
+
+    def verify_sms_otp(self, phone: str, code: str, username: str = None) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        验证短信验证码并登录/注册
+        返回 Supabase session 和应用用户信息
+        """
+        try:
+            formatted_phone = self._format_phone(phone)
+            
+            # 验证 OTP
+            response = self.db.auth.verify_otp({
+                "phone": formatted_phone,
+                "token": code,
+                "type": "sms"
+            })
+            
+            if not response.user:
+                return None, "验证码错误或已过期"
+            
+            # 获取或创建应用用户
+            app_user = self._get_or_create_app_user(
+                supabase_user_id=response.user.id,
+                phone=phone,
+                username=username
+            )
+            
+            if not app_user:
+                return None, "创建用户失败"
+            
+            # 返回完整的登录信息
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user["phone"],
+                "admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at
+            }, None
+            
+        except AuthApiError as e:
+            return None, f"验证失败: {str(e)}"
+        except Exception as e:
+            return None, f"验证失败: {str(e)}"
+
+    def login_with_password(self, phone: str, password: str) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        使用手机号和密码登录
+        注意：需要在 Supabase 中启用密码登录
+        """
+        try:
+            formatted_phone = self._format_phone(phone)
+            
+            # 使用 Supabase 密码登录
+            response = self.db.auth.sign_in_with_password({
+                "phone": formatted_phone,
+                "password": password
+            })
+            
+            if not response.user:
+                return None, "用户名或密码错误"
+            
+            # 获取应用用户
+            app_user = self._get_or_create_app_user(
+                supabase_user_id=response.user.id,
+                phone=phone
+            )
+            
+            if not app_user:
+                return None, "获取用户信息失败"
+            
+            if app_user.get("status") != "ACTIVE":
+                return None, "账号已被禁用"
+            
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user["phone"],
+                "admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at
+            }, None
+            
+        except AuthApiError as e:
+            error_msg = str(e)
+            if "Invalid login credentials" in error_msg:
+                return None, "手机号或密码错误"
+            return None, f"登录失败: {error_msg}"
+        except Exception as e:
+            return None, f"登录失败: {str(e)}"
+
+    def register_with_password(self, phone: str, username: str, password: str, code: str) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        使用手机号、密码和验证码注册
+        先验证 OTP，然后更新用户密码
+        """
+        try:
+            formatted_phone = self._format_phone(phone)
+            
+            # 先验证 OTP
+            response = self.db.auth.verify_otp({
+                "phone": formatted_phone,
+                "token": code,
+                "type": "sms"
+            })
+            
+            if not response.user:
+                return None, "验证码错误或已过期"
+            
+            # 更新用户密码
+            self.db.auth.update_user({
+                "password": password
+            })
+            
+            # 创建应用用户
+            app_user = self._get_or_create_app_user(
+                supabase_user_id=response.user.id,
+                phone=phone,
+                username=username
+            )
+            
+            # 更新用户名
+            if app_user and username:
+                self.db.table("users").update({"username": username}).eq("id", app_user["id"]).execute()
+                app_user["username"] = username
+            
+            if not app_user:
+                return None, "创建用户失败"
+            
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user["phone"],
+                "admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at
+            }, None
+            
+        except AuthApiError as e:
+            return None, f"注册失败: {str(e)}"
+        except Exception as e:
+            return None, f"注册失败: {str(e)}"
+
+    def refresh_session(self, refresh_token: str) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        刷新 session
+        """
+        try:
+            response = self.db.auth.refresh_session(refresh_token)
+            
+            if not response.session:
+                return None, "刷新令牌无效或已过期"
+            
+            # 获取应用用户
+            result = self.db.table("users").select("*").eq("supabase_uid", response.user.id).execute()
+            
+            if not result.data:
+                return None, "用户不存在"
+            
+            app_user = result.data[0]
+            
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user["phone"],
+                "admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at
+            }, None
+            
+        except AuthApiError as e:
+            return None, f"刷新失败: {str(e)}"
+        except Exception as e:
+            return None, f"刷新失败: {str(e)}"
+
+    def reset_password(self, phone: str, new_password: str, code: str) -> Tuple[bool, str]:
+        """
+        重置密码
+        """
+        try:
+            formatted_phone = self._format_phone(phone)
+            
+            # 验证 OTP
+            response = self.db.auth.verify_otp({
+                "phone": formatted_phone,
+                "token": code,
+                "type": "sms"
+            })
+            
+            if not response.user:
+                return False, "验证码错误或已过期"
+            
+            # 更新密码
+            self.db.auth.update_user({
+                "password": new_password
+            })
+            
+            return True, "密码重置成功"
+            
+        except AuthApiError as e:
+            return False, f"重置失败: {str(e)}"
+        except Exception as e:
+            return False, f"重置失败: {str(e)}"
+
+    def sign_out(self) -> bool:
+        """登出"""
+        try:
+            self.db.auth.sign_out()
+            return True
+        except:
+            return False
+
+    def get_user_by_id(self, user_id: int) -> Optional[dict]:
+        """根据应用用户ID获取用户"""
+        result = self.db.table("users").select("*").eq("id", user_id).execute()
+        if result.data:
+            return result.data[0]
+        return None
+
+    def get_user_by_supabase_uid(self, supabase_uid: str) -> Optional[dict]:
+        """根据 Supabase UID 获取用户"""
+        result = self.db.table("users").select("*").eq("supabase_uid", supabase_uid).execute()
+        if result.data:
+            return result.data[0]
+        return None
+
+
+# 单例
+auth_service = AuthService()
