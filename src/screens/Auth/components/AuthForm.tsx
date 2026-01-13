@@ -160,9 +160,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             style={styles.countryCodeButton}
             onPress={() => setShowCountryPicker(true)}
           >
-            <Text style={styles.countryCodeFlag}>
-              {formData.countryCode?.flag || "🇨🇳"}
-            </Text>
             <Text style={styles.countryCode}>
               {formData.countryCode?.dialCode || "+86"}
             </Text>

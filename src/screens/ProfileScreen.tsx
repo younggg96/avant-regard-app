@@ -252,7 +252,7 @@ const ProfileScreen = () => {
           user.userId,
           "PUBLISHED"
         );
-        
+
         // 筛选出待审核和已审核通过的帖子
         const pendingPosts = apiPosts.filter(
           (post: ApiPost) => post.auditStatus === "PENDING"
@@ -276,8 +276,14 @@ const ProfileScreen = () => {
         // 缓存两个 tab 的数据
         setTabDataCache((prev) => ({
           ...prev,
-          pending: { posts: pendingDisplayPosts, count: pendingDisplayPosts.length },
-          published: { posts: approvedDisplayPosts, count: approvedDisplayPosts.length },
+          pending: {
+            posts: pendingDisplayPosts,
+            count: pendingDisplayPosts.length,
+          },
+          published: {
+            posts: approvedDisplayPosts,
+            count: approvedDisplayPosts.length,
+          },
         }));
 
         // 更新两个 tab 的数量
@@ -285,8 +291,9 @@ const ProfileScreen = () => {
         updateTabCount("published", approvedDisplayPosts.length);
 
         // 设置当前 tab 的帖子
-        loadedPosts = activeTab === "pending" ? pendingDisplayPosts : approvedDisplayPosts;
-        
+        loadedPosts =
+          activeTab === "pending" ? pendingDisplayPosts : approvedDisplayPosts;
+
         setPosts(loadedPosts);
         setLoading(false);
         return;
@@ -350,7 +357,7 @@ const ProfileScreen = () => {
       }
       return newCache;
     });
-    
+
     await Promise.all([
       loadUserInfo(),
       loadPosts(true),

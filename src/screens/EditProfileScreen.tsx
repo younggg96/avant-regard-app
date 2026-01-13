@@ -23,7 +23,14 @@ import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import { userInfoService, Gender } from "../services/userInfoService";
-import { designerService, DesignerOption } from "../services/designerService";
+import brandsData from "../data/brands.json";
+
+// Brand 选项类型
+interface BrandOption {
+  id: number;
+  name: string;
+  category: string | null;
+}
 
 // 性别选项
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
@@ -82,10 +89,10 @@ const EditProfileScreen = () => {
   const [gender, setGender] = useState<Gender>("OTHER");
   const [age, setAge] = useState<string>("");
   const [preference, setPreference] = useState("");
-  const [selectedDesignerIds, setSelectedDesignerIds] = useState<number[]>([]);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<number[]>([]);
 
-  // 设计师选项
-  const [designerOptions, setDesignerOptions] = useState<DesignerOption[]>([]);
+  // 品牌选项（从本地JSON加载）
+  const [brandOptions] = useState<BrandOption[]>(brandsData as BrandOption[]);
 
   // UI 状态
   const [loading, setLoading] = useState(false);
@@ -93,7 +100,7 @@ const EditProfileScreen = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showProvinceModal, setShowProvinceModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
-  const [showDesignerModal, setShowDesignerModal] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
 
   // 输入框引用
   const usernameInputRef = useRef<TextInput>(null);
@@ -120,20 +127,12 @@ const EditProfileScreen = () => {
     }
   };
 
-  // 从 API 加载用户信息和设计师选项
+  // 从 API 加载用户信息
   useEffect(() => {
     const loadData = async () => {
       if (!user?.userId) {
         setInitialLoading(false);
         return;
-      }
-
-      // 先加载设计师选项（不依赖认证也可能成功）
-      try {
-        const designers = await designerService.getDesignerOptions();
-        setDesignerOptions(designers || []);
-      } catch (err) {
-        console.warn("加载设计师选项失败:", err);
       }
 
       // 尝试加载完整用户资料
@@ -147,9 +146,6 @@ const EditProfileScreen = () => {
         setGender(userProfile.gender || "OTHER");
         setAge(userProfile.age ? String(userProfile.age) : "");
         setPreference(userProfile.preference || "");
-        setSelectedDesignerIds(
-          userProfile.possibleDesigners?.map((d) => d.id) || []
-        );
       } catch (error) {
         console.warn("加载完整用户资料失败，尝试加载基本信息:", error);
 
@@ -206,7 +202,6 @@ const EditProfileScreen = () => {
         gender: gender,
         age: ageNum,
         preference: preference.trim(),
-        possibleDesignerIds: selectedDesignerIds,
       });
 
       // 更新本地状态
@@ -316,31 +311,31 @@ const EditProfileScreen = () => {
     setShowGenderModal(false);
   };
 
-  // 切换设计师选择
-  const handleToggleDesigner = (designerId: number) => {
-    setSelectedDesignerIds((prev) => {
-      if (prev.includes(designerId)) {
-        return prev.filter((id) => id !== designerId);
-      } else {
-        if (prev.length >= 5) {
-          Alert.show("提示: 最多选择 5 个设计师");
-          return prev;
-        }
-        return [...prev, designerId];
-      }
-    });
-  };
-
   // 获取性别标签
   const getGenderLabel = (value: Gender) => {
     return GENDER_OPTIONS.find((opt) => opt.value === value)?.label || "其他";
   };
 
-  // 获取已选设计师名称
-  const getSelectedDesignerNames = () => {
-    return designerOptions
-      .filter((d) => selectedDesignerIds.includes(d.id))
-      .map((d) => d.name)
+  // 切换品牌选择
+  const handleToggleBrand = (brandId: number) => {
+    setSelectedBrandIds((prev) => {
+      if (prev.includes(brandId)) {
+        return prev.filter((id) => id !== brandId);
+      } else {
+        if (prev.length >= 5) {
+          Alert.show("提示: 最多选择 5 个品牌");
+          return prev;
+        }
+        return [...prev, brandId];
+      }
+    });
+  };
+
+  // 获取已选品牌名称
+  const getSelectedBrandNames = () => {
+    return brandOptions
+      .filter((b) => selectedBrandIds.includes(b.id))
+      .map((b) => b.name)
       .join(", ");
   };
 
@@ -528,7 +523,7 @@ const EditProfileScreen = () => {
                 style={[styles.input, styles.textArea]}
                 value={preference}
                 onChangeText={setPreference}
-                placeholder="描述你的时尚偏好..."
+                placeholder="例如：极简主义、街头风格、复古..."
                 placeholderTextColor={theme.colors.gray400}
                 multiline
                 numberOfLines={3}
@@ -541,24 +536,24 @@ const EditProfileScreen = () => {
               <Text style={styles.charCount}>{preference.length}/200</Text>
             </View>
 
-            {/* 喜欢的设计师 */}
+            {/* 喜欢的品牌 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>喜欢的设计师（最多5个）</Text>
+              <Text style={styles.label}>喜欢的品牌（最多5个）</Text>
               <TouchableOpacity
                 style={styles.selectInput}
-                onPress={() => setShowDesignerModal(true)}
+                onPress={() => setShowBrandModal(true)}
               >
                 <Text
                   style={[
                     styles.selectInputText,
-                    selectedDesignerIds.length === 0 &&
+                    selectedBrandIds.length === 0 &&
                       styles.selectInputPlaceholder,
                   ]}
                   numberOfLines={2}
                 >
-                  {selectedDesignerIds.length > 0
-                    ? getSelectedDesignerNames()
-                    : "请选择喜欢的设计师"}
+                  {selectedBrandIds.length > 0
+                    ? getSelectedBrandNames()
+                    : "请选择喜欢的品牌"}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -566,9 +561,9 @@ const EditProfileScreen = () => {
                   color={theme.colors.gray400}
                 />
               </TouchableOpacity>
-              {selectedDesignerIds.length > 0 && (
+              {selectedBrandIds.length > 0 && (
                 <Text style={styles.selectedCount}>
-                  已选择 {selectedDesignerIds.length}/5
+                  已选择 {selectedBrandIds.length}/5
                 </Text>
               )}
             </View>
@@ -582,7 +577,7 @@ const EditProfileScreen = () => {
       {/* 省份选择弹窗 */}
       <Modal
         visible={showProvinceModal}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setShowProvinceModal(false)}
       >
@@ -642,7 +637,7 @@ const EditProfileScreen = () => {
       {/* 性别选择弹窗 */}
       <Modal
         visible={showGenderModal}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setShowGenderModal(false)}
       >
@@ -695,17 +690,17 @@ const EditProfileScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* 设计师选择弹窗 */}
+      {/* 品牌选择弹窗 */}
       <Modal
-        visible={showDesignerModal}
-        animationType="slide"
+        visible={showBrandModal}
+        animationType="fade"
         transparent={true}
-        onRequestClose={() => setShowDesignerModal(false)}
+        onRequestClose={() => setShowBrandModal(false)}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowDesignerModal(false)}
+          onPress={() => setShowBrandModal(false)}
         >
           <TouchableOpacity
             activeOpacity={1}
@@ -714,27 +709,27 @@ const EditProfileScreen = () => {
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                选择喜欢的设计师（{selectedDesignerIds.length}/5）
+                选择喜欢的品牌（{selectedBrandIds.length}/5）
               </Text>
               <TouchableOpacity
-                onPress={() => setShowDesignerModal(false)}
+                onPress={() => setShowBrandModal(false)}
                 style={styles.modalCloseButton}
               >
                 <Ionicons name="close" size={24} color={theme.colors.black} />
               </TouchableOpacity>
             </View>
             <FlatList
-              data={designerOptions}
+              data={brandOptions}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => {
-                const isSelected = selectedDesignerIds.includes(item.id);
+                const isSelected = selectedBrandIds.includes(item.id);
                 return (
                   <TouchableOpacity
                     style={[
                       styles.designerItem,
                       isSelected && styles.designerItemSelected,
                     ]}
-                    onPress={() => handleToggleDesigner(item.id)}
+                    onPress={() => handleToggleBrand(item.id)}
                   >
                     <View style={styles.designerInfo}>
                       <Text
@@ -745,6 +740,11 @@ const EditProfileScreen = () => {
                       >
                         {item.name}
                       </Text>
+                      {item.category && (
+                        <Text style={styles.brandCategory}>
+                          {item.category}
+                        </Text>
+                      )}
                     </View>
                     <View
                       style={[
@@ -766,13 +766,13 @@ const EditProfileScreen = () => {
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyList}>
-                  <Text style={styles.emptyListText}>暂无设计师选项</Text>
+                  <Text style={styles.emptyListText}>暂无品牌选项</Text>
                 </View>
               }
             />
             <TouchableOpacity
               style={styles.confirmButton}
-              onPress={() => setShowDesignerModal(false)}
+              onPress={() => setShowBrandModal(false)}
             >
               <Text style={styles.confirmButtonText}>确定</Text>
             </TouchableOpacity>
@@ -981,6 +981,11 @@ const styles = StyleSheet.create({
   },
   designerNameSelected: {
     fontWeight: "600",
+  },
+  brandCategory: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    marginTop: 2,
   },
   checkbox: {
     width: 24,

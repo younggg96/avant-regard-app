@@ -26,7 +26,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
       visible={visible}
       transparent={true}
       onRequestClose={onClose}
-      animationType="slide"
+      animationType="fade"
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.optionsMenuOverlay}>
