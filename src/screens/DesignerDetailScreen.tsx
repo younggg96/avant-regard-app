@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,509 +7,377 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-  Animated,
+  Linking,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
-import {
-  designerService,
-  DesignerShowAndImageDetailDto,
-} from "../services/designerService";
-import { followService } from "../services/followService";
-import { useAuthStore } from "../store/authStore";
-import { Alert } from "../utils/Alert";
+import { getPosts, Post as ApiPost } from "../services/postService";
 
-const { width: screenWidth } = Dimensions.get("window");
+// Import local data
+import brandsData from "../data/brands.json";
+import showsData from "../data/shows.json";
 
-interface Designer {
-  id: string;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Types
+interface Brand {
+  id: number;
   name: string;
-  brand: string;
-  avatar: string;
-  coverImage: string;
-  isFollowing: boolean;
-  collections: number;
-  website?: string;
+  category: string | null;
+  foundedYear: string | null;
+  founder: string | null;
+  country: string | null;
+  website: string | null;
+  coverImage: string | null;
+  latestSeason: string | null;
+  vogueSlug: string | null;
+  vogueUrl: string | null;
+}
+
+interface Show {
+  designer: string;
+  season: string;
+  title: string;
+  cover_image: string;
+  show_url: string;
+  year: number;
+  category: string | null;
 }
 
 interface Collection {
   id: string;
   title: string;
   season: string;
-  year: string;
+  year: number;
   coverImage: string;
-  imageCount: number;
-  city?: string | null;
-  author?: string | null;
-  reviewText?: string | null;
-  showUrl?: string;
+  category: string | null;
+  showUrl: string;
 }
+
+type TabType = "shows" | "posts";
 
 const DesignerDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { user } = useAuthStore();
-  const designerId = (route.params as any)?.id || "1";
-  const designerName = (route.params as any)?.name;
+  const brandId = (route.params as any)?.id;
+  const brandName = (route.params as any)?.name;
 
-  const [designer, setDesigner] = useState<Designer | null>(null);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [designerApiData, setDesignerApiData] =
-    useState<DesignerShowAndImageDetailDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [totalLooksCount, setTotalLooksCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabType>("shows");
+  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
-  // Find designer data by name or ID from API
+  // Find brand from local data
+  const brand = useMemo(() => {
+    const brands = brandsData as Brand[];
+    if (brandId) {
+      const found = brands.find((b) => b.id === Number(brandId));
+      if (found) return found;
+    }
+    if (brandName) {
+      const found = brands.find(
+        (b) =>
+          b.name.toLowerCase() === brandName.toLowerCase() ||
+          b.name.toLowerCase().includes(brandName.toLowerCase())
+      );
+      if (found) return found;
+    }
+    return null;
+  }, [brandId, brandName]);
+
+  // Find shows for this brand from local data
+  const collections = useMemo(() => {
+    if (!brand) return [];
+    const shows = showsData as Show[];
+    const brandShows = shows.filter(
+      (show) =>
+        show.designer.toLowerCase() === brand.name.toLowerCase() ||
+        show.designer.toLowerCase().includes(brand.name.toLowerCase()) ||
+        brand.name.toLowerCase().includes(show.designer.toLowerCase())
+    );
+    brandShows.sort((a, b) => b.year - a.year);
+    return brandShows.map((show, index) => ({
+      id: `collection-${index}`,
+      title: show.title,
+      season: show.season,
+      year: show.year,
+      coverImage: show.cover_image,
+      category: show.category,
+      showUrl: show.show_url,
+    }));
+  }, [brand]);
+
+  // Load posts related to this brand
   useEffect(() => {
-    const loadDesignerData = async () => {
-      setLoading(true);
+    const loadPosts = async () => {
+      if (!brand) return;
+      setLoadingPosts(true);
       try {
-        // 1. 先获取所有设计师列表
-        const allDesigners = await designerService.getAllDesignerDetails();
-        let targetDesignerId: number | null = null;
-
-        // 2. 根据名称或 ID 找到目标设计师
-        if (designerName) {
-          const found = allDesigners.find(
-            (d) =>
-              d.name.toLowerCase() === designerName.toLowerCase() ||
-              d.name.toLowerCase().includes(designerName.toLowerCase())
-          );
-          if (found) targetDesignerId = found.id;
-        }
-
-        if (!targetDesignerId && designerId) {
-          targetDesignerId = Number(designerId);
-        }
-
-        if (!targetDesignerId && allDesigners.length > 0) {
-          targetDesignerId = allDesigners[0].id;
-        }
-
-        if (!targetDesignerId) {
-          throw new Error("未找到设计师");
-        }
-
-        // 3. 获取设计师详情（包含 shows 和 images）
-        const designerData = await designerService.getDesignerShowAndImages(
-          targetDesignerId
-        );
-
-        setDesignerApiData(designerData);
-
-        // Extract brand name from designer string (handle parentheses)
-        const brandMatch = designerData.name.match(/^([^(]+?)(?:\s*\(|$)/);
-        const designerMatch = designerData.name.match(/\(([^)]+)\)$/);
-
-        const brand = designerMatch
-          ? designerMatch[1]
-          : brandMatch?.[1]?.trim() || designerData.name;
-        const name = brandMatch?.[1]?.trim() || designerData.name;
-
-        // Get first image as avatar/cover
-        const firstImage =
-          designerData.images.length > 0
-            ? designerData.images[0].imageUrl
-            : null;
-
-        // 使用 API 返回的 following 状态
-        const isFollowing = designerData.following;
-        setFollowersCount(designerData.followerCount);
-
-        setDesigner({
-          id: String(designerData.id),
-          name: name,
-          brand: brand,
-          avatar: firstImage || "https://via.placeholder.com/120x120",
-          coverImage: firstImage || "https://via.placeholder.com/400x200",
-          isFollowing: isFollowing,
-          collections: designerData.showCount,
-          website: designerData.designerUrl,
+        const allPosts = await getPosts();
+        // Filter posts that mention this brand
+        const brandPosts = allPosts.filter((post) => {
+          const searchText = `${post.title || ""} ${
+            post.contentText || ""
+          }`.toLowerCase();
+          return searchText.includes(brand.name.toLowerCase());
         });
-
-        // Convert shows to collections
-        // 根据 imageCount 从 images 数组中分配封面图片
-        let imageOffset = 0;
-        const convertedCollections = (designerData.shows || []).map(
-          (show, index) => {
-            // 取当前 show 对应的第一张图片作为封面
-            const coverImage =
-              designerData.images[imageOffset]?.imageUrl ||
-              "https://via.placeholder.com/300x400";
-            // 移动偏移量到下一个 show 的图片起始位置
-            imageOffset += show.imageCount;
-
-            return {
-              id: `collection-${show.id}`,
-              title: show.season,
-              season: show.season,
-              year: "",
-              coverImage: coverImage,
-              imageCount: show.imageCount,
-              city: null,
-              author: show.reviewAuthor,
-              reviewText: show.reviewText,
-              showUrl: "",
-            };
-          }
-        );
-
-        setCollections(convertedCollections);
-        setTotalLooksCount(designerData.images?.length || 0);
+        setPosts(brandPosts);
       } catch (error) {
-        console.error("Failed to load designer data:", error);
-        // 出错时设置默认值
-        setDesigner({
-          id: designerId,
-          name: designerName || "Unknown Designer",
-          brand: designerName || "Unknown Brand",
-          avatar: "https://via.placeholder.com/120x120",
-          coverImage: "https://via.placeholder.com/400x200",
-          isFollowing: false,
-          collections: 0,
-          website: "",
-        });
-        setCollections([]);
-        setTotalLooksCount(0);
+        console.error("Failed to load posts:", error);
+        setPosts([]);
       } finally {
-        setLoading(false);
+        setLoadingPosts(false);
       }
     };
-
-    loadDesignerData();
-  }, [designerId, designerName]);
-
-  // Handle follow/unfollow
-  const handleFollow = useCallback(async () => {
-    if (!user?.userId) {
-      Alert.show("请先登录");
-      return;
-    }
-
-    if (!designer || !designerApiData) {
-      return;
-    }
-
-    if (isFollowLoading) {
-      return;
-    }
-
-    setIsFollowLoading(true);
-
-    try {
-      if (designer.isFollowing) {
-        // 取消关注
-        await followService.unfollowDesigner(designerApiData.id);
-        setDesigner((prev) => (prev ? { ...prev, isFollowing: false } : null));
-        setFollowersCount((prev) => Math.max(0, prev - 1));
-        Alert.show("已取消关注", "", 1500);
-      } else {
-        // 关注
-        await followService.followDesigner(designerApiData.id);
-        setDesigner((prev) => (prev ? { ...prev, isFollowing: true } : null));
-        setFollowersCount((prev) => prev + 1);
-        Alert.show("关注成功", "", 1500);
-      }
-    } catch (error) {
-      console.error("Follow/unfollow error:", error);
-      Alert.show(error instanceof Error ? error.message : "操作失败，请重试");
-    } finally {
-      setIsFollowLoading(false);
-    }
-  }, [designer, designerApiData, user, isFollowLoading]);
+    loadPosts();
+  }, [brand]);
 
   // Handle collection press
-  const handleCollectionPress = useCallback(
-    (collection: Collection) => {
-      // 从 collection id 中提取 showId
-      const showIdMatch = collection.id.match(/collection-(\d+)/);
-      const showId = showIdMatch ? Number(showIdMatch[1]) : null;
+  const handleCollectionPress = useCallback((collection: Collection) => {
+    if (collection.showUrl) {
+      Linking.openURL(collection.showUrl);
+    }
+  }, []);
 
-      (navigation as any).navigate("CollectionDetail", {
-        collection,
-        designerName: designer?.name,
-        showId, // 传递 showId，让 CollectionDetail 自己获取图片
-      });
+  // Handle post press
+  const handlePostPress = useCallback(
+    (post: ApiPost) => {
+      (navigation as any).navigate("PostDetail", { post });
     },
-    [navigation, designer]
+    [navigation]
   );
 
-  // Render header
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <Image source={{ uri: designer?.coverImage }} style={styles.coverImage} />
-      <View style={styles.headerOverlay}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.white} />
-        </TouchableOpacity>
-      </View>
+  // Handle website press
+  const handleWebsitePress = useCallback(() => {
+    if (brand?.website) {
+      Linking.openURL(brand.website);
+    }
+  }, [brand]);
 
-      <View style={styles.designerInfo}>
-        <Image source={{ uri: designer?.avatar }} style={styles.avatar} />
-        <View style={styles.designerText}>
-          <Text style={styles.brandName}>{designer?.brand}</Text>
-          <Text style={styles.designerName}>{designer?.name}</Text>
-        </View>
-        <TouchableOpacity
-          style={[
-            styles.followButton,
-            designer?.isFollowing && styles.followingButton,
-            isFollowLoading && styles.followButtonLoading,
-          ]}
-          onPress={handleFollow}
-          disabled={isFollowLoading}
-        >
-          <Text
-            style={[
-              styles.followButtonText,
-              designer?.isFollowing && styles.followingButtonText,
-            ]}
-          >
-            {isFollowLoading
-              ? "..."
-              : designer?.isFollowing
-              ? "已关注"
-              : "关注"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+  // Handle Vogue press
+  const handleVoguePress = useCallback(() => {
+    if (brand?.vogueUrl) {
+      Linking.openURL(brand.vogueUrl);
+    }
+  }, [brand]);
 
-      <View style={styles.stats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{followersCount}</Text>
-          <Text style={styles.statLabel}>关注</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {designerApiData?.showCount || 0}
-          </Text>
-          <Text style={styles.statLabel}>场秀</Text>
-        </View>
-      </View>
-    </View>
-  );
-
-  // Render section title
-  const renderSectionTitle = () => (
-    <View style={styles.sectionTitleContainer}>
-      <Text style={styles.sectionTitle}>秀场 ({collections.length})</Text>
-    </View>
-  );
-
-  // Render collection item
-  const renderCollectionItem = ({ item }: { item: Collection }) => (
+  // Render show card
+  const renderShowCard = (collection: Collection, index: number) => (
     <TouchableOpacity
-      style={styles.collectionItem}
-      onPress={() => handleCollectionPress(item)}
+      key={collection.id}
+      style={styles.showCard}
+      onPress={() => handleCollectionPress(collection)}
+      activeOpacity={0.9}
     >
-      <Image source={{ uri: item.coverImage }} style={styles.collectionImage} />
-      <View style={styles.collectionInfo}>
-        <Text style={styles.collectionTitle}>{item.title}</Text>
-        <Text style={styles.collectionMeta}>
-          {item.season} {item.year} {item.city && `• ${item.city}`}
-        </Text>
-        {item.author && (
-          <Text style={styles.collectionAuthor}>评论者: {item.author}</Text>
-        )}
-        {item.reviewText && (
-          <Text style={styles.collectionPreview} numberOfLines={2}>
-            {item.reviewText.length > 80
-              ? item.reviewText.substring(0, 80) + "..."
-              : item.reviewText}
-          </Text>
+      <Image source={{ uri: collection.coverImage }} style={styles.showImage} />
+      <View style={styles.showOverlay}>
+        <Text style={styles.showSeason}>{collection.season}</Text>
+        {collection.category && (
+          <Text style={styles.showCategory}>{collection.category}</Text>
         )}
       </View>
     </TouchableOpacity>
   );
 
-  // 骨架屏动画
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (loading) {
-      const shimmerAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shimmerAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimmerAnim, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      shimmerAnimation.start();
-      return () => shimmerAnimation.stop();
-    }
-  }, [loading, shimmerAnim]);
-
-  const skeletonOpacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  // 骨架屏组件
-  const SkeletonBox = ({
-    width,
-    height,
-    style,
-  }: {
-    width: number | string;
-    height: number;
-    style?: any;
-  }) => (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          backgroundColor: theme.colors.gray200,
-          borderRadius: 4,
-          opacity: skeletonOpacity,
-        },
-        style,
-      ]}
-    />
-  );
-
-  // 渲染骨架屏
-  const renderSkeleton = () => (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 封面骨架 */}
-        <View style={styles.header}>
-          <Animated.View
-            style={[
-              styles.coverImage,
-              {
-                backgroundColor: theme.colors.gray200,
-                opacity: skeletonOpacity,
-              },
-            ]}
-          />
-          <View style={styles.headerOverlay}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons
-                name="arrow-back"
-                size={24}
-                color={theme.colors.white}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* 设计师信息骨架 */}
-          <View style={styles.designerInfo}>
-            <Animated.View
-              style={[
-                styles.avatar,
-                {
-                  backgroundColor: theme.colors.gray200,
-                  opacity: skeletonOpacity,
-                },
-              ]}
+  // Render post card
+  const renderPostCard = (post: ApiPost) => (
+    <TouchableOpacity
+      key={post.id}
+      style={styles.postCard}
+      onPress={() => handlePostPress(post)}
+      activeOpacity={0.9}
+    >
+      {post.imageUrls && post.imageUrls[0] && (
+        <Image source={{ uri: post.imageUrls[0] }} style={styles.postImage} />
+      )}
+      <View style={styles.postInfo}>
+        <Text style={styles.postTitle} numberOfLines={2}>
+          {post.title}
+        </Text>
+        <View style={styles.postMeta}>
+          <Text style={styles.postAuthor}>{post.username || "用户"}</Text>
+          <View style={styles.postStats}>
+            <Ionicons
+              name="heart-outline"
+              size={14}
+              color={theme.colors.gray400}
             />
-            <View style={styles.designerText}>
-              <SkeletonBox
-                width={120}
-                height={24}
-                style={{ marginBottom: 8 }}
-              />
-              <SkeletonBox width={80} height={16} />
-            </View>
-            <SkeletonBox width={70} height={36} style={{ borderRadius: 8 }} />
-          </View>
-
-          {/* 统计骨架 */}
-          <View style={styles.stats}>
-            {[1, 2, 3].map((i) => (
-              <View key={i} style={styles.statItem}>
-                <SkeletonBox
-                  width={40}
-                  height={28}
-                  style={{ marginBottom: 4 }}
-                />
-                <SkeletonBox width={30} height={14} />
-              </View>
-            ))}
+            <Text style={styles.postStatText}>{post.likeCount || 0}</Text>
           </View>
         </View>
-
-        {/* 标题骨架 */}
-        <View style={styles.sectionTitleContainer}>
-          <SkeletonBox width={100} height={20} />
-        </View>
-
-        {/* 列表骨架 */}
-        <View style={styles.content}>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={styles.collectionItem}>
-              <Animated.View
-                style={[
-                  styles.collectionImage,
-                  {
-                    backgroundColor: theme.colors.gray200,
-                    opacity: skeletonOpacity,
-                  },
-                ]}
-              />
-              <View style={styles.collectionInfo}>
-                <SkeletonBox
-                  width="80%"
-                  height={20}
-                  style={{ marginBottom: 8 }}
-                />
-                <SkeletonBox
-                  width="60%"
-                  height={14}
-                  style={{ marginBottom: 6 }}
-                />
-                <SkeletonBox width="40%" height={12} />
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </TouchableOpacity>
   );
 
-  if (loading || !designer) {
-    return renderSkeleton();
+  // Empty state
+  if (!brand) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity
+          style={styles.backButtonFloat}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+        </TouchableOpacity>
+        <View style={styles.emptyState}>
+          <Ionicons
+            name="storefront-outline"
+            size={48}
+            color={theme.colors.gray300}
+          />
+          <Text style={styles.emptyTitle}>未找到品牌</Text>
+          <Text style={styles.emptyText}>该品牌信息暂未收录</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
       >
-        {renderHeader()}
-        {renderSectionTitle()}
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          {/* Back Button */}
+          <TouchableOpacity
+            style={styles.backButtonFloat}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={22} color={theme.colors.black} />
+          </TouchableOpacity>
 
+          {/* Brand Name */}
+          <Text style={styles.heroTitle}>{brand.name}</Text>
+
+          {/* Brand Info */}
+          <View style={styles.heroMeta}>
+            {brand.category && (
+              <View style={styles.categoryTag}>
+                <Text style={styles.categoryTagText}>
+                  {brand.category.split("/")[0]}
+                </Text>
+              </View>
+            )}
+            {brand.country && (
+              <Text style={styles.heroMetaText}>{brand.country}</Text>
+            )}
+            {brand.foundedYear && (
+              <Text style={styles.heroMetaText}>Est. {brand.foundedYear}</Text>
+            )}
+          </View>
+
+          {/* Founder */}
+          {brand.founder && (
+            <Text style={styles.founderText}>by {brand.founder}</Text>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionRow}>
+            {brand.website && (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={handleWebsitePress}
+              >
+                <Ionicons
+                  name="globe-outline"
+                  size={18}
+                  color={theme.colors.black}
+                />
+                <Text style={styles.actionBtnText}>官网</Text>
+              </TouchableOpacity>
+            )}
+            {brand.vogueUrl && (
+              <TouchableOpacity
+                style={styles.actionBtn}
+                onPress={handleVoguePress}
+              >
+                <Text style={styles.actionBtnTextBold}>VOGUE</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tab Bar */}
+        <View style={styles.tabBarContainer}>
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "shows" && styles.tabActive]}
+              onPress={() => setActiveTab("shows")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "shows" && styles.tabTextActive,
+                ]}
+              >
+                秀场
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "posts" && styles.tabActive]}
+              onPress={() => setActiveTab("posts")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "posts" && styles.tabTextActive,
+                ]}
+              >
+                帖子
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Content */}
         <View style={styles.content}>
-          {collections.map((item) => (
-            <View key={item.id}>{renderCollectionItem({ item })}</View>
-          ))}
+          {activeTab === "shows" ? (
+            collections.length > 0 ? (
+              <View style={styles.showsGrid}>
+                {collections.map((collection, index) =>
+                  renderShowCard(collection, index)
+                )}
+              </View>
+            ) : (
+              <View style={styles.noContentState}>
+                <Ionicons
+                  name="images-outline"
+                  size={40}
+                  color={theme.colors.gray300}
+                />
+                <Text style={styles.noContentText}>暂无秀场数据</Text>
+              </View>
+            )
+          ) : loadingPosts ? (
+            <View style={styles.noContentState}>
+              <Text style={styles.noContentText}>加载中...</Text>
+            </View>
+          ) : posts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {posts.map((post) => renderPostCard(post))}
+            </View>
+          ) : (
+            <View style={styles.noContentState}>
+              <Ionicons
+                name="document-text-outline"
+                size={40}
+                color={theme.colors.gray300}
+              />
+              <Text style={styles.noContentText}>暂无相关帖子</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
 
 const styles = StyleSheet.create({
   container: {
@@ -519,178 +387,265 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {},
-  coverImage: {
-    width: screenWidth,
-    height: 200,
-    backgroundColor: theme.colors.gray100,
+  // Hero Section
+  heroSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
-  headerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    paddingTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-  },
-  backButton: {
+  backButtonFloat: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
     justifyContent: "center",
-    alignItems: "center",
+    alignItems: "flex-start",
+    marginBottom: 20,
   },
-  designerInfo: {
+  heroTitle: {
+    fontSize: 36,
+    fontWeight: "300",
+    color: theme.colors.black,
+    letterSpacing: -1,
+    marginBottom: 12,
+    fontFamily: __DEV__ ? "System" : "PlayfairDisplay-Regular",
+  },
+  heroMeta: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.gray100,
-    borderWidth: 3,
-    borderColor: theme.colors.white,
-  },
-  designerText: {
-    flex: 1,
-    marginLeft: theme.spacing.md,
-  },
-  brandName: {
-    ...theme.typography.h2,
-    color: theme.colors.black,
-    marginBottom: 2,
-  },
-  designerName: {
-    ...theme.typography.body,
-    color: theme.colors.gray600,
-    marginBottom: 4,
-  },
-  designerMeta: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  followButton: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+  categoryTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 4,
   },
-  followingButton: {
-    backgroundColor: theme.colors.gray200,
-  },
-  followButtonLoading: {
-    opacity: 0.6,
-  },
-  followButtonText: {
-    ...theme.typography.bodySmall,
+  categoryTagText: {
+    fontSize: 11,
+    fontWeight: "600",
     color: theme.colors.white,
-    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  followingButtonText: {
-    color: theme.colors.gray600,
-  },
-  stats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statNumber: {
-    ...theme.typography.h2,
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  sectionTitleContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  sectionTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  content: {
-    flex: 1,
-    paddingTop: theme.spacing.md,
-  },
-  collectionItem: {
-    flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  collectionImage: {
-    width: 80,
-    height: 100,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.gray100,
-    marginRight: theme.spacing.md,
-  },
-  collectionInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  collectionTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  collectionMeta: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginBottom: 4,
-  },
-  collectionAuthor: {
-    ...theme.typography.caption,
-    fontSize: 11,
+  heroMetaText: {
+    fontSize: 14,
     color: theme.colors.gray500,
-    fontStyle: "italic",
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
   },
-  collectionPreview: {
-    ...theme.typography.caption,
-    fontSize: 11,
+  founderText: {
+    fontSize: 14,
     color: theme.colors.gray400,
-    marginTop: 4,
-    lineHeight: 16,
+    fontStyle: "italic",
+    marginBottom: 20,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
   },
-  websiteButton: {
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: theme.colors.gray200,
+    borderRadius: 24,
+    gap: 6,
   },
-  websiteText: {
-    ...theme.typography.caption,
-    color: theme.colors.accent,
-    marginLeft: 4,
-    fontSize: 12,
+  actionBtnText: {
+    fontSize: 13,
+    color: theme.colors.black,
     fontWeight: "500",
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+  },
+  actionBtnTextBold: {
+    fontSize: 12,
+    color: theme.colors.black,
+    fontWeight: "700",
+    letterSpacing: 1,
+    fontFamily: __DEV__ ? "System" : "Inter-Bold",
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.gray200,
+  },
+  statBox: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: theme.colors.gray200,
+  },
+  statNum: {
+    fontSize: 28,
+    fontWeight: "300",
+    color: theme.colors.black,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    marginTop: 4,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  // Tab Bar
+  tabBarContainer: {
+    backgroundColor: theme.colors.white,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray200,
+  },
+  tabBar: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+  },
+  tab: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginRight: 8,
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.black,
+  },
+  tabText: {
+    fontSize: 15,
+    color: theme.colors.gray400,
+    fontWeight: "500",
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+  },
+  tabTextActive: {
+    color: theme.colors.black,
+  },
+  // Content
+  content: {
+    flex: 1,
+    minHeight: 300,
+  },
+  showsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 16,
+    gap: 16,
+  },
+  showCard: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.4,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: theme.colors.gray100,
+  },
+  showImage: {
+    width: "100%",
+    height: "100%",
+  },
+  showOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 12,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  showSeason: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.white,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+  },
+  showCategory: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.7)",
+    marginTop: 2,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  postsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 16,
+    gap: 16,
+  },
+  postCard: {
+    width: CARD_WIDTH,
+    backgroundColor: theme.colors.white,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray200,
+  },
+  postImage: {
+    width: "100%",
+    height: CARD_WIDTH,
+    backgroundColor: theme.colors.gray100,
+  },
+  postInfo: {
+    padding: 12,
+  },
+  postTitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: theme.colors.black,
+    marginBottom: 8,
+    lineHeight: 20,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+  },
+  postMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  postAuthor: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  postStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postStatText: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  noContentState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  noContentText: {
+    fontSize: 14,
+    color: theme.colors.gray400,
+    marginTop: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "500",
+    color: theme.colors.black,
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.gray400,
+    textAlign: "center",
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
   },
 });
 

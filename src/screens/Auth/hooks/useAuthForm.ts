@@ -68,11 +68,55 @@ export const useAuthForm = () => {
     }
   }, []);
 
-  // 验证手机号格式
-  const validatePhone = useCallback((phone: string) => {
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    return phoneRegex.test(phone);
-  }, []);
+  // 验证手机号格式（根据国家区号验证）
+  const validatePhone = useCallback(
+    (phone: string, countryDialCode?: string) => {
+      const dialCode =
+        countryDialCode || formData.countryCode?.dialCode || "+86";
+
+      // 去除空格和横线
+      const cleanPhone = phone.replace(/[\s\-]/g, "");
+
+      // 根据不同国家/地区的区号进行验证
+      switch (dialCode) {
+        case "+86": // 中国大陆：11位，1开头
+          return /^1[3-9]\d{9}$/.test(cleanPhone);
+        case "+852": // 香港：8位数字
+          return /^[2-9]\d{7}$/.test(cleanPhone);
+        case "+853": // 澳门：8位数字
+          return /^6\d{7}$/.test(cleanPhone);
+        case "+886": // 台湾：9位数字（去掉0开头）
+          return /^9\d{8}$/.test(cleanPhone) || /^0?9\d{8}$/.test(cleanPhone);
+        case "+1": // 美国/加拿大：10位数字
+          return /^\d{10}$/.test(cleanPhone);
+        case "+44": // 英国：10-11位
+          return /^7\d{9}$/.test(cleanPhone) || /^0?7\d{9}$/.test(cleanPhone);
+        case "+81": // 日本：10-11位
+          return (
+            /^[789]0\d{8}$/.test(cleanPhone) ||
+            /^0?[789]0\d{8}$/.test(cleanPhone)
+          );
+        case "+82": // 韩国：10-11位
+          return (
+            /^1[0-9]\d{7,8}$/.test(cleanPhone) ||
+            /^0?1[0-9]\d{7,8}$/.test(cleanPhone)
+          );
+        case "+65": // 新加坡：8位数字
+          return /^[89]\d{7}$/.test(cleanPhone);
+        default:
+          // 其他国家：通用验证，6-15位数字
+          return /^\d{6,15}$/.test(cleanPhone);
+      }
+    },
+    [formData.countryCode]
+  );
+
+  // 获取完整手机号（带国家区号）
+  const getFullPhoneNumber = useCallback(() => {
+    const dialCode = formData.countryCode?.dialCode || "+86";
+    const cleanPhone = formData.phone.replace(/[\s\-]/g, "");
+    return `${dialCode}${cleanPhone}`;
+  }, [formData.phone, formData.countryCode]);
 
   // 发送验证码
   const sendVerificationCode = useCallback(async () => {
@@ -81,22 +125,23 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      await authService.sendSms({ phone: formData.phone });
+      await authService.sendSms({ phone: fullPhone });
 
-      setCountdown(60);
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      // setCountdown(60);
+      // const timer = setInterval(() => {
+      //   setCountdown((prev) => {
+      //     if (prev <= 1) {
+      //       clearInterval(timer);
+      //       return 0;
+      //     }
+      //     return prev - 1;
+      //   });
+      // }, 1000);
 
-      Alert.show("验证码已发送至 " + formData.phone);
+      Alert.show("验证码已发送至 " + fullPhone);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
@@ -104,7 +149,7 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData.phone, validatePhone]);
+  }, [formData.phone, validatePhone, getFullPhoneNumber]);
 
   // 处理密码登录
   const handleLogin = useCallback(async () => {
@@ -118,10 +163,11 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
       const response = await authService.login({
-        phone: formData.phone,
+        phone: fullPhone,
         password: formData.password,
       });
 
@@ -135,7 +181,13 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData.phone, formData.password, validatePhone, loginWithResponse]);
+  }, [
+    formData.phone,
+    formData.password,
+    validatePhone,
+    loginWithResponse,
+    getFullPhoneNumber,
+  ]);
 
   // 处理验证码登录
   const handleSmsLogin = useCallback(async () => {
@@ -149,10 +201,11 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
       const response = await authService.loginSms({
-        phone: formData.phone,
+        phone: fullPhone,
         code: formData.verificationCode,
       });
 
@@ -170,6 +223,7 @@ export const useAuthForm = () => {
     formData.verificationCode,
     validatePhone,
     loginWithResponse,
+    getFullPhoneNumber,
   ]);
 
   // 处理注册
@@ -204,10 +258,11 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
       const response = await authService.register({
-        phone: formData.phone,
+        phone: fullPhone,
         username: formData.username.trim(),
         password: formData.password,
         code: formData.verificationCode,
@@ -223,7 +278,7 @@ export const useAuthForm = () => {
       const tempLoginResponse = {
         userId: response.userId,
         username: formData.username,
-        phone: formData.phone,
+        phone: fullPhone,
         admin: false,
         userType: "USER",
         accessToken: response.accessToken,
@@ -248,7 +303,13 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, validatePhone, loginWithResponse, loadDesigners]);
+  }, [
+    formData,
+    validatePhone,
+    loginWithResponse,
+    loadDesigners,
+    getFullPhoneNumber,
+  ]);
 
   // 处理完善资料
   const handleCompleteProfile = useCallback(async () => {
@@ -283,12 +344,13 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
       const tempLoginResponse = {
         userId: registeredUserId,
         username: formData.username,
-        phone: formData.phone,
+        phone: fullPhone,
         admin: false,
         userType: "USER",
         accessToken: registeredTokens.accessToken,
@@ -343,7 +405,13 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, registeredUserId, registeredTokens, loginWithResponse]);
+  }, [
+    formData,
+    registeredUserId,
+    registeredTokens,
+    loginWithResponse,
+    getFullPhoneNumber,
+  ]);
 
   // 切换设计师选择
   const toggleDesignerSelection = useCallback((designer: DesignerOption) => {
@@ -393,10 +461,11 @@ export const useAuthForm = () => {
       return;
     }
 
+    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
       await authService.forgetPassword({
-        phone: formData.phone,
+        phone: fullPhone,
         password: formData.password,
         code: formData.verificationCode,
       });
@@ -419,7 +488,7 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, validatePhone]);
+  }, [formData, validatePhone, getFullPhoneNumber]);
 
   // 处理手机号输入完成后的跳转
   const handlePhoneSubmit = useCallback(() => {

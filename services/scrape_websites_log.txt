@@ -1,0 +1,216 @@
+读取品牌数据: /Users/guanggengyang/Documents/GitHub/avant-regard-app/services/../src/data/brands.json
+总共 204 个品牌
+需要从官网获取 coverImage: 61 个
+------------------------------------------------------------
+[1/61] A DICIANNOVEVENTITRE
+    URL: https://www.adiciannoveventitre.com/
+    ✗ 未找到图片
+[2/61] A.P.C.
+    URL: https://www.apc.fr/
+    ✓ coverImage: http://www.apc.fr/cdn/shop/files/logo_apc.jpg?v=1762351643&w...
+[3/61] Agnes B.
+    URL: https://www.agnesb.com/
+    ✓ coverImage: https://www.agnesb.com/dw/image/v2/BKSM_PRD/on/demandware.st...
+[4/61] Alice Auaa
+    URL: https://aliceauaa-official.com/
+    ✓ coverImage: https://cdn.goope.jp/51421/19022214570572zd.png...
+[5/61] Anya Hindmarch
+    URL: https://www.anyahindmarch.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0505/4467/2922/files/logo....
+[6/61] Aquascutum
+    URL: https://www.aquascutum.com/
+    [ERR] HTTPSConnectionPool(host='www.aquascutum.com', port=443): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x106f61090>: Failed to establish a new connection: [Errno 61] Connection refused'))
+    ✗ 未找到图片
+[7/61] Archivio JM Ribot
+    URL: https://www.archiviojmberbot.com/
+    [ERR] HTTPSConnectionPool(host='www.archiviojmberbot.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10755c690>: Failed to resolve 'www.archiviojmberbot.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[8/61] Bape
+    URL: http://www.bape.com/
+    ✓ coverImage: http://jp.bape.com/cdn/shop/files/bapecom_ogp_442b9c5a-18f2-...
+[9/61] Bikkembergs
+    URL: https://www.bikkembergs.com/
+    ✓ coverImage: https://www.bikkembergs.com/on/demandware.static/Sites-bikke...
+[10/61] Boris Bidjan Saberi (BBS)
+    URL: https://www.borisbidjansaberi.com/
+    ✗ 未找到图片
+[11/61] Burberry
+    URL: https://www.burberry.com/
+    ✗ 未找到图片
+[12/61] By Walid
+    URL: https://bywalid.com/
+    [ERR] HTTPSConnectionPool(host='bywalid.com', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106f634d0>, 'Connection to bywalid.com timed out. (connect timeout=15)'))
+    ✗ 未找到图片
+[13/61] Casey Casey
+    URL: https://www.caseycasey.com/
+    ✗ 未找到图片
+[14/61] Celine
+    URL: https://www.celine.com/
+    ✗ 未找到图片
+[15/61] Charlotte Olympia
+    URL: https://www.charlotteolympia.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0689/1660/9310/files/homep...
+[16/61] Christian Louboutin
+    URL: https://www.christianlouboutin.com/
+    ✓ coverImage: https://us.christianlouboutin.com/media/wysiwyg/landing-page...
+[17/61] Chrome Hearts
+    URL: https://www.chromehearts.com/
+    ✗ 未找到图片
+[18/61] Daks
+    URL: https://www.daks.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/2987/2966/files/Logo_400px...
+[19/61] Dior by Hedi Slimane
+    URL: https://www.dior.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[20/61] Dsquared2
+    URL: http://www.dsquared2.com/
+    [WARN] HTTP 202
+    ✗ 未找到图片
+[21/61] Geoffrey B. Small
+    URL: https://geoffreybsmall.com/
+    ✓ coverImage: https://geoffreybsmall.com/social.png...
+[22/61] Greg Lauren
+    URL: https://www.greglauren.com/
+    [WARN] HTTP 404
+    ✗ 未找到图片
+[23/61] Guidi
+    URL: https://www.guidi-official.com/
+    [ERR] HTTPSConnectionPool(host='www.guidi-official.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f634d0>: Failed to resolve 'www.guidi-official.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[24/61] Haider Ackermann
+    URL: https://www.haiderackermann.com/
+    [ERR] HTTPSConnectionPool(host='www.haiderackermann.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10755ccd0>: Failed to resolve 'www.haiderackermann.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[25/61] Hender Scheme
+    URL: https://www.henderscheme.com/
+    ✓ coverImage: https://henderscheme.com/fig/ogp.jpg...
+[26/61] Jimmy Choo
+    URL: https://www.jimmychoo.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[27/61] John Galliano
+    URL: https://www.johngalliano.com/
+    [ERR] HTTPSConnectionPool(host='www.johngalliano.com', port=443): Max retries exceeded with url: / (Caused by SSLError(SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'www.johngalliano.com'. (_ssl.c:1032)")))
+    ✗ 未找到图片
+[28/61] Julius
+    URL: https://julius-tokyo.com/
+    ✗ 未找到图片
+[29/61] JW Anderson
+    URL: https://www.jwanderson.com/
+    ✓ coverImage: https://jwanderson.com/cdn/shop/files/HB0763LA0361172_Ecomm_...
+[30/61] Kapital
+    URL: https://www.kapital-web.co.jp/
+    [ERR] HTTPSConnectionPool(host='www.kapital-web.co.jp', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f62fd0>: Failed to resolve 'www.kapital-web.co.jp' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[31/61] Lemaire
+    URL: https://www.lemaire.fr/
+    ✓ coverImage: https://www.lemaire.fr/cdn/shop/files/02_2ca41706-6765-489a-...
+[32/61] leon Emanuel blank
+    URL: https://www.leonemanuelblank.com/
+    [ERR] HTTPSConnectionPool(host='www.leonemanuelblank.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10755f4d0>: Failed to resolve 'www.leonemanuelblank.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[33/61] MA+
+    URL: https://www.ma-plus.jp/
+    [ERR] HTTPSConnectionPool(host='www.ma-plus.jp', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f62990>: Failed to resolve 'www.ma-plus.jp' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[34/61] Maison Margiela
+    URL: https://www.maisonmargiela.com/
+    ✗ 未找到图片
+[35/61] Maison Margiela Artisanal
+    URL: https://www.maisonmargiela.com/
+    ✗ 未找到图片
+[36/61] Manolo Blahnik
+    URL: https://www.manoloblahnik.com/
+    ✓ coverImage: https://www.manoloblahnik.com/media/homepage_slider_element/...
+[37/61] Michael Kors
+    URL: https://www.michaelkors.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[38/61] Miharayasuhiro
+    URL: https://www.miharayasuhiro.com/
+    ✗ 未找到图片
+[39/61] Momotaro Jeans
+    URL: https://www.momotarojeans.co.jp/
+    [ERR] HTTPSConnectionPool(host='www.momotarojeans.co.jp', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f63390>: Failed to resolve 'www.momotarojeans.co.jp' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[40/61] Moncler
+    URL: https://www.moncler.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[41/61] N.Hoolywood
+    URL: https://www.nhoolywood.com/
+    [ERR] HTTPSConnectionPool(host='www.nhoolywood.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f63b10>: Failed to resolve 'www.nhoolywood.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[42/61] Nigel Cabourn
+    URL: https://www.nigelcabourn.com/
+    [ERR] HTTPSConnectionPool(host='www.nigelcabourn.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x10755df90>: Failed to resolve 'www.nigelcabourn.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[43/61] Oscar de la Renta
+    URL: https://www.oscardelarenta.com/
+    ✓ coverImage: http://www.oscardelarenta.com/cdn/shop/files/Logo.jpg?v=1733...
+[44/61] Phoebe Philo
+    URL: https://www.phoebephilo.com/
+    ✓ coverImage: http://www.phoebephilo.com/cdn/shop/files/Phoebe_Philo_Logo....
+[45/61] Qiuhao
+    URL: https://qiuhao.com/
+    [ERR] HTTPSConnectionPool(host='qiuhao.com', port=443): Max retries exceeded with url: / (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x106f625d0>, 'Connection to qiuhao.com timed out. (connect timeout=15)'))
+    ✗ 未找到图片
+[46/61] Raf Simons
+    URL: https://www.rafsimons.com/
+    ✓ coverImage: https://s3.eu-central-1.amazonaws.com/raf-simons-prod/extern...
+[47/61] Sergio Rossi
+    URL: https://www.sergiorossi.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0940/7450/3432/files/03_MU...
+[48/61] Song for the Mute
+    URL: https://songforthemute.com/
+    ✓ coverImage: https://images.ctfassets.net/1ntf0z43n243/4K11QyCMAXqpVq3sFH...
+[49/61] SOPHNET.
+    URL: https://www.sophnet.com/
+    ✗ 未找到图片
+[50/61] Stone Island
+    URL: https://www.stoneisland.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[51/61] Supreme
+    URL: https://www.supreme.com/
+    ✗ 未找到图片
+[52/61] Takahiro Miyashita The Soloist
+    URL: https://the-soloist.jp/
+    [ERR] HTTPSConnectionPool(host='the-soloist.jp', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f63250>: Failed to resolve 'the-soloist.jp' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[53/61] The Kooples
+    URL: https://www.thekooples.com/
+    ✗ 未找到图片
+[54/61] The Row
+    URL: https://www.therow.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0552/0313/5593/files/logo_...
+[55/61] The Viridi-Anne
+    URL: https://www.the-viridi-anne.com/
+    [ERR] HTTPSConnectionPool(host='www.the-viridi-anne.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f63c50>: Failed to resolve 'www.the-viridi-anne.com' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[56/61] Tod's
+    URL: https://www.tods.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[57/61] Toogood
+    URL: https://www.toogood.co.uk/
+    [ERR] HTTPSConnectionPool(host='www.toogood.co.uk', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x106f63890>: Failed to resolve 'www.toogood.co.uk' ([Errno 8] nodename nor servname provided, or not known)"))
+    ✗ 未找到图片
+[58/61] Visvim
+    URL: https://www.visvim.tv/
+    ✓ coverImage: https://www.visvim.tv/assets/imgs/common/ogp.jpg...
+[59/61] Vivienne Tam
+    URL: https://www.viviennetam.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0397/8972/3693/files/Vivie...
+[60/61] Zegna
+    URL: https://www.zegna.com/
+    [WARN] HTTP 403
+    ✗ 未找到图片
+[61/61] Ziggy Chen
+    URL: https://www.ziggychen.com/
+    ✓ coverImage: https://cdn.shopify.com/s/files/1/0516/8647/3902/files/ZIGGY...
+
+============================================================
+成功获取 coverImage: 23/61 个品牌
+✅ 已保存到: /Users/guanggengyang/Documents/GitHub/avant-regard-app/services/../src/data/brands.json

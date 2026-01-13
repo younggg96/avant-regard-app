@@ -8,8 +8,16 @@ export type AuthMode =
   | "verification"
   | "completeProfile";
 
+export interface CountryCode {
+  code: string;
+  name: string;
+  flag: string;
+  dialCode: string;
+}
+
 export interface FormData {
   phone: string;
+  countryCode: CountryCode;
   username: string;
   password: string;
   confirmPassword: string;

@@ -19,7 +19,11 @@
         "NSCameraUsageDescription": "Avant Regard 需要访问相机来拍摄照片",
         "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要保存编辑后的图片到相册",
         "NSLocationWhenInUseUsageDescription": "Avant Regard 需要访问您的位置来显示附近的买手店",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
       },
       "bundleIdentifier": "com.yanggg96.avant-regard"
     },

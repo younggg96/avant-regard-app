@@ -1,11 +1,14 @@
 """
 认证路由 - 使用 Supabase Auth
 """
+import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.services.auth_service import auth_service
 from app.core.response import success
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["认证"])
 
@@ -101,6 +104,7 @@ async def register(request: RegisterRequest):
     用户注册
     需要先发送验证码，验证后设置密码
     """
+    logger.info(f"Register request: phone={request.phone}, username={request.username}, code={request.code}")
     result, err = auth_service.register_with_password(
         request.phone,
         request.username,
@@ -108,7 +112,9 @@ async def register(request: RegisterRequest):
         request.code
     )
     if err:
+        logger.error(f"Register failed: {err}")
         raise HTTPException(status_code=400, detail=err)
+    logger.info(f"Register success: user_id={result.get('userId')}")
     return success(result)
 
 

@@ -80,14 +80,29 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
   },
-  countryCode: {
-    fontSize: 16,
-    fontFamily: "Inter-Regular",
-    color: theme.colors.gray400,
-    marginRight: 12,
+  countryCodeButton: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingRight: 12,
+    marginRight: 12,
     borderRightWidth: 1,
     borderRightColor: "#D8D8D8",
+    gap: 6,
+  },
+  countryCodeFlag: {
+    fontSize: 18,
+  },
+  countryCode: {
+    fontSize: 15,
+    fontFamily: "Inter-Medium",
+    color: theme.colors.black,
+  },
+  phoneInput: {
+    fontSize: 16,
+    fontFamily: "Inter-Regular",
+    flex: 1,
+    paddingVertical: 16,
+    color: theme.colors.black,
   },
   input: {
     fontSize: 16,
@@ -98,6 +113,65 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
     paddingHorizontal: 16,
+  },
+  // 国家区号选择器样式
+  countryModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  countryModalContent: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "70%",
+    paddingBottom: 34,
+  },
+  countryModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8E8E8",
+  },
+  countryModalTitle: {
+    fontSize: 17,
+    fontFamily: "Inter-Bold",
+    color: theme.colors.black,
+    letterSpacing: 0.3,
+  },
+  countryList: {
+    paddingHorizontal: 8,
+  },
+  countryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginHorizontal: 4,
+    marginVertical: 2,
+  },
+  countryItemSelected: {
+    backgroundColor: "#F5F5F5",
+  },
+  countryFlag: {
+    fontSize: 22,
+    marginRight: 12,
+  },
+  countryName: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.black,
+  },
+  countryDialCode: {
+    fontSize: 14,
+    fontFamily: "Inter-Medium",
+    color: theme.colors.gray400,
+    marginRight: 8,
   },
   verificationContainer: {
     flexDirection: "row",

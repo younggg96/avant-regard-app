@@ -20,10 +20,13 @@ class Settings(BaseSettings):
     SERVER_HOST: str = "0.0.0.0"
     SERVER_PORT: int = 8000
     DEBUG: bool = True
-    CORS_ORIGINS: str = '["http://localhost:3000","http://localhost:19006"]'
+    CORS_ORIGINS: str = '["*"]'
 
     @property
     def cors_origins_list(self) -> List[str]:
+        # 开发环境允许所有来源
+        if self.DEBUG:
+            return ["*"]
         try:
             return json.loads(self.CORS_ORIGINS)
         except:

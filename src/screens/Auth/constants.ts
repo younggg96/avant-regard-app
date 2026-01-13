@@ -70,9 +70,18 @@ export const AUTH_SUBTITLES: Record<AuthMode, string> = {
   completeProfile: "让我们更好地了解您",
 };
 
+// 默认国家区号（中国）
+export const DEFAULT_COUNTRY_CODE = {
+  code: "CN",
+  name: "中国",
+  flag: "🇨🇳",
+  dialCode: "+86",
+};
+
 // 初始表单数据
 export const INITIAL_FORM_DATA = {
   phone: "",
+  countryCode: DEFAULT_COUNTRY_CODE,
   username: "",
   password: "",
   confirmPassword: "",

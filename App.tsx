@@ -121,7 +121,7 @@ function TabNavigator() {
         name="Archive"
         component={ArchiveScreen}
         options={{
-          tabBarLabel: "设计师",
+          tabBarLabel: "Archive档案",
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="archive" color={color} focused={focused} />
           ),

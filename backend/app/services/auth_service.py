@@ -29,11 +29,20 @@ class AuthService:
         if result.data:
             return result.data[0]
         
+        # 也检查手机号是否已存在
+        clean_phone = phone.replace("+86", "").replace("+1", "").lstrip("+")
+        result = self.db.table("users").select("*").eq("phone", phone).execute()
+        if result.data:
+            # 更新 supabase_uid
+            self.db.table("users").update({"supabase_uid": supabase_user_id}).eq("id", result.data[0]["id"]).execute()
+            return result.data[0]
+        
         # 创建新用户记录
         user_data = {
             "supabase_uid": supabase_user_id,
-            "phone": phone.replace("+86", ""),  # 存储不带国际前缀的手机号
+            "phone": phone,  # 保留完整手机号格式
             "username": username or f"用户{phone[-4:]}",
+            "password_hash": "supabase_auth",  # 占位符，实际密码由 Supabase Auth 管理
             "is_admin": False,
             "user_type": "USER",
             "status": "ACTIVE"
@@ -185,10 +194,18 @@ class AuthService:
             if not response.user:
                 return None, "验证码错误或已过期"
             
-            # 更新用户密码
-            self.db.auth.update_user({
-                "password": password
-            })
+            # 尝试更新用户密码
+            try:
+                self.db.auth.update_user({
+                    "password": password
+                })
+            except AuthApiError as pwd_err:
+                error_msg = str(pwd_err)
+                # 如果是"密码相同"错误，说明用户已存在且密码正确，直接继续
+                if "same" in error_msg.lower() or "different" in error_msg.lower():
+                    pass  # 密码已设置，继续注册流程
+                else:
+                    return None, f"设置密码失败: {error_msg}"
             
             # 创建应用用户
             app_user = self._get_or_create_app_user(
@@ -217,7 +234,10 @@ class AuthService:
             }, None
             
         except AuthApiError as e:
-            return None, f"注册失败: {str(e)}"
+            error_msg = str(e)
+            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+                return None, "验证码已过期，请重新发送"
+            return None, f"注册失败: {error_msg}"
         except Exception as e:
             return None, f"注册失败: {str(e)}"
 

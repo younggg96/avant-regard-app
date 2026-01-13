@@ -33,15 +33,16 @@ class FollowService:
     def get_following_users(self, user_id: int) -> List[FollowingUser]:
         """获取用户关注的用户列表"""
         result = self.db.table("user_follows").select(
-            "following_id, users!user_follows_following_id_fkey(id, username), user_info!inner(bio, location, avatar_url)"
+            "following_id, users!user_follows_following_id_fkey(id, username, user_info(bio, location, avatar_url))"
         ).eq("follower_id", user_id).execute()
         
         users = []
         for item in result.data or []:
             user = item.get("users")
-            info_list = item.get("user_info", [])
-            info = info_list[0] if info_list else {}
             if user:
+                # user_info is nested inside users
+                info_list = user.get("user_info", [])
+                info = info_list[0] if info_list else {}
                 users.append(FollowingUser(
                     userId=user["id"],
                     username=user["username"],

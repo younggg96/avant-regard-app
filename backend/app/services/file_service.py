@@ -4,12 +4,13 @@
 import uuid
 from typing import Optional
 from datetime import datetime
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase_admin
 
 
 class FileService:
     def __init__(self):
-        self.db = get_supabase()
+        # 使用 service role 客户端绕过 RLS
+        self.db = get_supabase_admin()
         self.bucket_name = "images"
 
     def upload_image(self, file_content: bytes, filename: str, content_type: str) -> Optional[str]:

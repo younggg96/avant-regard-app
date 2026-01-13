@@ -66,6 +66,11 @@ const ProfileScreen = () => {
     liked: 0,
   });
 
+  // 缓存各 tab 的数据，避免重复请求
+  const [tabDataCache, setTabDataCache] = useState<{
+    [key in TabType]?: { posts: DisplayPost[]; count: number };
+  }>({});
+
   const tabs = [
     {
       id: "published" as TabType,
@@ -130,13 +135,14 @@ const ProfileScreen = () => {
     } as DisplayPost & { status?: string };
   };
 
-  // 初始化数据
+  // 初始化数据 - 只加载用户信息和关注数量，不加载所有帖子
   useEffect(() => {
     loadUnreadNotifications();
     loadUserInfo();
-    loadAllPostCounts();
     loadFollowingUsersCount();
     loadFollowingDesignersCount();
+    // 清空缓存，因为用户可能变了
+    setTabDataCache({});
   }, [user?.userId]);
 
   // 加载用户信息
@@ -195,44 +201,23 @@ const ProfileScreen = () => {
     }
   };
 
-  // 加载所有标签的帖子数量
-  const loadAllPostCounts = async () => {
-    if (!user?.userId) return;
-
-    try {
-      const [publishedPosts, draftPosts, likedPosts, favoritePosts] =
-        await Promise.all([
-          postService
-            .getPostsByUserId(user.userId, "PUBLISHED")
-            .catch(() => []),
-          postService.getPostsByUserId(user.userId, "DRAFT").catch(() => []),
-          postService.getLikedPostsByUserId(user.userId).catch(() => []),
-          postService.getFavoritePostsByUserId(user.userId).catch(() => []),
-        ]);
-
-      // 从已发布的帖子中筛选出待审核和已通过的
-      const approvedPosts = publishedPosts.filter(
-        (post: ApiPost) => post.auditStatus === "APPROVED"
-      );
-      const pendingPosts = publishedPosts.filter(
-        (post: ApiPost) => post.auditStatus === "PENDING"
-      );
-
-      setPostCounts({
-        published: approvedPosts.length,
-        pending: pendingPosts.length,
-        draft: draftPosts.length,
-        saved: favoritePosts.length,
-        liked: likedPosts.length,
-      });
-    } catch (error) {
-      console.error("Error loading post counts:", error);
-    }
+  // 更新单个 tab 的数量
+  const updateTabCount = (tab: TabType, count: number) => {
+    setPostCounts((prev) => ({
+      ...prev,
+      [tab]: count,
+    }));
   };
 
-  // 加载 posts
-  const loadPosts = async () => {
+  // 加载 posts - 使用缓存避免重复请求
+  const loadPosts = async (forceRefresh = false) => {
     if (!user?.userId) return;
+
+    // 如果有缓存且不是强制刷新，直接使用缓存
+    if (!forceRefresh && tabDataCache[activeTab]) {
+      setPosts(tabDataCache[activeTab]!.posts);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -261,38 +246,50 @@ const ProfileScreen = () => {
         loadedPosts = apiPosts.map((post) =>
           convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
         );
-      } else if (activeTab === "pending") {
-        // 加载待审核的帖子
+      } else if (activeTab === "pending" || activeTab === "published") {
+        // pending 和 published 共享同一个 API 请求
         const apiPosts = await postService.getPostsByUserId(
           user.userId,
           "PUBLISHED"
         );
-        // 筛选出待审核的帖子
+        
+        // 筛选出待审核和已审核通过的帖子
         const pendingPosts = apiPosts.filter(
           (post: ApiPost) => post.auditStatus === "PENDING"
         );
+        const approvedPosts = apiPosts.filter(
+          (post: ApiPost) => post.auditStatus === "APPROVED"
+        );
+
         // 转换为展示格式
-        loadedPosts = pendingPosts.map((post) => ({
+        const pendingDisplayPosts = pendingPosts.map((post) => ({
           ...convertToDisplayPost(post, {
             name: authorName,
             avatar: authorAvatar,
           }),
           auditStatus: post.auditStatus,
         }));
-      } else if (activeTab === "published") {
-        // 加载已审核通过的帖子
-        const apiPosts = await postService.getPostsByUserId(
-          user.userId,
-          "PUBLISHED"
-        );
-        // 筛选出已审核通过的帖子
-        const approvedPosts = apiPosts.filter(
-          (post: ApiPost) => post.auditStatus === "APPROVED"
-        );
-        // 转换为展示格式
-        loadedPosts = approvedPosts.map((post) =>
+        const approvedDisplayPosts = approvedPosts.map((post) =>
           convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
         );
+
+        // 缓存两个 tab 的数据
+        setTabDataCache((prev) => ({
+          ...prev,
+          pending: { posts: pendingDisplayPosts, count: pendingDisplayPosts.length },
+          published: { posts: approvedDisplayPosts, count: approvedDisplayPosts.length },
+        }));
+
+        // 更新两个 tab 的数量
+        updateTabCount("pending", pendingDisplayPosts.length);
+        updateTabCount("published", approvedDisplayPosts.length);
+
+        // 设置当前 tab 的帖子
+        loadedPosts = activeTab === "pending" ? pendingDisplayPosts : approvedDisplayPosts;
+        
+        setPosts(loadedPosts);
+        setLoading(false);
+        return;
       } else if (activeTab === "draft") {
         // 加载草稿帖子
         const apiPosts = await postService.getPostsByUserId(
@@ -305,6 +302,15 @@ const ProfileScreen = () => {
         );
       }
 
+      // 缓存当前 tab 的数据
+      setTabDataCache((prev) => ({
+        ...prev,
+        [activeTab]: { posts: loadedPosts, count: loadedPosts.length },
+      }));
+
+      // 更新当前 tab 的数量
+      updateTabCount(activeTab, loadedPosts.length);
+
       setPosts(loadedPosts);
     } catch (error) {
       console.error("Error loading posts:", error);
@@ -314,31 +320,40 @@ const ProfileScreen = () => {
     }
   };
 
-  // 当标签切换时重新加载
+  // 当标签切换时加载对应 tab 的数据（使用缓存）
   useEffect(() => {
     loadPosts();
   }, [activeTab]);
 
-  // 当页面获得焦点时重新加载
+  // 当页面获得焦点时刷新当前 tab 的数据
   useFocusEffect(
     useCallback(() => {
       loadUserInfo();
-      loadAllPostCounts();
-      loadPosts();
-      loadUnreadNotifications();
       loadFollowingUsersCount();
       loadFollowingDesignersCount();
+      // 只刷新当前 tab 的数据
+      loadPosts(true);
     }, [activeTab, user?.userId])
   );
 
-  // 下拉刷新
+  // 下拉刷新 - 只刷新当前 tab 和必要的信息
   const onRefresh = async () => {
     setRefreshing(true);
+    // 清除当前 tab 的缓存
+    setTabDataCache((prev) => {
+      const newCache = { ...prev };
+      delete newCache[activeTab];
+      // 如果是 pending 或 published，两个都清除因为共享数据源
+      if (activeTab === "pending" || activeTab === "published") {
+        delete newCache["pending"];
+        delete newCache["published"];
+      }
+      return newCache;
+    });
+    
     await Promise.all([
       loadUserInfo(),
-      loadAllPostCounts(),
-      loadPosts(),
-      loadUnreadNotifications(),
+      loadPosts(true),
       loadFollowingUsersCount(),
       loadFollowingDesignersCount(),
     ]);
@@ -425,15 +440,28 @@ const ProfileScreen = () => {
       // 显示成功提示
       Alert.show("成功", "帖子已删除");
 
-      // 重新加载数据
+      // 清除相关缓存并重新加载数据
       try {
-        await Promise.all([loadAllPostCounts(), loadPosts()]);
+        // 清除当前 tab 的缓存
+        setTabDataCache((prev) => {
+          const newCache = { ...prev };
+          delete newCache[activeTab];
+          // 如果是 pending 或 published，两个都清除
+          if (activeTab === "pending" || activeTab === "published") {
+            delete newCache["pending"];
+            delete newCache["published"];
+          }
+          return newCache;
+        });
+        await loadPosts(true);
       } catch (refreshError) {
         console.warn("删除成功但刷新数据失败:", refreshError);
         // 即使刷新失败，也手动从列表中移除已删除的帖子
         setPosts((prevPosts) =>
           prevPosts.filter((p) => p.id !== postToDelete.id)
         );
+        // 更新数量
+        updateTabCount(activeTab, posts.length - 1);
       }
     } catch (error) {
       console.error("删除帖子时出错:", error);

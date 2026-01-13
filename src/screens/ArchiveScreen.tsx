@@ -1,231 +1,102 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
-  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import {
-  designerService,
-  DesignerDetailDto,
-} from "../services/designerService";
 
-// 转换后的设计师类型
-interface Designer {
+// Import brands data
+import brandsData from "../data/brands.json";
+
+// Brand type from JSON
+interface Brand {
   id: number;
   name: string;
-  brand: string;
-  collections: number;
-  shows: number;
-  totalLooks: number;
-  latestSeason: string;
-  designerUrl: string; // vogue.com 链接
+  category: string | null;
+  foundedYear: string | null;
+  founder: string | null;
+  country: string | null;
+  website: string | null;
+  coverImage: string | null;
+  latestSeason: string | null;
+  vogueSlug: string | null;
+  vogueUrl: string | null;
 }
+
+// Category filter options
+const CATEGORY_FILTERS = [
+  { label: "全部", value: "all" },
+  { label: "时装品牌", value: "时装品牌" },
+  { label: "奢侈", value: "奢侈" },
+  { label: "先锋", value: "先锋" },
+  { label: "工匠品牌", value: "工匠品牌" },
+];
+
+// // Get brand initial for avatar
+// const getBrandInitial = (name: string) => {
+//   return name.charAt(0).toUpperCase();
+// };
 
 const ArchiveScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [designers, setDesigners] = useState<Designer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [brands] = useState<Brand[]>(brandsData as Brand[]);
 
-  // Fetch designers data from API
-  const fetchDesigners = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Filter brands by search query and category
+  const filteredBrands = useMemo(() => {
+    return brands.filter((brand) => {
+      // Search filter
+      const matchesSearch =
+        brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (brand.founder &&
+          brand.founder.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (brand.country &&
+          brand.country.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const allDesigners = await designerService.getAllDesignerDetails();
-      // Convert API data to Designer format
-      const convertedDesigners = allDesigners.map((data: DesignerDetailDto) => {
-        // Extract brand and designer name from the name string
-        const brandMatch = data.name.match(/^([^(]+?)(?:\s*\(|$)/);
-        const designerMatch = data.name.match(/\(([^)]+)\)$/);
+      // Category filter
+      let matchesCategory = selectedCategory === "all";
+      if (!matchesCategory && brand.category) {
+        matchesCategory = brand.category.includes(selectedCategory);
+      }
 
-        const brand = designerMatch
-          ? designerMatch[1]
-          : brandMatch?.[1]?.trim() || data.name;
-        const name = brandMatch?.[1]?.trim() || data.name;
+      return matchesSearch && matchesCategory;
+    });
+  }, [brands, searchQuery, selectedCategory]);
 
-        return {
-          id: data.id,
-          name: name,
-          brand: brand,
-          collections: data.showCount,
-          shows: data.showCount,
-          totalLooks: data.totalImages,
-          latestSeason: data.latestSeason || "Unknown",
-          designerUrl: data.designerUrl,
-        };
-      });
+  // Group brands by first letter
+  const groupedBrands = useMemo(() => {
+    const groups = filteredBrands.reduce((acc, brand) => {
+      const firstLetter = brand.name.charAt(0).toUpperCase();
+      if (!acc[firstLetter]) {
+        acc[firstLetter] = [];
+      }
+      acc[firstLetter].push(brand);
+      return acc;
+    }, {} as Record<string, Brand[]>);
 
-      setDesigners(convertedDesigners);
-    } catch (err) {
-      console.error("Failed to fetch designers:", err);
-      setError(err instanceof Error ? err.message : "获取数据失败");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDesigners();
-  }, [retryCount]);
-
-  // Filter designers by search query
-  const filteredDesigners = designers.filter((designer) => {
-    const matchesSearch =
-      designer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      designer.brand.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
-  });
-
-  // Group designers by first letter
-  const groupedDesigners = filteredDesigners.reduce((groups, designer) => {
-    const firstLetter = designer.name.charAt(0).toUpperCase();
-    if (!groups[firstLetter]) {
-      groups[firstLetter] = [];
-    }
-    groups[firstLetter].push(designer);
-    return groups;
-  }, {} as Record<string, Designer[]>);
-
-  // Sort groups alphabetically
-  const sortedGroups = Object.keys(groupedDesigners)
-    .sort()
-    .map((letter) => ({
-      letter,
-      designers: groupedDesigners[letter].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      ),
-    }));
-
-  // 骨架屏动画
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (loading) {
-      const shimmerAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shimmerAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimmerAnim, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      shimmerAnimation.start();
-      return () => shimmerAnimation.stop();
-    }
-  }, [loading, shimmerAnim]);
-
-  const skeletonOpacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  // 骨架屏组件
-  const SkeletonBox = ({
-    width,
-    height,
-    style,
-  }: {
-    width: number | string;
-    height: number;
-    style?: any;
-  }) => (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          backgroundColor: theme.colors.gray200,
-          borderRadius: 4,
-          opacity: skeletonOpacity,
-        },
-        style,
-      ]}
-    />
-  );
-
-  // 渲染骨架屏
-  const renderSkeleton = () => (
-    <ScrollView
-      style={styles.content}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.contentContainer}
-    >
-      {["A", "B", "C", "D", "E"].map((letter) => (
-        <View key={letter}>
-          {/* Letter Header Skeleton */}
-          <View style={styles.letterHeader}>
-            <SkeletonBox width={20} height={14} />
-          </View>
-
-          {/* Designer Items Skeleton */}
-          {[1, 2, 3].map((item) => (
-            <View key={item} style={styles.designerItem}>
-              {/* Image Skeleton */}
-              <Animated.View
-                style={[
-                  styles.designerImage,
-                  {
-                    backgroundColor: theme.colors.gray200,
-                    opacity: skeletonOpacity,
-                  },
-                ]}
-              />
-
-              {/* Info Skeleton */}
-              <View style={styles.designerInfo}>
-                <SkeletonBox
-                  width={120}
-                  height={20}
-                  style={{ marginBottom: 6 }}
-                />
-                <SkeletonBox
-                  width={80}
-                  height={16}
-                  style={{ marginBottom: 6 }}
-                />
-                <SkeletonBox
-                  width={140}
-                  height={14}
-                  style={{ marginBottom: 4 }}
-                />
-                <SkeletonBox width={100} height={12} />
-              </View>
-
-              {/* Arrow Skeleton */}
-              <SkeletonBox width={16} height={16} style={{ borderRadius: 8 }} />
-            </View>
-          ))}
-        </View>
-      ))}
-    </ScrollView>
-  );
+    // Sort groups alphabetically
+    return Object.keys(groups)
+      .sort()
+      .map((letter) => ({
+        letter,
+        brands: groups[letter].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+  }, [filteredBrands]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="DESIGNERS"
-        subtitle="探索时装界的传奇人物"
+        title="Archive"
+        subtitle="探索全球时尚品牌"
         boldTitle={true}
         borderless
       />
@@ -235,106 +106,152 @@ const ArchiveScreen = () => {
         <View style={styles.searchBar}>
           <Ionicons
             name="search"
-            size={20}
+            size={18}
             color={theme.colors.gray400}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 10 }}
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="搜索设计师..."
-            placeholderTextColor={theme.colors.gray400}
+            placeholder="搜索品牌、设计师、国家..."
+            placeholderTextColor={theme.colors.gray300}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={theme.colors.gray300}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Loading State (Skeleton) */}
-      {loading && renderSkeleton()}
-
-      {/* Error State */}
-      {error && !loading && (
-        <View style={styles.errorContainer}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={48}
-            color={theme.colors.gray400}
-          />
-          <Text style={styles.errorTitle}>加载失败</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => {
-              setRetryCount((prev) => prev + 1);
-            }}
-          >
-            <Text style={styles.retryButtonText}>重试</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Designers List */}
-      {!loading && !error && (
+      {/* Category Filter */}
+      <View style={styles.filterContainer}>
         <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contentContainer}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
         >
-          {sortedGroups.map((group) => (
-            <View key={group.letter}>
-              {/* Letter Header */}
-              <View style={styles.letterHeader}>
+          {CATEGORY_FILTERS.map((filter) => (
+            <TouchableOpacity
+              key={filter.value}
+              style={[
+                styles.filterChip,
+                selectedCategory === filter.value && styles.filterChipActive,
+              ]}
+              onPress={() => setSelectedCategory(filter.value)}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  selectedCategory === filter.value &&
+                    styles.filterChipTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Results Count */}
+      <View style={styles.resultsBar}>
+        <Text style={styles.resultsText}>{filteredBrands.length} 个品牌</Text>
+      </View>
+
+      {/* Brands List */}
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        {groupedBrands.map((group) => (
+          <View key={group.letter}>
+            {/* Letter Header */}
+            <View style={styles.letterHeader}>
+              <View style={styles.letterBadge}>
                 <Text style={styles.letterText}>{group.letter}</Text>
               </View>
+              <View style={styles.letterLine} />
+            </View>
 
-              {/* Designers in this group */}
-              {group.designers.map((designer) => (
-                <TouchableOpacity
-                  key={designer.id}
-                  style={styles.designerItem}
-                  onPress={() => {
-                    (navigation.navigate as any)("DesignerDetail", {
-                      id: designer.id.toString(),
-                      name: designer.name,
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.designerInfo}>
-                    <Text style={styles.designerName}>{designer.name}</Text>
-                    <Text style={styles.designerBrand}>{designer.brand}</Text>
-                    <Text style={styles.designerMeta}>
-                      {designer.shows} 场秀
-                    </Text>
-                    <Text style={styles.designerSeason}>
-                      最新: {designer.latestSeason}
-                    </Text>
+            {/* Brands in this group */}
+            {group.brands.map((brand) => (
+              <TouchableOpacity
+                key={brand.id}
+                style={styles.brandItem}
+                onPress={() => {
+                  (navigation.navigate as any)("DesignerDetail", {
+                    id: brand.id.toString(),
+                    name: brand.name,
+                  });
+                }}
+                activeOpacity={0.7}
+              >
+                {/* Brand Initial Avatar */}
+                {/* <View style={styles.brandAvatar}>
+                  <Text style={styles.brandAvatarText}>
+                    {getBrandInitial(brand.name)}
+                  </Text>
+                </View> */}
+
+                {/* Brand Info */}
+                <View style={styles.brandInfo}>
+                  <Text style={styles.brandName} numberOfLines={1}>
+                    {brand.name}
+                  </Text>
+                  <View style={styles.brandMetaRow}>
+                    {brand.category && (
+                      <Text style={styles.brandCategory} numberOfLines={1}>
+                        {brand.category.split("/")[0]}
+                      </Text>
+                    )}
+                    {brand.country && (
+                      <Text style={styles.brandMeta}>{brand.country}</Text>
+                    )}
+                    {brand.foundedYear && (
+                      <Text style={styles.brandMeta}>
+                        {brand.foundedYear}年
+                      </Text>
+                    )}
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={theme.colors.gray400}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
+                </View>
 
-          {filteredDesigners.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name="person-outline"
-                size={48}
-                color={theme.colors.gray400}
-              />
-              <Text style={styles.emptyTitle}>未找到设计师</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery ? "没有匹配的设计师" : "设计师列表正在更新中"}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      )}
+                {/* Arrow */}
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.colors.gray200}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+
+        {filteredBrands.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons
+              name="search-outline"
+              size={48}
+              color={theme.colors.gray200}
+            />
+            <Text style={styles.emptyTitle}>未找到品牌</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery
+                ? `没有匹配 "${searchQuery}" 的品牌`
+                : "品牌列表正在更新中"}
+            </Text>
+          </View>
+        )}
+
+        {/* Bottom Padding */}
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -345,22 +262,64 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   searchContainer: {
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: theme.borderRadius.lg,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.black,
+  },
+  filterContainer: {
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+  },
+  filterScrollContent: {
+    paddingHorizontal: theme.spacing.md,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.white,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray500,
+  },
+  filterChipTextActive: {
+    color: theme.colors.white,
+  },
+  resultsBar: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  resultsText: {
+    fontSize: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray400,
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
@@ -369,74 +328,85 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.lg,
   },
   letterHeader: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.gray100,
-  },
-  letterText: {
-    ...theme.typography.caption,
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-    letterSpacing: 1,
-  },
-  designerItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    backgroundColor: theme.colors.white,
   },
-  designerImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: theme.spacing.md,
-    backgroundColor: theme.colors.gray100,
-  },
-  designerImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: theme.spacing.md,
-    backgroundColor: theme.colors.gray200,
-    justifyContent: "center",
+  letterBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: theme.colors.black,
     alignItems: "center",
+    justifyContent: "center",
   },
-  designerImagePlaceholderText: {
-    fontSize: 24,
+  letterText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: theme.colors.white,
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+  },
+  letterLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.gray200,
+    marginLeft: theme.spacing.md,
+  },
+  brandItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+    backgroundColor: theme.colors.white,
+  },
+  brandAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+  },
+  brandAvatarText: {
+    fontSize: 16,
     fontWeight: "600",
     color: theme.colors.gray500,
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
   },
-  designerInfo: {
+  brandInfo: {
     flex: 1,
   },
-  designerName: {
-    ...theme.typography.body,
-    fontSize: 17,
-    fontWeight: "400",
+  brandName: {
+    fontSize: 16,
+    fontWeight: "500",
     color: theme.colors.black,
-    marginBottom: 2,
+    marginBottom: 4,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    letterSpacing: 0.2,
   },
-  designerBrand: {
-    ...theme.typography.bodySmall,
-    fontSize: 14,
-    color: theme.colors.gray500,
-    marginBottom: 2,
+  brandMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
   },
-  designerMeta: {
-    ...theme.typography.caption,
+  brandCategory: {
     fontSize: 12,
-    color: theme.colors.gray400,
-    marginBottom: 2,
-  },
-  designerSeason: {
-    ...theme.typography.caption,
-    fontSize: 11,
     color: theme.colors.gray500,
-    fontStyle: "italic",
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    marginRight: 8,
+  },
+  brandMeta: {
+    fontSize: 12,
+    color: theme.colors.gray300,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    marginRight: 8,
   },
   emptyState: {
     flex: 1,
@@ -446,54 +416,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
   },
   emptyTitle: {
-    ...theme.typography.h3,
+    fontSize: 17,
+    fontWeight: "600",
     color: theme.colors.black,
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
   },
   emptyText: {
-    ...theme.typography.body,
+    fontSize: 14,
     color: theme.colors.gray400,
     textAlign: "center",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    ...theme.typography.body,
-    color: theme.colors.gray500,
-    marginTop: theme.spacing.md,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.xl,
-  },
-  errorTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  errorText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    marginBottom: theme.spacing.lg,
-  },
-  retryButton: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  retryButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.white,
-    fontWeight: "600",
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    lineHeight: 20,
   },
 });
 
