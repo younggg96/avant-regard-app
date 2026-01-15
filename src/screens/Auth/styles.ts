@@ -385,44 +385,4 @@ export const styles = StyleSheet.create({
     textAlignVertical: "top",
     paddingTop: 12,
   },
-  // 设计师选择样式
-  inputHint: {
-    fontSize: 12,
-    fontFamily: "Inter-Regular",
-    color: theme.colors.gray400,
-    marginBottom: 12,
-    marginTop: -4,
-  },
-  designerGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  designerChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1.5,
-    borderColor: "transparent",
-    maxWidth: (SCREEN_WIDTH - 48 - 20) / 2 - 5,
-  },
-  designerChipSelected: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  designerChipText: {
-    fontSize: 13,
-    fontFamily: "Inter-Medium",
-    color: theme.colors.black,
-    flex: 1,
-  },
-  designerChipTextSelected: {
-    color: theme.colors.white,
-  },
-  designerCheckIcon: {
-    marginLeft: 4,
-  },
 });

@@ -20,7 +20,6 @@ import ArchiveScreen from "./src/screens/ArchiveScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import BuyerMapScreen from "./src/screens/BuyerMapScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
-import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
 import LookDetailScreen from "./src/screens/LookDetailScreen";
 import PostDetailScreen from "./src/screens/PostDetailScreen";
@@ -36,7 +35,6 @@ import FavoritesScreen from "./src/screens/FavoritesScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import DraftsScreen from "./src/screens/DraftsScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
-import FollowingDesignersScreen from "./src/screens/FollowingDesignersScreen";
 import AdminScreen from "./src/screens/AdminScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
@@ -194,11 +192,6 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="DesignerDetail"
-        component={DesignerDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
         name="CollectionDetail"
         component={CollectionDetailScreen}
         options={{ headerShown: false }}
@@ -272,11 +265,6 @@ function AppNavigator() {
       <Stack.Screen
         name="FollowingUsers"
         component={FollowingUsersScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="FollowingDesigners"
-        component={FollowingDesignersScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

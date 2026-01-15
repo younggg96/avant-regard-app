@@ -18,15 +18,3 @@ class FollowingUser(BaseModel):
     avatar: str = ""
     bio: str = ""
     location: str = ""
-
-
-class FollowingDesigner(BaseModel):
-    """关注的设计师信息"""
-    id: int
-    name: str
-    slug: str
-    designerUrl: str = ""
-    showCount: int = 0
-    totalImages: int = 0
-    latestSeason: str = ""
-    followerCount: int = 0

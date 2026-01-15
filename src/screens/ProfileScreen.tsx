@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -23,11 +25,15 @@ import {
   Post as ApiPost,
   PostStatus as ApiPostStatus,
 } from "../services/postService";
-import { getUnreadCount } from "../services/notificationService";
-import { userInfoService, UserInfo } from "../services/userInfoService";
+// import { getUnreadCount } from "../services/notificationService";
+import {
+  userInfoService,
+  UserInfo,
+  UserProfileInfo,
+} from "../services/userInfoService";
 import {
   getFollowingCount,
-  getFollowingDesignersCount,
+  getFollowersCount,
 } from "../services/followService";
 import SimplePostCard from "../components/SimplePostCard";
 import { Post as DisplayPost } from "../components/PostCard";
@@ -43,7 +49,6 @@ const ProfileScreen = () => {
   const [posts, setPosts] = useState<DisplayPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,8 +59,15 @@ const ProfileScreen = () => {
   // 关注的用户数量
   const [followingUsersCount, setFollowingUsersCount] = useState(0);
 
-  // 关注的设计师数量
-  const [followingDesignersCount, setFollowingDesignersCount] = useState(0);
+  // 粉丝数量
+  const [followersCount, setFollowersCount] = useState(0);
+
+  // 用户完整资料（包含性别、年龄等）
+  const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
+
+  // Tab 滑动相关
+  const tabScrollViewRef = useRef<ScrollView>(null);
+  const contentScrollViewRef = useRef<ScrollView>(null);
 
   // 各标签的帖子数量
   const [postCounts, setPostCounts] = useState({
@@ -81,28 +93,6 @@ const ProfileScreen = () => {
     { id: "liked" as TabType, label: "我喜欢的", count: postCounts.liked },
     { id: "saved" as TabType, label: "我收藏的", count: postCounts.saved },
     { id: "draft" as TabType, label: "草稿", count: postCounts.draft },
-  ];
-
-  const menuItems = [
-    // {
-    //   id: "notifications",
-    //   label: "通知",
-    //   count: unreadNotifications,
-    //   icon: "notifications-outline",
-    // },
-    {
-      id: "followedUsers",
-      label: "关注的用户",
-      count: followingUsersCount,
-      icon: "people-outline",
-    },
-    {
-      id: "followedDesigners",
-      label: "关注的设计师",
-      count: followingDesignersCount,
-      icon: "heart-outline",
-    },
-    { id: "settings", label: "设置", count: null, icon: "settings-outline" },
   ];
 
   // 将 API 帖子转换为展示格式
@@ -137,10 +127,10 @@ const ProfileScreen = () => {
 
   // 初始化数据 - 只加载用户信息和关注数量，不加载所有帖子
   useEffect(() => {
-    loadUnreadNotifications();
     loadUserInfo();
+    loadUserProfile();
     loadFollowingUsersCount();
-    loadFollowingDesignersCount();
+    loadFollowersCount();
     // 清空缓存，因为用户可能变了
     setTabDataCache({});
   }, [user?.userId]);
@@ -167,16 +157,6 @@ const ProfileScreen = () => {
     }
   };
 
-  // 加载未读通知数量
-  const loadUnreadNotifications = async () => {
-    try {
-      const count = await getUnreadCount();
-      setUnreadNotifications(count);
-    } catch (error) {
-      console.error("Error loading unread notifications:", error);
-    }
-  };
-
   // 加载关注的用户数量
   const loadFollowingUsersCount = async () => {
     if (!user?.userId) return;
@@ -189,15 +169,27 @@ const ProfileScreen = () => {
     }
   };
 
-  // 加载关注的设计师数量
-  const loadFollowingDesignersCount = async () => {
+  // 加载粉丝数量
+  const loadFollowersCount = async () => {
     if (!user?.userId) return;
 
     try {
-      const count = await getFollowingDesignersCount(user.userId);
-      setFollowingDesignersCount(count);
+      const count = await getFollowersCount(user.userId);
+      setFollowersCount(count);
     } catch (error) {
-      console.error("Error loading following designers count:", error);
+      console.error("Error loading followers count:", error);
+    }
+  };
+
+  // 加载用户完整资料
+  const loadUserProfile = async () => {
+    if (!user?.userId) return;
+
+    try {
+      const profile = await userInfoService.getUserProfile(user.userId);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error("Error loading user profile:", error);
     }
   };
 
@@ -336,8 +328,9 @@ const ProfileScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadUserInfo();
+      loadUserProfile();
       loadFollowingUsersCount();
-      loadFollowingDesignersCount();
+      loadFollowersCount();
       // 只刷新当前 tab 的数据
       loadPosts(true);
     }, [activeTab, user?.userId])
@@ -360,11 +353,63 @@ const ProfileScreen = () => {
 
     await Promise.all([
       loadUserInfo(),
+      loadUserProfile(),
       loadPosts(true),
       loadFollowingUsersCount(),
-      loadFollowingDesignersCount(),
+      loadFollowersCount(),
     ]);
     setRefreshing(false);
+  };
+
+  // 处理 tab 滑动切换
+  const handleTabSwipe = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const pageIndex = Math.round(contentOffset.x / layoutMeasurement.width);
+    const tabIds: TabType[] = [
+      "published",
+      "pending",
+      "liked",
+      "saved",
+      "draft",
+    ];
+    if (
+      pageIndex >= 0 &&
+      pageIndex < tabIds.length &&
+      tabIds[pageIndex] !== activeTab
+    ) {
+      setActiveTab(tabIds[pageIndex]);
+    }
+  };
+
+  // 处理 tab 点击
+  const handleTabPress = (tabId: TabType) => {
+    const tabIds: TabType[] = [
+      "published",
+      "pending",
+      "liked",
+      "saved",
+      "draft",
+    ];
+    const index = tabIds.indexOf(tabId);
+    if (index >= 0 && contentScrollViewRef.current) {
+      contentScrollViewRef.current.scrollTo({
+        x: index * SCREEN_WIDTH,
+        animated: true,
+      });
+    }
+    setActiveTab(tabId);
+  };
+
+  // 获取性别显示文字
+  const getGenderText = (gender?: string): string => {
+    switch (gender) {
+      case "MALE":
+        return "♂";
+      case "FEMALE":
+        return "♀";
+      default:
+        return "";
+    }
   };
 
   const handleLogout = () => {
@@ -504,9 +549,31 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* 顶部操作栏 */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.topBarButton}
+          onPress={() => (navigation as any).navigate("Settings")}
+        >
+          <Ionicons
+            name="settings-outline"
+            size={24}
+            color={theme.colors.black}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.topBarButton} onPress={handleLogout}>
+          <Ionicons
+            name="log-out-outline"
+            size={24}
+            color={theme.colors.black}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* 小红书风格头部 */}
       <View style={styles.header}>
-        <View style={styles.profileInfo}>
-          {/* 头像 */}
+        {/* 第一行：头像和用户名 */}
+        <View style={styles.profileRow}>
           <TouchableOpacity
             style={styles.avatarContainer}
             onPress={() => (navigation as any).navigate("EditProfile")}
@@ -527,202 +594,219 @@ const ProfileScreen = () => {
             )}
           </TouchableOpacity>
 
-          {/* 用户信息 */}
-          <TouchableOpacity
-            style={styles.userInfo}
-            onPress={() => (navigation as any).navigate("EditProfile")}
-          >
+          <View style={styles.userInfoSection}>
             <Text style={styles.username}>
               {userInfo?.username || user?.username || "用户"}
             </Text>
-            {userInfo?.bio ? (
-              <Text style={styles.userBio} numberOfLines={1}>
-                {userInfo.bio}
-              </Text>
-            ) : (
-              <Text style={styles.joinDate}>
-                {user?.phone
-                  ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2")
-                  : "点击编辑个人资料"}
-              </Text>
-            )}
-          </TouchableOpacity>
+            <Text style={styles.userId}>
+              用户号：{user?.userId || "未知"}
+              {userInfo?.location ? `  IP属地：${userInfo.location}` : ""}
+            </Text>
+          </View>
+        </View>
 
-          {/* 退出按钮 */}
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons
-              name="log-out-outline"
-              size={24}
-              color={theme.colors.gray400}
-            />
+        {/* Bio */}
+        <TouchableOpacity
+          style={styles.bioContainer}
+          onPress={() => (navigation as any).navigate("EditProfile")}
+        >
+          <Text style={styles.bioText} numberOfLines={2}>
+            {userInfo?.bio || "点击编辑个人简介..."}
+          </Text>
+        </TouchableOpacity>
+
+        {/* 标签（年龄、位置等） */}
+        <View style={styles.tagsRow}>
+          {userProfile?.age != null && userProfile.age > 0 ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>
+                {getGenderText(userProfile?.gender)} {userProfile.age}岁
+              </Text>
+            </View>
+          ) : null}
+          {userInfo?.location ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{userInfo.location}</Text>
+            </View>
+          ) : null}
+          {userProfile?.preference ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{userProfile.preference}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* 统计数据 */}
+        <View style={styles.statsRow}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              (navigation as any).navigate("FollowingUsers", {
+                userId: user?.userId,
+              })
+            }
+          >
+            <Text style={styles.statNumber}>{followingUsersCount}</Text>
+            <Text style={styles.statLabel}>关注</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statNumber}>{followersCount}</Text>
+            <Text style={styles.statLabel}>粉丝</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {postCounts.published > 0
+                ? postCounts.published
+                : userInfo?.userId
+                ? "0"
+                : "-"}
+            </Text>
+            <Text style={styles.statLabel}>获赞与收藏</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.menuSection}>
-          {menuItems.map((item) => (
+      {/* 我的发布区域 */}
+      <View style={styles.postsSection}>
+        {/* 标签栏 */}
+        <ScrollView
+          ref={tabScrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabBar}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {tabs.map((tab) => (
             <TouchableOpacity
-              key={item.id}
-              style={styles.menuItem}
-              onPress={() => {
-                switch (item.id) {
-                  case "notifications":
-                    (navigation as any).navigate("Notifications");
-                    break;
-                  case "followedUsers":
-                    (navigation as any).navigate("FollowingUsers", {
-                      userId: user?.userId,
-                    });
-                    break;
-                  case "followedDesigners":
-                    (navigation as any).navigate("FollowingDesigners", {
-                      userId: user?.userId,
-                    });
-                    break;
-                  case "settings":
-                    (navigation as any).navigate("Settings");
-                    break;
-                  case "favorites":
-                    (navigation as any).navigate("Favorites");
-                    break;
-                  case "history":
-                    (navigation as any).navigate("History");
-                    break;
-                  default:
-                    Alert.show(`${item.label}功能即将推出`);
-                }
-              }}
+              key={tab.id}
+              style={[
+                styles.tabItem,
+                activeTab === tab.id && styles.tabItemActive,
+              ]}
+              onPress={() => handleTabPress(tab.id)}
             >
-              <View style={styles.menuLeft}>
-                <Ionicons
-                  name={item.icon as any}
-                  size={20}
-                  color={theme.colors.gray400}
-                  style={styles.menuIcon}
-                />
-                <Text style={styles.menuLabel}>{item.label}</Text>
-              </View>
-              <View style={styles.menuRight}>
-                {item.count !== null && (
-                  <Text style={styles.menuCount}>{item.count}</Text>
-                )}
-                <Text style={styles.menuArrow}>→</Text>
-              </View>
+              <Text
+                style={[
+                  styles.tabLabel,
+                  activeTab === tab.id && styles.tabLabelActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+              {activeTab === tab.id && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
-        {/* 我的发布区域 */}
-        <View style={styles.postsSection}>
-          {/* 标签栏 */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.tabBar}
-            contentContainerStyle={styles.tabBarContent}
-          >
-            {tabs.map((tab) => (
-              <TouchableOpacity
+        {/* 可滑动的内容区域 */}
+        <ScrollView
+          ref={contentScrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleTabSwipe}
+          scrollEventThrottle={16}
+          style={styles.swipeContainer}
+          nestedScrollEnabled={true}
+        >
+          {tabs.map((tab) => {
+            // 获取当前 tab 的数据
+            const tabPosts =
+              activeTab === tab.id ? posts : tabDataCache[tab.id]?.posts || [];
+            const isCurrentTab = activeTab === tab.id;
+            const isLoading = loading && isCurrentTab;
+
+            return (
+              <ScrollView
                 key={tab.id}
-                style={[
-                  styles.tabItem,
-                  activeTab === tab.id && styles.tabItemActive,
-                ]}
-                onPress={() => setActiveTab(tab.id)}
-              >
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    activeTab === tab.id && styles.tabLabelActive,
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-                {activeTab === tab.id && <View style={styles.tabIndicator} />}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Posts 网格 */}
-          {loading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator size="large" color={theme.colors.gray400} />
-              <Text style={styles.loadingText}>加载中...</Text>
-            </View>
-          ) : posts.length > 0 ? (
-            <View style={styles.postsGrid}>
-              {posts.map((post) => (
-                <View key={post.id} style={styles.postItem}>
-                  <TouchableOpacity
-                    onPress={() => handlePostPress(post)}
-                    onLongPress={() => {
-                      // 只有自己的帖子才能删除（published、draft、pending）
-                      if (
-                        activeTab === "published" ||
-                        activeTab === "draft" ||
-                        activeTab === "pending"
-                      ) {
-                        handleDeletePost(post);
-                      }
-                    }}
-                    activeOpacity={0.95}
-                  >
-                    <SimplePostCard
-                      post={post}
-                      onPress={() => handlePostPress(post)}
-                    />
-                  </TouchableOpacity>
-
-                  {/* 显示删除按钮（只对自己的帖子） */}
-                  {(activeTab === "published" ||
-                    activeTab === "draft" ||
-                    activeTab === "pending") && (
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeletePost(post)}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={16}
-                        color={theme.colors.white}
-                      />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name={
-                  activeTab === "saved"
-                    ? "bookmark-outline"
-                    : activeTab === "liked"
-                    ? "heart-outline"
-                    : activeTab === "pending"
-                    ? "time-outline"
-                    : "document-text-outline"
+                style={styles.tabPage}
+                contentContainerStyle={styles.tabPageContent}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing && isCurrentTab}
+                    onRefresh={onRefresh}
+                  />
                 }
-                size={48}
-                color={theme.colors.gray300}
-              />
-              <Text style={styles.emptyText}>
-                {activeTab === "published" && "还没有发布内容"}
-                {activeTab === "pending" && "没有待审核的帖子"}
-                {activeTab === "draft" && "还没有草稿"}
-                {activeTab === "saved" && "还没有收藏帖子"}
-                {activeTab === "liked" && "还没有点赞帖子"}
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                {isLoading ? (
+                  <View style={styles.loadingState}>
+                    <ActivityIndicator
+                      size="large"
+                      color={theme.colors.gray400}
+                    />
+                    <Text style={styles.loadingText}>加载中...</Text>
+                  </View>
+                ) : tabPosts.length > 0 ? (
+                  <View style={styles.postsGrid}>
+                    {tabPosts.map((post) => (
+                      <View key={post.id} style={styles.postItem}>
+                        <TouchableOpacity
+                          onPress={() => handlePostPress(post)}
+                          onLongPress={() => {
+                            if (
+                              tab.id === "published" ||
+                              tab.id === "draft" ||
+                              tab.id === "pending"
+                            ) {
+                              handleDeletePost(post);
+                            }
+                          }}
+                          activeOpacity={0.95}
+                        >
+                          <SimplePostCard
+                            post={post}
+                            onPress={() => handlePostPress(post)}
+                          />
+                        </TouchableOpacity>
+
+                        {(tab.id === "published" ||
+                          tab.id === "draft" ||
+                          tab.id === "pending") && (
+                          <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={() => handleDeletePost(post)}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={16}
+                              color={theme.colors.white}
+                            />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.emptyState}>
+                    <Ionicons
+                      name={
+                        tab.id === "saved"
+                          ? "bookmark-outline"
+                          : tab.id === "liked"
+                          ? "heart-outline"
+                          : tab.id === "pending"
+                          ? "time-outline"
+                          : "document-text-outline"
+                      }
+                      size={48}
+                      color={theme.colors.gray300}
+                    />
+                    <Text style={styles.emptyText}>
+                      {tab.id === "published" && "还没有发布内容"}
+                      {tab.id === "pending" && "没有待审核的帖子"}
+                      {tab.id === "draft" && "还没有草稿"}
+                      {tab.id === "saved" && "还没有收藏帖子"}
+                      {tab.id === "liked" && "还没有点赞帖子"}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* Delete Confirmation Dialog */}
       <Modal
@@ -874,23 +958,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
+  // 顶部操作栏
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.md,
+  },
+  topBarButton: {
+    padding: theme.spacing.xs,
+  },
+  // 小红书风格头部
   header: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    paddingBottom: theme.spacing.md,
   },
-  profileInfo: {
+  profileRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: theme.spacing.md,
   },
   avatarContainer: {
     marginRight: theme.spacing.md,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   avatarPlaceholder: {
     backgroundColor: theme.colors.black,
@@ -898,92 +993,85 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: {
-    ...theme.typography.h3,
+    ...theme.typography.h2,
     color: theme.colors.white,
   },
-  userInfo: {
+  userInfoSection: {
     flex: 1,
-  },
-  logoutButton: {
-    padding: theme.spacing.sm,
   },
   username: {
-    ...theme.typography.h3,
+    ...theme.typography.h2,
     color: theme.colors.black,
-    marginBottom: 2,
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  userBio: {
+  userId: {
     ...theme.typography.caption,
-    color: theme.colors.gray600,
-  },
-  joinDate: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  content: {
-    flex: 1,
-  },
-  menuSection: {
-    paddingVertical: theme.spacing.md,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  menuLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  menuLabel: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-  },
-  menuRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuCount: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginRight: theme.spacing.sm,
-  },
-  menuArrow: {
-    ...theme.typography.body,
     color: theme.colors.gray300,
   },
-  postsSection: {
-    marginTop: theme.spacing.md,
+  bioContainer: {
+    marginBottom: theme.spacing.sm,
   },
-  sectionTitle: {
+  bioText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray400,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  tag: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.full,
+  },
+  tagText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.lg,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+  },
+  statNumber: {
     ...theme.typography.h3,
     color: theme.colors.black,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    fontWeight: "700",
+  },
+  statLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  // 帖子区域
+  postsSection: {
+    flex: 1,
   },
   tabBar: {
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
+    maxHeight: 44,
   },
   tabBarContent: {
     paddingHorizontal: theme.spacing.md,
   },
   tabItem: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     marginRight: theme.spacing.lg,
     position: "relative",
   },
   tabItemActive: {},
   tabLabel: {
     ...theme.typography.body,
-    color: theme.colors.gray400,
+    color: theme.colors.gray300,
     fontWeight: "500",
   },
   tabLabelActive: {
@@ -998,11 +1086,22 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: theme.colors.black,
   },
+  // 滑动容器
+  swipeContainer: {
+    flex: 1,
+  },
+  tabPage: {
+    width: SCREEN_WIDTH,
+  },
+  tabPageContent: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.xl,
+  },
   postsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
     justifyContent: "space-between",
   },
   postItem: {

@@ -98,14 +98,12 @@ async def update_user_profile(
     result = user_service.update_user_profile(
         user_id,
         username=request.username,
-        is_admin=request.is_admin,
         bio=request.bio,
         location=request.location,
         avatarUrl=request.avatarUrl,
         gender=request.gender.value if request.gender else None,
         age=request.age,
         preference=request.preference,
-        possibleDesignerIds=request.possibleDesignerIds,
     )
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")

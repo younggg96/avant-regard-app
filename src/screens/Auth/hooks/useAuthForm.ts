@@ -2,10 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { TextInput, ScrollView, LayoutChangeEvent } from "react-native";
 import { Alert } from "../../../utils/Alert";
 import { authService } from "../../../services/authService";
-import {
-  designerService,
-  DesignerOption,
-} from "../../../services/designerService";
 import { userInfoService, Gender } from "../../../services/userInfoService";
 import { useAuthStore } from "../../../store/authStore";
 import { AuthMode, FormData, RegisteredTokens } from "../types";
@@ -18,8 +14,7 @@ export const useAuthForm = () => {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  // 设计师选项和注册后用户ID
-  const [designerOptions, setDesignerOptions] = useState<DesignerOption[]>([]);
+  // 注册后用户ID
   const [registeredUserId, setRegisteredUserId] = useState<number | null>(null);
   const [registeredTokens, setRegisteredTokens] =
     useState<RegisteredTokens | null>(null);
@@ -38,16 +33,6 @@ export const useAuthForm = () => {
   const inputPositions = useRef<{ [key: string]: number }>({});
 
   const { loginWithResponse } = useAuthStore();
-
-  // 加载设计师列表（需要认证，在注册成功后调用）
-  const loadDesigners = useCallback(async () => {
-    try {
-      const designers = await designerService.getDesignerOptions();
-      setDesignerOptions(designers);
-    } catch (error) {
-      console.log("加载设计师列表失败:", error);
-    }
-  }, []);
 
   // 记录输入框位置
   const handleInputLayout = useCallback(
@@ -263,7 +248,7 @@ export const useAuthForm = () => {
         refreshToken: response.refreshToken,
       });
 
-      // 临时登录以便加载设计师列表
+      // 临时登录
       const tempLoginResponse = {
         userId: response.userId,
         username: formData.username,
@@ -274,9 +259,6 @@ export const useAuthForm = () => {
         refreshToken: response.refreshToken,
       };
       loginWithResponse(tempLoginResponse);
-
-      // 加载设计师列表（需要认证）
-      await loadDesigners();
 
       Alert.show("注册成功: 请完善您的资料", "", 1000);
 
@@ -296,7 +278,6 @@ export const useAuthForm = () => {
     formData,
     validatePhone,
     loginWithResponse,
-    loadDesigners,
     getFullPhoneNumber,
   ]);
 
@@ -314,16 +295,6 @@ export const useAuthForm = () => {
 
     if (!formData.age) {
       Alert.show("提示: 请选择您的年龄段");
-      return;
-    }
-
-    if (formData.selectedDesigners.length === 0) {
-      Alert.show("提示: 请至少选择1个您可能喜欢的设计师");
-      return;
-    }
-
-    if (formData.selectedDesigners.length > 5) {
-      Alert.show("提示: 最多选择5个设计师");
       return;
     }
 
@@ -364,7 +335,6 @@ export const useAuthForm = () => {
         gender: formData.gender as Gender,
         age: ageValue,
         preference: formData.preference,
-        possibleDesignerIds: formData.selectedDesigners.map((d) => d.id),
       });
 
       Alert.show("资料完善成功: 请使用账号密码登录", "", 1500);
@@ -381,7 +351,6 @@ export const useAuthForm = () => {
           gender: "",
           age: "",
           preference: "",
-          selectedDesigners: [],
         }));
         setRegisteredUserId(null);
         setRegisteredTokens(null);
@@ -401,32 +370,6 @@ export const useAuthForm = () => {
     loginWithResponse,
     getFullPhoneNumber,
   ]);
-
-  // 切换设计师选择
-  const toggleDesignerSelection = useCallback((designer: DesignerOption) => {
-    setFormData((prev) => {
-      const isSelected = prev.selectedDesigners.some(
-        (d) => d.id === designer.id
-      );
-      if (isSelected) {
-        return {
-          ...prev,
-          selectedDesigners: prev.selectedDesigners.filter(
-            (d) => d.id !== designer.id
-          ),
-        };
-      } else {
-        if (prev.selectedDesigners.length >= 5) {
-          Alert.show("提示: 最多选择5个设计师");
-          return prev;
-        }
-        return {
-          ...prev,
-          selectedDesigners: [...prev.selectedDesigners, designer],
-        };
-      }
-    });
-  }, []);
 
   // 处理忘记密码
   const handleForgotPassword = useCallback(async () => {
@@ -568,7 +511,6 @@ export const useAuthForm = () => {
     countdown,
     showPassword,
     setShowPassword,
-    designerOptions,
     showLocationPicker,
     setShowLocationPicker,
     showAgePicker,
@@ -593,6 +535,5 @@ export const useAuthForm = () => {
     handleConfirmPasswordSubmit,
     handleMainAction,
     handleSkipProfile,
-    toggleDesignerSelection,
   };
 };

@@ -26,7 +26,6 @@ const AuthScreen = () => {
     countdown,
     showPassword,
     setShowPassword,
-    designerOptions,
     showLocationPicker,
     setShowLocationPicker,
     showAgePicker,
@@ -51,7 +50,6 @@ const AuthScreen = () => {
     handleConfirmPasswordSubmit,
     handleMainAction,
     handleSkipProfile,
-    toggleDesignerSelection,
   } = useAuthForm();
 
   return (
@@ -75,12 +73,10 @@ const AuthScreen = () => {
             <ProfileForm
               formData={formData}
               setFormData={setFormData}
-              designerOptions={designerOptions}
               showLocationPicker={showLocationPicker}
               setShowLocationPicker={setShowLocationPicker}
               showAgePicker={showAgePicker}
               setShowAgePicker={setShowAgePicker}
-              toggleDesignerSelection={toggleDesignerSelection}
             />
           ) : (
             <AuthForm

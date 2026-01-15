@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-nativ
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { Gender } from "../../../services/userInfoService";
-import { DesignerOption } from "../../../services/designerService";
 import { FormData } from "../types";
 import { PROVINCES, AGE_RANGES } from "../constants";
 import { styles } from "../styles";
@@ -11,23 +10,19 @@ import { styles } from "../styles";
 interface ProfileFormProps {
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
-  designerOptions: DesignerOption[];
   showLocationPicker: boolean;
   setShowLocationPicker: (show: boolean) => void;
   showAgePicker: boolean;
   setShowAgePicker: (show: boolean) => void;
-  toggleDesignerSelection: (designer: DesignerOption) => void;
 }
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({
   formData,
   setFormData,
-  designerOptions,
   showLocationPicker,
   setShowLocationPicker,
   showAgePicker,
   setShowAgePicker,
-  toggleDesignerSelection,
 }) => {
   return (
     <View style={styles.formContainer}>
@@ -180,50 +175,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           maxLength={100}
           multiline
         />
-      </View>
-
-      {/* 设计师选择 */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>
-          选择您可能喜欢的设计师（{formData.selectedDesigners.length}/5）
-        </Text>
-        <Text style={styles.inputHint}>请选择1-5个您感兴趣的设计师品牌</Text>
-
-        <View style={styles.designerGrid}>
-          {designerOptions.map((designer) => {
-            const isSelected = formData.selectedDesigners.some(
-              (d) => d.id === designer.id
-            );
-            return (
-              <TouchableOpacity
-                key={designer.id}
-                style={[
-                  styles.designerChip,
-                  isSelected && styles.designerChipSelected,
-                ]}
-                onPress={() => toggleDesignerSelection(designer)}
-              >
-                <Text
-                  style={[
-                    styles.designerChipText,
-                    isSelected && styles.designerChipTextSelected,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {designer.name}
-                </Text>
-                {isSelected && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={16}
-                    color={theme.colors.white}
-                    style={styles.designerCheckIcon}
-                  />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
       </View>
     </View>
   );

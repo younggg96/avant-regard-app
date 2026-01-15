@@ -1,4 +1,3 @@
-import { DesignerOption } from "../../services/designerService";
 import { Gender } from "../../services/userInfoService";
 
 export type AuthMode =
@@ -28,7 +27,6 @@ export interface FormData {
   gender: Gender | "";
   age: string;
   preference: string;
-  selectedDesigners: DesignerOption[];
 }
 
 export interface RegisteredTokens {

@@ -85,7 +85,6 @@ const SettingsScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title="设置" showBack={true} />
-      <Text>{JSON.stringify(user)}</Text>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
           <View key={section.title} style={styles.section}>

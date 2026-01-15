@@ -15,7 +15,6 @@ from app.api.routes.user import router as user_router
 from app.api.routes.post import router as post_router
 from app.api.routes.comment import router as comment_router
 from app.api.routes.follow import router as follow_router
-from app.api.routes.designer import router as designer_router
 from app.api.routes.admin import router as admin_router, admin_user_router
 from app.api.routes.files import router as files_router
 
@@ -66,7 +65,6 @@ app.include_router(user_router, prefix="/api")
 app.include_router(post_router, prefix="/api")
 app.include_router(comment_router, prefix="/api")
 app.include_router(follow_router, prefix="/api")
-app.include_router(designer_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(admin_user_router, prefix="/api")
 app.include_router(files_router, prefix="/api")

@@ -3,7 +3,7 @@
 """
 from typing import Optional, List
 from app.db.supabase import get_supabase
-from app.schemas.user import UserInfo, UserProfileInfo, DesignerInfo
+from app.schemas.user import UserInfo, UserProfileInfo
 
 
 class UserService:
@@ -72,9 +72,6 @@ class UserService:
             return None
         info = info_result.data[0]
         
-        # 获取用户偏好的设计师
-        designers = self._get_user_preferred_designers(user_id)
-        
         return UserProfileInfo(
             userId=user["id"],
             infoId=info["id"],
@@ -84,8 +81,7 @@ class UserService:
             avatarUrl=info.get("avatar_url", ""),
             gender=info.get("gender", "OTHER"),
             age=info.get("age", 0),
-            preference=info.get("preference", ""),
-            possibleDesigners=designers
+            preference=info.get("preference", "")
         )
 
     def update_user_profile(self, user_id: int, **kwargs) -> Optional[UserProfileInfo]:
@@ -117,39 +113,7 @@ class UserService:
         if update_data:
             self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()
         
-        # 更新偏好设计师
-        if "possibleDesignerIds" in kwargs and kwargs["possibleDesignerIds"] is not None:
-            self._update_user_preferred_designers(user_id, kwargs["possibleDesignerIds"])
-        
         return self.get_user_profile(user_id)
-
-    def _get_user_preferred_designers(self, user_id: int) -> List[DesignerInfo]:
-        """获取用户偏好的设计师列表"""
-        result = self.db.table("user_preferred_designers").select(
-            "designer_id, designers(id, name, slug, designer_url)"
-        ).eq("user_id", user_id).execute()
-        
-        designers = []
-        for item in result.data or []:
-            d = item.get("designers")
-            if d:
-                designers.append(DesignerInfo(
-                    id=d["id"],
-                    name=d["name"],
-                    slug=d["slug"],
-                    designerUrl=d.get("designer_url", "")
-                ))
-        return designers
-
-    def _update_user_preferred_designers(self, user_id: int, designer_ids: List[int]):
-        """更新用户偏好的设计师"""
-        # 删除旧的偏好
-        self.db.table("user_preferred_designers").delete().eq("user_id", user_id).execute()
-        
-        # 插入新的偏好
-        if designer_ids:
-            records = [{"user_id": user_id, "designer_id": did} for did in designer_ids]
-            self.db.table("user_preferred_designers").insert(records).execute()
 
     def upload_avatar(self, user_id: int, avatar_url: str) -> Optional[UserInfo]:
         """更新用户头像"""

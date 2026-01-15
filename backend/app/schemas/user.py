@@ -12,14 +12,6 @@ class Gender(str, Enum):
     OTHER = "OTHER"
 
 
-class DesignerInfo(BaseModel):
-    """设计师简要信息"""
-    id: int
-    name: str
-    slug: str
-    designerUrl: str
-
-
 class UserInfo(BaseModel):
     """用户信息"""
     userId: int
@@ -41,7 +33,6 @@ class UserProfileInfo(BaseModel):
     gender: Gender = Gender.OTHER
     age: int = 0
     preference: str = ""
-    possibleDesigners: List[DesignerInfo] = []
 
 
 class UpdateUserInfoRequest(BaseModel):
@@ -61,4 +52,3 @@ class UpdateUserProfileRequest(BaseModel):
     gender: Optional[Gender] = None
     age: Optional[int] = None
     preference: Optional[str] = None
-    possibleDesignerIds: Optional[List[int]] = None

@@ -17,14 +17,6 @@ interface ApiResponse<T> {
 // 性别枚举
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 
-// 设计师信息类型
-export interface DesignerInfo {
-  id: number;
-  name: string;
-  slug: string;
-  designerUrl: string;
-}
-
 // 用户信息类型
 export interface UserInfo {
   userId: number;
@@ -46,7 +38,6 @@ export interface UserProfileInfo {
   gender: Gender;
   age: number;
   preference: string;
-  possibleDesigners: DesignerInfo[];
 }
 
 // 更新用户信息请求参数
@@ -66,7 +57,6 @@ export interface UpdateUserProfileParams {
   gender?: Gender;
   age?: number;
   preference?: string;
-  possibleDesignerIds?: number[];
 }
 
 // 通用请求方法

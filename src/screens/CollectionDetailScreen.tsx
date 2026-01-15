@@ -21,7 +21,6 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
-import { designerService } from "../services/designerService";
 import { getPostsByShowId, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -89,21 +88,8 @@ const CollectionDetailScreen = () => {
     const loadImages = async () => {
       if (images && images.length > 0) {
         setCollectionImages(images);
-      } else if (showId) {
-        // 使用新 API 获取 show 详情
-        try {
-          const showData = await designerService.getSingleShow(showId);
-          if (showData && showData.images) {
-            const convertedImages = showData.images.map((img) => ({
-              imageUrl: img.imageUrl,
-              imageType: img.imageType,
-            }));
-            setCollectionImages(convertedImages);
-          }
-        } catch (error) {
-          console.error("Failed to load images:", error);
-        }
       }
+      // 如果没有 images 参数，保持空数组
     };
 
     loadImages();

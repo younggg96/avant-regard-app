@@ -3,7 +3,7 @@
 """
 from typing import List
 from app.db.supabase import get_supabase
-from app.schemas.follow import FollowingUser, FollowingDesigner
+from app.schemas.follow import FollowingUser
 
 
 class FollowService:
@@ -66,87 +66,6 @@ class FollowService:
         """检查是否关注了某个用户"""
         result = self.db.table("user_follows").select("id").eq("follower_id", follower_id).eq("following_id", target_user_id).execute()
         return bool(result.data)
-
-    # ==================== 设计师关注 ====================
-
-    def follow_designer(self, user_id: int, designer_id: int) -> bool:
-        """关注设计师"""
-        try:
-            self.db.table("designer_follows").insert({
-                "user_id": user_id,
-                "designer_id": designer_id
-            }).execute()
-            return True
-        except:
-            return False
-
-    def unfollow_designer(self, user_id: int, designer_id: int) -> bool:
-        """取消关注设计师"""
-        result = self.db.table("designer_follows").delete().eq("user_id", user_id).eq("designer_id", designer_id).execute()
-        return bool(result.data)
-
-    def get_following_designers(self, user_id: int) -> List[FollowingDesigner]:
-        """获取用户关注的设计师列表"""
-        result = self.db.table("designer_follows").select(
-            "designer_id, designers(id, name, slug, designer_url)"
-        ).eq("user_id", user_id).execute()
-        
-        designers = []
-        for item in result.data or []:
-            d = item.get("designers")
-            if d:
-                # 获取设计师的秀场和图片统计
-                stats = self._get_designer_stats(d["id"])
-                designers.append(FollowingDesigner(
-                    id=d["id"],
-                    name=d["name"],
-                    slug=d["slug"],
-                    designerUrl=d.get("designer_url", ""),
-                    showCount=stats["show_count"],
-                    totalImages=stats["total_images"],
-                    latestSeason=stats["latest_season"],
-                    followerCount=stats["follower_count"]
-                ))
-        return designers
-
-    def get_following_designers_count(self, user_id: int) -> int:
-        """获取用户关注的设计师数量"""
-        result = self.db.table("designer_follows").select("id", count="exact").eq("user_id", user_id).execute()
-        return result.count or 0
-
-    def is_following_designer(self, user_id: int, designer_id: int) -> bool:
-        """检查是否关注了某个设计师"""
-        result = self.db.table("designer_follows").select("id").eq("user_id", user_id).eq("designer_id", designer_id).execute()
-        return bool(result.data)
-
-    def get_designer_followers_count(self, designer_id: int) -> int:
-        """获取设计师的粉丝数量"""
-        result = self.db.table("designer_follows").select("id", count="exact").eq("designer_id", designer_id).execute()
-        return result.count or 0
-
-    def _get_designer_stats(self, designer_id: int) -> dict:
-        """获取设计师统计信息"""
-        # 获取秀场数量
-        shows_result = self.db.table("shows").select("id, season", count="exact").eq("designer_id", designer_id).order("collection_ts", desc=True).execute()
-        show_count = shows_result.count or 0
-        latest_season = shows_result.data[0]["season"] if shows_result.data else ""
-        
-        # 获取图片总数
-        show_ids = [s["id"] for s in shows_result.data or []]
-        total_images = 0
-        if show_ids:
-            images_result = self.db.table("show_images").select("id", count="exact").in_("show_id", show_ids).execute()
-            total_images = images_result.count or 0
-        
-        # 获取粉丝数
-        follower_count = self.get_designer_followers_count(designer_id)
-        
-        return {
-            "show_count": show_count,
-            "total_images": total_images,
-            "latest_season": latest_season,
-            "follower_count": follower_count
-        }
 
 
 # 单例
