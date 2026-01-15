@@ -130,17 +130,6 @@ export const useAuthForm = () => {
     try {
       await authService.sendSms({ phone: fullPhone });
 
-      // setCountdown(60);
-      // const timer = setInterval(() => {
-      //   setCountdown((prev) => {
-      //     if (prev <= 1) {
-      //       clearInterval(timer);
-      //       return 0;
-      //     }
-      //     return prev - 1;
-      //   });
-      // }, 1000);
-
       Alert.show("验证码已发送至 " + fullPhone);
     } catch (error) {
       const message =
@@ -279,7 +268,7 @@ export const useAuthForm = () => {
         userId: response.userId,
         username: formData.username,
         phone: fullPhone,
-        admin: false,
+        is_admin: false,
         userType: "USER",
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
@@ -351,7 +340,7 @@ export const useAuthForm = () => {
         userId: registeredUserId,
         username: formData.username,
         phone: fullPhone,
-        admin: false,
+        is_admin: false,
         userType: "USER",
         accessToken: registeredTokens.accessToken,
         refreshToken: registeredTokens.refreshToken,

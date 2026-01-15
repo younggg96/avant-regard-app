@@ -13,7 +13,7 @@ export interface AuthUser {
   website?: string;
   location?: string;
   avatar?: string;
-  admin: boolean;
+  is_admin: boolean;
   userType: string;
 }
 
@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthStore>()(
           userId: response.userId,
           phone: response.phone,
           username: response.username,
-          admin: response.admin,
+          is_admin: response.is_admin,
           userType: response.userType,
           avatar: "https://via.placeholder.com/100x100",
         };
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthStore>()(
             userId: response.userId,
             phone: response.phone,
             username: response.username,
-            admin: response.admin,
+            is_admin: response.is_admin,
             userType: response.userType,
             avatar: get().user?.avatar || "https://via.placeholder.com/100x100",
           };

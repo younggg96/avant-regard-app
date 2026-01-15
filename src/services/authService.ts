@@ -18,7 +18,7 @@ export interface LoginResponse {
   userId: number;
   username: string;
   phone: string;
-  admin: boolean;
+  is_admin: boolean;
   userType: string;
   accessToken: string;
   refreshToken: string;

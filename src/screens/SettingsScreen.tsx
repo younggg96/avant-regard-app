@@ -63,7 +63,7 @@ const SettingsScreen = () => {
   ];
 
   // 如果用户是管理员，添加管理员设置项
-  const settingSections = user?.admin
+  const settingSections = user?.is_admin
     ? [
         {
           title: "管理员",
@@ -85,6 +85,7 @@ const SettingsScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title="设置" showBack={true} />
+      <Text>{JSON.stringify(user)}</Text>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
           <View key={section.title} style={styles.section}>

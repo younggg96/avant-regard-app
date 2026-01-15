@@ -59,7 +59,6 @@ async function request<T>(
 
     if (contentType?.includes("application/json")) {
       const jsonResponse = await response.json();
-      console.log("admin response:", jsonResponse);
 
       // 处理包装的 API 响应格式 { code, message, data }
       if (
