@@ -83,9 +83,15 @@ const ArchiveScreen = () => {
       return acc;
     }, {} as Record<string, Brand[]>);
 
-    // Sort groups alphabetically
+    // Sort groups alphabetically, with numbers at the end
     return Object.keys(groups)
-      .sort()
+      .sort((a, b) => {
+        const aIsNumber = /^\d/.test(a);
+        const bIsNumber = /^\d/.test(b);
+        if (aIsNumber && !bIsNumber) return 1; // 数字放后面
+        if (!aIsNumber && bIsNumber) return -1; // 字母放前面
+        return a.localeCompare(b);
+      })
       .map((letter) => ({
         letter,
         brands: groups[letter].sort((a, b) => a.name.localeCompare(b.name)),
@@ -193,13 +199,6 @@ const ArchiveScreen = () => {
                 }}
                 activeOpacity={0.7}
               >
-                {/* Brand Initial Avatar */}
-                {/* <View style={styles.brandAvatar}>
-                  <Text style={styles.brandAvatarText}>
-                    {getBrandInitial(brand.name)}
-                  </Text>
-                </View> */}
-
                 {/* Brand Info */}
                 <View style={styles.brandInfo}>
                   <Text style={styles.brandName} numberOfLines={1}>
