@@ -20,6 +20,7 @@ export interface AuthUser {
 interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  expiresAt?: number; // Token 过期时间戳（秒）
 }
 
 interface AuthState {
@@ -27,6 +28,7 @@ interface AuthState {
   user: AuthUser | null;
   tokens: AuthTokens | null;
   isLoading: boolean;
+  isRefreshing: boolean; // 是否正在刷新 token
 }
 
 interface AuthActions {
@@ -38,6 +40,28 @@ interface AuthActions {
   setLoading: (loading: boolean) => void;
   refreshTokens: () => Promise<boolean>;
   getAccessToken: () => string | null;
+  checkAndRefreshToken: () => Promise<string | null>; // 检查并刷新 token
+  isTokenExpiringSoon: () => boolean; // 检查 token 是否即将过期
+  startAutoRefresh: () => void; // 启动自动刷新
+  stopAutoRefresh: () => void; // 停止自动刷新
+}
+
+// 自动刷新定时器
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Token 刷新提前量（提前 5 分钟刷新）
+const REFRESH_THRESHOLD_SECONDS = 5 * 60;
+
+// 解析 JWT token 获取过期时间
+function getTokenExpiry(token: string): number | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.exp || null;
+  } catch {
+    return null;
+  }
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -76,6 +100,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       tokens: null,
       isLoading: false,
+      isRefreshing: false,
 
       // Actions
       loginWithResponse: (response: LoginResponse) => {
@@ -89,9 +114,14 @@ export const useAuthStore = create<AuthStore>()(
           avatar: "https://via.placeholder.com/100x100",
         };
 
+        // 从 token 中解析过期时间
+        const expiresAt =
+          getTokenExpiry(response.accessToken) || response.expiresAt;
+
         const tokens: AuthTokens = {
           accessToken: response.accessToken,
           refreshToken: response.refreshToken,
+          expiresAt,
         };
 
         set({
@@ -100,6 +130,9 @@ export const useAuthStore = create<AuthStore>()(
           tokens,
           isLoading: false,
         });
+
+        // 登录后启动自动刷新
+        get().startAutoRefresh();
       },
 
       login: (user: AuthUser, tokens?: AuthTokens) => {
@@ -109,14 +142,23 @@ export const useAuthStore = create<AuthStore>()(
           tokens: tokens || null,
           isLoading: false,
         });
+
+        // 登录后启动自动刷新
+        if (tokens) {
+          get().startAutoRefresh();
+        }
       },
 
       logout: () => {
+        // 停止自动刷新
+        get().stopAutoRefresh();
+
         set({
           isAuthenticated: false,
           user: null,
           tokens: null,
           isLoading: false,
+          isRefreshing: false,
         });
       },
 
@@ -142,13 +184,34 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: loading });
       },
 
+      // 检查 token 是否即将过期
+      isTokenExpiringSoon: () => {
+        const tokens = get().tokens;
+        if (!tokens?.accessToken) return true;
+
+        const expiresAt =
+          tokens.expiresAt || getTokenExpiry(tokens.accessToken);
+        if (!expiresAt) return false; // 无法判断过期时间，假设有效
+
+        const now = Math.floor(Date.now() / 1000);
+        return expiresAt - now < REFRESH_THRESHOLD_SECONDS;
+      },
+
       refreshTokens: async () => {
         const currentTokens = get().tokens;
         if (!currentTokens?.refreshToken) {
           return false;
         }
 
+        // 防止重复刷新
+        if (get().isRefreshing) {
+          return false;
+        }
+
+        set({ isRefreshing: true });
+
         try {
+          console.log("Refreshing token...");
           const response = await authService.refreshToken({
             refreshToken: currentTokens.refreshToken,
           });
@@ -163,27 +226,99 @@ export const useAuthStore = create<AuthStore>()(
             avatar: get().user?.avatar || "https://via.placeholder.com/100x100",
           };
 
+          const expiresAt =
+            getTokenExpiry(response.accessToken) || response.expiresAt;
+
           const tokens: AuthTokens = {
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
+            expiresAt,
           };
 
           set({
             user,
             tokens,
+            isRefreshing: false,
           });
+
+          console.log("Token refreshed successfully");
+
+          // 刷新成功后重新设置定时器
+          get().startAutoRefresh();
 
           return true;
         } catch (error) {
           console.error("Token refresh failed:", error);
+          set({ isRefreshing: false });
           // Token 刷新失败，清除登录状态
           get().logout();
           return false;
         }
       },
 
+      // 检查并刷新 token，返回有效的 access token
+      checkAndRefreshToken: async () => {
+        const tokens = get().tokens;
+        if (!tokens?.accessToken) return null;
+
+        // 如果 token 即将过期，先刷新
+        if (get().isTokenExpiringSoon()) {
+          const success = await get().refreshTokens();
+          if (!success) return null;
+        }
+
+        return get().tokens?.accessToken || null;
+      },
+
       getAccessToken: () => {
         return get().tokens?.accessToken || null;
+      },
+
+      // 启动自动刷新
+      startAutoRefresh: () => {
+        // 先清除现有定时器
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+          refreshTimer = null;
+        }
+
+        const tokens = get().tokens;
+        if (!tokens?.accessToken) return;
+
+        const expiresAt =
+          tokens.expiresAt || getTokenExpiry(tokens.accessToken);
+        if (!expiresAt) {
+          // 无法获取过期时间，每 30 分钟刷新一次
+          refreshTimer = setTimeout(() => {
+            get().refreshTokens();
+          }, 30 * 60 * 1000);
+          return;
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const timeUntilExpiry = expiresAt - now;
+
+        // 提前 5 分钟刷新
+        const refreshIn = Math.max(
+          timeUntilExpiry - REFRESH_THRESHOLD_SECONDS,
+          60
+        );
+
+        console.log(
+          `Token expires in ${timeUntilExpiry}s, will refresh in ${refreshIn}s`
+        );
+
+        refreshTimer = setTimeout(() => {
+          get().refreshTokens();
+        }, refreshIn * 1000);
+      },
+
+      // 停止自动刷新
+      stopAutoRefresh: () => {
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+          refreshTimer = null;
+        }
       },
     }),
     {
@@ -198,6 +333,23 @@ export const useAuthStore = create<AuthStore>()(
       // Add error handling for storage failures
       onRehydrateStorage: () => (state) => {
         console.log("Auth store rehydrated:", state ? "success" : "failed");
+
+        // 恢复登录状态后，启动自动刷新并检查 token
+        if (state?.isAuthenticated && state?.tokens) {
+          // 延迟执行以确保 store 完全初始化
+          setTimeout(() => {
+            const store = useAuthStore.getState();
+
+            // 如果 token 即将过期，立即刷新
+            if (store.isTokenExpiringSoon()) {
+              console.log("Token expiring soon, refreshing...");
+              store.refreshTokens();
+            } else {
+              // 启动自动刷新定时器
+              store.startAutoRefresh();
+            }
+          }, 1000);
+        }
       },
     }
   )

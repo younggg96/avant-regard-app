@@ -23,5 +23,8 @@ aiofiles==23.2.1
 # Redis (for rate limiting and caching)
 redis==5.0.1
 
+# JWT Decoding
+PyJWT==2.8.0
+
 # Utilities
 python-dotenv==1.0.1

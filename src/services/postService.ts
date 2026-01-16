@@ -91,12 +91,14 @@ export interface UpdatePostParams {
   imageUrls: string[];
 }
 
-// 通用请求方法 - 默认携带 token
+// 通用请求方法 - 默认携带 token，支持自动刷新
 async function request<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry: boolean = false
 ): Promise<T> {
   const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+  console.log("request", url, options);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -105,7 +107,21 @@ async function request<T>(
   };
 
   // 自动添加 Authorization header（如果已登录）
-  const token = useAuthStore.getState().getAccessToken();
+  // 优先检查并刷新即将过期的 token
+  const authStore = useAuthStore.getState();
+  let token = authStore.getAccessToken();
+
+  // 如果 token 即将过期，先刷新
+  if (
+    token &&
+    authStore.isTokenExpiringSoon &&
+    authStore.isTokenExpiringSoon()
+  ) {
+    console.log("Token expiring soon, refreshing before request...");
+    await authStore.refreshTokens();
+    token = authStore.getAccessToken();
+  }
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -120,11 +136,29 @@ async function request<T>(
     const contentType = response.headers.get("content-type");
 
     if (!response.ok) {
+      // 如果是 401 错误且不是重试请求，尝试刷新 token 后重试
+      if (
+        response.status === 401 &&
+        !isRetry &&
+        authStore.tokens?.refreshToken
+      ) {
+        console.log("Got 401, attempting token refresh...");
+        const refreshSuccess = await authStore.refreshTokens();
+        if (refreshSuccess) {
+          // 刷新成功，重试请求
+          return request<T>(endpoint, options, true);
+        }
+      }
+
       let errorMessage = "请求失败";
 
       if (contentType?.includes("application/json")) {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
+        errorMessage =
+          errorData.detail ||
+          errorData.message ||
+          errorData.error ||
+          errorMessage;
       } else {
         const text = await response.text();
         errorMessage = text || `HTTP ${response.status}`;
@@ -170,20 +204,38 @@ async function request<T>(
   }
 }
 
-// 文件上传请求方法
+// 文件上传请求方法 - 支持自动刷新 token
 async function uploadRequest<T>(
   endpoint: string,
-  formData: FormData
+  formData: FormData,
+  isRetry: boolean = false
 ): Promise<T> {
   const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+  console.log("Upload request URL:", url);
 
   const headers: Record<string, string> = {
     Accept: "*/*",
   };
 
-  const token = useAuthStore.getState().getAccessToken();
+  // 自动刷新即将过期的 token
+  const authStore = useAuthStore.getState();
+  let token = authStore.getAccessToken();
+
+  if (
+    token &&
+    authStore.isTokenExpiringSoon &&
+    authStore.isTokenExpiringSoon()
+  ) {
+    console.log("Token expiring soon, refreshing before upload...");
+    await authStore.refreshTokens();
+    token = authStore.getAccessToken();
+  }
+
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+    console.log("Upload request has auth token");
+  } else {
+    console.warn("Upload request missing auth token!");
   }
 
   const config: RequestInit = {
@@ -193,17 +245,41 @@ async function uploadRequest<T>(
   };
 
   try {
+    console.log("Starting upload...");
     const response = await fetch(url, config);
+    console.log("Upload response status:", response.status);
     const contentType = response.headers.get("content-type");
 
     if (!response.ok) {
-      let errorMessage = "上传失败";
+      // 如果是 401 错误且不是重试请求，尝试刷新 token 后重试
+      if (
+        response.status === 401 &&
+        !isRetry &&
+        authStore.tokens?.refreshToken
+      ) {
+        console.log("Upload got 401, attempting token refresh...");
+        const refreshSuccess = await authStore.refreshTokens();
+        if (refreshSuccess) {
+          return uploadRequest<T>(endpoint, formData, true);
+        }
+      }
+
+      let errorMessage = `上传失败 (${response.status})`;
       if (contentType?.includes("application/json")) {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
+        console.error(
+          "Upload error (JSON):",
+          JSON.stringify(errorData, null, 2)
+        );
+        errorMessage =
+          errorData.detail ||
+          errorData.message ||
+          errorData.error ||
+          errorMessage;
       } else {
         const text = await response.text();
-        errorMessage = text || `HTTP ${response.status}`;
+        console.error("Upload error (text):", text);
+        errorMessage = text || errorMessage;
       }
       throw new Error(errorMessage);
     }
@@ -231,6 +307,7 @@ async function uploadRequest<T>(
     const text = await response.text();
     return text as unknown as T;
   } catch (error) {
+    console.error("Upload catch error:", error);
     if (error instanceof Error) {
       throw error;
     }
@@ -247,11 +324,39 @@ async function uploadRequest<T>(
  * @returns 上传后的图片 URL
  */
 export async function uploadImage(imageUri: string): Promise<string> {
+  console.log("uploadImage called with URI:", imageUri);
   const formData = new FormData();
 
-  const filename = imageUri.split("/").pop() || "image.jpg";
+  // Extract filename from URI
+  let filename = imageUri.split("/").pop() || "image.jpg";
+
+  // Check for file extension
   const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : "image/jpeg";
+  let type: string;
+
+  if (match) {
+    const ext = match[1].toLowerCase();
+    // Map common extensions to MIME types
+    const mimeTypes: Record<string, string> = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      heic: "image/heic",
+    };
+    type = mimeTypes[ext] || "image/jpeg";
+  } else {
+    // No extension found - assume JPEG (ImageManipulator default)
+    type = "image/jpeg";
+    filename = `${filename}.jpg`;
+  }
+
+  console.log("Upload file info:", {
+    filename,
+    type,
+    uri: imageUri.substring(0, 100),
+  });
 
   formData.append("file", {
     uri: imageUri,
@@ -470,9 +575,12 @@ export async function getPostsByShowId(showId: number): Promise<Post[]> {
  * @param showUrl 秀场URL
  */
 export async function getPostsByShowUrl(showUrl: string): Promise<Post[]> {
-  return request<Post[]>(`/api/posts/show-url?url=${encodeURIComponent(showUrl)}`, {
-    method: "GET",
-  });
+  return request<Post[]>(
+    `/api/posts/show-url?url=${encodeURIComponent(showUrl)}`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 // 导出 postService 对象
