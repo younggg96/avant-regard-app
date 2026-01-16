@@ -120,6 +120,20 @@ export async function getFollowingUsers(
   return response.data;
 }
 
+/**
+ * 获取用户的粉丝列表
+ * GET /api/follow/users/{userId}/followers
+ */
+export async function getFollowers(userId: number): Promise<FollowingUser[]> {
+  const response = await request<ApiResponse<FollowingUser[]>>(
+    `/api/follow/users/${userId}/followers`,
+    {
+      method: "GET",
+    }
+  );
+  return response.data;
+}
+
 // ==================== 用户关注统计 ====================
 
 /**
@@ -175,6 +189,7 @@ export const followService = {
   followUser,
   unfollowUser,
   getFollowingUsers,
+  getFollowers,
   // 统计
   getFollowingCount,
   getFollowersCount,

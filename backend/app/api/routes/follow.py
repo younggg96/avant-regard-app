@@ -49,6 +49,13 @@ async def get_following_users(user_id: int):
     return success([u.model_dump() for u in result])
 
 
+@router.get("/users/{user_id}/followers")
+async def get_followers(user_id: int):
+    """获取用户的粉丝列表"""
+    result = follow_service.get_followers(user_id)
+    return success([u.model_dump() for u in result])
+
+
 @router.get("/user/{user_id}/following/count")
 async def get_following_count(user_id: int):
     """获取用户关注的用户数量"""

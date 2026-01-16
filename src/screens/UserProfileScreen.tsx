@@ -413,11 +413,25 @@ const UserProfileScreen = () => {
 
           {/* 统计数据 - 小红书风格（关注/粉丝/获赞） */}
           <View style={styles.statsRow}>
-            <TouchableOpacity style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() =>
+                (navigation as any).navigate("FollowingUsers", {
+                  userId: userId,
+                })
+              }
+            >
               <Text style={styles.statNumber}>{followingCount}</Text>
               <Text style={styles.statLabel}>关注</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem}>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() =>
+                (navigation as any).navigate("Followers", {
+                  userId: userId,
+                })
+              }
+            >
               <Text style={styles.statNumber}>{followersCount}</Text>
               <Text style={styles.statLabel}>粉丝</Text>
             </TouchableOpacity>

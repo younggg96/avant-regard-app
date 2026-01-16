@@ -52,6 +52,28 @@ class FollowService:
                 ))
         return users
 
+    def get_followers(self, user_id: int) -> List[FollowingUser]:
+        """获取用户的粉丝列表"""
+        result = self.db.table("user_follows").select(
+            "follower_id, users!user_follows_follower_id_fkey(id, username, user_info(bio, location, avatar_url))"
+        ).eq("following_id", user_id).execute()
+        
+        users = []
+        for item in result.data or []:
+            user = item.get("users")
+            if user:
+                # user_info is nested inside users
+                info_list = user.get("user_info", [])
+                info = info_list[0] if info_list else {}
+                users.append(FollowingUser(
+                    userId=user["id"],
+                    username=user["username"],
+                    avatar=info.get("avatar_url", ""),
+                    bio=info.get("bio", ""),
+                    location=info.get("location", "")
+                ))
+        return users
+
     def get_following_count(self, user_id: int) -> int:
         """获取用户关注的用户数量"""
         result = self.db.table("user_follows").select("id", count="exact").eq("follower_id", user_id).execute()

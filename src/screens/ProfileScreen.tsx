@@ -663,7 +663,14 @@ const ProfileScreen = () => {
             <Text style={styles.statNumber}>{followingUsersCount}</Text>
             <Text style={styles.statLabel}>关注</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              (navigation as any).navigate("Followers", {
+                userId: userInfo?.userId,
+              })
+            }
+          >
             <Text style={styles.statNumber}>{followersCount}</Text>
             <Text style={styles.statLabel}>粉丝</Text>
           </TouchableOpacity>
