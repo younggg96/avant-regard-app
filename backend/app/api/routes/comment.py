@@ -13,10 +13,17 @@ router = APIRouter(tags=["评论"])
 # ==================== 帖子评论 ====================
 
 @router.get("/posts/{post_id}/comments")
-async def get_post_comments(post_id: int):
-    """获取帖子评论"""
-    result = comment_service.get_post_comments(post_id)
+async def get_post_comments(post_id: int, include_replies: bool = True):
+    """获取帖子评论（包含回复）"""
+    result = comment_service.get_post_comments(post_id, include_replies)
     return success([c.model_dump() for c in result])
+
+
+@router.get("/posts/comments/{comment_id}/replies")
+async def get_comment_replies(comment_id: int):
+    """获取评论的所有回复"""
+    result = comment_service.get_comment_replies(comment_id)
+    return success([r.model_dump() for r in result])
 
 
 @router.post("/posts/{post_id}/comments")
@@ -25,11 +32,17 @@ async def create_comment(
     request: CreateCommentRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """发布评论"""
+    """发布评论或回复"""
     if request.userId != current_user_id:
         raise HTTPException(status_code=403, detail="无权为其他用户发表评论")
     
-    result = comment_service.create_comment(post_id, request.userId, request.content)
+    result = comment_service.create_comment(
+        post_id, 
+        request.userId, 
+        request.content,
+        request.parentId,
+        request.replyToUserId
+    )
     if not result:
         raise HTTPException(status_code=500, detail="评论发布失败")
     return success(result.model_dump())

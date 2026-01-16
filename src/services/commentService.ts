@@ -14,14 +14,33 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// 评论回复类型
+export interface CommentReply {
+  id: number;
+  postId: number;
+  parentId: number;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  replyToUserId?: number;
+  replyToUsername?: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 评论类型
 export interface PostComment {
   id: number;
   postId: number;
   userId: number;
   username: string;
+  userAvatar?: string;
   content: string;
   likeCount: number;
+  replyCount: number;
+  replies: CommentReply[];
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +49,8 @@ export interface PostComment {
 export interface CreateCommentParams {
   userId: number;
   content: string;
+  parentId?: number; // 父评论ID，为空表示顶级评论
+  replyToUserId?: number; // 回复的用户ID
 }
 
 // 通用请求方法
@@ -173,6 +194,35 @@ export async function deleteComment(
   });
 }
 
+/**
+ * 获取评论的所有回复
+ * GET /api/posts/comments/{commentId}/replies
+ */
+export async function getCommentReplies(
+  commentId: number
+): Promise<CommentReply[]> {
+  return request<CommentReply[]>(
+    `/api/posts/comments/${commentId}/replies`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+/**
+ * 回复评论
+ * POST /api/posts/{postId}/comments
+ */
+export async function replyToComment(
+  postId: number,
+  params: CreateCommentParams
+): Promise<PostComment> {
+  return request<PostComment>(`/api/posts/${postId}/comments`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
 // 导出 commentService 对象
 export const commentService = {
   getPostComments,
@@ -180,6 +230,8 @@ export const commentService = {
   likeComment,
   unlikeComment,
   deleteComment,
+  getCommentReplies,
+  replyToComment,
 };
 
 export default commentService;

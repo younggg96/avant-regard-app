@@ -7,6 +7,21 @@ export interface PostDetailRouteParams {
   postStatus?: "draft" | "pending" | "published";
 }
 
+// 评论回复显示类型
+export interface CommentReply {
+  id: string;
+  parentId: string;
+  userId: number;
+  userName: string;
+  userAvatar: string;
+  replyToUserId?: number;
+  replyToUsername?: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+  isLiked?: boolean;
+}
+
 // 评论显示类型
 export interface Comment {
   id: string;
@@ -17,6 +32,16 @@ export interface Comment {
   timestamp: string;
   likes: number;
   isLiked?: boolean;
+  replyCount: number;
+  replies: CommentReply[];
+  showReplies?: boolean; // 是否展开显示回复
+}
+
+// 回复目标信息
+export interface ReplyTarget {
+  commentId: string; // 父评论ID
+  userId: number; // 被回复用户ID
+  userName: string; // 被回复用户名
 }
 
 // 帖子状态类型

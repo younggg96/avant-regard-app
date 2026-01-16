@@ -2,7 +2,23 @@
 评论相关的数据模型
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
+
+
+class CommentReply(BaseModel):
+    """评论回复"""
+    id: int
+    postId: int
+    parentId: int
+    userId: int
+    username: str
+    userAvatar: Optional[str] = None
+    replyToUserId: Optional[int] = None
+    replyToUsername: Optional[str] = None
+    content: str
+    likeCount: int = 0
+    createdAt: str
+    updatedAt: str
 
 
 class PostComment(BaseModel):
@@ -11,8 +27,11 @@ class PostComment(BaseModel):
     postId: int
     userId: int
     username: str
+    userAvatar: Optional[str] = None
     content: str
     likeCount: int = 0
+    replyCount: int = 0
+    replies: List[CommentReply] = []
     createdAt: str
     updatedAt: str
 
@@ -21,6 +40,8 @@ class CreateCommentRequest(BaseModel):
     """创建评论请求"""
     userId: int
     content: str = Field(..., min_length=1, max_length=1000)
+    parentId: Optional[int] = None  # 父评论ID，为空表示顶级评论
+    replyToUserId: Optional[int] = None  # 回复的用户ID
 
 
 class ImageReview(BaseModel):

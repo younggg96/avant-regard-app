@@ -9,11 +9,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack } from "../ui";
 import { theme } from "../../theme";
+import { ReplyTarget } from "./types";
 import { styles } from "./styles";
 
 interface CommentInputBarProps {
@@ -25,6 +25,7 @@ interface CommentInputBarProps {
   displayComments: number;
   displayIsLiked: boolean;
   displayIsSaved: boolean;
+  replyTarget?: ReplyTarget | null;
   onInputChange: (text: string) => void;
   onInputFocus: () => void;
   onInputBlur: () => void;
@@ -32,6 +33,7 @@ interface CommentInputBarProps {
   onLike: () => void;
   onSave: () => void;
   onOverlayPress: () => void;
+  onCancelReply?: () => void;
 }
 
 export interface CommentInputBarRef {
@@ -53,6 +55,7 @@ export const CommentInputBar = forwardRef<
       displayComments,
       displayIsLiked,
       displayIsSaved,
+      replyTarget,
       onInputChange,
       onInputFocus,
       onInputBlur,
@@ -60,6 +63,7 @@ export const CommentInputBar = forwardRef<
       onLike,
       onSave,
       onOverlayPress,
+      onCancelReply,
     },
     ref
   ) => {
@@ -89,16 +93,41 @@ export const CommentInputBar = forwardRef<
       [onInputChange]
     );
 
+    const placeholderText = replyTarget
+      ? `回复 @${replyTarget.userName}...`
+      : "写评论...";
+
     return (
       <View style={[styles.bottomBar, isFocused && styles.bottomBarExpanded]}>
         {/* Expanded Input Area when focused */}
         {isFocused && (
           <View style={styles.expandedInputContainer}>
-            <View style={styles.expandedTextInputWrapper}>
+            {/* 回复提示条 */}
+            {replyTarget && (
+              <View style={styles.replyHint}>
+                <Text style={styles.replyHintText}>
+                  正在回复 <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.replyHintClose}
+                  onPress={onCancelReply}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={theme.colors.gray400}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={[
+              styles.expandedTextInputWrapper,
+              replyTarget && { borderTopLeftRadius: 0, borderTopRightRadius: 0 }
+            ]}>
               <TextInput
                 ref={inputRef}
                 style={styles.expandedTextInput}
-                placeholder="写评论..."
+                placeholder={placeholderText}
                 placeholderTextColor={theme.colors.gray600}
                 value={commentInput}
                 onChangeText={handleTextChange}
@@ -197,7 +226,7 @@ export const CommentInputBar = forwardRef<
               activeOpacity={0.7}
             >
               <Text fontSize="$sm" color="$gray600">
-                写评论...
+                {placeholderText}
               </Text>
             </TouchableOpacity>
           )}

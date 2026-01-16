@@ -150,8 +150,11 @@ CREATE TABLE IF NOT EXISTS post_comments (
     id BIGSERIAL PRIMARY KEY,
     post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES post_comments(id) ON DELETE CASCADE,  -- 父评论ID，NULL表示顶级评论
+    reply_to_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,  -- 回复的用户ID
     content TEXT NOT NULL,
     like_count INTEGER DEFAULT 0,
+    reply_count INTEGER DEFAULT 0,  -- 回复数量
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -236,6 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status, audit_status);
 CREATE INDEX IF NOT EXISTS idx_posts_type ON posts(post_type);
 CREATE INDEX IF NOT EXISTS idx_post_comments_post_id ON post_comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_comments_parent_id ON post_comments(parent_id);
 CREATE INDEX IF NOT EXISTS idx_shows_designer_id ON shows(designer_id);
 CREATE INDEX IF NOT EXISTS idx_show_images_show_id ON show_images(show_id);
 CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id);

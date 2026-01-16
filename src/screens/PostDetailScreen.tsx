@@ -33,6 +33,8 @@ import {
   OptionsMenuModal,
   DeleteConfirmDialog,
   Comment,
+  CommentReply,
+  ReplyTarget,
   PostDetailRouteParams,
   formatTimestamp,
   styles,
@@ -61,6 +63,9 @@ const PostDetailScreen = () => {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [isCommentFocused, setIsCommentFocused] = useState(false);
+  
+  // 回复相关状态
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
 
   // 全屏图片查看器状态
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
@@ -105,8 +110,17 @@ const PostDetailScreen = () => {
 
       const apiComments = await commentService.getPostComments(postId);
 
-      const userIds = [...new Set(apiComments.map((c) => c.userId))];
-      const userInfoPromises = userIds.map((id) =>
+      // 收集所有用户ID（包括回复中的用户）
+      const userIds = new Set<number>();
+      apiComments.forEach((c) => {
+        userIds.add(c.userId);
+        c.replies?.forEach((r) => {
+          userIds.add(r.userId);
+          if (r.replyToUserId) userIds.add(r.replyToUserId);
+        });
+      });
+
+      const userInfoPromises = Array.from(userIds).map((id) =>
         userInfoService.getUserInfo(id).catch(() => null)
       );
       const usersInfo = await Promise.all(userInfoPromises);
@@ -118,17 +132,43 @@ const PostDetailScreen = () => {
 
       const displayComments: Comment[] = apiComments.map((apiComment) => {
         const userInfo = userInfoMap.get(apiComment.userId);
+        
+        // 格式化回复
+        const formattedReplies: CommentReply[] = (apiComment.replies || []).map((apiReply) => {
+          const replyUserInfo = userInfoMap.get(apiReply.userId);
+          return {
+            id: String(apiReply.id),
+            parentId: String(apiReply.parentId),
+            userId: apiReply.userId,
+            userName: replyUserInfo?.username || apiReply.username || "用户",
+            userAvatar:
+              replyUserInfo?.avatarUrl ||
+              apiReply.userAvatar ||
+              `https://api.dicebear.com/7.x/avataaars/png?seed=${apiReply.userId}`,
+            replyToUserId: apiReply.replyToUserId,
+            replyToUsername: apiReply.replyToUsername,
+            content: apiReply.content,
+            timestamp: formatTimestamp(apiReply.createdAt),
+            likes: apiReply.likeCount || 0,
+            isLiked: false,
+          };
+        });
+
         return {
           id: String(apiComment.id),
           userId: apiComment.userId,
           userName: userInfo?.username || apiComment.username || "用户",
           userAvatar:
             userInfo?.avatarUrl ||
+            apiComment.userAvatar ||
             `https://api.dicebear.com/7.x/avataaars/png?seed=${apiComment.userId}`,
           content: apiComment.content,
           timestamp: formatTimestamp(apiComment.createdAt),
           likes: apiComment.likeCount || 0,
           isLiked: false,
+          replyCount: apiComment.replyCount || 0,
+          replies: formattedReplies,
+          showReplies: false,
         };
       });
 
@@ -161,6 +201,7 @@ const PostDetailScreen = () => {
     Keyboard.dismiss();
     commentInputRef.current?.blur();
     setIsCommentFocused(false);
+    setReplyTarget(null);
   }, []);
 
   // 处理打开全屏图片
@@ -307,7 +348,102 @@ const PostDetailScreen = () => {
     [user?.userId, comments]
   );
 
-  // 处理提交评论
+  // 处理回复点赞
+  const handleReplyLike = useCallback(
+    async (replyId: string, parentId: string) => {
+      if (!user?.userId) {
+        Alert.show("提示", "请先登录");
+        return;
+      }
+
+      // 找到父评论和目标回复
+      const parentComment = comments.find((c) => c.id === parentId);
+      if (!parentComment) return;
+      
+      const targetReply = parentComment.replies?.find((r) => r.id === replyId);
+      if (!targetReply) return;
+
+      const newIsLiked = !targetReply.isLiked;
+      
+      // 乐观更新
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === parentId
+            ? {
+                ...comment,
+                replies: comment.replies.map((reply) =>
+                  reply.id === replyId
+                    ? {
+                        ...reply,
+                        isLiked: newIsLiked,
+                        likes: newIsLiked ? reply.likes + 1 : reply.likes - 1,
+                      }
+                    : reply
+                ),
+              }
+            : comment
+        )
+      );
+
+      try {
+        const numericReplyId = parseInt(replyId, 10);
+        if (newIsLiked) {
+          await commentService.likeComment(numericReplyId, user.userId);
+        } else {
+          await commentService.unlikeComment(numericReplyId, user.userId);
+        }
+      } catch (error) {
+        console.error("Error toggling reply like:", error);
+        // 回滚
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === parentId
+              ? {
+                  ...comment,
+                  replies: comment.replies.map((reply) =>
+                    reply.id === replyId
+                      ? {
+                          ...reply,
+                          isLiked: !newIsLiked,
+                          likes: newIsLiked ? reply.likes - 1 : reply.likes + 1,
+                        }
+                      : reply
+                  ),
+                }
+              : comment
+          )
+        );
+      }
+    },
+    [user?.userId, comments]
+  );
+
+  // 处理回复点击
+  const handleReplyPress = useCallback((target: ReplyTarget) => {
+    setReplyTarget(target);
+    setIsCommentFocused(true);
+    setTimeout(() => {
+      commentInputRef.current?.focus();
+    }, 100);
+  }, []);
+
+  // 取消回复
+  const handleCancelReply = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
+
+  // 切换显示/隐藏回复
+  const handleToggleReplies = useCallback((commentId: string) => {
+    setComments((prev) =>
+      prev.map((comment) =>
+        comment.id === commentId
+          ? { ...comment, showReplies: !comment.showReplies }
+          : comment
+      )
+    );
+  }, []);
+
+  // 处理提交评论或回复
   const handleSubmitComment = useCallback(async () => {
     if (!commentInput.trim()) return;
 
@@ -327,10 +463,24 @@ const PostDetailScreen = () => {
         typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
       if (isNaN(postId)) throw new Error("无效的帖子 ID");
 
-      const newApiComment = await commentService.createComment(postId, {
+      // 构建评论参数
+      const commentParams: {
+        userId: number;
+        content: string;
+        parentId?: number;
+        replyToUserId?: number;
+      } = {
         userId: user.userId,
         content: commentInput.trim(),
-      });
+      };
+
+      // 如果是回复
+      if (replyTarget) {
+        commentParams.parentId = parseInt(replyTarget.commentId, 10);
+        commentParams.replyToUserId = replyTarget.userId;
+      }
+
+      const newApiComment = await commentService.createComment(postId, commentParams);
 
       let userAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
       try {
@@ -342,21 +492,58 @@ const PostDetailScreen = () => {
         // 忽略获取用户信息失败
       }
 
-      const newComment: Comment = {
-        id: String(newApiComment.id),
-        userId: newApiComment.userId,
-        userName: user.username || "我",
-        userAvatar: userAvatar,
-        content: newApiComment.content,
-        timestamp: "刚刚",
-        likes: 0,
-        isLiked: false,
-      };
+      if (replyTarget) {
+        // 添加回复到对应的评论
+        const newReply: CommentReply = {
+          id: String(newApiComment.id),
+          parentId: replyTarget.commentId,
+          userId: user.userId,
+          userName: user.username || "我",
+          userAvatar: userAvatar,
+          replyToUserId: replyTarget.userId,
+          replyToUsername: replyTarget.userName,
+          content: commentInput.trim(),
+          timestamp: "刚刚",
+          likes: 0,
+          isLiked: false,
+        };
 
-      setComments((prev) => [newComment, ...prev]);
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === replyTarget.commentId
+              ? {
+                  ...comment,
+                  replyCount: comment.replyCount + 1,
+                  replies: [...comment.replies, newReply],
+                  showReplies: true,
+                }
+              : comment
+          )
+        );
+
+        Alert.show("成功", "回复已发布");
+      } else {
+        // 添加新评论
+        const newComment: Comment = {
+          id: String(newApiComment.id),
+          userId: newApiComment.userId,
+          userName: user.username || "我",
+          userAvatar: userAvatar,
+          content: newApiComment.content,
+          timestamp: "刚刚",
+          likes: 0,
+          isLiked: false,
+          replyCount: 0,
+          replies: [],
+          showReplies: false,
+        };
+
+        setComments((prev) => [newComment, ...prev]);
+        Alert.show("成功", "评论已发布");
+      }
+
       setCommentInput("");
-
-      Alert.show("成功", "评论已发布");
+      setReplyTarget(null);
 
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -365,12 +552,12 @@ const PostDetailScreen = () => {
       console.error("Error submitting comment:", error);
       Alert.show(
         "错误",
-        error instanceof Error ? error.message : "评论发布失败"
+        error instanceof Error ? error.message : "发布失败"
       );
     } finally {
       setIsSubmittingComment(false);
     }
-  }, [commentInput, user?.userId, user?.username, post?.id]);
+  }, [commentInput, user?.userId, user?.username, post?.id, replyTarget]);
 
   // 处理继续编辑（草稿）
   const handleContinueEdit = useCallback(() => {
@@ -477,7 +664,10 @@ const PostDetailScreen = () => {
   const images = post.content?.images || [];
   const displayLikes = post.engagement?.likes || 0;
   const displaySaves = post.engagement?.saves || 0;
-  const displayComments = post.engagement?.comments || comments.length;
+  const displayComments = post.engagement?.comments || comments.reduce(
+    (sum, c) => sum + 1 + (c.replyCount || 0),
+    0
+  );
   const displayIsLiked = post.engagement?.isLiked || false;
   const displayIsSaved = post.engagement?.isSaved || false;
   const showComments = postStatus === "published";
@@ -548,7 +738,10 @@ const PostDetailScreen = () => {
             isLoading={isLoadingComments}
             postStatus={postStatus}
             onCommentLike={handleCommentLike}
+            onReplyLike={handleReplyLike}
             onUserPress={handleUserPress}
+            onReplyPress={handleReplyPress}
+            onToggleReplies={handleToggleReplies}
           />
 
           {/* Bottom spacing */}
@@ -574,6 +767,7 @@ const PostDetailScreen = () => {
             displayComments={displayComments}
             displayIsLiked={displayIsLiked}
             displayIsSaved={displayIsSaved}
+            replyTarget={replyTarget}
             onInputChange={setCommentInput}
             onInputFocus={handleInputFocus}
             onInputBlur={handleInputBlur}
@@ -581,6 +775,7 @@ const PostDetailScreen = () => {
             onLike={handleLike}
             onSave={handleSave}
             onOverlayPress={handleOverlayPress}
+            onCancelReply={handleCancelReply}
           />
         )}
       </KeyboardAvoidingView>
