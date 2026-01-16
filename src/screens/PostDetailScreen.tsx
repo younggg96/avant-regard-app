@@ -216,14 +216,19 @@ const PostDetailScreen = () => {
   }, []);
 
   // 处理点赞
-  const handleLike = useCallback(() => {
+  const handleLike = useCallback(async () => {
     if (!post) return;
+    if (!user?.userId) {
+      Alert.show("提示", "请先登录");
+      return;
+    }
 
+    const currentIsLiked = post.engagement?.isLiked || false;
+    const currentLikes = post.engagement?.likes || 0;
+
+    // 乐观更新UI
     setPost((prev) => {
       if (!prev) return null;
-      const currentLikes = prev.engagement?.likes || 0;
-      const currentIsLiked = prev.engagement?.isLiked || false;
-
       return {
         ...prev,
         engagement: {
@@ -233,17 +238,48 @@ const PostDetailScreen = () => {
         },
       } as Post;
     });
-  }, [post]);
+
+    // 调用API
+    try {
+      const postId = typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+      if (isNaN(postId)) return;
+
+      if (currentIsLiked) {
+        await postService.unlikePost(postId, user.userId);
+      } else {
+        await postService.likePost(postId, user.userId);
+      }
+    } catch (error) {
+      console.error("点赞操作失败:", error);
+      // 回滚UI状态
+      setPost((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          engagement: {
+            ...prev.engagement,
+            likes: currentLikes,
+            isLiked: currentIsLiked,
+          },
+        } as Post;
+      });
+    }
+  }, [post, user?.userId]);
 
   // 处理收藏
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!post) return;
+    if (!user?.userId) {
+      Alert.show("提示", "请先登录");
+      return;
+    }
 
+    const currentIsSaved = post.engagement?.isSaved || false;
+    const currentSaves = post.engagement?.saves || 0;
+
+    // 乐观更新UI
     setPost((prev) => {
       if (!prev) return null;
-      const currentSaves = prev.engagement?.saves || 0;
-      const currentIsSaved = prev.engagement?.isSaved || false;
-
       return {
         ...prev,
         engagement: {
@@ -253,7 +289,33 @@ const PostDetailScreen = () => {
         },
       } as Post;
     });
-  }, [post]);
+
+    // 调用API
+    try {
+      const postId = typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+      if (isNaN(postId)) return;
+
+      if (currentIsSaved) {
+        await postService.unfavoritePost(postId, user.userId);
+      } else {
+        await postService.favoritePost(postId, user.userId);
+      }
+    } catch (error) {
+      console.error("收藏操作失败:", error);
+      // 回滚UI状态
+      setPost((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          engagement: {
+            ...prev.engagement,
+            saves: currentSaves,
+            isSaved: currentIsSaved,
+          },
+        } as Post;
+      });
+    }
+  }, [post, user?.userId]);
 
   // 处理分享
   const handleShare = useCallback(async () => {

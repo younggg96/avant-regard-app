@@ -372,6 +372,21 @@ class PostService:
                     posts.append(self._format_post(p, current_user_id))
         return posts
 
+    def get_posts_by_show_url(
+        self, show_url: str, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """通过 show_url 获取某个秀场关联的帖子"""
+        # 先通过 show_url 获取 show_id
+        show_result = (
+            self.db.table("shows").select("id").eq("show_url", show_url).execute()
+        )
+        
+        if not show_result.data:
+            return []
+        
+        show_id = show_result.data[0]["id"]
+        return self.get_posts_by_show_id(show_id, current_user_id)
+
 
 # 单例
 post_service = PostService()

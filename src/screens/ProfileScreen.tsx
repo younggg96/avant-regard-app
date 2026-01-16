@@ -40,15 +40,28 @@ import { Post as DisplayPost } from "../components/PostCard";
 
 type TabType = "published" | "pending" | "draft" | "saved" | "liked";
 
+// 定义每个 Tab 的数据结构
+type TabData = {
+  posts: DisplayPost[];
+  isLoading: boolean;
+  hasLoaded: boolean; // 标记是否初始化过，避免重复 loading 动画
+  count: number;
+};
+
+const initialTabState: TabData = {
+  posts: [],
+  isLoading: false,
+  hasLoaded: false,
+  count: 0,
+};
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { user, logout, updateProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("published");
-  const [posts, setPosts] = useState<DisplayPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -69,30 +82,40 @@ const ProfileScreen = () => {
   const tabScrollViewRef = useRef<ScrollView>(null);
   const contentScrollViewRef = useRef<ScrollView>(null);
 
-  // 各标签的帖子数量
-  const [postCounts, setPostCounts] = useState({
-    published: 0,
-    pending: 0,
-    draft: 0,
-    saved: 0,
-    liked: 0,
+  // 核心状态：由一个 Map 管理所有 Tab 的数据，实现状态分离
+  const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
+    published: { ...initialTabState },
+    pending: { ...initialTabState },
+    draft: { ...initialTabState },
+    saved: { ...initialTabState },
+    liked: { ...initialTabState },
   });
 
-  // 缓存各 tab 的数据，避免重复请求
-  const [tabDataCache, setTabDataCache] = useState<{
-    [key in TabType]?: { posts: DisplayPost[]; count: number };
-  }>({});
+  // 通用更新函数：只更新某个 Tab 的特定字段
+  const updateTabState = useCallback(
+    (tab: TabType, updates: Partial<TabData>) => {
+      setTabsData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], ...updates },
+      }));
+    },
+    []
+  );
 
   const tabs = [
     {
       id: "published" as TabType,
       label: "已发布",
-      count: postCounts.published,
+      count: tabsData.published.count,
     },
-    { id: "pending" as TabType, label: "待审核", count: postCounts.pending },
-    { id: "liked" as TabType, label: "我喜欢的", count: postCounts.liked },
-    { id: "saved" as TabType, label: "我收藏的", count: postCounts.saved },
-    { id: "draft" as TabType, label: "草稿", count: postCounts.draft },
+    {
+      id: "pending" as TabType,
+      label: "待审核",
+      count: tabsData.pending.count,
+    },
+    { id: "liked" as TabType, label: "我喜欢的", count: tabsData.liked.count },
+    { id: "saved" as TabType, label: "我收藏的", count: tabsData.saved.count },
+    { id: "draft" as TabType, label: "草稿", count: tabsData.draft.count },
   ];
 
   // 将 API 帖子转换为展示格式
@@ -118,6 +141,8 @@ const ProfileScreen = () => {
         likes: apiPost.likeCount || 0,
         saves: apiPost.favoriteCount || 0,
         comments: apiPost.commentCount || 0,
+        isLiked: apiPost.likedByMe || false,
+        isSaved: apiPost.favoritedByMe || false,
       },
       likes: apiPost.likeCount || 0,
       // 保留原始状态用于判断
@@ -125,14 +150,20 @@ const ProfileScreen = () => {
     } as DisplayPost & { status?: string };
   };
 
-  // 初始化数据 - 只加载用户信息和关注数量，不加载所有帖子
+  // 初始化数据 - 只加载用户信息和关注数量
   useEffect(() => {
     loadUserInfo();
     loadUserProfile();
     loadFollowingUsersCount();
     loadFollowersCount();
-    // 清空缓存，因为用户可能变了
-    setTabDataCache({});
+    // 重置所有 Tab 的状态，因为用户可能变了
+    setTabsData({
+      published: { ...initialTabState },
+      pending: { ...initialTabState },
+      draft: { ...initialTabState },
+      saved: { ...initialTabState },
+      liked: { ...initialTabState },
+    });
   }, [user?.userId]);
 
   // 加载用户信息
@@ -193,136 +224,126 @@ const ProfileScreen = () => {
     }
   };
 
-  // 更新单个 tab 的数量
-  const updateTabCount = (tab: TabType, count: number) => {
-    setPostCounts((prev) => ({
-      ...prev,
-      [tab]: count,
-    }));
-  };
+  // 重构后的加载函数：可以指定加载某个 Tab，不再依赖 activeTab
+  const fetchTabData = useCallback(
+    async (targetTab: TabType, isRefresh = false) => {
+      if (!user?.userId) return;
 
-  // 加载 posts - 使用缓存避免重复请求
-  const loadPosts = async (forceRefresh = false) => {
-    if (!user?.userId) return;
-
-    // 如果有缓存且不是强制刷新，直接使用缓存
-    if (!forceRefresh && tabDataCache[activeTab]) {
-      setPosts(tabDataCache[activeTab]!.posts);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let loadedPosts: DisplayPost[] = [];
-
-      // 获取用户头像信息
-      const authorName = userInfo?.username || user?.username || "用户";
-      const authorAvatar =
-        userInfo?.avatarUrl ||
-        user?.avatar ||
-        `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
-
-      if (activeTab === "saved") {
-        // 加载用户收藏的帖子
-        const apiPosts = await postService.getFavoritePostsByUserId(
-          user.userId
-        );
-        // 转换为展示格式
-        loadedPosts = apiPosts.map((post) =>
-          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
-        );
-      } else if (activeTab === "liked") {
-        // 加载用户点赞的帖子
-        const apiPosts = await postService.getLikedPostsByUserId(user.userId);
-        // 转换为展示格式
-        loadedPosts = apiPosts.map((post) =>
-          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
-        );
-      } else if (activeTab === "pending" || activeTab === "published") {
-        // pending 和 published 共享同一个 API 请求
-        const apiPosts = await postService.getPostsByUserId(
-          user.userId,
-          "PUBLISHED"
-        );
-
-        // 筛选出待审核和已审核通过的帖子
-        const pendingPosts = apiPosts.filter(
-          (post: ApiPost) => post.auditStatus === "PENDING"
-        );
-        const approvedPosts = apiPosts.filter(
-          (post: ApiPost) => post.auditStatus === "APPROVED"
-        );
-
-        // 转换为展示格式
-        const pendingDisplayPosts = pendingPosts.map((post) => ({
-          ...convertToDisplayPost(post, {
-            name: authorName,
-            avatar: authorAvatar,
-          }),
-          auditStatus: post.auditStatus,
-        }));
-        const approvedDisplayPosts = approvedPosts.map((post) =>
-          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
-        );
-
-        // 缓存两个 tab 的数据
-        setTabDataCache((prev) => ({
-          ...prev,
-          pending: {
-            posts: pendingDisplayPosts,
-            count: pendingDisplayPosts.length,
-          },
-          published: {
-            posts: approvedDisplayPosts,
-            count: approvedDisplayPosts.length,
-          },
-        }));
-
-        // 更新两个 tab 的数量
-        updateTabCount("pending", pendingDisplayPosts.length);
-        updateTabCount("published", approvedDisplayPosts.length);
-
-        // 设置当前 tab 的帖子
-        loadedPosts =
-          activeTab === "pending" ? pendingDisplayPosts : approvedDisplayPosts;
-
-        setPosts(loadedPosts);
-        setLoading(false);
+      // 如果不是强制刷新，且数据已经加载过，就直接返回（实现缓存，不再转圈）
+      if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
-      } else if (activeTab === "draft") {
-        // 加载草稿帖子
-        const apiPosts = await postService.getPostsByUserId(
-          user.userId,
-          "DRAFT"
-        );
-        // 转换为展示格式
-        loadedPosts = apiPosts.map((post) =>
-          convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
-        );
       }
 
-      // 缓存当前 tab 的数据
-      setTabDataCache((prev) => ({
-        ...prev,
-        [activeTab]: { posts: loadedPosts, count: loadedPosts.length },
-      }));
+      // 设置当前 Tab 正在加载
+      updateTabState(targetTab, { isLoading: true });
 
-      // 更新当前 tab 的数量
-      updateTabCount(activeTab, loadedPosts.length);
+      try {
+        const authorName = userInfo?.username || user?.username || "用户";
+        const authorAvatar =
+          userInfo?.avatarUrl ||
+          user?.avatar ||
+          `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
 
-      setPosts(loadedPosts);
-    } catch (error) {
-      console.error("Error loading posts:", error);
-      Alert.show("加载失败，请重试");
-    } finally {
-      setLoading(false);
-    }
-  };
+        let newPosts: DisplayPost[] = [];
 
-  // 当标签切换时加载对应 tab 的数据（使用缓存）
+        // 特殊处理：Published 和 Pending 共享一个接口
+        if (targetTab === "published" || targetTab === "pending") {
+          const apiPosts = await postService.getPostsByUserId(
+            user.userId,
+            "PUBLISHED"
+          );
+
+          const pendingPosts = apiPosts
+            .filter((p: ApiPost) => p.auditStatus === "PENDING")
+            .map((p) => ({
+              ...convertToDisplayPost(p, {
+                name: authorName,
+                avatar: authorAvatar,
+              }),
+              auditStatus: p.auditStatus,
+            }));
+
+          const approvedPosts = apiPosts
+            .filter((p: ApiPost) => p.auditStatus === "APPROVED")
+            .map((p) =>
+              convertToDisplayPost(p, {
+                name: authorName,
+                avatar: authorAvatar,
+              })
+            );
+
+          // 同时更新两个 Tab 的数据
+          setTabsData((prev) => ({
+            ...prev,
+            published: {
+              posts: approvedPosts,
+              count: approvedPosts.length,
+              isLoading: false,
+              hasLoaded: true,
+            },
+            pending: {
+              posts: pendingPosts,
+              count: pendingPosts.length,
+              isLoading: false,
+              hasLoaded: true,
+            },
+          }));
+          return; // 结束，因为已经手动更新了状态
+        }
+
+        // 处理其他单一接口的 Tab
+        if (targetTab === "saved") {
+          const apiPosts = await postService.getFavoritePostsByUserId(
+            user.userId
+          );
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: authorName,
+              avatar: authorAvatar,
+            })
+          );
+        } else if (targetTab === "liked") {
+          const apiPosts = await postService.getLikedPostsByUserId(user.userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: authorName,
+              avatar: authorAvatar,
+            })
+          );
+        } else if (targetTab === "draft") {
+          const apiPosts = await postService.getPostsByUserId(
+            user.userId,
+            "DRAFT"
+          );
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: authorName,
+              avatar: authorAvatar,
+            })
+          );
+        }
+
+        // 更新当前 Tab 状态
+        updateTabState(targetTab, {
+          posts: newPosts,
+          count: newPosts.length,
+          isLoading: false,
+          hasLoaded: true,
+        });
+      } catch (error) {
+        console.error(`Error loading ${targetTab}:`, error);
+        updateTabState(targetTab, { isLoading: false });
+        Alert.show("加载失败，请重试");
+      }
+    },
+    [user?.userId, userInfo, tabsData, updateTabState]
+  );
+
+  // 切换 tab 时，如果该 tab 还没加载过数据，才去请求
+  // 如果已经 hasLoaded 为 true，fetchTabData 内部会直接 return，实现"瞬开"
   useEffect(() => {
-    loadPosts();
-  }, [activeTab]);
+    fetchTabData(activeTab);
+  }, [activeTab, user?.userId]);
 
   // 当页面获得焦点时刷新当前 tab 的数据
   useFocusEffect(
@@ -331,30 +352,18 @@ const ProfileScreen = () => {
       loadUserProfile();
       loadFollowingUsersCount();
       loadFollowersCount();
-      // 只刷新当前 tab 的数据
-      loadPosts(true);
+      // 强制刷新当前 tab 的数据
+      fetchTabData(activeTab, true);
     }, [activeTab, user?.userId])
   );
 
   // 下拉刷新 - 只刷新当前 tab 和必要的信息
   const onRefresh = async () => {
     setRefreshing(true);
-    // 清除当前 tab 的缓存
-    setTabDataCache((prev) => {
-      const newCache = { ...prev };
-      delete newCache[activeTab];
-      // 如果是 pending 或 published，两个都清除因为共享数据源
-      if (activeTab === "pending" || activeTab === "published") {
-        delete newCache["pending"];
-        delete newCache["published"];
-      }
-      return newCache;
-    });
-
     await Promise.all([
       loadUserInfo(),
       loadUserProfile(),
-      loadPosts(true),
+      fetchTabData(activeTab, true), // 强制刷新当前 Tab
       loadFollowingUsersCount(),
       loadFollowersCount(),
     ]);
@@ -492,29 +501,34 @@ const ProfileScreen = () => {
       // 显示成功提示
       Alert.show("成功", "帖子已删除");
 
-      // 清除相关缓存并重新加载数据
-      try {
-        // 清除当前 tab 的缓存
-        setTabDataCache((prev) => {
-          const newCache = { ...prev };
-          delete newCache[activeTab];
-          // 如果是 pending 或 published，两个都清除
-          if (activeTab === "pending" || activeTab === "published") {
-            delete newCache["pending"];
-            delete newCache["published"];
-          }
-          return newCache;
-        });
-        await loadPosts(true);
-      } catch (refreshError) {
-        console.warn("删除成功但刷新数据失败:", refreshError);
-        // 即使刷新失败，也手动从列表中移除已删除的帖子
-        setPosts((prevPosts) =>
-          prevPosts.filter((p) => p.id !== postToDelete.id)
+      // 直接更新本地数据，不需要重新请求 API，体验更好
+      setTabsData((prev) => {
+        const currentTabData = prev[activeTab];
+        const newPosts = currentTabData.posts.filter(
+          (p) => p.id !== postToDelete.id
         );
-        // 更新数量
-        updateTabCount(activeTab, posts.length - 1);
-      }
+
+        // 如果是 pending 或 published，可能需要同时更新两个 tab
+        if (activeTab === "pending" || activeTab === "published") {
+          return {
+            ...prev,
+            [activeTab]: {
+              ...currentTabData,
+              posts: newPosts,
+              count: newPosts.length,
+            },
+          };
+        }
+
+        return {
+          ...prev,
+          [activeTab]: {
+            ...currentTabData,
+            posts: newPosts,
+            count: newPosts.length,
+          },
+        };
+      });
     } catch (error) {
       console.error("删除帖子时出错:", error);
 
@@ -655,8 +669,8 @@ const ProfileScreen = () => {
           </TouchableOpacity>
           <TouchableOpacity style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {postCounts.published > 0
-                ? postCounts.published
+              {tabsData.published.count > 0
+                ? tabsData.published.count
                 : userInfo?.userId
                 ? "0"
                 : "-"}
@@ -710,11 +724,14 @@ const ProfileScreen = () => {
           nestedScrollEnabled={true}
         >
           {tabs.map((tab) => {
-            // 获取当前 tab 的数据
-            const tabPosts =
-              activeTab === tab.id ? posts : tabDataCache[tab.id]?.posts || [];
+            // 直接从总状态池取数据，不再依赖单一的 posts 变量
+            const currentTabData = tabsData[tab.id];
             const isCurrentTab = activeTab === tab.id;
-            const isLoading = loading && isCurrentTab;
+
+            // 只有在从未加载过数据 且 正在加载时 才显示 loading
+            // 这样如果已经有旧数据，刷新时不会白屏
+            const shouldShowLoading =
+              currentTabData.isLoading && !currentTabData.hasLoaded;
 
             return (
               <ScrollView
@@ -730,7 +747,7 @@ const ProfileScreen = () => {
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled={true}
               >
-                {isLoading ? (
+                {shouldShowLoading ? (
                   <View style={styles.loadingState}>
                     <ActivityIndicator
                       size="large"
@@ -738,9 +755,9 @@ const ProfileScreen = () => {
                     />
                     <Text style={styles.loadingText}>加载中...</Text>
                   </View>
-                ) : tabPosts.length > 0 ? (
+                ) : currentTabData.posts.length > 0 ? (
                   <View style={styles.postsGrid}>
-                    {tabPosts.map((post) => (
+                    {currentTabData.posts.map((post) => (
                       <View key={post.id} style={styles.postItem}>
                         <TouchableOpacity
                           onPress={() => handlePostPress(post)}
@@ -778,7 +795,7 @@ const ProfileScreen = () => {
                       </View>
                     ))}
                   </View>
-                ) : (
+                ) : currentTabData.hasLoaded ? (
                   <View style={styles.emptyState}>
                     <Ionicons
                       name={
@@ -801,7 +818,7 @@ const ProfileScreen = () => {
                       {tab.id === "liked" && "还没有点赞帖子"}
                     </Text>
                   </View>
-                )}
+                ) : null}
               </ScrollView>
             );
           })}

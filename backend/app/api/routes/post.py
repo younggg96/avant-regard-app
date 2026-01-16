@@ -209,3 +209,13 @@ async def get_posts_by_show_id(
     """获取某个秀场关联的帖子"""
     result = post_service.get_posts_by_show_id(show_id, current_user_id)
     return success([p.model_dump() for p in result])
+
+
+@router.get("/show-url")
+async def get_posts_by_show_url(
+    url: str = Query(..., description="秀场URL"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional)
+):
+    """通过 show_url 获取某个秀场关联的帖子"""
+    result = post_service.get_posts_by_show_url(url, current_user_id)
+    return success([p.model_dump() for p in result])

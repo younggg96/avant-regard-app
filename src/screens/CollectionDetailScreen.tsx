@@ -21,7 +21,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
-import { getPostsByShowId, Post } from "../services/postService";
+import { getPostsByShowId, getPostsByShowUrl, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -96,10 +96,16 @@ const CollectionDetailScreen = () => {
 
     // Load related posts
     const loadRelatedPosts = async () => {
-      if (showId) {
+      // 优先使用 showId，其次使用 collection.showUrl
+      if (showId || collection.showUrl) {
         setPostsLoading(true);
         try {
-          const posts = await getPostsByShowId(showId);
+          let posts: Post[] = [];
+          if (showId) {
+            posts = await getPostsByShowId(showId);
+          } else if (collection.showUrl) {
+            posts = await getPostsByShowUrl(collection.showUrl);
+          }
           setRelatedPosts(posts);
         } catch (error) {
           console.error("Failed to load related posts:", error);
@@ -433,7 +439,8 @@ const CollectionDetailScreen = () => {
 
   // Render related posts section
   const renderRelatedPosts = () => {
-    if (!showId) return null;
+    // 只要有 showId 或 showUrl 就尝试显示相关帖子
+    if (!showId && !collection.showUrl) return null;
 
     return (
       <View style={styles.relatedPostsContainer}>

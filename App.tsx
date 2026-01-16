@@ -43,6 +43,7 @@ import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
+import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -194,6 +195,11 @@ function AppNavigator() {
       <Stack.Screen
         name="CollectionDetail"
         component={CollectionDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="DesignerDetail"
+        component={DesignerDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

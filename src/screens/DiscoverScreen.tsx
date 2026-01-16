@@ -119,8 +119,8 @@ const mapApiPostToDisplayPost = (
       likes: apiPost.likeCount || 0,
       saves: apiPost.favoriteCount || 0,
       comments: apiPost.commentCount || 0,
-      isLiked: false, // 后端暂不支持，默认false
-      isSaved: false,
+      isLiked: apiPost.likedByMe || false,
+      isSaved: apiPost.favoritedByMe || false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
     // 关联的秀场

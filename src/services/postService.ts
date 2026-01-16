@@ -463,6 +463,18 @@ export async function getPostsByShowId(showId: number): Promise<Post[]> {
   });
 }
 
+/**
+ * 通过 show_url 获取某个秀场关联的帖子
+ * GET /api/posts/show-url?url={showUrl}
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param showUrl 秀场URL
+ */
+export async function getPostsByShowUrl(showUrl: string): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/show-url?url=${encodeURIComponent(showUrl)}`, {
+    method: "GET",
+  });
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -486,6 +498,7 @@ export const postService = {
   getFavoritePostsByUserId,
   // 秀场关联帖子
   getPostsByShowId,
+  getPostsByShowUrl,
 };
 
 export default postService;
