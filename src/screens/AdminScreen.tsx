@@ -17,10 +17,10 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import { adminService } from "../services/adminService";
+import { adminService, AdminComment } from "../services/adminService";
 import { Post } from "../services/postService";
 
-type TabType = "pending" | "users";
+type TabType = "pending" | "comments" | "users";
 
 const AdminScreen = () => {
   const navigation = useNavigation();
@@ -45,6 +45,13 @@ const AdminScreen = () => {
   const [batchRejectModalVisible, setBatchRejectModalVisible] = useState(false);
   const [batchRejectReason, setBatchRejectReason] = useState("");
 
+  // 评论管理状态
+  const [comments, setComments] = useState<AdminComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsPage, setCommentsPage] = useState(1);
+  const [commentsTotalPages, setCommentsTotalPages] = useState(0);
+  const [commentsTotal, setCommentsTotal] = useState(0);
+
   // 获取待审核帖子
   const fetchPendingPosts = useCallback(async () => {
     try {
@@ -59,18 +66,41 @@ const AdminScreen = () => {
     }
   }, []);
 
+  // 获取所有评论
+  const fetchComments = useCallback(async (page: number = 1) => {
+    try {
+      setCommentsLoading(true);
+      const result = await adminService.getAllComments(page, 20);
+      setComments(result.comments);
+      setCommentsPage(result.page);
+      setCommentsTotalPages(result.totalPages);
+      setCommentsTotal(result.total);
+    } catch (error) {
+      console.error("获取评论列表失败:", error);
+      Alert.alert("错误", error instanceof Error ? error.message : "获取评论列表失败");
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, []);
+
   // 下拉刷新
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPendingPosts();
+    if (activeTab === "pending") {
+      await fetchPendingPosts();
+    } else if (activeTab === "comments") {
+      await fetchComments(1);
+    }
     setRefreshing(false);
-  }, [fetchPendingPosts]);
+  }, [activeTab, fetchPendingPosts, fetchComments]);
 
   useEffect(() => {
     if (activeTab === "pending") {
       fetchPendingPosts();
+    } else if (activeTab === "comments") {
+      fetchComments(1);
     }
-  }, [activeTab, fetchPendingPosts]);
+  }, [activeTab, fetchPendingPosts, fetchComments]);
 
   // 审核通过
   const handleApprove = async (postId: number) => {
@@ -247,6 +277,42 @@ const AdminScreen = () => {
       Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  // 删除评论
+  const handleDeleteComment = async (commentId: number) => {
+    Alert.alert(
+      "确认删除",
+      "确定要删除这条评论吗？此操作不可撤销。",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              await adminService.deleteComment(commentId);
+              Alert.alert("成功", "评论已删除");
+              // 从列表中移除
+              setComments(prev => prev.filter(c => c.id !== commentId));
+              setCommentsTotal(prev => prev - 1);
+            } catch (error) {
+              Alert.alert("错误", error instanceof Error ? error.message : "删除评论失败");
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 加载更多评论
+  const loadMoreComments = () => {
+    if (commentsPage < commentsTotalPages && !commentsLoading) {
+      fetchComments(commentsPage + 1);
     }
   };
 
@@ -434,6 +500,120 @@ const AdminScreen = () => {
   );
   };
 
+  // 渲染评论卡片
+  const renderCommentCard = (comment: AdminComment) => (
+    <View key={comment.id} style={styles.commentCard}>
+      {/* 评论头部 */}
+      <View style={styles.commentHeader}>
+        <View style={styles.commentMeta}>
+          <Ionicons name="chatbubble-outline" size={16} color={theme.colors.gray400} />
+          <Text style={styles.commentId}>ID: {comment.id}</Text>
+        </View>
+        <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
+      </View>
+
+      {/* 用户信息 */}
+      <View style={styles.commentUserInfo}>
+        <Ionicons name="person-circle-outline" size={18} color={theme.colors.gray400} />
+        <Text style={styles.commentUsername}>{comment.username}</Text>
+        <Text style={styles.commentUserId}>(ID: {comment.userId})</Text>
+      </View>
+
+      {/* 帖子信息 */}
+      <View style={styles.commentPostInfo}>
+        <Ionicons name="document-text-outline" size={16} color={theme.colors.gray300} />
+        <Text style={styles.commentPostTitle} numberOfLines={1}>
+          帖子: {comment.postTitle || `#${comment.postId}`}
+        </Text>
+      </View>
+
+      {/* 评论内容 */}
+      <Text style={styles.commentContent} numberOfLines={4}>
+        {comment.content}
+      </Text>
+
+      {/* 点赞数 */}
+      <View style={styles.commentStats}>
+        <Ionicons name="heart" size={14} color={theme.colors.gray300} />
+        <Text style={styles.commentLikes}>{comment.likeCount}</Text>
+      </View>
+
+      {/* 操作按钮 */}
+      <View style={styles.commentActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteCommentButton]}
+          onPress={() => handleDeleteComment(comment.id)}
+          disabled={actionLoading}
+        >
+          <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
+          <Text style={styles.actionButtonText}>删除</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.viewButton]}
+          onPress={() => (navigation as any).navigate("PostDetail", { postId: comment.postId })}
+        >
+          <Ionicons name="eye-outline" size={16} color={theme.colors.black} />
+          <Text style={[styles.actionButtonText, { color: theme.colors.black }]}>查看帖子</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // 渲染评论管理标签页
+  const renderCommentsTab = () => (
+    <ScrollView
+      style={styles.commentsList}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {commentsLoading && comments.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.black} />
+          <Text style={styles.loadingText}>加载中...</Text>
+        </View>
+      ) : comments.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.gray300} />
+          <Text style={styles.emptyText}>暂无评论</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.commentsHeader}>
+            <Text style={styles.commentsHeaderText}>
+              共 {commentsTotal} 条评论
+            </Text>
+          </View>
+          {comments.map(renderCommentCard)}
+          
+          {/* 分页控制 */}
+          {commentsTotalPages > 1 && (
+            <View style={styles.paginationContainer}>
+              <TouchableOpacity
+                style={[styles.pageButton, commentsPage <= 1 && styles.pageButtonDisabled]}
+                onPress={() => commentsPage > 1 && fetchComments(commentsPage - 1)}
+                disabled={commentsPage <= 1}
+              >
+                <Text style={styles.pageButtonText}>上一页</Text>
+              </TouchableOpacity>
+              <Text style={styles.pageInfo}>
+                {commentsPage} / {commentsTotalPages}
+              </Text>
+              <TouchableOpacity
+                style={[styles.pageButton, commentsPage >= commentsTotalPages && styles.pageButtonDisabled]}
+                onPress={() => commentsPage < commentsTotalPages && fetchComments(commentsPage + 1)}
+                disabled={commentsPage >= commentsTotalPages}
+              >
+                <Text style={styles.pageButtonText}>下一页</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
+      )}
+    </ScrollView>
+  );
+
   // 渲染用户管理标签页
   const renderUsersTab = () => (
     <View style={styles.usersContainer}>
@@ -471,6 +651,20 @@ const AdminScreen = () => {
           {pendingPosts.length > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{pendingPosts.length}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "comments" && styles.tabActive]}
+          onPress={() => setActiveTab("comments")}
+        >
+          <Text style={[styles.tabText, activeTab === "comments" && styles.tabTextActive]}>
+            评论管理
+          </Text>
+          {commentsTotal > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{commentsTotal}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -571,6 +765,8 @@ const AdminScreen = () => {
             </>
           )}
         </ScrollView>
+      ) : activeTab === "comments" ? (
+        renderCommentsTab()
       ) : (
         renderUsersTab()
       )}
@@ -1097,6 +1293,121 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     ...theme.typography.button,
     color: theme.colors.white,
+  },
+  // 评论管理样式
+  commentsList: {
+    flex: 1,
+    padding: theme.spacing.md,
+  },
+  commentsHeader: {
+    marginBottom: theme.spacing.md,
+  },
+  commentsHeaderText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray400,
+  },
+  commentCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  commentMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+  },
+  commentId: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+  },
+  commentDate: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  commentUserInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  commentUsername: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.black,
+    fontWeight: "600",
+  },
+  commentUserId: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  commentPostInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 4,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: theme.borderRadius.sm,
+  },
+  commentPostTitle: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    flex: 1,
+  },
+  commentContent: {
+    ...theme.typography.body,
+    color: theme.colors.black,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 22,
+  },
+  commentStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: theme.spacing.md,
+  },
+  commentLikes: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  commentActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
+  deleteCommentButton: {
+    backgroundColor: theme.colors.error,
+  },
+  paginationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  pageButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.gray100,
+    borderRadius: theme.borderRadius.md,
+  },
+  pageButtonDisabled: {
+    opacity: 0.5,
+  },
+  pageButtonText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.black,
+  },
+  pageInfo: {
+    ...theme.typography.body,
+    color: theme.colors.gray400,
   },
 });
 

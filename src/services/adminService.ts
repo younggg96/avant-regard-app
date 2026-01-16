@@ -8,6 +8,28 @@ import { Post } from "./postService";
 
 const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
+// 管理员评论类型（包含帖子信息）
+export interface AdminComment {
+  id: number;
+  postId: number;
+  postTitle: string;
+  userId: number;
+  username: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 评论分页响应
+export interface CommentsPageResponse {
+  comments: AdminComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 // API 响应包装类型
 interface ApiResponse<T> {
   code: number;
@@ -150,6 +172,63 @@ export async function deleteUser(userId: number): Promise<void> {
   });
 }
 
+// ==================== 评论管理 ====================
+
+/**
+ * 获取所有评论（分页）
+ * GET /api/admin/comments
+ * @param page 页码
+ * @param pageSize 每页数量
+ */
+export async function getAllComments(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<CommentsPageResponse> {
+  return request<CommentsPageResponse>(
+    `/api/admin/comments?page=${page}&pageSize=${pageSize}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+/**
+ * 获取指定帖子的所有评论
+ * GET /api/admin/comments/post/{postId}
+ * @param postId 帖子ID
+ */
+export async function getCommentsByPost(
+  postId: number
+): Promise<AdminComment[]> {
+  return request<AdminComment[]>(`/api/admin/comments/post/${postId}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 获取指定用户的所有评论
+ * GET /api/admin/comments/user/{userId}
+ * @param userId 用户ID
+ */
+export async function getCommentsByUser(
+  userId: number
+): Promise<AdminComment[]> {
+  return request<AdminComment[]>(`/api/admin/comments/user/${userId}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 管理员删除评论
+ * DELETE /api/admin/comments/{commentId}
+ * @param commentId 评论ID
+ */
+export async function deleteComment(commentId: number): Promise<void> {
+  return request<void>(`/api/admin/comments/${commentId}`, {
+    method: "DELETE",
+  });
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子审核
@@ -158,6 +237,11 @@ export const adminService = {
   rejectPost,
   // 用户管理
   deleteUser,
+  // 评论管理
+  getAllComments,
+  getCommentsByPost,
+  getCommentsByUser,
+  deleteComment,
 };
 
 export default adminService;
