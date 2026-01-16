@@ -190,7 +190,10 @@ const PublishOutfitScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
-      const showImageIds = selectedLooks.map((look) => look.id);
+      // 过滤掉无效的 showImageIds (id 为 0 表示来自本地数据，没有数据库 ID)
+      const showImageIds = selectedLooks
+        .map((look) => look.id)
+        .filter((id) => id > 0);
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
@@ -198,7 +201,7 @@ const PublishOutfitScreen = () => {
         title: title.trim(),
         contentText: description.trim(),
         imageUrls: uploadedUrls,
-        showImageIds: showImageIds,
+        showImageIds: showImageIds.length > 0 ? showImageIds : undefined,
       });
 
       setUploadProgress(null);
@@ -253,7 +256,10 @@ const PublishOutfitScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      const showImageIds = selectedLooks.map((look) => look.id);
+      // 过滤掉无效的 showImageIds (id 为 0 表示来自本地数据，没有数据库 ID)
+      const showImageIds = selectedLooks
+        .map((look) => look.id)
+        .filter((id) => id > 0);
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
