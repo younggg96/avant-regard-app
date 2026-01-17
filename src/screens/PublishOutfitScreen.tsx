@@ -36,6 +36,7 @@ import { showService, Show as ShowFromApi } from "../services/showService";
 import { useAuthStore } from "../store/authStore";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const PAGE_SIZE = 30;
 
 const PublishOutfitScreen = () => {
   const navigation = useNavigation();
@@ -71,10 +72,15 @@ const PublishOutfitScreen = () => {
   const [showLookSelector, setShowLookSelector] = useState(false);
   const [showLookPreview, setShowLookPreview] = useState(false);
   const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
+
+  // 秀场数据和分页状态
   const [allShows, setAllShows] = useState<Show[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingShows, setIsLoadingShows] = useState(false);
-  const [displayCount, setDisplayCount] = useState(20); // 当前显示的秀数量
+  const [showsPage, setShowsPage] = useState(1);
+  const [hasMoreShows, setHasMoreShows] = useState(true);
+  const [totalShows, setTotalShows] = useState(0);
+  const isLoadingMoreRef = useRef(false);
 
   const previewFlatListRef = useRef<FlatList>(null);
 
@@ -82,38 +88,104 @@ const PublishOutfitScreen = () => {
   const MAX_LOOKS = 6;
 
   // 加载秀场数据（从 API）
-  const loadShows = useCallback(async () => {
+  const loadShows = useCallback(async (reset: boolean = true) => {
+    if (isLoadingMoreRef.current && !reset) return;
+
     try {
-      setIsLoadingShows(true);
-      const response = await showService.getShows({ pageSize: 200 });
+      if (reset) {
+        setIsLoadingShows(true);
+        setShowsPage(1);
+        setHasMoreShows(true);
+      }
+      isLoadingMoreRef.current = true;
+
+      const response = await showService.getShows({
+        page: reset ? 1 : showsPage,
+        pageSize: PAGE_SIZE,
+      });
+
       const shows: Show[] = response.shows.map((show: ShowFromApi) => ({
-        brand: show.brand,
+        brand: show.brand || "",
         season: show.season,
-        title: show.title || show.brand,
+        title: show.title || show.brand || "",
         cover_image: show.coverImage || "",
         show_url: show.showUrl || "",
         year: show.year || 0,
         category: show.category || "",
-        show_id: show.id, // 数据库秀场 ID
+        show_id: show.id,
       }));
-      setAllShows(shows);
+
+      if (reset) {
+        setAllShows(shows);
+        setShowsPage(1);
+      } else {
+        setAllShows((prev) => [...prev, ...shows]);
+      }
+
+      setTotalShows(response.total);
+      setHasMoreShows(shows.length >= PAGE_SIZE);
     } catch (error) {
       console.error("Failed to load shows:", error);
-      Alert.show("加载秀场数据失败");
+      if (reset) {
+        Alert.show("加载秀场数据失败");
+      }
     } finally {
       setIsLoadingShows(false);
+      isLoadingMoreRef.current = false;
     }
-  }, []);
+  }, [showsPage]);
+
+  // 加载更多秀场
+  const loadMoreShows = useCallback(async () => {
+    if (isLoadingMoreRef.current || !hasMoreShows || isLoadingShows || searchQuery.trim()) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingShows(true);
+
+    try {
+      const nextPage = showsPage + 1;
+      const response = await showService.getShows({
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+      });
+
+      const shows: Show[] = response.shows.map((show: ShowFromApi) => ({
+        brand: show.brand || "",
+        season: show.season,
+        title: show.title || show.brand || "",
+        cover_image: show.coverImage || "",
+        show_url: show.showUrl || "",
+        year: show.year || 0,
+        category: show.category || "",
+        show_id: show.id,
+      }));
+
+      if (shows.length > 0) {
+        setAllShows((prev) => [...prev, ...shows]);
+        setShowsPage(nextPage);
+        setHasMoreShows(shows.length >= PAGE_SIZE);
+      } else {
+        setHasMoreShows(false);
+      }
+    } catch (error) {
+      console.error("Failed to load more shows:", error);
+    } finally {
+      setIsLoadingShows(false);
+      isLoadingMoreRef.current = false;
+    }
+  }, [showsPage, hasMoreShows, isLoadingShows, searchQuery]);
 
   useEffect(() => {
-    loadShows();
-  }, [loadShows]);
+    loadShows(true);
+  }, []);
 
   // 根据搜索词过滤秀场
   const filteredShows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) {
-      return allShows.slice(0, displayCount);
+      return allShows;
     }
     return allShows.filter(
       (show) =>
@@ -121,24 +193,7 @@ const PublishOutfitScreen = () => {
         show.season.toLowerCase().includes(query) ||
         show.category.toLowerCase().includes(query)
     );
-  }, [allShows, searchQuery, displayCount]);
-
-  const hasMoreShows = !searchQuery.trim() && displayCount < allShows.length;
-
-  // 加载更多秀场
-  const handleLoadMoreShows = () => {
-    if (searchQuery.trim() || isLoadingShows) {
-      return;
-    }
-    if (displayCount >= allShows.length) {
-      return;
-    }
-    setIsLoadingShows(true);
-    setTimeout(() => {
-      setDisplayCount((prev) => Math.min(prev + 20, allShows.length));
-      setIsLoadingShows(false);
-    }, 300);
-  };
+  }, [allShows, searchQuery]);
 
   // 选择秀场
   const handleSelectShow = (show: Show) => {
@@ -206,8 +261,11 @@ const PublishOutfitScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
-      // 获取第一个关联秀场的 showId（用于关联到数据库中的秀场）
-      const showId = selectedLooks.length > 0 ? selectedLooks[0].showId : undefined;
+      // 获取所有关联秀场的 showIds
+      const showIds = selectedLooks
+        .map((look) => look.showId)
+        .filter((id): id is number => id !== undefined);
+
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
@@ -215,7 +273,7 @@ const PublishOutfitScreen = () => {
         title: title.trim(),
         contentText: description.trim(),
         imageUrls: uploadedUrls,
-        showId: showId,
+        showIds: showIds,
       });
 
       setUploadProgress(null);
@@ -270,8 +328,11 @@ const PublishOutfitScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      // 获取第一个关联秀场的 showId（用于关联到数据库中的秀场）
-      const showId = selectedLooks.length > 0 ? selectedLooks[0].showId : undefined;
+      // 获取所有关联秀场的 showIds
+      const showIds = selectedLooks
+        .map((look) => look.showId)
+        .filter((id): id is number => id !== undefined);
+
       await postService.createPost({
         userId: user.userId,
         postType: "DAILY_SHARE",
@@ -279,7 +340,7 @@ const PublishOutfitScreen = () => {
         title: title.trim() || "搭配草稿",
         contentText: description.trim(),
         imageUrls: uploadedUrls,
-        showId: showId,
+        showIds: showIds,
       });
 
       setUploadProgress(null);
@@ -779,11 +840,11 @@ const PublishOutfitScreen = () => {
         shows={filteredShows}
         searchQuery={searchQuery}
         isLoading={isLoadingShows}
-        hasMore={hasMoreShows}
+        hasMore={hasMoreShows && !searchQuery.trim()}
         onSearchChange={setSearchQuery}
         onSelectShow={handleSelectShow}
         onClose={() => setShowLookSelector(false)}
-        onLoadMore={handleLoadMoreShows}
+        onLoadMore={loadMoreShows}
       />
 
       {selectedImageUri && (

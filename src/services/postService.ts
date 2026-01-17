@@ -43,8 +43,8 @@ export interface Post {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场 ID（直接关联 shows 表）
-  showId?: number;
+  // 关联秀场 ID 列表（支持关联多个秀场）
+  showIds?: number[];
   // 当前用户交互状态
   likedByMe?: boolean;
   favoritedByMe?: boolean;
@@ -62,8 +62,8 @@ export interface CreatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场 ID（直接关联 shows 表）
-  showId?: number;
+  // 关联秀场 ID 列表（支持关联多个秀场）
+  showIds?: number[];
 }
 
 // 更新帖子请求参数
@@ -74,8 +74,8 @@ export interface UpdatePostParams {
   title: string;
   contentText: string;
   imageUrls: string[];
-  // 关联秀场 ID（直接关联 shows 表）
-  showId?: number;
+  // 关联秀场 ID 列表（支持关联多个秀场）
+  showIds?: number[];
 }
 
 // 通用请求方法 - 默认携带 token，支持自动刷新

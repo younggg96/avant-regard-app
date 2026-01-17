@@ -50,7 +50,7 @@ async def create_post(
         product_name=request.productName,
         brand_name=request.brandName,
         rating=request.rating,
-        show_id=request.showId,
+        show_ids=request.showIds,
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")
@@ -75,7 +75,7 @@ async def update_post(
         title=request.title,
         content_text=request.contentText,
         image_urls=request.imageUrls,
-        show_id=request.showId,
+        show_ids=request.showIds,
     )
     if not result:
         raise HTTPException(status_code=404, detail="帖子不存在或无权修改")

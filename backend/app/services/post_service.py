@@ -33,6 +33,11 @@ class PostService:
             liked_by_me = self._check_liked(post_data["id"], current_user_id)
             favorited_by_me = self._check_favorited(post_data["id"], current_user_id)
 
+        # 处理 show_ids（兼容旧数据的 show_id）
+        show_ids = post_data.get("show_ids") or []
+        if not show_ids and post_data.get("show_id"):
+            show_ids = [post_data["show_id"]]
+
         return Post(
             id=post_data["id"],
             userId=post_data["user_id"],
@@ -51,7 +56,7 @@ class PostService:
             productName=post_data.get("product_name"),
             brandName=post_data.get("brand_name"),
             rating=post_data.get("rating"),
-            showId=post_data.get("show_id"),
+            showIds=show_ids,
             likedByMe=liked_by_me,
             favoritedByMe=favorited_by_me,
         )
@@ -110,7 +115,7 @@ class PostService:
         product_name: str = None,
         brand_name: str = None,
         rating: int = None,
-        show_id: int = None,
+        show_ids: List[int] = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 插入帖子
@@ -125,11 +130,8 @@ class PostService:
             "product_name": product_name,
             "brand_name": brand_name,
             "rating": rating,
+            "show_ids": show_ids or [],
         }
-
-        # 关联秀场
-        if show_id:
-            insert_data["show_id"] = show_id
 
         result = self.db.table("posts").insert(insert_data).execute()
 
@@ -167,8 +169,8 @@ class PostService:
             update_data["content_text"] = kwargs["content_text"]
         if "image_urls" in kwargs:
             update_data["image_urls"] = kwargs["image_urls"]
-        if "show_id" in kwargs:
-            update_data["show_id"] = kwargs["show_id"]
+        if "show_ids" in kwargs:
+            update_data["show_ids"] = kwargs["show_ids"]
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
 
@@ -298,11 +300,12 @@ class PostService:
     def get_posts_by_show_id(
         self, show_id: int, current_user_id: Optional[int] = None
     ) -> List[Post]:
-        """获取某个秀场关联的帖子（通过 posts.show_id 直接查询）"""
+        """获取某个秀场关联的帖子（通过 show_ids 数组查询）"""
+        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
         result = (
             self.db.table("posts")
             .select("*")
-            .eq("show_id", show_id)
+            .contains("show_ids", [show_id])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)

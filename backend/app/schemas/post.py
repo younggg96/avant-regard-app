@@ -48,8 +48,8 @@ class Post(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = None
-    # 关联秀场 ID（直接关联 shows 表）
-    showId: Optional[int] = None
+    # 关联秀场 ID 列表（支持关联多个秀场）
+    showIds: List[int] = []
     # 当前用户交互状态
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
@@ -68,9 +68,8 @@ class CreatePostRequest(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = Field(None, ge=1, le=5)
-    # 关联秀场（优先使用 showId，其次通过 showUrl 查找）
-    showId: Optional[int] = None
-    showUrl: Optional[str] = None
+    # 关联秀场 ID 列表（支持关联多个秀场）
+    showIds: List[int] = []
 
 
 class UpdatePostRequest(BaseModel):
@@ -82,6 +81,5 @@ class UpdatePostRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     contentText: str = ""
     imageUrls: List[str] = []
-    # 关联秀场（优先使用 showId，其次通过 showUrl 查找）
-    showId: Optional[int] = None
-    showUrl: Optional[str] = None
+    # 关联秀场 ID 列表（支持关联多个秀场）
+    showIds: List[int] = []
