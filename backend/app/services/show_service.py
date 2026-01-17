@@ -3,7 +3,7 @@
 """
 
 from typing import Optional, List, Tuple
-from app.db.supabase import get_supabase_client
+from app.db.supabase import get_supabase
 from app.schemas.show import Show
 
 
@@ -11,7 +11,7 @@ class ShowService:
     """秀场服务类"""
 
     def __init__(self):
-        self.db = get_supabase_client()
+        self.db = get_supabase()
 
     def _format_show(self, show: dict) -> Show:
         """格式化秀场数据"""

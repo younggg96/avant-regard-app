@@ -3,7 +3,7 @@
 """
 
 from typing import Optional, List, Tuple
-from app.db.supabase import get_supabase_client
+from app.db.supabase import get_supabase
 from app.schemas.brand import Brand
 
 
@@ -11,7 +11,7 @@ class BrandService:
     """品牌服务类"""
 
     def __init__(self):
-        self.db = get_supabase_client()
+        self.db = get_supabase()
 
     def _format_brand(self, brand: dict) -> Brand:
         """格式化品牌数据"""
