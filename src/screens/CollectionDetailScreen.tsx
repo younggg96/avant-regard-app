@@ -104,17 +104,7 @@ const CollectionDetailScreen = () => {
         } catch (error) {
           // 正确处理错误，提取错误消息
           let errorMessage = "加载相关帖子失败";
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          } else if (typeof error === "string") {
-            errorMessage = error;
-          } else if (error && typeof error === "object") {
-            // 处理对象类型的错误
-            errorMessage = (error as any).message || (error as any).detail || JSON.stringify(error);
-          }
           console.error("Failed to load related posts:", errorMessage);
-          // 不显示 Toast，只在控制台记录错误
-          // 帖子加载失败不影响页面的主要功能
         } finally {
           setPostsLoading(false);
         }
@@ -123,48 +113,6 @@ const CollectionDetailScreen = () => {
 
     loadRelatedPosts();
 
-    // Add mock rating data if not exists
-    if (!collection.rating) {
-      collection.rating = {
-        average: 7.9,
-        totalReviews: 1866,
-        distribution: {
-          5: 650, // 34.7%
-          4: 656, // 35.1%
-          3: 276, // 14.8%
-          2: 86, // 4.6%
-          1: 26, // 1.4%
-        },
-      };
-    }
-
-    // Add mock comments data if not exists
-    if (!collection.comments) {
-      collection.comments = [
-        {
-          id: "1",
-          userName: "时尚达人小美",
-          userAvatar: "https://via.placeholder.com/40",
-          rating: 5,
-          content:
-            "这个系列真的太棒了！设计师的创意完全超出了我的想象，每一件作品都展现了对细节的极致追求。",
-          date: "2024-01-15",
-          likes: 23,
-          isLiked: false,
-        },
-        {
-          id: "2",
-          userName: "Fashion_Lover_2024",
-          userAvatar: "https://via.placeholder.com/40",
-          rating: 4,
-          content:
-            "整体很不错，特别是色彩搭配很有新意。不过有几件单品感觉还可以更大胆一些。",
-          date: "2024-01-14",
-          likes: 15,
-          isLiked: true,
-        },
-      ];
-    }
   }, [collection, images, showId]);
 
   const handleShare = async () => {
@@ -227,41 +175,6 @@ const CollectionDetailScreen = () => {
       <Text style={styles.subtitle}>
         {collection.season} {collection.year}
       </Text>
-
-      <View style={styles.metaInfo}>
-        {collection.city && (
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="location-outline"
-              size={16}
-              color={theme.colors.gray600}
-            />
-            <Text style={styles.metaText}>{collection.city}</Text>
-          </View>
-        )}
-
-        {collection.author && (
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="person-outline"
-              size={16}
-              color={theme.colors.gray600}
-            />
-            <Text style={styles.metaText}>评论者：{collection.author}</Text>
-          </View>
-        )}
-
-        <View style={styles.metaItem}>
-          <Ionicons
-            name="images-outline"
-            size={16}
-            color={theme.colors.gray600}
-          />
-          <Text style={styles.metaText}>
-            {collectionImages.length || collection.imageCount} 张图片
-          </Text>
-        </View>
-      </View>
 
       {collection.showUrl && (
         <TouchableOpacity style={styles.urlButton} onPress={handleOpenUrl}>

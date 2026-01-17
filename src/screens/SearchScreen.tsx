@@ -147,7 +147,7 @@ const SearchScreen = () => {
   const handlePostPress = useCallback(
     (post: any) => {
       console.log("查看帖子详情:", post.id);
-      (navigation.navigate as any)("PostDetail", { post });
+      (navigation.navigate as any)("PostDetail", { postId: post.id });
     },
     [navigation]
   );

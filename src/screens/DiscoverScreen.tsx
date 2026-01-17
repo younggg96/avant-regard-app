@@ -59,8 +59,8 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
-  // 关联的秀场 ID
-  showId?: number;
+  // 关联的秀场 ID 列表
+  showIds?: number[];
 }
 
 type TabType = "recommend" | "following";
@@ -122,8 +122,8 @@ const mapApiPostToDisplayPost = (
       isSaved: apiPost.favoritedByMe || false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
-    // 关联的秀场 ID
-    showId: apiPost.showId,
+    // 关联的秀场 ID 列表
+    showIds: apiPost.showIds,
   };
 };
 
@@ -247,16 +247,10 @@ const DiscoverScreen = () => {
   // Handle post interactions
   const handlePostPress = useCallback(
     (post: Post) => {
-      console.log("查看帖子详情:", post);
-      // 查找完整的原始帖子数据
-      const fullPost = posts.find((p) => p.id === post.id);
-
-      // 传递完整的帖子数据到详情页
-      if (fullPost) {
-        (navigation.navigate as any)("PostDetail", { post: fullPost });
-      }
+      console.log("查看帖子详情:", post.id);
+      (navigation.navigate as any)("PostDetail", { postId: post.id });
     },
-    [navigation, posts]
+    [navigation]
   );
 
   const handleAuthorPress = useCallback(

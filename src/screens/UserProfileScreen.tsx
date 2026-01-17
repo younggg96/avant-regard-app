@@ -245,10 +245,7 @@ const UserProfileScreen = () => {
 
   // 帖子点击
   const handlePostPress = (post: DisplayPost) => {
-    (navigation as any).navigate("PostDetail", {
-      post: post,
-      postStatus: "published",
-    });
+    (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
   // 渲染社交媒体链接

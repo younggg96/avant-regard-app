@@ -450,10 +450,7 @@ const ProfileScreen = () => {
       }
     }
 
-    (navigation as any).navigate("PostDetail", {
-      post: post,
-      postStatus: postStatus,
-    });
+    (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
   // 处理长按删除帖子

@@ -182,10 +182,7 @@ const FavoritesScreen = () => {
   };
 
   const handlePostPress = (post: DisplayPost) => {
-    (navigation as any).navigate("PostDetail", {
-      post: post,
-      postStatus: "published",
-    });
+    (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
   const getTypeIcon = (type: string) => {

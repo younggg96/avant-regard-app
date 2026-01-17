@@ -162,31 +162,6 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: theme.colors.gray100,
   },
-  replyAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.gray100,
-  },
-  // 回复提示条
-  replyHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: theme.colors.gray100,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  replyHintText: {
-    fontSize: 13,
-    color: theme.colors.gray600,
-    flex: 1,
-  },
-  replyHintClose: {
-    padding: 4,
-  },
   itemImage: {
     width: 80,
     height: 100,
@@ -206,7 +181,7 @@ export const styles = StyleSheet.create({
   // 底部栏
   bottomBar: {
     backgroundColor: theme.colors.white,
-    zIndex: 2,
+    zIndex: 20,
   },
   bottomBarExpanded: {
     shadowColor: "#000",
@@ -239,6 +214,22 @@ export const styles = StyleSheet.create({
   expandedSendButton: {
     padding: 6,
     alignSelf: "flex-end",
+  },
+  // 回复提示样式
+  replyHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: theme.colors.gray100,
+  },
+  replyHintText: {
+    flex: 1,
+    fontSize: 13,
+    color: theme.colors.gray600,
+  },
+  replyHintClose: {
+    padding: 4,
   },
   compactBottomBar: {
     flexDirection: "row",

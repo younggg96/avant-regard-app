@@ -302,10 +302,11 @@ class PostService:
     ) -> List[Post]:
         """获取某个秀场关联的帖子（通过 show_ids 数组查询）"""
         # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
+        # 注意：show_ids 在数据库中存储为字符串数组，所以需要将 show_id 转为字符串
         result = (
             self.db.table("posts")
             .select("*")
-            .contains("show_ids", [show_id])
+            .contains("show_ids", [str(show_id)])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack, Image } from "../ui";
 import { theme } from "../../theme";
 import { Post } from "../PostCard";
-import { PostStatus } from "./types";
+import { PostStatus, formatTimestamp } from "./types";
 import { styles } from "./styles";
 
 interface PostDetailHeaderProps {
@@ -68,7 +68,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               </Text>
             </HStack>
             <Text fontSize="$xs" color="$gray600">
-              {post.timestamp}
+              {post.timestamp ? formatTimestamp(post.timestamp) : ""}
             </Text>
           </VStack>
         </Pressable>

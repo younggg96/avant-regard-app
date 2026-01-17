@@ -47,9 +47,9 @@ const LookDetailScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const params = route.params as LookDetailParams;
-  const { look, brandName, collectionTitle, imageId: paramImageId } = params;
+  const { look, brandName, collectionTitle, imageId: paramImageId } = params || {};
 
-  const [currentLook, setCurrentLook] = useState<Look>(look);
+  const [currentLook, setCurrentLook] = useState<Look | undefined>(look);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
 
   // 评论相关状态
@@ -62,7 +62,35 @@ const LookDetailScreen = () => {
   const [showReviewInput, setShowReviewInput] = useState(false);
 
   // 获取图片 ID
-  const imageId = paramImageId || look.imageId;
+  const imageId = paramImageId || look?.imageId;
+
+  // 如果没有 look 数据，显示错误状态并返回
+  if (!look || !currentLook) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorHeader}>
+            <TouchableOpacity
+              style={styles.errorBackButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.errorContent}>
+            <Ionicons name="alert-circle-outline" size={64} color={theme.colors.gray300} />
+            <Text style={styles.errorText}>无法加载造型信息</Text>
+            <TouchableOpacity
+              style={styles.errorButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.errorButtonText}>返回</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // 加载评论
   useEffect(() => {
@@ -509,6 +537,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  errorContainer: {
+    flex: 1,
+  },
+  errorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  errorBackButton: {
+    padding: 8,
+  },
+  errorContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray500,
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  errorButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.black,
+    borderRadius: 8,
+  },
+  errorButtonText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.white,
   },
   scrollView: {
     flex: 1,
