@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -24,23 +26,40 @@ const CATEGORY_FILTERS = [
   { label: "工匠品牌", value: "工匠品牌" },
 ];
 
+const PAGE_SIZE = 30;
+
 const ArchiveScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const isLoadingMoreRef = useRef(false);
 
-  // 加载品牌数据
-  const loadBrands = useCallback(async () => {
+  // 加载品牌数据（首次加载或刷新）
+  const loadBrands = useCallback(async (reset: boolean = true) => {
     try {
-      setIsLoading(true);
+      if (reset) {
+        setIsLoading(true);
+        setPage(1);
+        setHasMore(true);
+      }
       setError(null);
+
       const response = await brandService.getBrands({
-        pageSize: 500, // 获取所有品牌
+        page: 1,
+        pageSize: PAGE_SIZE,
       });
+
       setBrands(response.brands);
+      setTotal(response.total);
+      setHasMore(response.brands.length >= PAGE_SIZE && response.brands.length < response.total);
+      setPage(1);
     } catch (err) {
       console.error("Failed to load brands:", err);
       setError("加载品牌数据失败");
@@ -48,6 +67,55 @@ const ArchiveScreen = () => {
       setIsLoading(false);
     }
   }, []);
+
+  // 加载更多品牌数据
+  const loadMoreBrands = useCallback(async () => {
+    if (isLoadingMoreRef.current || !hasMore || isLoading) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const nextPage = page + 1;
+      const response = await brandService.getBrands({
+        page: nextPage,
+        pageSize: PAGE_SIZE,
+      });
+
+      if (response.brands.length > 0) {
+        setBrands((prev) => [...prev, ...response.brands]);
+        setPage(nextPage);
+        setHasMore(
+          response.brands.length >= PAGE_SIZE &&
+          brands.length + response.brands.length < response.total
+        );
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more brands:", err);
+    } finally {
+      setIsLoadingMore(false);
+      isLoadingMoreRef.current = false;
+    }
+  }, [page, hasMore, isLoading, brands.length]);
+
+  // 检测滚动到底部
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const paddingToBottom = 100; // 距离底部多少像素时开始加载
+      const isCloseToBottom =
+        layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+
+      if (isCloseToBottom && !isLoadingMoreRef.current) {
+        loadMoreBrands();
+      }
+    },
+    [loadMoreBrands]
+  );
 
   useEffect(() => {
     loadBrands();
@@ -100,6 +168,28 @@ const ArchiveScreen = () => {
       }));
   }, [filteredBrands]);
 
+  // 渲染底部加载指示器
+  const renderFooter = () => {
+    if (!hasMore && brands.length > 0) {
+      return (
+        <View style={styles.footerContainer}>
+          <Text style={styles.footerText}>已加载全部 {total} 个品牌</Text>
+        </View>
+      );
+    }
+
+    if (isLoadingMore) {
+      return (
+        <View style={styles.footerContainer}>
+          <ActivityIndicator size="small" color={theme.colors.gray400} />
+          <Text style={styles.footerText}>加载更多...</Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -133,7 +223,7 @@ const ArchiveScreen = () => {
             color={theme.colors.gray400}
           />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadBrands}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadBrands()}>
             <Text style={styles.retryButtonText}>重试</Text>
           </TouchableOpacity>
         </View>
@@ -210,7 +300,9 @@ const ArchiveScreen = () => {
 
       {/* Results Count */}
       <View style={styles.resultsBar}>
-        <Text style={styles.resultsText}>{filteredBrands.length} 个品牌</Text>
+        <Text style={styles.resultsText}>
+          {filteredBrands.length} / {total} 个品牌
+        </Text>
       </View>
 
       {/* Brands List */}
@@ -218,6 +310,8 @@ const ArchiveScreen = () => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        onScroll={handleScroll}
+        scrollEventThrottle={400}
       >
         {groupedBrands.map((group) => (
           <View key={group.letter}>
@@ -290,6 +384,9 @@ const ArchiveScreen = () => {
             </Text>
           </View>
         )}
+
+        {/* Footer */}
+        {renderFooter()}
 
         {/* Bottom Padding */}
         <View style={{ height: 40 }} />
@@ -500,6 +597,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     lineHeight: 20,
+  },
+  footerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: theme.spacing.lg,
+    gap: 8,
+  },
+  footerText: {
+    fontSize: 13,
+    color: theme.colors.gray400,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
   },
 });
 

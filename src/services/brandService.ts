@@ -47,24 +47,82 @@ export interface BrandSearchParams {
   pageSize?: number;
 }
 
-/**
- * 获取请求头
- */
-const getHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
+// 通用请求方法
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+  console.log("url", url);
+
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    Accept: "*/*",
+    ...((options.headers as Record<string, string>) || {}),
   };
 
-  const token = useAuthStore.getState().token;
+  const token = useAuthStore.getState().getAccessToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  return headers;
-};
+  const config: RequestInit = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, config);
+    const contentType = response.headers.get("content-type");
+
+    if (!response.ok) {
+      let errorMessage = "请求失败";
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text || `HTTP ${response.status}`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (contentType?.includes("application/json")) {
+      const jsonResponse = await response.json();
+
+      // 处理包装的 API 响应格式 { code, message, data }
+      if (
+        jsonResponse &&
+        typeof jsonResponse === "object" &&
+        "code" in jsonResponse
+      ) {
+        const apiResponse = jsonResponse as ApiResponse<T>;
+
+        if (apiResponse.code !== 0) {
+          throw new Error(apiResponse.message || "请求失败");
+        }
+
+        if ("data" in apiResponse) {
+          return apiResponse.data;
+        }
+      }
+
+      return jsonResponse as T;
+    }
+
+    const text = await response.text();
+    return text as unknown as T;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("网络请求失败，请检查网络连接");
+  }
+}
 
 /**
  * 获取品牌列表
+ * GET /api/brands
  */
 export const getBrands = async (
   params: BrandSearchParams = {}
@@ -76,123 +134,60 @@ export const getBrands = async (
   if (params.page) queryParams.append("page", params.page.toString());
   if (params.pageSize) queryParams.append("pageSize", params.pageSize.toString());
 
-  const url = `${EXPO_PUBLIC_API_BASE_URL}/brands?${queryParams.toString()}`;
+  const queryString = queryParams.toString();
+  const endpoint = `/api/brands${queryString ? `?${queryString}` : ""}`;
 
-  const response = await fetch(url, {
+  return request<BrandListResponse>(endpoint, {
     method: "GET",
-    headers: getHeaders(),
   });
-
-  if (!response.ok) {
-    throw new Error("获取品牌列表失败");
-  }
-
-  const result: ApiResponse<BrandListResponse> = await response.json();
-
-  if (result.code !== 0) {
-    throw new Error(result.message || "获取品牌列表失败");
-  }
-
-  return result.data;
 };
 
 /**
  * 搜索品牌
+ * GET /api/brands/search
  */
 export const searchBrands = async (
   keyword: string,
   limit: number = 20
 ): Promise<Brand[]> => {
-  const url = `${EXPO_PUBLIC_API_BASE_URL}/brands/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("搜索品牌失败");
-  }
-
-  const result: ApiResponse<{ brands: Brand[]; total: number }> = await response.json();
-
-  if (result.code !== 0) {
-    throw new Error(result.message || "搜索品牌失败");
-  }
-
-  return result.data.brands;
+  const result = await request<{ brands: Brand[]; total: number }>(
+    `/api/brands/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+    { method: "GET" }
+  );
+  return result.brands;
 };
 
 /**
  * 通过 ID 获取品牌详情
+ * GET /api/brands/{brandId}
  */
 export const getBrandById = async (brandId: number): Promise<Brand | null> => {
-  const url = `${EXPO_PUBLIC_API_BASE_URL}/brands/${brandId}`;
-
-  const response = await fetch(url, {
+  return request<Brand | null>(`/api/brands/${brandId}`, {
     method: "GET",
-    headers: getHeaders(),
   });
-
-  if (!response.ok) {
-    throw new Error("获取品牌详情失败");
-  }
-
-  const result: ApiResponse<Brand | null> = await response.json();
-
-  if (result.code !== 0) {
-    throw new Error(result.message || "获取品牌详情失败");
-  }
-
-  return result.data;
 };
 
 /**
  * 通过名称获取品牌详情
+ * GET /api/brands/by-name/{name}
  */
 export const getBrandByName = async (name: string): Promise<Brand | null> => {
-  const url = `${EXPO_PUBLIC_API_BASE_URL}/brands/by-name/${encodeURIComponent(name)}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("获取品牌详情失败");
-  }
-
-  const result: ApiResponse<Brand | null> = await response.json();
-
-  if (result.code !== 0) {
-    throw new Error(result.message || "获取品牌详情失败");
-  }
-
-  return result.data;
+  return request<Brand | null>(
+    `/api/brands/by-name/${encodeURIComponent(name)}`,
+    { method: "GET" }
+  );
 };
 
 /**
  * 获取品牌分类列表
+ * GET /api/brands/categories
  */
 export const getBrandCategories = async (): Promise<string[]> => {
-  const url = `${EXPO_PUBLIC_API_BASE_URL}/brands/categories`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("获取分类列表失败");
-  }
-
-  const result: ApiResponse<{ categories: string[] }> = await response.json();
-
-  if (result.code !== 0) {
-    throw new Error(result.message || "获取分类列表失败");
-  }
-
-  return result.data.categories;
+  const result = await request<{ categories: string[] }>(
+    `/api/brands/categories`,
+    { method: "GET" }
+  );
+  return result.categories;
 };
 
 // 导出服务对象
