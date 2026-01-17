@@ -75,17 +75,25 @@ class AuthService:
         发送短信验证码
         使用 Supabase Auth OTP
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         try:
             formatted_phone = self._format_phone(phone)
+            logger.info(f"Sending OTP to: {formatted_phone} (original: {phone})")
 
             # 使用 Supabase 发送 OTP
             response = self.db.auth.sign_in_with_otp({"phone": formatted_phone})
+            logger.info(f"OTP sent successfully to: {formatted_phone}")
 
             return True, "验证码发送成功"
 
         except AuthApiError as e:
+            logger.error(f"AuthApiError sending OTP to {formatted_phone}: {str(e)}")
             return False, f"发送失败: {str(e)}"
         except Exception as e:
+            logger.error(f"Exception sending OTP to {formatted_phone}: {str(e)}")
             return False, f"发送失败: {str(e)}"
 
     def verify_sms_otp(

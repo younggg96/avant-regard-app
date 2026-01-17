@@ -20,7 +20,7 @@ import ShowSelectorModal, { Show } from "../components/ShowSelectorModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import RatingSelector from "../components/RatingSelector";
 import ImageGridSelector from "../components/ImageGridSelector";
-import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
+import ShowGridSelector, { SelectedShow } from "../components/ShowGridSelector";
 import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
 import { postService } from "../services/postService";
@@ -40,18 +40,18 @@ const PublishReviewScreen = () => {
   const [reviewText, setReviewText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLooks, setSelectedLooks] = useState<SelectedLook[]>([]);
+  const [selectedShows, setSelectedShows] = useState<SelectedShow[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageCropper, setShowImageCropper] = useState(false);
-  const [showLookSelector, setShowLookSelector] = useState(false);
-  const [showLookPreview, setShowLookPreview] = useState(false);
+  const [showSelector, setShowSelector] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
-  const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
+  const [previewShow, setPreviewShow] = useState<SelectedShow | null>(null);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
 
   // 秀场数据和分页状态
@@ -64,7 +64,7 @@ const PublishReviewScreen = () => {
   const isLoadingMoreRef = useRef(false);
 
   const MAX_IMAGES = 6;
-  const MAX_LOOKS = 6;
+  const MAX_SHOWS = 6;
 
   // 加载秀场数据（从 API）
   const loadShows = useCallback(async (reset: boolean = true) => {
@@ -176,13 +176,13 @@ const PublishReviewScreen = () => {
 
   // 选择秀场
   const handleSelectShow = (show: Show) => {
-    if (selectedLooks.length >= MAX_LOOKS) {
-      Alert.show("提示: 最多只能关联" + MAX_LOOKS + "个秀场");
+    if (selectedShows.length >= MAX_SHOWS) {
+      Alert.show("提示: 最多只能关联" + MAX_SHOWS + "个秀场");
       return;
     }
 
     // 检查是否已经添加过相同的秀
-    const isDuplicate = selectedLooks.some(
+    const isDuplicate = selectedShows.some(
       (item) => item.brand === show.brand && item.season === show.season
     );
 
@@ -191,8 +191,8 @@ const PublishReviewScreen = () => {
       return;
     }
 
-    // 将 Show 转换为 SelectedLook 格式
-    const selectedLook: SelectedLook = {
+    // 将 Show 转换为 SelectedShow 格式
+    const selectedShow: SelectedShow = {
       id: 0, // 本地数据没有数据库 ID，使用 0
       brand: show.brand,
       season: show.season,
@@ -201,8 +201,8 @@ const PublishReviewScreen = () => {
       showUrl: show.show_url, // 仅用于按钮点击跳转链接
     };
 
-    setSelectedLooks([...selectedLooks, selectedLook]);
-    setShowLookSelector(false);
+    setSelectedShows([...selectedShows, selectedShow]);
+    setShowSelector(false);
     Alert.show("已关联秀场", "", 1500);
   };
 
@@ -213,7 +213,7 @@ const PublishReviewScreen = () => {
       productName.trim().length > 0 &&
       rating > 0 &&
       images.length > 0 &&
-      selectedLooks.length > 0 &&
+      selectedShows.length > 0 &&
       reviewText.trim().length >= 10 &&
       reviewText.trim().length <= 500
     );
@@ -244,8 +244,8 @@ const PublishReviewScreen = () => {
       // 2. 创建帖子
       setUploadProgress("正在发布...");
       // 获取所有关联秀场的 showIds
-      const showIds = selectedLooks
-        .map((look) => look.showId)
+      const showIds = selectedShows
+        .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
       await postService.createPost({
@@ -290,7 +290,7 @@ const PublishReviewScreen = () => {
       !title &&
       !productName &&
       images.length === 0 &&
-      selectedLooks.length === 0
+      selectedShows.length === 0
     ) {
       Alert.show("提示: 请至少填写一些内容再保存草稿");
       return;
@@ -314,8 +314,8 @@ const PublishReviewScreen = () => {
       // 保存草稿
       setUploadProgress("正在保存...");
       // 获取所有关联秀场的 showIds
-      const showIds = selectedLooks
-        .map((look) => look.showId)
+      const showIds = selectedShows
+        .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
       await postService.createPost({
@@ -350,7 +350,7 @@ const PublishReviewScreen = () => {
     setReviewText("");
     setImages([]);
     setSelectedTags([]);
-    setSelectedLooks([]);
+    setSelectedShows([]);
   };
 
   const handleAddImage = () => {
@@ -410,9 +410,9 @@ const PublishReviewScreen = () => {
     setCropperImageUri(null);
   };
 
-  const handleRemoveLook = (index: number) => {
-    const newLooks = selectedLooks.filter((_, i) => i !== index);
-    setSelectedLooks(newLooks);
+  const handleRemoveShow = (index: number) => {
+    const newShows = selectedShows.filter((_, i) => i !== index);
+    setSelectedShows(newShows);
     Alert.show("已取消关联");
   };
 
@@ -524,15 +524,15 @@ const PublishReviewScreen = () => {
         <RatingSelector rating={rating} onRatingChange={setRating} required />
 
         {/* 关联秀场 */}
-        <LookGridSelector
-          selectedLooks={selectedLooks}
-          onLookPress={(look) => {
-            setPreviewLook(look);
-            setShowLookPreview(true);
+        <ShowGridSelector
+          selectedShows={selectedShows}
+          onShowPress={(show) => {
+            setPreviewShow(show);
+            setShowPreview(true);
           }}
-          onRemoveLook={handleRemoveLook}
-          onAddLook={() => setShowLookSelector(true)}
-          maxLooks={MAX_LOOKS}
+          onRemoveShow={handleRemoveShow}
+          onAddShow={() => setShowSelector(true)}
+          maxShows={MAX_SHOWS}
           label="关联秀场"
           required
         />
@@ -604,11 +604,11 @@ const PublishReviewScreen = () => {
       />
 
       <ImagePreviewModal
-        visible={showLookPreview}
-        imageUrl={previewLook?.imageUrl || ""}
-        title={previewLook?.brand}
-        subtitle={previewLook?.season}
-        onClose={() => setShowLookPreview(false)}
+        visible={showPreview}
+        imageUrl={previewShow?.imageUrl || ""}
+        title={previewShow?.brand}
+        subtitle={previewShow?.season}
+        onClose={() => setShowPreview(false)}
       />
 
       <ImagePreviewModal
@@ -620,14 +620,14 @@ const PublishReviewScreen = () => {
       />
 
       <ShowSelectorModal
-        visible={showLookSelector}
+        visible={showSelector}
         shows={filteredShows}
         searchQuery={searchQuery}
         isLoading={isLoadingShows}
         hasMore={hasMoreShows && !searchQuery.trim()}
         onSearchChange={setSearchQuery}
         onSelectShow={handleSelectShow}
-        onClose={() => setShowLookSelector(false)}
+        onClose={() => setShowSelector(false)}
         onLoadMore={loadMoreShows}
       />
     </SafeAreaView>

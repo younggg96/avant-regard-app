@@ -178,6 +178,7 @@ export async function register(params: RegisterParams): Promise<LoginResponse> {
  * 使用 Supabase Phone Auth 发送 OTP
  */
 export async function sendSms(params: SendSmsParams): Promise<string> {
+  console.log("sendSms", params);
   return request<string>("/api/auth/sms/send", {
     method: "POST",
     body: JSON.stringify(params),

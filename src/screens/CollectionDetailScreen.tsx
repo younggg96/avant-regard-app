@@ -66,14 +66,14 @@ interface CollectionDetailParams {
   collection: Collection;
   brandName?: string;
   images?: ShowImage[];
-  showId?: number; // 新增：用于获取 show 详情
 }
 
 const CollectionDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as CollectionDetailParams;
-  const { collection, brandName, images, showId } = params;
+  const { collection, brandName, images } = params;
+  const id = collection.id;
 
   const [collectionImages, setCollectionImages] = useState<ShowImage[]>([]);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
@@ -92,28 +92,26 @@ const CollectionDetailScreen = () => {
 
     // Load related posts
     const loadRelatedPosts = async () => {
-      // 优先使用 showId，其次使用 collection.showUrl
-      if (showId || collection.showUrl) {
-        setPostsLoading(true);
-        try {
-          let posts: Post[] = [];
-          if (showId) {
-            posts = await getPostsByShowId(showId);
-          }
-          setRelatedPosts(posts);
-        } catch (error) {
-          // 正确处理错误，提取错误消息
-          let errorMessage = "加载相关帖子失败";
-          console.error("Failed to load related posts:", errorMessage);
-        } finally {
-          setPostsLoading(false);
+      console.log("showId", id);
+      setPostsLoading(true);
+      try {
+        let posts: Post[] = [];
+        if (id) {
+          posts = await getPostsByShowId(parseInt(id));
         }
+        setRelatedPosts(posts);
+      } catch (error) {
+        // 正确处理错误，提取错误消息
+        let errorMessage = "加载相关帖子失败";
+        console.error("Failed to load related posts:", errorMessage);
+      } finally {
+        setPostsLoading(false);
       }
     };
 
     loadRelatedPosts();
 
-  }, [collection, images, showId]);
+  }, [collection, images, id]);
 
   const handleShare = async () => {
     try {
@@ -358,8 +356,7 @@ const CollectionDetailScreen = () => {
 
   // Render related posts section
   const renderRelatedPosts = () => {
-    // 只要有 showId 或 showUrl 就尝试显示相关帖子
-    if (!showId && !collection.showUrl) return null;
+    if (!id) return null;
 
     return (
       <View style={styles.relatedPostsContainer}>

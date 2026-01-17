@@ -21,7 +21,6 @@ import NotificationsScreen from "./src/screens/NotificationsScreen";
 import BuyerMapScreen from "./src/screens/BuyerMapScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
-import LookDetailScreen from "./src/screens/LookDetailScreen";
 import PostDetailScreen from "./src/screens/PostDetailScreen";
 import BrandDetailScreen from "./src/screens/BrandDetailScreen";
 
@@ -205,11 +204,6 @@ function AppNavigator() {
       <Stack.Screen
         name="AllComments"
         component={AllCommentsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="LookDetail"
-        component={LookDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

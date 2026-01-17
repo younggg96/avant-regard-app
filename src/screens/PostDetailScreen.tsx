@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   ScrollView as RNScrollView,
   KeyboardAvoidingView,
@@ -6,13 +6,16 @@ import {
   TouchableWithoutFeedback,
   View,
   StyleSheet,
-  ActivityIndicator,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation, NavigationProp } from "@react-navigation/native";
-import { Box, Text } from "../components/ui";
+import { Box, Text, HStack } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { theme } from "../theme";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // 导入拆分后的组件和 hooks
 import {
@@ -37,6 +40,7 @@ import {
   usePostActions,
   useNavigationHandlers,
 } from "../components/PostDetail";
+import { Show } from "@/services/showService";
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -113,21 +117,107 @@ const PostDetailScreen = () => {
   });
 
   // 导航 Hook
-  const { handleAuthorPress, handleUserPress, handleLookPress } =
+  const { handleAuthorPress, handleUserPress, handleShowPress } =
     useNavigationHandlers({
       post,
       navigation,
     });
 
-  // 加载中状态
+  // 骨架屏动画
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isLoading) {
+      const shimmerAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      shimmerAnimation.start();
+      return () => shimmerAnimation.stop();
+    }
+  }, [isLoading, shimmerAnim]);
+
+  const skeletonOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  // 骨架屏组件
+  const SkeletonBox = ({ width, height, style }: { width: number | string; height: number; style?: any }) => (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.colors.gray200,
+          borderRadius: 4,
+          opacity: skeletonOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+
+  // 加载中状态 - 骨架屏
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Box flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="large" color={theme.colors.accent} />
-          <Text color="$gray600" fontSize="$md" mt="$md">
-            加载中...
-          </Text>
+        {/* Header 骨架 */}
+        <HStack px="$md" py="$sm" alignItems="center" gap="$sm">
+          <SkeletonBox width={32} height={32} style={{ borderRadius: 16 }} />
+          <Box flex={1}>
+            <SkeletonBox width={100} height={14} style={{ marginBottom: 4 }} />
+            <SkeletonBox width={60} height={10} />
+          </Box>
+          <SkeletonBox width={60} height={28} style={{ borderRadius: 14 }} />
+        </HStack>
+
+        {/* 大图骨架 */}
+        <Animated.View
+          style={[
+            skeletonStyles.mainImage,
+            { opacity: skeletonOpacity },
+          ]}
+        />
+
+        {/* 标题和描述骨架 */}
+        <Box px="$md" py="$md">
+          <SkeletonBox width="80%" height={20} style={{ marginBottom: 12 }} />
+          <SkeletonBox width="100%" height={14} style={{ marginBottom: 6 }} />
+          <SkeletonBox width="90%" height={14} style={{ marginBottom: 6 }} />
+          <SkeletonBox width="60%" height={14} />
+        </Box>
+
+        {/* 互动栏骨架 */}
+        <HStack px="$md" py="$sm" gap="$lg">
+          <SkeletonBox width={50} height={24} />
+          <SkeletonBox width={50} height={24} />
+          <SkeletonBox width={50} height={24} />
+        </HStack>
+
+        {/* 评论区骨架 */}
+        <Box px="$md" py="$md">
+          <SkeletonBox width={80} height={16} style={{ marginBottom: 16 }} />
+          {[1, 2, 3].map((i) => (
+            <HStack key={i} alignItems="flex-start" gap="$sm" mb="$md">
+              <SkeletonBox width={36} height={36} style={{ borderRadius: 18 }} />
+              <Box flex={1}>
+                <SkeletonBox width={80} height={12} style={{ marginBottom: 6 }} />
+                <SkeletonBox width="90%" height={12} style={{ marginBottom: 4 }} />
+                <SkeletonBox width="70%" height={12} />
+              </Box>
+            </HStack>
+          ))}
         </Box>
       </SafeAreaView>
     );
@@ -222,11 +312,11 @@ const PostDetailScreen = () => {
             {/* 搭配单品 */}
             {post.type === "OUTFIT" && <OutfitItemsSection items={post.items} />}
 
-            {/* 关联造型区域 - 仅 DAILY_SHARE 类型显示 */}
-            {post.type === "DAILY_SHARE" && post.showImages && (
+            {/* 关联秀场区域 - 仅 DAILY_SHARE 类型显示 */}
+            {post.type === "DAILY_SHARE" && post.shows && (
               <RelatedLooks
-                showImages={post.showImages}
-                onLookPress={handleLookPress}
+                shows={post.shows}
+                onShowPress={handleShowPress}
               />
             )}
 
@@ -315,6 +405,14 @@ const localStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 10,
+  },
+});
+
+const skeletonStyles = StyleSheet.create({
+  mainImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.2,
+    backgroundColor: theme.colors.gray200,
   },
 });
 

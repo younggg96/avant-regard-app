@@ -107,12 +107,11 @@ const BrandDetailScreen = () => {
       // Navigate to CollectionDetail
       (navigation.navigate as any)("CollectionDetail", {
         collection: {
-          id: show.showUrl,
+          id: show.id.toString(),
           title: show.brand,
           season: show.season,
           year: show.year?.toString() || "",
           coverImage: show.coverImage,
-          imageCount: 0,
           showUrl: show.showUrl,
         },
         brandName: show.brand,

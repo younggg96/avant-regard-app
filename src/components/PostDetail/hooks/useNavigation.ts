@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import { Post, ShowImageInfo } from "../../PostCard";
+import { Post } from "../../PostCard";
+import { Show } from "../../../services/showService";
 
 interface UseNavigationHandlersOptions {
   post: Post | null;
@@ -9,7 +10,7 @@ interface UseNavigationHandlersOptions {
 interface UseNavigationHandlersReturn {
   handleAuthorPress: () => void;
   handleUserPress: (userId: number, userName: string, userAvatar: string) => void;
-  handleLookPress: (showImage: ShowImageInfo) => void;
+  handleShowPress: (show: Show) => void;
 }
 
 /**
@@ -41,14 +42,19 @@ export const useNavigationHandlers = ({
     [navigation]
   );
 
-  // 处理关联造型点击
-  const handleLookPress = useCallback(
-    (showImage: ShowImageInfo) => {
-      navigation.navigate("LookDetail", {
-        imageId: showImage.id,
-        imageUrl: showImage.imageUrl,
-        brandName: showImage.brandName,
-        season: showImage.season,
+  const handleShowPress = useCallback(
+    (show: Show) => {
+      // Navigate to CollectionDetail
+      (navigation.navigate as any)("CollectionDetail", {
+        collection: {
+          id: show.id.toString(),
+          title: show.brand,
+          season: show.season,
+          year: show.year?.toString() || "",
+          coverImage: show.coverImage,
+          showUrl: show.showUrl,
+        },
+        brandName: show.brand,
       });
     },
     [navigation]
@@ -57,6 +63,6 @@ export const useNavigationHandlers = ({
   return {
     handleAuthorPress,
     handleUserPress,
-    handleLookPress,
+    handleShowPress,
   };
 };

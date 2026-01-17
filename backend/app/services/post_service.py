@@ -33,10 +33,8 @@ class PostService:
             liked_by_me = self._check_liked(post_data["id"], current_user_id)
             favorited_by_me = self._check_favorited(post_data["id"], current_user_id)
 
-        # 处理 show_ids（兼容旧数据的 show_id）
+        # 获取 show_ids
         show_ids = post_data.get("show_ids") or []
-        if not show_ids and post_data.get("show_id"):
-            show_ids = [post_data["show_id"]]
 
         return Post(
             id=post_data["id"],

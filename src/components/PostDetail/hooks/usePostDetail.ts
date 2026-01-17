@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
-import { Post, ShowImageInfo } from "../../PostCard";
+import { Post } from "../../PostCard";
 import { postService, Post as ApiPost } from "../../../services/postService";
-import { showService } from "../../../services/showService";
+import { showService, Show } from "../../../services/showService";
 import { userInfoService } from "../../../services/userInfoService";
 import { PostDetailRouteParams } from "../types";
 
@@ -12,22 +12,15 @@ export const convertApiPostToUiPost = async (
   apiPost: ApiPost,
   userInfo?: { username?: string; avatarUrl?: string }
 ): Promise<Post> => {
-  // 获取关联秀场的详情信息
-  let showImages: ShowImageInfo[] = [];
+  // 获取关联秀场的完整信息
+  let shows: Show[] = [];
   if (apiPost.showIds && apiPost.showIds.length > 0) {
     try {
       const showPromises = apiPost.showIds.map((id) =>
         showService.getShowById(id).catch(() => null)
       );
-      const shows = await Promise.all(showPromises);
-      showImages = shows
-        .filter((show) => show !== null)
-        .map((show) => ({
-          id: show!.id,
-          imageUrl: show!.coverImage || "",
-          brandName: show!.brand,
-          season: show!.season,
-        }));
+      const showResults = await Promise.all(showPromises);
+      shows = showResults.filter((show): show is Show => show !== null);
     } catch (error) {
       console.error("Error fetching show details:", error);
     }
@@ -62,7 +55,7 @@ export const convertApiPostToUiPost = async (
     timestamp: apiPost.createdAt,
     rating: apiPost.rating,
     brandName: apiPost.brandName,
-    showImages: showImages.length > 0 ? showImages : undefined,
+    shows: shows.length > 0 ? shows : undefined,
   };
 };
 

@@ -3,21 +3,24 @@ import {
   View,
   ScrollView as RNScrollView,
   Image as RNImage,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
-import { Text, Pressable, VStack } from "../ui";
-import { ShowImageInfo } from "../PostCard";
-import { styles } from "./styles";
+import { LinearGradient } from "expo-linear-gradient";
+import { Text, VStack } from "../ui";
+import { Show } from "@/services/showService";
+import { theme } from "../../theme";
 
-interface RelatedLooksProps {
-  showImages: ShowImageInfo[];
-  onLookPress: (showImage: ShowImageInfo) => void;
+interface RelatedShowsProps {
+  shows: Show[];
+  onShowPress: (show: Show) => void;
 }
 
-export const RelatedLooks: React.FC<RelatedLooksProps> = ({
-  showImages,
-  onLookPress,
+export const RelatedLooks: React.FC<RelatedShowsProps> = ({
+  shows,
+  onShowPress,
 }) => {
-  if (!showImages || showImages.length === 0) return null;
+  if (!shows || shows.length === 0) return null;
 
   return (
     <VStack
@@ -27,7 +30,11 @@ export const RelatedLooks: React.FC<RelatedLooksProps> = ({
       borderTopWidth={1}
       borderTopColor="$gray100"
     >
-      <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+      <Text
+        fontFamily="PlayfairDisplay-Bold"
+        fontSize={20}
+        color="$black"
+      >
         秀场
       </Text>
       <RNScrollView
@@ -35,33 +42,72 @@ export const RelatedLooks: React.FC<RelatedLooksProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingRight: 16 }}
       >
-        {showImages.map((showImage, index) => (
-          <Pressable
-            key={`show-image-${showImage.id || index}`}
-            style={styles.showImageCard}
-            onPress={() => onLookPress(showImage)}
+        {shows.map((show, index) => (
+          <TouchableOpacity
+            key={`show-${show.id || index}`}
+            style={styles.showCard}
+            onPress={() => onShowPress(show)}
+            activeOpacity={0.8}
           >
             <RNImage
-              source={{ uri: showImage.imageUrl }}
-              style={styles.showImagePhoto}
+              source={{ uri: show.coverImage }}
+              style={styles.showImage}
               resizeMode="cover"
             />
-            <View style={styles.showImageInfo}>
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.6)"]}
+              style={styles.showGradient}
+            />
+            <View style={styles.showInfo}>
               <Text
-                fontSize="$xs"
-                fontWeight="$medium"
-                color="$black"
+                fontFamily="Inter-Bold"
+                fontSize={14}
+                color="$white"
                 numberOfLines={1}
               >
-                {showImage.brandName || "品牌"}
+                {show.brand}
               </Text>
-              <Text fontSize={10} color="$gray500" numberOfLines={1}>
-                {showImage.season || ""}
+              <Text
+                fontFamily="Inter-Regular"
+                fontSize={12}
+                style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
+                numberOfLines={1}
+              >
+                {show.season}
               </Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
         ))}
       </RNScrollView>
     </VStack>
   );
 };
+
+const styles = StyleSheet.create({
+  showCard: {
+    width: 160,
+    height: 200,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginRight: 12,
+    position: "relative",
+  },
+  showImage: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: theme.colors.gray100,
+  },
+  showGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  showInfo: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    right: 12,
+  },
+});

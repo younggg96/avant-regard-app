@@ -3,8 +3,9 @@ import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
+import { Show } from "../services/showService";
 
-// 关联秀场类型
+// 关联秀场类型（兼容旧数据）
 export interface ShowImageInfo {
   id: number;
   imageUrl: string;
@@ -51,8 +52,10 @@ export interface Post {
     price: string;
     imageUrl: string;
   }>;
-  // 关联的秀场造型
+  // 关联的秀场造型（兼容旧数据）
   showImages?: ShowImageInfo[];
+  // 关联的秀场（完整信息）
+  shows?: Show[];
 }
 
 interface PostCardProps {

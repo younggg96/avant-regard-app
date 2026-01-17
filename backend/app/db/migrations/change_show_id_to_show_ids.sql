@@ -10,5 +10,5 @@ UPDATE posts SET show_ids = ARRAY[show_id] WHERE show_id IS NOT NULL AND (show_i
 -- 3. 创建 GIN 索引以支持数组查询
 CREATE INDEX IF NOT EXISTS idx_posts_show_ids ON posts USING GIN (show_ids);
 
--- 4. 删除旧的 show_id 列（可选，保留以防需要回滚）
--- ALTER TABLE posts DROP COLUMN IF EXISTS show_id;
+-- 4. 删除旧的 show_id 列
+ALTER TABLE posts DROP COLUMN IF EXISTS show_id;

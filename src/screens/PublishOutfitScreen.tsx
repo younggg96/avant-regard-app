@@ -25,7 +25,7 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
-import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
+import ShowGridSelector, { SelectedShow } from "../components/ShowGridSelector";
 import ShowSelectorModal, { Show } from "../components/ShowSelectorModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import ImagePickerModal from "../components/ImagePickerModal";
@@ -48,7 +48,7 @@ const PublishOutfitScreen = () => {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedLooks, setSelectedLooks] = useState<SelectedLook[]>([]);
+  const [selectedShows, setSelectedShows] = useState<SelectedShow[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -69,9 +69,9 @@ const PublishOutfitScreen = () => {
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
 
-  const [showLookSelector, setShowLookSelector] = useState(false);
-  const [showLookPreview, setShowLookPreview] = useState(false);
-  const [previewLook, setPreviewLook] = useState<SelectedLook | null>(null);
+  const [showSelector, setShowSelector] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewShow, setPreviewShow] = useState<SelectedShow | null>(null);
 
   // 秀场数据和分页状态
   const [allShows, setAllShows] = useState<Show[]>([]);
@@ -85,7 +85,7 @@ const PublishOutfitScreen = () => {
   const previewFlatListRef = useRef<FlatList>(null);
 
   const MAX_IMAGES = 9;
-  const MAX_LOOKS = 6;
+  const MAX_SHOWS = 6;
 
   // 加载秀场数据（从 API）
   const loadShows = useCallback(async (reset: boolean = true) => {
@@ -197,13 +197,13 @@ const PublishOutfitScreen = () => {
 
   // 选择秀场
   const handleSelectShow = (show: Show) => {
-    if (selectedLooks.length >= MAX_LOOKS) {
-      Alert.show("提示: 最多只能关联" + MAX_LOOKS + "个秀场");
+    if (selectedShows.length >= MAX_SHOWS) {
+      Alert.show("提示: 最多只能关联" + MAX_SHOWS + "个秀场");
       return;
     }
 
     // 检查是否已经添加过相同的秀
-    const isDuplicate = selectedLooks.some(
+    const isDuplicate = selectedShows.some(
       (item) => item.brand === show.brand && item.season === show.season
     );
 
@@ -212,8 +212,8 @@ const PublishOutfitScreen = () => {
       return;
     }
 
-    // 将 Show 转换为 SelectedLook 格式
-    const selectedLook: SelectedLook = {
+    // 将 Show 转换为 SelectedShow 格式
+    const selectedShow: SelectedShow = {
       id: 0, // 本地数据没有数据库 ID，使用 0
       brand: show.brand,
       season: show.season,
@@ -222,8 +222,8 @@ const PublishOutfitScreen = () => {
       showUrl: show.show_url, // 仅用于按钮点击跳转链接
     };
 
-    setSelectedLooks([...selectedLooks, selectedLook]);
-    setShowLookSelector(false);
+    setSelectedShows([...selectedShows, selectedShow]);
+    setShowSelector(false);
     Alert.show("已关联秀场", "", 1500);
   };
 
@@ -233,7 +233,7 @@ const PublishOutfitScreen = () => {
       title.trim().length > 0 &&
       description.trim().length > 0 &&
       images.length > 0 &&
-      selectedLooks.length > 0
+      selectedShows.length > 0
     );
   };
 
@@ -262,8 +262,8 @@ const PublishOutfitScreen = () => {
       // 2. 创建帖子
       setUploadProgress("正在发布...");
       // 获取所有关联秀场的 showIds
-      const showIds = selectedLooks
-        .map((look) => look.showId)
+      const showIds = selectedShows
+        .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
       await postService.createPost({
@@ -305,7 +305,7 @@ const PublishOutfitScreen = () => {
       !title &&
       !description &&
       images.length === 0 &&
-      selectedLooks.length === 0
+      selectedShows.length === 0
     ) {
       Alert.show("提示: 请至少填写一些内容再保存草稿");
       return;
@@ -329,8 +329,8 @@ const PublishOutfitScreen = () => {
       // 保存草稿
       setUploadProgress("正在保存...");
       // 获取所有关联秀场的 showIds
-      const showIds = selectedLooks
-        .map((look) => look.showId)
+      const showIds = selectedShows
+        .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
       await postService.createPost({
@@ -360,7 +360,7 @@ const PublishOutfitScreen = () => {
     setImages([]);
     setCoverImage(null);
     setSelectedTags([]);
-    setSelectedLooks([]);
+    setSelectedShows([]);
     setCurrentImageIndex(0);
   };
 
@@ -537,9 +537,9 @@ const PublishOutfitScreen = () => {
     setSelectedImageIndex(null);
   };
 
-  const handleRemoveLook = (index: number) => {
-    const newLooks = selectedLooks.filter((_, i) => i !== index);
-    setSelectedLooks(newLooks);
+  const handleRemoveShow = (index: number) => {
+    const newShows = selectedShows.filter((_, i) => i !== index);
+    setSelectedShows(newShows);
     Alert.show("已取消关联");
   };
 
@@ -793,15 +793,15 @@ const PublishOutfitScreen = () => {
         </Box>
 
         {/* 关联秀场 */}
-        <LookGridSelector
-          selectedLooks={selectedLooks}
-          onLookPress={(look) => {
-            setPreviewLook(look);
-            setShowLookPreview(true);
+        <ShowGridSelector
+          selectedShows={selectedShows}
+          onShowPress={(show) => {
+            setPreviewShow(show);
+            setShowPreview(true);
           }}
-          onRemoveLook={handleRemoveLook}
-          onAddLook={() => setShowLookSelector(true)}
-          maxLooks={MAX_LOOKS}
+          onRemoveShow={handleRemoveShow}
+          onAddShow={() => setShowSelector(true)}
+          maxShows={MAX_SHOWS}
           label="关联秀场"
           required
         />
@@ -828,22 +828,22 @@ const PublishOutfitScreen = () => {
       />
 
       <ImagePreviewModal
-        visible={showLookPreview}
-        imageUrl={previewLook?.imageUrl || ""}
-        title={previewLook?.brand}
-        subtitle={previewLook?.season}
-        onClose={() => setShowLookPreview(false)}
+        visible={showPreview}
+        imageUrl={previewShow?.imageUrl || ""}
+        title={previewShow?.brand}
+        subtitle={previewShow?.season}
+        onClose={() => setShowPreview(false)}
       />
 
       <ShowSelectorModal
-        visible={showLookSelector}
+        visible={showSelector}
         shows={filteredShows}
         searchQuery={searchQuery}
         isLoading={isLoadingShows}
         hasMore={hasMoreShows && !searchQuery.trim()}
         onSearchChange={setSearchQuery}
         onSelectShow={handleSelectShow}
-        onClose={() => setShowLookSelector(false)}
+        onClose={() => setShowSelector(false)}
         onLoadMore={loadMoreShows}
       />
 
