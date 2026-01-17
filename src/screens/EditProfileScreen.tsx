@@ -734,7 +734,7 @@ const EditProfileScreen = () => {
                     <View style={styles.designerInfo}>
                       <Text
                         style={[
-                          styles.designerName,
+                          styles.brandName,
                           isSelected && styles.designerNameSelected,
                         ]}
                       >
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   designerInfo: {
     flex: 1,
   },
-  designerName: {
+  brandName: {
     fontSize: 15,
     color: theme.colors.black,
   },

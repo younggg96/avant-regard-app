@@ -37,7 +37,7 @@ interface Brand {
 }
 
 interface Show {
-  designer: string;
+  brand: string;
   season: string;
   title: string;
   cover_image: string;
@@ -49,40 +49,40 @@ interface Show {
 interface RouteParams {
   id?: string;
   name?: string;
-  designerId?: string;
-  designerName?: string;
+  brandId?: string;
+  brandName?: string;
 }
 
-const DesignerDetailScreen = () => {
+const BrandDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as RouteParams;
 
   // Handle different param formats
-  const designerId = params.id || params.designerId;
-  const designerName = params.name || params.designerName;
+  const brandId = params.id || params.brandId;
+  const brandName = params.name || params.brandName;
 
   // Find brand info
   const brand = useMemo(() => {
-    if (designerId) {
+    if (brandId) {
       return (brandsData as Brand[]).find(
-        (b) => b.id.toString() === designerId
+        (b) => b.id.toString() === brandId
       );
     }
-    if (designerName) {
+    if (brandName) {
       return (brandsData as Brand[]).find(
-        (b) => b.name.toLowerCase() === designerName.toLowerCase()
+        (b) => b.name.toLowerCase() === brandName.toLowerCase()
       );
     }
     return null;
-  }, [designerId, designerName]);
+  }, [brandId, brandName]);
 
   // Find shows for this designer
-  const designerShows = useMemo(() => {
+  const brandShows = useMemo(() => {
     if (!brand) return [];
     return (showsData as Show[])
       .filter(
-        (show) => show.designer.toLowerCase() === brand.name.toLowerCase()
+        (show) => show.brand.toLowerCase() === brand.name.toLowerCase()
       )
       .sort((a, b) => b.year - a.year);
   }, [brand]);
@@ -117,14 +117,14 @@ const DesignerDetailScreen = () => {
       (navigation.navigate as any)("CollectionDetail", {
         collection: {
           id: show.show_url,
-          title: show.designer,
+          title: show.brand,
           season: show.season,
           year: show.year.toString(),
           coverImage: show.cover_image,
           imageCount: 0,
           showUrl: show.show_url,
         },
-        designerName: show.designer,
+        brandName: show.brand,
       });
     },
     [navigation]
@@ -145,7 +145,7 @@ const DesignerDetailScreen = () => {
     );
   }
 
-  const coverImage = brand.coverImage || designerShows[0]?.cover_image;
+  const coverImage = brand.coverImage || brandShows[0]?.cover_image;
 
   return (
     <View style={styles.container}>
@@ -281,13 +281,13 @@ const DesignerDetailScreen = () => {
         </View>
 
         {/* Shows Section */}
-        {designerShows.length > 0 && (
+        {brandShows.length > 0 && (
           <View style={styles.showsSection}>
             <Text style={styles.sectionTitle}>秀场</Text>
-            <Text style={styles.showsCount}>{designerShows.length} 场秀</Text>
+            <Text style={styles.showsCount}>{brandShows.length} 场秀</Text>
 
             <View style={styles.showsGrid}>
-              {designerShows.map((show, index) => (
+              {brandShows.map((show, index) => (
                 <TouchableOpacity
                   key={`${show.show_url}-${index}`}
                   style={styles.showCard}
@@ -316,7 +316,7 @@ const DesignerDetailScreen = () => {
         )}
 
         {/* Empty State for Shows */}
-        {designerShows.length === 0 && (
+        {brandShows.length === 0 && (
           <View style={styles.emptyShows}>
             <Ionicons
               name="images-outline"
@@ -550,4 +550,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DesignerDetailScreen;
+export default BrandDetailScreen;

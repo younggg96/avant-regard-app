@@ -4,7 +4,7 @@
 
 from typing import Optional, List
 from app.db.supabase import get_supabase
-from app.schemas.post import Post, PostType, PostStatus, AuditStatus, ShowImageDetail
+from app.schemas.post import Post, PostType, PostStatus, AuditStatus
 
 
 class PostService:
@@ -25,10 +25,6 @@ class PostService:
         )
         if user_result.data:
             username = user_result.data[0]["username"]
-
-        # 获取关联的秀场图片
-        show_images = self._get_post_show_images(post_data["id"])
-        show_image_ids = [img.id for img in show_images]
 
         # 检查当前用户是否点赞/收藏
         liked_by_me = False
@@ -55,45 +51,10 @@ class PostService:
             productName=post_data.get("product_name"),
             brandName=post_data.get("brand_name"),
             rating=post_data.get("rating"),
-            showImageIds=show_image_ids if show_image_ids else None,
-            showImages=show_images if show_images else None,
+            showId=post_data.get("show_id"),
             likedByMe=liked_by_me,
             favoritedByMe=favorited_by_me,
         )
-
-    def _get_post_show_images(self, post_id: int) -> List[ShowImageDetail]:
-        """获取帖子关联的秀场图片"""
-        result = (
-            self.db.table("post_show_images")
-            .select(
-                "show_image_id, sort_order, show_images(id, image_url, sort_order, show_id, shows(season, category, city, collection_ts, designer_id, designers(name)))"
-            )
-            .eq("post_id", post_id)
-            .order("sort_order")
-            .execute()
-        )
-
-        images = []
-        for item in result.data or []:
-            si = item.get("show_images")
-            if si:
-                show = si.get("shows", {}) or {}
-                designer = show.get("designers", {}) or {}
-                images.append(
-                    ShowImageDetail(
-                        id=si["id"],
-                        imageUrl=si["image_url"],
-                        sortOrder=si.get("sort_order"),
-                        showId=si.get("show_id"),
-                        season=show.get("season"),
-                        category=show.get("category"),
-                        city=show.get("city"),
-                        collectionTs=show.get("collection_ts"),
-                        designerId=show.get("designer_id"),
-                        designerName=designer.get("name"),
-                    )
-                )
-        return images
 
     def _check_liked(self, post_id: int, user_id: int) -> bool:
         """检查用户是否点赞了帖子"""
@@ -138,6 +99,15 @@ class PostService:
             return None
         return self._format_post(result.data[0], current_user_id)
 
+    def _get_show_id_by_url(self, show_url: str) -> Optional[int]:
+        """通过 show_url 获取 show_id"""
+        if not show_url:
+            return None
+        result = self.db.table("shows").select("id").eq("show_url", show_url).execute()
+        if result.data:
+            return result.data[0]["id"]
+        return None
+
     def create_post(
         self,
         user_id: int,
@@ -149,41 +119,38 @@ class PostService:
         product_name: str = None,
         brand_name: str = None,
         rating: int = None,
-        show_image_ids: List[int] = None,
+        show_id: int = None,
+        show_url: str = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 插入帖子
-        result = (
-            self.db.table("posts")
-            .insert(
-                {
-                    "user_id": user_id,
-                    "post_type": post_type,
-                    "status": post_status,
-                    "audit_status": "PENDING" if post_status == "PUBLISHED" else None,
-                    "title": title,
-                    "content_text": content_text,
-                    "image_urls": image_urls or [],
-                    "product_name": product_name,
-                    "brand_name": brand_name,
-                    "rating": rating,
-                }
-            )
-            .execute()
-        )
+        insert_data = {
+            "user_id": user_id,
+            "post_type": post_type,
+            "status": post_status,
+            "audit_status": "PENDING" if post_status == "PUBLISHED" else None,
+            "title": title,
+            "content_text": content_text,
+            "image_urls": image_urls or [],
+            "product_name": product_name,
+            "brand_name": brand_name,
+            "rating": rating,
+        }
+
+        # 关联秀场：优先使用 show_id，其次通过 show_url 查找
+        if show_id:
+            insert_data["show_id"] = show_id
+        elif show_url:
+            found_show_id = self._get_show_id_by_url(show_url)
+            if found_show_id:
+                insert_data["show_id"] = found_show_id
+
+        result = self.db.table("posts").insert(insert_data).execute()
 
         if not result.data:
             return None
 
         post = result.data[0]
-
-        # 关联秀场图片
-        if show_image_ids:
-            records = [
-                {"post_id": post["id"], "show_image_id": sid, "sort_order": i}
-                for i, sid in enumerate(show_image_ids)
-            ]
-            self.db.table("post_show_images").insert(records).execute()
 
         return self._format_post(post, user_id)
 
@@ -214,6 +181,14 @@ class PostService:
             update_data["content_text"] = kwargs["content_text"]
         if "image_urls" in kwargs:
             update_data["image_urls"] = kwargs["image_urls"]
+
+        # 关联秀场：优先使用 show_id，其次通过 show_url 查找
+        if "show_id" in kwargs and kwargs["show_id"]:
+            update_data["show_id"] = kwargs["show_id"]
+        elif "show_url" in kwargs and kwargs["show_url"]:
+            found_show_id = self._get_show_id_by_url(kwargs["show_url"])
+            if found_show_id:
+                update_data["show_id"] = found_show_id
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
 
@@ -343,49 +318,17 @@ class PostService:
     def get_posts_by_show_id(
         self, show_id: int, current_user_id: Optional[int] = None
     ) -> List[Post]:
-        """获取某个秀场关联的帖子"""
-        # 获取秀场的图片ID
-        images_result = (
-            self.db.table("show_images").select("id").eq("show_id", show_id).execute()
-        )
-        image_ids = [img["id"] for img in images_result.data or []]
-
-        if not image_ids:
-            return []
-
-        # 获取关联这些图片的帖子
+        """获取某个秀场关联的帖子（通过 posts.show_id 直接查询）"""
         result = (
-            self.db.table("post_show_images")
-            .select("post_id, posts(*)")
-            .in_("show_image_id", image_ids)
+            self.db.table("posts")
+            .select("*")
+            .eq("show_id", show_id)
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
             .execute()
         )
-
-        # 去重并过滤已发布且审核通过的帖子
-        seen_ids = set()
-        posts = []
-        for item in result.data or []:
-            p = item.get("posts")
-            if p and p["id"] not in seen_ids:
-                if p["status"] == "PUBLISHED" and p.get("audit_status") == "APPROVED":
-                    seen_ids.add(p["id"])
-                    posts.append(self._format_post(p, current_user_id))
-        return posts
-
-    def get_posts_by_show_url(
-        self, show_url: str, current_user_id: Optional[int] = None
-    ) -> List[Post]:
-        """通过 show_url 获取某个秀场关联的帖子"""
-        # 先通过 show_url 获取 show_id
-        show_result = (
-            self.db.table("shows").select("id").eq("show_url", show_url).execute()
-        )
-        
-        if not show_result.data:
-            return []
-        
-        show_id = show_result.data[0]["id"]
-        return self.get_posts_by_show_id(show_id, current_user_id)
+        return [self._format_post(p, current_user_id) for p in result.data or []]
 
 
 # 单例

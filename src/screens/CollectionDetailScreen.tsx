@@ -9,10 +9,6 @@ import {
   Dimensions,
   Share,
   Linking,
-  Animated,
-  FlatList,
-  Modal,
-  StatusBar,
   ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,7 +17,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
-import { getPostsByShowId, getPostsByShowUrl, Post } from "../services/postService";
+import { getPostsByShowId, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -68,7 +64,7 @@ interface Comment {
 
 interface CollectionDetailParams {
   collection: Collection;
-  designerName?: string;
+  brandName?: string;
   images?: ShowImage[];
   showId?: number; // 新增：用于获取 show 详情
 }
@@ -77,7 +73,7 @@ const CollectionDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as CollectionDetailParams;
-  const { collection, designerName, images, showId } = params;
+  const { collection, brandName, images, showId } = params;
 
   const [collectionImages, setCollectionImages] = useState<ShowImage[]>([]);
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
@@ -103,12 +99,22 @@ const CollectionDetailScreen = () => {
           let posts: Post[] = [];
           if (showId) {
             posts = await getPostsByShowId(showId);
-          } else if (collection.showUrl) {
-            posts = await getPostsByShowUrl(collection.showUrl);
           }
           setRelatedPosts(posts);
         } catch (error) {
-          console.error("Failed to load related posts:", error);
+          // 正确处理错误，提取错误消息
+          let errorMessage = "加载相关帖子失败";
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === "string") {
+            errorMessage = error;
+          } else if (error && typeof error === "object") {
+            // 处理对象类型的错误
+            errorMessage = (error as any).message || (error as any).detail || JSON.stringify(error);
+          }
+          console.error("Failed to load related posts:", errorMessage);
+          // 不显示 Toast，只在控制台记录错误
+          // 帖子加载失败不影响页面的主要功能
         } finally {
           setPostsLoading(false);
         }
@@ -361,7 +367,7 @@ const CollectionDetailScreen = () => {
           onPress={() =>
             (navigation as any).navigate("AllComments", {
               collection,
-              designerName,
+              brandName,
             })
           }
         >
@@ -471,7 +477,6 @@ const CollectionDetailScreen = () => {
                   source={{
                     uri:
                       post.imageUrls?.[0] ||
-                      post.showImages?.[0]?.imageUrl ||
                       "https://via.placeholder.com/150",
                   }}
                   style={styles.postImage}

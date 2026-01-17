@@ -11,6 +11,7 @@ export interface SelectedLook {
   designer: string;
   season: string;
   imageUrl: string;
+  showUrl?: string;  // 秀场 URL，用于通过 URL 关联到数据库中的秀场
 }
 
 interface LookGridSelectorProps {

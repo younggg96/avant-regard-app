@@ -23,7 +23,8 @@ import ProfileScreen from "./src/screens/ProfileScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
 import LookDetailScreen from "./src/screens/LookDetailScreen";
 import PostDetailScreen from "./src/screens/PostDetailScreen";
-import SearchScreen from "./src/screens/SearchScreen";
+import BrandDetailScreen from "./src/screens/BrandDetailScreen";
+
 // Auth Screens
 import AuthScreen from "./src/screens/AuthScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
@@ -44,7 +45,6 @@ import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
-import DesignerDetailScreen from "./src/screens/DesignerDetailScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -199,8 +199,8 @@ function AppNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="DesignerDetail"
-        component={DesignerDetailScreen}
+        name="BrandDetail"
+        component={BrandDetailScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

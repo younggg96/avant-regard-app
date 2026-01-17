@@ -35,14 +35,14 @@ interface Collection {
 
 interface AllCommentsParams {
   collection: Collection;
-  designerName?: string;
+  brandName?: string;
 }
 
 const AllCommentsScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as AllCommentsParams;
-  const { collection, designerName } = params;
+  const { collection, brandName } = params;
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [isWritingComment, setIsWritingComment] = useState(false);
@@ -303,8 +303,8 @@ const AllCommentsScreen = () => {
           <Text style={styles.collectionTitle}>
             {collection.title} - {collection.season} {collection.year}
           </Text>
-          {designerName && (
-            <Text style={styles.designerName}>by {designerName}</Text>
+          {brandName && (
+            <Text style={styles.brandName}>by {brandName}</Text>
           )}
         </View>
       </View>
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 22,
   },
-  designerName: {
+  brandName: {
     fontSize: 14,
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.gray600,

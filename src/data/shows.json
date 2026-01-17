@@ -1,6 +1,6 @@
 [
   {
-    "designer": "Acne Studios",
+    "brand": "Acne Studios",
     "season": "Fall 2024 Menswear",
     "title": "Acne Studios",
     "cover_image": "https://assets.vogue.com/photos/65a536e4b3abc4501fb12d90/16:9/pass/00001-acne-studios-fall-2024-menswear-credit-brand.jpg",
@@ -9,7 +9,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Acne Studios",
+    "brand": "Acne Studios",
     "season": "Fall 2024 Ready To Wear",
     "title": "Acne Studios",
     "cover_image": "https://assets.vogue.com/photos/65e0497b2bed6b971b9995e1/16:9/pass/00001-acne-studios-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -18,7 +18,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alexander McQueen",
+    "brand": "Alexander McQueen",
     "season": "Fall 2024 Ready To Wear",
     "title": "McQueen",
     "cover_image": "https://assets.vogue.com/photos/65e3af348fce6647e6d3a3f7/16:9/pass/00001-alexander-mcqueen-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -27,7 +27,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alexander McQueen",
+    "brand": "Alexander McQueen",
     "season": "Fall 2025 Ready To Wear",
     "title": "McQueen",
     "cover_image": "https://assets.vogue.com/photos/67ccb0a380e8bc60a5045103/16:9/pass/00001-alexander-mcqueen-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -36,7 +36,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alexander Wang",
+    "brand": "Alexander Wang",
     "season": "Fall 2024 Ready To Wear",
     "title": "Alexander Wang",
     "cover_image": "https://assets.vogue.com/photos/66b4904a5552fa386f05b66e/16:9/pass/00001-alexander-wang-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -45,7 +45,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alexander Wang",
+    "brand": "Alexander Wang",
     "season": "Fall 2025 Ready To Wear",
     "title": "Alexander Wang",
     "cover_image": "https://assets.vogue.com/photos/68a344a77931d05bbdae06eb/16:9/pass/00001-alexander-wang-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -54,7 +54,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alberta Ferretti",
+    "brand": "Alberta Ferretti",
     "season": "Fall 2024 Ready To Wear",
     "title": "Alberta Ferretti",
     "cover_image": "https://assets.vogue.com/photos/65d64650d01a79ff2a6f867c/16:9/pass/00001-alberta-ferretti-2024-ready-to-wear-credit-gorunway.jpg",
@@ -63,7 +63,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Alberta Ferretti",
+    "brand": "Alberta Ferretti",
     "season": "Fall 2025 Ready To Wear",
     "title": "Alberta Ferretti",
     "cover_image": "https://assets.vogue.com/photos/67be2a8ac9fe254958d40114/16:9/pass/00001-alberta-ferretti-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -72,7 +72,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Altuzarra",
+    "brand": "Altuzarra",
     "season": "Fall 2024 Ready To Wear",
     "title": "Altuzarra",
     "cover_image": "https://assets.vogue.com/photos/65c9750a02ab56c91ad59bf4/16:9/pass/00001-altuzarra-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -81,7 +81,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Altuzarra",
+    "brand": "Altuzarra",
     "season": "Fall 2025 Ready To Wear",
     "title": "Altuzarra",
     "cover_image": "https://assets.vogue.com/photos/67aa2f90ca46022409a22da1/16:9/pass/00001-altuzarra-fall-2025-ready-to-wear-credit-su-mustecaplioglu-brand.jpg",
@@ -90,7 +90,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Amiri",
+    "brand": "Amiri",
     "season": "Fall 2024 Menswear",
     "title": "Amiri",
     "cover_image": "https://assets.vogue.com/photos/65a9679d9e29241eb401337a/16:9/pass/00001-amiri-fall-2024-mens-credit-gorunway.jpg",
@@ -99,7 +99,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Amiri",
+    "brand": "Amiri",
     "season": "Fall 2025 Menswear",
     "title": "Amiri",
     "cover_image": "https://assets.vogue.com/photos/6792bc111ed3f2ac9da18a00/16:9/pass/00001-amiri-fall-2025-menswear-credit-gorunway.jpg",
@@ -108,7 +108,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Ann Demeulemeester",
+    "brand": "Ann Demeulemeester",
     "season": "Fall 2024 Ready To Wear",
     "title": "Ann Demeulemeester",
     "cover_image": "https://assets.vogue.com/photos/65e390b55ebdfbc9590e03a5/16:9/pass/00001-ann-demeulemeester-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -117,7 +117,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Ann Demeulemeester",
+    "brand": "Ann Demeulemeester",
     "season": "Fall 2025 Ready To Wear",
     "title": "Ann Demeulemeester",
     "cover_image": "https://assets.vogue.com/photos/67cca825917ffb640fe90f2a/16:9/pass/00001-ann-demeulemeester-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -126,7 +126,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Antonio Marras",
+    "brand": "Antonio Marras",
     "season": "Fall 2024 Ready To Wear",
     "title": "Antonio Marras",
     "cover_image": "https://assets.vogue.com/photos/65d60cb429be775867d60c66/16:9/pass/00001-antonio-marras-2024-ready-to-wear-credit-gorunway.JPG",
@@ -135,7 +135,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Antonio Marras",
+    "brand": "Antonio Marras",
     "season": "Fall 2025 Ready To Wear",
     "title": "Antonio Marras",
     "cover_image": "https://assets.vogue.com/photos/67bf5ab5322032a58c51022c/16:9/pass/00001-antonio-marras-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -144,7 +144,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Aspesi",
+    "brand": "Aspesi",
     "season": "Spring 2024 Menswear",
     "title": "Aspesi",
     "cover_image": "https://assets.vogue.com/photos/648b75534b2ed368ebfd3c4a/16:9/pass/00001-aspesi-spring-2024-menswear-credit-brand.jpg",
@@ -153,7 +153,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Balmain",
+    "brand": "Balmain",
     "season": "Fall 2025 Ready To Wear",
     "title": "Balmain",
     "cover_image": "https://assets.vogue.com/photos/67c8d788c564893612c9c15a/16:9/pass/00001-balmain-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -162,7 +162,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Balmain",
+    "brand": "Balmain",
     "season": "Pre Fall 2025 Menswear",
     "title": "Balmain",
     "cover_image": "https://assets.vogue.com/photos/6751c3c3aaded209625d52b1/16:9/pass/00001-balmain-prefall-2025-menswear-credit-brand.jpg",
@@ -171,7 +171,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Balenciaga",
+    "brand": "Balenciaga",
     "season": "Fall 2024 Couture",
     "title": "Balenciaga",
     "cover_image": "https://assets.vogue.com/photos/668c011cd90113690da31f80/16:9/pass/00001-balenciaga-fall-2024-couture-credit-brand.jpg",
@@ -180,7 +180,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Balenciaga",
+    "brand": "Balenciaga",
     "season": "Fall 2024 Ready To Wear",
     "title": "Balenciaga",
     "cover_image": "https://assets.vogue.com/photos/65e488728606d2b23c777ec8/16:9/pass/00001-balenciaga-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -189,7 +189,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Bally",
+    "brand": "Bally",
     "season": "Fall 2024 Ready To Wear",
     "title": "Bally",
     "cover_image": "https://assets.vogue.com/photos/65db6808bdf84a64e5a96991/16:9/pass/00001-bally-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -198,7 +198,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Bally",
+    "brand": "Bally",
     "season": "Fall 2025 Ready To Wear",
     "title": "Bally",
     "cover_image": "https://assets.vogue.com/photos/67c305c1839c41524d19d0d9/16:9/pass/_UMB0007(1).jpg",
@@ -207,7 +207,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Bottega Veneta",
+    "brand": "Bottega Veneta",
     "season": "Fall 2024 Ready To Wear",
     "title": "Bottega Veneta",
     "cover_image": "https://assets.vogue.com/photos/65e8411e8f85559999cd6315/16:9/pass/00001-bottega-veneta-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -216,7 +216,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Bottega Veneta",
+    "brand": "Bottega Veneta",
     "season": "Pre Fall 2024",
     "title": "Bottega Veneta",
     "cover_image": "https://assets.vogue.com/photos/660d7590ff88c12596450611/16:9/pass/00001-bottega-veneta-pre-fall-2024-credit-brand.jpg",
@@ -225,7 +225,7 @@
     "category": null
   },
   {
-    "designer": "Blumarine",
+    "brand": "Blumarine",
     "season": "Fall 2024 Ready To Wear",
     "title": "Blumarine",
     "cover_image": "https://assets.vogue.com/photos/65d896ad5b31294b8d96f776/16:9/pass/00001-blumarine-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -234,7 +234,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Blumarine",
+    "brand": "Blumarine",
     "season": "Fall 2025 Ready To Wear",
     "title": "Blumarine",
     "cover_image": "https://assets.vogue.com/photos/67c06570b9a6569122b8a2d4/16:9/pass/00001-blumarine-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -243,7 +243,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Brioni",
+    "brand": "Brioni",
     "season": "Fall 2024 Menswear",
     "title": "Brioni",
     "cover_image": "https://assets.vogue.com/photos/65a2997ee4db4242b89aedcf/16:9/pass/00001-brioni-fall-2024-menswear-credit-brand.jpg",
@@ -252,7 +252,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Brioni",
+    "brand": "Brioni",
     "season": "Fall 2024 Ready To Wear",
     "title": "Brioni",
     "cover_image": "https://assets.vogue.com/photos/65d76aa688b2e355433d2d9d/16:9/pass/00001-brioni-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -261,7 +261,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Brunello Cucinelli",
+    "brand": "Brunello Cucinelli",
     "season": "Fall 2024 Menswear",
     "title": "Brunello Cucinelli",
     "cover_image": "https://assets.vogue.com/photos/659ec1ce1947b0b2b0603683/16:9/pass/00001-brunello-cucinelli-fall-2024-menswear-credit-brand.jpg",
@@ -270,7 +270,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Brunello Cucinelli",
+    "brand": "Brunello Cucinelli",
     "season": "Fall 2024 Ready To Wear",
     "title": "Brunello Cucinelli",
     "cover_image": "https://assets.vogue.com/photos/65d5e91f2014a87a48c64618/16:9/pass/00001-brunello-cucinelli-2024-ready-to-wear-credit-brand.jpg",
@@ -279,7 +279,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Chanel",
+    "brand": "Chanel",
     "season": "Fall 2024 Couture",
     "title": "Chanel",
     "cover_image": "https://assets.vogue.com/photos/667a9f197e5fac7042e57651/16:9/pass/00001-chanel-fall-2024-couture-credit-gorunway.jpg",
@@ -288,7 +288,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Chanel",
+    "brand": "Chanel",
     "season": "Fall 2025 Couture",
     "title": "Chanel",
     "cover_image": "https://assets.vogue.com/photos/686cedbf843612e37e9c3db2/16:9/pass/00001-chanel-fall-2025-couture-credit-gorunway.jpg",
@@ -297,7 +297,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Chloe",
+    "brand": "Chloe",
     "season": "Fall 2024 Ready To Wear",
     "title": "Chloé",
     "cover_image": "https://assets.vogue.com/photos/65e09cb37deb0fee34cbc8ba/16:9/pass/00001-chloe-fall-2024-ready-to-wear-credit-gorunway.JPG",
@@ -306,7 +306,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Chloe",
+    "brand": "Chloe",
     "season": "Fall 2025 Ready To Wear",
     "title": "Chloé",
     "cover_image": "https://assets.vogue.com/photos/67cae104326365043c9c76a3/16:9/pass/00001-chloe-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -315,7 +315,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Christian Dior",
+    "brand": "Christian Dior",
     "season": "Fall 2024 Couture",
     "title": "Christian Dior",
     "cover_image": "https://assets.vogue.com/photos/667991f6108db1dbb64073f8/16:9/pass/00001-christian-dior-fall-2024-couture-credit-gorunway.jpg",
@@ -324,7 +324,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Christian Dior",
+    "brand": "Christian Dior",
     "season": "Fall 2025 Couture",
     "title": "Christian Dior",
     "cover_image": "https://assets.vogue.com/photos/68363d57f362cb02c0c0afe0/16:9/pass/00002-christian-dior-resort-2026-credit-gorunway.jpg",
@@ -333,7 +333,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Coach",
+    "brand": "Coach",
     "season": "Fall 2024 Ready To Wear",
     "title": "Coach",
     "cover_image": "https://assets.vogue.com/photos/65ca95845d11ce40a33e9fcd/16:9/pass/00001-coach-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -342,7 +342,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Coach",
+    "brand": "Coach",
     "season": "Fall 2025 Ready To Wear",
     "title": "Coach",
     "cover_image": "https://assets.vogue.com/photos/67aa7d9e52e57d049e107844/16:9/pass/00001-coach-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -351,7 +351,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Comme des Garçons",
+    "brand": "Comme des Garçons",
     "season": "Fall 2024 Ready To Wear",
     "title": "Comme des Garçons",
     "cover_image": "https://assets.vogue.com/photos/65e36ea37b454d0642afaa8a/16:9/pass/00001-comme-des-garcons-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -360,7 +360,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Comme des Garçons",
+    "brand": "Comme des Garçons",
     "season": "Fall 2025 Ready To Wear",
     "title": "Comme des Garçons",
     "cover_image": "https://assets.vogue.com/photos/67cc8439b7892256b5d9e02c/16:9/pass/00001-comme-des-garcons-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -369,7 +369,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Courrèges",
+    "brand": "Courrèges",
     "season": "Fall 2024 Ready To Wear",
     "title": "Courrèges",
     "cover_image": "https://assets.vogue.com/photos/65df85c1144fe440b1500527/16:9/pass/00001-courreges-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -378,7 +378,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Courrèges",
+    "brand": "Courrèges",
     "season": "Fall 2025 Menswear",
     "title": "Courrèges",
     "cover_image": "https://assets.vogue.com/photos/6784e6a4d9711d2b946be474/16:9/pass/00001-courreges-fall-2025-menswear-credit-brand.jpg",
@@ -387,7 +387,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "D&G",
+    "brand": "D&G",
     "season": "Fall 2024 Ready To Wear",
     "title": "Dolce & Gabbana",
     "cover_image": "https://assets.vogue.com/photos/65db4d55a6206052c3919ea0/16:9/pass/00001-dolce-&-gabbana-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -396,7 +396,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "D&G",
+    "brand": "D&G",
     "season": "Fall 2025 Menswear",
     "title": "Dolce & Gabbana",
     "cover_image": "https://assets.vogue.com/photos/678be88e71e9f75544e85204/16:9/pass/00001-dolce-and-gabbana-fall-2025-menswear-credit-gorunway.jpg",
@@ -405,7 +405,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Diane von Furstenberg",
+    "brand": "Diane von Furstenberg",
     "season": "Fall 2025 Ready To Wear",
     "title": "Diane von Furstenberg",
     "cover_image": "https://assets.vogue.com/photos/6842aa12998e794390196d7a/16:9/pass/00001-diane-von-furstenberg-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -414,7 +414,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Diane von Furstenberg",
+    "brand": "Diane von Furstenberg",
     "season": "Resort 2024",
     "title": "Diane von Furstenberg",
     "cover_image": "https://assets.vogue.com/photos/6526d2ca8d024afe7d4c009f/16:9/pass/00001-diane-von-furstenberg-resort-2024-credit-brand.jpg",
@@ -423,7 +423,7 @@
     "category": "Resort"
   },
   {
-    "designer": "Diesel",
+    "brand": "Diesel",
     "season": "Fall 2024 Ready To Wear",
     "title": "Diesel",
     "cover_image": "https://assets.vogue.com/photos/65d76ceff213a379d50429fb/16:9/pass/00001-diesel-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -432,7 +432,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Diesel",
+    "brand": "Diesel",
     "season": "Fall 2025 Ready To Wear",
     "title": "Diesel",
     "cover_image": "https://assets.vogue.com/photos/67c032f64ea8000ddcf9dd17/16:9/pass/00001-diesel-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -441,7 +441,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Dion Lee",
+    "brand": "Dion Lee",
     "season": "Shanghai Fall 2024",
     "title": "Dion Lee",
     "cover_image": "https://assets.vogue.com/photos/660a5d8658ebd6f9ed2d51c5/16:9/pass/00001-dion-lee-fall-2024-ready-to-wear-shanghai-credit-brand.jpg",
@@ -450,7 +450,7 @@
     "category": null
   },
   {
-    "designer": "Dion Lee",
+    "brand": "Dion Lee",
     "season": "Spring 2024 Ready To Wear",
     "title": "Dion Lee",
     "cover_image": "https://assets.vogue.com/photos/64fda51f7fd5b30e516b8c2e/16:9/pass/00001-dion-lee-spring-2024-ready-to-wear-credit-gorunway.jpg",
@@ -459,7 +459,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Dries Van Noten",
+    "brand": "Dries Van Noten",
     "season": "Fall 2024 Menswear",
     "title": "Dries Van Noten",
     "cover_image": "https://assets.vogue.com/photos/65aa4819cb6d609e27070a33/16:9/pass/00001-dries-van-noten-fall-2024-menswear-credit-gorunway.jpg",
@@ -468,7 +468,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Dries Van Noten",
+    "brand": "Dries Van Noten",
     "season": "Fall 2024 Ready To Wear",
     "title": "Dries Van Noten",
     "cover_image": "https://assets.vogue.com/photos/65e0616b4c1d4bdd2d1fd600/16:9/pass/00001-dries-van-noten-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -477,7 +477,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Dolce & Gabbana",
+    "brand": "Dolce & Gabbana",
     "season": "Fall 2024 Ready To Wear",
     "title": "Dolce & Gabbana",
     "cover_image": "https://assets.vogue.com/photos/65db4d55a6206052c3919ea0/16:9/pass/00001-dolce-&-gabbana-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -486,7 +486,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Dolce & Gabbana",
+    "brand": "Dolce & Gabbana",
     "season": "Fall 2025 Menswear",
     "title": "Dolce & Gabbana",
     "cover_image": "https://assets.vogue.com/photos/678be88e71e9f75544e85204/16:9/pass/00001-dolce-and-gabbana-fall-2025-menswear-credit-gorunway.jpg",
@@ -495,7 +495,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Donna Karan",
+    "brand": "Donna Karan",
     "season": "Fall 2025 Ready To Wear",
     "title": "Donna Karan",
     "cover_image": "https://assets.vogue.com/photos/67a260e3f3026adf436cf4bf/16:9/pass/00001-donna-karan-new-york-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -504,7 +504,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Donna Karan",
+    "brand": "Donna Karan",
     "season": "Spring 2025 Ready To Wear",
     "title": "Donna Karan",
     "cover_image": "https://assets.vogue.com/photos/6717ca93f177a605e3fae16e/16:9/pass/00001-donna-karan-spring-2025-ready-to-wear-credit-brand.jpg",
@@ -513,7 +513,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Emilio Pucci",
+    "brand": "Emilio Pucci",
     "season": "Fall 2024 Ready To Wear",
     "title": "Emilio Pucci",
     "cover_image": "https://assets.vogue.com/photos/66d88775819973efc9fa9bb0/16:9/pass/00001-pucci-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -522,7 +522,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Emilio Pucci",
+    "brand": "Emilio Pucci",
     "season": "Fall 2025 Ready To Wear",
     "title": "Emilio Pucci",
     "cover_image": "https://assets.vogue.com/photos/68c2e561f21a9b9efc572652/16:9/pass/00001-emilio-pucci-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -531,7 +531,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Emporio Armani",
+    "brand": "Emporio Armani",
     "season": "Fall 2024 Menswear",
     "title": "Emporio Armani",
     "cover_image": "https://assets.vogue.com/photos/65a3064ab04187758ab6a34d/16:9/pass/00001-emporio-armani-fall-2024-menswear-credit-gorunway.jpg",
@@ -540,7 +540,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Emporio Armani",
+    "brand": "Emporio Armani",
     "season": "Fall 2024 Ready To Wear",
     "title": "Emporio Armani",
     "cover_image": "https://assets.vogue.com/photos/65d789e079fffa39d6fb9703/16:9/pass/00001-emporio-armani-2024-ready-to-wear-credit-gorunway.jpg",
@@ -549,7 +549,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Enfants Riches Déprimés",
+    "brand": "Enfants Riches Déprimés",
     "season": "Fall 2025 Ready To Wear",
     "title": "Enfants Riches Déprimés",
     "cover_image": "https://assets.vogue.com/photos/67ce00a12013625fe3f1ec0b/16:9/pass/00001-enfants-riches-deprimes-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -558,7 +558,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Etro",
+    "brand": "Etro",
     "season": "Fall 2024 Ready To Wear",
     "title": "Etro",
     "cover_image": "https://assets.vogue.com/photos/65d6ee1329be775867d61067/16:9/pass/00001-etro-fall-2024-ready-to-wear-credit-gorunway.JPG",
@@ -567,7 +567,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Etro",
+    "brand": "Etro",
     "season": "Fall 2025 Ready To Wear",
     "title": "Etro",
     "cover_image": "https://assets.vogue.com/photos/67c0e4641f632d92124d7985/16:9/pass/00001-etro-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -576,7 +576,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Fendi",
+    "brand": "Fendi",
     "season": "Fall 2024 Menswear",
     "title": "Fendi",
     "cover_image": "https://assets.vogue.com/photos/65a2a980cbd7882a71255dd2/16:9/pass/00001-fendi-fall-2024-menswear-credit-gorunway.jpg",
@@ -585,7 +585,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Fendi",
+    "brand": "Fendi",
     "season": "Fall 2024 Ready To Wear",
     "title": "Fendi",
     "cover_image": "https://assets.vogue.com/photos/65d66ddc59a2180ce8a2da92/16:9/pass/00001-fendi-2024-ready-to-wear-credit-gorunway.jpg",
@@ -594,7 +594,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Givenchy",
+    "brand": "Givenchy",
     "season": "Fall 2024 Menswear",
     "title": "Givenchy",
     "cover_image": "https://assets.vogue.com/photos/65a80a69af2ff5690ef30d0b/16:9/pass/00001-givenchy-fall-2024-mens-credit-brand.jpg",
@@ -603,7 +603,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Givenchy",
+    "brand": "Givenchy",
     "season": "Fall 2024 Ready To Wear",
     "title": "Givenchy",
     "cover_image": "https://assets.vogue.com/photos/65e0b6b8fed1ba79f0f2218b/16:9/pass/00001-givenchy-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -612,7 +612,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Gucci",
+    "brand": "Gucci",
     "season": "Fall 2024 Ready To Wear",
     "title": "Gucci",
     "cover_image": "https://assets.vogue.com/photos/65d8d79391324d52501e7dbb/16:9/pass/00001-gucci-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -621,7 +621,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Gucci",
+    "brand": "Gucci",
     "season": "Fall 2025 Menswear",
     "title": "Gucci",
     "cover_image": "https://assets.vogue.com/photos/67bf053a7cf01ffeb8149d2a/16:9/pass/00001-gucci-fall-2025-menswear-credit-brand.jpg",
@@ -630,7 +630,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Helmut Lang",
+    "brand": "Helmut Lang",
     "season": "Fall 2024 Ready To Wear",
     "title": "Helmut Lang",
     "cover_image": "https://assets.vogue.com/photos/65c693b09ed6e2d387b34223/16:9/pass/00001-helmut-lang-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -639,7 +639,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Helmut Lang",
+    "brand": "Helmut Lang",
     "season": "Pre Fall 2024",
     "title": "Helmut Lang",
     "cover_image": "https://assets.vogue.com/photos/6572173c3dcd506d5364795e/16:9/pass/00001-helmut-lang-pre-fall-2024-credit-brand.jpg",
@@ -648,7 +648,7 @@
     "category": null
   },
   {
-    "designer": "Hermès",
+    "brand": "Hermès",
     "season": "Fall 2024 Menswear",
     "title": "Hermès",
     "cover_image": "https://assets.vogue.com/photos/65abd70d3b1216a455cb84fa/16:9/pass/_DAN0025.jpg",
@@ -657,7 +657,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Hermès",
+    "brand": "Hermès",
     "season": "Fall 2024 Ready To Wear",
     "title": "Hermès",
     "cover_image": "https://assets.vogue.com/photos/65e34a4af88752637a65d8bc/16:9/pass/00001-hermes-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -666,7 +666,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Issey Miyake",
+    "brand": "Issey Miyake",
     "season": "Fall 2024 Ready To Wear",
     "title": "Issey Miyake",
     "cover_image": "https://assets.vogue.com/photos/65e1dbcdbeb1ce7823542607/16:9/pass/00001-issey-miyake-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -675,7 +675,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Issey Miyake",
+    "brand": "Issey Miyake",
     "season": "Fall 2025 Ready To Wear",
     "title": "Issey Miyake",
     "cover_image": "https://assets.vogue.com/photos/67cb02d3e4f8f83fb7a8bb7b/16:9/pass/00001-issey-miyake-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -684,7 +684,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Jacquemus",
+    "brand": "Jacquemus",
     "season": "Fall 2024 Ready To Wear",
     "title": "Jacquemus",
     "cover_image": "https://assets.vogue.com/photos/666707dfa8354f0b8456d212/16:9/pass/00001-jacquemus-fall-24-ready-to-wear-credit-gorunway.jpg",
@@ -693,7 +693,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Jacquemus",
+    "brand": "Jacquemus",
     "season": "Spring 2024 Ready To Wear",
     "title": "Jacquemus",
     "cover_image": "https://assets.vogue.com/photos/65b7b42bd215206281c7c059/16:9/pass/00001-jacquemus-spring-2024-ready-to-wear-credit-gorunway.jpg",
@@ -702,7 +702,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Jil Sander",
+    "brand": "Jil Sander",
     "season": "Fall 2024 Ready To Wear",
     "title": "Jil Sander",
     "cover_image": "https://assets.vogue.com/photos/65da3d15a20d790e2b54be63/16:9/pass/00001-jil-sander-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -711,7 +711,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Jil Sander",
+    "brand": "Jil Sander",
     "season": "Fall 2025 Ready To Wear",
     "title": "Jil Sander",
     "cover_image": "https://assets.vogue.com/photos/67bf313cdcbe5febff23b119/16:9/pass/00001-jil-sander-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -720,7 +720,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "John Alexander Skelton",
+    "brand": "John Alexander Skelton",
     "season": "Fall 2024 Menswear",
     "title": "John Alexander Skelton",
     "cover_image": "https://assets.vogue.com/photos/659fdf5fb256be09d64bf056/16:9/pass/00001-john-alexander-skelton-fall-2024-menswear-credit-lonny-spence.jpg",
@@ -729,7 +729,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "John Alexander Skelton",
+    "brand": "John Alexander Skelton",
     "season": "Fall 2025 Menswear",
     "title": "John Alexander Skelton",
     "cover_image": "https://assets.vogue.com/photos/67851f0fa4bb20b2ea29d8cc/16:9/pass/00001-john-alexander-skelton-fall-2025-menswear-credit-lonny-spence.jpg",
@@ -738,7 +738,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Junya Watanabe",
+    "brand": "Junya Watanabe",
     "season": "Fall 2024 Menswear",
     "title": "Junya Watanabe",
     "cover_image": "https://assets.vogue.com/photos/65aa57149e9699ec27a0d92d/16:9/pass/00001-junya-watanbe-fall-2024-menswear-credit-gorunway.jpg",
@@ -747,7 +747,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Junya Watanabe",
+    "brand": "Junya Watanabe",
     "season": "Fall 2024 Ready To Wear",
     "title": "Junya Watanabe",
     "cover_image": "https://assets.vogue.com/photos/65e308f8ab89229fece5e9b5/16:9/pass/00001-junya-watanabe-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -756,7 +756,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Khaite",
+    "brand": "Khaite",
     "season": "Fall 2024 Ready To Wear",
     "title": "Khaite",
     "cover_image": "https://assets.vogue.com/photos/65c8ec749950947720c331c4/16:9/pass/00001-khaite-fall-2024-ready-to-wear-credit-hanna-tveite-brand.jpg",
@@ -765,7 +765,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Khaite",
+    "brand": "Khaite",
     "season": "Fall 2025 Ready To Wear",
     "title": "Khaite",
     "cover_image": "https://assets.vogue.com/photos/67a8ce989e0cd7c4b2e0c9b3/16:9/pass/00001-khaite-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -774,7 +774,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Kenzo",
+    "brand": "Kenzo",
     "season": "Fall 2024 Menswear",
     "title": "Kenzo",
     "cover_image": "https://assets.vogue.com/photos/65aad9693527b79d648490f5/16:9/pass/FIO00011.jpg",
@@ -783,7 +783,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Kenzo",
+    "brand": "Kenzo",
     "season": "Fall 2025 Menswear",
     "title": "Kenzo",
     "cover_image": "https://assets.vogue.com/photos/6793f6354ee75fb348fc1831/16:9/pass/ISI00015.jpg",
@@ -792,7 +792,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Kith",
+    "brand": "Kith",
     "season": "Fall 2024 Menswear",
     "title": "Kith",
     "cover_image": "https://assets.vogue.com/photos/67176b7d5a804be7a0e4a54b/16:9/pass/00001-kith-fall-2024-menswear-credit-brand.jpg",
@@ -801,7 +801,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Kith",
+    "brand": "Kith",
     "season": "Fall 2024 Ready To Wear",
     "title": "Kith",
     "cover_image": "https://assets.vogue.com/photos/66c5a4e114c7c8a317039a3e/16:9/pass/00001-kith-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -810,7 +810,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Kolor",
+    "brand": "Kolor",
     "season": "Fall 2024 Menswear",
     "title": "Kolor",
     "cover_image": "https://assets.vogue.com/photos/65abc4f90e6bc4ce78963dc3/16:9/pass/_UMB0014.jpg",
@@ -819,7 +819,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Kolor",
+    "brand": "Kolor",
     "season": "Fall 2025 Menswear",
     "title": "Kolor",
     "cover_image": "https://assets.vogue.com/photos/67954ccbd38524d7387e8cb8/16:9/pass/00001-kolor-fall-2025-menswear-credit-gorunway.jpg",
@@ -828,7 +828,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Lanvin",
+    "brand": "Lanvin",
     "season": "Fall 2025 Menswear",
     "title": "Lanvin",
     "cover_image": "https://assets.vogue.com/photos/67973715b440f858e9273d4c/16:9/pass/00004-lanvin-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -837,7 +837,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Lanvin",
+    "brand": "Lanvin",
     "season": "Fall 2025 Ready To Wear",
     "title": "Lanvin",
     "cover_image": "https://assets.vogue.com/photos/67973628df219d877ec1a357/16:9/pass/00001-lanvin-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -846,7 +846,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Loewe",
+    "brand": "Loewe",
     "season": "Fall 2024 Menswear",
     "title": "Loewe",
     "cover_image": "https://assets.vogue.com/photos/65abccce3464865692de734a/16:9/pass/00001-loewe-fall-2024-mens-credit-gorunway.jpg",
@@ -855,7 +855,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Loewe",
+    "brand": "Loewe",
     "season": "Fall 2024 Ready To Wear",
     "title": "Loewe",
     "cover_image": "https://assets.vogue.com/photos/65e1e284e01e4fc0f69a8f2e/16:9/pass/00001-loewe-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -864,7 +864,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Longchamp",
+    "brand": "Longchamp",
     "season": "Spring 2024 Ready To Wear",
     "title": "Longchamp",
     "cover_image": "https://assets.vogue.com/photos/65159a7fa565b842f63b51b9/16:9/pass/00001-longchamp-spring-2024-ready-to-wear-credit-brand.jpg",
@@ -873,7 +873,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Loro Piana",
+    "brand": "Loro Piana",
     "season": "Fall 2024 Menswear",
     "title": "Loro Piana",
     "cover_image": "https://assets.vogue.com/photos/65d885048347c352d6082239/16:9/pass/00001-loro-piana-fall-2024-menswear-credit-brand.jpg",
@@ -882,7 +882,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Loro Piana",
+    "brand": "Loro Piana",
     "season": "Fall 2024 Ready To Wear",
     "title": "Loro Piana",
     "cover_image": "https://assets.vogue.com/photos/65d883d6c73c745e7a1c5393/16:9/pass/00001-loro-piana-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -891,7 +891,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Louis Vuitton",
+    "brand": "Louis Vuitton",
     "season": "Fall 2025 Menswear",
     "title": "Louis Vuitton",
     "cover_image": "https://assets.vogue.com/photos/679025310a87d78feda36368/16:9/pass/00001-louis-vuitton-fall-2025-menswear-credit-gorunway.jpg",
@@ -900,7 +900,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Louis Vuitton",
+    "brand": "Louis Vuitton",
     "season": "Fall 2025 Ready To Wear",
     "title": "Louis Vuitton",
     "cover_image": "https://assets.vogue.com/photos/67cf6d80ce181a0630f37738/16:9/pass/00001-louis-vuitton-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -909,7 +909,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Maison Martin Margiela",
+    "brand": "Maison Martin Margiela",
     "season": "Fall 2025 Couture",
     "title": "Maison Margiela",
     "cover_image": "https://assets.vogue.com/photos/686f818193cb76a8e2f741fd/16:9/pass/00001-maison-margiela-fall-2025-couture-credit-gorunway.jpg",
@@ -918,7 +918,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Maison Martin Margiela",
+    "brand": "Maison Martin Margiela",
     "season": "Spring 2024 Couture",
     "title": "Maison Margiela",
     "cover_image": "https://assets.vogue.com/photos/65b2cf63fc43c431d9c840ec/16:9/pass/00001-maison-margiela-spring-2024-couture-credit-gorunway.jpg",
@@ -927,7 +927,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Maje",
+    "brand": "Maje",
     "season": "Fall 2024 Ready To Wear",
     "title": "Maje",
     "cover_image": "https://assets.vogue.com/photos/65df00c8d58ee7597a28a1cd/16:9/pass/00001-maje-fall-2024-ready-to-wear-credit-brand-spon.jpg",
@@ -936,7 +936,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Maje",
+    "brand": "Maje",
     "season": "Spring 2024 Ready To Wear",
     "title": "Maje",
     "cover_image": "https://assets.vogue.com/photos/6512964cf465167ab4369953/16:9/pass/00001-maje-spring-2024-ready-to-wear-detail-credit-brand.jpg",
@@ -945,7 +945,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Marni",
+    "brand": "Marni",
     "season": "Fall 2024 Ready To Wear",
     "title": "Marni",
     "cover_image": "https://assets.vogue.com/photos/65e9e7ced2b81d1985a3a436/16:9/pass/00001-marni-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -954,7 +954,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Marni",
+    "brand": "Marni",
     "season": "Fall 2025 Ready To Wear",
     "title": "Marni",
     "cover_image": "https://assets.vogue.com/photos/67bf8206a1d54d9a5ce27269/16:9/pass/00001-marni-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -963,7 +963,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Martine Rose",
+    "brand": "Martine Rose",
     "season": "Fall 2024 Menswear",
     "title": "Martine Rose",
     "cover_image": "https://assets.vogue.com/photos/65a90a26bea32d15892853e4/16:9/pass/00001-martine-rose-fall-2024-menswear-credit-jamie-morgan.jpg",
@@ -972,7 +972,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Martine Rose",
+    "brand": "Martine Rose",
     "season": "Fall 2025 Menswear",
     "title": "Martine Rose",
     "cover_image": "https://assets.vogue.com/photos/67916fac354992a2500f9724/16:9/pass/00001-martine-rose-fall-2025-menswear-credit-brand.jpg",
@@ -981,7 +981,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Max Mara",
+    "brand": "Max Mara",
     "season": "Fall 2024 Ready To Wear",
     "title": "Max Mara",
     "cover_image": "https://assets.vogue.com/photos/65d733dcf213a379d504294d/16:9/pass/00001-max-mara-2024-ready-to-wear-credit-gorunway.jpg",
@@ -990,7 +990,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Max Mara",
+    "brand": "Max Mara",
     "season": "Fall 2025 Ready To Wear",
     "title": "Max Mara",
     "cover_image": "https://assets.vogue.com/photos/67c067cec280f347b5fc96bd/16:9/pass/00001-max-mara-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -999,7 +999,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Mugler",
+    "brand": "Mugler",
     "season": "Fall 2024 Ready To Wear",
     "title": "Mugler",
     "cover_image": "https://assets.vogue.com/photos/65e4dd0e124210923073c2e0/16:9/pass/_OBY0024.jpg",
@@ -1008,7 +1008,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Mugler",
+    "brand": "Mugler",
     "season": "Pre Fall 2024",
     "title": "Mugler",
     "cover_image": "https://assets.vogue.com/photos/65bcbfaaf6db614c5776a16a/16:9/pass/00001-mugler-pre-fall-2024-credit-brand.jpg",
@@ -1017,7 +1017,7 @@
     "category": null
   },
   {
-    "designer": "Missoni",
+    "brand": "Missoni",
     "season": "Fall 2024 Ready To Wear",
     "title": "Missoni",
     "cover_image": "https://assets.vogue.com/photos/65da51d3bdf84a64e5a968f9/16:9/pass/00001-missoni-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1026,7 +1026,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Missoni",
+    "brand": "Missoni",
     "season": "Fall 2025 Ready To Wear",
     "title": "Missoni",
     "cover_image": "https://assets.vogue.com/photos/67c221c04a554d837ba32373/16:9/pass/00001-missoni-fall-2025-ready-to-wear-credit-gorunway.JPG",
@@ -1035,7 +1035,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Moschino",
+    "brand": "Moschino",
     "season": "Fall 2024 Ready To Wear",
     "title": "Moschino",
     "cover_image": "https://assets.vogue.com/photos/65d7b581932e39b4f8bacb56/16:9/pass/00001-moschino-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1044,7 +1044,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Moschino",
+    "brand": "Moschino",
     "season": "Fall 2025 Menswear",
     "title": "Moschino",
     "cover_image": "https://assets.vogue.com/photos/674dc94a18dd70d6409768e5/16:9/pass/00001-moschino-fall-2025-menswear-credit-brand.jpg",
@@ -1053,7 +1053,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Mui Mui",
+    "brand": "Mui Mui",
     "season": "Fall 2024 Ready To Wear",
     "title": "Miu Miu",
     "cover_image": "https://assets.vogue.com/photos/65e741572a2af4c35f402a8f/16:9/pass/00001-miu-miu-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1062,7 +1062,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Mui Mui",
+    "brand": "Mui Mui",
     "season": "Fall 2025 Ready To Wear",
     "title": "Miu Miu",
     "cover_image": "https://assets.vogue.com/photos/67d05dcb49d834834dfff200/16:9/pass/00001-miu-miu-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1071,7 +1071,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Noir Kei Ninomiya",
+    "brand": "Noir Kei Ninomiya",
     "season": "Fall 2024 Ready To Wear",
     "title": "Noir Kei Ninomiya",
     "cover_image": "https://assets.vogue.com/photos/65e338b205dd96c04e46a863/16:9/pass/00001-noir-kei-ninomiya-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1080,7 +1080,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Noir Kei Ninomiya",
+    "brand": "Noir Kei Ninomiya",
     "season": "Fall 2025 Ready To Wear",
     "title": "Noir Kei Ninomiya",
     "cover_image": "https://assets.vogue.com/photos/67cc45987156dc7d26f72cc6/16:9/pass/00001-noir-kei-ninomiya-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1089,7 +1089,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Off-White",
+    "brand": "Off-White",
     "season": "Fall 2024 Ready To Wear",
     "title": "Off-White",
     "cover_image": "https://assets.vogue.com/photos/65e0a40991acd9398022b593/16:9/pass/00001-off-white-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1098,7 +1098,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Off-White",
+    "brand": "Off-White",
     "season": "Fall 2025 Ready To Wear",
     "title": "Off-White",
     "cover_image": "https://assets.vogue.com/photos/67c9b4fdb80a879884879dd8/16:9/pass/00001-off-white-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1107,7 +1107,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Our Legacy",
+    "brand": "Our Legacy",
     "season": "Fall 2024 Menswear",
     "title": "Our Legacy",
     "cover_image": "https://assets.vogue.com/photos/65a2a5f6e4db4242b89aedd5/16:9/pass/00001-our-legacy-fall-2024-menswear-credit-louis-flashman.jpg",
@@ -1116,7 +1116,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Our Legacy",
+    "brand": "Our Legacy",
     "season": "Fall 2024 Ready To Wear",
     "title": "Our Legacy",
     "cover_image": "https://assets.vogue.com/photos/65a2a8033efdc348772fd121/16:9/pass/00001-our-legacy-fall-2024-ready-to-wear-credit-louis-flashman.jpg",
@@ -1125,7 +1125,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Paco Rabanne",
+    "brand": "Paco Rabanne",
     "season": "Fall 2024 Ready To Wear",
     "title": "Rabanne",
     "cover_image": "https://assets.vogue.com/photos/66152a05649976e6f507882e/16:9/pass/00001-rabanne-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1134,7 +1134,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Paco Rabanne",
+    "brand": "Paco Rabanne",
     "season": "Fall 2025 Ready To Wear",
     "title": "Rabanne",
     "cover_image": "https://assets.vogue.com/photos/67c9c2391c44f0e270b14063/16:9/pass/00001-rabanne-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1143,7 +1143,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Paul Smith",
+    "brand": "Paul Smith",
     "season": "Fall 2024 Menswear",
     "title": "Paul Smith",
     "cover_image": "https://assets.vogue.com/photos/65aa75ec9e9699ec27a0d9d7/16:9/pass/00001-paul-smith-fall-2024-menswear-credit-gorunway.jpg",
@@ -1152,7 +1152,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Paul Smith",
+    "brand": "Paul Smith",
     "season": "Fall 2025 Menswear",
     "title": "Paul Smith",
     "cover_image": "https://assets.vogue.com/photos/679110db806238aa95500667/16:9/pass/00001-paul-smith-fall-2025-menswear-credit-brand.jpg",
@@ -1161,7 +1161,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Peter Do",
+    "brand": "Peter Do",
     "season": "Fall 2024 Ready To Wear",
     "title": "Peter Do",
     "cover_image": "https://assets.vogue.com/photos/65de490d1291668dd5549c43/16:9/pass/00001-peter-do-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1170,7 +1170,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Peter Do",
+    "brand": "Peter Do",
     "season": "Spring 2024 Ready To Wear",
     "title": "Peter Do",
     "cover_image": "https://assets.vogue.com/photos/6512ea5821b59c9e247ef5f0/16:9/pass/00001-peter-do-spring-2024-ready-to-wear-credit-brand.jpg",
@@ -1179,7 +1179,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Prada",
+    "brand": "Prada",
     "season": "Fall 2024 Menswear",
     "title": "Prada",
     "cover_image": "https://assets.vogue.com/photos/65a405d3d37bc23dd117fcb1/16:9/pass/00001-prada-fall-2024-menswear-credit-gorunway.jpg",
@@ -1188,7 +1188,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Prada",
+    "brand": "Prada",
     "season": "Fall 2024 Ready To Wear",
     "title": "Prada",
     "cover_image": "https://assets.vogue.com/photos/65d7703e728f66af8106d431/16:9/pass/00001-prada-fall-2024-ready-to-wear-credit-gorunway.JPG",
@@ -1197,7 +1197,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Ralph Lauren",
+    "brand": "Ralph Lauren",
     "season": "Fall 2024 Ready To Wear",
     "title": "Ralph Lauren",
     "cover_image": "https://assets.vogue.com/photos/6630680a66a333d9ae1d1bc9/16:9/pass/00001-ralph-lauren-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1206,7 +1206,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Ralph Lauren",
+    "brand": "Ralph Lauren",
     "season": "Fall 2025 Menswear",
     "title": "Ralph Lauren",
     "cover_image": "https://assets.vogue.com/photos/678b6e3e92db05575a5f98e2/16:9/pass/00001-ralph-lauren-fall-2025-menswear-credit-brand.jpg",
@@ -1215,7 +1215,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Rick Owens",
+    "brand": "Rick Owens",
     "season": "Fall 2024 Menswear",
     "title": "Rick Owens",
     "cover_image": "https://assets.vogue.com/photos/65a948ca42e8794d66a9b44a/16:9/pass/00001-rick-owens-fall-2024-menswear-credit-owenscorp.jpg",
@@ -1224,7 +1224,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Rick Owens",
+    "brand": "Rick Owens",
     "season": "Fall 2024 Ready To Wear",
     "title": "Rick Owens",
     "cover_image": "https://assets.vogue.com/photos/65e0a0b690b19a5a056e54f9/16:9/pass/00001-rick-owens-fall-2024-ready-to-wear-credit-brand.CR3.jpg",
@@ -1233,7 +1233,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Robert Wun",
+    "brand": "Robert Wun",
     "season": "Fall 2024 Couture",
     "title": "Robert Wun",
     "cover_image": "https://assets.vogue.com/photos/667d8a6a5177a44273fac293/16:9/pass/00001-robert-wun-fall-2024-couture-credit-gorunway.jpg",
@@ -1242,7 +1242,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Robert Wun",
+    "brand": "Robert Wun",
     "season": "Fall 2025 Couture",
     "title": "Robert Wun",
     "cover_image": "https://assets.vogue.com/photos/686e52d13089015f0d8a15e8/16:9/pass/00001-robert-wun-fall-2025-couture-credit-gorunway.jpg",
@@ -1251,7 +1251,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Roberto Cavalli",
+    "brand": "Roberto Cavalli",
     "season": "Fall 2024 Ready To Wear",
     "title": "Roberto Cavalli",
     "cover_image": "https://assets.vogue.com/photos/65d67334df261ce14bf80e6b/16:9/pass/00001-roberto-cavalli-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1260,7 +1260,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Roberto Cavalli",
+    "brand": "Roberto Cavalli",
     "season": "Fall 2025 Ready To Wear",
     "title": "Roberto Cavalli",
     "cover_image": "https://assets.vogue.com/photos/67c0e0ddd58446c6df78f274/16:9/pass/00001-roberto-cavalli-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1269,7 +1269,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Romance Was Born",
+    "brand": "Romance Was Born",
     "season": "Australia Resort 2025",
     "title": "Romance Was Born",
     "cover_image": "https://assets.vogue.com/photos/664496c8b815a90cd4a5728d/16:9/pass/00001-romance-was-born-resort-2025-australia-credit-gorunway.jpg",
@@ -1278,7 +1278,7 @@
     "category": "Resort"
   },
   {
-    "designer": "Romance Was Born",
+    "brand": "Romance Was Born",
     "season": "Pre Fall 2025",
     "title": "Romance Was Born",
     "cover_image": "https://assets.vogue.com/photos/677f9bf63fe215353a493f1c/16:9/pass/00001-romance-was-born-pre-fall-2025-credit-brand.jpg",
@@ -1287,7 +1287,7 @@
     "category": null
   },
   {
-    "designer": "Sacai",
+    "brand": "Sacai",
     "season": "Fall 2024 Menswear",
     "title": "Sacai",
     "cover_image": "https://assets.vogue.com/photos/65ad4bd90496f30612216421/16:9/pass/00001-sacai-fall-2024-menswear-credit-gorunway.jpg",
@@ -1296,7 +1296,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Sacai",
+    "brand": "Sacai",
     "season": "Fall 2024 Ready To Wear",
     "title": "Sacai",
     "cover_image": "https://assets.vogue.com/photos/65e60df8cc8e0f3fb09525be/16:9/pass/00001-sacai-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1305,7 +1305,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Saint Laurent",
+    "brand": "Saint Laurent",
     "season": "Fall 2025 Menswear",
     "title": "Saint Laurent",
     "cover_image": "https://assets.vogue.com/photos/679b8898a69d5a846c963b2d/16:9/pass/00001-saint-laurent-fall-2025-menswear-credit-gorunway.jpg",
@@ -1314,7 +1314,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Saint Laurent",
+    "brand": "Saint Laurent",
     "season": "Fall 2025 Ready To Wear",
     "title": "Saint Laurent",
     "cover_image": "https://assets.vogue.com/photos/67d1bbcf515ec09b78676c37/16:9/pass/00001-saint-laurent-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1323,7 +1323,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Salvatore Ferragamo",
+    "brand": "Salvatore Ferragamo",
     "season": "Fall 2024 Ready To Wear",
     "title": "Ferragamo",
     "cover_image": "https://assets.vogue.com/photos/65d9cf252929e7de7573fff3/16:9/pass/_ALE5451.jpg",
@@ -1332,7 +1332,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Salvatore Ferragamo",
+    "brand": "Salvatore Ferragamo",
     "season": "Fall 2025 Ready To Wear",
     "title": "Ferragamo",
     "cover_image": "https://assets.vogue.com/photos/67c49a90aeeb2e9f4618f465/16:9/pass/00001-ferragamo-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1341,7 +1341,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Sandro",
+    "brand": "Sandro",
     "season": "Spring 2024 Menswear",
     "title": "Sandro",
     "cover_image": "https://assets.vogue.com/photos/6515ae10ddba42abcd33492b/16:9/pass/00001-sandro-spring-2024-menswear-credit-brand.jpg",
@@ -1350,7 +1350,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Sandro",
+    "brand": "Sandro",
     "season": "Spring 2024 Ready To Wear",
     "title": "Sandro",
     "cover_image": "https://assets.vogue.com/photos/6515aad4f1936cc3017096a9/16:9/pass/00001%E2%80%94sandro-spring-2024-ready-to-wear-credit-brand.jpg",
@@ -1359,7 +1359,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Schiaparelli",
+    "brand": "Schiaparelli",
     "season": "Fall 2024 Couture",
     "title": "Schiaparelli",
     "cover_image": "https://assets.vogue.com/photos/6679994953babd822edefa11/16:9/pass/00001-schiaparelli-fall-2024-couture-credit-brand.jpg",
@@ -1368,7 +1368,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Schiaparelli",
+    "brand": "Schiaparelli",
     "season": "Fall 2024 Ready To Wear",
     "title": "Schiaparelli",
     "cover_image": "https://assets.vogue.com/photos/65e0f37b91acd9398022b73a/16:9/pass/00001-schiaparelli-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1377,7 +1377,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Self-Portrait",
+    "brand": "Self-Portrait",
     "season": "Fall 2024 Ready To Wear",
     "title": "Self-Portrait",
     "cover_image": "https://assets.vogue.com/photos/65d391d2842ed295377e5e16/16:9/pass/00001-self-portrait-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1386,7 +1386,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Self-Portrait",
+    "brand": "Self-Portrait",
     "season": "Fall 2025 Ready To Wear",
     "title": "Self-Portrait",
     "cover_image": "https://assets.vogue.com/photos/67c1d8b70db2d093885df27d/16:9/pass/00001-self-portrait-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -1395,7 +1395,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Shushutong",
+    "brand": "Shushutong",
     "season": "Shanghai Fall 2024",
     "title": "Shushu/Tong",
     "cover_image": "https://assets.vogue.com/photos/660a67d0b79c7c5ef5570a7d/16:9/pass/00001-shushu-tong-fall-2024-ready-to-wear-shanghai-credit-brand.jpg",
@@ -1404,7 +1404,7 @@
     "category": null
   },
   {
-    "designer": "Shushutong",
+    "brand": "Shushutong",
     "season": "Shanghai Fall 2025",
     "title": "Shushu/Tong",
     "cover_image": "https://assets.vogue.com/photos/67ec0aa34f75e0906ee0ef08/16:9/pass/00001-shushu-tong-fall-2025-ready-to-wear-shanghai-credit-brand.jpg",
@@ -1413,7 +1413,7 @@
     "category": null
   },
   {
-    "designer": "Stella McCartney",
+    "brand": "Stella McCartney",
     "season": "Fall 2024 Ready To Wear",
     "title": "Stella McCartney",
     "cover_image": "https://assets.vogue.com/photos/65e5cd7082dcc280e6e4a9ba/16:9/pass/00001-stella-mccartney-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1422,7 +1422,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Stella McCartney",
+    "brand": "Stella McCartney",
     "season": "Fall 2025 Ready To Wear",
     "title": "Stella McCartney",
     "cover_image": "https://assets.vogue.com/photos/67c89a0c104d40389884c748/16:9/pass/00001-stella-mccartney-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1431,7 +1431,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Sunnei",
+    "brand": "Sunnei",
     "season": "Fall 2024 Ready To Wear",
     "title": "Sunnei",
     "cover_image": "https://assets.vogue.com/photos/65d8ecb85d0af79bd453c890/16:9/pass/00001-sunnei-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1440,7 +1440,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Sunnei",
+    "brand": "Sunnei",
     "season": "Fall 2025 Ready To Wear",
     "title": "Sunnei",
     "cover_image": "https://assets.vogue.com/photos/67c208c5ee056099a0b34428/16:9/pass/00001-sunnei-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1449,7 +1449,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Thom Browne",
+    "brand": "Thom Browne",
     "season": "Fall 2024 Couture",
     "title": "Thom Browne",
     "cover_image": "https://assets.vogue.com/photos/6679b465385e2a8e57ec6258/16:9/pass/00002-thom-browne-fall-2024-couture-credit-gorunway.jpg",
@@ -1458,7 +1458,7 @@
     "category": "Couture"
   },
   {
-    "designer": "Thom Browne",
+    "brand": "Thom Browne",
     "season": "Fall 2024 Ready To Wear",
     "title": "Thom Browne",
     "cover_image": "https://assets.vogue.com/photos/65cdd466e762fe1180089e53/16:9/pass/00001-thom-browne-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1467,7 +1467,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Tom Ford",
+    "brand": "Tom Ford",
     "season": "Fall 2024 Ready To Wear",
     "title": "Tom Ford",
     "cover_image": "https://assets.vogue.com/photos/65d8318bf407f8baf9dd7e32/16:9/pass/00001-tom-ford-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1476,7 +1476,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Tom Ford",
+    "brand": "Tom Ford",
     "season": "Fall 2025 Ready To Wear",
     "title": "Tom Ford",
     "cover_image": "https://assets.vogue.com/photos/67c96ae498be470bd0496d5e/16:9/pass/00001-tom-ford-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1485,7 +1485,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Toteme",
+    "brand": "Toteme",
     "season": "Fall 2024 Ready To Wear",
     "title": "Toteme",
     "cover_image": "https://assets.vogue.com/photos/65af7dca3a2e7db8a989b28e/16:9/pass/00001-toteme-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1494,7 +1494,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Toteme",
+    "brand": "Toteme",
     "season": "Fall 2025 Ready To Wear",
     "title": "Toteme",
     "cover_image": "https://assets.vogue.com/photos/6797da593ba4d17f3ab0f611/16:9/pass/00001-toteme-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -1503,7 +1503,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Undercover",
+    "brand": "Undercover",
     "season": "Fall 2025 Menswear",
     "title": "Undercover",
     "cover_image": "https://assets.vogue.com/photos/6793594474f33a26c039d2d0/16:9/pass/00001-undercover-fall-2025-menswear-credit-brand.jpg",
@@ -1512,7 +1512,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Undercover",
+    "brand": "Undercover",
     "season": "Fall 2025 Ready To Wear",
     "title": "Undercover",
     "cover_image": "https://assets.vogue.com/photos/67c75035ddbf576eb6a51aca/16:9/pass/00001-undercover-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1521,7 +1521,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Uma Wang",
+    "brand": "Uma Wang",
     "season": "Fall 2024 Ready To Wear",
     "title": "Uma Wang",
     "cover_image": "https://assets.vogue.com/photos/65e1ba866223a1b8e4aa4909/16:9/pass/00001-uma-wang-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1530,7 +1530,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Uma Wang",
+    "brand": "Uma Wang",
     "season": "Fall 2025 Ready To Wear",
     "title": "Uma Wang",
     "cover_image": "https://assets.vogue.com/photos/67ca16026865e04972c1d38e/16:9/pass/00001-uma-wang-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1539,7 +1539,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Valentino",
+    "brand": "Valentino",
     "season": "Fall 2024 Ready To Wear",
     "title": "Valentino",
     "cover_image": "https://assets.vogue.com/photos/65e4f54644af94e8e49d7603/16:9/pass/00001-valentino-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1548,7 +1548,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Valentino",
+    "brand": "Valentino",
     "season": "Fall 2025 Ready To Wear",
     "title": "Valentino",
     "cover_image": "https://assets.vogue.com/photos/67cde6afb743ec7268f32ed0/16:9/pass/00001-valentino-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1557,7 +1557,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Versace",
+    "brand": "Versace",
     "season": "Fall 2024 Ready To Wear",
     "title": "Versace",
     "cover_image": "https://assets.vogue.com/photos/65d9a61a53a821ddad733a32/16:9/pass/00001-versace-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1566,7 +1566,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Versace",
+    "brand": "Versace",
     "season": "Fall 2025 Ready To Wear",
     "title": "Versace",
     "cover_image": "https://assets.vogue.com/photos/67c2c5ede6d757904d4ea566/16:9/pass/00001-versace-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1575,7 +1575,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Vetements",
+    "brand": "Vetements",
     "season": "Fall 2024 Ready To Wear",
     "title": "Vetements",
     "cover_image": "https://assets.vogue.com/photos/65e2501ecadd9e4430ef028e/16:9/pass/00001-vetements-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1584,7 +1584,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Vetements",
+    "brand": "Vetements",
     "season": "Spring 2024 Menswear",
     "title": "Vetements",
     "cover_image": "https://assets.vogue.com/photos/649ab941353472860bc0b7e5/16:9/pass/00002-vetements-spring-2024-menswear--credit-brand.jpg",
@@ -1593,7 +1593,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Victoria Beckham",
+    "brand": "Victoria Beckham",
     "season": "Fall 2024 Ready To Wear",
     "title": "Victoria Beckham",
     "cover_image": "https://assets.vogue.com/photos/65e2624e17385f7fc38d7bbd/16:9/pass/00001-victoria-beckham-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1602,7 +1602,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Victoria Beckham",
+    "brand": "Victoria Beckham",
     "season": "Fall 2025 Ready To Wear",
     "title": "Victoria Beckham",
     "cover_image": "https://assets.vogue.com/photos/67cc044c5c8c8be7c4f3b118/16:9/pass/00001-victoria-beckham-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1611,7 +1611,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Vivienne Westwood",
+    "brand": "Vivienne Westwood",
     "season": "Fall 2024 Ready To Wear",
     "title": "Vivienne Westwood",
     "cover_image": "https://assets.vogue.com/photos/6603f5c634ca9c71e37a6d90/16:9/pass/00001-vivienne-westwood-fall-2024-ready-to-wear-credit-brand.jpg",
@@ -1620,7 +1620,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Vivienne Westwood",
+    "brand": "Vivienne Westwood",
     "season": "Fall 2025 Ready To Wear",
     "title": "Vivienne Westwood",
     "cover_image": "https://assets.vogue.com/photos/6800d46c129a793294cd99b4/16:9/pass/00001-vivienne-westwood-fall-2025-ready-to-wear-credit-brand.jpg",
@@ -1629,7 +1629,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Walter Van Beirendonck",
+    "brand": "Walter Van Beirendonck",
     "season": "Fall 2024 Menswear",
     "title": "Walter Van Beirendonck",
     "cover_image": "https://assets.vogue.com/photos/65a81399a1aabee5ed057b24/16:9/pass/00001-walter-van-beirendonck-fall-2024-mens-credit-gorunway.jpg",
@@ -1638,7 +1638,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Walter Van Beirendonck",
+    "brand": "Walter Van Beirendonck",
     "season": "Fall 2025 Menswear",
     "title": "Walter Van Beirendonck",
     "cover_image": "https://assets.vogue.com/photos/6791230ba03b19f9e40e2b1b/16:9/pass/00001-walter-von-beirendonck-fall-2025-menswear-credit-brand.jpg",
@@ -1647,7 +1647,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Woolrich",
+    "brand": "Woolrich",
     "season": "Fall 2025 Menswear",
     "title": "Woolrich",
     "cover_image": "https://assets.vogue.com/photos/678d2458762eaee994678f5a/16:9/pass/00001-woolrich-fall-2025-menswear-credit-brand.jpg",
@@ -1656,7 +1656,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Woolrich",
+    "brand": "Woolrich",
     "season": "Spring 2025 Menswear",
     "title": "Woolrich",
     "cover_image": "https://assets.vogue.com/photos/666df1640c205765b0eeeae8/16:9/pass/00001-woolrich-spring-2025-menswear-credit-brand.jpg",
@@ -1665,7 +1665,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Y-3",
+    "brand": "Y-3",
     "season": "Fall 2024 Menswear",
     "title": "Y-3",
     "cover_image": "https://assets.vogue.com/photos/65a95284a4ead366fabb5d88/16:9/pass/00001-y3-fall-2024-menswear-credit-brand.jpg",
@@ -1674,7 +1674,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Y-3",
+    "brand": "Y-3",
     "season": "Fall 2025 Menswear",
     "title": "Y-3",
     "cover_image": "https://assets.vogue.com/photos/67952f5ee19c682f48aed4f5/16:9/pass/00001-y-3-fall-2025-menswear-credit-gorunway.jpg",
@@ -1683,7 +1683,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Yohji Yamamoto",
+    "brand": "Yohji Yamamoto",
     "season": "Fall 2024 Menswear",
     "title": "Yohji Yamamoto",
     "cover_image": "https://assets.vogue.com/photos/65aa4b4647b341f8e68f1c4a/16:9/pass/00001-yohji-yamamoto-fall-2024-menswear-credit-gorunway.jpg",
@@ -1692,7 +1692,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Yohji Yamamoto",
+    "brand": "Yohji Yamamoto",
     "season": "Fall 2024 Ready To Wear",
     "title": "Yohji Yamamoto",
     "cover_image": "https://assets.vogue.com/photos/65e2422b2fa65702730ed8b0/16:9/pass/00001-yohji-yamamoto-fall-2024-ready-to-wear-credit-gorunway.jpg",
@@ -1701,7 +1701,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Zimmermann",
+    "brand": "Zimmermann",
     "season": "Fall 2024 Ready To Wear",
     "title": "Zimmermann",
     "cover_image": "https://assets.vogue.com/photos/65e5db993add59d8a34bd9cf/16:9/pass/00001-zimmermann-fall-2024-ready-to-wearl-credit-gorunway.jpg",
@@ -1710,7 +1710,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Zimmermann",
+    "brand": "Zimmermann",
     "season": "Fall 2025 Ready To Wear",
     "title": "Zimmermann",
     "cover_image": "https://assets.vogue.com/photos/67cf18c72fa01dd0258cc164/16:9/pass/00001-zimmermann-fall-2025-ready-to-wear-credit-gorunway.jpg",
@@ -1719,7 +1719,7 @@
     "category": "Ready-to-Wear"
   },
   {
-    "designer": "Berluti",
+    "brand": "Berluti",
     "season": "Fall 2024 Menswear",
     "title": "Berluti",
     "cover_image": "https://assets.vogue.com/photos/65a6eea3e2516e2adb9833ad/16:9/pass/00001-berluti-fall-2024-menswear-credit-brand.jpg",
@@ -1728,7 +1728,7 @@
     "category": "Menswear"
   },
   {
-    "designer": "Berluti",
+    "brand": "Berluti",
     "season": "Fall 2025 Menswear",
     "title": "Berluti",
     "cover_image": "https://assets.vogue.com/photos/678fae8bd181509318980deb/16:9/pass/00001-berluti-fall-2025-menswear-credit-brand.jpg",

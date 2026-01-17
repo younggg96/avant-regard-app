@@ -8,7 +8,7 @@ import { theme } from "../theme";
 export interface ShowImageInfo {
   id: number;
   imageUrl: string;
-  designerName?: string;
+  brandName?: string;
   season?: string;
 }
 

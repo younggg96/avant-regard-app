@@ -37,7 +37,7 @@ interface Look {
 
 interface LookDetailParams {
   look: Look;
-  designerName?: string;
+  brandName?: string;
   collectionTitle?: string;
   imageId?: number; // API 图片 ID
 }
@@ -47,7 +47,7 @@ const LookDetailScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const params = route.params as LookDetailParams;
-  const { look, designerName, collectionTitle, imageId: paramImageId } = params;
+  const { look, brandName, collectionTitle, imageId: paramImageId } = params;
 
   const [currentLook, setCurrentLook] = useState<Look>(look);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
@@ -206,32 +206,11 @@ const LookDetailScreen = () => {
     <View style={styles.infoContainer}>
       <View style={styles.titleSection}>
         <Text style={styles.title}>{currentLook.title}</Text>
-        {designerName && <Text style={styles.designer}>by {designerName}</Text>}
+        {brandName && <Text style={styles.designer}>by {brandName}</Text>}
         {collectionTitle && (
           <Text style={styles.collection}>来自 {collectionTitle}</Text>
         )}
       </View>
-
-      {/* <View style={styles.statsSection}>
-        {currentLook.imageType && (
-          <View style={styles.statItem}>
-            <Ionicons
-              name="pricetag-outline"
-              size={16}
-              color={theme.colors.gray600}
-            />
-            <Text style={styles.statText}>{currentLook.imageType}</Text>
-          </View>
-        )}
-        <View style={styles.statItem}>
-          <Ionicons
-            name="chatbubble-outline"
-            size={16}
-            color={theme.colors.gray600}
-          />
-          <Text style={styles.statText}>{reviews.length} 条评论</Text>
-        </View>
-      </View> */}
     </View>
   );
 

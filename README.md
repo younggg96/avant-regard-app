@@ -114,7 +114,6 @@ npm run android  # 在 Android 模拟器上运行
 
 ### 核心实体
 
-- **Designer**：品牌创作者和时装屋
 - **BrandBranch**：子品牌（如 Y's、Ground Y）
 - **Season**：FW24、SS24 等
 - **Lookbook**：秀场系列
@@ -128,8 +127,6 @@ npm run android  # 在 Android 模拟器上运行
 ### REST 端点
 
 ```
-GET /designers?initial=Y
-GET /designers/:id/branches
 GET /lookbooks?season=FW24
 GET /looks/:id
 GET /items/:id/listings

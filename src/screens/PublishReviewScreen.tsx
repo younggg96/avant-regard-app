@@ -123,10 +123,11 @@ const PublishReviewScreen = () => {
 
     // 将 Show 转换为 SelectedLook 格式
     const selectedLook: SelectedLook = {
-      id: 0, // 秀场没有 id，使用 0
+      id: 0, // 本地数据没有数据库 ID，使用 0
       designer: show.designer,
       season: show.season,
       imageUrl: show.cover_image,
+      showUrl: show.show_url, // 保存 showUrl 用于后端查找关联
     };
 
     setSelectedLooks([...selectedLooks, selectedLook]);
@@ -171,10 +172,8 @@ const PublishReviewScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
-      // 过滤掉无效的 showImageIds (id 为 0 表示来自本地数据，没有数据库 ID)
-      const showImageIds = selectedLooks
-        .map((look) => look.id)
-        .filter((id) => id > 0);
+      // 获取第一个关联秀场的 showUrl（用于关联到数据库中的秀场）
+      const showUrl = selectedLooks.length > 0 ? selectedLooks[0].showUrl : undefined;
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -185,7 +184,7 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showImageIds: showImageIds.length > 0 ? showImageIds : undefined,
+        showUrl: showUrl,
       });
 
       setUploadProgress(null);
@@ -240,10 +239,8 @@ const PublishReviewScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      // 过滤掉无效的 showImageIds (id 为 0 表示来自本地数据，没有数据库 ID)
-      const showImageIds = selectedLooks
-        .map((look) => look.id)
-        .filter((id) => id > 0);
+      // 获取第一个关联秀场的 showUrl（用于关联到数据库中的秀场）
+      const showUrl = selectedLooks.length > 0 ? selectedLooks[0].showUrl : undefined;
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -254,7 +251,7 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showImageIds: showImageIds.length > 0 ? showImageIds : undefined,
+        showUrl: showUrl,
       });
 
       setUploadProgress(null);

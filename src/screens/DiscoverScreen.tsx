@@ -27,7 +27,6 @@ import PostCard, { Post } from "../components/PostCard";
 import {
   getPosts,
   Post as ApiPost,
-  ShowImageDetail,
   likePost,
   unlikePost,
 } from "../services/postService";
@@ -60,8 +59,8 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
-  // 关联的秀场
-  showImages?: ShowImageDetail[];
+  // 关联的秀场 ID
+  showId?: number;
 }
 
 type TabType = "recommend" | "following";
@@ -123,8 +122,8 @@ const mapApiPostToDisplayPost = (
       isSaved: apiPost.favoritedByMe || false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
-    // 关联的秀场
-    showImages: apiPost.showImages,
+    // 关联的秀场 ID
+    showId: apiPost.showId,
   };
 };
 

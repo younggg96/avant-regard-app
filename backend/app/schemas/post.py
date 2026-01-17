@@ -1,6 +1,7 @@
 """
 帖子相关的数据模型
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
@@ -26,22 +27,9 @@ class AuditStatus(str, Enum):
     REJECTED = "REJECTED"
 
 
-class ShowImageDetail(BaseModel):
-    """关联的秀场造型详情"""
-    id: int
-    imageUrl: str
-    sortOrder: Optional[int] = None
-    showId: Optional[int] = None
-    season: Optional[str] = None
-    category: Optional[str] = None
-    city: Optional[str] = None
-    collectionTs: Optional[str] = None
-    designerId: Optional[int] = None
-    designerName: Optional[str] = None
-
-
 class Post(BaseModel):
     """帖子响应"""
+
     id: int
     userId: int
     username: str
@@ -60,9 +48,8 @@ class Post(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = None
-    # 关联秀场图片
-    showImageIds: Optional[List[int]] = None
-    showImages: Optional[List[ShowImageDetail]] = None
+    # 关联秀场 ID（直接关联 shows 表）
+    showId: Optional[int] = None
     # 当前用户交互状态
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
@@ -70,6 +57,7 @@ class Post(BaseModel):
 
 class CreatePostRequest(BaseModel):
     """创建帖子请求"""
+
     userId: int
     postType: PostType
     postStatus: PostStatus = PostStatus.DRAFT
@@ -80,15 +68,18 @@ class CreatePostRequest(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = Field(None, ge=1, le=5)
-    # 关联秀场图片 ID 数组
-    showImageIds: Optional[List[int]] = None
+    # 关联秀场 ID（直接关联 shows 表）
+    showId: Optional[int] = None
 
 
 class UpdatePostRequest(BaseModel):
     """更新帖子请求"""
+
     userId: int
     postType: PostType
     status: PostStatus
     title: str = Field(..., min_length=1, max_length=500)
     contentText: str = ""
     imageUrls: List[str] = []
+    # 关联秀场 ID（直接关联 shows 表）
+    showId: Optional[int] = None

@@ -53,7 +53,7 @@ export const RelatedLooks: React.FC<RelatedLooksProps> = ({
                 color="$black"
                 numberOfLines={1}
               >
-                {showImage.designerName || "设计师"}
+                {showImage.brandName || "品牌"}
               </Text>
               <Text fontSize={10} color="$gray500" numberOfLines={1}>
                 {showImage.season || ""}

@@ -22,7 +22,6 @@ backend/
 │   │       ├── post.py      # 帖子路由
 │   │       ├── comment.py   # 评论路由
 │   │       ├── follow.py    # 关注路由
-│   │       ├── designer.py  # 设计师路由
 │   │       ├── admin.py     # 管理员路由
 │   │       └── files.py     # 文件上传路由
 │   ├── core/
@@ -39,14 +38,12 @@ backend/
 │   │   ├── post.py
 │   │   ├── comment.py
 │   │   ├── follow.py
-│   │   └── designer.py
 │   ├── services/            # 业务逻辑
 │   │   ├── auth_service.py
 │   │   ├── user_service.py
 │   │   ├── post_service.py
 │   │   ├── comment_service.py
 │   │   ├── follow_service.py
-│   │   ├── designer_service.py
 │   │   ├── admin_service.py
 │   │   └── file_service.py
 │   └── main.py              # 应用入口
@@ -183,18 +180,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `GET /api/follow/user/{userId}/following/count` - 获取关注数
 - `GET /api/follow/user/{userId}/followers/count` - 获取粉丝数
 - `GET /api/follow/user/{followerId}/is-following/{targetUserId}` - 检查是否关注
-- `POST /api/follow/designers/{designerId}` - 关注设计师
-- `DELETE /api/follow/designers/{designerId}` - 取消关注设计师
-- `GET /api/follow/users/{userId}/following-designers` - 获取关注的设计师
-- `GET /api/follow/users/{userId}/following-designers/count` - 获取关注设计师数
-- `GET /api/follow/designer/{userId}/is-following/{designerId}` - 检查是否关注设计师
-- `GET /api/follow/designer/{designerId}/followers/count` - 获取设计师粉丝数
-
-### 设计师 (Designer)
-- `GET /api/designer/getAllDesignerDetail` - 获取所有设计师
-- `GET /api/designer/{designerId}/show-and-images` - 获取设计师详情
-- `GET /api/designer/getSingleShow` - 获取单场秀详情
-- `GET /api/designer/options` - 获取设计师选项
 
 ### 管理员 (Admin)
 - `GET /api/admin/posts/pending` - 获取待审核帖子

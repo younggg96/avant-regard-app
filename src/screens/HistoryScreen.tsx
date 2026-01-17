@@ -120,8 +120,8 @@ const HistoryScreen = () => {
         break;
       case "designer":
         (navigation as any).navigate("DesignerDetail", {
-          designerId: item.id,
-          designerName: item.title,
+          brandId: item.id,
+          brandName: item.title,
         });
         break;
       case "collection":

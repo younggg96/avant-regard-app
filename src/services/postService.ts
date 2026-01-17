@@ -23,20 +23,6 @@ export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN";
 // 审核状态
 export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-// 关联的秀场造型详情
-export interface ShowImageDetail {
-  id: number;
-  imageUrl: string;
-  sortOrder?: number;
-  showId?: number;
-  season?: string;
-  category?: string;
-  city?: string;
-  collectionTs?: string;
-  designerId?: number;
-  designerName?: string;
-}
-
 // 帖子响应类型
 export interface Post {
   id: number;
@@ -57,9 +43,8 @@ export interface Post {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场图片
-  showImageIds?: number[];
-  showImages?: ShowImageDetail[];
+  // 关联秀场 ID（直接关联 shows 表）
+  showId?: number;
   // 当前用户交互状态
   likedByMe?: boolean;
   favoritedByMe?: boolean;
@@ -77,8 +62,9 @@ export interface CreatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场图片 ID 数组
-  showImageIds?: number[];
+  // 关联秀场（优先使用 showId，其次通过 showUrl 查找）
+  showId?: number;
+  showUrl?: string;
 }
 
 // 更新帖子请求参数
@@ -89,6 +75,9 @@ export interface UpdatePostParams {
   title: string;
   contentText: string;
   imageUrls: string[];
+  // 关联秀场（优先使用 showId，其次通过 showUrl 查找）
+  showId?: number;
+  showUrl?: string;
 }
 
 // 通用请求方法 - 默认携带 token，支持自动刷新
@@ -568,21 +557,6 @@ export async function getPostsByShowId(showId: number): Promise<Post[]> {
   });
 }
 
-/**
- * 通过 show_url 获取某个秀场关联的帖子
- * GET /api/posts/show-url?url={showUrl}
- * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
- * @param showUrl 秀场URL
- */
-export async function getPostsByShowUrl(showUrl: string): Promise<Post[]> {
-  return request<Post[]>(
-    `/api/posts/show-url?url=${encodeURIComponent(showUrl)}`,
-    {
-      method: "GET",
-    }
-  );
-}
-
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -606,7 +580,6 @@ export const postService = {
   getFavoritePostsByUserId,
   // 秀场关联帖子
   getPostsByShowId,
-  getPostsByShowUrl,
 };
 
 export default postService;

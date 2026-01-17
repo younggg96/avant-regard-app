@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   View,
   Share,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -703,7 +704,7 @@ const PostDetailScreen = () => {
       (navigation as any).navigate("LookDetail", {
         imageId: showImage.id,
         imageUrl: showImage.imageUrl,
-        designer: showImage.designerName,
+        brandName: showImage.brandName,
         season: showImage.season,
       });
     },
@@ -735,138 +736,156 @@ const PostDetailScreen = () => {
   const showComments = postStatus === "published";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        {/* Header */}
-        <PostDetailHeader
-          post={post}
-          postStatus={postStatus}
-          isOwnPost={isOwnPost}
-          isFollowing={isFollowing}
-          onGoBack={() => navigation.goBack()}
-          onAuthorPress={handleAuthorPress}
-          onFollow={handleFollow}
-          onShare={handleShare}
-          onContinueEdit={handleContinueEdit}
-          onShowOptionsMenu={() => setShowOptionsMenu(true)}
+    <View style={localStyles.rootContainer}>
+      {/* Gray Overlay when focused - 覆盖整个屏幕包括 status bar */}
+      {isCommentFocused && showComments && (
+        <TouchableWithoutFeedback onPress={handleOverlayPress}>
+          <View style={localStyles.fullScreenOverlay} />
+        </TouchableWithoutFeedback>
+      )}
+      
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          {/* Header */}
+          <PostDetailHeader
+            post={post}
+            postStatus={postStatus}
+            isOwnPost={isOwnPost}
+            isFollowing={isFollowing}
+            onGoBack={() => navigation.goBack()}
+            onAuthorPress={handleAuthorPress}
+            onFollow={handleFollow}
+            onShare={handleShare}
+            onContinueEdit={handleContinueEdit}
+            onShowOptionsMenu={() => setShowOptionsMenu(true)}
+          />
+
+          {/* Content */}
+          <RNScrollView
+            ref={scrollViewRef}
+            showsVerticalScrollIndicator={false}
+            style={styles.scrollView}
+          >
+            {/* Lookbook: 小红书风格 - 大图轮播在顶部 */}
+            {post.type === "OUTFIT" && images.length > 0 && (
+              <LookbookContent
+                post={post}
+                images={images}
+                currentImageIndex={currentImageIndex}
+                onImageIndexChange={setCurrentImageIndex}
+                onOpenFullscreen={handleOpenFullscreen}
+              />
+            )}
+
+            {/* 非 Lookbook 类型的标题和描述 */}
+            {post.type !== "OUTFIT" && <PostContentSection post={post} />}
+
+            {/* Image Grid - 3 columns (非 lookbook 类型) */}
+            {post.type !== "OUTFIT" && images.length > 0 && (
+              <ImageGrid
+                images={images}
+                onOpenFullscreen={handleOpenFullscreen}
+              />
+            )}
+
+            {/* 搭配单品 */}
+            {post.type === "outfit" && <OutfitItemsSection items={post.items} />}
+
+            {/* 关联造型区域 - 仅 DAILY_SHARE 类型显示 */}
+            {post.type === "DAILY_SHARE" && post.showImages && (
+              <RelatedLooks
+                showImages={post.showImages}
+                onLookPress={handleLookPress}
+              />
+            )}
+
+            {/* Comments Section */}
+            <CommentsSection
+              comments={comments}
+              isLoading={isLoadingComments}
+              postStatus={postStatus}
+              onCommentLike={handleCommentLike}
+              onReplyLike={handleReplyLike}
+              onUserPress={handleUserPress}
+              onReplyPress={handleReplyPress}
+              onToggleReplies={handleToggleReplies}
+            />
+
+            {/* Bottom spacing */}
+            <Box height={80} />
+          </RNScrollView>
+
+          {/* Fixed Bottom Bar with Engagement + Input - Only for published posts */}
+          {showComments && (
+            <CommentInputBar
+              ref={commentInputRef}
+              commentInput={commentInput}
+              isSubmitting={isSubmittingComment}
+              isFocused={isCommentFocused}
+              displayLikes={displayLikes}
+              displaySaves={displaySaves}
+              displayComments={displayComments}
+              displayIsLiked={displayIsLiked}
+              displayIsSaved={displayIsSaved}
+              replyTarget={replyTarget}
+              onInputChange={setCommentInput}
+              onInputFocus={handleInputFocus}
+              onInputBlur={handleInputBlur}
+              onSubmit={handleSubmitComment}
+              onLike={handleLike}
+              onSave={handleSave}
+              onOverlayPress={handleOverlayPress}
+              onCancelReply={handleCancelReply}
+            />
+          )}
+        </KeyboardAvoidingView>
+
+        {/* Fullscreen Image Viewer */}
+        <FullscreenImageViewer
+          visible={fullscreenVisible}
+          images={images}
+          currentIndex={currentImageIndex}
+          onClose={handleCloseFullscreen}
+          onIndexChange={setCurrentImageIndex}
         />
 
-        {/* Content */}
-        <RNScrollView
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
-          style={styles.scrollView}
-        >
-          {/* Lookbook: 小红书风格 - 大图轮播在顶部 */}
-          {post.type === "OUTFIT" && images.length > 0 && (
-            <LookbookContent
-              post={post}
-              images={images}
-              currentImageIndex={currentImageIndex}
-              onImageIndexChange={setCurrentImageIndex}
-              onOpenFullscreen={handleOpenFullscreen}
-            />
-          )}
+        {/* Options Menu Modal */}
+        <OptionsMenuModal
+          visible={showOptionsMenu}
+          onClose={() => setShowOptionsMenu(false)}
+          onDelete={handleDeletePost}
+        />
 
-          {/* 非 Lookbook 类型的标题和描述 */}
-          {post.type !== "OUTFIT" && <PostContentSection post={post} />}
-
-          {/* Image Grid - 3 columns (非 lookbook 类型) */}
-          {post.type !== "OUTFIT" && images.length > 0 && (
-            <ImageGrid
-              images={images}
-              onOpenFullscreen={handleOpenFullscreen}
-            />
-          )}
-
-          {/* 搭配单品 */}
-          {post.type === "outfit" && <OutfitItemsSection items={post.items} />}
-
-          {/* 关联造型区域 - 仅 DAILY_SHARE 类型显示 */}
-          {post.type === "DAILY_SHARE" && post.showImages && (
-            <RelatedLooks
-              showImages={post.showImages}
-              onLookPress={handleLookPress}
-            />
-          )}
-
-          {/* Comments Section */}
-          <CommentsSection
-            comments={comments}
-            isLoading={isLoadingComments}
-            postStatus={postStatus}
-            onCommentLike={handleCommentLike}
-            onReplyLike={handleReplyLike}
-            onUserPress={handleUserPress}
-            onReplyPress={handleReplyPress}
-            onToggleReplies={handleToggleReplies}
-          />
-
-          {/* Bottom spacing */}
-          <Box height={80} />
-        </RNScrollView>
-
-        {/* Gray Overlay when focused */}
-        {isCommentFocused && showComments && (
-          <TouchableWithoutFeedback onPress={handleOverlayPress}>
-            <View style={styles.overlay} />
-          </TouchableWithoutFeedback>
-        )}
-
-        {/* Fixed Bottom Bar with Engagement + Input - Only for published posts */}
-        {showComments && (
-          <CommentInputBar
-            ref={commentInputRef}
-            commentInput={commentInput}
-            isSubmitting={isSubmittingComment}
-            isFocused={isCommentFocused}
-            displayLikes={displayLikes}
-            displaySaves={displaySaves}
-            displayComments={displayComments}
-            displayIsLiked={displayIsLiked}
-            displayIsSaved={displayIsSaved}
-            replyTarget={replyTarget}
-            onInputChange={setCommentInput}
-            onInputFocus={handleInputFocus}
-            onInputBlur={handleInputBlur}
-            onSubmit={handleSubmitComment}
-            onLike={handleLike}
-            onSave={handleSave}
-            onOverlayPress={handleOverlayPress}
-            onCancelReply={handleCancelReply}
-          />
-        )}
-      </KeyboardAvoidingView>
-
-      {/* Fullscreen Image Viewer */}
-      <FullscreenImageViewer
-        visible={fullscreenVisible}
-        images={images}
-        currentIndex={currentImageIndex}
-        onClose={handleCloseFullscreen}
-        onIndexChange={setCurrentImageIndex}
-      />
-
-      {/* Options Menu Modal */}
-      <OptionsMenuModal
-        visible={showOptionsMenu}
-        onClose={() => setShowOptionsMenu(false)}
-        onDelete={handleDeletePost}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <DeleteConfirmDialog
-        visible={showDeleteDialog}
-        isDeleting={isDeleting}
-        onClose={() => setShowDeleteDialog(false)}
-        onConfirm={handleConfirmDelete}
-      />
-    </SafeAreaView>
+        {/* Delete Confirmation Dialog */}
+        <DeleteConfirmDialog
+          visible={showDeleteDialog}
+          isDeleting={isDeleting}
+          onClose={() => setShowDeleteDialog(false)}
+          onConfirm={handleConfirmDelete}
+        />
+      </SafeAreaView>
+    </View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  fullScreenOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 10,
+  },
+});
 
 export default PostDetailScreen;
