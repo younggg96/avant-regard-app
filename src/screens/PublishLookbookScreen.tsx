@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Image as RNImage,
   Dimensions,
-  ActivityIndicator,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";

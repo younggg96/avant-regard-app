@@ -14,13 +14,14 @@ import { theme } from "../theme";
 const { width: screenWidth } = Dimensions.get("window");
 
 export interface Show {
-  designer: string;
+  brand: string;
   season: string;
   title: string;
   cover_image: string;
   show_url: string;
   year: number;
   category: string;
+  show_id?: number;  // 数据库中的秀场 ID
 }
 
 interface ShowSelectorModalProps {
@@ -103,7 +104,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
             <FlatList
               data={shows}
               keyExtractor={(item, index) =>
-                `${item.designer}-${item.season}-${index}`
+                `${item.brand}-${item.season}-${index}`
               }
               numColumns={2}
               contentContainerStyle={styles.listContent}
@@ -127,7 +128,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                       fontWeight="$medium"
                       numberOfLines={1}
                     >
-                      {item.designer}
+                      {item.brand}
                     </Text>
                     <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
                       {item.season}

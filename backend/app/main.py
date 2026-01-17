@@ -17,6 +17,8 @@ from app.api.routes.comment import router as comment_router
 from app.api.routes.follow import router as follow_router
 from app.api.routes.admin import router as admin_router, admin_user_router
 from app.api.routes.files import router as files_router
+from app.api.routes.brands import router as brands_router
+from app.api.routes.shows import router as shows_router
 
 
 @asynccontextmanager
@@ -68,6 +70,8 @@ app.include_router(follow_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(admin_user_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
+app.include_router(brands_router, prefix="/api")
+app.include_router(shows_router, prefix="/api")
 
 
 # 健康检查

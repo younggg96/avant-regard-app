@@ -167,7 +167,7 @@ const FavoritesScreen = () => {
         });
         break;
       case "designer":
-        (navigation as any).navigate("DesignerDetail", {
+        (navigation as any).navigate("BrandDetail", {
           brandId: item.id,
           brandName: item.title,
         });

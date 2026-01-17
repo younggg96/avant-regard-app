@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -15,36 +15,10 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../theme";
-
-// Import data
-import brandsData from "../data/brands.json";
-import showsData from "../data/shows.json";
+import { brandService, Brand } from "../services/brandService";
+import { showService, Show } from "../services/showService";
 
 const { width: screenWidth } = Dimensions.get("window");
-
-interface Brand {
-  id: number;
-  name: string;
-  category: string | null;
-  foundedYear: string | null;
-  founder: string | null;
-  country: string | null;
-  website: string | null;
-  coverImage: string | null;
-  latestSeason: string | null;
-  vogueSlug: string | null;
-  vogueUrl: string | null;
-}
-
-interface Show {
-  brand: string;
-  season: string;
-  title: string;
-  cover_image: string;
-  show_url: string;
-  year: number;
-  category: string;
-}
 
 interface RouteParams {
   id?: string;
@@ -62,30 +36,47 @@ const BrandDetailScreen = () => {
   const brandId = params.id || params.brandId;
   const brandName = params.name || params.brandName;
 
-  // Find brand info
-  const brand = useMemo(() => {
-    if (brandId) {
-      return (brandsData as Brand[]).find(
-        (b) => b.id.toString() === brandId
-      );
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const [brandShows, setBrandShows] = useState<Show[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载品牌和秀场数据
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      let loadedBrand: Brand | null = null;
+
+      // 通过 ID 或名称获取品牌
+      if (brandId) {
+        loadedBrand = await brandService.getBrandById(parseInt(brandId));
+      } else if (brandName) {
+        loadedBrand = await brandService.getBrandByName(brandName);
+      }
+
+      if (!loadedBrand) {
+        setError("未找到品牌信息");
+        return;
+      }
+
+      setBrand(loadedBrand);
+
+      // 获取该品牌的秀场
+      const shows = await showService.getShowsByBrand(loadedBrand.name);
+      setBrandShows(shows);
+    } catch (err) {
+      console.error("Failed to load brand data:", err);
+      setError("加载数据失败");
+    } finally {
+      setIsLoading(false);
     }
-    if (brandName) {
-      return (brandsData as Brand[]).find(
-        (b) => b.name.toLowerCase() === brandName.toLowerCase()
-      );
-    }
-    return null;
   }, [brandId, brandName]);
 
-  // Find shows for this designer
-  const brandShows = useMemo(() => {
-    if (!brand) return [];
-    return (showsData as Show[])
-      .filter(
-        (show) => show.brand.toLowerCase() === brand.name.toLowerCase()
-      )
-      .sort((a, b) => b.year - a.year);
-  }, [brand]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -116,13 +107,13 @@ const BrandDetailScreen = () => {
       // Navigate to CollectionDetail
       (navigation.navigate as any)("CollectionDetail", {
         collection: {
-          id: show.show_url,
+          id: show.showUrl,
           title: show.brand,
           season: show.season,
-          year: show.year.toString(),
-          coverImage: show.cover_image,
+          year: show.year?.toString() || "",
+          coverImage: show.coverImage,
           imageCount: 0,
-          showUrl: show.show_url,
+          showUrl: show.showUrl,
         },
         brandName: show.brand,
       });
@@ -130,7 +121,7 @@ const BrandDetailScreen = () => {
     [navigation]
   );
 
-  if (!brand) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
@@ -139,13 +130,37 @@ const BrandDetailScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>未找到设计师信息</Text>
+          <ActivityIndicator size="large" color={theme.colors.black} />
+          <Text style={styles.loadingText}>加载中...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const coverImage = brand.coverImage || brandShows[0]?.cover_image;
+  if (error || !brand) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={theme.colors.gray400}
+          />
+          <Text style={styles.errorText}>{error || "未找到设计师信息"}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const coverImage = brand.coverImage || brandShows[0]?.coverImage;
 
   return (
     <View style={styles.container}>
@@ -289,13 +304,13 @@ const BrandDetailScreen = () => {
             <View style={styles.showsGrid}>
               {brandShows.map((show, index) => (
                 <TouchableOpacity
-                  key={`${show.show_url}-${index}`}
+                  key={`${show.showUrl}-${index}`}
                   style={styles.showCard}
                   onPress={() => handleShowPress(show)}
                   activeOpacity={0.8}
                 >
                   <Image
-                    source={{ uri: show.cover_image }}
+                    source={{ uri: show.coverImage }}
                     style={styles.showImage}
                     resizeMode="cover"
                   />
@@ -356,10 +371,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  errorText: {
-    fontFamily: "Inter-Regular",
-    fontSize: 16,
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
     color: theme.colors.gray400,
+    fontFamily: "Inter-Regular",
+  },
+  errorText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.gray500,
+    fontFamily: "Inter-Regular",
+  },
+  retryButton: {
+    marginTop: theme.spacing.md,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.black,
+    borderRadius: theme.borderRadius.lg,
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontFamily: "Inter-Medium",
   },
   // Hero Section
   heroSection: {

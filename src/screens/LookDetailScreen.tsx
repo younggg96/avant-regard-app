@@ -206,7 +206,7 @@ const LookDetailScreen = () => {
     <View style={styles.infoContainer}>
       <View style={styles.titleSection}>
         <Text style={styles.title}>{currentLook.title}</Text>
-        {brandName && <Text style={styles.designer}>by {brandName}</Text>}
+        {brandName && <Text style={styles.brand}>by {brandName}</Text>}
         {collectionTitle && (
           <Text style={styles.collection}>来自 {collectionTitle}</Text>
         )}
@@ -353,7 +353,7 @@ const LookDetailScreen = () => {
               (myRating === 0 ||
                 myContent.trim().length < 5 ||
                 submitLoading) &&
-                styles.submitButtonDisabled,
+              styles.submitButtonDisabled,
             ]}
             onPress={handleSubmitReview}
             disabled={
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
     marginBottom: 4,
   },
-  designer: {
+  brand: {
     fontSize: 16,
     fontFamily: __DEV__ ? "System" : "Inter-Medium",
     color: theme.colors.gray600,

@@ -23,7 +23,7 @@ import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import { userInfoService, Gender } from "../services/userInfoService";
-import brandsData from "../data/brands.json";
+import { brandService, Brand } from "../services/brandService";
 
 // Brand 选项类型
 interface BrandOption {
@@ -91,8 +91,9 @@ const EditProfileScreen = () => {
   const [preference, setPreference] = useState("");
   const [selectedBrandIds, setSelectedBrandIds] = useState<number[]>([]);
 
-  // 品牌选项（从本地JSON加载）
-  const [brandOptions] = useState<BrandOption[]>(brandsData as BrandOption[]);
+  // 品牌选项（从 API 加载）
+  const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
+  const [loadingBrands, setLoadingBrands] = useState(false);
 
   // UI 状态
   const [loading, setLoading] = useState(false);
@@ -126,6 +127,27 @@ const EditProfileScreen = () => {
       });
     }
   };
+
+  // 从 API 加载品牌数据
+  useEffect(() => {
+    const loadBrands = async () => {
+      try {
+        setLoadingBrands(true);
+        const response = await brandService.getBrands({ pageSize: 500 });
+        const options: BrandOption[] = response.brands.map((b) => ({
+          id: b.id,
+          name: b.name,
+          category: b.category || null,
+        }));
+        setBrandOptions(options);
+      } catch (error) {
+        console.error("Failed to load brands:", error);
+      } finally {
+        setLoadingBrands(false);
+      }
+    };
+    loadBrands();
+  }, []);
 
   // 从 API 加载用户信息
   useEffect(() => {
@@ -547,7 +569,7 @@ const EditProfileScreen = () => {
                   style={[
                     styles.selectInputText,
                     selectedBrandIds.length === 0 &&
-                      styles.selectInputPlaceholder,
+                    styles.selectInputPlaceholder,
                   ]}
                   numberOfLines={2}
                 >
@@ -589,7 +611,7 @@ const EditProfileScreen = () => {
           <TouchableOpacity
             activeOpacity={1}
             style={styles.modalContainer}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>选择所在省份</Text>
@@ -649,7 +671,7 @@ const EditProfileScreen = () => {
           <TouchableOpacity
             activeOpacity={1}
             style={styles.genderModalContainer}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>选择性别</Text>
@@ -705,7 +727,7 @@ const EditProfileScreen = () => {
           <TouchableOpacity
             activeOpacity={1}
             style={styles.modalContainer}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>

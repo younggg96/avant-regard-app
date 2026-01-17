@@ -62,9 +62,8 @@ export interface CreatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场（优先使用 showId，其次通过 showUrl 查找）
+  // 关联秀场 ID（直接关联 shows 表）
   showId?: number;
-  showUrl?: string;
 }
 
 // 更新帖子请求参数
@@ -75,9 +74,8 @@ export interface UpdatePostParams {
   title: string;
   contentText: string;
   imageUrls: string[];
-  // 关联秀场（优先使用 showId，其次通过 showUrl 查找）
+  // 关联秀场 ID（直接关联 shows 表）
   showId?: number;
-  showUrl?: string;
 }
 
 // 通用请求方法 - 默认携带 token，支持自动刷新

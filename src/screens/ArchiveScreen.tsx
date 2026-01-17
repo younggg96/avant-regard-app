@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,30 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-
-// Import brands data
-import brandsData from "../data/brands.json";
-
-// Brand type from JSON
-interface Brand {
-  id: number;
-  name: string;
-  category: string | null;
-  foundedYear: string | null;
-  founder: string | null;
-  country: string | null;
-  website: string | null;
-  coverImage: string | null;
-  latestSeason: string | null;
-  vogueSlug: string | null;
-  vogueUrl: string | null;
-}
+import { brandService, Brand } from "../services/brandService";
 
 // Category filter options
 const CATEGORY_FILTERS = [
@@ -40,16 +24,34 @@ const CATEGORY_FILTERS = [
   { label: "工匠品牌", value: "工匠品牌" },
 ];
 
-// // Get brand initial for avatar
-// const getBrandInitial = (name: string) => {
-//   return name.charAt(0).toUpperCase();
-// };
-
 const ArchiveScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [brands] = useState<Brand[]>(brandsData as Brand[]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载品牌数据
+  const loadBrands = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await brandService.getBrands({
+        pageSize: 500, // 获取所有品牌
+      });
+      setBrands(response.brands);
+    } catch (err) {
+      console.error("Failed to load brands:", err);
+      setError("加载品牌数据失败");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBrands();
+  }, [loadBrands]);
 
   // Filter brands by search query and category
   const filteredBrands = useMemo(() => {
@@ -97,6 +99,47 @@ const ArchiveScreen = () => {
         brands: groups[letter].sort((a, b) => a.name.localeCompare(b.name)),
       }));
   }, [filteredBrands]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <ScreenHeader
+          title="Archive"
+          subtitle="探索全球时尚品牌"
+          boldTitle={true}
+          borderless
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.black} />
+          <Text style={styles.loadingText}>加载中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <ScreenHeader
+          title="Archive"
+          subtitle="探索全球时尚品牌"
+          boldTitle={true}
+          borderless
+        />
+        <View style={styles.loadingContainer}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={theme.colors.gray400}
+          />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadBrands}>
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -155,7 +198,7 @@ const ArchiveScreen = () => {
                 style={[
                   styles.filterChipText,
                   selectedCategory === filter.value &&
-                    styles.filterChipTextActive,
+                  styles.filterChipTextActive,
                 ]}
               >
                 {filter.label}
@@ -192,7 +235,7 @@ const ArchiveScreen = () => {
                 key={brand.id}
                 style={styles.brandItem}
                 onPress={() => {
-                  (navigation.navigate as any)("DesignerDetail", {
+                  (navigation.navigate as any)("BrandDetail", {
                     id: brand.id.toString(),
                     name: brand.name,
                   });
@@ -259,6 +302,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.gray400,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  errorText: {
+    marginTop: theme.spacing.md,
+    fontSize: 14,
+    color: theme.colors.gray500,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  retryButton: {
+    marginTop: theme.spacing.md,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.black,
+    borderRadius: theme.borderRadius.lg,
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
   },
   searchContainer: {
     paddingHorizontal: theme.spacing.md,

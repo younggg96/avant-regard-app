@@ -156,7 +156,7 @@ const SearchScreen = () => {
   const handleAuthorPress = useCallback(
     (authorId: string) => {
       console.log("查看作者资料:", authorId);
-      (navigation.navigate as any)("DesignerDetail", { id: authorId });
+      (navigation.navigate as any)("BrandDetail", { id: authorId });
     },
     [navigation]
   );

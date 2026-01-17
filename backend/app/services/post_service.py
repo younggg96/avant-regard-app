@@ -99,15 +99,6 @@ class PostService:
             return None
         return self._format_post(result.data[0], current_user_id)
 
-    def _get_show_id_by_url(self, show_url: str) -> Optional[int]:
-        """通过 show_url 获取 show_id"""
-        if not show_url:
-            return None
-        result = self.db.table("shows").select("id").eq("show_url", show_url).execute()
-        if result.data:
-            return result.data[0]["id"]
-        return None
-
     def create_post(
         self,
         user_id: int,
@@ -120,7 +111,6 @@ class PostService:
         brand_name: str = None,
         rating: int = None,
         show_id: int = None,
-        show_url: str = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 插入帖子
@@ -137,13 +127,9 @@ class PostService:
             "rating": rating,
         }
 
-        # 关联秀场：优先使用 show_id，其次通过 show_url 查找
+        # 关联秀场
         if show_id:
             insert_data["show_id"] = show_id
-        elif show_url:
-            found_show_id = self._get_show_id_by_url(show_url)
-            if found_show_id:
-                insert_data["show_id"] = found_show_id
 
         result = self.db.table("posts").insert(insert_data).execute()
 
@@ -181,14 +167,8 @@ class PostService:
             update_data["content_text"] = kwargs["content_text"]
         if "image_urls" in kwargs:
             update_data["image_urls"] = kwargs["image_urls"]
-
-        # 关联秀场：优先使用 show_id，其次通过 show_url 查找
-        if "show_id" in kwargs and kwargs["show_id"]:
+        if "show_id" in kwargs:
             update_data["show_id"] = kwargs["show_id"]
-        elif "show_url" in kwargs and kwargs["show_url"]:
-            found_show_id = self._get_show_id_by_url(kwargs["show_url"])
-            if found_show_id:
-                update_data["show_id"] = found_show_id
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
 

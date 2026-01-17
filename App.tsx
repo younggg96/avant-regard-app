@@ -33,7 +33,6 @@ import UserProfileScreen from "./src/screens/UserProfileScreen";
 import TermsScreen from "./src/screens/TermsScreen";
 import PrivacyScreen from "./src/screens/PrivacyScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
-import HistoryScreen from "./src/screens/HistoryScreen";
 import DraftsScreen from "./src/screens/DraftsScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowersScreen from "./src/screens/FollowersScreen";
@@ -252,11 +251,6 @@ function AppNavigator() {
       <Stack.Screen
         name="Favorites"
         component={FavoritesScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="History"
-        component={HistoryScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { StyleSheet, Modal } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,8 +24,8 @@ import LookGridSelector, { SelectedLook } from "../components/LookGridSelector";
 import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
 import { postService } from "../services/postService";
+import { showService, Show as ShowFromApi } from "../services/showService";
 import { useAuthStore } from "../store/authStore";
-import showsData from "../data/shows.json";
 
 const PublishReviewScreen = () => {
   const navigation = useNavigation();
@@ -59,19 +59,33 @@ const PublishReviewScreen = () => {
   const MAX_IMAGES = 6;
   const MAX_LOOKS = 6;
 
-  // 加载秀场数据
-  useEffect(() => {
-    const shows: Show[] = (showsData as any[]).map((show) => ({
-      designer: show.designer,
-      season: show.season,
-      title: show.title,
-      cover_image: show.cover_image,
-      show_url: show.show_url,
-      year: show.year,
-      category: show.category,
-    }));
-    setAllShows(shows);
+  // 加载秀场数据（从 API）
+  const loadShows = useCallback(async () => {
+    try {
+      setIsLoadingShows(true);
+      const response = await showService.getShows({ pageSize: 200 });
+      const shows: Show[] = response.shows.map((show: ShowFromApi) => ({
+        brand: show.brand,
+        season: show.season,
+        title: show.title || show.brand,
+        cover_image: show.coverImage || "",
+        show_url: show.showUrl || "",
+        year: show.year || 0,
+        category: show.category || "",
+        show_id: show.id, // 数据库秀场 ID
+      }));
+      setAllShows(shows);
+    } catch (error) {
+      console.error("Failed to load shows:", error);
+      Alert.show("加载秀场数据失败");
+    } finally {
+      setIsLoadingShows(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadShows();
+  }, [loadShows]);
 
   // 根据搜索词过滤秀场
   const filteredShows = useMemo(() => {
@@ -81,7 +95,7 @@ const PublishReviewScreen = () => {
     }
     return allShows.filter(
       (show) =>
-        show.designer.toLowerCase().includes(query) ||
+        show.brand.toLowerCase().includes(query) ||
         show.season.toLowerCase().includes(query) ||
         show.category.toLowerCase().includes(query)
     );
@@ -113,7 +127,7 @@ const PublishReviewScreen = () => {
 
     // 检查是否已经添加过相同的秀
     const isDuplicate = selectedLooks.some(
-      (item) => item.designer === show.designer && item.season === show.season
+      (item) => item.brand === show.brand && item.season === show.season
     );
 
     if (isDuplicate) {
@@ -124,10 +138,11 @@ const PublishReviewScreen = () => {
     // 将 Show 转换为 SelectedLook 格式
     const selectedLook: SelectedLook = {
       id: 0, // 本地数据没有数据库 ID，使用 0
-      designer: show.designer,
+      brand: show.brand,
       season: show.season,
       imageUrl: show.cover_image,
-      showUrl: show.show_url, // 保存 showUrl 用于后端查找关联
+      showId: show.show_id, // 数据库秀场 ID，用于关联帖子
+      showUrl: show.show_url, // 仅用于按钮点击跳转链接
     };
 
     setSelectedLooks([...selectedLooks, selectedLook]);
@@ -172,8 +187,8 @@ const PublishReviewScreen = () => {
 
       // 2. 创建帖子
       setUploadProgress("正在发布...");
-      // 获取第一个关联秀场的 showUrl（用于关联到数据库中的秀场）
-      const showUrl = selectedLooks.length > 0 ? selectedLooks[0].showUrl : undefined;
+      // 获取第一个关联秀场的 showId（用于关联到数据库中的秀场）
+      const showId = selectedLooks.length > 0 ? selectedLooks[0].showId : undefined;
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -184,7 +199,7 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showUrl: showUrl,
+        showId: showId,
       });
 
       setUploadProgress(null);
@@ -239,8 +254,8 @@ const PublishReviewScreen = () => {
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      // 获取第一个关联秀场的 showUrl（用于关联到数据库中的秀场）
-      const showUrl = selectedLooks.length > 0 ? selectedLooks[0].showUrl : undefined;
+      // 获取第一个关联秀场的 showId（用于关联到数据库中的秀场）
+      const showId = selectedLooks.length > 0 ? selectedLooks[0].showId : undefined;
       await postService.createPost({
         userId: user.userId,
         postType: "ITEM_REVIEW",
@@ -251,7 +266,7 @@ const PublishReviewScreen = () => {
         productName: productName.trim(),
         brandName: brand.trim(),
         rating: rating,
-        showUrl: showUrl,
+        showId: showId,
       });
 
       setUploadProgress(null);
@@ -491,8 +506,8 @@ const PublishReviewScreen = () => {
               reviewText.trim().length < 10
                 ? "$red500"
                 : reviewText.trim().length > 500
-                ? "$red500"
-                : "$gray400"
+                  ? "$red500"
+                  : "$gray400"
             }
             fontSize="$xs"
             mt="$xs"
@@ -529,7 +544,7 @@ const PublishReviewScreen = () => {
       <ImagePreviewModal
         visible={showLookPreview}
         imageUrl={previewLook?.imageUrl || ""}
-        title={previewLook?.designer}
+        title={previewLook?.brand}
         subtitle={previewLook?.season}
         onClose={() => setShowLookPreview(false)}
       />

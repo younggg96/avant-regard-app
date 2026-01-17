@@ -8,10 +8,11 @@ const { width: screenWidth } = Dimensions.get("window");
 
 export interface SelectedLook {
   id: number;
-  designer: string;
+  brand: string;
   season: string;
   imageUrl: string;
-  showUrl?: string;  // 秀场 URL，用于通过 URL 关联到数据库中的秀场
+  showId?: number;  // 秀场数据库 ID，用于直接关联到 shows 表
+  showUrl?: string; // 秀场 URL，仅用于按钮点击跳转链接
 }
 
 interface LookGridSelectorProps {
@@ -73,7 +74,7 @@ const LookGridSelector: React.FC<LookGridSelectorProps> = ({
                     fontWeight="$medium"
                     numberOfLines={1}
                   >
-                    {look.designer}
+                    {look.brand}
                   </Text>
                   <Text fontSize={10} color="$gray400" numberOfLines={1}>
                     {look.season}

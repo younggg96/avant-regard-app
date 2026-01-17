@@ -1,13 +1,11 @@
 import React from "react";
-import { StyleSheet, Dimensions } from "react-native";
+import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, VStack, HStack } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface PublishType {
   id: string;
