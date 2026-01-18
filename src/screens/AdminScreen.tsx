@@ -280,6 +280,34 @@ const AdminScreen = () => {
     }
   };
 
+  // 删除帖子
+  const handleDeletePost = async (postId: number) => {
+    Alert.alert(
+      "确认删除",
+      "确定要删除这篇帖子吗？此操作不可撤销。",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              await adminService.deletePost(postId);
+              Alert.alert("成功", "帖子已删除");
+              // 从列表中移除
+              setPendingPosts(prev => prev.filter(p => p.id !== postId));
+            } catch (error) {
+              Alert.alert("错误", error instanceof Error ? error.message : "删除帖子失败");
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // 删除评论
   const handleDeleteComment = async (commentId: number) => {
     Alert.alert(
@@ -485,6 +513,15 @@ const AdminScreen = () => {
           >
             <Ionicons name="close-circle" size={18} color={theme.colors.white} />
             <Text style={styles.actionButtonText}>拒绝</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deletePostButton]}
+            onPress={() => handleDeletePost(post.id)}
+            disabled={actionLoading}
+          >
+            <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+            <Text style={styles.actionButtonText}>删除</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1181,6 +1218,9 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     backgroundColor: theme.colors.error,
+  },
+  deletePostButton: {
+    backgroundColor: "#FF6B6B",
   },
   viewButton: {
     backgroundColor: theme.colors.gray100,

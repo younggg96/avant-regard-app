@@ -46,6 +46,18 @@ async def reject_post(
     return success(message="审核拒绝")
 
 
+@router.delete("/posts/{post_id}")
+async def admin_delete_post(
+    post_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """管理员删除帖子"""
+    ok = admin_service.admin_delete_post(post_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="帖子不存在")
+    return success(message="帖子删除成功")
+
+
 # ==================== 评论管理 ====================
 
 @router.get("/comments")

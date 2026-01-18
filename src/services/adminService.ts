@@ -159,6 +159,17 @@ export async function rejectPost(
   });
 }
 
+/**
+ * 管理员删除帖子
+ * DELETE /api/admin/posts/{postId}
+ * @param postId 帖子ID
+ */
+export async function deletePost(postId: number): Promise<void> {
+  return request<void>(`/api/admin/posts/${postId}`, {
+    method: "DELETE",
+  });
+}
+
 // ==================== 用户管理 ====================
 
 /**
@@ -235,6 +246,7 @@ export const adminService = {
   getPendingPosts,
   approvePost,
   rejectPost,
+  deletePost,
   // 用户管理
   deleteUser,
   // 评论管理

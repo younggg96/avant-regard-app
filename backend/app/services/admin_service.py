@@ -34,6 +34,12 @@ class AdminService:
         }).eq("id", post_id).execute()
         return bool(result.data)
 
+    def admin_delete_post(self, post_id: int) -> bool:
+        """管理员删除帖子（不需要验证用户）"""
+        # 直接删除帖子，关联数据（点赞、收藏、评论）通过数据库级联删除
+        result = self.db.table("posts").delete().eq("id", post_id).execute()
+        return bool(result.data)
+
     # ==================== 用户管理 ====================
 
     def delete_user(self, user_id: int) -> bool:
