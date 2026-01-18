@@ -103,8 +103,22 @@ export const useAuthForm = () => {
     return `${dialCode}${cleanPhone}`;
   }, [formData.phone, formData.countryCode]);
 
+  // 倒计时效果
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
   // 发送验证码
   const sendVerificationCode = useCallback(async () => {
+    // 防止倒计时期间重复发送
+    if (countdown > 0) {
+      Alert.show(`请等待 ${countdown} 秒后再试`);
+      return;
+    }
+
     if (!validatePhone(formData.phone)) {
       Alert.show("提示: 请输入正确的手机号码");
       return;
@@ -115,6 +129,8 @@ export const useAuthForm = () => {
     try {
       await authService.sendSms({ phone: fullPhone });
 
+      // 发送成功后启动 60 秒倒计时
+      setCountdown(60);
       Alert.show("验证码已发送至 " + fullPhone);
     } catch (error) {
       const message =
@@ -123,7 +139,7 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData.phone, validatePhone, getFullPhoneNumber]);
+  }, [formData.phone, validatePhone, getFullPhoneNumber, countdown]);
 
   // 处理密码登录
   const handleLogin = useCallback(async () => {
