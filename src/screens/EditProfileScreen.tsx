@@ -94,6 +94,11 @@ const EditProfileScreen = () => {
   // 品牌选项（从 API 加载）
   const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
   const [loadingBrands, setLoadingBrands] = useState(false);
+  const [brandPage, setBrandPage] = useState(1);
+  const [hasMoreBrands, setHasMoreBrands] = useState(true);
+  const [loadingMoreBrands, setLoadingMoreBrands] = useState(false);
+  const [brandSearchKeyword, setBrandSearchKeyword] = useState("");
+  const brandPageSize = 50;
 
   // UI 状态
   const [loading, setLoading] = useState(false);
@@ -128,25 +133,70 @@ const EditProfileScreen = () => {
     }
   };
 
-  // 从 API 加载品牌数据
-  useEffect(() => {
-    const loadBrands = async () => {
-      try {
-        setLoadingBrands(true);
-        const response = await brandService.getBrands({ pageSize: 500 });
-        const options: BrandOption[] = response.brands.map((b) => ({
-          id: b.id,
-          name: b.name,
-          category: b.category || null,
-        }));
+  // 加载品牌数据（支持分页和搜索）
+  const loadBrands = async (page: number = 1, keyword: string = "", reset: boolean = false) => {
+    if (page === 1) {
+      setLoadingBrands(true);
+    } else {
+      setLoadingMoreBrands(true);
+    }
+
+    try {
+      const response = await brandService.getBrands({
+        page,
+        pageSize: brandPageSize,
+        keyword: keyword || undefined,
+      });
+
+      const options: BrandOption[] = response.brands.map((b) => ({
+        id: b.id,
+        name: b.name,
+        category: b.category || null,
+      }));
+
+      if (reset || page === 1) {
         setBrandOptions(options);
-      } catch (error) {
-        console.error("Failed to load brands:", error);
-      } finally {
-        setLoadingBrands(false);
+      } else {
+        setBrandOptions((prev) => [...prev, ...options]);
       }
-    };
-    loadBrands();
+
+      // 检查是否还有更多数据
+      const totalLoaded = page * brandPageSize;
+      setHasMoreBrands(totalLoaded < response.total);
+      setBrandPage(page);
+    } catch (error) {
+      console.error("Failed to load brands:", error);
+    } finally {
+      setLoadingBrands(false);
+      setLoadingMoreBrands(false);
+    }
+  };
+
+  // 加载更多品牌
+  const loadMoreBrands = () => {
+    if (loadingMoreBrands || !hasMoreBrands) return;
+    loadBrands(brandPage + 1, brandSearchKeyword);
+  };
+
+  // 搜索品牌（防抖处理）
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handleBrandSearch = (keyword: string) => {
+    setBrandSearchKeyword(keyword);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setBrandPage(1);
+      setHasMoreBrands(true);
+      loadBrands(1, keyword, true);
+    }, 300);
+  };
+
+  // 初始加载品牌
+  useEffect(() => {
+    loadBrands(1, "", true);
   }, []);
 
   // 从 API 加载用户信息
@@ -740,58 +790,105 @@ const EditProfileScreen = () => {
                 <Ionicons name="close" size={24} color={theme.colors.black} />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={brandOptions}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => {
-                const isSelected = selectedBrandIds.includes(item.id);
-                return (
-                  <TouchableOpacity
-                    style={[
-                      styles.designerItem,
-                      isSelected && styles.designerItemSelected,
-                    ]}
-                    onPress={() => handleToggleBrand(item.id)}
-                  >
-                    <View style={styles.designerInfo}>
-                      <Text
+
+            {/* 搜索框 */}
+            <View style={styles.brandSearchContainer}>
+              <Ionicons name="search" size={18} color={theme.colors.gray400} />
+              <TextInput
+                style={styles.brandSearchInput}
+                placeholder="搜索品牌..."
+                placeholderTextColor={theme.colors.gray400}
+                value={brandSearchKeyword}
+                onChangeText={handleBrandSearch}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {brandSearchKeyword.length > 0 && (
+                <TouchableOpacity onPress={() => handleBrandSearch("")}>
+                  <Ionicons name="close-circle" size={18} color={theme.colors.gray400} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingBrands ? (
+              <View style={styles.brandLoadingContainer}>
+                <ActivityIndicator size="small" color={theme.colors.black} />
+                <Text style={styles.brandLoadingText}>加载中...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={brandOptions}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => {
+                  const isSelected = selectedBrandIds.includes(item.id);
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.designerItem,
+                        isSelected && styles.designerItemSelected,
+                      ]}
+                      onPress={() => handleToggleBrand(item.id)}
+                    >
+                      <View style={styles.designerInfo}>
+                        <Text
+                          style={[
+                            styles.brandName,
+                            isSelected && styles.designerNameSelected,
+                          ]}
+                        >
+                          {item.name}
+                        </Text>
+                        {item.category && (
+                          <Text style={styles.brandCategory}>
+                            {item.category}
+                          </Text>
+                        )}
+                      </View>
+                      <View
                         style={[
-                          styles.brandName,
-                          isSelected && styles.designerNameSelected,
+                          styles.checkbox,
+                          isSelected && styles.checkboxSelected,
                         ]}
                       >
-                        {item.name}
-                      </Text>
-                      {item.category && (
-                        <Text style={styles.brandCategory}>
-                          {item.category}
-                        </Text>
-                      )}
+                        {isSelected && (
+                          <Ionicons
+                            name="checkmark"
+                            size={16}
+                            color={theme.colors.white}
+                          />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+                showsVerticalScrollIndicator={false}
+                onEndReached={loadMoreBrands}
+                onEndReachedThreshold={0.3}
+                ListEmptyComponent={
+                  <View style={styles.emptyList}>
+                    <Text style={styles.emptyListText}>
+                      {brandSearchKeyword ? "没有找到匹配的品牌" : "暂无品牌选项"}
+                    </Text>
+                  </View>
+                }
+                ListFooterComponent={
+                  loadingMoreBrands ? (
+                    <View style={styles.loadMoreContainer}>
+                      <ActivityIndicator size="small" color={theme.colors.gray500} />
+                      <Text style={styles.loadMoreText}>加载更多...</Text>
                     </View>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        isSelected && styles.checkboxSelected,
-                      ]}
-                    >
-                      {isSelected && (
-                        <Ionicons
-                          name="checkmark"
-                          size={16}
-                          color={theme.colors.white}
-                        />
-                      )}
+                  ) : hasMoreBrands && brandOptions.length > 0 ? (
+                    <View style={styles.loadMoreContainer}>
+                      <Text style={styles.loadMoreHint}>上滑加载更多</Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              }}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={styles.emptyList}>
-                  <Text style={styles.emptyListText}>暂无品牌选项</Text>
-                </View>
-              }
-            />
+                  ) : brandOptions.length > 0 ? (
+                    <View style={styles.loadMoreContainer}>
+                      <Text style={styles.loadMoreHint}>已加载全部品牌</Text>
+                    </View>
+                  ) : null
+                }
+              />
+            )}
             <TouchableOpacity
               style={styles.confirmButton}
               onPress={() => setShowBrandModal(false)}
@@ -1029,6 +1126,49 @@ const styles = StyleSheet.create({
   emptyListText: {
     fontSize: 14,
     color: theme.colors.gray500,
+  },
+  // 品牌搜索
+  brandSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 10,
+    gap: 8,
+  },
+  brandSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: theme.colors.black,
+    paddingVertical: 0,
+  },
+  brandLoadingContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandLoadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.gray500,
+  },
+  loadMoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loadMoreText: {
+    fontSize: 13,
+    color: theme.colors.gray500,
+  },
+  loadMoreHint: {
+    fontSize: 12,
+    color: theme.colors.gray400,
   },
   confirmButton: {
     margin: 20,

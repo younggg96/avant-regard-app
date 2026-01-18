@@ -1,14 +1,18 @@
 import React from "react";
-import { View, Image } from "react-native";
+import { View } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { styles } from "../styles";
 
 export const BrandLogo: React.FC = () => {
   return (
     <View style={styles.brandContainer}>
-      <Image
-        source={require("../../../../assets/images/logo.jpg")}
+      <Video
+        source={require("../../../../assets/video/logo-video.mp4")}
         style={styles.logoImage}
-        resizeMode="contain"
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay
+        isLooping
+        isMuted
       />
     </View>
   );

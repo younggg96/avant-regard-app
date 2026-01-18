@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Text, VStack } from "../ui";
+import { Text, VStack, HStack } from "../ui";
 import { Show } from "@/services/showService";
 import { theme } from "../../theme";
 
@@ -23,31 +23,27 @@ export const RelatedLooks: React.FC<RelatedShowsProps> = ({
   if (!shows || shows.length === 0) return null;
 
   return (
-    <VStack
-      px="$md"
-      py="$md"
-      space="md"
-      borderTopWidth={1}
-      borderTopColor="$gray100"
-    >
-      <Text
-        fontFamily="PlayfairDisplay-Bold"
-        fontSize={20}
-        color="$black"
-      >
-        秀场
-      </Text>
+    <View style={styles.container}>
+      {/* 标题区域 - 带有精致的分割线 */}
+      <View style={styles.headerSection}>
+        <View style={styles.headerLine} />
+        <Text style={styles.headerTitle}>
+          RUNWAY
+        </Text>
+        <View style={styles.headerLine} />
+      </View>
+
       <RNScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 16 }}
+        contentContainerStyle={styles.scrollContent}
       >
         {shows.map((show, index) => (
           <TouchableOpacity
             key={`show-${show.id || index}`}
             style={styles.showCard}
             onPress={() => onShowPress(show)}
-            activeOpacity={0.8}
+            activeOpacity={0.9}
           >
             <RNImage
               source={{ uri: show.coverImage }}
@@ -55,59 +51,86 @@ export const RelatedLooks: React.FC<RelatedShowsProps> = ({
               resizeMode="cover"
             />
             <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.6)"]}
+              colors={["transparent", "rgba(0,0,0,0.75)"]}
               style={styles.showGradient}
             />
             <View style={styles.showInfo}>
-              <Text
-                fontFamily="Inter-Bold"
-                fontSize={14}
-                color="$white"
-                numberOfLines={1}
-              >
+              <Text style={styles.brandText}>
                 {show.brand}
               </Text>
-              <Text
-                fontFamily="Inter-Regular"
-                fontSize={12}
-                style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
-                numberOfLines={1}
-              >
+              <Text style={styles.seasonText}>
                 {show.season}
               </Text>
             </View>
           </TouchableOpacity>
         ))}
       </RNScrollView>
-    </VStack>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 20,
+  },
+  headerSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  headerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.gray100,
+  },
+  headerTitle: {
+    fontSize: 11,
+    fontFamily: "Inter-Medium",
+    color: theme.colors.gray300,
+    letterSpacing: 3,
+    marginHorizontal: 16,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+  },
   showCard: {
-    width: 160,
-    height: 200,
-    borderRadius: 12,
+    width: 140,
+    height: 185,
+    borderRadius: 6,
     overflow: "hidden",
     marginRight: 12,
     position: "relative",
+    backgroundColor: theme.colors.gray100,
   },
   showImage: {
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.gray100,
   },
   showGradient: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 90,
   },
   showInfo: {
     position: "absolute",
-    bottom: 12,
+    bottom: 14,
     left: 12,
     right: 12,
+  },
+  brandText: {
+    fontSize: 13,
+    fontFamily: "Inter-Bold",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  seasonText: {
+    fontSize: 11,
+    fontFamily: "Inter-Regular",
+    color: "rgba(255,255,255,0.75)",
+    letterSpacing: 0.2,
   },
 });

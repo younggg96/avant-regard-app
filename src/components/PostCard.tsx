@@ -44,6 +44,7 @@ export interface Post {
   rating?: number;
   readTime?: string;
   brandName?: string;
+  productName?: string;
   season?: string;
   items?: Array<{
     id: string;

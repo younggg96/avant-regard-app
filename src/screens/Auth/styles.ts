@@ -25,8 +25,8 @@ export const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: 280,
+    height: 140,
   },
   brandName: {
     fontSize: 22,

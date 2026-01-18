@@ -313,7 +313,7 @@ const PostDetailScreen = () => {
             {post.type === "OUTFIT" && <OutfitItemsSection items={post.items} />}
 
             {/* 关联秀场区域 - 仅 DAILY_SHARE 类型显示 */}
-            {post.type === "DAILY_SHARE" && post.shows && (
+            {post.type === "DAILY_SHARE" || post.type === "ITEM_REVIEW" && post.shows && (
               <RelatedLooks
                 shows={post.shows}
                 onShowPress={handleShowPress}

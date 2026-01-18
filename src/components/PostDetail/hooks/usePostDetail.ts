@@ -55,6 +55,7 @@ export const convertApiPostToUiPost = async (
     timestamp: apiPost.createdAt,
     rating: apiPost.rating,
     brandName: apiPost.brandName,
+    productName: apiPost.productName,
     shows: shows.length > 0 ? shows : undefined,
   };
 };

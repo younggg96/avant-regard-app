@@ -153,9 +153,7 @@ const DiscoverScreen = () => {
   const fetchPosts = useCallback(async () => {
     try {
       setError(null);
-      console.log("开始获取帖子数据...");
       const apiPosts = await getPosts();
-      console.log("获取到帖子数量:", apiPosts.length);
 
       // 只显示已发布的帖子
       const publishedPosts = apiPosts.filter(
@@ -284,15 +282,15 @@ const DiscoverScreen = () => {
       const updatePost = (post: DisplayPost) =>
         post.id === postId
           ? {
-              ...post,
-              engagement: {
-                ...post.engagement,
-                isLiked: !isCurrentlyLiked,
-                likes: isCurrentlyLiked
-                  ? post.engagement.likes - 1
-                  : post.engagement.likes + 1,
-              },
-            }
+            ...post,
+            engagement: {
+              ...post.engagement,
+              isLiked: !isCurrentlyLiked,
+              likes: isCurrentlyLiked
+                ? post.engagement.likes - 1
+                : post.engagement.likes + 1,
+            },
+          }
           : post;
 
       setPosts((prevPosts) => prevPosts.map(updatePost));
@@ -314,15 +312,15 @@ const DiscoverScreen = () => {
           prevPosts.map((post) =>
             post.id === postId
               ? {
-                  ...post,
-                  engagement: {
-                    ...post.engagement,
-                    isLiked: isCurrentlyLiked,
-                    likes: isCurrentlyLiked
-                      ? post.engagement.likes + 1
-                      : post.engagement.likes - 1,
-                  },
-                }
+                ...post,
+                engagement: {
+                  ...post.engagement,
+                  isLiked: isCurrentlyLiked,
+                  likes: isCurrentlyLiked
+                    ? post.engagement.likes + 1
+                    : post.engagement.likes - 1,
+                },
+              }
               : post
           )
         );
@@ -440,15 +438,6 @@ const DiscoverScreen = () => {
     [activeTab]
   );
 
-  const handleLoadMore = useCallback(async () => {
-    if (loading) return;
-
-    setLoading(true);
-    // Simulate API call for more posts
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // In real app, fetch more posts from API
-    setLoading(false);
-  }, [loading]);
 
   const renderPost = useCallback(
     (post: Post, index: number) => {
@@ -676,38 +665,28 @@ const DiscoverScreen = () => {
     />
   );
 
-  // 骨架屏帖子卡片
+  // 骨架屏帖子卡片（匹配 PostCard 样式：图片 + 标题 + 用户信息/点赞）
   const SkeletonPostCard = () => {
-    const screenWidth = Dimensions.get("window").width;
     return (
       <View style={styles.skeletonCard}>
-        {/* 头部：头像 + 用户名 */}
-        <View style={styles.skeletonCardHeader}>
-          <Animated.View
-            style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
-          />
-          <View style={styles.skeletonUserInfo}>
-            <SkeletonBox width={100} height={14} style={{ marginBottom: 4 }} />
-            <SkeletonBox width={60} height={10} />
-          </View>
-        </View>
-        {/* 图片区域 */}
+        {/* 图片区域：3:4 比例 */}
         <Animated.View
-          style={[
-            styles.skeletonImage,
-            { width: screenWidth - 32, opacity: skeletonOpacity },
-          ]}
+          style={[styles.skeletonImage, { opacity: skeletonOpacity }]}
         />
-        {/* 标题和描述 */}
-        <View style={styles.skeletonContent}>
-          <SkeletonBox width="90%" height={18} style={{ marginBottom: 8 }} />
-          <SkeletonBox width="70%" height={14} style={{ marginBottom: 12 }} />
-          {/* 互动栏 */}
-          <View style={styles.skeletonActions}>
-            <SkeletonBox width={50} height={20} />
-            <SkeletonBox width={50} height={20} />
-            <SkeletonBox width={50} height={20} />
+        {/* 标题 */}
+        <View style={styles.skeletonTitleArea}>
+          <SkeletonBox width="90%" height={14} style={{ marginBottom: 4 }} />
+          <SkeletonBox width="60%" height={14} />
+        </View>
+        {/* 底部：用户信息 + 点赞 */}
+        <View style={styles.skeletonFooter}>
+          <View style={styles.skeletonUserInfo}>
+            <Animated.View
+              style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
+            />
+            <SkeletonBox width={50} height={10} />
           </View>
+          <SkeletonBox width={30} height={14} />
         </View>
       </View>
     );
@@ -736,15 +715,24 @@ const DiscoverScreen = () => {
           <SkeletonBox width={80} height={20} style={{ borderRadius: 4 }} />
         </HStack>
 
-        {/* 帖子列表骨架 */}
+        {/* 帖子列表骨架（两列瀑布流布局） */}
         <ScrollView
           flex={1}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
         >
-          <SkeletonPostCard />
-          <SkeletonPostCard />
-          <SkeletonPostCard />
+          <HStack alignItems="start">
+            <VStack flex={1} pr="$xs">
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+            </VStack>
+            <VStack flex={1} pl="$xs">
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+              <Box mb="$sm"><SkeletonPostCard /></Box>
+            </VStack>
+          </HStack>
         </ScrollView>
       </SafeAreaView>
     );
@@ -850,42 +838,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  // 骨架屏样式
+  // 骨架屏样式（匹配 PostCard 组件结构）
   skeletonCard: {
-    marginHorizontal: 16,
-    marginBottom: 20,
     backgroundColor: theme.colors.white,
-    borderRadius: 12,
+    borderRadius: 8,
     overflow: "hidden",
-  },
-  skeletonCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-  },
-  skeletonAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.gray200,
-    marginRight: 12,
-  },
-  skeletonUserInfo: {
-    flex: 1,
+    // 阴影效果（与 PostCard 一致）
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   skeletonImage: {
-    height: 300,
+    width: "100%",
+    aspectRatio: 3 / 4, // 3:4 比例，与 PostCard 一致
     backgroundColor: theme.colors.gray200,
-    borderRadius: 8,
-    marginHorizontal: 12,
   },
-  skeletonContent: {
-    padding: 12,
+  skeletonTitleArea: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
-  skeletonActions: {
+  skeletonFooter: {
     flexDirection: "row",
-    gap: 16,
-    marginTop: 8,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  skeletonUserInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  skeletonAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: theme.colors.gray200,
   },
 });
 

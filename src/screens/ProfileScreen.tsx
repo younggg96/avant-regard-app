@@ -610,8 +610,7 @@ const ProfileScreen = () => {
               {userInfo?.username || user?.username || "用户"}
             </Text>
             <Text style={styles.userId}>
-              用户号：{user?.userId || "未知"}
-              {userInfo?.location ? `  IP属地：${userInfo.location}` : ""}
+              {userInfo?.location ? `  · ${userInfo.location}` : ""}
             </Text>
           </View>
         </View>
@@ -676,8 +675,8 @@ const ProfileScreen = () => {
               {tabsData.published.count > 0
                 ? tabsData.published.count
                 : userInfo?.userId
-                ? "0"
-                : "-"}
+                  ? "0"
+                  : "-"}
             </Text>
             <Text style={styles.statLabel}>获赞与收藏</Text>
           </TouchableOpacity>
@@ -785,17 +784,17 @@ const ProfileScreen = () => {
                         {(tab.id === "published" ||
                           tab.id === "draft" ||
                           tab.id === "pending") && (
-                          <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={() => handleDeletePost(post)}
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={16}
-                              color={theme.colors.white}
-                            />
-                          </TouchableOpacity>
-                        )}
+                            <TouchableOpacity
+                              style={styles.deleteButton}
+                              onPress={() => handleDeletePost(post)}
+                            >
+                              <Ionicons
+                                name="trash-outline"
+                                size={12}
+                                color={theme.colors.white}
+                              />
+                            </TouchableOpacity>
+                          )}
                       </View>
                     ))}
                   </View>
@@ -806,10 +805,10 @@ const ProfileScreen = () => {
                         tab.id === "saved"
                           ? "bookmark-outline"
                           : tab.id === "liked"
-                          ? "heart-outline"
-                          : tab.id === "pending"
-                          ? "time-outline"
-                          : "document-text-outline"
+                            ? "heart-outline"
+                            : tab.id === "pending"
+                              ? "time-outline"
+                              : "document-text-outline"
                       }
                       size={48}
                       color={theme.colors.gray300}
@@ -1136,8 +1135,8 @@ const styles = StyleSheet.create({
     right: theme.spacing.xs,
     backgroundColor: "rgba(255, 48, 64, 0.9)",
     borderRadius: theme.borderRadius.full,
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     justifyContent: "center",
     alignItems: "center",
     ...theme.shadows.sm,

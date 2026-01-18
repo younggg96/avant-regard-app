@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   RefreshControl,
-  Linking,
-  Dimensions,
+  Image,
   ActivityIndicator,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -22,32 +24,39 @@ import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { postService, Post as ApiPost } from "../services/postService";
-import { Post as DisplayPost } from "../components/PostCard";
 import {
   followService,
   isFollowingUser,
   getFollowersCount,
   getFollowingCount,
 } from "../services/followService";
-import { userInfoService, UserInfo } from "../services/userInfoService";
+import {
+  userInfoService,
+  UserInfo,
+  UserProfileInfo,
+} from "../services/userInfoService";
 import SimplePostCard from "../components/SimplePostCard";
+import { Post as DisplayPost } from "../components/PostCard";
+import { HStack } from "@/components/ui";
+
+type TabType = "posts" | "saved" | "liked";
+
+// 定义每个 Tab 的数据结构
+type TabData = {
+  posts: DisplayPost[];
+  isLoading: boolean;
+  hasLoaded: boolean;
+  count: number;
+};
+
+const initialTabState: TabData = {
+  posts: [],
+  isLoading: false,
+  hasLoaded: false,
+  count: 0,
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// 用户资料类型（扩展自 API 返回的 UserInfo）
-interface UserProfile extends Partial<UserInfo> {
-  id: number;
-  username: string;
-  avatar?: string;
-  bio?: string;
-  website?: string;
-  location?: string;
-  // 社交媒体
-  instagram?: string;
-  twitter?: string;
-  weibo?: string;
-  xiaohongshu?: string;
-}
 
 const UserProfileScreen = () => {
   const navigation = useNavigation();
@@ -61,21 +70,50 @@ const UserProfileScreen = () => {
     avatar?: string;
   };
 
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    id: userId,
-    username: username || "用户",
-    avatar: avatar,
-  });
-  const [posts, setPosts] = useState<DisplayPost[]>([]);
+  // 用户信息状态
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
+
+  // 关注状态
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+
+  // Tab 相关
+  const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [refreshing, setRefreshing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
+
+  // Tab 滑动相关
+  const tabScrollViewRef = useRef<ScrollView>(null);
+  const contentScrollViewRef = useRef<ScrollView>(null);
 
   // 判断是否是当前用户自己
   const isCurrentUser = currentUser?.userId === userId;
+
+  // Tab 数据状态
+  const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
+    posts: { ...initialTabState },
+    saved: { ...initialTabState },
+    liked: { ...initialTabState },
+  });
+
+  // 通用更新函数
+  const updateTabState = useCallback(
+    (tab: TabType, updates: Partial<TabData>) => {
+      setTabsData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], ...updates },
+      }));
+    },
+    []
+  );
+
+  const tabs = [
+    { id: "posts" as TabType, label: "笔记", icon: "grid-outline" },
+    { id: "saved" as TabType, label: "收藏", icon: "bookmark-outline" },
+    { id: "liked" as TabType, label: "赞过", icon: "heart-outline" },
+  ];
 
   // 将 API 帖子转换为展示格式
   const convertToDisplayPost = (
@@ -100,83 +138,187 @@ const UserProfileScreen = () => {
         likes: apiPost.likeCount || 0,
         saves: apiPost.favoriteCount || 0,
         comments: apiPost.commentCount || 0,
+        isLiked: apiPost.likedByMe || false,
+        isSaved: apiPost.favoritedByMe || false,
       },
       likes: apiPost.likeCount || 0,
     };
   };
 
-  // 加载用户数据
-  const loadUserData = async () => {
+  // 加载用户信息
+  const loadUserInfo = async () => {
     try {
-      setLoading(true);
-
-      // 并行加载数据
-      const [userInfoData, postsData, followers, following] = await Promise.all(
-        [
-          userInfoService.getUserInfo(userId).catch(() => null),
-          postService.getPostsByUserId(userId, "PUBLISHED").catch(() => []),
-          getFollowersCount(userId).catch(() => 0),
-          getFollowingCount(userId).catch(() => 0),
-        ]
-      );
-
-      // 获取用户信息
-      const authorName = userInfoData?.username || username || "用户";
-      const authorAvatar =
-        userInfoData?.avatarUrl ||
-        avatar ||
-        `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`;
-
-      // 更新用户资料（从 API 获取）
-      if (userInfoData) {
-        setUserProfile((prev) => ({
-          ...prev,
-          id: userInfoData.userId,
-          username: userInfoData.username || prev.username,
-          bio: userInfoData.bio,
-          location: userInfoData.location,
-          avatar: userInfoData.avatarUrl || prev.avatar,
-        }));
-      }
-
-      // 转换帖子数据为展示格式
-      const displayPosts = (postsData || []).map((post) =>
-        convertToDisplayPost(post, { name: authorName, avatar: authorAvatar })
-      );
-      setPosts(displayPosts);
-      setFollowersCount(followers);
-      setFollowingCount(following);
-
-      // 检查是否关注
-      if (currentUser?.userId && !isCurrentUser) {
-        const isFollowingResult = await isFollowingUser(
-          currentUser.userId,
-          userId
-        ).catch(() => false);
-        setIsFollowing(isFollowingResult);
-      }
+      const info = await userInfoService.getUserInfo(userId);
+      setUserInfo(info);
     } catch (error) {
-      console.error("Error loading user data:", error);
-    } finally {
-      setLoading(false);
+      console.error("Error loading user info:", error);
     }
   };
 
+  // 加载用户完整资料
+  const loadUserProfile = async () => {
+    try {
+      const profile = await userInfoService.getUserProfile(userId);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    }
+  };
+
+  // 加载关注数量
+  const loadFollowCounts = async () => {
+    try {
+      const [followers, following] = await Promise.all([
+        getFollowersCount(userId),
+        getFollowingCount(userId),
+      ]);
+      setFollowersCount(followers);
+      setFollowingCount(following);
+    } catch (error) {
+      console.error("Error loading follow counts:", error);
+    }
+  };
+
+  // 检查是否已关注
+  const checkFollowStatus = async () => {
+    if (!currentUser?.userId || isCurrentUser) return;
+
+    try {
+      const isFollowingResult = await isFollowingUser(
+        currentUser.userId,
+        userId
+      );
+      setIsFollowing(isFollowingResult);
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+    }
+  };
+
+  // 加载 Tab 数据
+  const fetchTabData = useCallback(
+    async (targetTab: TabType, isRefresh = false) => {
+      // 如果不是强制刷新，且数据已经加载过，就直接返回
+      if (!isRefresh && tabsData[targetTab].hasLoaded) {
+        return;
+      }
+
+      updateTabState(targetTab, { isLoading: true });
+
+      try {
+        const authorName = userInfo?.username || username || "用户";
+        const authorAvatar =
+          userInfo?.avatarUrl ||
+          avatar ||
+          `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`;
+
+        let newPosts: DisplayPost[] = [];
+
+        if (targetTab === "posts") {
+          // 只获取已发布且审核通过的帖子
+          const apiPosts = await postService.getPostsByUserId(
+            userId,
+            "PUBLISHED"
+          );
+          const approvedPosts = apiPosts.filter(
+            (p: ApiPost) => p.auditStatus === "APPROVED"
+          );
+          newPosts = approvedPosts.map((p) =>
+            convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
+          );
+        } else if (targetTab === "saved") {
+          const apiPosts = await postService.getFavoritePostsByUserId(userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
+          );
+        } else if (targetTab === "liked") {
+          const apiPosts = await postService.getLikedPostsByUserId(userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
+          );
+        }
+
+        updateTabState(targetTab, {
+          posts: newPosts,
+          count: newPosts.length,
+          isLoading: false,
+          hasLoaded: true,
+        });
+      } catch (error) {
+        console.error(`Error loading ${targetTab}:`, error);
+        updateTabState(targetTab, { isLoading: false });
+      }
+    },
+    [userId, userInfo, username, avatar, tabsData, updateTabState]
+  );
+
+  // 初始化加载
   useEffect(() => {
-    loadUserData();
+    loadUserInfo();
+    loadUserProfile();
+    loadFollowCounts();
+    checkFollowStatus();
+    // 重置所有 Tab 状态
+    setTabsData({
+      posts: { ...initialTabState },
+      saved: { ...initialTabState },
+      liked: { ...initialTabState },
+    });
   }, [userId]);
 
+  // 切换 tab 时加载数据
+  useEffect(() => {
+    fetchTabData(activeTab);
+  }, [activeTab, userId]);
+
+  // 页面获得焦点时刷新
   useFocusEffect(
     useCallback(() => {
-      loadUserData();
-    }, [userId])
+      loadUserInfo();
+      loadUserProfile();
+      loadFollowCounts();
+      checkFollowStatus();
+      fetchTabData(activeTab, true);
+    }, [activeTab, userId])
   );
 
   // 下拉刷新
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadUserData();
+    await Promise.all([
+      loadUserInfo(),
+      loadUserProfile(),
+      loadFollowCounts(),
+      checkFollowStatus(),
+      fetchTabData(activeTab, true),
+    ]);
     setRefreshing(false);
+  };
+
+  // 处理 Tab 滑动切换
+  const handleTabSwipe = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const pageIndex = Math.round(contentOffset.x / layoutMeasurement.width);
+    const tabIds: TabType[] = ["posts", "saved", "liked"];
+    if (
+      pageIndex >= 0 &&
+      pageIndex < tabIds.length &&
+      tabIds[pageIndex] !== activeTab
+    ) {
+      setActiveTab(tabIds[pageIndex]);
+    }
+  };
+
+  // 处理 Tab 点击
+  const handleTabPress = (tabId: TabType) => {
+    const tabIds: TabType[] = ["posts", "saved", "liked"];
+    const index = tabIds.indexOf(tabId);
+    if (index >= 0 && contentScrollViewRef.current) {
+      contentScrollViewRef.current.scrollTo({
+        x: index * SCREEN_WIDTH,
+        animated: true,
+      });
+    }
+    setActiveTab(tabId);
   };
 
   // 关注/取消关注
@@ -213,33 +355,15 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 打开社交媒体链接
-  const openSocialLink = (platform: string, handle?: string) => {
-    if (!handle) return;
-
-    let url = "";
-    switch (platform) {
-      case "instagram":
-        url = `https://instagram.com/${handle}`;
-        break;
-      case "twitter":
-        url = `https://twitter.com/${handle}`;
-        break;
-      case "weibo":
-        url = `https://weibo.com/${handle}`;
-        break;
-      case "xiaohongshu":
-        url = `https://xiaohongshu.com/user/profile/${handle}`;
-        break;
-      case "website":
-        url = handle.startsWith("http") ? handle : `https://${handle}`;
-        break;
-    }
-
-    if (url) {
-      Linking.openURL(url).catch(() => {
-        Alert.show("无法打开链接");
-      });
+  // 获取性别显示文字
+  const getGenderText = (gender?: string): string => {
+    switch (gender) {
+      case "MALE":
+        return "♂";
+      case "FEMALE":
+        return "♀";
+      default:
+        return "";
     }
   };
 
@@ -248,259 +372,284 @@ const UserProfileScreen = () => {
     (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
-  // 渲染社交媒体链接
-  const renderSocialLinks = () => {
-    const socialLinks = [
-      {
-        platform: "instagram",
-        icon: "logo-instagram",
-        handle: userProfile.instagram,
-      },
-      {
-        platform: "twitter",
-        icon: "logo-twitter",
-        handle: userProfile.twitter,
-      },
-      { platform: "weibo", icon: "globe-outline", handle: userProfile.weibo },
-      {
-        platform: "xiaohongshu",
-        icon: "leaf-outline",
-        handle: userProfile.xiaohongshu,
-      },
-      {
-        platform: "website",
-        icon: "link-outline",
-        handle: userProfile.website,
-      },
-    ].filter((item) => item.handle);
-
-    if (socialLinks.length === 0) return null;
-
-    return (
-      <View style={styles.socialContainer}>
-        {socialLinks.map((item) => (
-          <TouchableOpacity
-            key={item.platform}
-            style={styles.socialButton}
-            onPress={() => openSocialLink(item.platform, item.handle)}
-          >
-            <Ionicons
-              name={item.icon as any}
-              size={20}
-              color={theme.colors.gray600}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
+  // 计算总获赞数
+  const getTotalLikes = () => {
+    return tabsData.posts.posts.reduce((sum, p) => sum + (p.likes || 0), 0);
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* 顶部导航栏 - 小红书风格 */}
-      <View style={styles.header}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <HStack
+        px="$md"
+        py="$sm"
+        alignItems="center"
+        justifyContent="between"
+        bg="$white"
+      >
         <TouchableOpacity
-          style={styles.headerButton}
+          style={styles.topBarButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={theme.colors.black}
+          />
         </TouchableOpacity>
+      </HStack>
 
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={22}
-              color={theme.colors.black}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 用户信息区域 - 小红书风格 */}
-        <View style={styles.profileSection}>
-          {/* 头像和关注按钮行 */}
-          <View style={styles.profileTopRow}>
-            {/* 头像 */}
-            {userProfile.avatar ? (
+      {/* 头部信息区域 */}
+      <View style={styles.header}>
+        {/* 第一行：头像和操作按钮 */}
+        <View style={styles.profileRow}>
+          <View style={styles.avatarContainer}>
+            {userInfo?.avatarUrl || avatar ? (
               <Image
-                source={{ uri: userProfile.avatar }}
+                source={{ uri: userInfo?.avatarUrl || avatar }}
                 style={styles.avatar}
               />
             ) : (
-              <View style={styles.avatarPlaceholder}>
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.avatarText}>
-                  {userProfile.username?.slice(0, 2).toUpperCase()}
+                  {(userInfo?.username || username)
+                    ?.slice(0, 2)
+                    .toUpperCase() || "AG"}
                 </Text>
               </View>
             )}
-
-            {/* 关注/编辑按钮 */}
-            <View style={styles.actionButtons}>
-              {!isCurrentUser ? (
-                <TouchableOpacity
-                  style={[
-                    styles.followButton,
-                    isFollowing && styles.followingButton,
-                  ]}
-                  onPress={handleFollowToggle}
-                  disabled={followLoading}
-                >
-                  {followLoading ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.white}
-                    />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.followButtonText,
-                        isFollowing && styles.followingButtonText,
-                      ]}
-                    >
-                      {isFollowing ? "已关注" : "关注"}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => (navigation as any).navigate("EditProfile")}
-                >
-                  <Text style={styles.editButtonText}>编辑资料</Text>
-                </TouchableOpacity>
-              )}
-            </View>
           </View>
 
-          {/* 用户名 */}
-          <Text style={styles.username}>{userProfile.username}</Text>
-
-          {/* 小红书号/ID */}
-          <Text style={styles.userId}>ID: {userId}</Text>
-
-          {/* 个人简介 */}
-          {userProfile.bio ? (
-            <Text style={styles.bio}>{userProfile.bio}</Text>
-          ) : (
-            <Text style={styles.bioPlaceholder}>暂无简介</Text>
-          )}
-
-          {/* 位置信息 */}
-          {userProfile.location && (
-            <View style={styles.locationRow}>
-              <Ionicons
-                name="location-outline"
-                size={14}
-                color={theme.colors.gray400}
-              />
-              <Text style={styles.locationText}>{userProfile.location}</Text>
-            </View>
-          )}
-
-          {/* 社交媒体链接 */}
-          {renderSocialLinks()}
-
-          {/* 统计数据 - 小红书风格（关注/粉丝/获赞） */}
-          <View style={styles.statsRow}>
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() =>
-                (navigation as any).navigate("FollowingUsers", {
-                  userId: userId,
-                })
-              }
-            >
-              <Text style={styles.statNumber}>{followingCount}</Text>
-              <Text style={styles.statLabel}>关注</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.statItem}
-              onPress={() =>
-                (navigation as any).navigate("Followers", {
-                  userId: userId,
-                })
-              }
-            >
-              <Text style={styles.statNumber}>{followersCount}</Text>
-              <Text style={styles.statLabel}>粉丝</Text>
-            </TouchableOpacity>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {posts.reduce((sum, p) => sum + (p.likes || 0), 0)}
-              </Text>
-              <Text style={styles.statLabel}>获赞</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 帖子标签切换 */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity style={[styles.tabItem, styles.tabItemActive]}>
-            <Ionicons
-              name="grid-outline"
-              size={20}
-              color={theme.colors.black}
-            />
-            <Text style={[styles.tabText, styles.tabTextActive]}>笔记</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem}>
-            <Ionicons
-              name="bookmark-outline"
-              size={20}
-              color={theme.colors.gray400}
-            />
-            <Text style={styles.tabText}>收藏</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabItem}>
-            <Ionicons
-              name="heart-outline"
-              size={20}
-              color={theme.colors.gray400}
-            />
-            <Text style={styles.tabText}>赞过</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 帖子网格 */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.gray400} />
-          </View>
-        ) : posts.length > 0 ? (
-          <View style={styles.postsGrid}>
-            {posts.map((post) => (
-              <View key={post.id} style={styles.postItem}>
-                <SimplePostCard
-                  post={post}
-                  onPress={() => handlePostPress(post)}
-                />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="camera-outline"
-              size={56}
-              color={theme.colors.gray200}
-            />
-            <Text style={styles.emptyTitle}>暂无笔记</Text>
-            <Text style={styles.emptySubtitle}>
-              {isCurrentUser
-                ? "快去发布你的第一篇笔记吧"
-                : "TA 还没有发布任何笔记"}
+          <View style={styles.userInfoSection}>
+            <Text style={styles.username}>
+              {userInfo?.username || username || "用户"}
+            </Text>
+            <Text style={styles.userId}>
+              {userInfo?.location ? `  · ${userInfo.location}` : ""}
             </Text>
           </View>
-        )}
-      </ScrollView>
+
+          {/* 关注/编辑按钮 */}
+          <View style={styles.actionButtons}>
+            {!isCurrentUser ? (
+              <TouchableOpacity
+                style={[
+                  styles.followButton,
+                  isFollowing && styles.followingButton,
+                ]}
+                onPress={handleFollowToggle}
+                disabled={followLoading}
+              >
+                {followLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowing ? theme.colors.gray600 : theme.colors.white}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      isFollowing && styles.followingButtonText,
+                    ]}
+                  >
+                    {isFollowing ? "已关注" : "关注"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => (navigation as any).navigate("EditProfile")}
+              >
+                <Text style={styles.editButtonText}>编辑资料</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Bio */}
+        <View style={styles.bioContainer}>
+          <Text style={styles.bioText} numberOfLines={2}>
+            {userInfo?.bio || "暂无简介"}
+          </Text>
+        </View>
+
+        {/* 标签（年龄、位置等） */}
+        <View style={styles.tagsRow}>
+          {userProfile?.age != null && userProfile.age > 0 ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>
+                {getGenderText(userProfile?.gender)} {userProfile.age}岁
+              </Text>
+            </View>
+          ) : null}
+          {userInfo?.location ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{userInfo.location}</Text>
+            </View>
+          ) : null}
+          {userProfile?.preference ? (
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>{userProfile.preference}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* 统计数据 */}
+        <View style={styles.statsRow}>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              (navigation as any).navigate("FollowingUsers", { userId })
+            }
+          >
+            <Text style={styles.statNumber}>{followingCount}</Text>
+            <Text style={styles.statLabel}>关注</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.statItem}
+            onPress={() =>
+              (navigation as any).navigate("Followers", { userId })
+            }
+          >
+            <Text style={styles.statNumber}>{followersCount}</Text>
+            <Text style={styles.statLabel}>粉丝</Text>
+          </TouchableOpacity>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {tabsData.posts.hasLoaded ? getTotalLikes() : "-"}
+            </Text>
+            <Text style={styles.statLabel}>获赞与收藏</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 帖子区域 */}
+      <View style={styles.postsSection}>
+        {/* 标签栏 */}
+        <ScrollView
+          ref={tabScrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabBar}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {tabs.map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.tabItem,
+                activeTab === tab.id && styles.tabItemActive,
+              ]}
+              onPress={() => handleTabPress(tab.id)}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={18}
+                color={
+                  activeTab === tab.id
+                    ? theme.colors.black
+                    : theme.colors.gray300
+                }
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  activeTab === tab.id && styles.tabLabelActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+              {activeTab === tab.id && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* 可滑动的内容区域 */}
+        <ScrollView
+          ref={contentScrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleTabSwipe}
+          scrollEventThrottle={16}
+          style={styles.swipeContainer}
+          nestedScrollEnabled={true}
+        >
+          {tabs.map((tab) => {
+            const currentTabData = tabsData[tab.id];
+            const isCurrentTab = activeTab === tab.id;
+            const shouldShowLoading =
+              currentTabData.isLoading && !currentTabData.hasLoaded;
+
+            return (
+              <ScrollView
+                key={tab.id}
+                style={styles.tabPage}
+                contentContainerStyle={styles.tabPageContent}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing && isCurrentTab}
+                    onRefresh={onRefresh}
+                  />
+                }
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+              >
+                {shouldShowLoading ? (
+                  <View style={styles.loadingState}>
+                    <ActivityIndicator
+                      size="large"
+                      color={theme.colors.gray400}
+                    />
+                    <Text style={styles.loadingText}>加载中...</Text>
+                  </View>
+                ) : currentTabData.posts.length > 0 ? (
+                  <View style={styles.postsGrid}>
+                    {currentTabData.posts.map((post) => (
+                      <View key={post.id} style={styles.postItem}>
+                        <TouchableOpacity
+                          onPress={() => handlePostPress(post)}
+                          activeOpacity={0.95}
+                        >
+                          <SimplePostCard
+                            post={post}
+                            onPress={() => handlePostPress(post)}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                ) : currentTabData.hasLoaded ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons
+                      name={
+                        tab.id === "saved"
+                          ? "bookmark-outline"
+                          : tab.id === "liked"
+                            ? "heart-outline"
+                            : "camera-outline"
+                      }
+                      size={48}
+                      color={theme.colors.gray300}
+                    />
+                    <Text style={styles.emptyText}>
+                      {tab.id === "posts" && "还没有发布内容"}
+                      {tab.id === "saved" && "还没有收藏帖子"}
+                      {tab.id === "liked" && "还没有点赞帖子"}
+                    </Text>
+                    <Text style={styles.emptySubText}>
+                      {tab.id === "posts" &&
+                        (isCurrentUser
+                          ? "快去发布你的第一篇笔记吧"
+                          : "TA 还没有发布任何笔记")}
+                    </Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+            );
+          })}
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -510,68 +659,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  header: {
+  // 顶部导航栏
+  topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 8,
+    paddingHorizontal: theme.spacing.xs,
     height: 44,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
   },
-  headerButton: {
+  topBarButton: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerRight: {
+  topBarRight: {
     flexDirection: "row",
   },
-  content: {
-    flex: 1,
+  // 头部样式（与 ProfileScreen 一致）
+  header: {
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
   },
-  profileSection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  profileTopRow: {
+  profileRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 12,
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  avatarContainer: {
+    marginRight: theme.spacing.md,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   avatarPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
     backgroundColor: theme.colors.black,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    fontSize: 24,
-    fontWeight: "700",
+    ...theme.typography.h2,
     color: theme.colors.white,
   },
+  userInfoSection: {
+    flex: 1,
+  },
+  username: {
+    ...theme.typography.h2,
+    color: theme.colors.black,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  userId: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
   actionButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 12,
+    marginLeft: theme.spacing.sm,
   },
   followButton: {
     backgroundColor: "#FF2442",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
-    minWidth: 80,
+    minWidth: 72,
     alignItems: "center",
   },
   followingButton: {
@@ -591,7 +744,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
     borderWidth: 1,
     borderColor: theme.colors.gray200,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
@@ -600,125 +753,132 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: theme.colors.black,
   },
-  username: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.black,
-    marginBottom: 4,
+  bioContainer: {
+    marginBottom: theme.spacing.sm,
   },
-  userId: {
-    fontSize: 12,
+  bioText: {
+    ...theme.typography.bodySmall,
     color: theme.colors.gray400,
-    marginBottom: 8,
   },
-  bio: {
-    fontSize: 14,
-    color: theme.colors.gray700,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  bioPlaceholder: {
-    fontSize: 14,
-    color: theme.colors.gray300,
-    marginBottom: 8,
-  },
-  locationRow: {
+  tagsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  locationText: {
-    fontSize: 12,
+  tag: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.full,
+  },
+  tagText: {
+    ...theme.typography.caption,
     color: theme.colors.gray400,
-    marginLeft: 4,
-  },
-  socialContainer: {
-    flexDirection: "row",
-    marginTop: 4,
-    marginBottom: 12,
-    gap: 12,
-  },
-  socialButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.gray50,
-    justifyContent: "center",
-    alignItems: "center",
   },
   statsRow: {
     flexDirection: "row",
-    marginTop: 8,
+    alignItems: "center",
+    gap: theme.spacing.lg,
   },
   statItem: {
     flexDirection: "row",
-    alignItems: "center",
-    marginRight: 20,
+    alignItems: "baseline",
+    gap: 4,
   },
   statNumber: {
-    fontSize: 16,
-    fontWeight: "600",
+    ...theme.typography.h3,
     color: theme.colors.black,
-    marginRight: 4,
+    fontWeight: "700",
   },
   statLabel: {
-    fontSize: 14,
-    color: theme.colors.gray500,
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  // 帖子区域
+  postsSection: {
+    flex: 1,
   },
   tabBar: {
-    flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
+    maxHeight: 44,
+  },
+  tabBarContent: {
+    paddingHorizontal: theme.spacing.md,
   },
   tabItem: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.sm,
+    marginRight: theme.spacing.lg,
+    position: "relative",
     gap: 6,
   },
-  tabItemActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.black,
-  },
-  tabText: {
-    fontSize: 14,
-    color: theme.colors.gray400,
-  },
-  tabTextActive: {
-    color: theme.colors.black,
+  tabItemActive: {},
+  tabLabel: {
+    ...theme.typography.body,
+    color: theme.colors.gray300,
     fontWeight: "500",
   },
-  loadingContainer: {
-    paddingVertical: 60,
-    alignItems: "center",
+  tabLabelActive: {
+    color: theme.colors.black,
+    fontWeight: "600",
+  },
+  tabIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: theme.colors.black,
+  },
+  // 滑动容器
+  swipeContainer: {
+    flex: 1,
+  },
+  tabPage: {
+    width: SCREEN_WIDTH,
+  },
+  tabPageContent: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.xl,
   },
   postsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: 4,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    justifyContent: "space-between",
   },
   postItem: {
-    width: (SCREEN_WIDTH - 12) / 2,
-    padding: 4,
+    width: "48%",
+    marginBottom: theme.spacing.md,
+  },
+  loadingState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.xl * 2,
+  },
+  loadingText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    marginTop: theme.spacing.sm,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 80,
+    paddingVertical: theme.spacing.xl * 2,
   },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "500",
+  emptyText: {
+    ...theme.typography.body,
     color: theme.colors.gray400,
-    marginTop: 16,
+    marginTop: theme.spacing.md,
   },
-  emptySubtitle: {
-    fontSize: 13,
+  emptySubText: {
+    ...theme.typography.caption,
     color: theme.colors.gray300,
-    marginTop: 8,
+    marginTop: theme.spacing.xs,
   },
 });
 
