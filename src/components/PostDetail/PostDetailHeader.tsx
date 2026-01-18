@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack, Image } from "../ui";
 import { theme } from "../../theme";
@@ -12,6 +12,7 @@ interface PostDetailHeaderProps {
   postStatus: PostStatus;
   isOwnPost: boolean;
   isFollowing: boolean;
+  isFollowLoading?: boolean;
   onGoBack: () => void;
   onAuthorPress: () => void;
   onFollow: () => void;
@@ -25,6 +26,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   postStatus,
   isOwnPost,
   isFollowing,
+  isFollowLoading = false,
   onGoBack,
   onAuthorPress,
   onFollow,
@@ -135,14 +137,23 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                 py="$xs"
                 bg={isFollowing ? "$gray100" : "$black"}
                 rounded="$md"
+                disabled={isFollowLoading}
+                opacity={isFollowLoading ? 0.7 : 1}
               >
-                <Text
-                  fontSize="$xs"
-                  fontWeight="$semibold"
-                  color={isFollowing ? "$black" : "$white"}
-                >
-                  {isFollowing ? "已关注" : "关注"}
-                </Text>
+                {isFollowLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowing ? theme.colors.black : theme.colors.white}
+                  />
+                ) : (
+                  <Text
+                    fontSize="$xs"
+                    fontWeight="$semibold"
+                    color={isFollowing ? "$black" : "$white"}
+                  >
+                    {isFollowing ? "已关注" : "关注"}
+                  </Text>
+                )}
               </Pressable>
             )}
 

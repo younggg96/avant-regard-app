@@ -45,15 +45,23 @@ async def unfollow_user(
 @router.get("/users/{user_id}/following-users")
 async def get_following_users(user_id: int):
     """获取用户关注的用户列表"""
-    result = follow_service.get_following_users(user_id)
-    return success([u.model_dump() for u in result])
+    try:
+        result = follow_service.get_following_users(user_id)
+        return success([u.model_dump() for u in result])
+    except Exception as e:
+        print(f"Error in get_following_users route: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/users/{user_id}/followers")
 async def get_followers(user_id: int):
     """获取用户的粉丝列表"""
-    result = follow_service.get_followers(user_id)
-    return success([u.model_dump() for u in result])
+    try:
+        result = follow_service.get_followers(user_id)
+        return success([u.model_dump() for u in result])
+    except Exception as e:
+        print(f"Error in get_followers route: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/user/{user_id}/following/count")

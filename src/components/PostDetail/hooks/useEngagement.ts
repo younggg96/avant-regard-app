@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Share } from "react-native";
 import { Post } from "../../PostCard";
 import { postService } from "../../../services/postService";
+import { followService, isFollowingUser } from "../../../services/followService";
 import { Alert } from "../../../utils/Alert";
 
 interface UseEngagementOptions {
@@ -12,10 +13,11 @@ interface UseEngagementOptions {
 
 interface UseEngagementReturn {
   isFollowing: boolean;
+  isFollowLoading: boolean;
   handleLike: () => Promise<void>;
   handleSave: () => Promise<void>;
   handleShare: () => Promise<void>;
-  handleFollow: () => void;
+  handleFollow: () => Promise<void>;
 }
 
 /**
@@ -27,6 +29,26 @@ export const useEngagement = ({
   setPost,
 }: UseEngagementOptions): UseEngagementReturn => {
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+
+  // 获取帖子作者ID
+  const authorId = post?.author?.id ? parseInt(post.author.id, 10) : undefined;
+
+  // 检查是否已关注该用户
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!userId || !authorId || userId === authorId) return;
+
+      try {
+        const following = await isFollowingUser(userId, authorId);
+        setIsFollowing(following);
+      } catch (error) {
+        console.error("Error checking follow status:", error);
+      }
+    };
+
+    checkFollowStatus();
+  }, [userId, authorId]);
 
   // 处理点赞
   const handleLike = useCallback(async () => {
@@ -149,13 +171,51 @@ export const useEngagement = ({
   }, [post]);
 
   // 处理关注
-  const handleFollow = useCallback(() => {
-    setIsFollowing((prev) => !prev);
-    Alert.show("成功", isFollowing ? "已取消关注" : "已关注");
-  }, [isFollowing]);
+  const handleFollow = useCallback(async () => {
+    if (!userId) {
+      Alert.show("请先登录");
+      return;
+    }
+
+    if (!authorId) {
+      console.error("Author ID not found");
+      return;
+    }
+
+    // 不能关注自己
+    if (userId === authorId) {
+      Alert.show("不能关注自己");
+      return;
+    }
+
+    setIsFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await followService.unfollowUser({
+          followerId: userId,
+          targetUserId: authorId,
+        });
+        setIsFollowing(false);
+        Alert.show("已取消关注");
+      } else {
+        await followService.followUser({
+          followerId: userId,
+          targetUserId: authorId,
+        });
+        setIsFollowing(true);
+        Alert.show("关注成功");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "操作失败";
+      Alert.show(message);
+    } finally {
+      setIsFollowLoading(false);
+    }
+  }, [userId, authorId, isFollowing]);
 
   return {
     isFollowing,
+    isFollowLoading,
     handleLike,
     handleSave,
     handleShare,

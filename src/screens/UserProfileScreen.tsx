@@ -323,6 +323,8 @@ const UserProfileScreen = () => {
 
   // 关注/取消关注
   const handleFollowToggle = async () => {
+    console.log("handleFollowToggle called, currentUser:", currentUser?.userId, "targetUserId:", userId, "isFollowing:", isFollowing);
+
     if (!currentUser?.userId) {
       Alert.show("请先登录");
       return;
@@ -331,6 +333,7 @@ const UserProfileScreen = () => {
     setFollowLoading(true);
     try {
       if (isFollowing) {
+        console.log("Attempting to unfollow user:", userId);
         await followService.unfollowUser({
           followerId: currentUser.userId,
           targetUserId: userId,
@@ -339,6 +342,7 @@ const UserProfileScreen = () => {
         setFollowersCount((prev) => Math.max(0, prev - 1));
         Alert.show("已取消关注");
       } else {
+        console.log("Attempting to follow user:", userId);
         await followService.followUser({
           followerId: currentUser.userId,
           targetUserId: userId,
@@ -348,6 +352,7 @@ const UserProfileScreen = () => {
         Alert.show("关注成功");
       }
     } catch (error) {
+      console.error("Follow toggle error:", error);
       const message = error instanceof Error ? error.message : "操作失败";
       Alert.show(message);
     } finally {

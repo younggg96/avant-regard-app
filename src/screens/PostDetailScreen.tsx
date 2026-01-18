@@ -84,7 +84,7 @@ const PostDetailScreen = () => {
   });
 
   // 社交互动 Hook
-  const { isFollowing, handleLike, handleSave, handleShare, handleFollow } =
+  const { isFollowing, isFollowLoading, handleLike, handleSave, handleShare, handleFollow } =
     useEngagement({
       post,
       userId: user?.userId,
@@ -273,6 +273,7 @@ const PostDetailScreen = () => {
             postStatus={postStatus}
             isOwnPost={isOwnPost}
             isFollowing={isFollowing}
+            isFollowLoading={isFollowLoading}
             onGoBack={() => navigation.goBack()}
             onAuthorPress={handleAuthorPress}
             onFollow={handleFollow}

@@ -71,6 +71,18 @@ async function request<T>(
 
     const jsonResponse = await response.json();
 
+    // 检查业务错误码
+    if (
+      jsonResponse &&
+      typeof jsonResponse === "object" &&
+      "code" in jsonResponse
+    ) {
+      const apiResponse = jsonResponse as ApiResponse<unknown>;
+      if (apiResponse.code !== 0) {
+        throw new Error(apiResponse.message || "请求失败");
+      }
+    }
+
     return jsonResponse as T;
   } catch (error) {
     if (error instanceof Error) {
@@ -87,6 +99,7 @@ async function request<T>(
  * POST /api/follow/user
  */
 export async function followUser(params: FollowUserParams): Promise<void> {
+  console.log("followUser called with params:", params);
   return request<void>("/api/follow/user", {
     method: "POST",
     body: JSON.stringify(params),
@@ -98,6 +111,7 @@ export async function followUser(params: FollowUserParams): Promise<void> {
  * DELETE /api/follow/user
  */
 export async function unfollowUser(params: FollowUserParams): Promise<void> {
+  console.log("unfollowUser called with params:", params);
   return request<void>("/api/follow/user", {
     method: "DELETE",
     body: JSON.stringify(params),
@@ -111,13 +125,15 @@ export async function unfollowUser(params: FollowUserParams): Promise<void> {
 export async function getFollowingUsers(
   userId: number
 ): Promise<FollowingUser[]> {
+  console.log("getFollowingUsers called with userId:", userId);
   const response = await request<ApiResponse<FollowingUser[]>>(
     `/api/follow/users/${userId}/following-users`,
     {
       method: "GET",
     }
   );
-  return response.data;
+  console.log("getFollowingUsers response:", JSON.stringify(response));
+  return response.data || [];
 }
 
 /**
