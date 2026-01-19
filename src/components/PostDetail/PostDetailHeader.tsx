@@ -133,23 +133,27 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
             {!isOwnPost && (
               <Pressable
                 onPress={onFollow}
-                px="$md"
-                py="$xs"
+                px="$lg"
+                py="$sm"
                 bg={isFollowing ? "$gray100" : "$black"}
-                rounded="$md"
+                borderRadius={20}
+                borderWidth={isFollowing ? 1 : 0}
+                borderColor="$gray200"
                 disabled={isFollowLoading}
                 opacity={isFollowLoading ? 0.7 : 1}
+                minWidth={72}
+                alignItems="center"
               >
                 {isFollowLoading ? (
                   <ActivityIndicator
                     size="small"
-                    color={isFollowing ? theme.colors.black : theme.colors.white}
+                    color={isFollowing ? theme.colors.gray600 : theme.colors.white}
                   />
                 ) : (
                   <Text
-                    fontSize="$xs"
+                    fontSize="$sm"
                     fontWeight="$semibold"
-                    color={isFollowing ? "$black" : "$white"}
+                    color={isFollowing ? "$gray600" : "$white"}
                   >
                     {isFollowing ? "已关注" : "关注"}
                   </Text>

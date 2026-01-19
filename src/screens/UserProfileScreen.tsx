@@ -1,17 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
   RefreshControl,
-  Image,
   ActivityIndicator,
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Linking,
+  ScrollView as RNScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -20,6 +14,15 @@ import {
   useFocusEffect,
 } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  Box,
+  Text,
+  ScrollView,
+  Pressable,
+  VStack,
+  HStack,
+  Image,
+} from "../components/ui";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -37,11 +40,9 @@ import {
 } from "../services/userInfoService";
 import SimplePostCard from "../components/SimplePostCard";
 import { Post as DisplayPost } from "../components/PostCard";
-import { HStack } from "@/components/ui";
 
 type TabType = "posts" | "saved" | "liked";
 
-// 定义每个 Tab 的数据结构
 type TabData = {
   posts: DisplayPost[];
   isLoading: boolean;
@@ -63,42 +64,32 @@ const UserProfileScreen = () => {
   const route = useRoute();
   const { user: currentUser } = useAuthStore();
 
-  // 从路由参数获取用户信息
   const { userId, username, avatar } = route.params as {
     userId: number;
     username?: string;
     avatar?: string;
   };
 
-  // 用户信息状态
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
-
-  // 关注状态
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-
-  // Tab 相关
   const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Tab 滑动相关
-  const tabScrollViewRef = useRef<ScrollView>(null);
-  const contentScrollViewRef = useRef<ScrollView>(null);
+  const tabScrollViewRef = useRef<RNScrollView>(null);
+  const contentScrollViewRef = useRef<RNScrollView>(null);
 
-  // 判断是否是当前用户自己
   const isCurrentUser = currentUser?.userId === userId;
 
-  // Tab 数据状态
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     posts: { ...initialTabState },
     saved: { ...initialTabState },
     liked: { ...initialTabState },
   });
 
-  // 通用更新函数
   const updateTabState = useCallback(
     (tab: TabType, updates: Partial<TabData>) => {
       setTabsData((prev) => ({
@@ -110,12 +101,11 @@ const UserProfileScreen = () => {
   );
 
   const tabs = [
-    { id: "posts" as TabType, label: "笔记", icon: "grid-outline" },
-    { id: "saved" as TabType, label: "收藏", icon: "bookmark-outline" },
-    { id: "liked" as TabType, label: "赞过", icon: "heart-outline" },
+    { id: "posts" as TabType, label: "笔记" },
+    { id: "saved" as TabType, label: "收藏" },
+    { id: "liked" as TabType, label: "赞过" },
   ];
 
-  // 将 API 帖子转换为展示格式
   const convertToDisplayPost = (
     apiPost: ApiPost,
     authorInfo: { name: string; avatar: string }
@@ -145,7 +135,6 @@ const UserProfileScreen = () => {
     };
   };
 
-  // 加载用户信息
   const loadUserInfo = async () => {
     try {
       const info = await userInfoService.getUserInfo(userId);
@@ -155,7 +144,6 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 加载用户完整资料
   const loadUserProfile = async () => {
     try {
       const profile = await userInfoService.getUserProfile(userId);
@@ -165,7 +153,6 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 加载关注数量
   const loadFollowCounts = async () => {
     try {
       const [followers, following] = await Promise.all([
@@ -179,10 +166,8 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 检查是否已关注
   const checkFollowStatus = async () => {
     if (!currentUser?.userId || isCurrentUser) return;
-
     try {
       const isFollowingResult = await isFollowingUser(
         currentUser.userId,
@@ -194,10 +179,8 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 加载 Tab 数据
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
-      // 如果不是强制刷新，且数据已经加载过，就直接返回
       if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
       }
@@ -214,7 +197,6 @@ const UserProfileScreen = () => {
         let newPosts: DisplayPost[] = [];
 
         if (targetTab === "posts") {
-          // 只获取已发布且审核通过的帖子
           const apiPosts = await postService.getPostsByUserId(
             userId,
             "PUBLISHED"
@@ -251,13 +233,11 @@ const UserProfileScreen = () => {
     [userId, userInfo, username, avatar, tabsData, updateTabState]
   );
 
-  // 初始化加载
   useEffect(() => {
     loadUserInfo();
     loadUserProfile();
     loadFollowCounts();
     checkFollowStatus();
-    // 重置所有 Tab 状态
     setTabsData({
       posts: { ...initialTabState },
       saved: { ...initialTabState },
@@ -265,12 +245,10 @@ const UserProfileScreen = () => {
     });
   }, [userId]);
 
-  // 切换 tab 时加载数据
   useEffect(() => {
     fetchTabData(activeTab);
   }, [activeTab, userId]);
 
-  // 页面获得焦点时刷新
   useFocusEffect(
     useCallback(() => {
       loadUserInfo();
@@ -281,7 +259,6 @@ const UserProfileScreen = () => {
     }, [activeTab, userId])
   );
 
-  // 下拉刷新
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
@@ -294,7 +271,6 @@ const UserProfileScreen = () => {
     setRefreshing(false);
   };
 
-  // 处理 Tab 滑动切换
   const handleTabSwipe = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const pageIndex = Math.round(contentOffset.x / layoutMeasurement.width);
@@ -308,7 +284,6 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 处理 Tab 点击
   const handleTabPress = (tabId: TabType) => {
     const tabIds: TabType[] = ["posts", "saved", "liked"];
     const index = tabIds.indexOf(tabId);
@@ -321,9 +296,15 @@ const UserProfileScreen = () => {
     setActiveTab(tabId);
   };
 
-  // 关注/取消关注
   const handleFollowToggle = async () => {
-    console.log("handleFollowToggle called, currentUser:", currentUser?.userId, "targetUserId:", userId, "isFollowing:", isFollowing);
+    console.log(
+      "handleFollowToggle called, currentUser:",
+      currentUser?.userId,
+      "targetUserId:",
+      userId,
+      "isFollowing:",
+      isFollowing
+    );
 
     if (!currentUser?.userId) {
       Alert.show("请先登录");
@@ -360,7 +341,6 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 获取性别显示文字
   const getGenderText = (gender?: string): string => {
     switch (gender) {
       case "MALE":
@@ -372,77 +352,80 @@ const UserProfileScreen = () => {
     }
   };
 
-  // 帖子点击
   const handlePostPress = (post: DisplayPost) => {
     (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
-  // 计算总获赞数
   const getTotalLikes = () => {
     return tabsData.posts.posts.reduce((sum, p) => sum + (p.likes || 0), 0);
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <HStack
-        px="$md"
-        py="$sm"
-        alignItems="center"
-        justifyContent="between"
-        bg="$white"
-      >
-        <TouchableOpacity
-          style={styles.topBarButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons
-            name="arrow-back"
-            size={24}
-            color={theme.colors.black}
-          />
-        </TouchableOpacity>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.white }}
+      edges={["top", "bottom"]}
+    >
+      {/* 顶部导航栏 */}
+      <HStack px="$md" py="$sm" alignItems="center" justifyContent="flex-start" bg="$white">
+        <Pressable p="$xs" onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+        </Pressable>
       </HStack>
 
       {/* 头部信息区域 */}
-      <View style={styles.header}>
+      <VStack px="$md" pb="$md">
         {/* 第一行：头像和操作按钮 */}
-        <View style={styles.profileRow}>
-          <View style={styles.avatarContainer}>
+        <HStack alignItems="center" mb="$md">
+          <Box mr="$md">
             {userInfo?.avatarUrl || avatar ? (
               <Image
                 source={{ uri: userInfo?.avatarUrl || avatar }}
-                style={styles.avatar}
+                width={80}
+                height={80}
+                borderRadius={40}
+                alt="avatar"
               />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
+              <Box
+                width={80}
+                height={80}
+                borderRadius={40}
+                bg="$black"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Text color="$white" fontSize="$xl" fontWeight="$bold">
                   {(userInfo?.username || username)
                     ?.slice(0, 2)
                     .toUpperCase() || "AG"}
                 </Text>
-              </View>
+              </Box>
             )}
-          </View>
+          </Box>
 
-          <View style={styles.userInfoSection}>
-            <Text style={styles.username}>
+          <VStack flex={1}>
+            <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
               {userInfo?.username || username || "用户"}
             </Text>
-            <Text style={styles.userId}>
+            <Text fontSize="$xs" color="$gray300">
               {userInfo?.location ? `  · ${userInfo.location}` : ""}
             </Text>
-          </View>
+          </VStack>
 
           {/* 关注/编辑按钮 */}
-          <View style={styles.actionButtons}>
+          <Box ml="$sm">
             {!isCurrentUser ? (
-              <TouchableOpacity
-                style={[
-                  styles.followButton,
-                  isFollowing && styles.followingButton,
-                ]}
+              <Pressable
+                px="$lg"
+                py="$sm"
+                bg={isFollowing ? "$gray100" : "$black"}
+                borderRadius={20}
+                borderWidth={isFollowing ? 1 : 0}
+                borderColor="$gray200"
                 onPress={handleFollowToggle}
                 disabled={followLoading}
+                minWidth={72}
+                alignItems="center"
               >
                 {followLoading ? (
                   <ActivityIndicator
@@ -451,133 +434,158 @@ const UserProfileScreen = () => {
                   />
                 ) : (
                   <Text
-                    style={[
-                      styles.followButtonText,
-                      isFollowing && styles.followingButtonText,
-                    ]}
+                    fontSize="$sm"
+                    fontWeight="$semibold"
+                    color={isFollowing ? "$gray600" : "$white"}
                   >
                     {isFollowing ? "已关注" : "关注"}
                   </Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             ) : (
-              <TouchableOpacity
-                style={styles.editButton}
+              <Pressable
+                px="$md"
+                py="$sm"
+                bg="$white"
+                borderWidth={1}
+                borderColor="$gray200"
+                borderRadius={20}
                 onPress={() => (navigation as any).navigate("EditProfile")}
               >
-                <Text style={styles.editButtonText}>编辑资料</Text>
-              </TouchableOpacity>
+                <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                  编辑资料
+                </Text>
+              </Pressable>
             )}
-          </View>
-        </View>
+          </Box>
+        </HStack>
 
         {/* Bio */}
-        <View style={styles.bioContainer}>
-          <Text style={styles.bioText} numberOfLines={2}>
+        <Box mb="$sm">
+          <Text fontSize="$sm" color="$gray400" numberOfLines={2}>
             {userInfo?.bio || "暂无简介"}
           </Text>
-        </View>
+        </Box>
 
         {/* 标签（年龄、位置等） */}
-        <View style={styles.tagsRow}>
+        <HStack flexWrap="wrap" gap="$sm" mb="$md">
           {userProfile?.age != null && userProfile.age > 0 ? (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+              <Text fontSize="$xs" color="$gray400">
                 {getGenderText(userProfile?.gender)} {userProfile.age}岁
               </Text>
-            </View>
+            </Box>
           ) : null}
           {userInfo?.location ? (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{userInfo.location}</Text>
-            </View>
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+              <Text fontSize="$xs" color="$gray400">
+                {userInfo.location}
+              </Text>
+            </Box>
           ) : null}
           {userProfile?.preference ? (
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{userProfile.preference}</Text>
-            </View>
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+              <Text fontSize="$xs" color="$gray400">
+                {userProfile.preference}
+              </Text>
+            </Box>
           ) : null}
-        </View>
+        </HStack>
 
         {/* 统计数据 */}
-        <View style={styles.statsRow}>
-          <TouchableOpacity
-            style={styles.statItem}
+        <HStack alignItems="center" gap="$lg">
+          <Pressable
             onPress={() =>
               (navigation as any).navigate("FollowingUsers", { userId })
             }
           >
-            <Text style={styles.statNumber}>{followingCount}</Text>
-            <Text style={styles.statLabel}>关注</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.statItem}
+            <HStack alignItems="baseline" gap="$xs">
+              <Text fontSize="$lg" fontWeight="$bold" color="$black">
+                {followingCount}
+              </Text>
+              <Text fontSize="$xs" color="$gray300">
+                关注
+              </Text>
+            </HStack>
+          </Pressable>
+          <Pressable
             onPress={() =>
               (navigation as any).navigate("Followers", { userId })
             }
           >
-            <Text style={styles.statNumber}>{followersCount}</Text>
-            <Text style={styles.statLabel}>粉丝</Text>
-          </TouchableOpacity>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
+            <HStack alignItems="baseline" gap="$xs">
+              <Text fontSize="$lg" fontWeight="$bold" color="$black">
+                {followersCount}
+              </Text>
+              <Text fontSize="$xs" color="$gray300">
+                粉丝
+              </Text>
+            </HStack>
+          </Pressable>
+          <HStack alignItems="baseline" gap="$xs">
+            <Text fontSize="$lg" fontWeight="$bold" color="$black">
               {tabsData.posts.hasLoaded ? getTotalLikes() : "-"}
             </Text>
-            <Text style={styles.statLabel}>获赞与收藏</Text>
-          </View>
-        </View>
-      </View>
+            <Text fontSize="$xs" color="$gray300">
+              获赞与收藏
+            </Text>
+          </HStack>
+        </HStack>
+      </VStack>
 
       {/* 帖子区域 */}
-      <View style={styles.postsSection}>
+      <Box flex={1}>
         {/* 标签栏 */}
-        <ScrollView
+        <RNScrollView
           ref={tabScrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.tabBar}
-          contentContainerStyle={styles.tabBarContent}
+          style={{
+            borderBottomWidth: 1,
+            borderBottomColor: theme.colors.gray100,
+            maxHeight: 44,
+          }}
+          contentContainerStyle={{ paddingHorizontal: theme.spacing.md }}
         >
           {tabs.map((tab) => (
-            <TouchableOpacity
+            <Pressable
               key={tab.id}
-              style={[
-                styles.tabItem,
-                activeTab === tab.id && styles.tabItemActive,
-              ]}
+              py="$sm"
+              mr="$lg"
+              position="relative"
               onPress={() => handleTabPress(tab.id)}
             >
-              <Ionicons
-                name={tab.icon as any}
-                size={18}
-                color={
-                  activeTab === tab.id
-                    ? theme.colors.black
-                    : theme.colors.gray300
-                }
-              />
-              <Text
-                style={[
-                  styles.tabLabel,
-                  activeTab === tab.id && styles.tabLabelActive,
-                ]}
-              >
-                {tab.label}
-              </Text>
-              {activeTab === tab.id && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
+              <HStack alignItems="center" gap="$xs">
+                <Text
+                  color={activeTab === tab.id ? "$black" : "$gray300"}
+                  fontWeight={activeTab === tab.id ? "$semibold" : "$medium"}
+                >
+                  {tab.label}
+                </Text>
+              </HStack>
+              {activeTab === tab.id && (
+                <Box
+                  position="absolute"
+                  bottom={0}
+                  left={0}
+                  right={0}
+                  height={2}
+                  bg="$black"
+                />
+              )}
+            </Pressable>
           ))}
-        </ScrollView>
+        </RNScrollView>
 
         {/* 可滑动的内容区域 */}
-        <ScrollView
+        <RNScrollView
           ref={contentScrollViewRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleTabSwipe}
           scrollEventThrottle={16}
-          style={styles.swipeContainer}
+          style={{ flex: 1 }}
           nestedScrollEnabled={true}
         >
           {tabs.map((tab) => {
@@ -587,10 +595,13 @@ const UserProfileScreen = () => {
               currentTabData.isLoading && !currentTabData.hasLoaded;
 
             return (
-              <ScrollView
+              <RNScrollView
                 key={tab.id}
-                style={styles.tabPage}
-                contentContainerStyle={styles.tabPageContent}
+                style={{ width: SCREEN_WIDTH }}
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  paddingBottom: theme.spacing.xl,
+                }}
                 refreshControl={
                   <RefreshControl
                     refreshing={refreshing && isCurrentTab}
@@ -601,31 +612,35 @@ const UserProfileScreen = () => {
                 nestedScrollEnabled={true}
               >
                 {shouldShowLoading ? (
-                  <View style={styles.loadingState}>
+                  <VStack alignItems="center" justifyContent="center" py="$xl">
                     <ActivityIndicator
                       size="large"
                       color={theme.colors.gray400}
                     />
-                    <Text style={styles.loadingText}>加载中...</Text>
-                  </View>
+                    <Text fontSize="$sm" color="$gray400" mt="$sm">
+                      加载中...
+                    </Text>
+                  </VStack>
                 ) : currentTabData.posts.length > 0 ? (
-                  <View style={styles.postsGrid}>
+                  <HStack
+                    flexWrap="wrap"
+                    px="$md"
+                    pt="$sm"
+                    justifyContent="space-between"
+                  >
                     {currentTabData.posts.map((post) => (
-                      <View key={post.id} style={styles.postItem}>
-                        <TouchableOpacity
-                          onPress={() => handlePostPress(post)}
-                          activeOpacity={0.95}
-                        >
+                      <Box key={post.id} width="48%" mb="$md">
+                        <Pressable onPress={() => handlePostPress(post)}>
                           <SimplePostCard
                             post={post}
                             onPress={() => handlePostPress(post)}
                           />
-                        </TouchableOpacity>
-                      </View>
+                        </Pressable>
+                      </Box>
                     ))}
-                  </View>
+                  </HStack>
                 ) : currentTabData.hasLoaded ? (
-                  <View style={styles.emptyState}>
+                  <VStack alignItems="center" justifyContent="center" py="$xl">
                     <Ionicons
                       name={
                         tab.id === "saved"
@@ -637,254 +652,26 @@ const UserProfileScreen = () => {
                       size={48}
                       color={theme.colors.gray300}
                     />
-                    <Text style={styles.emptyText}>
+                    <Text color="$gray400" mt="$md">
                       {tab.id === "posts" && "还没有发布内容"}
                       {tab.id === "saved" && "还没有收藏帖子"}
                       {tab.id === "liked" && "还没有点赞帖子"}
                     </Text>
-                    <Text style={styles.emptySubText}>
+                    <Text fontSize="$sm" color="$gray300" mt="$xs">
                       {tab.id === "posts" &&
                         (isCurrentUser
                           ? "快去发布你的第一篇笔记吧"
                           : "TA 还没有发布任何笔记")}
                     </Text>
-                  </View>
+                  </VStack>
                 ) : null}
-              </ScrollView>
+              </RNScrollView>
             );
           })}
-        </ScrollView>
-      </View>
+        </RNScrollView>
+      </Box>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  // 顶部导航栏
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.xs,
-    height: 44,
-  },
-  topBarButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topBarRight: {
-    flexDirection: "row",
-  },
-  // 头部样式（与 ProfileScreen 一致）
-  header: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-  },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
-  avatarContainer: {
-    marginRight: theme.spacing.md,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    ...theme.typography.h2,
-    color: theme.colors.white,
-  },
-  userInfoSection: {
-    flex: 1,
-  },
-  username: {
-    ...theme.typography.h2,
-    color: theme.colors.black,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  userId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-  },
-  actionButtons: {
-    marginLeft: theme.spacing.sm,
-  },
-  followButton: {
-    backgroundColor: "#FF2442",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 72,
-    alignItems: "center",
-  },
-  followingButton: {
-    backgroundColor: theme.colors.gray100,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  followButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.white,
-  },
-  followingButtonText: {
-    color: theme.colors.gray600,
-  },
-  editButton: {
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: theme.colors.black,
-  },
-  bioContainer: {
-    marginBottom: theme.spacing.sm,
-  },
-  bioText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-  },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  tag: {
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.full,
-  },
-  tagText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.lg,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-  },
-  statNumber: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    fontWeight: "700",
-  },
-  statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-  },
-  // 帖子区域
-  postsSection: {
-    flex: 1,
-  },
-  tabBar: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    maxHeight: 44,
-  },
-  tabBarContent: {
-    paddingHorizontal: theme.spacing.md,
-  },
-  tabItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: theme.spacing.sm,
-    marginRight: theme.spacing.lg,
-    position: "relative",
-    gap: 6,
-  },
-  tabItemActive: {},
-  tabLabel: {
-    ...theme.typography.body,
-    color: theme.colors.gray300,
-    fontWeight: "500",
-  },
-  tabLabelActive: {
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  tabIndicator: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: theme.colors.black,
-  },
-  // 滑动容器
-  swipeContainer: {
-    flex: 1,
-  },
-  tabPage: {
-    width: SCREEN_WIDTH,
-  },
-  tabPageContent: {
-    flexGrow: 1,
-    paddingBottom: theme.spacing.xl,
-  },
-  postsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
-    justifyContent: "space-between",
-  },
-  postItem: {
-    width: "48%",
-    marginBottom: theme.spacing.md,
-  },
-  loadingState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  loadingText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.md,
-  },
-  emptySubText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: theme.spacing.xs,
-  },
-});
 
 export default UserProfileScreen;

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  Image,
-  ActivityIndicator,
-} from "react-native";
+import { RefreshControl, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  Box,
+  Text,
+  ScrollView,
+  Pressable,
+  VStack,
+  HStack,
+  Image,
+} from "../components/ui";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -89,222 +89,151 @@ const FollowingUsersScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.white }} edges={["top", "bottom"]}>
       {/* 头部 */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+      <HStack
+        alignItems="center"
+        justifyContent="space-between"
+        px="$md"
+        py="$md"
+        borderBottomWidth={1}
+        borderBottomColor="$gray100"
+      >
+        <Pressable p="$xs" onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>关注的用户</Text>
-        <View style={styles.headerRight} />
-      </View>
+        </Pressable>
+        <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+          关注的用户
+        </Text>
+        <Box width={40} />
+      </HStack>
 
       {/* 内容 */}
       <ScrollView
-        style={styles.content}
+        flex={1}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {loading ? (
-          <View style={styles.loadingState}>
+          <VStack alignItems="center" justifyContent="center" py="$xl">
             <ActivityIndicator size="large" color={theme.colors.gray400} />
-            <Text style={styles.loadingText}>加载中...</Text>
-          </View>
+            <Text fontSize="$sm" color="$gray400" mt="$sm">
+              加载中...
+            </Text>
+          </VStack>
         ) : followingUsers.length > 0 ? (
-          <View style={styles.userList}>
+          <VStack py="$sm">
             {followingUsers.map((followingUser) => (
-              <View key={followingUser.userId} style={styles.userItem}>
-                <TouchableOpacity
-                  style={styles.userInfo}
+              <HStack
+                key={followingUser.userId}
+                alignItems="center"
+                px="$md"
+                py="$md"
+                borderBottomWidth={1}
+                borderBottomColor="$gray100"
+              >
+                <Pressable
+                  flex={1}
                   onPress={() => handleUserPress(followingUser.userId)}
                 >
-                  {/* 头像 */}
-                  {followingUser.avatar ? (
-                    <Image
-                      source={{ uri: followingUser.avatar }}
-                      style={styles.avatar}
-                    />
-                  ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                      <Text style={styles.avatarText}>
-                        {followingUser.username?.slice(0, 2).toUpperCase() ||
-                          "??"}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* 用户信息 */}
-                  <View style={styles.userDetails}>
-                    <Text style={styles.username} numberOfLines={1}>
-                      {followingUser.username}
-                    </Text>
-                    {followingUser.bio ? (
-                      <Text style={styles.bio} numberOfLines={2}>
-                        {followingUser.bio}
-                      </Text>
-                    ) : null}
-                    {followingUser.location ? (
-                      <View style={styles.locationContainer}>
-                        <Ionicons
-                          name="location-outline"
-                          size={12}
-                          color={theme.colors.gray400}
-                        />
-                        <Text style={styles.location}>
-                          {followingUser.location}
+                  <HStack alignItems="center">
+                    {/* 头像 */}
+                    {followingUser.avatar ? (
+                      <Image
+                        source={{ uri: followingUser.avatar }}
+                        width={50}
+                        height={50}
+                        borderRadius={25}
+                        mr="$md"
+                        alt={followingUser.username}
+                      />
+                    ) : (
+                      <Box
+                        width={50}
+                        height={50}
+                        borderRadius={25}
+                        bg="$black"
+                        alignItems="center"
+                        justifyContent="center"
+                        mr="$md"
+                      >
+                        <Text color="$white" fontWeight="$semibold">
+                          {followingUser.username?.slice(0, 2).toUpperCase() || "??"}
                         </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
+                      </Box>
+                    )}
+
+                    {/* 用户信息 */}
+                    <VStack flex={1}>
+                      <Text
+                        fontWeight="$semibold"
+                        color="$black"
+                        numberOfLines={1}
+                        mb="$xs"
+                      >
+                        {followingUser.username}
+                      </Text>
+                      {followingUser.bio ? (
+                        <Text
+                          fontSize="$sm"
+                          color="$gray600"
+                          numberOfLines={2}
+                          mb="$xs"
+                        >
+                          {followingUser.bio}
+                        </Text>
+                      ) : null}
+                      {followingUser.location ? (
+                        <HStack alignItems="center">
+                          <Ionicons
+                            name="location-outline"
+                            size={12}
+                            color={theme.colors.gray400}
+                          />
+                          <Text fontSize="$xs" color="$gray400" ml="$xs">
+                            {followingUser.location}
+                          </Text>
+                        </HStack>
+                      ) : null}
+                    </VStack>
+                  </HStack>
+                </Pressable>
 
                 {/* 取消关注按钮 - 只有当查看的是自己的关注列表时才显示 */}
                 {user?.userId === userId && (
-                  <TouchableOpacity
-                    style={styles.unfollowButton}
+                  <Pressable
+                    px="$md"
+                    py="$sm"
+                    borderRadius="$sm"
+                    borderWidth={1}
+                    borderColor="$gray300"
+                    bg="$white"
                     onPress={() => handleUnfollow(followingUser.userId)}
                   >
-                    <Text style={styles.unfollowButtonText}>取消关注</Text>
-                  </TouchableOpacity>
+                    <Text fontSize="$sm" color="$gray600" fontWeight="$medium">
+                      取消关注
+                    </Text>
+                  </Pressable>
                 )}
-              </View>
+              </HStack>
             ))}
-          </View>
+          </VStack>
         ) : (
-          <View style={styles.emptyState}>
+          <VStack alignItems="center" justifyContent="center" py="$xl">
             <Ionicons
               name="people-outline"
               size={48}
               color={theme.colors.gray300}
             />
-            <Text style={styles.emptyText}>还没有关注任何用户</Text>
-          </View>
+            <Text color="$gray400" mt="$md">
+              还没有关注任何用户
+            </Text>
+          </VStack>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backButton: {
-    padding: theme.spacing.xs,
-  },
-  headerTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-  },
-  headerRight: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  loadingState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  loadingText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
-  },
-  userList: {
-    paddingVertical: theme.spacing.sm,
-  },
-  userItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  userInfo: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: theme.spacing.md,
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    ...theme.typography.body,
-    color: theme.colors.white,
-    fontWeight: "600",
-  },
-  userDetails: {
-    flex: 1,
-  },
-  username: {
-    ...theme.typography.body,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  bio: {
-    ...theme.typography.caption,
-    color: theme.colors.gray600,
-    marginBottom: 4,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  location: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginLeft: 2,
-  },
-  unfollowButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.gray300,
-    backgroundColor: theme.colors.white,
-  },
-  unfollowButtonText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray600,
-    fontWeight: "500",
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.md,
-  },
-});
-
 export default FollowingUsersScreen;
-

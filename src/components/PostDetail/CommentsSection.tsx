@@ -30,7 +30,7 @@ const ReplyItem: React.FC<{
     >
       <Image
         source={{ uri: reply.userAvatar }}
-        style={styles.replyAvatar}
+        style={styles.headerAvatar}
       />
     </Pressable>
     <VStack flex={1} space="xs">
@@ -103,91 +103,91 @@ const CommentItem: React.FC<{
   onReplyToReply,
   onToggleReplies,
 }) => (
-  <VStack mt="$md">
-    <HStack space="sm">
-      <Pressable
-        onPress={() =>
-          onUserPress(comment.userId, comment.userName, comment.userAvatar)
-        }
-      >
-        <Image
-          source={{ uri: comment.userAvatar }}
-          style={styles.commentAvatar}
-        />
-      </Pressable>
-      <VStack flex={1} space="xs">
-        <HStack justifyContent="between" alignItems="center">
-          <Pressable
-            onPress={() =>
-              onUserPress(comment.userId, comment.userName, comment.userAvatar)
-            }
-          >
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              {comment.userName}
-            </Text>
-          </Pressable>
-          <Text fontSize="$xs" color="$gray600">
-            {comment.timestamp}
-          </Text>
-        </HStack>
-        <Text fontSize="$sm" color="$gray800" lineHeight="$md">
-          {comment.content}
-        </Text>
-        <HStack space="md" mt="$xs" alignItems="center">
-          <Pressable onPress={onLike}>
-            <HStack space="xs" alignItems="center">
-              <Ionicons
-                name={comment.isLiked ? "heart" : "heart-outline"}
-                size={16}
-                color={comment.isLiked ? "#FF3040" : theme.colors.gray400}
-              />
-              <Text
-                fontSize="$xs"
-                color={comment.isLiked ? "#FF3040" : "$gray600"}
-              >
-                {comment.likes > 0 ? comment.likes : ""}
+    <VStack mt="$md">
+      <HStack space="sm">
+        <Pressable
+          onPress={() =>
+            onUserPress(comment.userId, comment.userName, comment.userAvatar)
+          }
+        >
+          <Image
+            source={{ uri: comment.userAvatar }}
+            style={styles.commentAvatar}
+          />
+        </Pressable>
+        <VStack flex={1} space="xs">
+          <HStack justifyContent="between" alignItems="center">
+            <Pressable
+              onPress={() =>
+                onUserPress(comment.userId, comment.userName, comment.userAvatar)
+              }
+            >
+              <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+                {comment.userName}
               </Text>
-            </HStack>
-          </Pressable>
-          <Pressable onPress={onReply}>
+            </Pressable>
             <Text fontSize="$xs" color="$gray600">
-              回复
+              {comment.timestamp}
             </Text>
-          </Pressable>
-          {comment.replyCount > 0 && !comment.showReplies && (
-            <Pressable onPress={onToggleReplies}>
-              <Text fontSize="$xs" color="$accent" fontWeight="$medium">
-                查看 {comment.replyCount} 条回复
+          </HStack>
+          <Text fontSize="$sm" color="$gray800" lineHeight="$md">
+            {comment.content}
+          </Text>
+          <HStack space="md" mt="$xs" alignItems="center">
+            <Pressable onPress={onLike}>
+              <HStack space="xs" alignItems="center">
+                <Ionicons
+                  name={comment.isLiked ? "heart" : "heart-outline"}
+                  size={16}
+                  color={comment.isLiked ? "#FF3040" : theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$xs"
+                  color={comment.isLiked ? "#FF3040" : "$gray600"}
+                >
+                  {comment.likes > 0 ? comment.likes : ""}
+                </Text>
+              </HStack>
+            </Pressable>
+            <Pressable onPress={onReply}>
+              <Text fontSize="$xs" color="$gray600">
+                回复
+              </Text>
+            </Pressable>
+            {comment.replyCount > 0 && !comment.showReplies && (
+              <Pressable onPress={onToggleReplies}>
+                <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+                  查看 {comment.replyCount} 条回复
+                </Text>
+              </Pressable>
+            )}
+          </HStack>
+        </VStack>
+      </HStack>
+
+      {/* 回复列表 */}
+      {comment.showReplies && comment.replies && comment.replies.length > 0 && (
+        <VStack mt="$xs">
+          {comment.replies.map((reply) => (
+            <ReplyItem
+              key={reply.id}
+              reply={reply}
+              onLike={() => onReplyLike(reply.id)}
+              onUserPress={onUserPress}
+              onReply={() => onReplyToReply(reply)}
+            />
+          ))}
+          {comment.replies.length > 0 && (
+            <Pressable onPress={onToggleReplies} mt="$sm" ml="$xl" pl="$md">
+              <Text fontSize="$xs" color="$gray500">
+                收起回复
               </Text>
             </Pressable>
           )}
-        </HStack>
-      </VStack>
-    </HStack>
-
-    {/* 回复列表 */}
-    {comment.showReplies && comment.replies && comment.replies.length > 0 && (
-      <VStack mt="$xs">
-        {comment.replies.map((reply) => (
-          <ReplyItem
-            key={reply.id}
-            reply={reply}
-            onLike={() => onReplyLike(reply.id)}
-            onUserPress={onUserPress}
-            onReply={() => onReplyToReply(reply)}
-          />
-        ))}
-        {comment.replies.length > 0 && (
-          <Pressable onPress={onToggleReplies} mt="$sm" ml="$xl" pl="$md">
-            <Text fontSize="$xs" color="$gray500">
-              收起回复
-            </Text>
-          </Pressable>
-        )}
-      </VStack>
-    )}
-  </VStack>
-);
+        </VStack>
+      )}
+    </VStack>
+  );
 
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
   comments,
