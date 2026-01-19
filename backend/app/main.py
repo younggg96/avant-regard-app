@@ -19,6 +19,7 @@ from app.api.routes.admin import router as admin_router, admin_user_router
 from app.api.routes.files import router as files_router
 from app.api.routes.brands import router as brands_router
 from app.api.routes.shows import router as shows_router
+from app.api.routes.buyer_store import router as buyer_store_router
 
 
 @asynccontextmanager
@@ -72,6 +73,7 @@ app.include_router(admin_user_router, prefix="/api")
 app.include_router(files_router, prefix="/api")
 app.include_router(brands_router, prefix="/api")
 app.include_router(shows_router, prefix="/api")
+app.include_router(buyer_store_router, prefix="/api")
 
 
 # 健康检查
