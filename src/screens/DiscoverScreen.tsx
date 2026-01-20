@@ -704,24 +704,19 @@ const DiscoverScreen = () => {
         />
 
         {/* Tab 栏骨架 */}
-        <HStack
-          borderBottomWidth={1}
-          borderBottomColor="$gray100"
-          px="$md"
-          py="$md"
-          gap="$md"
-        >
-          <SkeletonBox width={60} height={20} style={{ borderRadius: 4 }} />
-          <SkeletonBox width={80} height={20} style={{ borderRadius: 4 }} />
-        </HStack>
+        <Box borderBottomWidth={1} borderBottomColor="$gray100">
+          <HStack justifyContent="center" alignItems="center" py="$sm" gap="$sm">
+            <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+            <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+          </HStack>
+        </Box>
 
         {/* 帖子列表骨架（两列瀑布流布局） */}
         <ScrollView
           flex={1}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
         >
-          <HStack alignItems="start">
+          <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
               <Box mb="$sm"><SkeletonPostCard /></Box>
               <Box mb="$sm"><SkeletonPostCard /></Box>

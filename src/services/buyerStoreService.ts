@@ -136,14 +136,35 @@ async function request<T>(
 }
 
 /**
- * 获取所有买手店
+ * 获取所有买手店（自动分页获取全部数据）
  * GET /api/buyer-stores
  */
 export const getAllStores = async (
   params: BuyerStoreFilterParams = {}
 ): Promise<BuyerStore[]> => {
-  const result = await filterStores(params);
-  return result;
+  const PAGE_SIZE = 200; // API 最大支持 200
+  let allStores: BuyerStore[] = [];
+  let currentPage = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await getStoresPaginated({
+      ...params,
+      page: currentPage,
+      pageSize: PAGE_SIZE,
+    });
+
+    allStores = [...allStores, ...result.stores];
+
+    // 检查是否还有更多数据
+    if (result.stores.length < PAGE_SIZE || allStores.length >= result.total) {
+      hasMore = false;
+    } else {
+      currentPage++;
+    }
+  }
+
+  return allStores;
 };
 
 /**
@@ -182,6 +203,32 @@ export const filterStores = async (
   });
 
   return result.stores;
+};
+
+/**
+ * 分页获取买手店列表（返回完整分页信息）
+ * GET /api/buyer-stores
+ */
+export const getStoresPaginated = async (
+  filters: BuyerStoreFilterParams = {}
+): Promise<BuyerStoreListResponse> => {
+  const queryParams = new URLSearchParams();
+
+  if (filters.country) queryParams.append("country", filters.country);
+  if (filters.city) queryParams.append("city", filters.city);
+  if (filters.brand) queryParams.append("brand", filters.brand);
+  if (filters.style) queryParams.append("style", filters.style);
+  if (filters.openOnly) queryParams.append("openOnly", "true");
+  if (filters.searchQuery) queryParams.append("searchQuery", filters.searchQuery);
+  queryParams.append("page", (filters.page || 1).toString());
+  queryParams.append("pageSize", (filters.pageSize || 20).toString());
+
+  const queryString = queryParams.toString();
+  const endpoint = `/api/buyer-stores?${queryString}`;
+
+  return request<BuyerStoreListResponse>(endpoint, {
+    method: "GET",
+  });
 };
 
 /**

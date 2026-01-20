@@ -1,35 +1,53 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
-  ScrollView,
   Dimensions,
   Modal,
   Linking,
   Platform,
   TouchableWithoutFeedback,
   Animated,
+  ScrollView as RNScrollView,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import * as Location from "expo-location";
+import {
+  Box,
+  Text,
+  Pressable,
+  HStack,
+  VStack,
+  ScrollView,
+} from "../components/ui";
 import { theme } from "../theme";
+import ScreenHeader from "../components/ScreenHeader";
 import {
   BuyerStore,
   getAllStores,
   getAllCities,
+  getAllCountries,
   filterStores,
+  getNearbyStores,
 } from "../services/buyerStoreService";
 
 interface FilterState {
+  country: string;
   city: string;
   brand: string;
   styles: string[];
   openOnly: boolean;
   hasPhone: boolean;
+}
+
+interface UserLocation {
+  latitude: number;
+  longitude: number;
 }
 
 // 热门品牌列表
@@ -54,7 +72,111 @@ const STYLE_CATEGORIES = {
   集合店: ["设计师品牌", "设计师品牌集合店", "集合店"],
 };
 
+// 国家中英文映射
+const COUNTRY_TRANSLATIONS: { [key: string]: string } = {
+  中国: "China",
+  以色列: "Israel",
+  俄罗斯: "Russia",
+  加拿大: "Canada",
+  南非: "South Africa",
+  台湾: "Taiwan",
+  奥地利: "Austria",
+  希腊: "Greece",
+  德国: "Germany",
+  意大利: "Italy",
+  挪威: "Norway",
+  新加坡: "Singapore",
+  日本: "Japan",
+  法国: "France",
+  澳大利亚: "Australia",
+  瑞典: "Sweden",
+  瑞士: "Switzerland",
+  罗马尼亚: "Romania",
+  美国: "USA",
+  芬兰: "Finland",
+  英国: "UK",
+  荷兰: "Netherlands",
+  西班牙: "Spain",
+  越南: "Vietnam",
+  阿联酋: "UAE",
+};
+
+// 城市中英文映射
+const CITY_TRANSLATIONS: { [key: string]: string } = {
+  // 英文城市 → 中文
+  Barcelona: "巴塞罗那",
+  Berlin: "柏林",
+  Birmingham: "伯明翰",
+  Bucharest: "布加勒斯特",
+  "Cape Town": "开普敦",
+  Carpi: "卡尔皮",
+  Chicago: "芝加哥",
+  Dubai: "迪拜",
+  Frankfurt: "法兰克福",
+  Gothenburg: "哥德堡",
+  Graz: "格拉茨",
+  "Ha Noi": "河内",
+  Hamburg: "汉堡",
+  Helsinki: "赫尔辛基",
+  Ibiza: "伊比萨",
+  Kobe: "神户",
+  Kyoto: "京都",
+  Leeds: "利兹",
+  Leicester: "莱斯特",
+  Leipzig: "莱比锡",
+  London: "伦敦",
+  "Los Angeles": "洛杉矶",
+  Lugano: "卢加诺",
+  Madrid: "马德里",
+  Mallorca: "马略卡",
+  Milan: "米兰",
+  Montréal: "蒙特利尔",
+  Monza: "蒙扎",
+  Moscow: "莫斯科",
+  Munich: "慕尼黑",
+  Mykonos: "米科诺斯",
+  Nagoya: "名古屋",
+  "New York": "纽约",
+  Osaka: "大阪",
+  Oslo: "奥斯陆",
+  Padua: "帕多瓦",
+  Paris: "巴黎",
+  Rome: "罗马",
+  Rotterdam: "鹿特丹",
+  "San Francisco": "旧金山",
+  Singapore: "新加坡",
+  Sittard: "锡塔德",
+  Sydney: "悉尼",
+  Taipei: "台北",
+  "Tel Aviv": "特拉维夫",
+  Tokyo: "东京",
+  Torino: "都灵",
+  Toulouse: "图卢兹",
+  Vienna: "维也纳",
+  // 中文城市 → 英文
+  上海: "Shanghai",
+  北京: "Beijing",
+  广州: "Guangzhou",
+  杭州: "Hangzhou",
+  深圳: "Shenzhen",
+  香港: "Hong Kong",
+};
+
+// 获取显示名称（中英文）
+const getCountryDisplayName = (country: string): string => {
+  const translation = COUNTRY_TRANSLATIONS[country];
+  return translation ? `${country} ${translation}` : country;
+};
+
+const getCityDisplayName = (city: string): string => {
+  const translation = CITY_TRANSLATIONS[city];
+  return translation ? `${city} ${translation}` : city;
+};
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
 const BuyerMapScreen = () => {
+  const navigation = useNavigation();
   const mapRef = useRef<MapView>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -62,7 +184,21 @@ const BuyerMapScreen = () => {
   const [selectedStore, setSelectedStore] = useState<BuyerStore | null>(null);
   const [stores, setStores] = useState<BuyerStore[]>([]);
   const [filteredStores, setFilteredStores] = useState<BuyerStore[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [nearbyMode, setNearbyMode] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  // 默认北京坐标
+  const [initialRegion, setInitialRegion] = useState({
+    latitude: 39.9042,
+    longitude: 116.4074,
+    latitudeDelta: 10,
+    longitudeDelta: 10,
+  });
   const [filters, setFilters] = useState<FilterState>({
+    country: "",
     city: "",
     brand: "",
     styles: [],
@@ -74,29 +210,203 @@ const BuyerMapScreen = () => {
   const filterSheetAnim = useRef(new Animated.Value(0)).current;
   const detailSheetAnim = useRef(new Animated.Value(0)).current;
 
-  // 加载所有店铺
+  // 加载所有店铺和国家列表，并获取用户位置
   useEffect(() => {
     loadStores();
+    loadCountries();
+    initUserLocation();
   }, []);
+
+  // 初始化用户位置
+  const initUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const loc = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        };
+        setUserLocation(loc);
+        setInitialRegion({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          latitudeDelta: 5,
+          longitudeDelta: 5,
+        });
+        // 移动地图到用户位置
+        if (mapRef.current) {
+          mapRef.current.animateToRegion({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            latitudeDelta: 5,
+            longitudeDelta: 5,
+          });
+        }
+      }
+    } catch (error) {
+      console.log("无法获取用户位置，使用默认位置（北京）");
+    }
+  };
+
+  // 当选择国家时，加载该国家的城市列表
+  useEffect(() => {
+    if (filters.country) {
+      loadCities(filters.country);
+    } else {
+      setCities([]);
+    }
+  }, [filters.country]);
 
   const loadStores = async () => {
     try {
+      setIsLoading(true);
       const data = await getAllStores();
       setStores(data);
       setFilteredStores(data);
     } catch (error) {
       console.error("Error loading stores:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // 应用筛选
+  const loadCountries = async () => {
+    try {
+      const data = await getAllCountries();
+      setCountries(data);
+    } catch (error) {
+      console.error("Error loading countries:", error);
+    }
+  };
+
+  const loadCities = async (country?: string) => {
+    try {
+      const data = await getAllCities(country);
+      setCities(data);
+    } catch (error) {
+      console.error("Error loading cities:", error);
+    }
+  };
+
+  // 获取用户位置
+  const getUserLocation = useCallback(async () => {
+    try {
+      setIsLoadingLocation(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("位置权限", "需要位置权限来发现附近的店铺");
+        return null;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const loc = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setUserLocation(loc);
+      return loc;
+    } catch (error) {
+      console.error("Error getting location:", error);
+      Alert.alert("获取位置失败", "请确保已开启定位服务");
+      return null;
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  }, []);
+
+  // 切换附近模式
+  const toggleNearbyMode = useCallback(async () => {
+    if (nearbyMode) {
+      // 关闭附近模式，恢复显示所有店铺
+      setNearbyMode(false);
+      setFilteredStores(stores);
+      // 重置地图视图
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: 45.5,
+          longitude: 9.0,
+          latitudeDelta: 20,
+          longitudeDelta: 20,
+        });
+      }
+    } else {
+      // 开启附近模式
+      let loc = userLocation;
+      if (!loc) {
+        loc = await getUserLocation();
+      }
+      if (loc) {
+        setNearbyMode(true);
+        // 获取附近店铺
+        try {
+          const nearbyStores = await getNearbyStores(loc, 100); // 100km 半径
+          setFilteredStores(nearbyStores);
+          // 移动地图到用户位置
+          if (mapRef.current) {
+            mapRef.current.animateToRegion({
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              latitudeDelta: 2,
+              longitudeDelta: 2,
+            });
+          }
+        } catch (error) {
+          console.error("Error loading nearby stores:", error);
+          // 如果 API 不支持，使用本地筛选
+          const nearby = stores.filter((store) => {
+            const distance = getDistanceFromLatLonInKm(
+              loc!.latitude,
+              loc!.longitude,
+              store.coordinates.latitude,
+              store.coordinates.longitude
+            );
+            return distance <= 100;
+          });
+          setFilteredStores(nearby);
+        }
+      }
+    }
+  }, [nearbyMode, userLocation, stores, getUserLocation]);
+
+  // 计算两点之间的距离（公里）
+  const getDistanceFromLatLonInKm = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
+    const R = 6371; // 地球半径（公里）
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const deg2rad = (deg: number) => deg * (Math.PI / 180);
+
+  // 应用筛选（当不在附近模式时）
   useEffect(() => {
-    applyFilters();
-  }, [searchQuery, filters, stores]);
+    if (!nearbyMode) {
+      applyFilters();
+    }
+  }, [searchQuery, filters, stores, nearbyMode]);
 
   const applyFilters = async () => {
     try {
       let filtered = await filterStores({
+        country: filters.country,
         city: filters.city,
         brand: filters.brand,
         style: filters.styles.length === 1 ? filters.styles[0] : "",
@@ -123,26 +433,65 @@ const BuyerMapScreen = () => {
       }
 
       setFilteredStores(filtered);
+
+      // 如果选择了国家，自动移动地图到该国家的第一个店铺
+      if (filters.country && filtered.length > 0 && mapRef.current) {
+        const firstStore = filtered[0];
+        mapRef.current.animateToRegion({
+          latitude: firstStore.coordinates.latitude,
+          longitude: firstStore.coordinates.longitude,
+          latitudeDelta: 5,
+          longitudeDelta: 5,
+        });
+      }
     } catch (error) {
       console.error("Error filtering stores:", error);
     }
   };
 
-  // 获取筛选选项
-  const cities = getAllCities();
-
-  // 计算各城市店铺数量
-  const cityStoreCounts = useMemo(() => {
+  // 计算各国家店铺数量
+  const countryStoreCounts = useMemo(() => {
     const counts: { [key: string]: number } = {};
     stores.forEach((store) => {
-      counts[store.city] = (counts[store.city] || 0) + 1;
+      counts[store.country] = (counts[store.country] || 0) + 1;
     });
     return counts;
   }, [stores]);
 
+  // 计算各城市店铺数量
+  const cityStoreCounts = useMemo(() => {
+    const counts: { [key: string]: number } = {};
+    const storesInCountry = filters.country
+      ? stores.filter((s) => s.country === filters.country)
+      : stores;
+    storesInCountry.forEach((store) => {
+      counts[store.city] = (counts[store.city] || 0) + 1;
+    });
+    return counts;
+  }, [stores, filters.country]);
+
+  // 按店铺数量排序的国家列表
+  const sortedCountries = useMemo(() => {
+    return [...countries].sort((a, b) => {
+      const countA = countryStoreCounts[a] || 0;
+      const countB = countryStoreCounts[b] || 0;
+      return countB - countA;
+    });
+  }, [countries, countryStoreCounts]);
+
+  // 按店铺数量排序的城市列表
+  const sortedCities = useMemo(() => {
+    return [...cities].sort((a, b) => {
+      const countA = cityStoreCounts[a] || 0;
+      const countB = cityStoreCounts[b] || 0;
+      return countB - countA;
+    });
+  }, [cities, cityStoreCounts]);
+
   // 计算激活的筛选数量
   const activeFilterCount = useMemo(() => {
     let count = 0;
+    if (filters.country) count++;
     if (filters.city) count++;
     if (filters.brand) count++;
     if (filters.styles.length > 0) count++;
@@ -153,12 +502,11 @@ const BuyerMapScreen = () => {
 
   const handleStorePress = (store: BuyerStore) => {
     setSelectedStore(store);
-    // 将地图中心移动到选中的店铺
     if (mapRef.current) {
       mapRef.current.animateToRegion({
         latitude: store.coordinates.latitude,
         longitude: store.coordinates.longitude,
-        latitudeDelta: 0.02, // 稍微放大一点
+        latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       });
     }
@@ -217,6 +565,7 @@ const BuyerMapScreen = () => {
 
   const resetFilters = () => {
     setFilters({
+      country: "",
       city: "",
       brand: "",
       styles: [],
@@ -224,6 +573,28 @@ const BuyerMapScreen = () => {
       hasPhone: false,
     });
     setSearchQuery("");
+    setNearbyMode(false);
+  };
+
+  // 选择国家
+  const handleCountrySelect = (country: string) => {
+    if (filters.country === country) {
+      // 取消选择
+      setFilters((prev) => ({ ...prev, country: "", city: "" }));
+    } else {
+      // 选择新国家，清空城市
+      setFilters((prev) => ({ ...prev, country, city: "" }));
+    }
+    setNearbyMode(false);
+  };
+
+  // 选择城市
+  const handleCitySelect = (city: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      city: prev.city === city ? "" : city,
+    }));
+    setNearbyMode(false);
   };
 
   const toggleStyleFilter = (style: string) => {
@@ -233,13 +604,6 @@ const BuyerMapScreen = () => {
         : [...prev.styles, style];
       return { ...prev, styles: newStyles };
     });
-  };
-
-  const handleQuickCityFilter = (city: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      city: prev.city === city ? "" : city,
-    }));
   };
 
   const renderMarker = (store: BuyerStore) => {
@@ -253,21 +617,24 @@ const BuyerMapScreen = () => {
         onPress={() => handleStorePress(store)}
         zIndex={isSelected ? 999 : 1}
       >
-        <View
-          style={[
-            styles.customMarker,
-            !store.isOpen && styles.closedMarker,
-            isSelected && styles.selectedMarker,
-          ]}
+        <Box
+          w={isSelected ? 32 : 24}
+          h={isSelected ? 32 : 24}
+          rounded="$full"
+          bg={isSelected ? "$white" : store.isOpen ? "$black" : "$gray200"}
+          borderWidth={isSelected ? 3 : 2}
+          borderColor={isSelected ? "$black" : "$white"}
+          justifyContent="center"
+          alignItems="center"
+          sx={styles.markerShadow}
         >
-          <View
-            style={[
-              styles.markerInner,
-              isSelected && styles.selectedMarkerInner,
-            ]}
+          <Box
+            w={isSelected ? 10 : 8}
+            h={isSelected ? 10 : 8}
+            rounded="$full"
+            bg={isSelected ? "$black" : "$white"}
           />
-        </View>
-        {isSelected && <View style={styles.markerArrow} />}
+        </Box>
       </Marker>
     );
   };
@@ -298,242 +665,457 @@ const BuyerMapScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* 搜索栏 */}
-      <View style={styles.headerContainer}>
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
+      <Box px="$md" pb="$sm">
+        <HStack alignItems="center" gap="$sm">
+          <Box
+            flex={1}
+            flexDirection="row"
+            alignItems="center"
+            bg="$gray100"
+            rounded="$full"
+            px="$md"
+            h={44}
+          >
             <Ionicons
               name="search"
               size={20}
-              color={theme.colors.gray500}
-              style={styles.searchIcon}
+              color={theme.colors.gray200}
+              style={{ marginRight: 8 }}
             />
             <TextInput
               style={styles.searchInput}
               placeholder="搜索品牌、店铺或风格..."
-              placeholderTextColor={theme.colors.gray400}
+              placeholderTextColor={theme.colors.gray200}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
             />
             {searchQuery ? (
-              <TouchableOpacity
-                onPress={() => setSearchQuery("")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
+              <Pressable onPress={() => setSearchQuery("")}>
                 <Ionicons
                   name="close-circle"
                   size={18}
-                  color={theme.colors.gray400}
+                  color={theme.colors.gray200}
                 />
-              </TouchableOpacity>
+              </Pressable>
             ) : null}
-          </View>
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              activeFilterCount > 0 && styles.filterButtonActive,
-            ]}
+          </Box>
+          <Pressable
+            w={44}
+            h={44}
+            rounded="$full"
+            bg={activeFilterCount > 0 ? "$black" : "$white"}
+            borderWidth={1}
+            borderColor={activeFilterCount > 0 ? "$black" : "$gray100"}
+            justifyContent="center"
+            alignItems="center"
             onPress={openFilters}
           >
             <Ionicons
               name="options-outline"
               size={22}
-              color={
-                activeFilterCount > 0 ? theme.colors.white : theme.colors.black
-              }
+              color={activeFilterCount > 0 ? theme.colors.white : theme.colors.black}
             />
             {activeFilterCount > 0 && (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* 快速城市筛选标签 */}
-        <View style={styles.quickFilterContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.quickFilterScroll}
-          >
-            <TouchableOpacity
-              style={[
-                styles.quickFilterTag,
-                filters.openOnly && styles.quickFilterTagActive,
-              ]}
-              onPress={() =>
-                setFilters((prev) => ({ ...prev, openOnly: !prev.openOnly }))
-              }
-            >
-              <Ionicons
-                name="time-outline"
-                size={14}
-                color={
-                  filters.openOnly ? theme.colors.white : theme.colors.black
-                }
-              />
-              <Text
-                style={[
-                  styles.quickFilterText,
-                  filters.openOnly && styles.quickFilterTextActive,
-                  { marginLeft: 4 },
-                ]}
+              <Box
+                position="absolute"
+                top={-2}
+                right={-2}
+                w={18}
+                h={18}
+                rounded="$full"
+                bg="$error"
+                justifyContent="center"
+                alignItems="center"
+                borderWidth={2}
+                borderColor="$white"
               >
-                营业中
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            {cities.map((city) => (
-              <TouchableOpacity
-                key={city}
-                style={[
-                  styles.quickFilterTag,
-                  filters.city === city && styles.quickFilterTagActive,
-                ]}
-                onPress={() => handleQuickCityFilter(city)}
-              >
-                <Text
-                  style={[
-                    styles.quickFilterText,
-                    filters.city === city && styles.quickFilterTextActive,
-                  ]}
-                >
-                  {city}
+                <Text color="$white" fontSize="$xs" fontWeight="$bold">
+                  {activeFilterCount}
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
+              </Box>
+            )}
+          </Pressable>
+        </HStack>
+      </Box>
 
-      {/* 地图视图 */}
-      <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={{
-            latitude: 31.2304,
-            longitude: 121.4737,
-            latitudeDelta: 15,
-            longitudeDelta: 15,
-          }}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-          rotateEnabled={false}
-        >
-          {filteredStores.map(renderMarker)}
-        </MapView>
-
-        {/* 悬浮列表按钮 - 当列表被折叠时可能需要一个展开按钮，这里暂不需要因为列表一直显示 */}
-      </View>
-
-      {/* 底部店铺列表卡片 */}
-      <View style={styles.storesListContainer}>
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>
-            发现 {filteredStores.length} 家好店
-          </Text>
-          {activeFilterCount > 0 && (
-            <TouchableOpacity onPress={resetFilters}>
-              <Text style={styles.clearButton}>清除筛选</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* 快速筛选标签 - 浮在地图上方 */}
+      <Box
+        position="absolute"
+        top={110}
+        left={0}
+        right={0}
+        zIndex={10}
+        sx={{ elevation: 5 }}
+      >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.storesList}
-          snapToInterval={296} // card width + margin
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.sm
+          }}
+        >
+          {/* 附近按钮 */}
+          <Pressable
+            flexDirection="row"
+            alignItems="center"
+            px="$md"
+            py="$xs"
+            rounded="$full"
+            bg={nearbyMode ? "$black" : "$white"}
+            mr="$sm"
+            onPress={toggleNearbyMode}
+            opacity={isLoadingLocation ? 0.6 : 1}
+            disabled={isLoadingLocation}
+            sx={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            {isLoadingLocation ? (
+              <ActivityIndicator size="small" color={nearbyMode ? theme.colors.white : theme.colors.black} />
+            ) : (
+              <Ionicons
+                name="location"
+                size={14}
+                color={nearbyMode ? theme.colors.white : theme.colors.black}
+              />
+            )}
+            <Text
+              color={nearbyMode ? "$white" : "$black"}
+              fontSize="$sm"
+              fontWeight="$medium"
+              ml="$xs"
+            >
+              附近
+            </Text>
+          </Pressable>
+
+          {/* 营业中按钮 */}
+          <Pressable
+            flexDirection="row"
+            alignItems="center"
+            px="$md"
+            py="$xs"
+            rounded="$full"
+            bg={filters.openOnly ? "$black" : "$white"}
+            mr="$sm"
+            onPress={() => setFilters((prev) => ({ ...prev, openOnly: !prev.openOnly }))}
+            sx={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+            }}
+          >
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={filters.openOnly ? theme.colors.white : theme.colors.black}
+            />
+            <Text
+              color={filters.openOnly ? "$white" : "$black"}
+              fontSize="$sm"
+              fontWeight="$medium"
+              ml="$xs"
+            >
+              营业中
+            </Text>
+          </Pressable>
+
+          <Box w={1} h={16} bg="$gray200" mr="$sm" alignSelf="center" />
+
+          {/* 国家选择（按数量排序） */}
+          {sortedCountries.map((country) => (
+            <Pressable
+              key={country}
+              flexDirection="row"
+              alignItems="center"
+              px="$md"
+              py="$xs"
+              rounded="$full"
+              bg={filters.country === country ? "$black" : "$white"}
+              mr="$sm"
+              onPress={() => handleCountrySelect(country)}
+              sx={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+            >
+              <Ionicons
+                name="globe-outline"
+                size={12}
+                color={filters.country === country ? theme.colors.white : theme.colors.gray300}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                color={filters.country === country ? "$white" : "$black"}
+                fontSize="$sm"
+                fontWeight="$medium"
+              >
+                {getCountryDisplayName(country)}
+              </Text>
+              {countryStoreCounts[country] && (
+                <Text
+                  color={filters.country === country ? "$gray100" : "$gray300"}
+                  fontSize="$xs"
+                  ml="$xs"
+                >
+                  {countryStoreCounts[country]}
+                </Text>
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {/* 城市选择（仅在选择国家后显示，按数量排序） */}
+        {filters.country && sortedCities.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: theme.spacing.md,
+              paddingBottom: theme.spacing.sm
+            }}
+          >
+            {sortedCities.slice(0, 15).map((city) => (
+              <Pressable
+                key={city}
+                flexDirection="row"
+                alignItems="center"
+                px="$md"
+                py="$xs"
+                rounded="$full"
+                bg={filters.city === city ? "$black" : "$white"}
+                borderWidth={1}
+                borderColor={filters.city === city ? "$black" : "$gray100"}
+                mr="$sm"
+                onPress={() => handleCitySelect(city)}
+                sx={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}
+              >
+                <Text
+                  color={filters.city === city ? "$white" : "$black"}
+                  fontSize="$sm"
+                  fontWeight="$medium"
+                >
+                  {getCityDisplayName(city)}
+                </Text>
+                {cityStoreCounts[city] && (
+                  <Text
+                    color={filters.city === city ? "$gray100" : "$gray300"}
+                    fontSize="$xs"
+                    ml="$xs"
+                  >
+                    {cityStoreCounts[city]}
+                  </Text>
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+      </Box>
+
+      {/* 地图视图 */}
+      <Box flex={1}>
+        {isLoading ? (
+          <VStack flex={1} justifyContent="center" alignItems="center">
+            <ActivityIndicator size="large" color={theme.colors.black} />
+            <Text color="$gray300" mt="$md">加载中...</Text>
+          </VStack>
+        ) : (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={initialRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            rotateEnabled={false}
+          >
+            {filteredStores.map(renderMarker)}
+          </MapView>
+        )}
+      </Box>
+
+      {/* 底部店铺列表 */}
+      <Box position="absolute" bottom={20} left={0} right={0}>
+        <HStack
+          justifyContent="between"
+          alignItems="center"
+          px="$md"
+          mb="$sm"
+        >
+          <Box bg="rgba(255,255,255,0.95)" px="$sm" py="$xs" rounded="$sm">
+            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+              发现 {filteredStores.length} 家好店
+            </Text>
+          </Box>
+          <HStack gap="$sm">
+            {activeFilterCount > 0 && (
+              <Pressable
+                bg="rgba(255,255,255,0.95)"
+                px="$sm"
+                py="$xs"
+                rounded="$sm"
+                onPress={resetFilters}
+              >
+                <Text fontSize="$xs" color="$black" textDecorationLine="underline">
+                  清除筛选
+                </Text>
+              </Pressable>
+            )}
+            <Pressable
+              bg="$black"
+              px="$md"
+              py="$xs"
+              rounded="$full"
+              flexDirection="row"
+              alignItems="center"
+              onPress={() => (navigation.navigate as any)("StoreList")}
+            >
+              <Ionicons name="list" size={14} color={theme.colors.white} />
+              <Text fontSize="$xs" fontWeight="$semibold" color="$white" ml="$xs">
+                查看全部
+              </Text>
+            </Pressable>
+          </HStack>
+        </HStack>
+
+        <RNScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: theme.spacing.md }}
+          snapToInterval={280 + theme.spacing.sm}
           decelerationRate="fast"
         >
           {filteredStores.map((store) => (
-            <TouchableOpacity
+            <Pressable
               key={store.id}
-              style={[
-                styles.storeCard,
-                selectedStore?.id === store.id && styles.selectedStoreCard,
-              ]}
+              w={280}
+              bg="$white"
+              rounded="$lg"
+              p="$md"
+              mr="$sm"
+              borderWidth={selectedStore?.id === store.id ? 2 : 0}
+              borderColor="$black"
+              sx={styles.cardShadow}
               onPress={() => handleStorePress(store)}
               onLongPress={() => handleStoreDetailPress(store)}
-              activeOpacity={0.9}
             >
-              <View style={styles.storeHeader}>
-                <Text style={styles.storeName} numberOfLines={1}>
+              {/* 店铺头部 */}
+              <HStack justifyContent="between" alignItems="start" mb="$sm">
+                <Text
+                  fontSize="$lg"
+                  fontWeight="$bold"
+                  color="$black"
+                  flex={1}
+                  mr="$sm"
+                  numberOfLines={1}
+                >
                   {store.name}
                 </Text>
-                {store.isOpen ? (
-                  <View style={styles.openBadge}>
-                    <Text style={styles.openBadgeText}>营业中</Text>
-                  </View>
-                ) : (
-                  <View style={styles.closedBadge}>
-                    <Text style={styles.closedBadgeText}>
-                      {store.hours?.includes("需预约") ? "需预约" : "休息"}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                <Box
+                  px="$sm"
+                  py="$xs"
+                  rounded="$sm"
+                  bg={store.isOpen ? "#E8F5E9" : "$gray100"}
+                >
+                  <Text
+                    fontSize="$xs"
+                    fontWeight="$bold"
+                    color={store.isOpen ? "#27AE60" : "$gray300"}
+                  >
+                    {store.isOpen ? "营业中" : "休息"}
+                  </Text>
+                </Box>
+              </HStack>
 
-              <Text style={styles.storeAddress} numberOfLines={1}>
+              {/* 地址 */}
+              <Text fontSize="$sm" color="$gray300" mb="$sm" numberOfLines={1}>
                 {store.city} · {store.address}
               </Text>
 
-              <View style={styles.storeTagsRow}>
+              {/* 风格标签 */}
+              <HStack mb="$sm" gap="$xs">
                 {store.style.slice(0, 2).map((s, idx) => (
-                  <View key={idx} style={styles.miniTag}>
-                    <Text style={styles.miniTagText}>{s}</Text>
-                  </View>
+                  <Box key={idx} bg="$black" px="$sm" py="$xs" rounded="$sm">
+                    <Text fontSize="$xs" color="$white" fontWeight="$medium">
+                      {s}
+                    </Text>
+                  </Box>
                 ))}
-              </View>
+              </HStack>
 
-              <View style={styles.storeBrands}>
-                <Text style={styles.brandText} numberOfLines={1}>
-                  {store.brands.join(" / ")}
+              {/* 品牌 */}
+              <Box
+                pb="$sm"
+                mb="$sm"
+                borderBottomWidth={1}
+                borderBottomColor="$gray100"
+              >
+                <Text fontSize="$xs" color="$gray300" numberOfLines={1} fontStyle="italic">
+                  {store.brands.join(" / ") || "暂无品牌信息"}
                 </Text>
-              </View>
+              </Box>
 
-              <View style={styles.cardFooter}>
-                <TouchableOpacity
-                  style={styles.iconButton}
+              {/* 操作按钮 */}
+              <HStack justifyContent="between" alignItems="center">
+                <Pressable
+                  w={36}
+                  h={36}
+                  rounded="$full"
+                  bg="$gray100"
+                  justifyContent="center"
+                  alignItems="center"
                   onPress={() => handleStoreDetailPress(store)}
                 >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={20}
-                    color={theme.colors.black}
-                  />
-                </TouchableOpacity>
-                <View style={styles.footerActions}>
+                  <Ionicons name="information-circle-outline" size={20} color={theme.colors.black} />
+                </Pressable>
+                <HStack gap="$sm">
                   {store.phone && store.phone.length > 0 && (
-                    <TouchableOpacity
-                      style={styles.iconButton}
+                    <Pressable
+                      w={36}
+                      h={36}
+                      rounded="$full"
+                      bg="$gray100"
+                      justifyContent="center"
+                      alignItems="center"
                       onPress={() => handleCallPress(store.phone![0])}
                     >
-                      <Ionicons
-                        name="call-outline"
-                        size={18}
-                        color={theme.colors.black}
-                      />
-                    </TouchableOpacity>
+                      <Ionicons name="call-outline" size={18} color={theme.colors.black} />
+                    </Pressable>
                   )}
-                  <TouchableOpacity
-                    style={[styles.iconButton, styles.navigateButton]}
+                  <Pressable
+                    w={36}
+                    h={36}
+                    rounded="$full"
+                    bg="$black"
+                    justifyContent="center"
+                    alignItems="center"
                     onPress={() => handleMapPress(store.address)}
                   >
-                    <Ionicons
-                      name="navigate"
-                      size={16}
-                      color={theme.colors.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
+                    <Ionicons name="navigate" size={16} color={theme.colors.white} />
+                  </Pressable>
+                </HStack>
+              </HStack>
+            </Pressable>
           ))}
-        </ScrollView>
-      </View>
+        </RNScrollView>
+      </Box>
 
       {/* 筛选 Bottom Sheet */}
       <Modal
@@ -542,72 +1124,123 @@ const BuyerMapScreen = () => {
         transparent={true}
         onRequestClose={closeFilters}
       >
-        <View style={styles.sheetOverlay}>
+        <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
           <TouchableWithoutFeedback onPress={closeFilters}>
-            <View style={styles.overlayTouchArea} />
+            <Box flex={1} />
           </TouchableWithoutFeedback>
           <Animated.View style={[styles.sheetContainer, filterSheetStyle]}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>筛选条件</Text>
-              <TouchableOpacity
-                onPress={closeFilters}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="close" size={24} color={theme.colors.gray500} />
-              </TouchableOpacity>
-            </View>
+            <Box w={40} h={4} bg="$gray100" rounded="$full" alignSelf="center" mt="$sm" mb="$sm" />
 
-            <ScrollView
-              style={styles.sheetContent}
-              showsVerticalScrollIndicator={false}
+            <HStack
+              justifyContent="between"
+              alignItems="center"
+              px="$lg"
+              pb="$md"
+              borderBottomWidth={1}
+              borderBottomColor="$gray100"
             >
-              {/* 城市筛选 */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>城市</Text>
-                <View style={styles.filterOptions}>
-                  {cities.map((city) => (
-                    <TouchableOpacity
-                      key={city}
-                      style={[
-                        styles.filterOption,
-                        filters.city === city && styles.filterOptionActive,
-                      ]}
+              <Text fontSize="$lg" fontWeight="$bold" color="$black">
+                筛选条件
+              </Text>
+              <Pressable onPress={closeFilters}>
+                <Ionicons name="close" size={24} color={theme.colors.gray300} />
+              </Pressable>
+            </HStack>
+
+            <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+              {/* 国家筛选（按数量排序） */}
+              <VStack mt="$lg">
+                <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                  国家 / Country
+                </Text>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {sortedCountries.map((country) => (
+                    <Pressable
+                      key={country}
+                      px="$md"
+                      py="$sm"
+                      rounded="$full"
+                      borderWidth={1}
+                      borderColor={filters.country === country ? "$black" : "$gray100"}
+                      bg={filters.country === country ? "$black" : "$white"}
+                      mb="$xs"
                       onPress={() =>
                         setFilters((prev) => ({
                           ...prev,
-                          city: prev.city === city ? "" : city,
+                          country: prev.country === country ? "" : country,
+                          city: prev.country === country ? prev.city : "", // 切换国家时清空城市
                         }))
                       }
                     >
                       <Text
-                        style={[
-                          styles.filterOptionText,
-                          filters.city === city &&
-                            styles.filterOptionTextActive,
-                        ]}
+                        fontSize="$sm"
+                        color={filters.country === country ? "$white" : "$black"}
                       >
-                        {city}{" "}
-                        <Text style={{ fontSize: 10, opacity: 0.8 }}>
-                          {cityStoreCounts[city]}
+                        {getCountryDisplayName(country)}{" "}
+                        <Text fontSize="$xs" style={{ opacity: 0.7 }}>
+                          {countryStoreCounts[country]}
                         </Text>
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
-                </View>
-              </View>
+                </HStack>
+              </VStack>
+
+              {/* 城市筛选（按数量排序） */}
+              {sortedCities.length > 0 && (
+                <VStack mt="$lg">
+                  <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                    城市 / City {filters.country && <Text fontSize="$xs" color="$gray300">({filters.country})</Text>}
+                  </Text>
+                  <HStack flexWrap="wrap" gap="$xs">
+                    {sortedCities.map((city) => (
+                      <Pressable
+                        key={city}
+                        px="$md"
+                        py="$sm"
+                        rounded="$full"
+                        borderWidth={1}
+                        borderColor={filters.city === city ? "$black" : "$gray100"}
+                        bg={filters.city === city ? "$black" : "$white"}
+                        mb="$xs"
+                        onPress={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            city: prev.city === city ? "" : city,
+                          }))
+                        }
+                      >
+                        <Text
+                          fontSize="$sm"
+                          color={filters.city === city ? "$white" : "$black"}
+                        >
+                          {getCityDisplayName(city)}{" "}
+                          <Text fontSize="$xs" style={{ opacity: 0.7 }}>
+                            {cityStoreCounts[city]}
+                          </Text>
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </HStack>
+                </VStack>
+              )}
 
               {/* 热门品牌筛选 */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>热门品牌</Text>
-                <View style={styles.filterOptions}>
+              <VStack mt="$lg">
+                <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                  热门品牌
+                </Text>
+                <HStack flexWrap="wrap" gap="$xs">
                   {POPULAR_BRANDS.map((brand) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={brand}
-                      style={[
-                        styles.filterOption,
-                        filters.brand === brand && styles.filterOptionActive,
-                      ]}
+                      px="$md"
+                      py="$sm"
+                      rounded="$full"
+                      borderWidth={1}
+                      borderColor={filters.brand === brand ? "$black" : "$gray100"}
+                      bg={filters.brand === brand ? "$black" : "$white"}
+                      mb="$xs"
                       onPress={() =>
                         setFilters((prev) => ({
                           ...prev,
@@ -616,139 +1249,137 @@ const BuyerMapScreen = () => {
                       }
                     >
                       <Text
-                        style={[
-                          styles.filterOptionText,
-                          filters.brand === brand &&
-                            styles.filterOptionTextActive,
-                        ]}
+                        fontSize="$sm"
+                        color={filters.brand === brand ? "$white" : "$black"}
                       >
                         {brand}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
-                </View>
-              </View>
+                </HStack>
+              </VStack>
 
               {/* 风格分类筛选 */}
-              {Object.entries(STYLE_CATEGORIES).map(
-                ([category, categoryStyles]) => (
-                  <View key={category} style={styles.filterSection}>
-                    <Text style={styles.filterSectionTitle}>{category}</Text>
-                    <View style={styles.filterOptions}>
-                      {categoryStyles.map((styleItem) => (
-                        <TouchableOpacity
-                          key={styleItem}
-                          style={[
-                            styles.filterOption,
-                            filters.styles.includes(styleItem) &&
-                              styles.filterOptionActive,
-                          ]}
-                          onPress={() => toggleStyleFilter(styleItem)}
+              {Object.entries(STYLE_CATEGORIES).map(([category, categoryStyles]) => (
+                <VStack key={category} mt="$lg">
+                  <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                    {category}
+                  </Text>
+                  <HStack flexWrap="wrap" gap="$xs">
+                    {categoryStyles.map((styleItem) => (
+                      <Pressable
+                        key={styleItem}
+                        px="$md"
+                        py="$sm"
+                        rounded="$full"
+                        borderWidth={1}
+                        borderColor={filters.styles.includes(styleItem) ? "$black" : "$gray100"}
+                        bg={filters.styles.includes(styleItem) ? "$black" : "$white"}
+                        mb="$xs"
+                        onPress={() => toggleStyleFilter(styleItem)}
+                      >
+                        <Text
+                          fontSize="$sm"
+                          color={filters.styles.includes(styleItem) ? "$white" : "$black"}
                         >
-                          <Text
-                            style={[
-                              styles.filterOptionText,
-                              filters.styles.includes(styleItem) &&
-                                styles.filterOptionTextActive,
-                            ]}
-                          >
-                            {styleItem}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )
-              )}
+                          {styleItem}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </HStack>
+                </VStack>
+              ))}
 
               {/* 其他条件 */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>更多选项</Text>
-                <View style={styles.checkboxContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.checkboxOption,
-                      filters.openOnly && styles.checkboxOptionActive,
-                    ]}
+              <VStack mt="$lg" mb="$2xl">
+                <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                  更多选项
+                </Text>
+                <HStack gap="$lg">
+                  <Pressable
+                    flexDirection="row"
+                    alignItems="center"
                     onPress={() =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        openOnly: !prev.openOnly,
-                      }))
+                      setFilters((prev) => ({ ...prev, openOnly: !prev.openOnly }))
                     }
                   >
                     <Ionicons
                       name={filters.openOnly ? "checkbox" : "square-outline"}
                       size={20}
-                      color={
-                        filters.openOnly
-                          ? theme.colors.black
-                          : theme.colors.gray400
-                      }
+                      color={filters.openOnly ? theme.colors.black : theme.colors.gray200}
                     />
                     <Text
-                      style={[
-                        styles.checkboxLabel,
-                        filters.openOnly && styles.checkboxLabelActive,
-                      ]}
+                      ml="$sm"
+                      fontSize="$md"
+                      color={filters.openOnly ? "$black" : "$gray300"}
+                      fontWeight={filters.openOnly ? "$medium" : "$normal"}
                     >
                       仅显示营业中
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.checkboxOption,
-                      filters.hasPhone && styles.checkboxOptionActive,
-                    ]}
+                  <Pressable
+                    flexDirection="row"
+                    alignItems="center"
                     onPress={() =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        hasPhone: !prev.hasPhone,
-                      }))
+                      setFilters((prev) => ({ ...prev, hasPhone: !prev.hasPhone }))
                     }
                   >
                     <Ionicons
                       name={filters.hasPhone ? "checkbox" : "square-outline"}
                       size={20}
-                      color={
-                        filters.hasPhone
-                          ? theme.colors.black
-                          : theme.colors.gray400
-                      }
+                      color={filters.hasPhone ? theme.colors.black : theme.colors.gray200}
                     />
                     <Text
-                      style={[
-                        styles.checkboxLabel,
-                        filters.hasPhone && styles.checkboxLabelActive,
-                      ]}
+                      ml="$sm"
+                      fontSize="$md"
+                      color={filters.hasPhone ? "$black" : "$gray300"}
+                      fontWeight={filters.hasPhone ? "$medium" : "$normal"}
                     >
                       有联系电话
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={{ height: 100 }} />
-            </ScrollView>
+                  </Pressable>
+                </HStack>
+              </VStack>
+            </RNScrollView>
 
-            <View style={styles.sheetFooter}>
-              <TouchableOpacity
-                style={styles.resetButton}
+            <HStack
+              p="$lg"
+              borderTopWidth={1}
+              borderTopColor="$gray100"
+              bg="$white"
+              gap="$sm"
+            >
+              <Pressable
+                flex={1}
+                py="$md"
+                rounded="$full"
+                borderWidth={1}
+                borderColor="$gray100"
+                alignItems="center"
+                justifyContent="center"
                 onPress={resetFilters}
               >
-                <Text style={styles.resetButtonText}>重置</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.applyButton}
+                <Text fontSize="$md" fontWeight="$semibold" color="$black">
+                  重置
+                </Text>
+              </Pressable>
+              <Pressable
+                flex={2}
+                py="$md"
+                rounded="$full"
+                bg="$black"
+                alignItems="center"
+                justifyContent="center"
                 onPress={closeFilters}
               >
-                <Text style={styles.applyButtonText}>
+                <Text fontSize="$md" fontWeight="$semibold" color="$white">
                   查看 {filteredStores.length} 家店铺
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </Pressable>
+            </HStack>
           </Animated.View>
-        </View>
+        </Box>
       </Modal>
 
       {/* 店铺详情 Bottom Sheet */}
@@ -758,220 +1389,209 @@ const BuyerMapScreen = () => {
         transparent={true}
         onRequestClose={closeStoreDetail}
       >
-        <View style={styles.sheetOverlay}>
+        <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
           <TouchableWithoutFeedback onPress={closeStoreDetail}>
-            <View style={styles.overlayTouchArea} />
+            <Box flex={1} />
           </TouchableWithoutFeedback>
-          <Animated.View
-            style={[
-              styles.sheetContainer,
-              detailSheetStyle,
-              { maxHeight: "85%" },
-            ]}
-          >
-            <View style={styles.sheetHandle} />
+          <Animated.View style={[styles.sheetContainer, detailSheetStyle, { maxHeight: "85%" }]}>
+            <Box w={40} h={4} bg="$gray100" rounded="$full" alignSelf="center" mt="$sm" mb="$sm" />
 
             {selectedStore && (
               <>
-                <View style={styles.sheetHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.sheetTitle} numberOfLines={1}>
+                <HStack
+                  justifyContent="between"
+                  alignItems="start"
+                  px="$lg"
+                  pb="$md"
+                  borderBottomWidth={1}
+                  borderBottomColor="$gray100"
+                >
+                  <VStack flex={1}>
+                    <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
                       {selectedStore.name}
                     </Text>
-                    <Text style={styles.sheetSubtitle}>
+                    <Text fontSize="$sm" color="$gray300" mt="$xs">
                       {selectedStore.city} · {selectedStore.country}
                     </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={closeStoreDetail}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons
-                      name="close"
-                      size={24}
-                      color={theme.colors.gray500}
-                    />
-                  </TouchableOpacity>
-                </View>
+                  </VStack>
+                  <Pressable onPress={closeStoreDetail}>
+                    <Ionicons name="close" size={24} color={theme.colors.gray300} />
+                  </Pressable>
+                </HStack>
 
-                <ScrollView
-                  style={styles.sheetContent}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {/* Status & Hours */}
-                  <View style={styles.detailInfoBox}>
-                    <View style={styles.detailRow}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor: selectedStore.isOpen
-                              ? "#27AE60"
-                              : theme.colors.gray400,
-                          },
-                        ]}
+                <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+                  {/* 状态和营业时间 */}
+                  <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
+                    <HStack alignItems="center" mb="$sm">
+                      <Box
+                        w={8}
+                        h={8}
+                        rounded="$full"
+                        bg={selectedStore.isOpen ? "#27AE60" : "$gray300"}
+                        mr="$sm"
                       />
                       <Text
-                        style={[
-                          styles.statusText,
-                          {
-                            color: selectedStore.isOpen
-                              ? "#27AE60"
-                              : theme.colors.gray500,
-                          },
-                        ]}
+                        fontSize="$sm"
+                        fontWeight="$semibold"
+                        color={selectedStore.isOpen ? "#27AE60" : "$gray300"}
                       >
-                        {selectedStore.isOpen
-                          ? "营业中"
-                          : selectedStore.hours?.includes("需预约")
-                          ? "需预约"
-                          : "休息中"}
+                        {selectedStore.isOpen ? "营业中" : "休息中"}
                       </Text>
-                    </View>
+                    </HStack>
                     {selectedStore.hours && (
-                      <View style={styles.detailTextRow}>
+                      <HStack alignItems="start">
                         <Ionicons
                           name="time-outline"
                           size={16}
-                          color={theme.colors.gray500}
+                          color={theme.colors.gray300}
                           style={{ marginTop: 2 }}
                         />
-                        <Text style={styles.detailTextContent}>
+                        <Text fontSize="$sm" color="$gray300" ml="$sm" flex={1} lineHeight="$lg">
                           {selectedStore.hours}
-                          {selectedStore.rest ? `\n${selectedStore.rest}` : ""}
                         </Text>
-                      </View>
+                      </HStack>
                     )}
-                  </View>
+                  </Box>
 
-                  {/* Location */}
-                  <TouchableOpacity
-                    style={styles.detailInfoBox}
+                  {/* 地址 */}
+                  <Pressable
+                    bg="$gray100"
+                    rounded="$lg"
+                    p="$md"
+                    mt="$md"
                     onPress={() => handleMapPress(selectedStore.address)}
                   >
-                    <View style={styles.detailTextRow}>
-                      <Ionicons
-                        name="location-outline"
-                        size={18}
-                        color={theme.colors.black}
-                      />
-                      <Text
-                        style={[
-                          styles.detailTextContent,
-                          { color: theme.colors.black, fontWeight: "500" },
-                        ]}
-                      >
+                    <HStack alignItems="center">
+                      <Ionicons name="location-outline" size={18} color={theme.colors.black} />
+                      <Text fontSize="$md" color="$black" fontWeight="$medium" ml="$sm" flex={1}>
                         {selectedStore.address}
                       </Text>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color={theme.colors.gray400}
-                      />
-                    </View>
-                  </TouchableOpacity>
+                      <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
+                    </HStack>
+                  </Pressable>
 
-                  {/* Phone */}
+                  {/* 电话 */}
                   {selectedStore.phone && selectedStore.phone.length > 0 && (
-                    <View style={styles.detailInfoBox}>
+                    <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
                       {selectedStore.phone.map((phone, idx) => (
-                        <TouchableOpacity
+                        <Pressable
                           key={idx}
-                          style={[
-                            styles.detailTextRow,
-                            idx > 0 && { marginTop: 12 },
-                          ]}
+                          flexDirection="row"
+                          alignItems="center"
+                          mt={idx > 0 ? "$sm" : 0}
                           onPress={() => handleCallPress(phone)}
                         >
-                          <Ionicons
-                            name="call-outline"
-                            size={18}
-                            color={theme.colors.black}
-                          />
-                          <Text
-                            style={[
-                              styles.detailTextContent,
-                              { color: theme.colors.black },
-                            ]}
-                          >
+                          <Ionicons name="call-outline" size={18} color={theme.colors.black} />
+                          <Text fontSize="$md" color="$black" ml="$sm" flex={1}>
                             {phone}
                           </Text>
-                          <View style={styles.callButtonSmall}>
-                            <Text style={styles.callButtonText}>拨打</Text>
-                          </View>
-                        </TouchableOpacity>
+                          <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
+                            <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold">
+                              拨打
+                            </Text>
+                          </Box>
+                        </Pressable>
                       ))}
-                    </View>
+                    </Box>
                   )}
 
-                  {/* Styles */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>店铺风格</Text>
-                    <View style={styles.detailTags}>
-                      {selectedStore.style.map((s, idx) => (
-                        <View key={idx} style={styles.detailTag}>
-                          <Text style={styles.detailTagText}>{s}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
+                  {/* 风格 */}
+                  {selectedStore.style.length > 0 && (
+                    <VStack mt="$lg">
+                      <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                        店铺风格
+                      </Text>
+                      <HStack flexWrap="wrap" gap="$xs">
+                        {selectedStore.style.map((s, idx) => (
+                          <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
+                            <Text fontSize="$sm" color="$white" fontWeight="$medium">
+                              {s}
+                            </Text>
+                          </Box>
+                        ))}
+                      </HStack>
+                    </VStack>
+                  )}
 
-                  {/* Brands */}
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>主营品牌</Text>
-                    <View style={styles.detailTags}>
-                      {selectedStore.brands.map((brand, idx) => (
-                        <View key={idx} style={styles.detailBrandTag}>
-                          <Text style={styles.detailBrandText}>{brand}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
+                  {/* 品牌 */}
+                  {selectedStore.brands.length > 0 && (
+                    <VStack mt="$lg" mb="$2xl">
+                      <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                        主营品牌
+                      </Text>
+                      <HStack flexWrap="wrap" gap="$xs">
+                        {selectedStore.brands.map((brand, idx) => (
+                          <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
+                            <Text fontSize="$sm" color="$black">
+                              {brand}
+                            </Text>
+                          </Box>
+                        ))}
+                      </HStack>
+                    </VStack>
+                  )}
+                </RNScrollView>
 
-                  <View style={{ height: 100 }} />
-                </ScrollView>
-
-                {/* Fixed Bottom Actions */}
-                <View style={styles.sheetFooter}>
-                  <TouchableOpacity
-                    style={styles.secondaryActionButton}
+                {/* 底部操作 */}
+                <HStack
+                  p="$lg"
+                  borderTopWidth={1}
+                  borderTopColor="$gray100"
+                  bg="$white"
+                  gap="$sm"
+                >
+                  <Pressable
+                    flex={1}
+                    flexDirection="row"
+                    py="$md"
+                    rounded="$full"
+                    borderWidth={1}
+                    borderColor="$gray100"
+                    alignItems="center"
+                    justifyContent="center"
                     onPress={() => handleMapPress(selectedStore.address)}
                   >
-                    <Ionicons
-                      name="navigate-outline"
-                      size={20}
-                      color={theme.colors.black}
-                    />
-                    <Text style={styles.secondaryActionText}>导航</Text>
-                  </TouchableOpacity>
+                    <Ionicons name="navigate-outline" size={20} color={theme.colors.black} />
+                    <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm">
+                      导航
+                    </Text>
+                  </Pressable>
 
                   {selectedStore.phone && selectedStore.phone.length > 0 ? (
-                    <TouchableOpacity
-                      style={styles.primaryActionButton}
+                    <Pressable
+                      flex={1}
+                      flexDirection="row"
+                      py="$md"
+                      rounded="$full"
+                      bg="$black"
+                      alignItems="center"
+                      justifyContent="center"
                       onPress={() => handleCallPress(selectedStore.phone![0])}
                     >
-                      <Ionicons
-                        name="call"
-                        size={20}
-                        color={theme.colors.white}
-                      />
-                      <Text style={styles.primaryActionText}>联系商家</Text>
-                    </TouchableOpacity>
+                      <Ionicons name="call" size={20} color={theme.colors.white} />
+                      <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm">
+                        联系商家
+                      </Text>
+                    </Pressable>
                   ) : (
-                    <View
-                      style={[
-                        styles.primaryActionButton,
-                        { backgroundColor: theme.colors.gray300 },
-                      ]}
+                    <Box
+                      flex={1}
+                      py="$md"
+                      rounded="$full"
+                      bg="$gray100"
+                      alignItems="center"
+                      justifyContent="center"
                     >
-                      <Text style={styles.primaryActionText}>暂无联系方式</Text>
-                    </View>
+                      <Text fontSize="$md" fontWeight="$semibold" color="$gray300">
+                        暂无联系方式
+                      </Text>
+                    </Box>
                   )}
-                </View>
+                </HStack>
               </>
             )}
           </Animated.View>
-        </View>
+        </Box>
       </Modal>
     </SafeAreaView>
   );
@@ -982,333 +1602,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  headerContainer: {
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
-    zIndex: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    alignItems: "center",
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F7F7F7",
-    borderRadius: 22,
-    paddingHorizontal: theme.spacing.md,
-    height: 44,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#EEEEEE",
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
   searchInput: {
     flex: 1,
-    ...theme.typography.body,
     fontSize: 15,
     color: theme.colors.black,
     paddingVertical: 0,
-    textAlignVertical: "center",
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: theme.colors.white,
-    borderRadius: 22,
-    position: "relative",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  filterButtonActive: {
-    backgroundColor: theme.colors.black,
-  },
-  filterBadge: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#E74C3C",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: theme.colors.white,
-  },
-  filterBadgeText: {
-    color: theme.colors.white,
-    fontSize: 9,
-    fontWeight: "bold",
-  },
-  quickFilterContainer: {
-    paddingLeft: theme.spacing.md,
-  },
-  quickFilterScroll: {
-    paddingRight: theme.spacing.md,
-    alignItems: "center",
-  },
-  quickFilterTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: "#F5F5F5",
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  quickFilterTagActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  quickFilterText: {
-    fontSize: 13,
-    color: theme.colors.gray700,
-    fontWeight: "500",
-  },
-  quickFilterTextActive: {
-    color: theme.colors.white,
-  },
-  divider: {
-    width: 1,
-    height: 16,
-    backgroundColor: theme.colors.gray300,
-    marginRight: 8,
-  },
-  mapContainer: {
-    flex: 1,
-    overflow: "hidden",
   },
   map: {
     flex: 1,
   },
-  customMarker: {
-    backgroundColor: theme.colors.black,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.white,
-    justifyContent: "center",
-    alignItems: "center",
+  markerShadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 5,
   },
-  closedMarker: {
-    backgroundColor: theme.colors.gray500,
-  },
-  selectedMarker: {
-    backgroundColor: theme.colors.white,
-    borderColor: theme.colors.black,
-    borderWidth: 3,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    zIndex: 10,
-    transform: [{ scale: 1.1 }],
-  },
-  markerInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.white,
-  },
-  selectedMarkerInner: {
-    backgroundColor: theme.colors.black,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  markerArrow: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: theme.colors.black,
-    alignSelf: "center",
-    marginTop: -2,
-  },
-
-  // Store List Styles
-  storesListContainer: {
-    position: "absolute",
-    bottom: 20,
-    left: 0,
-    right: 0,
-  },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: 8,
-  },
-  listTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.black,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  clearButton: {
-    fontSize: 12,
-    color: theme.colors.black,
-    textDecorationLine: "underline",
-    backgroundColor: "rgba(255,255,255,0.9)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  storesList: {
-    paddingHorizontal: theme.spacing.md,
-  },
-  storeCard: {
-    width: 280,
-    backgroundColor: theme.colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 16,
+  cardShadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  selectedStoreCard: {
-    borderColor: theme.colors.black,
-  },
-  storeHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  storeName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.black,
-    flex: 1,
-    marginRight: 8,
-    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
-  },
-  openBadge: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  openBadgeText: {
-    color: "#27AE60",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  closedBadge: {
-    backgroundColor: "#F5F5F5",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  closedBadgeText: {
-    color: theme.colors.gray500,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  storeAddress: {
-    fontSize: 13,
-    color: theme.colors.gray500,
-    marginBottom: 12,
-  },
-  storeTagsRow: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  miniTag: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  miniTagText: {
-    color: theme.colors.white,
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  storeBrands: {
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  brandText: {
-    fontSize: 12,
-    color: theme.colors.gray600,
-    fontStyle: "italic",
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  footerActions: {
-    flexDirection: "row",
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  navigateButton: {
-    backgroundColor: theme.colors.black,
-  },
-
-  // Bottom Sheet Styles
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
-    justifyContent: "flex-end",
-  },
-  overlayTouchArea: {
-    flex: 1,
   },
   sheetContainer: {
     backgroundColor: theme.colors.white,
@@ -1317,254 +1632,6 @@ const styles = StyleSheet.create({
     maxHeight: Dimensions.get("window").height * 0.9,
     minHeight: 300,
     paddingBottom: 34,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 20,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F5F5F5",
-  },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.black,
-  },
-  sheetSubtitle: {
-    fontSize: 14,
-    color: theme.colors.gray500,
-    marginTop: 2,
-  },
-  sheetContent: {
-    paddingHorizontal: 20,
-  },
-  sheetFooter: {
-    flexDirection: "row",
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-    backgroundColor: theme.colors.white,
-  },
-
-  // Filter Styles
-  filterSection: {
-    marginTop: 24,
-  },
-  filterSectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.colors.black,
-    marginBottom: 12,
-  },
-  filterOptions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -4,
-  },
-  filterOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    backgroundColor: theme.colors.white,
-    margin: 4,
-  },
-  filterOptionActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    color: theme.colors.black,
-  },
-  filterOptionTextActive: {
-    color: theme.colors.white,
-  },
-  checkboxContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  checkboxOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 24,
-    paddingVertical: 8,
-  },
-  checkboxOptionActive: {
-    opacity: 1,
-  },
-  checkboxLabel: {
-    fontSize: 15,
-    color: theme.colors.gray700,
-    marginLeft: 8,
-  },
-  checkboxLabelActive: {
-    color: theme.colors.black,
-    fontWeight: "500",
-  },
-
-  resetButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: theme.colors.gray300,
-    marginRight: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  resetButtonText: {
-    fontSize: 16,
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  applyButton: {
-    flex: 2,
-    paddingVertical: 14,
-    borderRadius: 28,
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applyButtonText: {
-    fontSize: 16,
-    color: theme.colors.white,
-    fontWeight: "600",
-  },
-
-  // Detail Styles
-  detailInfoBox: {
-    backgroundColor: "#F9F9F9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  detailTextRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  detailTextContent: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginLeft: 8,
-  },
-  callButtonSmall: {
-    backgroundColor: "#E8F5E9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  callButtonText: {
-    color: "#27AE60",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  detailSection: {
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  detailSectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: theme.colors.black,
-    marginBottom: 12,
-  },
-  detailTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -4,
-  },
-  detailTag: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    margin: 4,
-  },
-  detailTagText: {
-    fontSize: 12,
-    color: theme.colors.white,
-    fontWeight: "500",
-  },
-  detailBrandTag: {
-    backgroundColor: "#F0F0F0",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    margin: 4,
-  },
-  detailBrandText: {
-    fontSize: 12,
-    color: theme.colors.black,
-  },
-  primaryActionButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: theme.colors.black,
-    paddingVertical: 14,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: 8,
-  },
-  primaryActionText: {
-    color: theme.colors.white,
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray300,
-    paddingVertical: 14,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  secondaryActionText: {
-    color: theme.colors.black,
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
   },
 });
 

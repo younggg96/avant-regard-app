@@ -19,6 +19,7 @@ import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/ArchiveScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import BuyerMapScreen from "./src/screens/BuyerMapScreen";
+import StoreListScreen from "./src/screens/StoreListScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
 import PostDetailScreen from "./src/screens/PostDetailScreen";
@@ -270,6 +271,11 @@ function AppNavigator() {
       <Stack.Screen
         name="Admin"
         component={AdminScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="StoreList"
+        component={StoreListScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
