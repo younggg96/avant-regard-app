@@ -340,7 +340,7 @@ const DraftsScreen = () => {
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={theme.colors.gray400} />
+            <ActivityIndicator size="small" color={theme.colors.gray400} />
             <Text style={styles.loadingText}>加载中...</Text>
           </View>
         ) : drafts.length > 0 ? (

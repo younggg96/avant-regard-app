@@ -1,5 +1,11 @@
 import React, { useState, useRef } from "react";
-import { StyleSheet, Modal, Keyboard, Platform } from "react-native";
+import {
+  StyleSheet,
+  Modal,
+  Keyboard,
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -223,138 +229,145 @@ const PublishArticleScreen = () => {
         onBackPress={() => navigation.goBack()}
       />
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        {/* Cover Image */}
-        <SingleImageUploader
-          imageUri={coverImage}
-          onImageSelected={setCoverImage}
-          onImageRemoved={() => setCoverImage(null)}
-          placeholder="添加封面图（可选）"
-          subtitle="建议尺寸 1:1"
-          height={300}
-          aspectRatio={[1, 1]}
-        />
-
-        {/* Title Input */}
-        <Box mx="$md" mb="$md">
-          <Input
-            value={title}
-            onChangeText={setTitle}
-            placeholder="文章标题，支持长标题"
-            placeholderTextColor={theme.colors.gray400}
-            multiline
-            variant="filled"
-            sx={{
-              fontSize: 20,
-              fontWeight: "600",
-              minHeight: 50,
-              textAlignVertical: "top",
-              borderWidth: 0,
-              backgroundColor: "transparent",
-              padding: 0,
-            }}
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Cover Image */}
+          <SingleImageUploader
+            imageUri={coverImage}
+            onImageSelected={setCoverImage}
+            onImageRemoved={() => setCoverImage(null)}
+            placeholder="添加封面图（可选）"
+            subtitle="建议尺寸 1:1"
+            height={300}
+            aspectRatio={[1, 1]}
           />
-        </Box>
 
-        {/* Rich Text Editor */}
-        <Box mx="$md" mb="$md">
-          {/* Toolbar */}
-          <Box
-            mb="$sm"
-            borderWidth={1}
-            borderColor="$gray200"
-            borderRadius="$md"
-            overflow="hidden"
-          >
-            <RichToolbar
-              editor={richText}
-              actions={[
-                actions.setBold,
-                actions.setItalic,
-                actions.setUnderline,
-                actions.heading1,
-                actions.insertBulletsList,
-                actions.insertOrderedList,
-                actions.blockquote,
-                actions.alignLeft,
-                actions.alignCenter,
-                actions.alignRight,
-                actions.code,
-                actions.line,
-                "insertImage",
-              ]}
-              iconMap={{
-                insertImage: ({ tintColor }: { tintColor: string }) => (
-                  <Ionicons name="image" size={20} color={tintColor} />
-                ),
-              }}
-              onPressAddImage={handleInsertContentImage}
-              style={styles.richToolbar}
-              selectedIconTint={theme.colors.accent}
-              disabledIconTint={theme.colors.gray300}
-              iconTint={theme.colors.gray600}
-            />
-          </Box>
-
-          {/* Editor */}
-          <Box
-            borderWidth={1}
-            borderColor="$gray200"
-            borderRadius="$md"
-            overflow="hidden"
-            minHeight={300}
-          >
-            <RichEditor
-              ref={richText}
-              onChange={handleContentChange}
-              placeholder="支持段落、加粗、引用、插图...分享你的时尚观点、趋势分析或专业见解。最少需要100字。"
-              style={styles.richEditor}
-              initialHeight={300}
-              useContainer={true}
-              editorStyle={{
-                backgroundColor: theme.colors.white,
-                color: theme.colors.gray700,
-                placeholderColor: theme.colors.gray400,
-                contentCSSText: `
-                  font-size: 16px;
-                  line-height: 1.6;
-                  padding: 12px;
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                `,
+          {/* Title Input */}
+          <Box mx="$md" mb="$md">
+            <Input
+              value={title}
+              onChangeText={setTitle}
+              placeholder="文章标题，支持长标题"
+              placeholderTextColor={theme.colors.gray400}
+              multiline
+              variant="filled"
+              sx={{
+                fontSize: 20,
+                fontWeight: "600",
+                minHeight: 50,
+                textAlignVertical: "top",
+                borderWidth: 0,
+                backgroundColor: "transparent",
+                padding: 0,
               }}
             />
           </Box>
-        </Box>
 
-        {/* Word Count */}
-        <Box mx="$md" mb="$md">
-          <Text
-            color={wordCount >= 100 ? "$gray500" : "$orange"}
-            fontSize="$sm"
-            textAlign="right"
-          >
-            {wordCount} / 100 字（最少）
-          </Text>
-        </Box>
-      </ScrollView>
+          {/* Rich Text Editor */}
+          <Box mx="$md" mb="$md">
+            {/* Toolbar */}
+            <Box
+              mb="$sm"
+              borderWidth={1}
+              borderColor="$gray200"
+              borderRadius="$md"
+              overflow="hidden"
+            >
+              <RichToolbar
+                editor={richText}
+                actions={[
+                  actions.setBold,
+                  actions.setItalic,
+                  actions.setUnderline,
+                  actions.heading1,
+                  actions.insertBulletsList,
+                  actions.insertOrderedList,
+                  actions.blockquote,
+                  actions.alignLeft,
+                  actions.alignCenter,
+                  actions.alignRight,
+                  actions.code,
+                  actions.line,
+                  "insertImage",
+                ]}
+                iconMap={{
+                  insertImage: ({ tintColor }: { tintColor: string }) => (
+                    <Ionicons name="image" size={20} color={tintColor} />
+                  ),
+                }}
+                onPressAddImage={handleInsertContentImage}
+                style={styles.richToolbar}
+                selectedIconTint={theme.colors.accent}
+                disabledIconTint={theme.colors.gray300}
+                iconTint={theme.colors.gray600}
+              />
+            </Box>
 
-      {/* Bottom Buttons */}
-      <PublishButtons
-        onSaveDraft={handleSaveDraft}
-        onPublish={handlePublish}
-        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
-        draftDisabled={isPublishing || isSavingDraft}
-        publishButtonText={
-          isPublishing ? uploadProgress || "发布中..." : "发布"
-        }
-        draftButtonText={
-          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
-        }
-      />
+            {/* Editor */}
+            <Box
+              borderWidth={1}
+              borderColor="$gray200"
+              borderRadius="$md"
+              overflow="hidden"
+              minHeight={300}
+            >
+              <RichEditor
+                ref={richText}
+                onChange={handleContentChange}
+                placeholder="支持段落、加粗、引用、插图...分享你的时尚观点、趋势分析或专业见解。最少需要100字。"
+                style={styles.richEditor}
+                initialHeight={300}
+                useContainer={true}
+                editorStyle={{
+                  backgroundColor: theme.colors.white,
+                  color: theme.colors.gray700,
+                  placeholderColor: theme.colors.gray400,
+                  contentCSSText: `
+                    font-size: 16px;
+                    line-height: 1.6;
+                    padding: 12px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                  `,
+                }}
+              />
+            </Box>
+          </Box>
+
+          {/* Word Count */}
+          <Box mx="$md" mb="$md">
+            <Text
+              color={wordCount >= 100 ? "$gray500" : "$orange"}
+              fontSize="$sm"
+              textAlign="right"
+            >
+              {wordCount} / 100 字（最少）
+            </Text>
+          </Box>
+        </ScrollView>
+
+        {/* Bottom Buttons */}
+        <PublishButtons
+          onSaveDraft={handleSaveDraft}
+          onPublish={handlePublish}
+          publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+          draftDisabled={isPublishing || isSavingDraft}
+          publishButtonText={
+            isPublishing ? uploadProgress || "发布中..." : "发布"
+          }
+          draftButtonText={
+            isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+          }
+        />
+      </KeyboardAvoidingView>
 
       {/* Modals */}
       <ImagePickerModal
@@ -372,6 +385,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   content: {
     flex: 1,

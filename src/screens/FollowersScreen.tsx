@@ -143,7 +143,7 @@ const FollowersScreen = () => {
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={theme.colors.gray400} />
+            <ActivityIndicator size="small" color={theme.colors.gray400} />
             <Text style={styles.loadingText}>加载中...</Text>
           </View>
         ) : followers.length > 0 ? (
@@ -204,7 +204,7 @@ const FollowersScreen = () => {
                       style={[
                         styles.followButtonText,
                         followingStatus[follower.userId] &&
-                          styles.followingButtonText,
+                        styles.followingButtonText,
                       ]}
                     >
                       {followingStatus[follower.userId] ? "已关注" : "回关"}
@@ -218,7 +218,7 @@ const FollowersScreen = () => {
           <View style={styles.emptyState}>
             <Ionicons
               name="people-outline"
-              size={48}
+              size={24}
               color={theme.colors.gray300}
             />
             <Text style={styles.emptyText}>还没有粉丝</Text>

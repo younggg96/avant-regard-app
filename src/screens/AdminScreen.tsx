@@ -427,114 +427,114 @@ const AdminScreen = () => {
           <Text style={styles.postDate}>{formatDate(post.createdAt)}</Text>
         </View>
 
-      {/* 用户信息 */}
-      <View style={styles.userInfo}>
-        <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray400} />
-        <Text style={styles.username}>{post.username}</Text>
-        <Text style={styles.userId}>(ID: {post.userId})</Text>
-      </View>
+        {/* 用户信息 */}
+        <View style={styles.userInfo}>
+          <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray400} />
+          <Text style={styles.username}>{post.username}</Text>
+          <Text style={styles.userId}>(ID: {post.userId})</Text>
+        </View>
 
-      {/* 帖子标题 */}
-      <Text style={styles.postTitle} numberOfLines={2}>
-        {post.title}
-      </Text>
-
-      {/* 帖子内容预览 */}
-      {post.contentText && (
-        <Text style={styles.postContent} numberOfLines={3}>
-          {post.contentText}
+        {/* 帖子标题 */}
+        <Text style={styles.postTitle} numberOfLines={2}>
+          {post.title}
         </Text>
-      )}
 
-      {/* 图片预览 */}
-      {post.imageUrls && post.imageUrls.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.imageScroll}
-        >
-          {post.imageUrls.slice(0, 4).map((url, index) => (
-            <Image
-              key={index}
-              source={{ uri: url }}
-              style={styles.postImage}
-              resizeMode="cover"
-            />
-          ))}
-          {post.imageUrls.length > 4 && (
-            <View style={styles.moreImages}>
-              <Text style={styles.moreImagesText}>+{post.imageUrls.length - 4}</Text>
-            </View>
-          )}
-        </ScrollView>
-      )}
+        {/* 帖子内容预览 */}
+        {post.contentText && (
+          <Text style={styles.postContent} numberOfLines={3}>
+            {post.contentText}
+          </Text>
+        )}
 
-      {/* 单品评价额外信息 */}
-      {post.postType === "ITEM_REVIEW" && (
-        <View style={styles.reviewInfo}>
-          {post.brandName && (
-            <Text style={styles.reviewText}>品牌: {post.brandName}</Text>
-          )}
-          {post.productName && (
-            <Text style={styles.reviewText}>产品: {post.productName}</Text>
-          )}
-          {post.rating !== undefined && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.reviewText}>评分: </Text>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Ionicons
-                  key={star}
-                  name={star <= (post.rating || 0) ? "star" : "star-outline"}
-                  size={14}
-                  color="#FFD700"
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* 操作按钮 - 非批量模式下显示 */}
-      {!batchMode && (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton]}
-            onPress={() => handleApprove(post.id)}
-            disabled={actionLoading}
+        {/* 图片预览 */}
+        {post.imageUrls && post.imageUrls.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.imageScroll}
           >
-            <Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />
-            <Text style={styles.actionButtonText}>通过</Text>
-          </TouchableOpacity>
+            {post.imageUrls.slice(0, 4).map((url, index) => (
+              <Image
+                key={index}
+                source={{ uri: url }}
+                style={styles.postImage}
+                resizeMode="cover"
+              />
+            ))}
+            {post.imageUrls.length > 4 && (
+              <View style={styles.moreImages}>
+                <Text style={styles.moreImagesText}>+{post.imageUrls.length - 4}</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton]}
-            onPress={() => handleOpenRejectModal(post.id)}
-            disabled={actionLoading}
-          >
-            <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-            <Text style={styles.actionButtonText}>拒绝</Text>
-          </TouchableOpacity>
+        {/* 单品评价额外信息 */}
+        {post.postType === "ITEM_REVIEW" && (
+          <View style={styles.reviewInfo}>
+            {post.brandName && (
+              <Text style={styles.reviewText}>品牌: {post.brandName}</Text>
+            )}
+            {post.productName && (
+              <Text style={styles.reviewText}>产品: {post.productName}</Text>
+            )}
+            {post.rating !== undefined && (
+              <View style={styles.ratingContainer}>
+                <Text style={styles.reviewText}>评分: </Text>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= (post.rating || 0) ? "star" : "star-outline"}
+                    size={14}
+                    color="#FFD700"
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deletePostButton]}
-            onPress={() => handleDeletePost(post.id)}
-            disabled={actionLoading}
-          >
-            <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-            <Text style={styles.actionButtonText}>删除</Text>
-          </TouchableOpacity>
+        {/* 操作按钮 - 非批量模式下显示 */}
+        {!batchMode && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.approveButton]}
+              onPress={() => handleApprove(post.id)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />
+              <Text style={styles.actionButtonText}>通过</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionButton, styles.viewButton]}
-            onPress={() => (navigation as any).navigate("PostDetail", { postId: post.id })}
-          >
-            <Ionicons name="eye-outline" size={18} color={theme.colors.black} />
-            <Text style={[styles.actionButtonText, { color: theme.colors.black }]}>查看</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
+            <TouchableOpacity
+              style={[styles.actionButton, styles.rejectButton]}
+              onPress={() => handleOpenRejectModal(post.id)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+              <Text style={styles.actionButtonText}>拒绝</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deletePostButton]}
+              onPress={() => handleDeletePost(post.id)}
+              disabled={actionLoading}
+            >
+              <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+              <Text style={styles.actionButtonText}>删除</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.viewButton]}
+              onPress={() => (navigation as any).navigate("PostDetail", { postId: post.id })}
+            >
+              <Ionicons name="eye-outline" size={18} color={theme.colors.black} />
+              <Text style={[styles.actionButtonText, { color: theme.colors.black }]}>查看</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   // 渲染评论卡片
@@ -607,7 +607,7 @@ const AdminScreen = () => {
     >
       {commentsLoading && comments.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.black} />
+          <ActivityIndicator size="small" color={theme.colors.black} />
           <Text style={styles.loadingText}>加载中...</Text>
         </View>
       ) : comments.length === 0 ? (
@@ -623,7 +623,7 @@ const AdminScreen = () => {
             </Text>
           </View>
           {comments.map(renderCommentCard)}
-          
+
           {/* 分页控制 */}
           {commentsTotalPages > 1 && (
             <View style={styles.paginationContainer}>
@@ -787,7 +787,7 @@ const AdminScreen = () => {
         >
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={theme.colors.black} />
+              <ActivityIndicator size="small" color={theme.colors.black} />
               <Text style={styles.loadingText}>加载中...</Text>
             </View>
           ) : pendingPosts.length === 0 ? (

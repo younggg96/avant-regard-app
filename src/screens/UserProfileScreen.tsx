@@ -614,7 +614,7 @@ const UserProfileScreen = () => {
                 {shouldShowLoading ? (
                   <VStack alignItems="center" justifyContent="center" py="$xl">
                     <ActivityIndicator
-                      size="large"
+                      size="small"
                       color={theme.colors.gray400}
                     />
                     <Text fontSize="$sm" color="$gray400" mt="$sm">
@@ -649,7 +649,7 @@ const UserProfileScreen = () => {
                             ? "heart-outline"
                             : "camera-outline"
                       }
-                      size={48}
+                      size={24}
                       color={theme.colors.gray300}
                     />
                     <Text color="$gray400" mt="$md">

@@ -200,7 +200,7 @@ const ArchiveScreen = () => {
           borderless
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.black} />
+          <ActivityIndicator size="small" color={theme.colors.black} />
           <Text style={styles.loadingText}>加载中...</Text>
         </View>
       </SafeAreaView>
@@ -219,7 +219,7 @@ const ArchiveScreen = () => {
         <View style={styles.loadingContainer}>
           <Ionicons
             name="alert-circle-outline"
-            size={48}
+            size={24}
             color={theme.colors.gray400}
           />
           <Text style={styles.errorText}>{error}</Text>

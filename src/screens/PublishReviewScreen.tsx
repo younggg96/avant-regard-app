@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { StyleSheet, Modal } from "react-native";
+import { StyleSheet, Modal, Platform, KeyboardAvoidingView } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -436,165 +436,172 @@ const PublishReviewScreen = () => {
         onBackPress={() => navigation.goBack()}
       />
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <Box mx="$md" mb="$md" mt="$md">
-          <HStack mb="$sm" alignItems="center">
-            <Text color="$gray600" fontSize="$sm">
-              标题
-            </Text>
-            <Text color="$red500" fontSize="$sm" ml="$xs">
-              *
-            </Text>
-          </HStack>
-          <Input
-            value={title}
-            onChangeText={setTitle}
-            placeholder="为这个单品写一个标题"
-            placeholderTextColor={theme.colors.gray400}
-            variant="outline"
-            sx={{
-              fontSize: 18,
-              fontWeight: "500",
-              minHeight: 50,
-              borderWidth: 0,
-              padding: 0,
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Box mx="$md" mb="$md" mt="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                标题
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
+            <Input
+              value={title}
+              onChangeText={setTitle}
+              placeholder="为这个单品写一个标题"
+              placeholderTextColor={theme.colors.gray400}
+              variant="outline"
+              sx={{
+                fontSize: 18,
+                fontWeight: "500",
+                minHeight: 50,
+                borderWidth: 0,
+                padding: 0,
+              }}
+            />
+          </Box>
+
+          {/* 产品图片 */}
+          <ImageGridSelector
+            images={images}
+            onImagePress={(index) => {
+              setPreviewImageIndex(index);
+              setShowImagePreview(true);
             }}
+            onRemoveImage={handleRemoveImage}
+            onAddImage={handleAddImage}
+            maxImages={MAX_IMAGES}
+            label="产品图片"
+            required
           />
-        </Box>
 
-        {/* 产品图片 */}
-        <ImageGridSelector
-          images={images}
-          onImagePress={(index) => {
-            setPreviewImageIndex(index);
-            setShowImagePreview(true);
-          }}
-          onRemoveImage={handleRemoveImage}
-          onAddImage={handleAddImage}
-          maxImages={MAX_IMAGES}
-          label="产品图片"
-          required
-        />
+          <Box mx="$md" mb="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                产品名称
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
+            <Input
+              value={productName}
+              onChangeText={setProductName}
+              placeholder="输入产品名称"
+              placeholderTextColor={theme.colors.gray400}
+              variant="outline"
+              sx={{
+                fontSize: 16,
+                borderWidth: 0,
+                padding: 0,
+              }}
+            />
+          </Box>
 
-        <Box mx="$md" mb="$md">
-          <HStack mb="$sm" alignItems="center">
-            <Text color="$gray600" fontSize="$sm">
-              产品名称
+          <Box mx="$md" mb="$md">
+            <Text color="$gray600" fontSize="$sm" mb="$sm">
+              品牌（可选）
             </Text>
-            <Text color="$red500" fontSize="$sm" ml="$xs">
-              *
-            </Text>
-          </HStack>
-          <Input
-            value={productName}
-            onChangeText={setProductName}
-            placeholder="输入产品名称"
-            placeholderTextColor={theme.colors.gray400}
-            variant="outline"
-            sx={{
-              fontSize: 16,
-              borderWidth: 0,
-              padding: 0,
+            <Input
+              value={brand}
+              onChangeText={setBrand}
+              placeholder="输入品牌名称"
+              placeholderTextColor={theme.colors.gray400}
+              variant="outline"
+              sx={{
+                fontSize: 16,
+                borderWidth: 0,
+                padding: 0,
+              }}
+            />
+          </Box>
+
+          <RatingSelector rating={rating} onRatingChange={setRating} required />
+
+          {/* 关联秀场 */}
+          <ShowGridSelector
+            selectedShows={selectedShows}
+            onShowPress={(show) => {
+              setPreviewShow(show);
+              setShowPreview(true);
             }}
+            onRemoveShow={handleRemoveShow}
+            onAddShow={() => setShowSelector(true)}
+            maxShows={MAX_SHOWS}
+            label="关联秀场"
+            required
           />
-        </Box>
 
-        <Box mx="$md" mb="$md">
-          <Text color="$gray600" fontSize="$sm" mb="$sm">
-            品牌（可选）
-          </Text>
-          <Input
-            value={brand}
-            onChangeText={setBrand}
-            placeholder="输入品牌名称"
-            placeholderTextColor={theme.colors.gray400}
-            variant="outline"
-            sx={{
-              fontSize: 16,
-              borderWidth: 0,
-              padding: 0,
-            }}
-          />
-        </Box>
-
-        <RatingSelector rating={rating} onRatingChange={setRating} required />
-
-        {/* 关联秀场 */}
-        <ShowGridSelector
-          selectedShows={selectedShows}
-          onShowPress={(show) => {
-            setPreviewShow(show);
-            setShowPreview(true);
-          }}
-          onRemoveShow={handleRemoveShow}
-          onAddShow={() => setShowSelector(true)}
-          maxShows={MAX_SHOWS}
-          label="关联秀场"
-          required
-        />
-
-        {/* 评价内容 */}
-        <Box mx="$md" mb="$md">
-          <HStack mb="$sm" alignItems="center">
-            <Text color="$gray600" fontSize="$sm">
-              评价内容
-            </Text>
-            <Text color="$red500" fontSize="$sm" ml="$xs">
-              *
-            </Text>
-          </HStack>
-          <Input
-            value={reviewText}
-            onChangeText={setReviewText}
-            placeholder="请输入评价内容（至少10字，最多500字）"
-            placeholderTextColor={theme.colors.gray400}
-            multiline
-            variant="outline"
-            sx={{
-              color: theme.colors.gray600,
-              minHeight: 120,
-              textAlignVertical: "top",
-              borderWidth: 0,
-              backgroundColor: "transparent",
-              padding: 0,
-            }}
-          />
-          <Text
-            color={
-              reviewText.trim().length < 10
-                ? "$red500"
-                : reviewText.trim().length > 500
+          {/* 评价内容 */}
+          <Box mx="$md" mb="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                评价内容
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
+            <Input
+              value={reviewText}
+              onChangeText={setReviewText}
+              placeholder="请输入评价内容（至少10字，最多500字）"
+              placeholderTextColor={theme.colors.gray400}
+              multiline
+              variant="outline"
+              sx={{
+                color: theme.colors.gray600,
+                minHeight: 120,
+                textAlignVertical: "top",
+                borderWidth: 0,
+                backgroundColor: "transparent",
+                padding: 0,
+              }}
+            />
+            <Text
+              color={
+                reviewText.trim().length < 10
                   ? "$red500"
-                  : "$gray400"
-            }
-            fontSize="$xs"
-            mt="$xs"
-            textAlign="right"
-          >
-            {reviewText.trim().length}/500
-            {reviewText.trim().length > 0 && reviewText.trim().length < 10
-              ? " (至少需要10字)"
-              : ""}
-          </Text>
-        </Box>
-      </ScrollView>
+                  : reviewText.trim().length > 500
+                    ? "$red500"
+                    : "$gray400"
+              }
+              fontSize="$xs"
+              mt="$xs"
+              textAlign="right"
+            >
+              {reviewText.trim().length}/500
+              {reviewText.trim().length > 0 && reviewText.trim().length < 10
+                ? " (至少需要10字)"
+                : ""}
+            </Text>
+          </Box>
+        </ScrollView>
 
-      <PublishButtons
-        onSaveDraft={handleSaveDraft}
-        onPublish={handlePublish}
-        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
-        draftDisabled={isPublishing || isSavingDraft}
-        publishButtonText={
-          isPublishing ? uploadProgress || "发布中..." : "发布"
-        }
-        draftButtonText={
-          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
-        }
-      />
+        <PublishButtons
+          onSaveDraft={handleSaveDraft}
+          onPublish={handlePublish}
+          publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+          draftDisabled={isPublishing || isSavingDraft}
+          publishButtonText={
+            isPublishing ? uploadProgress || "发布中..." : "发布"
+          }
+          draftButtonText={
+            isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+          }
+        />
+      </KeyboardAvoidingView>
 
       <ImagePickerModal
         visible={showImagePicker}
@@ -638,6 +645,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   content: {
     flex: 1,

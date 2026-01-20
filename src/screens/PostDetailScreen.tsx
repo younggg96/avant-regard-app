@@ -172,52 +172,20 @@ const PostDetailScreen = () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Header 骨架 */}
+        {/* Header */}
         <HStack px="$md" py="$sm" alignItems="center" gap="$sm">
           <SkeletonBox width={32} height={32} style={{ borderRadius: 16 }} />
-          <Box flex={1}>
-            <SkeletonBox width={100} height={14} style={{ marginBottom: 4 }} />
-            <SkeletonBox width={60} height={10} />
-          </Box>
-          <SkeletonBox width={60} height={28} style={{ borderRadius: 14 }} />
+          <SkeletonBox width={100} height={14} />
         </HStack>
 
-        {/* 大图骨架 */}
-        <Animated.View
-          style={[
-            skeletonStyles.mainImage,
-            { opacity: skeletonOpacity },
-          ]}
-        />
+        {/* 主图 */}
+        <Animated.View style={[skeletonStyles.mainImage, { opacity: skeletonOpacity }]} />
 
-        {/* 标题和描述骨架 */}
-        <Box px="$md" py="$md">
-          <SkeletonBox width="80%" height={20} style={{ marginBottom: 12 }} />
-          <SkeletonBox width="100%" height={14} style={{ marginBottom: 6 }} />
-          <SkeletonBox width="90%" height={14} style={{ marginBottom: 6 }} />
-          <SkeletonBox width="60%" height={14} />
-        </Box>
-
-        {/* 互动栏骨架 */}
-        <HStack px="$md" py="$sm" gap="$lg">
-          <SkeletonBox width={50} height={24} />
-          <SkeletonBox width={50} height={24} />
-          <SkeletonBox width={50} height={24} />
-        </HStack>
-
-        {/* 评论区骨架 */}
-        <Box px="$md" py="$md">
-          <SkeletonBox width={80} height={16} style={{ marginBottom: 16 }} />
-          {[1, 2, 3].map((i) => (
-            <HStack key={i} alignItems="flex-start" gap="$sm" mb="$md">
-              <SkeletonBox width={36} height={36} style={{ borderRadius: 18 }} />
-              <Box flex={1}>
-                <SkeletonBox width={80} height={12} style={{ marginBottom: 6 }} />
-                <SkeletonBox width="90%" height={12} style={{ marginBottom: 4 }} />
-                <SkeletonBox width="70%" height={12} />
-              </Box>
-            </HStack>
-          ))}
+        {/* 内容 */}
+        <Box px="$md" py="$md" gap="$sm">
+          <SkeletonBox width="70%" height={18} />
+          <SkeletonBox width="100%" height={14} />
+          <SkeletonBox width="50%" height={14} />
         </Box>
       </SafeAreaView>
     );

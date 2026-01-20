@@ -117,7 +117,7 @@ const FollowingUsersScreen = () => {
       >
         {loading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl">
-            <ActivityIndicator size="large" color={theme.colors.gray400} />
+            <ActivityIndicator size="small" color={theme.colors.gray400} />
             <Text fontSize="$sm" color="$gray400" mt="$sm">
               加载中...
             </Text>
@@ -223,7 +223,7 @@ const FollowingUsersScreen = () => {
           <VStack alignItems="center" justifyContent="center" py="$xl">
             <Ionicons
               name="people-outline"
-              size={48}
+              size={24}
               color={theme.colors.gray300}
             />
             <Text color="$gray400" mt="$md">

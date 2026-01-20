@@ -779,7 +779,7 @@ const ProfileScreen = () => {
                               ? "time-outline"
                               : "document-text-outline"
                       }
-                      size={48}
+                      size={24}
                       color={theme.colors.gray300}
                     />
                     <Text color="$gray400" mt="$md">

@@ -933,7 +933,7 @@ const BuyerMapScreen = () => {
       <Box flex={1}>
         {isLoading ? (
           <VStack flex={1} justifyContent="center" alignItems="center">
-            <ActivityIndicator size="large" color={theme.colors.black} />
+            <ActivityIndicator size="small" color={theme.colors.black} />
             <Text color="$gray300" mt="$md">加载中...</Text>
           </VStack>
         ) : (

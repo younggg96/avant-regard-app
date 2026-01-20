@@ -417,7 +417,7 @@ const EditProfileScreen = () => {
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader title="编辑个人资料" showBack={true} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.black} />
+          <ActivityIndicator size="small" color={theme.colors.black} />
           <Text style={styles.loadingText}>加载中...</Text>
         </View>
       </SafeAreaView>
@@ -874,7 +874,7 @@ const EditProfileScreen = () => {
                 ListFooterComponent={
                   loadingMoreBrands ? (
                     <View style={styles.loadMoreContainer}>
-                      <ActivityIndicator size="small" color={theme.colors.gray500} />
+                      <ActivityIndicator size="small" color={theme.colors.black} />
                       <Text style={styles.loadMoreText}>加载更多...</Text>
                     </View>
                   ) : hasMoreBrands && brandOptions.length > 0 ? (
