@@ -65,9 +65,9 @@ class BuyerStoreCommunityService:
             .execute()
         total = count_result.count or 0
 
-        # 获取列表
+        # 获取列表 - 使用明确的外键关系名
         result = self.supabase.table("user_submitted_stores") \
-            .select("*, users(username, user_info(avatar_url))") \
+            .select("*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))") \
             .eq("user_id", user_id) \
             .order("created_at", desc=True) \
             .range(offset, offset + page_size - 1) \
@@ -89,9 +89,9 @@ class BuyerStoreCommunityService:
             .execute()
         total = count_result.count or 0
 
-        # 获取列表
+        # 获取列表 - 使用明确的外键关系名
         result = self.supabase.table("user_submitted_stores") \
-            .select("*, users(username, user_info(avatar_url))") \
+            .select("*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))") \
             .eq("status", "PENDING") \
             .order("created_at", desc=False) \
             .range(offset, offset + page_size - 1) \
@@ -174,9 +174,9 @@ class BuyerStoreCommunityService:
             .execute()
         total = count_result.count or 0
 
-        # 获取顶级评论
+        # 获取顶级评论 - 使用明确的外键关系名
         result = self.supabase.table("buyer_store_comments") \
-            .select("*, users(username, user_info(avatar_url))") \
+            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url))") \
             .eq("store_id", store_id) \
             .is_("parent_id", "null") \
             .order("created_at", desc=True) \
@@ -287,7 +287,7 @@ class BuyerStoreCommunityService:
     ) -> List[BuyerStoreCommentReply]:
         """获取评论的回复"""
         result = self.supabase.table("buyer_store_comments") \
-            .select("*, users(username, user_info(avatar_url)), reply_to:reply_to_user_id(username)") \
+            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)") \
             .eq("parent_id", parent_id) \
             .order("created_at", desc=False) \
             .limit(limit) \
@@ -298,7 +298,7 @@ class BuyerStoreCommunityService:
     def get_all_replies(self, comment_id: int) -> List[BuyerStoreCommentReply]:
         """获取评论的所有回复"""
         result = self.supabase.table("buyer_store_comments") \
-            .select("*, users(username, user_info(avatar_url)), reply_to:reply_to_user_id(username)") \
+            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)") \
             .eq("parent_id", comment_id) \
             .order("created_at", desc=False) \
             .execute()
