@@ -127,6 +127,75 @@ async def get_nearby_stores(params: NearbyStoreParams):
     })
 
 
+@router.get("/{store_id}")
+async def get_store_by_id(store_id: str):
+    """通过 ID 获取买手店详情"""
+    store = buyer_store_service.get_store_by_id(store_id)
+
+    if not store:
+        return success(None, message="买手店不存在")
+
+    return success(store.model_dump())
+
+
+# ==================== 管理员接口 ====================
+
+
+@router.post("")
+async def create_store(
+    store: BuyerStoreCreate,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """创建买手店（管理员）"""
+    try:
+        new_store = buyer_store_service.create_store(store)
+        return success(new_store.model_dump(), message="创建成功")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/{store_id}")
+async def update_store(
+    store_id: str,
+    store: BuyerStoreUpdate,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新买手店（管理员）"""
+    updated_store = buyer_store_service.update_store(store_id, store)
+
+    if not updated_store:
+        raise HTTPException(status_code=404, detail="买手店不存在")
+
+    return success(updated_store.model_dump(), message="更新成功")
+
+
+@router.delete("/{store_id}")
+async def delete_store(
+    store_id: str,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """删除买手店（管理员）"""
+    deleted = buyer_store_service.delete_store(store_id)
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="买手店不存在")
+
+    return success(None, message="删除成功")
+
+
+@router.post("/batch")
+async def batch_create_stores(
+    stores: List[BuyerStoreCreate],
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """批量创建买手店（管理员）"""
+    try:
+        count = buyer_store_service.batch_create_stores(stores)
+        return success({"count": count}, message=f"成功创建 {count} 个买手店")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ==================== 用户提交买手店接口 ====================
 
 
@@ -397,36 +466,7 @@ async def get_user_favorites(
     })
 
 
-# ==================== 管理员接口 ====================
-
-
-@router.post("")
-async def create_store(
-    store: BuyerStoreCreate,
-    current_user_id: int = Depends(get_current_admin_user),
-):
-    """创建买手店（管理员）"""
-    try:
-        new_store = buyer_store_service.create_store(store)
-        return success(new_store.model_dump(), message="创建成功")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/batch")
-async def batch_create_stores(
-    stores: List[BuyerStoreCreate],
-    current_user_id: int = Depends(get_current_admin_user),
-):
-    """批量创建买手店（管理员）"""
-    try:
-        count = buyer_store_service.batch_create_stores(stores)
-        return success({"count": count}, message=f"成功创建 {count} 个买手店")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# ==================== 动态路由 - 必须放在最后 ====================
+# ==================== 买手店详情扩展接口 ====================
 
 
 @router.get("/{store_id}/detail")
@@ -463,43 +503,3 @@ async def get_store_detail(
         store_data["userRating"] = None
 
     return success(store_data)
-
-
-@router.get("/{store_id}")
-async def get_store_by_id(store_id: str):
-    """通过 ID 获取买手店详情"""
-    store = buyer_store_service.get_store_by_id(store_id)
-
-    if not store:
-        return success(None, message="买手店不存在")
-
-    return success(store.model_dump())
-
-
-@router.put("/{store_id}")
-async def update_store(
-    store_id: str,
-    store: BuyerStoreUpdate,
-    current_user_id: int = Depends(get_current_admin_user),
-):
-    """更新买手店（管理员）"""
-    updated_store = buyer_store_service.update_store(store_id, store)
-
-    if not updated_store:
-        raise HTTPException(status_code=404, detail="买手店不存在")
-
-    return success(updated_store.model_dump(), message="更新成功")
-
-
-@router.delete("/{store_id}")
-async def delete_store(
-    store_id: str,
-    current_user_id: int = Depends(get_current_admin_user),
-):
-    """删除买手店（管理员）"""
-    deleted = buyer_store_service.delete_store(store_id)
-
-    if not deleted:
-        raise HTTPException(status_code=404, detail="买手店不存在")
-
-    return success(None, message="删除成功")

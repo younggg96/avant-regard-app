@@ -31,22 +31,28 @@ class BuyerStoreCommunityService:
         self, user_id: int, data: UserSubmittedStoreCreate
     ) -> UserSubmittedStore:
         """用户提交买手店"""
-        result = self.supabase.table("user_submitted_stores").insert({
-            "user_id": user_id,
-            "name": data.name,
-            "address": data.address,
-            "city": data.city,
-            "country": data.country,
-            "latitude": data.latitude,
-            "longitude": data.longitude,
-            "brands": data.brands,
-            "style": data.style,
-            "phone": data.phone,
-            "hours": data.hours,
-            "description": data.description,
-            "images": data.images,
-            "status": "PENDING",
-        }).execute()
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .insert(
+                {
+                    "user_id": user_id,
+                    "name": data.name,
+                    "address": data.address,
+                    "city": data.city,
+                    "country": data.country,
+                    "latitude": data.latitude,
+                    "longitude": data.longitude,
+                    "brands": data.brands,
+                    "style": data.style,
+                    "phone": data.phone,
+                    "hours": data.hours,
+                    "description": data.description,
+                    "images": data.images,
+                    "status": "PENDING",
+                }
+            )
+            .execute()
+        )
 
         if result.data:
             return self._format_submitted_store(result.data[0])
@@ -59,19 +65,25 @@ class BuyerStoreCommunityService:
         offset = (page - 1) * page_size
 
         # 获取总数
-        count_result = self.supabase.table("user_submitted_stores") \
-            .select("id", count="exact") \
-            .eq("user_id", user_id) \
+        count_result = (
+            self.supabase.table("user_submitted_stores")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
             .execute()
+        )
         total = count_result.count or 0
 
         # 获取列表 - 使用明确的外键关系名
-        result = self.supabase.table("user_submitted_stores") \
-            .select("*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))") \
-            .eq("user_id", user_id) \
-            .order("created_at", desc=True) \
-            .range(offset, offset + page_size - 1) \
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .select(
+                "*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))"
+            )
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
             .execute()
+        )
 
         stores = [self._format_submitted_store(s) for s in result.data]
         return stores, total
@@ -83,28 +95,31 @@ class BuyerStoreCommunityService:
         offset = (page - 1) * page_size
 
         # 获取总数
-        count_result = self.supabase.table("user_submitted_stores") \
-            .select("id", count="exact") \
-            .eq("status", "PENDING") \
+        count_result = (
+            self.supabase.table("user_submitted_stores")
+            .select("id", count="exact")
+            .eq("status", "PENDING")
             .execute()
+        )
         total = count_result.count or 0
 
         # 获取列表 - 使用明确的外键关系名
-        result = self.supabase.table("user_submitted_stores") \
-            .select("*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))") \
-            .eq("status", "PENDING") \
-            .order("created_at", desc=False) \
-            .range(offset, offset + page_size - 1) \
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .select(
+                "*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))"
+            )
+            .eq("status", "PENDING")
+            .order("created_at", desc=False)
+            .range(offset, offset + page_size - 1)
             .execute()
+        )
 
         stores = [self._format_submitted_store(s) for s in result.data]
         return stores, total
 
     def review_submission(
-        self,
-        submission_id: int,
-        reviewer_id: int,
-        data: ReviewSubmissionRequest
+        self, submission_id: int, reviewer_id: int, data: ReviewSubmissionRequest
     ) -> UserSubmittedStore:
         """审核用户提交的买手店"""
         update_data = {
@@ -118,10 +133,12 @@ class BuyerStoreCommunityService:
         elif data.status == "APPROVED" and data.storeId:
             update_data["approved_store_id"] = data.storeId
 
-        result = self.supabase.table("user_submitted_stores") \
-            .update(update_data) \
-            .eq("id", submission_id) \
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .update(update_data)
+            .eq("id", submission_id)
             .execute()
+        )
 
         if result.data:
             return self._format_submitted_store(result.data[0])
@@ -167,21 +184,27 @@ class BuyerStoreCommunityService:
         offset = (page - 1) * page_size
 
         # 获取总数（只统计顶级评论）
-        count_result = self.supabase.table("buyer_store_comments") \
-            .select("id", count="exact") \
-            .eq("store_id", store_id) \
-            .is_("parent_id", "null") \
+        count_result = (
+            self.supabase.table("buyer_store_comments")
+            .select("id", count="exact")
+            .eq("store_id", store_id)
+            .is_("parent_id", "null")
             .execute()
+        )
         total = count_result.count or 0
 
         # 获取顶级评论 - 使用明确的外键关系名
-        result = self.supabase.table("buyer_store_comments") \
-            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url))") \
-            .eq("store_id", store_id) \
-            .is_("parent_id", "null") \
-            .order("created_at", desc=True) \
-            .range(offset, offset + page_size - 1) \
+        result = (
+            self.supabase.table("buyer_store_comments")
+            .select(
+                "*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url))"
+            )
+            .eq("store_id", store_id)
+            .is_("parent_id", "null")
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
             .execute()
+        )
 
         comments = []
         for c in result.data:
@@ -205,16 +228,16 @@ class BuyerStoreCommunityService:
             "reply_to_user_id": data.replyToUserId,
         }
 
-        result = self.supabase.table("buyer_store_comments") \
-            .insert(insert_data) \
-            .execute()
+        result = (
+            self.supabase.table("buyer_store_comments").insert(insert_data).execute()
+        )
 
         if result.data:
             # 如果是回复，更新父评论的回复数
             if data.parentId:
-                self.supabase.rpc("increment_reply_count", {
-                    "comment_id": data.parentId
-                }).execute()
+                self.supabase.rpc(
+                    "increment_reply_count", {"comment_id": data.parentId}
+                ).execute()
 
             return self._format_comment(result.data[0])
         raise Exception("评论失败")
@@ -222,11 +245,13 @@ class BuyerStoreCommunityService:
     def delete_comment(self, comment_id: int, user_id: int) -> bool:
         """删除评论"""
         # 先获取评论信息
-        comment = self.supabase.table("buyer_store_comments") \
-            .select("*") \
-            .eq("id", comment_id) \
-            .single() \
+        comment = (
+            self.supabase.table("buyer_store_comments")
+            .select("*")
+            .eq("id", comment_id)
+            .single()
             .execute()
+        )
 
         if not comment.data:
             return False
@@ -237,30 +262,31 @@ class BuyerStoreCommunityService:
 
         # 如果是回复，减少父评论的回复数
         if comment.data["parent_id"]:
-            self.supabase.rpc("decrement_reply_count", {
-                "comment_id": comment.data["parent_id"]
-            }).execute()
+            self.supabase.rpc(
+                "decrement_reply_count", {"comment_id": comment.data["parent_id"]}
+            ).execute()
 
         # 删除评论
-        self.supabase.table("buyer_store_comments") \
-            .delete() \
-            .eq("id", comment_id) \
-            .execute()
+        self.supabase.table("buyer_store_comments").delete().eq(
+            "id", comment_id
+        ).execute()
 
         return True
 
     def like_comment(self, comment_id: int, user_id: int) -> bool:
         """点赞评论"""
         try:
-            self.supabase.table("buyer_store_comment_likes").insert({
-                "comment_id": comment_id,
-                "user_id": user_id,
-            }).execute()
+            self.supabase.table("buyer_store_comment_likes").insert(
+                {
+                    "comment_id": comment_id,
+                    "user_id": user_id,
+                }
+            ).execute()
 
             # 更新点赞数
-            self.supabase.rpc("increment_comment_like_count", {
-                "p_comment_id": comment_id
-            }).execute()
+            self.supabase.rpc(
+                "increment_comment_like_count", {"p_comment_id": comment_id}
+            ).execute()
 
             return True
         except Exception:
@@ -268,17 +294,19 @@ class BuyerStoreCommunityService:
 
     def unlike_comment(self, comment_id: int, user_id: int) -> bool:
         """取消点赞评论"""
-        result = self.supabase.table("buyer_store_comment_likes") \
-            .delete() \
-            .eq("comment_id", comment_id) \
-            .eq("user_id", user_id) \
+        result = (
+            self.supabase.table("buyer_store_comment_likes")
+            .delete()
+            .eq("comment_id", comment_id)
+            .eq("user_id", user_id)
             .execute()
+        )
 
         if result.data:
             # 更新点赞数
-            self.supabase.rpc("decrement_comment_like_count", {
-                "p_comment_id": comment_id
-            }).execute()
+            self.supabase.rpc(
+                "decrement_comment_like_count", {"p_comment_id": comment_id}
+            ).execute()
             return True
         return False
 
@@ -286,22 +314,30 @@ class BuyerStoreCommunityService:
         self, parent_id: int, limit: int = 3
     ) -> List[BuyerStoreCommentReply]:
         """获取评论的回复"""
-        result = self.supabase.table("buyer_store_comments") \
-            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)") \
-            .eq("parent_id", parent_id) \
-            .order("created_at", desc=False) \
-            .limit(limit) \
+        result = (
+            self.supabase.table("buyer_store_comments")
+            .select(
+                "*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)"
+            )
+            .eq("parent_id", parent_id)
+            .order("created_at", desc=False)
+            .limit(limit)
             .execute()
+        )
 
         return [self._format_reply(r) for r in result.data]
 
     def get_all_replies(self, comment_id: int) -> List[BuyerStoreCommentReply]:
         """获取评论的所有回复"""
-        result = self.supabase.table("buyer_store_comments") \
-            .select("*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)") \
-            .eq("parent_id", comment_id) \
-            .order("created_at", desc=False) \
+        result = (
+            self.supabase.table("buyer_store_comments")
+            .select(
+                "*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url)), reply_to:users!buyer_store_comments_reply_to_user_id_fkey(username)"
+            )
+            .eq("parent_id", comment_id)
+            .order("created_at", desc=False)
             .execute()
+        )
 
         return [self._format_reply(r) for r in result.data]
 
@@ -352,11 +388,18 @@ class BuyerStoreCommunityService:
     ) -> BuyerStoreRating:
         """给买手店评分（如果已评分则更新）"""
         # 使用 upsert 实现创建或更新
-        result = self.supabase.table("buyer_store_ratings").upsert({
-            "store_id": store_id,
-            "user_id": data.userId,
-            "rating": data.rating,
-        }, on_conflict="store_id,user_id").execute()
+        result = (
+            self.supabase.table("buyer_store_ratings")
+            .upsert(
+                {
+                    "store_id": store_id,
+                    "user_id": data.userId,
+                    "rating": data.rating,
+                },
+                on_conflict="store_id,user_id",
+            )
+            .execute()
+        )
 
         if result.data:
             return self._format_rating(result.data[0])
@@ -366,12 +409,14 @@ class BuyerStoreCommunityService:
         self, store_id: str, user_id: int
     ) -> Optional[BuyerStoreRating]:
         """获取用户对买手店的评分"""
-        result = self.supabase.table("buyer_store_ratings") \
-            .select("*, users(username, user_info(avatar_url))") \
-            .eq("store_id", store_id) \
-            .eq("user_id", user_id) \
-            .maybeSingle() \
+        result = (
+            self.supabase.table("buyer_store_ratings")
+            .select("*, users(username, user_info(avatar_url))")
+            .eq("store_id", store_id)
+            .eq("user_id", user_id)
+            .maybe_single()
             .execute()
+        )
 
         if result.data:
             return self._format_rating(result.data)
@@ -379,11 +424,13 @@ class BuyerStoreCommunityService:
 
     def get_rating_stats(self, store_id: str) -> BuyerStoreRatingStats:
         """获取买手店评分统计"""
-        result = self.supabase.table("buyer_store_rating_stats") \
-            .select("*") \
-            .eq("store_id", store_id) \
-            .maybeSingle() \
+        result = (
+            self.supabase.table("buyer_store_rating_stats")
+            .select("*")
+            .eq("store_id", store_id)
+            .maybe_single()
             .execute()
+        )
 
         if result.data:
             return BuyerStoreRatingStats(
@@ -424,31 +471,37 @@ class BuyerStoreCommunityService:
     def favorite_store(self, store_id: str, user_id: int) -> bool:
         """收藏买手店"""
         try:
-            self.supabase.table("buyer_store_favorites").insert({
-                "store_id": store_id,
-                "user_id": user_id,
-            }).execute()
+            self.supabase.table("buyer_store_favorites").insert(
+                {
+                    "store_id": store_id,
+                    "user_id": user_id,
+                }
+            ).execute()
             return True
         except Exception:
             return False
 
     def unfavorite_store(self, store_id: str, user_id: int) -> bool:
         """取消收藏买手店"""
-        result = self.supabase.table("buyer_store_favorites") \
-            .delete() \
-            .eq("store_id", store_id) \
-            .eq("user_id", user_id) \
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .delete()
+            .eq("store_id", store_id)
+            .eq("user_id", user_id)
             .execute()
+        )
         return bool(result.data)
 
     def is_favorited(self, store_id: str, user_id: int) -> bool:
         """检查是否已收藏"""
-        result = self.supabase.table("buyer_store_favorites") \
-            .select("id") \
-            .eq("store_id", store_id) \
-            .eq("user_id", user_id) \
-            .maybeSingle() \
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("id")
+            .eq("store_id", store_id)
+            .eq("user_id", user_id)
+            .maybe_single()
             .execute()
+        )
         return result.data is not None
 
     def get_user_favorites(
@@ -458,37 +511,45 @@ class BuyerStoreCommunityService:
         offset = (page - 1) * page_size
 
         # 获取总数
-        count_result = self.supabase.table("buyer_store_favorites") \
-            .select("id", count="exact") \
-            .eq("user_id", user_id) \
+        count_result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
             .execute()
+        )
         total = count_result.count or 0
 
         # 获取列表
-        result = self.supabase.table("buyer_store_favorites") \
-            .select("store_id") \
-            .eq("user_id", user_id) \
-            .order("created_at", desc=True) \
-            .range(offset, offset + page_size - 1) \
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("store_id")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
             .execute()
+        )
 
         store_ids = [r["store_id"] for r in result.data]
         return store_ids, total
 
     def get_store_favorite_count(self, store_id: str) -> int:
         """获取买手店收藏数"""
-        result = self.supabase.table("buyer_store_favorites") \
-            .select("id", count="exact") \
-            .eq("store_id", store_id) \
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("id", count="exact")
+            .eq("store_id", store_id)
             .execute()
+        )
         return result.count or 0
 
     def get_store_comment_count(self, store_id: str) -> int:
         """获取买手店评论数"""
-        result = self.supabase.table("buyer_store_comments") \
-            .select("id", count="exact") \
-            .eq("store_id", store_id) \
+        result = (
+            self.supabase.table("buyer_store_comments")
+            .select("id", count="exact")
+            .eq("store_id", store_id)
             .execute()
+        )
         return result.count or 0
 
 
