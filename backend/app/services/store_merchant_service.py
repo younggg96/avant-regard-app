@@ -11,6 +11,7 @@ from app.schemas.store_merchant import (
     StoreMerchantCreate,
     StoreMerchantUpdate,
     StoreMerchantReview,
+    StoreMerchantAdminUpdate,
     StoreAnnouncement,
     StoreAnnouncementCreate,
     StoreAnnouncementUpdate,
@@ -252,6 +253,102 @@ class StoreMerchantService:
         )
         merchants = [self._format_merchant(m) for m in result.data]
         return merchants, result.count or 0
+
+    def get_all_merchants(
+        self, status: Optional[str] = None, page: int = 1, page_size: int = 20
+    ) -> Tuple[List[dict], int]:
+        """获取所有商家列表（管理员）- 包含店铺和用户信息"""
+        offset = (page - 1) * page_size
+        query = (
+            self.db.table("store_merchants")
+            .select("*", count="exact")
+        )
+        
+        # 状态筛选
+        if status:
+            query = query.eq("status", status)
+        
+        result = query.order("created_at", desc=True).range(offset, offset + page_size - 1).execute()
+        
+        # 增强商家信息
+        enriched_merchants = []
+        for m in result.data:
+            merchant_data = self._format_merchant(m).model_dump()
+            
+            # 获取店铺信息
+            store_id = m.get("store_id")
+            if store_id:
+                store_result = (
+                    self.db.table("buyer_stores")
+                    .select("name, address, city")
+                    .eq("id", store_id)
+                    .execute()
+                )
+                if store_result.data:
+                    store = store_result.data[0]
+                    merchant_data["storeName"] = store.get("name")
+                    merchant_data["storeAddress"] = store.get("address")
+                    merchant_data["storeCity"] = store.get("city")
+            
+            # 获取用户信息
+            user_id = m.get("user_id")
+            if user_id:
+                user_result = (
+                    self.db.table("users")
+                    .select("username")
+                    .eq("id", user_id)
+                    .execute()
+                )
+                if user_result.data:
+                    merchant_data["username"] = user_result.data[0].get("username")
+                
+                user_info_result = (
+                    self.db.table("user_info")
+                    .select("avatar_url")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                if user_info_result.data:
+                    merchant_data["userAvatar"] = user_info_result.data[0].get("avatar_url")
+            
+            enriched_merchants.append(merchant_data)
+        
+        return enriched_merchants, result.count or 0
+
+    def admin_update_merchant(
+        self, merchant_id: int, admin_id: int, data: StoreMerchantAdminUpdate
+    ) -> StoreMerchant:
+        """管理员更新商家信息"""
+        update_data = {}
+        
+        if data.status is not None:
+            update_data["status"] = data.status.value
+        if data.merchantLevel is not None:
+            update_data["merchant_level"] = data.merchantLevel.value
+        if data.canPostBanner is not None:
+            update_data["can_post_banner"] = data.canPostBanner
+        if data.canPostAnnouncement is not None:
+            update_data["can_post_announcement"] = data.canPostAnnouncement
+        if data.canPostActivity is not None:
+            update_data["can_post_activity"] = data.canPostActivity
+        if data.canPostDiscount is not None:
+            update_data["can_post_discount"] = data.canPostDiscount
+        
+        if not update_data:
+            merchant = self.get_merchant_by_id(merchant_id)
+            if not merchant:
+                raise ValueError("商家不存在")
+            return merchant
+        
+        result = (
+            self.db_admin.table("store_merchants")
+            .update(update_data)
+            .eq("id", merchant_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("商家不存在")
+        return self._format_merchant(result.data[0])
 
     # ==================== 公告相关 ====================
 

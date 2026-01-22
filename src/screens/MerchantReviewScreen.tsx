@@ -1,5 +1,5 @@
 /**
- * 商家入驻审核页面（管理员）
+ * 商家入驻审核与管理页面（管理员）
  * 遵循 iOS Human Interface Guidelines 设计规范
  */
 import React, { useState, useCallback } from "react";
@@ -15,6 +15,10 @@ import {
   TouchableWithoutFeedback,
   Image,
   Linking,
+  View,
+  ScrollView as RNScrollView,
+  Switch,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -31,14 +35,22 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   MerchantApplicationDetail,
+  MerchantAdminUpdateParams,
   getPendingMerchants,
   reviewMerchant,
+  getAllMerchants,
+  adminUpdateMerchant,
 } from "../services/storeMerchantService";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+type TabType = "pending" | "approved" | "all";
 
 const MerchantReviewScreen = () => {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
+
+  // Tab 状态
+  const [activeTab, setActiveTab] = useState<TabType>("pending");
 
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -53,18 +65,52 @@ const MerchantReviewScreen = () => {
 
   // 详情弹窗状态
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const detailModalAnim = React.useRef(new Animated.Value(0)).current;
+
+  // 管理弹窗状态
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [manageMerchant, setManageMerchant] = useState<MerchantApplicationDetail | null>(null);
 
   // 查询待审核商家列表
   const {
-    data,
-    isLoading,
-    isRefetching,
-    refetch,
+    data: pendingData,
+    isLoading: pendingLoading,
+    isRefetching: pendingRefetching,
+    refetch: refetchPending,
   } = useQuery({
     queryKey: ["pending-merchants", page],
     queryFn: () => getPendingMerchants(page, 20),
+    enabled: activeTab === "pending",
   });
+
+  // 查询已入驻商家列表
+  const {
+    data: approvedData,
+    isLoading: approvedLoading,
+    isRefetching: approvedRefetching,
+    refetch: refetchApproved,
+  } = useQuery({
+    queryKey: ["approved-merchants", page],
+    queryFn: () => getAllMerchants("APPROVED", page, 20),
+    enabled: activeTab === "approved",
+  });
+
+  // 查询所有商家列表
+  const {
+    data: allData,
+    isLoading: allLoading,
+    isRefetching: allRefetching,
+    refetch: refetchAll,
+  } = useQuery({
+    queryKey: ["all-merchants", page],
+    queryFn: () => getAllMerchants(undefined, page, 20),
+    enabled: activeTab === "all",
+  });
+
+  // 根据当前 Tab 选择数据
+  const data = activeTab === "pending" ? pendingData : activeTab === "approved" ? approvedData : allData;
+  const isLoading = activeTab === "pending" ? pendingLoading : activeTab === "approved" ? approvedLoading : allLoading;
+  const isRefetching = activeTab === "pending" ? pendingRefetching : activeTab === "approved" ? approvedRefetching : allRefetching;
+  const refetch = activeTab === "pending" ? refetchPending : activeTab === "approved" ? refetchApproved : refetchAll;
 
   const merchants = data?.merchants || [];
   const total = data?.total || 0;
@@ -88,23 +134,12 @@ const MerchantReviewScreen = () => {
   const openDetailModal = (merchant: MerchantApplicationDetail) => {
     setSelectedMerchant(merchant);
     setShowDetailModal(true);
-    Animated.timing(detailModalAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
   };
 
   // 关闭详情弹窗
   const closeDetailModal = () => {
-    Animated.timing(detailModalAnim, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowDetailModal(false);
-      setSelectedMerchant(null);
-    });
+    setShowDetailModal(false);
+    setSelectedMerchant(null);
   };
 
   // 审核通过
@@ -191,13 +226,85 @@ const MerchantReviewScreen = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
-        return { bg: "#FFF3E0", text: "#FF9800" };
+        return { bg: "#FFF3E0", text: "#FF9800", label: "待审核" };
       case "APPROVED":
-        return { bg: "#E8F5E9", text: "#4CAF50" };
+        return { bg: "#E8F5E9", text: "#4CAF50", label: "已入驻" };
       case "REJECTED":
-        return { bg: "#FFEBEE", text: "#F44336" };
+        return { bg: "#FFEBEE", text: "#F44336", label: "已拒绝" };
+      case "SUSPENDED":
+        return { bg: "#ECEFF1", text: "#607D8B", label: "已暂停" };
       default:
-        return { bg: "#F5F5F5", text: "#9E9E9E" };
+        return { bg: "#F5F5F5", text: "#9E9E9E", label: status };
+    }
+  };
+
+  // Tab 切换
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setPage(1);
+  };
+
+  // 打开管理弹窗
+  const openManageModal = (merchant: MerchantApplicationDetail) => {
+    setManageMerchant(merchant);
+    setShowManageModal(true);
+  };
+
+  // 关闭管理弹窗
+  const closeManageModal = () => {
+    setShowManageModal(false);
+    setManageMerchant(null);
+  };
+
+  // 更新商家状态
+  const handleUpdateMerchantStatus = async (status: "APPROVED" | "SUSPENDED") => {
+    if (!manageMerchant) return;
+
+    const statusLabel = status === "APPROVED" ? "恢复" : "暂停";
+    Alert.alert(
+      `${statusLabel}商家`,
+      `确定要${statusLabel}该商家吗？`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "确定",
+          onPress: async () => {
+            try {
+              setIsSubmitting(true);
+              await adminUpdateMerchant(manageMerchant.id, { status });
+              Alert.alert("成功", `商家已${statusLabel}`);
+              queryClient.invalidateQueries({ queryKey: ["approved-merchants"] });
+              queryClient.invalidateQueries({ queryKey: ["all-merchants"] });
+              closeManageModal();
+            } catch (error: any) {
+              Alert.alert("操作失败", error.message || "请稍后重试");
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 更新商家权限
+  const handleUpdateMerchantPermission = async (
+    permission: "canPostBanner" | "canPostAnnouncement" | "canPostActivity" | "canPostDiscount",
+    value: boolean
+  ) => {
+    if (!manageMerchant) return;
+
+    try {
+      setIsSubmitting(true);
+      await adminUpdateMerchant(manageMerchant.id, { [permission]: value });
+      // 更新本地状态
+      setManageMerchant({ ...manageMerchant, [permission]: value });
+      queryClient.invalidateQueries({ queryKey: ["approved-merchants"] });
+      queryClient.invalidateQueries({ queryKey: ["all-merchants"] });
+    } catch (error: any) {
+      Alert.alert("操作失败", error.message || "请稍后重试");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -216,6 +323,7 @@ const MerchantReviewScreen = () => {
   // 渲染商家申请项
   const renderMerchantItem = ({ item }: { item: MerchantApplicationDetail }) => {
     const statusColor = getStatusColor(item.status);
+    const isPending = item.status === "PENDING";
 
     return (
       <Pressable
@@ -225,7 +333,7 @@ const MerchantReviewScreen = () => {
         mb="$md"
         borderWidth={1}
         borderColor="$gray100"
-        onPress={() => openDetailModal(item)}
+        onPress={() => isPending ? openDetailModal(item) : openManageModal(item)}
         sx={{
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -247,7 +355,7 @@ const MerchantReviewScreen = () => {
           </VStack>
           <Box bg={statusColor.bg} px="$sm" py="$xs" rounded="$sm">
             <Text fontSize="$xs" fontWeight="$bold" color={statusColor.text}>
-              待审核
+              {statusColor.label}
             </Text>
           </Box>
         </HStack>
@@ -315,28 +423,46 @@ const MerchantReviewScreen = () => {
 
   const renderEmpty = () => {
     if (isLoading) return null;
+
+    const emptyMessages = {
+      pending: { title: "暂无待审核的商家申请", subtitle: "所有商家入驻申请已处理完毕" },
+      approved: { title: "暂无已入驻的商家", subtitle: "还没有商家通过审核入驻" },
+      all: { title: "暂无商家数据", subtitle: "目前还没有任何商家申请记录" },
+    };
+
+    const msg = emptyMessages[activeTab];
+
     return (
       <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
         <Ionicons
-          name="checkmark-circle-outline"
+          name={activeTab === "pending" ? "checkmark-circle-outline" : "storefront-outline"}
           size={64}
           color={theme.colors.gray200}
         />
         <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
-          暂无待审核的商家申请
+          {msg.title}
         </Text>
         <Text color="$gray300" mt="$sm">
-          所有商家入驻申请已处理完毕
+          {msg.subtitle}
         </Text>
       </VStack>
     );
+  };
+
+  // Tab 标题
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case "pending": return "待审核";
+      case "approved": return "已入驻";
+      case "all": return "全部";
+    }
   };
 
   if (isLoading && !isRefetching) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="商家入驻审核"
+          title="商家管理"
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
@@ -353,11 +479,43 @@ const MerchantReviewScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="商家入驻审核"
-        subtitle={`${total} 条待审核`}
+        title="商家管理"
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
+
+      {/* Tab 切换 */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "pending" && styles.tabActive]}
+          onPress={() => handleTabChange("pending")}
+        >
+          <Text style={[styles.tabText, activeTab === "pending" && styles.tabTextActive]}>
+            待审核
+          </Text>
+          {pendingData?.total ? (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{pendingData.total}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "approved" && styles.tabActive]}
+          onPress={() => handleTabChange("approved")}
+        >
+          <Text style={[styles.tabText, activeTab === "approved" && styles.tabTextActive]}>
+            已入驻
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "all" && styles.tabActive]}
+          onPress={() => handleTabChange("all")}
+        >
+          <Text style={[styles.tabText, activeTab === "all" && styles.tabTextActive]}>
+            全部
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={merchants}
@@ -388,32 +546,18 @@ const MerchantReviewScreen = () => {
       <Modal
         visible={showDetailModal}
         transparent
-        animationType="none"
+        animationType="fade"
         onRequestClose={closeDetailModal}
       >
-        <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
+        <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback onPress={closeDetailModal}>
-            <Box flex={1} />
+            <View style={styles.modalBackdrop} />
           </TouchableWithoutFeedback>
-          <Animated.View
-            style={[
-              styles.modalContent,
-              {
-                transform: [
-                  {
-                    translateY: detailModalAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [600, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
 
             {selectedMerchant && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
                 <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
                   {selectedMerchant.storeName || selectedMerchant.storeId}
@@ -446,7 +590,7 @@ const MerchantReviewScreen = () => {
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
                     联系信息
                   </Text>
-                  
+
                   {selectedMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
                       <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
@@ -514,7 +658,7 @@ const MerchantReviewScreen = () => {
                 )}
 
                 {/* 商家等级 */}
-                <VStack mb="$md">
+                {/* <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                     商家等级
                   </Text>
@@ -524,12 +668,12 @@ const MerchantReviewScreen = () => {
                         {selectedMerchant.merchantLevel === "BASIC"
                           ? "基础商家"
                           : selectedMerchant.merchantLevel === "PREMIUM"
-                          ? "高级商家"
-                          : "VIP商家"}
+                            ? "高级商家"
+                            : "VIP商家"}
                       </Text>
                     </Box>
                   </HStack>
-                </VStack>
+                </VStack> */}
 
                 {/* 权限信息 */}
                 <VStack mb="$lg">
@@ -569,7 +713,7 @@ const MerchantReviewScreen = () => {
                 </VStack>
 
                 {/* 操作按钮 */}
-                <HStack gap="$sm" mt="$md">
+                <HStack gap="$sm" mt="$md" mb="$lg">
                   <Pressable
                     flex={1}
                     py="$md"
@@ -602,10 +746,10 @@ const MerchantReviewScreen = () => {
                     )}
                   </Pressable>
                 </HStack>
-              </ScrollView>
+              </RNScrollView>
             )}
-          </Animated.View>
-        </Box>
+          </View>
+        </View>
       </Modal>
 
       {/* 拒绝原因弹窗 */}
@@ -682,6 +826,206 @@ const MerchantReviewScreen = () => {
           </Animated.View>
         </Box>
       </Modal>
+
+      {/* 管理弹窗 */}
+      <Modal
+        visible={showManageModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeManageModal}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={closeManageModal}>
+            <View style={styles.modalBackdrop} />
+          </TouchableWithoutFeedback>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+
+            {manageMerchant && (
+              <RNScrollView showsVerticalScrollIndicator={false}>
+                {/* 店铺名称 */}
+                <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
+                  {manageMerchant.storeName || manageMerchant.storeId}
+                </Text>
+                {manageMerchant.storeAddress && (
+                  <Text fontSize="$sm" color="$gray300" mb="$md">
+                    {manageMerchant.storeAddress}
+                  </Text>
+                )}
+
+                {/* 状态 */}
+                <Box bg="$gray50" rounded="$md" p="$md" mb="$md">
+                  <HStack alignItems="center" justifyContent="space-between">
+                    <HStack alignItems="center">
+                      <Ionicons
+                        name="shield-checkmark-outline"
+                        size={20}
+                        color={theme.colors.gray400}
+                      />
+                      <Text fontSize="$sm" color="$gray400" ml="$sm">
+                        商家状态
+                      </Text>
+                    </HStack>
+                    <Box bg={getStatusColor(manageMerchant.status).bg} px="$sm" py="$xs" rounded="$sm">
+                      <Text fontSize="$xs" fontWeight="$bold" color={getStatusColor(manageMerchant.status).text}>
+                        {getStatusColor(manageMerchant.status).label}
+                      </Text>
+                    </Box>
+                  </HStack>
+                </Box>
+
+                {/* 联系信息 */}
+                <VStack mb="$md">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                    联系信息
+                  </Text>
+
+                  {manageMerchant.contactName && (
+                    <HStack alignItems="center" mb="$xs">
+                      <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
+                      <Text fontSize="$md" color="$black" ml="$sm">
+                        {manageMerchant.contactName}
+                      </Text>
+                    </HStack>
+                  )}
+
+                  {manageMerchant.contactPhone && (
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(`tel:${manageMerchant.contactPhone}`)
+                      }
+                    >
+                      <HStack alignItems="center" mb="$xs">
+                        <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
+                        <Text fontSize="$md" color="$black" ml="$sm">
+                          {manageMerchant.contactPhone}
+                        </Text>
+                      </HStack>
+                    </Pressable>
+                  )}
+
+                  {manageMerchant.contactEmail && (
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(`mailto:${manageMerchant.contactEmail}`)
+                      }
+                    >
+                      <HStack alignItems="center" mb="$xs">
+                        <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
+                        <Text fontSize="$md" color="$black" ml="$sm">
+                          {manageMerchant.contactEmail}
+                        </Text>
+                      </HStack>
+                    </Pressable>
+                  )}
+                </VStack>
+
+                {/* 权限管理 */}
+                <VStack mb="$lg">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                    权限管理
+                  </Text>
+
+                  <View style={styles.permissionItem}>
+                    <HStack alignItems="center">
+                      <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
+                      <Text fontSize="$md" color="$black" ml="$sm">Banner 发布</Text>
+                    </HStack>
+                    <Switch
+                      value={manageMerchant.canPostBanner}
+                      onValueChange={(v) => handleUpdateMerchantPermission("canPostBanner", v)}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
+                      thumbColor={theme.colors.white}
+                      disabled={isSubmitting}
+                    />
+                  </View>
+
+                  <View style={styles.permissionItem}>
+                    <HStack alignItems="center">
+                      <Ionicons name="megaphone-outline" size={18} color={theme.colors.gray400} />
+                      <Text fontSize="$md" color="$black" ml="$sm">公告发布</Text>
+                    </HStack>
+                    <Switch
+                      value={manageMerchant.canPostAnnouncement}
+                      onValueChange={(v) => handleUpdateMerchantPermission("canPostAnnouncement", v)}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
+                      thumbColor={theme.colors.white}
+                      disabled={isSubmitting}
+                    />
+                  </View>
+
+                  <View style={styles.permissionItem}>
+                    <HStack alignItems="center">
+                      <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
+                      <Text fontSize="$md" color="$black" ml="$sm">活动发布</Text>
+                    </HStack>
+                    <Switch
+                      value={manageMerchant.canPostActivity}
+                      onValueChange={(v) => handleUpdateMerchantPermission("canPostActivity", v)}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
+                      thumbColor={theme.colors.white}
+                      disabled={isSubmitting}
+                    />
+                  </View>
+
+                  <View style={styles.permissionItem}>
+                    <HStack alignItems="center">
+                      <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray400} />
+                      <Text fontSize="$md" color="$black" ml="$sm">折扣发布</Text>
+                    </HStack>
+                    <Switch
+                      value={manageMerchant.canPostDiscount}
+                      onValueChange={(v) => handleUpdateMerchantPermission("canPostDiscount", v)}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
+                      thumbColor={theme.colors.white}
+                      disabled={isSubmitting}
+                    />
+                  </View>
+                </VStack>
+
+                {/* 操作按钮 */}
+                <HStack gap="$sm" mt="$md" mb="$lg">
+                  {manageMerchant.status === "APPROVED" ? (
+                    <Pressable
+                      flex={1}
+                      py="$md"
+                      rounded="$sm"
+                      bg="#FFEBEE"
+                      alignItems="center"
+                      onPress={() => handleUpdateMerchantStatus("SUSPENDED")}
+                      disabled={isSubmitting}
+                    >
+                      <HStack alignItems="center" gap="$xs">
+                        <Ionicons name="pause-circle-outline" size={18} color="#F44336" />
+                        <Text fontSize="$md" fontWeight="$semibold" color="#F44336">
+                          暂停商家
+                        </Text>
+                      </HStack>
+                    </Pressable>
+                  ) : manageMerchant.status === "SUSPENDED" ? (
+                    <Pressable
+                      flex={1}
+                      py="$md"
+                      rounded="$sm"
+                      bg="#E8F5E9"
+                      alignItems="center"
+                      onPress={() => handleUpdateMerchantStatus("APPROVED")}
+                      disabled={isSubmitting}
+                    >
+                      <HStack alignItems="center" gap="$xs">
+                        <Ionicons name="play-circle-outline" size={18} color="#4CAF50" />
+                        <Text fontSize="$md" fontWeight="$semibold" color="#4CAF50">
+                          恢复商家
+                        </Text>
+                      </HStack>
+                    </Pressable>
+                  ) : null}
+                </HStack>
+              </RNScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -695,6 +1039,14 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
   modalContent: {
     backgroundColor: theme.colors.white,
     borderTopLeftRadius: 24,
@@ -703,6 +1055,14 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     paddingBottom: 34,
     maxHeight: "85%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: theme.colors.gray200,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: theme.spacing.md,
   },
   rejectModalContent: {
     backgroundColor: theme.colors.white,
@@ -723,6 +1083,55 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.gray100,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+    backgroundColor: theme.colors.white,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabActive: {
+    borderBottomColor: theme.colors.black,
+  },
+  tabText: {
+    fontSize: 14,
+    color: theme.colors.gray300,
+  },
+  tabTextActive: {
+    color: theme.colors.black,
+    fontWeight: "600",
+  },
+  tabBadge: {
+    backgroundColor: theme.colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 6,
+    paddingHorizontal: 6,
+  },
+  tabBadgeText: {
+    color: theme.colors.white,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  permissionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
   },
 });
 

@@ -82,6 +82,16 @@ class StoreMerchantReview(BaseModel):
     rejectReason: Optional[str] = Field(None, description="拒绝原因")
 
 
+class StoreMerchantAdminUpdate(BaseModel):
+    """管理员更新商家信息"""
+    status: Optional[MerchantStatus] = Field(None, description="商家状态")
+    merchantLevel: Optional[MerchantLevel] = Field(None, description="商家等级")
+    canPostBanner: Optional[bool] = Field(None, description="发布Banner权限")
+    canPostAnnouncement: Optional[bool] = Field(None, description="发布公告权限")
+    canPostActivity: Optional[bool] = Field(None, description="发布活动权限")
+    canPostDiscount: Optional[bool] = Field(None, description="发布折扣权限")
+
+
 class StoreMerchant(BaseModel):
     """商家信息"""
     id: int

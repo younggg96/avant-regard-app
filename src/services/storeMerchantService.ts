@@ -800,6 +800,16 @@ export interface MerchantReviewParams {
   rejectReason?: string;
 }
 
+// 管理员更新商家参数
+export interface MerchantAdminUpdateParams {
+  status?: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+  merchantLevel?: "BASIC" | "PREMIUM" | "VIP";
+  canPostBanner?: boolean;
+  canPostAnnouncement?: boolean;
+  canPostActivity?: boolean;
+  canPostDiscount?: boolean;
+}
+
 // 商家申请详情（包含店铺信息）
 export interface MerchantApplicationDetail extends StoreMerchant {
   storeName?: string;
@@ -823,6 +833,24 @@ export const getPendingMerchants = async (
 };
 
 /**
+ * 获取所有商家列表（管理员）
+ */
+export const getAllMerchants = async (
+  status?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ merchants: MerchantApplicationDetail[]; total: number }> => {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (status) {
+    params.append("status", status);
+  }
+  return request<{ merchants: MerchantApplicationDetail[]; total: number }>(
+    `/api/store-merchants/all?${params.toString()}`,
+    { method: "GET" }
+  );
+};
+
+/**
  * 审核商家申请（管理员）
  */
 export const reviewMerchant = async (
@@ -831,6 +859,22 @@ export const reviewMerchant = async (
 ): Promise<StoreMerchant> => {
   return request<StoreMerchant>(
     `/api/store-merchants/${merchantId}/review`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
+/**
+ * 管理员更新商家信息
+ */
+export const adminUpdateMerchant = async (
+  merchantId: number,
+  data: MerchantAdminUpdateParams
+): Promise<StoreMerchant> => {
+  return request<StoreMerchant>(
+    `/api/store-merchants/${merchantId}/admin-update`,
     {
       method: "PUT",
       body: JSON.stringify(data),
@@ -880,4 +924,7 @@ export const storeMerchantService = {
   // 管理员审核
   getPendingMerchants,
   reviewMerchant,
+  // 管理员管理
+  getAllMerchants,
+  adminUpdateMerchant,
 };

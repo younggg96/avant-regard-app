@@ -12,6 +12,7 @@ from app.schemas.store_merchant import (
     StoreMerchantCreate,
     StoreMerchantUpdate,
     StoreMerchantReview,
+    StoreMerchantAdminUpdate,
     StoreAnnouncementCreate,
     StoreAnnouncementUpdate,
     StoreBannerCreate,
@@ -114,6 +115,39 @@ async def review_merchant(
             merchant_id, current_user_id, data
         )
         return success(merchant.model_dump(), message="审核完成")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/all")
+async def get_all_merchants(
+    status: Optional[str] = Query(None, description="商家状态筛选"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取所有商家列表（管理员）"""
+    merchants, total = store_merchant_service.get_all_merchants(status, page, pageSize)
+    return success({
+        "merchants": merchants,
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+@router.put("/{merchant_id}/admin-update")
+async def admin_update_merchant(
+    merchant_id: int,
+    data: StoreMerchantAdminUpdate,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员更新商家信息（状态、权限等）"""
+    try:
+        merchant = store_merchant_service.admin_update_merchant(
+            merchant_id, current_user_id, data
+        )
+        return success(merchant.model_dump(), message="更新成功")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

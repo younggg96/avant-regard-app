@@ -741,29 +741,6 @@ const ProfileScreen = () => {
                             onPress={() => handlePostPress(post)}
                           />
                         </Pressable>
-
-                        {/* {(tab.id === "published" ||
-                          tab.id === "draft" ||
-                          tab.id === "pending") && (
-                            <Pressable
-                              position="absolute"
-                              top="$xs"
-                              right="$xs"
-                              bg="rgba(255, 48, 64, 0.9)"
-                              borderRadius="$sm"
-                              width={24}
-                              height={24}
-                              alignItems="center"
-                              justifyContent="center"
-                              onPress={() => handleDeletePost(post)}
-                            >
-                              <Ionicons
-                                name="trash-outline"
-                                size={12}
-                                color={theme.colors.white}
-                              />
-                            </Pressable>
-                          )} */}
                       </Box>
                     ))}
                   </HStack>
