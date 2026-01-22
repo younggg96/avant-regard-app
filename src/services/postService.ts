@@ -4,6 +4,7 @@
 
 import { useAuthStore } from "../store/authStore";
 import { config } from "../config/env";
+import { PostStatus } from "./userPostService";
 
 const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
@@ -16,9 +17,6 @@ interface ApiResponse<T> {
 
 // 帖子类型
 export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
-
-// 帖子状态
-export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN";
 
 // 审核状态
 export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";

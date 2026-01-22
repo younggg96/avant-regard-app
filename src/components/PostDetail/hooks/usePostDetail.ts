@@ -3,7 +3,7 @@ import { Post } from "../../PostCard";
 import { postService, Post as ApiPost } from "../../../services/postService";
 import { showService, Show } from "../../../services/showService";
 import { userInfoService } from "../../../services/userInfoService";
-import { PostDetailRouteParams } from "../types";
+import { PostDetailRouteParams, PostStatus } from "../types";
 
 /**
  * 将 API 返回的 Post 转换为 UI 使用的 Post 格式
@@ -66,9 +66,9 @@ interface UsePostDetailOptions {
 
 interface UsePostDetailReturn {
   post: Post | null;
+  postStatus: PostStatus;
   isLoading: boolean;
   error: string | null;
-  postStatus: "draft" | "pending" | "published";
   setPost: React.Dispatch<React.SetStateAction<Post | null>>;
   reload: () => Promise<void>;
 }
@@ -82,8 +82,7 @@ export const usePostDetail = ({
   const [post, setPost] = useState<Post | null>(params.post || null);
   const [isLoading, setIsLoading] = useState(!params.post);
   const [error, setError] = useState<string | null>(null);
-  const postStatus = params.postStatus || "published";
-
+  const [postStatus, setPostStatus] = useState<PostStatus>('DRAFT');
   const loadPostDetail = useCallback(async () => {
     // 如果已经有 post 数据（从路由参数传入），不需要再加载
     if (params.post) {
@@ -110,6 +109,7 @@ export const usePostDetail = ({
 
       // 从 API 获取帖子详情
       const apiPost = await postService.getPostById(postId);
+      setPostStatus(apiPost.status);
       if (!apiPost) {
         throw new Error("帖子不存在");
       }

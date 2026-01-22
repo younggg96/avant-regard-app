@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute, useNavigation, NavigationProp } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { Box, Text, HStack } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { theme } from "../theme";
@@ -40,7 +40,6 @@ import {
   usePostActions,
   useNavigationHandlers,
 } from "../components/PostDetail";
-import { Show } from "@/services/showService";
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -113,7 +112,7 @@ const PostDetailScreen = () => {
   } = usePostActions({
     post,
     userId: user?.userId,
-    navigation: navigation as NavigationProp<any>,
+    navigation: navigation as any,
   });
 
   // 导航 Hook
@@ -225,7 +224,7 @@ const PostDetailScreen = () => {
     comments.reduce((sum, c) => sum + 1 + (c.replyCount || 0), 0);
   const displayIsLiked = post.engagement?.isLiked || false;
   const displayIsSaved = post.engagement?.isSaved || false;
-  const showComments = postStatus === "published";
+  const showComments = postStatus === "PUBLISHED";
 
   return (
     <View style={localStyles.rootContainer}>

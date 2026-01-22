@@ -200,7 +200,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   onToggleReplies,
 }) => {
   // 草稿和审核中的帖子不显示评论
-  const showComments = postStatus === "published";
+  const showComments: boolean = postStatus === "PUBLISHED";
 
   if (!showComments) {
     return (
@@ -214,12 +214,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         borderTopColor="$gray100"
       >
         <Ionicons
-          name={postStatus === "draft" ? "create-outline" : "time-outline"}
+          name={postStatus === "DRAFT" ? "create-outline" : "time-outline"}
           size={48}
           color={theme.colors.gray300}
         />
         <Text fontSize="$md" color="$gray600" textAlign="center">
-          {postStatus === "draft"
+          {postStatus === "DRAFT"
             ? "草稿暂不支持评论，请先完成编辑并发布"
             : "内容正在审核中，审核通过后可以查看评论"}
         </Text>

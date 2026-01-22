@@ -6,7 +6,7 @@ import { Alert } from "../../../utils/Alert";
 interface UsePostActionsOptions {
   post: Post | null;
   userId?: number;
-  navigation: { goBack: () => void };
+  navigation: { goBack: () => void; navigate: (name: string, params?: any) => void };
 }
 
 interface UsePostActionsReturn {
@@ -19,6 +19,14 @@ interface UsePostActionsReturn {
   handleDeletePost: () => void;
   handleConfirmDelete: () => Promise<void>;
 }
+
+// 帖子类型到发布页面的映射
+const POST_TYPE_TO_SCREEN: Record<string, string> = {
+  OUTFIT: "PublishLookbook",
+  DAILY_SHARE: "PublishOutfit",
+  ITEM_REVIEW: "PublishReview",
+  ARTICLE: "PublishArticle",
+};
 
 /**
  * 管理帖子操作逻辑（删除、编辑）
@@ -34,9 +42,26 @@ export const usePostActions = ({
 
   // 处理继续编辑（草稿）
   const handleContinueEdit = useCallback(() => {
-    Alert.show("编辑", "跳转到编辑页面");
-    // TODO: 实现跳转到对应的编辑页面
-  }, []);
+    if (!post) {
+      Alert.show("错误", "帖子数据不存在");
+      return;
+    }
+
+    const postType = post.type;
+    const screenName = POST_TYPE_TO_SCREEN[postType as keyof typeof POST_TYPE_TO_SCREEN];
+
+    if (!screenName) {
+      Alert.show("错误", "不支持的帖子类型");
+      return;
+    }
+
+    console.log("draftPost", post);
+    // 导航到对应的发布页面，传递编辑数据
+    navigation.navigate(screenName, {
+      editMode: true,
+      draftPost: post,
+    });
+  }, [post, navigation]);
 
   // 处理删除帖子
   const handleDeletePost = useCallback(() => {

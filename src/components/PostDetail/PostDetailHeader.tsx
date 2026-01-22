@@ -78,7 +78,8 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
 
       {/* Right: Actions based on status */}
       <HStack space="xs" alignItems="center">
-        {postStatus === "draft" ? (
+        {console.log("postStatus", postStatus)}
+        {postStatus === "DRAFT" ? (
           // 草稿状态：显示继续修改按钮和删除按钮
           <>
             <Pressable
@@ -102,7 +103,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               </Pressable>
             )}
           </>
-        ) : postStatus === "pending" ? (
+        ) : postStatus === "PENDING" ? (
           // 审核中状态：显示审核状态标签和删除按钮
           <>
             <View

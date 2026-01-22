@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Keyboard } from "react-native";
-import { Comment, CommentReply, ReplyTarget, formatTimestamp } from "../types";
+import { Comment, CommentReply, ReplyTarget, formatTimestamp, PostStatus } from "../types";
 import { commentService } from "../../../services/commentService";
 import { userInfoService } from "../../../services/userInfoService";
 import { Alert } from "../../../utils/Alert";
@@ -8,7 +8,7 @@ import { CommentInputBarRef } from "../CommentInputBar";
 
 interface UseCommentsOptions {
   postId: string | undefined;
-  postStatus: "draft" | "pending" | "published";
+  postStatus: PostStatus;
   userId?: number;
   username?: string;
 }
@@ -62,7 +62,7 @@ export const useComments = ({
 
   // 加载评论数据
   const loadComments = useCallback(async () => {
-    if (!postId || postStatus !== "published") return;
+    if (!postId || postStatus !== "PUBLISHED") return;
 
     setIsLoadingComments(true);
     try {

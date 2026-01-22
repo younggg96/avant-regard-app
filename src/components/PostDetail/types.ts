@@ -4,7 +4,7 @@ import { Post, ShowImageInfo } from "../PostCard";
 export interface PostDetailRouteParams {
   postId?: string;
   post?: Post;
-  postStatus?: "draft" | "pending" | "published";
+  postStatus?: PostStatus;
 }
 
 // 评论回复显示类型
@@ -45,7 +45,7 @@ export interface ReplyTarget {
 }
 
 // 帖子状态类型
-export type PostStatus = "draft" | "pending" | "published";
+export type PostStatus = "DRAFT" | "PENDING" | "PUBLISHED" | "HIDDEN";
 
 // 格式化时间显示
 export const formatTimestamp = (dateString: string): string => {

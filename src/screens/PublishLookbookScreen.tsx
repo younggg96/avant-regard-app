@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   StyleSheet,
   Image as RNImage,
@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -27,12 +27,24 @@ import PublishButtons from "../components/PublishButtons";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import { postService } from "../services/postService";
 import { useAuthStore } from "../store/authStore";
+import { Post } from "../components/PostCard";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
+// 路由参数类型
+type PublishLookbookRouteParams = {
+  editMode?: boolean;
+  draftPost?: Post;
+};
+
 const PublishLookbookScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<{ params: PublishLookbookRouteParams }, "params">>();
   const { user } = useAuthStore();
+
+  // 获取编辑模式参数
+  const editMode = route.params?.editMode || false;
+  const draftPost = route.params?.draftPost;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -42,9 +54,37 @@ const PublishLookbookScreen = () => {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
+  // 编辑模式：保存草稿 ID 用于更新
+  const [draftPostId, setDraftPostId] = useState<number | null>(
+    editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
+  );
+
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
+
+  // 编辑模式：初始化草稿数据
+  useEffect(() => {
+    if (editMode && draftPost) {
+      console.log("Initializing edit mode with draft:", draftPost);
+      
+      // 初始化标题
+      if (draftPost.content?.title) {
+        setTitle(draftPost.content.title);
+      }
+      
+      // 初始化描述
+      if (draftPost.content?.description) {
+        setDescription(draftPost.content.description);
+      }
+      
+      // 初始化图片（已上传的远程 URL）
+      if (draftPost.content?.images && draftPost.content.images.length > 0) {
+        setImages(draftPost.content.images);
+        setCoverImage(draftPost.content.images[0]);
+      }
+    }
+  }, [editMode, draftPost]);
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageEditMenu, setShowImageEditMenu] = useState(false);
@@ -89,6 +129,50 @@ const PublishLookbookScreen = () => {
     return true;
   };
 
+  // 判断是否为远程 URL（已上传的图片）
+  const isRemoteUrl = (uri: string) => {
+    return uri.startsWith("http://") || uri.startsWith("https://");
+  };
+
+  // 处理图片上传（区分新图片和已上传的图片）
+  const processImages = async (imageList: string[]): Promise<string[]> => {
+    const remoteUrls: string[] = [];
+    const localUris: string[] = [];
+
+    imageList.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        remoteUrls.push(uri);
+      } else {
+        localUris.push(uri);
+      }
+    });
+
+    let uploadedUrls: string[] = [];
+    if (localUris.length > 0) {
+      setUploadProgress(`上传图片 0/${localUris.length}`);
+      uploadedUrls = await postService.uploadImages(
+        localUris,
+        (completed, total) => {
+          setUploadProgress(`上传图片 ${completed}/${total}`);
+        }
+      );
+    }
+
+    const finalUrls: string[] = [];
+    let remoteIndex = 0;
+    let uploadedIndex = 0;
+
+    imageList.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        finalUrls.push(remoteUrls[remoteIndex++]);
+      } else {
+        finalUrls.push(uploadedUrls[uploadedIndex++]);
+      }
+    });
+
+    return finalUrls;
+  };
+
   const handlePublish = async () => {
     if (!validateForm()) {
       return;
@@ -101,31 +185,36 @@ const PublishLookbookScreen = () => {
 
     setIsPublishing(true);
     try {
-      // 1. 先上传所有图片
-      setUploadProgress(`上传图片 0/${images.length}`);
-      const uploadedUrls = await postService.uploadImages(
-        images,
-        (completed, total) => {
-          setUploadProgress(`上传图片 ${completed}/${total}`);
-        }
-      );
+      // 1. 处理图片
+      const uploadedUrls = await processImages(images);
 
-      // 2. 创建帖子
+      // 2. 创建或更新帖子
       setUploadProgress("正在发布...");
-      await postService.createPost({
-        userId: user.userId,
-        postType: "OUTFIT",
-        postStatus: "PUBLISHED",
-        title: title.trim(),
-        contentText: description.trim(),
-        imageUrls: uploadedUrls,
-      });
+
+      if (editMode && draftPostId) {
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "OUTFIT",
+          status: "PUBLISHED",
+          title: title.trim(),
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+        });
+      } else {
+        await postService.createPost({
+          userId: user.userId,
+          postType: "OUTFIT",
+          postStatus: "PUBLISHED",
+          title: title.trim(),
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
-        // 跳转到 Discover 页面
         (navigation as any).reset({
           index: 0,
           routes: [{ name: "Main", params: { screen: "Home" } }],
@@ -154,29 +243,34 @@ const PublishLookbookScreen = () => {
 
     setIsSavingDraft(true);
     try {
+      // 处理图片
       let uploadedUrls: string[] = [];
-
-      // 如果有图片，先上传
       if (images.length > 0) {
-        setUploadProgress(`上传图片 0/${images.length}`);
-        uploadedUrls = await postService.uploadImages(
-          images,
-          (completed, total) => {
-            setUploadProgress(`上传图片 ${completed}/${total}`);
-          }
-        );
+        uploadedUrls = await processImages(images);
       }
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      await postService.createPost({
-        userId: user.userId,
-        postType: "OUTFIT",
-        postStatus: "DRAFT",
-        title: title.trim() || "未命名草稿",
-        contentText: description.trim(),
-        imageUrls: uploadedUrls,
-      });
+
+      if (editMode && draftPostId) {
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "OUTFIT",
+          status: "DRAFT",
+          title: title.trim() || "未命名草稿",
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+        });
+      } else {
+        await postService.createPost({
+          userId: user.userId,
+          postType: "OUTFIT",
+          postStatus: "DRAFT",
+          title: title.trim() || "未命名草稿",
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("草稿已保存", "", 1500);
@@ -588,7 +682,7 @@ const PublishLookbookScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="发布Lookbook"
+        title={editMode ? "编辑Lookbook" : "发布Lookbook"}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />

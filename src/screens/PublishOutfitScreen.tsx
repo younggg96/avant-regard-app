@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -34,13 +34,25 @@ import { saveDraft } from "../services/draftService";
 import { postService } from "../services/postService";
 import { showService, Show as ShowFromApi } from "../services/showService";
 import { useAuthStore } from "../store/authStore";
+import { Post } from "../components/PostCard";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PAGE_SIZE = 30;
 
+// 路由参数类型
+type PublishOutfitRouteParams = {
+  editMode?: boolean;
+  draftPost?: Post;
+};
+
 const PublishOutfitScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<{ params: PublishOutfitRouteParams }, "params">>();
   const { user } = useAuthStore();
+
+  // 获取编辑模式参数
+  const editMode = route.params?.editMode || false;
+  const draftPost = route.params?.draftPost;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -52,6 +64,11 @@ const PublishOutfitScreen = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+
+  // 编辑模式：保存草稿 ID 用于更新
+  const [draftPostId, setDraftPostId] = useState<number | null>(
+    editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
+  );
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -181,6 +198,42 @@ const PublishOutfitScreen = () => {
     loadShows(true);
   }, []);
 
+  // 编辑模式：初始化草稿数据
+  useEffect(() => {
+    if (editMode && draftPost) {
+      console.log("Initializing edit mode with draft:", draftPost);
+      
+      // 初始化标题
+      if (draftPost.content?.title) {
+        setTitle(draftPost.content.title);
+      }
+      
+      // 初始化描述
+      if (draftPost.content?.description) {
+        setDescription(draftPost.content.description);
+      }
+      
+      // 初始化图片（已上传的远程 URL）
+      if (draftPost.content?.images && draftPost.content.images.length > 0) {
+        setImages(draftPost.content.images);
+        setCoverImage(draftPost.content.images[0]);
+      }
+      
+      // 初始化关联秀场
+      if (draftPost.shows && draftPost.shows.length > 0) {
+        const mappedShows: SelectedShow[] = draftPost.shows.map((show) => ({
+          id: show.id || 0,
+          brand: show.brand || "",
+          season: show.season || "",
+          imageUrl: show.coverImage || "",
+          showId: show.id,
+          showUrl: show.showUrl || "",
+        }));
+        setSelectedShows(mappedShows);
+      }
+    }
+  }, [editMode, draftPost]);
+
   // 根据搜索词过滤秀场
   const filteredShows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -237,6 +290,53 @@ const PublishOutfitScreen = () => {
     );
   };
 
+  // 判断是否为远程 URL（已上传的图片）
+  const isRemoteUrl = (uri: string) => {
+    return uri.startsWith("http://") || uri.startsWith("https://");
+  };
+
+  // 处理图片上传（区分新图片和已上传的图片）
+  const processImages = async (imageList: string[]): Promise<string[]> => {
+    const remoteUrls: string[] = [];
+    const localUris: string[] = [];
+
+    // 分离远程 URL 和本地 URI
+    imageList.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        remoteUrls.push(uri);
+      } else {
+        localUris.push(uri);
+      }
+    });
+
+    // 只上传本地图片
+    let uploadedUrls: string[] = [];
+    if (localUris.length > 0) {
+      setUploadProgress(`上传图片 0/${localUris.length}`);
+      uploadedUrls = await postService.uploadImages(
+        localUris,
+        (completed, total) => {
+          setUploadProgress(`上传图片 ${completed}/${total}`);
+        }
+      );
+    }
+
+    // 合并远程 URL 和新上传的 URL（保持原有顺序）
+    const finalUrls: string[] = [];
+    let remoteIndex = 0;
+    let uploadedIndex = 0;
+
+    imageList.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        finalUrls.push(remoteUrls[remoteIndex++]);
+      } else {
+        finalUrls.push(uploadedUrls[uploadedIndex++]);
+      }
+    });
+
+    return finalUrls;
+  };
+
   const handlePublish = async () => {
     if (!canPublish()) {
       Alert.show("提示: 请完成所有必填项");
@@ -250,31 +350,40 @@ const PublishOutfitScreen = () => {
 
     setIsPublishing(true);
     try {
-      // 1. 先上传所有图片
-      setUploadProgress(`上传图片 0/${images.length}`);
-      const uploadedUrls = await postService.uploadImages(
-        images,
-        (completed, total) => {
-          setUploadProgress(`上传图片 ${completed}/${total}`);
-        }
-      );
+      // 1. 处理图片（上传新图片，保留已有图片）
+      const uploadedUrls = await processImages(images);
 
-      // 2. 创建帖子
-      setUploadProgress("正在发布...");
-      // 获取所有关联秀场的 showIds
+      // 2. 获取所有关联秀场的 showIds
       const showIds = selectedShows
         .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
-      await postService.createPost({
-        userId: user.userId,
-        postType: "DAILY_SHARE",
-        postStatus: "PUBLISHED",
-        title: title.trim(),
-        contentText: description.trim(),
-        imageUrls: uploadedUrls,
-        showIds: showIds,
-      });
+      // 3. 创建或更新帖子
+      setUploadProgress("正在发布...");
+
+      if (editMode && draftPostId) {
+        // 编辑模式：更新帖子
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "DAILY_SHARE",
+          status: "PUBLISHED",
+          title: title.trim(),
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+          showIds: showIds,
+        });
+      } else {
+        // 新建模式：创建帖子
+        await postService.createPost({
+          userId: user.userId,
+          postType: "DAILY_SHARE",
+          postStatus: "PUBLISHED",
+          title: title.trim(),
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+          showIds: showIds,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("发布成功！", "", 2000);
@@ -313,35 +422,43 @@ const PublishOutfitScreen = () => {
 
     setIsSavingDraft(true);
     try {
+      // 处理图片（上传新图片，保留已有图片）
       let uploadedUrls: string[] = [];
-
-      // 如果有图片，先上传
       if (images.length > 0) {
-        setUploadProgress(`上传图片 0/${images.length}`);
-        uploadedUrls = await postService.uploadImages(
-          images,
-          (completed, total) => {
-            setUploadProgress(`上传图片 ${completed}/${total}`);
-          }
-        );
+        uploadedUrls = await processImages(images);
       }
 
-      // 保存草稿
-      setUploadProgress("正在保存...");
       // 获取所有关联秀场的 showIds
       const showIds = selectedShows
         .map((show) => show.showId)
         .filter((id): id is number => id !== undefined);
 
-      await postService.createPost({
-        userId: user.userId,
-        postType: "DAILY_SHARE",
-        postStatus: "DRAFT",
-        title: title.trim() || "搭配草稿",
-        contentText: description.trim(),
-        imageUrls: uploadedUrls,
-        showIds: showIds,
-      });
+      // 保存草稿
+      setUploadProgress("正在保存...");
+
+      if (editMode && draftPostId) {
+        // 编辑模式：更新草稿
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "DAILY_SHARE",
+          status: "DRAFT",
+          title: title.trim() || "搭配草稿",
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+          showIds: showIds,
+        });
+      } else {
+        // 新建模式：创建草稿
+        await postService.createPost({
+          userId: user.userId,
+          postType: "DAILY_SHARE",
+          postStatus: "DRAFT",
+          title: title.trim() || "搭配草稿",
+          contentText: description.trim(),
+          imageUrls: uploadedUrls,
+          showIds: showIds,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("草稿已保存", "", 1500);
@@ -724,7 +841,7 @@ const PublishOutfitScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="分享搭配"
+        title={editMode ? "编辑搭配" : "分享搭配"}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />

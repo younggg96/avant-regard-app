@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Modal,
@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -32,11 +32,23 @@ import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
 import { postService } from "../services/postService";
 import { useAuthStore } from "../store/authStore";
+import { Post } from "../components/PostCard";
+
+// 路由参数类型
+type PublishArticleRouteParams = {
+  editMode?: boolean;
+  draftPost?: Post;
+};
 
 const PublishArticleScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<{ params: PublishArticleRouteParams }, "params">>();
   const { user } = useAuthStore();
   const richText = useRef<RichEditor>(null);
+
+  // 获取编辑模式参数
+  const editMode = route.params?.editMode || false;
+  const draftPost = route.params?.draftPost;
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -47,7 +59,39 @@ const PublishArticleScreen = () => {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
+  // 编辑模式：保存草稿 ID 用于更新
+  const [draftPostId, setDraftPostId] = useState<number | null>(
+    editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
+  );
+
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // 编辑模式：初始化草稿数据
+  useEffect(() => {
+    if (editMode && draftPost) {
+      console.log("Initializing edit mode with draft:", draftPost);
+      
+      // 初始化标题
+      if (draftPost.content?.title) {
+        setTitle(draftPost.content.title);
+      }
+      
+      // 初始化内容（HTML）
+      if (draftPost.content?.description) {
+        setHtmlContent(draftPost.content.description);
+        setContent(draftPost.content.description.replace(/<[^>]*>/g, ""));
+        // 设置富文本编辑器内容
+        setTimeout(() => {
+          richText.current?.setContentHTML(draftPost.content?.description || "");
+        }, 500);
+      }
+      
+      // 初始化封面图片
+      if (draftPost.content?.images && draftPost.content.images.length > 0) {
+        setCoverImage(draftPost.content.images[0]);
+      }
+    }
+  }, [editMode, draftPost]);
 
   // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
@@ -69,6 +113,11 @@ const PublishArticleScreen = () => {
     return true;
   };
 
+  // 判断是否为远程 URL（已上传的图片）
+  const isRemoteUrl = (uri: string) => {
+    return uri.startsWith("http://") || uri.startsWith("https://");
+  };
+
   const handlePublish = async () => {
     if (!validateForm()) {
       return;
@@ -83,23 +132,41 @@ const PublishArticleScreen = () => {
     try {
       let uploadedUrls: string[] = [];
 
-      // 如果有封面图，先上传
+      // 如果有封面图，处理上传
       if (coverImage) {
-        setUploadProgress("上传封面图片...");
-        const coverUrl = await postService.uploadImage(coverImage);
-        uploadedUrls = [coverUrl];
+        if (isRemoteUrl(coverImage)) {
+          // 已上传的图片，直接使用
+          uploadedUrls = [coverImage];
+        } else {
+          // 新图片，需要上传
+          setUploadProgress("上传封面图片...");
+          const coverUrl = await postService.uploadImage(coverImage);
+          uploadedUrls = [coverUrl];
+        }
       }
 
-      // 创建帖子
+      // 创建或更新帖子
       setUploadProgress("正在发布...");
-      await postService.createPost({
-        userId: user.userId,
-        postType: "ARTICLES",
-        postStatus: "PUBLISHED",
-        title: title.trim(),
-        contentText: htmlContent,
-        imageUrls: uploadedUrls,
-      });
+
+      if (editMode && draftPostId) {
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "ARTICLES",
+          status: "PUBLISHED",
+          title: title.trim(),
+          contentText: htmlContent,
+          imageUrls: uploadedUrls,
+        });
+      } else {
+        await postService.createPost({
+          userId: user.userId,
+          postType: "ARTICLES",
+          postStatus: "PUBLISHED",
+          title: title.trim(),
+          contentText: htmlContent,
+          imageUrls: uploadedUrls,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("发布成功！", "", 1500);
@@ -135,23 +202,39 @@ const PublishArticleScreen = () => {
     try {
       let uploadedUrls: string[] = [];
 
-      // 如果有封面图，先上传
+      // 如果有封面图，处理上传
       if (coverImage) {
-        setUploadProgress("上传封面图片...");
-        const coverUrl = await postService.uploadImage(coverImage);
-        uploadedUrls = [coverUrl];
+        if (isRemoteUrl(coverImage)) {
+          uploadedUrls = [coverImage];
+        } else {
+          setUploadProgress("上传封面图片...");
+          const coverUrl = await postService.uploadImage(coverImage);
+          uploadedUrls = [coverUrl];
+        }
       }
 
       // 保存草稿
       setUploadProgress("正在保存...");
-      await postService.createPost({
-        userId: user.userId,
-        postType: "ARTICLES",
-        postStatus: "DRAFT",
-        title: title.trim() || "文章草稿",
-        contentText: htmlContent,
-        imageUrls: uploadedUrls,
-      });
+
+      if (editMode && draftPostId) {
+        await postService.updatePost(draftPostId, {
+          userId: user.userId,
+          postType: "ARTICLES",
+          status: "DRAFT",
+          title: title.trim() || "文章草稿",
+          contentText: htmlContent,
+          imageUrls: uploadedUrls,
+        });
+      } else {
+        await postService.createPost({
+          userId: user.userId,
+          postType: "ARTICLES",
+          postStatus: "DRAFT",
+          title: title.trim() || "文章草稿",
+          contentText: htmlContent,
+          imageUrls: uploadedUrls,
+        });
+      }
 
       setUploadProgress(null);
       Alert.show("草稿已保存", "", 1500);
@@ -224,7 +307,7 @@ const PublishArticleScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="时尚文章"
+        title={editMode ? "编辑文章" : "时尚文章"}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
