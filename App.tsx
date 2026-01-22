@@ -36,6 +36,9 @@ import FavoritesScreen from "./src/screens/FavoritesScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowersScreen from "./src/screens/FollowersScreen";
 import AdminScreen from "./src/screens/AdminScreen";
+import SubmitStoreScreen from "./src/screens/SubmitStoreScreen";
+import StoreDetailScreen from "./src/screens/StoreDetailScreen";
+import StoreReviewScreen from "./src/screens/StoreReviewScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
@@ -270,6 +273,24 @@ function AppNavigator() {
       <Stack.Screen
         name="StoreList"
         component={StoreListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="SubmitStore"
+        component={SubmitStoreScreen}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+        }}
+      />
+      <Stack.Screen
+        name="StoreDetail"
+        component={StoreDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="StoreReview"
+        component={StoreReviewScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen

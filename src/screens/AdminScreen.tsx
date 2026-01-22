@@ -20,7 +20,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { adminService, AdminComment } from "../services/adminService";
 import { Post } from "../services/postService";
 
-type TabType = "pending" | "comments" | "users";
+type TabType = "pending" | "comments" | "users" | "stores";
 
 const AdminScreen = () => {
   const navigation = useNavigation();
@@ -712,6 +712,15 @@ const AdminScreen = () => {
         >
           <Text style={[styles.tabText, activeTab === "users" && styles.tabTextActive]}>
             用户管理
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "stores" && styles.tabActive]}
+          onPress={() => (navigation.navigate as any)("StoreReview")}
+        >
+          <Text style={[styles.tabText, activeTab === "stores" && styles.tabTextActive]}>
+            买手店审核
           </Text>
         </TouchableOpacity>
       </View>

@@ -429,6 +429,402 @@ export const batchCreateStores = async (
   });
 };
 
+// ==================== 用户提交买手店接口 ====================
+
+export interface UserSubmittedStoreCreate {
+  name: string;
+  address: string;
+  city: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+  brands?: string[];
+  style?: string[];
+  phone?: string[];
+  hours?: string;
+  description?: string;
+  images?: string[];
+}
+
+export interface UserSubmittedStore {
+  id: number;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  name: string;
+  address: string;
+  city: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+  brands: string[];
+  style: string[];
+  phone: string[];
+  hours?: string;
+  description?: string;
+  images: string[];
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectReason?: string;
+  reviewedBy?: number;
+  reviewedAt?: string;
+  approvedStoreId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 提交买手店
+ * POST /api/buyer-stores/submit
+ */
+export const submitStore = async (
+  data: UserSubmittedStoreCreate
+): Promise<UserSubmittedStore> => {
+  return request<UserSubmittedStore>(`/api/buyer-stores/submit`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+/**
+ * 获取我提交的买手店列表
+ * GET /api/buyer-stores/submissions/my
+ */
+export const getMySubmissions = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ stores: UserSubmittedStore[]; total: number }> => {
+  return request<{ stores: UserSubmittedStore[]; total: number }>(
+    `/api/buyer-stores/submissions/my?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 获取待审核的买手店列表（管理员）
+ * GET /api/buyer-stores/submissions/pending
+ */
+export const getPendingSubmissions = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ stores: UserSubmittedStore[]; total: number }> => {
+  return request<{ stores: UserSubmittedStore[]; total: number }>(
+    `/api/buyer-stores/submissions/pending?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 审核用户提交的买手店（管理员）
+ * PUT /api/buyer-stores/submissions/{id}/review
+ */
+export const reviewSubmission = async (
+  submissionId: number,
+  data: {
+    status: "APPROVED" | "REJECTED";
+    rejectReason?: string;
+    storeId?: string;
+  }
+): Promise<UserSubmittedStore> => {
+  return request<UserSubmittedStore>(
+    `/api/buyer-stores/submissions/${submissionId}/review`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
+// ==================== 买手店评论接口 ====================
+
+export interface StoreCommentReply {
+  id: number;
+  storeId: string;
+  parentId: number;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  replyToUserId?: number;
+  replyToUsername?: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreComment {
+  id: number;
+  storeId: string;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  content: string;
+  likeCount: number;
+  replyCount: number;
+  replies: StoreCommentReply[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 获取评论提示建议
+ * GET /api/buyer-stores/comment-suggestions
+ */
+export const getCommentSuggestions = async (): Promise<string[]> => {
+  const result = await request<{ suggestions: string[] }>(
+    `/api/buyer-stores/comment-suggestions`,
+    { method: "GET" }
+  );
+  return result.suggestions;
+};
+
+/**
+ * 获取买手店评论列表
+ * GET /api/buyer-stores/{storeId}/comments
+ */
+export const getStoreComments = async (
+  storeId: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ comments: StoreComment[]; total: number }> => {
+  return request<{ comments: StoreComment[]; total: number }>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/comments?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 发表买手店评论
+ * POST /api/buyer-stores/{storeId}/comments
+ */
+export const createStoreComment = async (
+  storeId: string,
+  data: {
+    userId: number;
+    content: string;
+    parentId?: number;
+    replyToUserId?: number;
+  }
+): Promise<StoreComment> => {
+  return request<StoreComment>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/comments`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
+/**
+ * 删除买手店评论
+ * DELETE /api/buyer-stores/comments/{commentId}
+ */
+export const deleteStoreComment = async (
+  commentId: number,
+  userId: number
+): Promise<void> => {
+  return request<void>(
+    `/api/buyer-stores/comments/${commentId}?userId=${userId}`,
+    { method: "DELETE" }
+  );
+};
+
+/**
+ * 点赞买手店评论
+ * POST /api/buyer-stores/comments/{commentId}/like
+ */
+export const likeStoreComment = async (
+  commentId: number,
+  userId: number
+): Promise<void> => {
+  return request<void>(
+    `/api/buyer-stores/comments/${commentId}/like?userId=${userId}`,
+    { method: "POST" }
+  );
+};
+
+/**
+ * 取消点赞买手店评论
+ * DELETE /api/buyer-stores/comments/{commentId}/like
+ */
+export const unlikeStoreComment = async (
+  commentId: number,
+  userId: number
+): Promise<void> => {
+  return request<void>(
+    `/api/buyer-stores/comments/${commentId}/like?userId=${userId}`,
+    { method: "DELETE" }
+  );
+};
+
+/**
+ * 获取评论的所有回复
+ * GET /api/buyer-stores/comments/{commentId}/replies
+ */
+export const getCommentReplies = async (
+  commentId: number
+): Promise<StoreCommentReply[]> => {
+  const result = await request<{ replies: StoreCommentReply[] }>(
+    `/api/buyer-stores/comments/${commentId}/replies`,
+    { method: "GET" }
+  );
+  return result.replies;
+};
+
+// ==================== 买手店评分接口 ====================
+
+export interface StoreRating {
+  id: number;
+  storeId: string;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  rating: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreRatingStats {
+  storeId: string;
+  averageRating: number;
+  ratingCount: number;
+  fiveStarCount: number;
+  fourStarCount: number;
+  threeStarCount: number;
+  twoStarCount: number;
+  oneStarCount: number;
+}
+
+/**
+ * 给买手店评分
+ * POST /api/buyer-stores/{storeId}/rate
+ */
+export const rateStore = async (
+  storeId: string,
+  userId: number,
+  rating: number
+): Promise<StoreRating> => {
+  return request<StoreRating>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/rate`,
+    {
+      method: "POST",
+      body: JSON.stringify({ userId, rating }),
+    }
+  );
+};
+
+/**
+ * 获取买手店评分统计
+ * GET /api/buyer-stores/{storeId}/rating
+ */
+export const getStoreRatingStats = async (
+  storeId: string
+): Promise<StoreRatingStats> => {
+  return request<StoreRatingStats>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/rating`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 获取用户对买手店的评分
+ * GET /api/buyer-stores/{storeId}/rating/user
+ */
+export const getUserStoreRating = async (
+  storeId: string,
+  userId: number
+): Promise<StoreRating | null> => {
+  return request<StoreRating | null>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/rating/user?userId=${userId}`,
+    { method: "GET" }
+  );
+};
+
+// ==================== 买手店收藏接口 ====================
+
+/**
+ * 收藏买手店
+ * POST /api/buyer-stores/{storeId}/favorite
+ */
+export const favoriteStore = async (
+  storeId: string,
+  userId: number
+): Promise<void> => {
+  return request<void>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/favorite?userId=${userId}`,
+    { method: "POST" }
+  );
+};
+
+/**
+ * 取消收藏买手店
+ * DELETE /api/buyer-stores/{storeId}/favorite
+ */
+export const unfavoriteStore = async (
+  storeId: string,
+  userId: number
+): Promise<void> => {
+  return request<void>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/favorite?userId=${userId}`,
+    { method: "DELETE" }
+  );
+};
+
+/**
+ * 检查是否已收藏买手店
+ * GET /api/buyer-stores/{storeId}/favorite/check
+ */
+export const checkFavoriteStatus = async (
+  storeId: string,
+  userId: number
+): Promise<boolean> => {
+  const result = await request<{ isFavorited: boolean }>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/favorite/check?userId=${userId}`,
+    { method: "GET" }
+  );
+  return result.isFavorited;
+};
+
+/**
+ * 获取用户收藏的买手店ID列表
+ * GET /api/buyer-stores/favorites/user
+ */
+export const getUserFavoriteStores = async (
+  userId: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ storeIds: string[]; total: number }> => {
+  return request<{ storeIds: string[]; total: number }>(
+    `/api/buyer-stores/favorites/user?userId=${userId}&page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+// ==================== 买手店详情扩展接口 ====================
+
+export interface BuyerStoreDetail extends BuyerStore {
+  averageRating?: number;
+  ratingCount: number;
+  commentCount: number;
+  favoriteCount: number;
+  isFavorited: boolean;
+  userRating?: number;
+}
+
+/**
+ * 获取买手店详情（含社区数据）
+ * GET /api/buyer-stores/{storeId}/detail
+ */
+export const getStoreDetail = async (
+  storeId: string,
+  userId?: number
+): Promise<BuyerStoreDetail> => {
+  const params = userId ? `?userId=${userId}` : "";
+  return request<BuyerStoreDetail>(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/detail${params}`,
+    { method: "GET" }
+  );
+};
+
 // 导出服务对象
 export const buyerStoreService = {
   getAllStores,
@@ -445,4 +841,28 @@ export const buyerStoreService = {
   updateStore,
   deleteStore,
   batchCreateStores,
+  // 用户提交
+  submitStore,
+  getMySubmissions,
+  getPendingSubmissions,
+  reviewSubmission,
+  // 评论
+  getCommentSuggestions,
+  getStoreComments,
+  createStoreComment,
+  deleteStoreComment,
+  likeStoreComment,
+  unlikeStoreComment,
+  getCommentReplies,
+  // 评分
+  rateStore,
+  getStoreRatingStats,
+  getUserStoreRating,
+  // 收藏
+  favoriteStore,
+  unfavoriteStore,
+  checkFavoriteStatus,
+  getUserFavoriteStores,
+  // 详情
+  getStoreDetail,
 };

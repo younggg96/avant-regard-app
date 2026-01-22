@@ -49,6 +49,14 @@ const publishTypes: PublishType[] = [
     color: "#000000",
     route: "PublishArticle",
   },
+  {
+    id: "store",
+    title: "提交买手店",
+    description: "分享发现的宝藏买手店",
+    icon: "storefront",
+    color: "#000000",
+    route: "SubmitStore",
+  },
 ];
 
 const PublishTypeScreen = () => {
@@ -56,13 +64,13 @@ const PublishTypeScreen = () => {
 
   const handleSelectType = (type: PublishType) => {
     // @ts-ignore - navigation types
-    navigation.navigate(type.route);
+    navigation.replace(type.route);
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="选择发布类型"
+        title="选择发布"
         showBackButton
         onBackPress={() => navigation.goBack()}
       />

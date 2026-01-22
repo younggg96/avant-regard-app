@@ -979,6 +979,20 @@ const BuyerMapScreen = () => {
               </Pressable>
             )}
             <Pressable
+              bg="rgba(255,255,255,0.95)"
+              px="$md"
+              py="$xs"
+              rounded="$full"
+              flexDirection="row"
+              alignItems="center"
+              onPress={() => (navigation.navigate as any)("SubmitStore")}
+            >
+              <Ionicons name="add" size={14} color={theme.colors.black} />
+              <Text fontSize="$xs" fontWeight="$semibold" color="$black" ml="$xs">
+                上传
+              </Text>
+            </Pressable>
+            <Pressable
               bg="$black"
               px="$md"
               py="$xs"
@@ -989,7 +1003,7 @@ const BuyerMapScreen = () => {
             >
               <Ionicons name="list" size={14} color={theme.colors.white} />
               <Text fontSize="$xs" fontWeight="$semibold" color="$white" ml="$xs">
-                查看全部
+                全部
               </Text>
             </Pressable>
           </HStack>
@@ -1081,7 +1095,7 @@ const BuyerMapScreen = () => {
                   bg="$gray100"
                   justifyContent="center"
                   alignItems="center"
-                  onPress={() => handleStoreDetailPress(store)}
+                  onPress={() => (navigation.navigate as any)("StoreDetail", { storeId: store.id })}
                 >
                   <Ionicons name="information-circle-outline" size={20} color={theme.colors.black} />
                 </Pressable>

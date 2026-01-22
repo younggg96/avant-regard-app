@@ -181,8 +181,13 @@ const StoreListScreen = () => {
         }
     };
 
-    // 打开店铺详情弹窗
+    // 打开店铺详情页面
     const handleStorePress = (store: BuyerStore) => {
+        (navigation.navigate as any)("StoreDetail", { storeId: store.id });
+    };
+
+    // 打开店铺详情弹窗（保留用于长按）
+    const handleStoreDetailSheet = (store: BuyerStore) => {
         setSelectedStore(store);
         setShowStoreDetail(true);
         Animated.timing(detailSheetAnim, {
