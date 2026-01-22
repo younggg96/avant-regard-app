@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 10,
     backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.sm,
     padding: 8,
   },
   imageCounter: {
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.sm,
   },
   imageCounterText: {
     color: "#fff",

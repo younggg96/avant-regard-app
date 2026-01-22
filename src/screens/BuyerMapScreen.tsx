@@ -719,18 +719,16 @@ const BuyerMapScreen = () => {
             {activeFilterCount > 0 && (
               <Box
                 position="absolute"
-                top={-2}
-                right={-2}
-                w={18}
-                h={18}
+                top={-4}
+                right={-4}
+                w={16}
+                h={16}
                 rounded="$sm"
                 bg="$error"
                 justifyContent="center"
                 alignItems="center"
-                borderWidth={2}
-                borderColor="$white"
               >
-                <Text color="$white" fontSize="$xs" fontWeight="$bold">
+                <Text color="$white" fontSize="$xs" fontWeight="$medium" lineHeight={16}>
                   {activeFilterCount}
                 </Text>
               </Box>

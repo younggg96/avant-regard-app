@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   backButtonCircle: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.gray50,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: theme.borderRadius.sm,
     gap: 10,
   },
   linkText: {

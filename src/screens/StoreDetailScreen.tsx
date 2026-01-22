@@ -561,7 +561,7 @@ const StoreDetailScreen = () => {
               {/* 评分和统计 */}
               <HStack
                 bg="$gray50"
-                rounded="$lg"
+                rounded="$sm"
                 p="$md"
                 justifyContent="space-around"
                 mb="$md"
@@ -608,7 +608,7 @@ const StoreDetailScreen = () => {
               {/* 地址 */}
               <Pressable
                 bg="$gray50"
-                rounded="$lg"
+                rounded="$sm"
                 p="$md"
                 mb="$sm"
                 onPress={handleNavigate}
@@ -624,7 +624,7 @@ const StoreDetailScreen = () => {
 
               {/* 营业时间 */}
               {store.hours && (
-                <Box bg="$gray50" rounded="$lg" p="$md" mb="$sm">
+                <Box bg="$gray50" rounded="$sm" p="$md" mb="$sm">
                   <HStack alignItems="center" gap="$md">
                     <Ionicons name="time-outline" size={20} color={theme.colors.black} />
                     <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
@@ -636,7 +636,7 @@ const StoreDetailScreen = () => {
 
               {/* 电话 */}
               {store.phone && store.phone.length > 0 && (
-                <Box bg="$gray50" rounded="$lg" p="$md" mb="$sm">
+                <Box bg="$gray50" rounded="$sm" p="$md" mb="$sm">
                   {store.phone.map((phone, idx) => (
                     <Pressable
                       key={idx}
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   listContent: {
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
   modalContent: {

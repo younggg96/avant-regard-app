@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { theme } from "../theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -741,7 +742,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
                   style={[
                     styles.aspectButtonText,
                     selectedAspect === aspectKey &&
-                      styles.aspectButtonTextActive,
+                    styles.aspectButtonTextActive,
                   ]}
                 >
                   {ASPECT_CONFIGS[aspectKey].label}
@@ -850,7 +851,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginHorizontal: 4,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   aspectButtonActive: {
@@ -871,7 +872,7 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "white",
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.sm,
     alignItems: "center",
   },
   doneButtonText: {

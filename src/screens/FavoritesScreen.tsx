@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 12,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.gray50,
   },
   activeTab: {
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   tabBadge: {
     backgroundColor: theme.colors.white,
-    borderRadius: 10,
+    borderRadius: theme.borderRadius.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginLeft: 6,
