@@ -51,6 +51,15 @@ import {
   getCommentReplies,
   StoreCommentReply,
 } from "../services/buyerStoreService";
+import {
+  StoreMerchantContent,
+  StoreBanner,
+  StoreAnnouncement,
+  StoreActivity,
+  StoreDiscount,
+  getStoreMerchantContent,
+  recordBannerClick,
+} from "../services/storeMerchantService";
 
 type RouteParams = {
   StoreDetail: {
@@ -102,6 +111,11 @@ const StoreDetailScreen = () => {
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const ratingModalAnim = useRef(new Animated.Value(0)).current;
 
+  // 商家内容状态
+  const [merchantContent, setMerchantContent] = useState<StoreMerchantContent | null>(null);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const bannerScrollRef = useRef<ScrollView>(null);
+
   // 加载店铺详情
   const loadStoreDetail = useCallback(async () => {
     try {
@@ -149,17 +163,72 @@ const StoreDetailScreen = () => {
     }
   }, []);
 
+  // 加载商家内容
+  const loadMerchantContent = useCallback(async () => {
+    try {
+      const content = await getStoreMerchantContent(storeId);
+      setMerchantContent(content);
+    } catch (error) {
+      console.error("Load merchant content error:", error);
+    }
+  }, [storeId]);
+
   useEffect(() => {
     loadStoreDetail();
     loadComments();
     loadSuggestions();
-  }, [loadStoreDetail, loadComments, loadSuggestions]);
+    loadMerchantContent();
+  }, [loadStoreDetail, loadComments, loadSuggestions, loadMerchantContent]);
+
+  // Banner 自动轮播
+  useEffect(() => {
+    if (!merchantContent?.banners || merchantContent.banners.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setCurrentBannerIndex((prev) => {
+        const next = (prev + 1) % merchantContent.banners.length;
+        bannerScrollRef.current?.scrollTo({
+          x: next * 300, // 假设每个 banner 宽度
+          animated: true,
+        });
+        return next;
+      });
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [merchantContent?.banners]);
 
   // 下拉刷新
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([loadStoreDetail(), loadComments(1)]);
+    await Promise.all([loadStoreDetail(), loadComments(1), loadMerchantContent()]);
     setIsRefreshing(false);
+  };
+
+  // Banner 点击处理
+  const handleBannerClick = async (banner: StoreBanner) => {
+    try {
+      await recordBannerClick(banner.id);
+      if (banner.linkUrl) {
+        Linking.openURL(banner.linkUrl);
+      }
+    } catch (error) {
+      console.error("Banner click error:", error);
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
+  };
+
+  // 检查折扣是否有效
+  const isDiscountActive = (discount: StoreDiscount) => {
+    const now = new Date();
+    const start = new Date(discount.discountStartTime);
+    const end = new Date(discount.discountEndTime);
+    return now >= start && now <= end;
   };
 
   // 收藏/取消收藏
@@ -697,6 +766,244 @@ const StoreDetailScreen = () => {
               )}
             </Box>
 
+            {/* ==================== 商家内容区域 ==================== */}
+            {merchantContent?.isMerchant && (
+              <>
+                {/* Banner 轮播 */}
+                {merchantContent.banners.length > 0 && (
+                  <Box mb="$md">
+                    <ScrollView
+                      ref={bannerScrollRef}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onMomentumScrollEnd={(e) => {
+                        const index = Math.round(e.nativeEvent.contentOffset.x / (e.nativeEvent.layoutMeasurement.width));
+                        setCurrentBannerIndex(index);
+                      }}
+                    >
+                      {merchantContent.banners.map((banner, index) => (
+                        <Pressable
+                          key={banner.id}
+                          onPress={() => handleBannerClick(banner)}
+                          style={styles.bannerItem}
+                        >
+                          <Image
+                            source={{ uri: banner.imageUrl }}
+                            style={styles.bannerImage}
+                            resizeMode="cover"
+                          />
+                          {banner.title && (
+                            <Box
+                              position="absolute"
+                              bottom={0}
+                              left={0}
+                              right={0}
+                              bg="rgba(0,0,0,0.5)"
+                              p="$sm"
+                            >
+                              <Text fontSize="$sm" color="$white" style={styles.textRegular}>
+                                {banner.title}
+                              </Text>
+                            </Box>
+                          )}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                    {/* Banner 指示器 */}
+                    {merchantContent.banners.length > 1 && (
+                      <HStack justifyContent="center" gap="$xs" mt="$sm">
+                        {merchantContent.banners.map((_, index) => (
+                          <Box
+                            key={index}
+                            w={index === currentBannerIndex ? 16 : 6}
+                            h={6}
+                            rounded="$sm"
+                            bg={index === currentBannerIndex ? "$black" : "$gray200"}
+                          />
+                        ))}
+                      </HStack>
+                    )}
+                  </Box>
+                )}
+
+                {/* 公告 */}
+                {merchantContent.announcements.length > 0 && (
+                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
+                    <HStack alignItems="center" gap="$sm" mb="$sm">
+                      <Ionicons name="megaphone" size={18} color={theme.colors.error} />
+                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
+                        店铺公告
+                      </Text>
+                    </HStack>
+                    {merchantContent.announcements.slice(0, 2).map((announcement) => (
+                      <Box
+                        key={announcement.id}
+                        bg="$gray50"
+                        p="$sm"
+                        rounded="$sm"
+                        mb="$xs"
+                      >
+                        <HStack alignItems="center" gap="$xs" mb="$xs">
+                          {announcement.isPinned && (
+                            <Box bg="$error" px="$xs" py={2} rounded="$xs">
+                              <Text fontSize={10} color="$white" style={styles.textBold}>
+                                置顶
+                              </Text>
+                            </Box>
+                          )}
+                          <Text
+                            fontSize="$sm"
+                            fontWeight="$semibold"
+                            color="$black"
+                            flex={1}
+                            numberOfLines={1}
+                            style={styles.textBold}
+                          >
+                            {announcement.title}
+                          </Text>
+                        </HStack>
+                        <Text
+                          fontSize="$sm"
+                          color="$gray300"
+                          numberOfLines={2}
+                          style={styles.textRegular}
+                        >
+                          {announcement.content}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+
+                {/* 近期活动 */}
+                {merchantContent.activities.length > 0 && (
+                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
+                    <HStack alignItems="center" gap="$sm" mb="$sm">
+                      <Ionicons name="calendar" size={18} color="#1976D2" />
+                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
+                        近期活动
+                      </Text>
+                    </HStack>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {merchantContent.activities.map((activity) => (
+                        <Pressable
+                          key={activity.id}
+                          style={styles.activityCard}
+                          onPress={() => {
+                            // 可以跳转到活动详情页
+                          }}
+                        >
+                          {activity.coverImage && (
+                            <Image
+                              source={{ uri: activity.coverImage }}
+                              style={styles.activityImage}
+                              resizeMode="cover"
+                            />
+                          )}
+                          <VStack p="$sm">
+                            <Text
+                              fontSize="$sm"
+                              fontWeight="$semibold"
+                              color="$black"
+                              numberOfLines={1}
+                              style={styles.textBold}
+                            >
+                              {activity.title}
+                            </Text>
+                            <HStack alignItems="center" gap="$xs" mt="$xs">
+                              <Ionicons name="time-outline" size={12} color={theme.colors.gray300} />
+                              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                                {formatDate(activity.activityStartTime)} - {formatDate(activity.activityEndTime)}
+                              </Text>
+                            </HStack>
+                            {activity.needRegistration && (
+                              <Box bg="#E3F2FD" px="$xs" py={2} rounded="$xs" alignSelf="flex-start" mt="$xs">
+                                <Text fontSize={10} color="#1976D2" style={styles.textRegular}>
+                                  需报名 {activity.registrationLimit ? `(${activity.registrationCount}/${activity.registrationLimit})` : ""}
+                                </Text>
+                              </Box>
+                            )}
+                          </VStack>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </Box>
+                )}
+
+                {/* 近期折扣 */}
+                {merchantContent.discounts.length > 0 && (
+                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
+                    <HStack alignItems="center" gap="$sm" mb="$sm">
+                      <Ionicons name="pricetag" size={18} color="#E65100" />
+                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
+                        优惠活动
+                      </Text>
+                    </HStack>
+                    {merchantContent.discounts.map((discount) => (
+                      <Box
+                        key={discount.id}
+                        bg="linear-gradient(135deg, #FFF3E0 0%, #FFECB3 100%)"
+                        p="$md"
+                        rounded="$md"
+                        mb="$sm"
+                        borderWidth={1}
+                        borderColor="#FFE082"
+                      >
+                        <HStack justifyContent="between" alignItems="start">
+                          <VStack flex={1}>
+                            <Text
+                              fontSize="$md"
+                              fontWeight="$bold"
+                              color="$black"
+                              style={styles.textBold}
+                            >
+                              {discount.title}
+                            </Text>
+                            {discount.discountValue && (
+                              <Text
+                                fontSize="$xl"
+                                fontWeight="$bold"
+                                color="#E65100"
+                                mt="$xs"
+                                style={styles.textBold}
+                              >
+                                {discount.discountValue}
+                              </Text>
+                            )}
+                            {discount.description && (
+                              <Text
+                                fontSize="$xs"
+                                color="$gray300"
+                                mt="$xs"
+                                numberOfLines={2}
+                                style={styles.textRegular}
+                              >
+                                {discount.description}
+                              </Text>
+                            )}
+                            <HStack alignItems="center" gap="$xs" mt="$sm">
+                              <Ionicons name="time-outline" size={12} color={theme.colors.gray300} />
+                              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                                {formatDate(discount.discountStartTime)} - {formatDate(discount.discountEndTime)}
+                              </Text>
+                            </HStack>
+                          </VStack>
+                          {discount.needCode && discount.discountCode && (
+                            <Box bg="$white" px="$sm" py="$xs" rounded="$sm" borderWidth={1} borderColor="#E65100" borderStyle="dashed">
+                              <Text fontSize="$xs" color="#E65100" style={styles.textBold}>
+                                码: {discount.discountCode}
+                              </Text>
+                            </Box>
+                          )}
+                        </HStack>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+
             {/* 评论区标题 */}
             <HStack
               justifyContent="between"
@@ -1043,6 +1350,29 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
     minHeight: 80,
     fontFamily: FONT_REGULAR,
+  },
+  // 商家内容样式
+  bannerItem: {
+    width: 340,
+    height: 160,
+    marginRight: theme.spacing.sm,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  bannerImage: {
+    width: "100%",
+    height: "100%",
+  },
+  activityCard: {
+    width: 200,
+    marginRight: theme.spacing.sm,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  activityImage: {
+    width: "100%",
+    height: 100,
   },
   // 文本样式
   textRegular: {
