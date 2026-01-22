@@ -175,3 +175,7 @@ async def get_current_admin_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="令牌验证失败"
         )
+
+
+# 别名，方便使用
+get_current_user = get_current_user_id
