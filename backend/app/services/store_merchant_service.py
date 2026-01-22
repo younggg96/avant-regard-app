@@ -215,14 +215,23 @@ class StoreMerchantService:
             if user_id:
                 user_result = (
                     self.db.table("users")
-                    .select("username, avatar")
+                    .select("username")
                     .eq("id", user_id)
                     .execute()
                 )
                 if user_result.data:
                     user = user_result.data[0]
                     merchant_data["username"] = user.get("username")
-                    merchant_data["userAvatar"] = user.get("avatar")
+                
+                # 从 user_info 表获取头像
+                user_info_result = (
+                    self.db.table("user_info")
+                    .select("avatar_url")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                if user_info_result.data:
+                    merchant_data["userAvatar"] = user_info_result.data[0].get("avatar_url")
             
             enriched_merchants.append(merchant_data)
         
