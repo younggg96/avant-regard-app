@@ -638,7 +638,7 @@ const StoreReviewScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.gray50,
+        backgroundColor: theme.colors.white,
     },
     listContent: {
         padding: theme.spacing.md,

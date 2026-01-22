@@ -92,10 +92,10 @@ async def get_pending_merchants(
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user),
 ):
-    """获取待审核的商家列表（管理员）"""
+    """获取待审核的商家列表（管理员）- 包含店铺和用户信息"""
     merchants, total = store_merchant_service.get_pending_merchants(page, pageSize)
     return success({
-        "merchants": [m.model_dump() for m in merchants],
+        "merchants": merchants,  # 已经是字典列表
         "total": total,
         "page": page,
         "pageSize": pageSize,

@@ -44,6 +44,19 @@ const SettingsScreen = () => {
       ],
     },
     {
+      title: "商家中心",
+      items: [
+        {
+          id: "merchant",
+          label: "我的店铺",
+          icon: "storefront-outline",
+          onPress: () => (navigation as any).navigate("MyMerchantStores"),
+          rightText: "商家入口",
+          rightColor: "#F57C00",
+        },
+      ],
+    },
+    {
       title: "支持",
       items: [
         {

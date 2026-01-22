@@ -20,7 +20,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { adminService, AdminComment } from "../services/adminService";
 import { Post } from "../services/postService";
 
-type TabType = "pending" | "comments" | "users" | "stores";
+type TabType = "pending" | "comments" | "users" | "stores" | "merchants";
 
 const AdminScreen = () => {
   const navigation = useNavigation();
@@ -720,7 +720,16 @@ const AdminScreen = () => {
           onPress={() => (navigation.navigate as any)("StoreReview")}
         >
           <Text style={[styles.tabText, activeTab === "stores" && styles.tabTextActive]}>
-            买手店审核
+            店铺审核
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "merchants" && styles.tabActive]}
+          onPress={() => (navigation.navigate as any)("MerchantReview")}
+        >
+          <Text style={[styles.tabText, activeTab === "merchants" && styles.tabTextActive]}>
+            商家入驻
           </Text>
         </TouchableOpacity>
       </View>
@@ -959,7 +968,7 @@ const AdminScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: theme.colors.white,
   },
   tabContainer: {
     flexDirection: "row",

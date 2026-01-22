@@ -57,9 +57,13 @@ import {
   StoreAnnouncement,
   StoreActivity,
   StoreDiscount,
+  StoreMerchant,
   getStoreMerchantContent,
   recordBannerClick,
+  applyMerchant,
+  getMerchantByStore,
 } from "../services/storeMerchantService";
+import * as ImagePicker from "expo-image-picker";
 
 type RouteParams = {
   StoreDetail: {
@@ -115,6 +119,18 @@ const StoreDetailScreen = () => {
   const [merchantContent, setMerchantContent] = useState<StoreMerchantContent | null>(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
+
+  // 商家申请弹窗状态
+  const [showMerchantApplyModal, setShowMerchantApplyModal] = useState(false);
+  const [isSubmittingApply, setIsSubmittingApply] = useState(false);
+  const [existingMerchant, setExistingMerchant] = useState<StoreMerchant | null>(null);
+  const merchantApplyAnim = useRef(new Animated.Value(0)).current;
+  const [applyFormData, setApplyFormData] = useState({
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+    businessLicense: "",
+  });
 
   // 加载店铺详情
   const loadStoreDetail = useCallback(async () => {
@@ -229,6 +245,106 @@ const StoreDetailScreen = () => {
     const start = new Date(discount.discountStartTime);
     const end = new Date(discount.discountEndTime);
     return now >= start && now <= end;
+  };
+
+  // 检查当前用户是否已申请商家
+  const checkMerchantStatus = useCallback(async () => {
+    if (!user) return;
+    try {
+      const merchant = await getMerchantByStore(storeId);
+      setExistingMerchant(merchant);
+    } catch (error) {
+      console.error("Check merchant status error:", error);
+    }
+  }, [storeId, user]);
+
+  useEffect(() => {
+    checkMerchantStatus();
+  }, [checkMerchantStatus]);
+
+  // 打开商家申请弹窗
+  const openMerchantApplyModal = () => {
+    if (!user) {
+      Alert.alert("提示", "请先登录");
+      return;
+    }
+    // 如果已有认证商家，提示
+    if (merchantContent?.isMerchant) {
+      Alert.alert("提示", "该店铺已有认证商家");
+      return;
+    }
+    setShowMerchantApplyModal(true);
+    Animated.timing(merchantApplyAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // 关闭商家申请弹窗
+  const closeMerchantApplyModal = () => {
+    Animated.timing(merchantApplyAnim, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowMerchantApplyModal(false);
+      setApplyFormData({
+        contactName: "",
+        contactPhone: "",
+        contactEmail: "",
+        businessLicense: "",
+      });
+    });
+  };
+
+  // 选择营业执照图片
+  const pickBusinessLicense = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setApplyFormData({
+        ...applyFormData,
+        businessLicense: result.assets[0].uri,
+      });
+    }
+  };
+
+  // 提交商家申请
+  const handleSubmitMerchantApply = async () => {
+    if (!user) return;
+
+    if (!applyFormData.contactName.trim()) {
+      Alert.alert("提示", "请填写联系人姓名");
+      return;
+    }
+    if (!applyFormData.contactPhone.trim()) {
+      Alert.alert("提示", "请填写联系电话");
+      return;
+    }
+
+    try {
+      setIsSubmittingApply(true);
+      await applyMerchant({
+        storeId,
+        contactName: applyFormData.contactName,
+        contactPhone: applyFormData.contactPhone,
+        contactEmail: applyFormData.contactEmail || undefined,
+        businessLicense: applyFormData.businessLicense || undefined,
+      });
+      closeMerchantApplyModal();
+      Alert.alert("申请成功", "您的商家入驻申请已提交，请等待审核");
+      checkMerchantStatus();
+    } catch (error: any) {
+      Alert.alert("申请失败", error.message || "请稍后重试");
+    } finally {
+      setIsSubmittingApply(false);
+    }
   };
 
   // 收藏/取消收藏
@@ -571,7 +687,7 @@ const StoreDetailScreen = () => {
         showBackButton
         onBackPress={() => navigation.goBack()}
         rightComponent={
-          <HStack gap="$sm">
+          <HStack gap="$md" alignItems="center">
             <Pressable onPress={handleToggleFavorite}>
               <Ionicons
                 name={store.isFavorited ? "heart" : "heart-outline"}
@@ -636,13 +752,13 @@ const StoreDetailScreen = () => {
                 mb="$md"
               >
                 <Pressable alignItems="center" onPress={openRatingModal}>
-                  <HStack alignItems="center" mb="$xs">
+                  <HStack alignItems="center" justifyContent="center" mb="$xs">
                     {renderStars(Math.round(store.averageRating || 0))}
+                    <Text fontSize="$lg" fontWeight="$bold" color="$gray300" style={styles.textBold}>
+                      ｜ {store.averageRating?.toFixed(1) || "-"}
+                    </Text>
                   </HStack>
-                  <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
-                    {store.averageRating?.toFixed(1) || "-"}
-                  </Text>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" color="$black" style={styles.textRegular}>
                     {store.ratingCount} 人评分
                   </Text>
                 </Pressable>
@@ -763,6 +879,44 @@ const StoreDetailScreen = () => {
                     ))}
                   </HStack>
                 </VStack>
+              )}
+              {/* 商家入驻入口 - 如果还没有认证商家 */}
+              <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
+                商家信息
+              </Text>
+              {!merchantContent?.isMerchant && (
+                <Pressable
+                  flexDirection="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  bg="$gray50"
+                  rounded="$md"
+                  p="$md"
+                  mb="$md"
+                  onPress={openMerchantApplyModal}
+                >
+                  <HStack alignItems="center" gap="$sm">
+                    <Box
+                      w={36}
+                      h={36}
+                      rounded="$sm"
+                      bg="$white"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Ionicons name="storefront" size={18} color="$black" />
+                    </Box>
+                    <VStack>
+                      <Text fontSize="$sm" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                        我是店铺商家
+                      </Text>
+                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                        申请入驻管理此店铺
+                      </Text>
+                    </VStack>
+                  </HStack>
+                  <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+                </Pressable>
               )}
             </Box>
 
@@ -1010,7 +1164,7 @@ const StoreDetailScreen = () => {
               alignItems="center"
               mb="$md"
               pt="$md"
-              borderTopWidth={8}
+              borderTopWidth={1}
               borderTopColor="$gray50"
             >
               <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
@@ -1311,6 +1465,170 @@ const StoreDetailScreen = () => {
           </Pressable>
         </HStack>
       </Box>
+      {/* 商家申请弹窗 */}
+      <Modal
+        visible={showMerchantApplyModal}
+        transparent
+        animationType="none"
+        onRequestClose={closeMerchantApplyModal}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
+            <TouchableWithoutFeedback onPress={closeMerchantApplyModal}>
+              <Box flex={1} />
+            </TouchableWithoutFeedback>
+            <Animated.View
+              style={[
+                styles.merchantApplyContainer,
+                {
+                  transform: [
+                    {
+                      translateY: merchantApplyAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [500, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
+
+              <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$xs" style={styles.textBold}>
+                商家入驻申请
+              </Text>
+              <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
+                申请成为 "{store.name}" 的认证商家
+              </Text>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* 联系人姓名 */}
+                <VStack mb="$md">
+                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                    联系人姓名 *
+                  </Text>
+                  <TextInput
+                    style={styles.applyInput}
+                    placeholder="请输入联系人姓名"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={applyFormData.contactName}
+                    onChangeText={(text) =>
+                      setApplyFormData({ ...applyFormData, contactName: text })
+                    }
+                  />
+                </VStack>
+
+                {/* 联系电话 */}
+                <VStack mb="$md">
+                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                    联系电话 *
+                  </Text>
+                  <TextInput
+                    style={styles.applyInput}
+                    placeholder="请输入联系电话"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={applyFormData.contactPhone}
+                    onChangeText={(text) =>
+                      setApplyFormData({ ...applyFormData, contactPhone: text })
+                    }
+                    keyboardType="phone-pad"
+                  />
+                </VStack>
+
+                {/* 联系邮箱 */}
+                <VStack mb="$md">
+                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                    联系邮箱
+                  </Text>
+                  <TextInput
+                    style={styles.applyInput}
+                    placeholder="请输入联系邮箱（选填）"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={applyFormData.contactEmail}
+                    onChangeText={(text) =>
+                      setApplyFormData({ ...applyFormData, contactEmail: text })
+                    }
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </VStack>
+
+                {/* 营业执照 */}
+                <VStack mb="$lg">
+                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                    营业执照 / 证明材料
+                  </Text>
+                  <Pressable
+                    h={120}
+                    bg="$gray50"
+                    rounded="$md"
+                    justifyContent="center"
+                    alignItems="center"
+                    overflow="hidden"
+                    borderWidth={1}
+                    borderColor="$gray200"
+                    borderStyle="dashed"
+                    onPress={pickBusinessLicense}
+                  >
+                    {applyFormData.businessLicense ? (
+                      <Image
+                        source={{ uri: applyFormData.businessLicense }}
+                        style={styles.licenseImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <VStack alignItems="center">
+                        <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.gray300} />
+                        <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                          点击上传证明材料
+                        </Text>
+                        <Text fontSize="$xs" color="$gray200" mt="$xs" style={styles.textRegular}>
+                          支持营业执照、授权书等
+                        </Text>
+                      </VStack>
+                    )}
+                  </Pressable>
+                </VStack>
+
+                {/* 提示信息 */}
+                <Box bg="$gray50" rounded="$md" p="$md" mb="$lg">
+                  <HStack alignItems="start" gap="$sm">
+                    <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray300} />
+                    <VStack flex={1}>
+                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                        提交申请后，我们将在 1-3 个工作日内审核您的资料。
+                        审核通过后，您将可以管理店铺的公告、活动、折扣等信息。
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </Box>
+
+                {/* 提交按钮 */}
+                <Pressable
+                  py="$md"
+                  rounded="$sm"
+                  bg="$black"
+                  alignItems="center"
+                  onPress={handleSubmitMerchantApply}
+                  disabled={isSubmittingApply}
+                  mb="$lg"
+                >
+                  {isSubmittingApply ? (
+                    <ActivityIndicator size="small" color={theme.colors.white} />
+                  ) : (
+                    <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
+                      提交申请
+                    </Text>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </Animated.View>
+          </Box>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1373,6 +1691,28 @@ const styles = StyleSheet.create({
   activityImage: {
     width: "100%",
     height: 100,
+  },
+  // 商家申请弹窗样式
+  merchantApplyContainer: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: 34,
+    maxHeight: "85%",
+  },
+  applyInput: {
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: theme.colors.black,
+    fontFamily: FONT_REGULAR,
+  },
+  licenseImage: {
+    width: "100%",
+    height: "100%",
   },
   // 文本样式
   textRegular: {

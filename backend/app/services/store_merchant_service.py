@@ -178,8 +178,8 @@ class StoreMerchantService:
 
     def get_pending_merchants(
         self, page: int = 1, page_size: int = 20
-    ) -> Tuple[List[StoreMerchant], int]:
-        """获取待审核的商家列表（管理员）"""
+    ) -> Tuple[List[dict], int]:
+        """获取待审核的商家列表（管理员）- 包含店铺和用户信息"""
         offset = (page - 1) * page_size
         result = (
             self.db.table("store_merchants")
@@ -189,8 +189,44 @@ class StoreMerchantService:
             .range(offset, offset + page_size - 1)
             .execute()
         )
-        merchants = [self._format_merchant(m) for m in result.data]
-        return merchants, result.count or 0
+        
+        # 增强商家信息，添加店铺和用户信息
+        enriched_merchants = []
+        for m in result.data:
+            merchant_data = self._format_merchant(m).model_dump()
+            
+            # 获取店铺信息
+            store_id = m.get("store_id")
+            if store_id:
+                store_result = (
+                    self.db.table("buyer_stores")
+                    .select("name, address, city")
+                    .eq("id", store_id)
+                    .execute()
+                )
+                if store_result.data:
+                    store = store_result.data[0]
+                    merchant_data["storeName"] = store.get("name")
+                    merchant_data["storeAddress"] = store.get("address")
+                    merchant_data["storeCity"] = store.get("city")
+            
+            # 获取用户信息
+            user_id = m.get("user_id")
+            if user_id:
+                user_result = (
+                    self.db.table("users")
+                    .select("username, avatar")
+                    .eq("id", user_id)
+                    .execute()
+                )
+                if user_result.data:
+                    user = user_result.data[0]
+                    merchant_data["username"] = user.get("username")
+                    merchant_data["userAvatar"] = user.get("avatar")
+            
+            enriched_merchants.append(merchant_data)
+        
+        return enriched_merchants, result.count or 0
 
     def get_user_merchants(
         self, user_id: int, page: int = 1, page_size: int = 20

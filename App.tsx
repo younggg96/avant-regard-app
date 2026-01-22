@@ -46,6 +46,10 @@ import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
+// Merchant Screens
+import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
+import MerchantManageScreen from "./src/screens/MerchantManageScreen";
+import MerchantReviewScreen from "./src/screens/MerchantReviewScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -332,6 +336,21 @@ function AppNavigator() {
           headerShown: false,
           presentation: "fullScreenModal",
         }}
+      />
+      <Stack.Screen
+        name="MyMerchantStores"
+        component={MyMerchantStoresScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MerchantManage"
+        component={MerchantManageScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MerchantReview"
+        component={MerchantReviewScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

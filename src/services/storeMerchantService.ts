@@ -792,6 +792,52 @@ export const getStoreMerchantContent = async (
   );
 };
 
+// ==================== 管理员审核 API ====================
+
+// 审核参数
+export interface MerchantReviewParams {
+  status: "APPROVED" | "REJECTED";
+  rejectReason?: string;
+}
+
+// 商家申请详情（包含店铺信息）
+export interface MerchantApplicationDetail extends StoreMerchant {
+  storeName?: string;
+  storeAddress?: string;
+  storeCity?: string;
+  username?: string;
+  userAvatar?: string;
+}
+
+/**
+ * 获取待审核商家列表（管理员）
+ */
+export const getPendingMerchants = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ merchants: MerchantApplicationDetail[]; total: number }> => {
+  return request<{ merchants: MerchantApplicationDetail[]; total: number }>(
+    `/api/store-merchants/pending?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 审核商家申请（管理员）
+ */
+export const reviewMerchant = async (
+  merchantId: number,
+  data: MerchantReviewParams
+): Promise<StoreMerchant> => {
+  return request<StoreMerchant>(
+    `/api/store-merchants/${merchantId}/review`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
 // 导出服务对象
 export const storeMerchantService = {
   // 商家认证
@@ -831,4 +877,7 @@ export const storeMerchantService = {
   getStoreDiscounts,
   // 综合
   getStoreMerchantContent,
+  // 管理员审核
+  getPendingMerchants,
+  reviewMerchant,
 };
