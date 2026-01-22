@@ -831,7 +831,7 @@ const MerchantReviewScreen = () => {
       <Modal
         visible={showManageModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={closeManageModal}
       >
         <View style={styles.modalOverlay}>

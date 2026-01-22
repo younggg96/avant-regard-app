@@ -13,6 +13,7 @@ from app.schemas.store_merchant import (
     StoreMerchantUpdate,
     StoreMerchantReview,
     StoreMerchantAdminUpdate,
+    BuyerStoreUpdate,
     StoreAnnouncementCreate,
     StoreAnnouncementUpdate,
     StoreBannerCreate,
@@ -634,3 +635,31 @@ async def get_store_discounts(
         "discounts": [d.model_dump() for d in discounts],
         "total": len(discounts),
     })
+
+
+# ==================== 店铺信息管理接口 ====================
+
+
+@router.get("/buyer-store/{store_id}")
+async def get_buyer_store(store_id: str):
+    """获取店铺详情"""
+    store = store_merchant_service.get_buyer_store(store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="店铺不存在")
+    return success(store.model_dump())
+
+
+@router.put("/buyer-store/{store_id}")
+async def update_buyer_store(
+    store_id: str,
+    data: BuyerStoreUpdate,
+    current_user_id: int = Depends(get_current_user),
+):
+    """商家更新店铺信息"""
+    try:
+        store = store_merchant_service.update_buyer_store(
+            store_id, current_user_id, data
+        )
+        return success(store.model_dump(), message="店铺信息已更新")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

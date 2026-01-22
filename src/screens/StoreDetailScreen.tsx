@@ -881,7 +881,7 @@ const StoreDetailScreen = () => {
                 </VStack>
               )}
               {/* 商家入驻入口 - 如果还没有认证商家 */}
-              <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
+              <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" style={styles.textBold}>
                 商家信息
               </Text>
               {!merchantContent?.isMerchant && (
@@ -890,9 +890,9 @@ const StoreDetailScreen = () => {
                   alignItems="center"
                   justifyContent="space-between"
                   bg="$gray50"
-                  rounded="$md"
-                  p="$md"
-                  mb="$md"
+                  rounded="$sm"
+                  p="$sm"
+                  mb="$sm"
                   onPress={openMerchantApplyModal}
                 >
                   <HStack alignItems="center" gap="$sm">
@@ -983,14 +983,11 @@ const StoreDetailScreen = () => {
 
                 {/* 公告 */}
                 {merchantContent.announcements.length > 0 && (
-                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
-                    <HStack alignItems="center" gap="$sm" mb="$sm">
-                      <Ionicons name="megaphone" size={18} color={theme.colors.error} />
-                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
-                        店铺公告
-                      </Text>
-                    </HStack>
-                    {merchantContent.announcements.slice(0, 2).map((announcement) => (
+                  <Box bg="$white" mb="$sm" rounded="$sm">
+                    <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
+                      店铺公告
+                    </Text>
+                    {merchantContent.announcements.map((announcement) => (
                       <Box
                         key={announcement.id}
                         bg="$gray50"

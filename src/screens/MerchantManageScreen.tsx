@@ -35,6 +35,7 @@ import {
   StoreBanner,
   StoreActivity,
   StoreDiscount,
+  BuyerStore,
   getMyMerchants,
   getMerchantAnnouncements,
   getMerchantBanners,
@@ -52,6 +53,9 @@ import {
   createDiscount,
   updateDiscount,
   deleteDiscount,
+  updateMerchant,
+  getBuyerStore,
+  updateBuyerStore,
   ContentStatus,
   ActivityType,
   DiscountType,
@@ -63,9 +67,10 @@ type RouteParams = {
   };
 };
 
-type TabType = "banner" | "announcement" | "activity" | "discount";
+type TabType = "info" | "banner" | "announcement" | "activity" | "discount";
 
 const TABS: { key: TabType; label: string; icon: string }[] = [
+  { key: "info", label: "店铺", icon: "storefront-outline" },
   { key: "banner", label: "Banner", icon: "image-outline" },
   { key: "announcement", label: "公告", icon: "megaphone-outline" },
   { key: "activity", label: "活动", icon: "calendar-outline" },
@@ -97,7 +102,32 @@ const MerchantManageScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 当前选中的 Tab
-  const [activeTab, setActiveTab] = useState<TabType>("banner");
+  const [activeTab, setActiveTab] = useState<TabType>("info");
+
+  // 商家联系信息编辑状态
+  const [infoFormData, setInfoFormData] = useState({
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+  });
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+
+  // 店铺信息状态
+  const [buyerStore, setBuyerStore] = useState<BuyerStore | null>(null);
+  const [storeFormData, setStoreFormData] = useState({
+    name: "",
+    address: "",
+    phone: [] as string[],
+    hours: "",
+    description: "",
+    rest: "",
+    brands: [] as string[],
+    style: [] as string[],
+  });
+  const [isEditingStore, setIsEditingStore] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [newBrand, setNewBrand] = useState("");
+  const [newStyle, setNewStyle] = useState("");
 
   // 各类内容列表
   const [banners, setBanners] = useState<StoreBanner[]>([]);
@@ -124,7 +154,7 @@ const MerchantManageScreen = () => {
         const targetMerchant = route.params?.merchantId
           ? result.merchants.find((m) => m.id === route.params.merchantId)
           : result.merchants[0];
-        
+
         if (targetMerchant && targetMerchant.status === "APPROVED") {
           setMerchant(targetMerchant);
         } else {
@@ -167,8 +197,37 @@ const MerchantManageScreen = () => {
   useEffect(() => {
     if (merchant) {
       loadContent();
+      // 初始化商家联系信息表单
+      setInfoFormData({
+        contactName: merchant.contactName || "",
+        contactPhone: merchant.contactPhone || "",
+        contactEmail: merchant.contactEmail || "",
+      });
+      // 加载店铺信息
+      loadBuyerStore();
     }
   }, [merchant, loadContent]);
+
+  // 加载店铺信息
+  const loadBuyerStore = async () => {
+    if (!merchant) return;
+    try {
+      const store = await getBuyerStore(merchant.storeId);
+      setBuyerStore(store);
+      setStoreFormData({
+        name: store.name || "",
+        address: store.address || "",
+        phone: store.phone || [],
+        hours: store.hours || "",
+        description: store.description || "",
+        rest: store.rest || "",
+        brands: store.brands || [],
+        style: store.style || [],
+      });
+    } catch (error) {
+      console.error("Load buyer store error:", error);
+    }
+  };
 
   // 下拉刷新
   const handleRefresh = async () => {
@@ -177,8 +236,58 @@ const MerchantManageScreen = () => {
     setIsRefreshing(false);
   };
 
+  // 保存商家联系信息
+  const handleSaveInfo = async () => {
+    if (!merchant) return;
+
+    try {
+      setIsSubmitting(true);
+      await updateMerchant(merchant.id, infoFormData);
+
+      // 更新本地状态
+      setMerchant({
+        ...merchant,
+        ...infoFormData,
+      });
+
+      setIsEditingInfo(false);
+      Alert.alert("成功", "联系信息已更新");
+    } catch (error: any) {
+      Alert.alert("保存失败", error.message || "请稍后重试");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 保存店铺信息
+  const handleSaveStore = async () => {
+    if (!merchant || !buyerStore) return;
+
+    try {
+      setIsSubmitting(true);
+      const updatedStore = await updateBuyerStore(merchant.storeId, storeFormData);
+
+      // 更新本地状态
+      setBuyerStore(updatedStore);
+      setIsEditingStore(false);
+      setNewPhone("");
+      setNewBrand("");
+      setNewStyle("");
+      Alert.alert("成功", "店铺信息已更新");
+    } catch (error: any) {
+      Alert.alert("保存失败", error.message || "请稍后重试");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 打开编辑模态框
   const openEditModal = (type: TabType, item?: any) => {
+    if (type === "info") {
+      setIsEditingInfo(true);
+      return;
+    }
+
     setEditType(type);
     setEditItem(item);
 
@@ -736,9 +845,722 @@ const MerchantManageScreen = () => {
     </VStack>
   );
 
+  // 渲染店铺信息
+  const renderStoreInfo = () => {
+    if (!merchant) return null;
+
+    return (
+      <VStack p="$md" gap="$md">
+        {/* 店铺状态卡片 */}
+        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+          <HStack justifyContent="space-between" alignItems="center" mb="$md">
+            <HStack alignItems="center" gap="$sm">
+              <Box
+                w={40}
+                h={40}
+                bg="$gray100"
+                rounded="$md"
+                justifyContent="center"
+                alignItems="center"
+              >
+                <Ionicons name="storefront" size={20} color={theme.colors.black} />
+              </Box>
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+                  店铺ID
+                </Text>
+                <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                  {merchant.storeId}
+                </Text>
+              </VStack>
+            </HStack>
+            <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
+              <Text fontSize="$xs" fontWeight="$bold" color="#4CAF50">
+                已认证
+              </Text>
+            </Box>
+          </HStack>
+        </Box>
+
+        {/* 联系信息 */}
+        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+          <HStack justifyContent="space-between" alignItems="center" mb="$md">
+            <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+              联系信息
+            </Text>
+            {!isEditingInfo && (
+              <Pressable onPress={() => setIsEditingInfo(true)}>
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
+                  <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
+                    编辑
+                  </Text>
+                </HStack>
+              </Pressable>
+            )}
+          </HStack>
+
+          {isEditingInfo ? (
+            <VStack gap="$md">
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  联系人姓名
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="请输入联系人姓名"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={infoFormData.contactName}
+                  onChangeText={(text) =>
+                    setInfoFormData({ ...infoFormData, contactName: text })
+                  }
+                />
+              </VStack>
+
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  联系电话
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="请输入联系电话"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={infoFormData.contactPhone}
+                  onChangeText={(text) =>
+                    setInfoFormData({ ...infoFormData, contactPhone: text })
+                  }
+                  keyboardType="phone-pad"
+                />
+              </VStack>
+
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  联系邮箱
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="请输入联系邮箱"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={infoFormData.contactEmail}
+                  onChangeText={(text) =>
+                    setInfoFormData({ ...infoFormData, contactEmail: text })
+                  }
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </VStack>
+
+              <HStack gap="$sm" mt="$sm">
+                <Pressable
+                  flex={1}
+                  py="$md"
+                  rounded="$sm"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                  alignItems="center"
+                  onPress={() => {
+                    setIsEditingInfo(false);
+                    setInfoFormData({
+                      contactName: merchant.contactName || "",
+                      contactPhone: merchant.contactPhone || "",
+                      contactEmail: merchant.contactEmail || "",
+                    });
+                  }}
+                >
+                  <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                    取消
+                  </Text>
+                </Pressable>
+                <Pressable
+                  flex={1}
+                  py="$md"
+                  rounded="$sm"
+                  bg="$black"
+                  alignItems="center"
+                  onPress={handleSaveInfo}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color={theme.colors.white} />
+                  ) : (
+                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                      保存
+                    </Text>
+                  )}
+                </Pressable>
+              </HStack>
+            </VStack>
+          ) : (
+            <VStack gap="$md">
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="person-outline" size={18} color={theme.colors.gray400} />
+                <VStack>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    联系人
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {merchant.contactName || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="call-outline" size={18} color={theme.colors.gray400} />
+                <VStack>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    联系电话
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {merchant.contactPhone || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="mail-outline" size={18} color={theme.colors.gray400} />
+                <VStack>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    联系邮箱
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {merchant.contactEmail || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+            </VStack>
+          )}
+        </Box>
+
+        {/* 权限信息 */}
+        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+          <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$md" style={styles.textBold}>
+            已开通权限
+          </Text>
+          <HStack flexWrap="wrap" gap="$sm">
+            {merchant.canPostBanner && (
+              <Box bg="#E3F2FD" px="$md" py="$sm" rounded="$sm">
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="image-outline" size={14} color="#1976D2" />
+                  <Text fontSize="$sm" color="#1976D2" style={styles.textRegular}>
+                    Banner
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+            {merchant.canPostAnnouncement && (
+              <Box bg="#FFF3E0" px="$md" py="$sm" rounded="$sm">
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="megaphone-outline" size={14} color="#F57C00" />
+                  <Text fontSize="$sm" color="#F57C00" style={styles.textRegular}>
+                    公告
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+            {merchant.canPostActivity && (
+              <Box bg="#E8F5E9" px="$md" py="$sm" rounded="$sm">
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="calendar-outline" size={14} color="#388E3C" />
+                  <Text fontSize="$sm" color="#388E3C" style={styles.textRegular}>
+                    活动
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+            {merchant.canPostDiscount && (
+              <Box bg="#FCE4EC" px="$md" py="$sm" rounded="$sm">
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="pricetag-outline" size={14} color="#C2185B" />
+                  <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
+                    折扣
+                  </Text>
+                </HStack>
+              </Box>
+            )}
+          </HStack>
+        </Box>
+
+        {/* 店铺信息 */}
+        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+          <HStack justifyContent="space-between" alignItems="center" mb="$md">
+            <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+              店铺信息
+            </Text>
+            {!isEditingStore && (
+              <Pressable onPress={() => setIsEditingStore(true)}>
+                <HStack alignItems="center" gap="$xs">
+                  <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
+                  <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
+                    编辑
+                  </Text>
+                </HStack>
+              </Pressable>
+            )}
+          </HStack>
+
+          {isEditingStore ? (
+            <VStack gap="$md">
+              {/* 店铺名称 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  店铺名称
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="请输入店铺名称"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={storeFormData.name}
+                  onChangeText={(text) =>
+                    setStoreFormData({ ...storeFormData, name: text })
+                  }
+                />
+              </VStack>
+
+              {/* 店铺地址 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  店铺地址
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="请输入店铺地址"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={storeFormData.address}
+                  onChangeText={(text) =>
+                    setStoreFormData({ ...storeFormData, address: text })
+                  }
+                  multiline
+                />
+              </VStack>
+
+              {/* 联系电话 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  联系电话
+                </Text>
+                <HStack gap="$sm" mb="$sm">
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="添加电话号码"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={newPhone}
+                    onChangeText={setNewPhone}
+                    keyboardType="phone-pad"
+                  />
+                  <Pressable
+                    px="$md"
+                    bg="$black"
+                    rounded="$sm"
+                    justifyContent="center"
+                    onPress={() => {
+                      if (newPhone.trim()) {
+                        setStoreFormData({
+                          ...storeFormData,
+                          phone: [...storeFormData.phone, newPhone.trim()],
+                        });
+                        setNewPhone("");
+                      }
+                    }}
+                  >
+                    <Ionicons name="add" size={20} color={theme.colors.white} />
+                  </Pressable>
+                </HStack>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {storeFormData.phone.map((p, idx) => (
+                    <Box
+                      key={idx}
+                      bg="$gray100"
+                      px="$sm"
+                      py="$xs"
+                      rounded="$sm"
+                      flexDirection="row"
+                      alignItems="center"
+                    >
+                      <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+                        {p}
+                      </Text>
+                      <Pressable
+                        ml="$xs"
+                        onPress={() => {
+                          setStoreFormData({
+                            ...storeFormData,
+                            phone: storeFormData.phone.filter((_, i) => i !== idx),
+                          });
+                        }}
+                      >
+                        <Ionicons name="close-circle" size={16} color={theme.colors.gray400} />
+                      </Pressable>
+                    </Box>
+                  ))}
+                </HStack>
+              </VStack>
+
+              {/* 营业时间 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  营业时间
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="例如：10:00-21:00"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={storeFormData.hours}
+                  onChangeText={(text) =>
+                    setStoreFormData({ ...storeFormData, hours: text })
+                  }
+                />
+              </VStack>
+
+              {/* 休息日 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  休息日
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="例如：周一休息"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={storeFormData.rest}
+                  onChangeText={(text) =>
+                    setStoreFormData({ ...storeFormData, rest: text })
+                  }
+                />
+              </VStack>
+
+              {/* 店铺描述 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  店铺描述
+                </Text>
+                <TextInput
+                  style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+                  placeholder="介绍一下您的店铺"
+                  placeholderTextColor={theme.colors.gray200}
+                  value={storeFormData.description}
+                  onChangeText={(text) =>
+                    setStoreFormData({ ...storeFormData, description: text })
+                  }
+                  multiline
+                  numberOfLines={3}
+                />
+              </VStack>
+
+              {/* 销售品牌 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  销售品牌
+                </Text>
+                <HStack gap="$sm" mb="$sm">
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="添加品牌名称"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={newBrand}
+                    onChangeText={setNewBrand}
+                  />
+                  <Pressable
+                    px="$md"
+                    bg="$black"
+                    rounded="$sm"
+                    justifyContent="center"
+                    onPress={() => {
+                      if (newBrand.trim()) {
+                        setStoreFormData({
+                          ...storeFormData,
+                          brands: [...storeFormData.brands, newBrand.trim()],
+                        });
+                        setNewBrand("");
+                      }
+                    }}
+                  >
+                    <Ionicons name="add" size={20} color={theme.colors.white} />
+                  </Pressable>
+                </HStack>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {storeFormData.brands.map((b, idx) => (
+                    <Box
+                      key={idx}
+                      bg="#E3F2FD"
+                      px="$sm"
+                      py="$xs"
+                      rounded="$sm"
+                      flexDirection="row"
+                      alignItems="center"
+                    >
+                      <Text fontSize="$sm" color="#1976D2" style={styles.textRegular}>
+                        {b}
+                      </Text>
+                      <Pressable
+                        ml="$xs"
+                        onPress={() => {
+                          setStoreFormData({
+                            ...storeFormData,
+                            brands: storeFormData.brands.filter((_, i) => i !== idx),
+                          });
+                        }}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#1976D2" />
+                      </Pressable>
+                    </Box>
+                  ))}
+                </HStack>
+              </VStack>
+
+              {/* 风格标签 */}
+              <VStack>
+                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  风格标签
+                </Text>
+                <HStack gap="$sm" mb="$sm">
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="添加风格标签"
+                    placeholderTextColor={theme.colors.gray200}
+                    value={newStyle}
+                    onChangeText={setNewStyle}
+                  />
+                  <Pressable
+                    px="$md"
+                    bg="$black"
+                    rounded="$sm"
+                    justifyContent="center"
+                    onPress={() => {
+                      if (newStyle.trim()) {
+                        setStoreFormData({
+                          ...storeFormData,
+                          style: [...storeFormData.style, newStyle.trim()],
+                        });
+                        setNewStyle("");
+                      }
+                    }}
+                  >
+                    <Ionicons name="add" size={20} color={theme.colors.white} />
+                  </Pressable>
+                </HStack>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {storeFormData.style.map((s, idx) => (
+                    <Box
+                      key={idx}
+                      bg="#FCE4EC"
+                      px="$sm"
+                      py="$xs"
+                      rounded="$sm"
+                      flexDirection="row"
+                      alignItems="center"
+                    >
+                      <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
+                        {s}
+                      </Text>
+                      <Pressable
+                        ml="$xs"
+                        onPress={() => {
+                          setStoreFormData({
+                            ...storeFormData,
+                            style: storeFormData.style.filter((_, i) => i !== idx),
+                          });
+                        }}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#C2185B" />
+                      </Pressable>
+                    </Box>
+                  ))}
+                </HStack>
+              </VStack>
+
+              {/* 按钮 */}
+              <HStack gap="$sm" mt="$sm">
+                <Pressable
+                  flex={1}
+                  py="$md"
+                  rounded="$sm"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                  alignItems="center"
+                  onPress={() => {
+                    setIsEditingStore(false);
+                    if (buyerStore) {
+                      setStoreFormData({
+                        name: buyerStore.name || "",
+                        address: buyerStore.address || "",
+                        phone: buyerStore.phone || [],
+                        hours: buyerStore.hours || "",
+                        description: buyerStore.description || "",
+                        rest: buyerStore.rest || "",
+                        brands: buyerStore.brands || [],
+                        style: buyerStore.style || [],
+                      });
+                    }
+                    setNewPhone("");
+                    setNewBrand("");
+                    setNewStyle("");
+                  }}
+                >
+                  <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                    取消
+                  </Text>
+                </Pressable>
+                <Pressable
+                  flex={1}
+                  py="$md"
+                  rounded="$sm"
+                  bg="$black"
+                  alignItems="center"
+                  onPress={handleSaveStore}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color={theme.colors.white} />
+                  ) : (
+                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                      保存
+                    </Text>
+                  )}
+                </Pressable>
+              </HStack>
+            </VStack>
+          ) : (
+            <VStack gap="$md">
+              {/* 店铺名称 */}
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="storefront-outline" size={18} color={theme.colors.gray400} />
+                <VStack flex={1}>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    店铺名称
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {buyerStore?.name || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              {/* 地址 */}
+              <HStack alignItems="flex-start" gap="$sm">
+                <Ionicons name="location-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
+                <VStack flex={1}>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    地址
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {buyerStore?.address || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              {/* 联系电话 */}
+              <HStack alignItems="flex-start" gap="$sm">
+                <Ionicons name="call-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
+                <VStack flex={1}>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    联系电话
+                  </Text>
+                  {buyerStore?.phone && buyerStore.phone.length > 0 ? (
+                    buyerStore.phone.map((p, idx) => (
+                      <Text key={idx} fontSize="$md" color="$black" style={styles.textRegular}>
+                        {p}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text fontSize="$md" color="$gray200" style={styles.textRegular}>
+                      未设置
+                    </Text>
+                  )}
+                </VStack>
+              </HStack>
+
+              {/* 营业时间 */}
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="time-outline" size={18} color={theme.colors.gray400} />
+                <VStack flex={1}>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    营业时间
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {buyerStore?.hours || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              {/* 休息日 */}
+              <HStack alignItems="center" gap="$sm">
+                <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
+                <VStack flex={1}>
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    休息日
+                  </Text>
+                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    {buyerStore?.rest || "未设置"}
+                  </Text>
+                </VStack>
+              </HStack>
+
+              {/* 店铺描述 */}
+              {buyerStore?.description && (
+                <HStack alignItems="flex-start" gap="$sm">
+                  <Ionicons name="document-text-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
+                  <VStack flex={1}>
+                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      店铺描述
+                    </Text>
+                    <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                      {buyerStore.description}
+                    </Text>
+                  </VStack>
+                </HStack>
+              )}
+
+              {/* 销售品牌 */}
+              {buyerStore?.brands && buyerStore.brands.length > 0 && (
+                <VStack gap="$xs">
+                  <HStack alignItems="center" gap="$sm">
+                    <Ionicons name="pricetags-outline" size={18} color={theme.colors.gray400} />
+                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      销售品牌
+                    </Text>
+                  </HStack>
+                  <HStack flexWrap="wrap" gap="$xs" ml={26}>
+                    {buyerStore.brands.map((b, idx) => (
+                      <Box key={idx} bg="#E3F2FD" px="$sm" py="$xs" rounded="$sm">
+                        <Text fontSize="$sm" color="#1976D2" style={styles.textRegular}>
+                          {b}
+                        </Text>
+                      </Box>
+                    ))}
+                  </HStack>
+                </VStack>
+              )}
+
+              {/* 风格标签 */}
+              {buyerStore?.style && buyerStore.style.length > 0 && (
+                <VStack gap="$xs">
+                  <HStack alignItems="center" gap="$sm">
+                    <Ionicons name="color-palette-outline" size={18} color={theme.colors.gray400} />
+                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      风格标签
+                    </Text>
+                  </HStack>
+                  <HStack flexWrap="wrap" gap="$xs" ml={26}>
+                    {buyerStore.style.map((s, idx) => (
+                      <Box key={idx} bg="#FCE4EC" px="$sm" py="$xs" rounded="$sm">
+                        <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
+                          {s}
+                        </Text>
+                      </Box>
+                    ))}
+                  </HStack>
+                </VStack>
+              )}
+            </VStack>
+          )}
+        </Box>
+      </VStack>
+    );
+  };
+
   // 渲染内容
   const renderContent = () => {
     switch (activeTab) {
+      case "info":
+        return renderStoreInfo();
       case "banner":
         return renderBanners();
       case "announcement":
@@ -1172,13 +1994,14 @@ const MerchantManageScreen = () => {
   // 获取编辑模态框标题
   const getEditModalTitle = () => {
     const action = editItem ? "编辑" : "新建";
-    const typeLabels = {
+    const typeLabels: Record<string, string> = {
+      info: "店铺信息",
       banner: "Banner",
       announcement: "公告",
       activity: "活动",
       discount: "折扣",
     };
-    return `${action}${typeLabels[editType]}`;
+    return `${action}${typeLabels[editType] || ""}`;
   };
 
   if (isLoading) {
@@ -1256,34 +2079,36 @@ const MerchantManageScreen = () => {
         {renderContent()}
       </ScrollView>
 
-      {/* 添加按钮 */}
-      <Box px="$lg" py="$md" bg="$white" borderTopWidth={1} borderTopColor="$gray100">
-        <Pressable
-          py="$md"
-          rounded="$sm"
-          bg="$black"
-          alignItems="center"
-          onPress={() => openEditModal(activeTab)}
-        >
-          <HStack alignItems="center" gap="$sm">
-            <Ionicons name="add" size={20} color={theme.colors.white} />
-            <Text
-              fontSize="$md"
-              fontWeight="$semibold"
-              color="$white"
-              style={styles.textBold}
-            >
-              添加{TABS.find((t) => t.key === activeTab)?.label}
-            </Text>
-          </HStack>
-        </Pressable>
-      </Box>
+      {/* 添加按钮 - 店铺信息 Tab 不显示 */}
+      {activeTab !== "info" && (
+        <Box px="$lg" py="$md" bg="$white" borderTopWidth={1} borderTopColor="$gray100">
+          <Pressable
+            py="$md"
+            rounded="$sm"
+            bg="$black"
+            alignItems="center"
+            onPress={() => openEditModal(activeTab)}
+          >
+            <HStack alignItems="center" gap="$sm">
+              <Ionicons name="add" size={20} color={theme.colors.white} />
+              <Text
+                fontSize="$md"
+                fontWeight="$semibold"
+                color="$white"
+                style={styles.textBold}
+              >
+                添加{TABS.find((t) => t.key === activeTab)?.label}
+              </Text>
+            </HStack>
+          </Pressable>
+        </Box>
+      )}
 
       {/* 编辑模态框 */}
       <Modal
         visible={showEditModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={closeEditModal}
       >
         <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
@@ -1342,7 +2167,7 @@ const FONT_BOLD = "PlayfairDisplay-Bold";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: theme.colors.white,
   },
   scrollView: {
     flex: 1,

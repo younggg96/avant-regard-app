@@ -92,6 +92,41 @@ class StoreMerchantAdminUpdate(BaseModel):
     canPostDiscount: Optional[bool] = Field(None, description="发布折扣权限")
 
 
+class BuyerStoreUpdate(BaseModel):
+    """商家更新店铺信息"""
+    name: Optional[str] = Field(None, max_length=200, description="店铺名称")
+    address: Optional[str] = Field(None, description="详细地址")
+    phone: Optional[List[str]] = Field(None, description="联系电话列表")
+    hours: Optional[str] = Field(None, max_length=100, description="营业时间")
+    description: Optional[str] = Field(None, description="店铺描述")
+    images: Optional[List[str]] = Field(None, description="店铺图片列表")
+    rest: Optional[str] = Field(None, max_length=100, description="休息日信息")
+    brands: Optional[List[str]] = Field(None, description="销售品牌列表")
+    style: Optional[List[str]] = Field(None, description="风格标签列表")
+
+
+class BuyerStore(BaseModel):
+    """店铺信息"""
+    id: str
+    name: str
+    address: str
+    city: str
+    country: str
+    latitude: float
+    longitude: float
+    brands: List[str] = []
+    style: List[str] = []
+    isOpen: bool = True
+    phone: List[str] = []
+    hours: Optional[str] = None
+    rating: Optional[float] = None
+    description: Optional[str] = None
+    images: List[str] = []
+    rest: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
 class StoreMerchant(BaseModel):
     """商家信息"""
     id: int

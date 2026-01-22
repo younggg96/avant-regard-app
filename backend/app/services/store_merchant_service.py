@@ -12,6 +12,8 @@ from app.schemas.store_merchant import (
     StoreMerchantUpdate,
     StoreMerchantReview,
     StoreMerchantAdminUpdate,
+    BuyerStoreUpdate,
+    BuyerStore,
     StoreAnnouncement,
     StoreAnnouncementCreate,
     StoreAnnouncementUpdate,
@@ -980,6 +982,97 @@ class StoreMerchantService:
             activities=self.get_store_activities(store_id) if merchant else [],
             discounts=self.get_store_discounts(store_id) if merchant else [],
         )
+
+    # ==================== 店铺信息管理 ====================
+
+    def _format_buyer_store(self, data: dict) -> BuyerStore:
+        """格式化店铺数据"""
+        return BuyerStore(
+            id=data["id"],
+            name=data["name"],
+            address=data["address"],
+            city=data["city"],
+            country=data["country"],
+            latitude=float(data.get("latitude", 0)),
+            longitude=float(data.get("longitude", 0)),
+            brands=data.get("brands") or [],
+            style=data.get("style") or [],
+            isOpen=data.get("is_open", True),
+            phone=data.get("phone") or [],
+            hours=data.get("hours"),
+            rating=float(data["rating"]) if data.get("rating") else None,
+            description=data.get("description"),
+            images=data.get("images") or [],
+            rest=data.get("rest"),
+            createdAt=data.get("created_at"),
+            updatedAt=data.get("updated_at"),
+        )
+
+    def get_buyer_store(self, store_id: str) -> Optional[BuyerStore]:
+        """获取店铺详情"""
+        result = (
+            self.db.table("buyer_stores")
+            .select("*")
+            .eq("id", store_id)
+            .execute()
+        )
+        if not result.data:
+            return None
+        return self._format_buyer_store(result.data[0])
+
+    def update_buyer_store(
+        self, store_id: str, user_id: int, data: BuyerStoreUpdate
+    ) -> BuyerStore:
+        """商家更新店铺信息"""
+        # 验证用户是否是该店铺的认证商家
+        merchant = (
+            self.db.table("store_merchants")
+            .select("*")
+            .eq("store_id", store_id)
+            .eq("user_id", user_id)
+            .eq("status", "APPROVED")
+            .execute()
+        )
+        if not merchant.data:
+            raise ValueError("您不是该店铺的认证商家")
+
+        # 构建更新数据
+        update_data = {}
+        if data.name is not None:
+            update_data["name"] = data.name
+        if data.address is not None:
+            update_data["address"] = data.address
+        if data.phone is not None:
+            update_data["phone"] = data.phone
+        if data.hours is not None:
+            update_data["hours"] = data.hours
+        if data.description is not None:
+            update_data["description"] = data.description
+        if data.images is not None:
+            update_data["images"] = data.images
+        if data.rest is not None:
+            update_data["rest"] = data.rest
+        if data.brands is not None:
+            update_data["brands"] = data.brands
+        if data.style is not None:
+            update_data["style"] = data.style
+
+        if not update_data:
+            # 没有需要更新的字段，返回现有数据
+            store = self.get_buyer_store(store_id)
+            if not store:
+                raise ValueError("店铺不存在")
+            return store
+
+        result = (
+            self.db_admin.table("buyer_stores")
+            .update(update_data)
+            .eq("id", store_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("店铺不存在")
+        return self._format_buyer_store(result.data[0])
 
 
 # 创建单例

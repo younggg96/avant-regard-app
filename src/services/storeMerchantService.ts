@@ -294,6 +294,41 @@ export interface StoreMerchantContent {
   discounts: StoreDiscount[];
 }
 
+// 店铺信息
+export interface BuyerStore {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  brands: string[];
+  style: string[];
+  isOpen: boolean;
+  phone: string[];
+  hours?: string;
+  rating?: number;
+  description?: string;
+  images: string[];
+  rest?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 店铺更新参数
+export interface BuyerStoreUpdateParams {
+  name?: string;
+  address?: string;
+  phone?: string[];
+  hours?: string;
+  description?: string;
+  images?: string[];
+  rest?: string;
+  brands?: string[];
+  style?: string[];
+}
+
 // ==================== 通用请求方法 ====================
 
 async function request<T>(
@@ -882,6 +917,34 @@ export const adminUpdateMerchant = async (
   );
 };
 
+// ==================== 店铺信息 API ====================
+
+/**
+ * 获取店铺详情
+ */
+export const getBuyerStore = async (storeId: string): Promise<BuyerStore> => {
+  return request<BuyerStore>(
+    `/api/store-merchants/buyer-store/${encodeURIComponent(storeId)}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 商家更新店铺信息
+ */
+export const updateBuyerStore = async (
+  storeId: string,
+  data: BuyerStoreUpdateParams
+): Promise<BuyerStore> => {
+  return request<BuyerStore>(
+    `/api/store-merchants/buyer-store/${encodeURIComponent(storeId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
 // 导出服务对象
 export const storeMerchantService = {
   // 商家认证
@@ -927,4 +990,7 @@ export const storeMerchantService = {
   // 管理员管理
   getAllMerchants,
   adminUpdateMerchant,
+  // 店铺信息
+  getBuyerStore,
+  updateBuyerStore,
 };
