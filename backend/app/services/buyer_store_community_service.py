@@ -414,12 +414,12 @@ class BuyerStoreCommunityService:
             .select("*, users(username, user_info(avatar_url))")
             .eq("store_id", store_id)
             .eq("user_id", user_id)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
 
-        if result.data:
-            return self._format_rating(result.data)
+        if result.data and len(result.data) > 0:
+            return self._format_rating(result.data[0])
         return None
 
     def get_rating_stats(self, store_id: str) -> BuyerStoreRatingStats:
@@ -428,20 +428,21 @@ class BuyerStoreCommunityService:
             self.supabase.table("buyer_store_rating_stats")
             .select("*")
             .eq("store_id", store_id)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
 
-        if result.data:
+        if result.data and len(result.data) > 0:
+            data = result.data[0]
             return BuyerStoreRatingStats(
                 storeId=store_id,
-                averageRating=float(result.data.get("average_rating", 0)),
-                ratingCount=result.data.get("rating_count", 0),
-                fiveStarCount=result.data.get("five_star_count", 0),
-                fourStarCount=result.data.get("four_star_count", 0),
-                threeStarCount=result.data.get("three_star_count", 0),
-                twoStarCount=result.data.get("two_star_count", 0),
-                oneStarCount=result.data.get("one_star_count", 0),
+                averageRating=float(data.get("average_rating", 0)),
+                ratingCount=data.get("rating_count", 0),
+                fiveStarCount=data.get("five_star_count", 0),
+                fourStarCount=data.get("four_star_count", 0),
+                threeStarCount=data.get("three_star_count", 0),
+                twoStarCount=data.get("two_star_count", 0),
+                oneStarCount=data.get("one_star_count", 0),
             )
 
         return BuyerStoreRatingStats(
@@ -499,10 +500,10 @@ class BuyerStoreCommunityService:
             .select("id")
             .eq("store_id", store_id)
             .eq("user_id", user_id)
-            .maybe_single()
+            .limit(1)
             .execute()
         )
-        return result.data is not None
+        return result.data is not None and len(result.data) > 0
 
     def get_user_favorites(
         self, user_id: int, page: int = 1, page_size: int = 20
