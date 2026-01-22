@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 20,
     height: 20,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.gray100,
   },
 });

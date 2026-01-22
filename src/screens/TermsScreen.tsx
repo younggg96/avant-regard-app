@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 22,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     textAlign: "center",
     marginBottom: 12,
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 16,
     marginTop: 8,

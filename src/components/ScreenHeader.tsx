@@ -105,7 +105,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             key={index}
             px="$sm"
             py="$xs"
-            rounded="$full"
+            rounded="$sm"
             bg={action.style === "primary" ? "$black" : "$gray100"}
             ml="$xs"
             onPress={action.onPress}

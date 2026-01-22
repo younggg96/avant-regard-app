@@ -267,7 +267,7 @@ const StoreReviewScreen = () => {
                     <Box
                         w={24}
                         h={24}
-                        rounded="$full"
+                        rounded="$sm"
                         bg="$gray100"
                         justifyContent="center"
                         alignItems="center"
@@ -311,7 +311,7 @@ const StoreReviewScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
-                    <ActivityIndicator size="large" color={theme.colors.black} />
+                    <ActivityIndicator size="small" color={theme.colors.black} />
                     <Text color="$gray300" mt="$md">
                         加载中...
                     </Text>
@@ -380,7 +380,7 @@ const StoreReviewScreen = () => {
                             },
                         ]}
                     >
-                        <Box w={40} h={4} bg="$gray200" rounded="$full" alignSelf="center" mb="$md" />
+                        <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
 
                         {selectedSubmission && (
                             <ScrollView showsVerticalScrollIndicator={false}>
@@ -435,7 +435,7 @@ const StoreReviewScreen = () => {
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.style.map((s, idx) => (
-                                                <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$full">
+                                                <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
                                                     <Text fontSize="$sm" color="$white">
                                                         {s}
                                                     </Text>
@@ -453,7 +453,7 @@ const StoreReviewScreen = () => {
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.brands.map((b, idx) => (
-                                                <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$full">
+                                                <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
                                                     <Text fontSize="$sm" color="$black">
                                                         {b}
                                                     </Text>
@@ -522,7 +522,7 @@ const StoreReviewScreen = () => {
                                     <Pressable
                                         flex={1}
                                         py="$md"
-                                        rounded="$full"
+                                        rounded="$sm"
                                         borderWidth={1}
                                         borderColor="$error"
                                         alignItems="center"
@@ -536,7 +536,7 @@ const StoreReviewScreen = () => {
                                     <Pressable
                                         flex={1}
                                         py="$md"
-                                        rounded="$full"
+                                        rounded="$sm"
                                         bg="$black"
                                         alignItems="center"
                                         onPress={() => handleApprove(selectedSubmission)}
@@ -600,7 +600,7 @@ const StoreReviewScreen = () => {
                             <Pressable
                                 flex={1}
                                 py="$md"
-                                rounded="$full"
+                                rounded="$sm"
                                 borderWidth={1}
                                 borderColor="$gray200"
                                 alignItems="center"
@@ -613,7 +613,7 @@ const StoreReviewScreen = () => {
                             <Pressable
                                 flex={1}
                                 py="$md"
-                                rounded="$full"
+                                rounded="$sm"
                                 bg="$error"
                                 alignItems="center"
                                 onPress={handleConfirmReject}

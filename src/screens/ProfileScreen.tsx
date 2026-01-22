@@ -556,21 +556,21 @@ const ProfileScreen = () => {
         {/* 标签（年龄、位置等） */}
         <HStack flexWrap="wrap" gap="$sm" mb="$md">
           {userProfile?.age != null && userProfile.age > 0 ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {getGenderText(userProfile?.gender)} {userProfile.age}岁
               </Text>
             </Box>
           ) : null}
           {userInfo?.location ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {userInfo.location}
               </Text>
             </Box>
           ) : null}
           {userProfile?.preference ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {userProfile.preference}
               </Text>
@@ -750,7 +750,7 @@ const ProfileScreen = () => {
                               top="$xs"
                               right="$xs"
                               bg="rgba(255, 48, 64, 0.9)"
-                              borderRadius="$full"
+                              borderRadius="$sm"
                               width={24}
                               height={24}
                               alignItems="center"

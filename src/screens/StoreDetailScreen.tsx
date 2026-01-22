@@ -18,6 +18,8 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
+  Image,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -28,7 +30,6 @@ import {
   Pressable,
   HStack,
   VStack,
-  ScrollView,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -105,7 +106,7 @@ const StoreDetailScreen = () => {
   const loadStoreDetail = useCallback(async () => {
     try {
       setIsLoading(true);
-      const detail = await getStoreDetail(storeId, user?.id);
+      const detail = await getStoreDetail(storeId, user?.id ? Number(user.id) : undefined);
       setStore(detail);
       if (detail.userRating) {
         setSelectedRating(detail.userRating);
@@ -171,14 +172,14 @@ const StoreDetailScreen = () => {
 
     try {
       if (store.isFavorited) {
-        await unfavoriteStore(storeId, user.id);
+        await unfavoriteStore(storeId, Number(user.id));
         setStore((prev) =>
           prev
             ? { ...prev, isFavorited: false, favoriteCount: prev.favoriteCount - 1 }
             : null
         );
       } else {
-        await favoriteStore(storeId, user.id);
+        await favoriteStore(storeId, Number(user.id));
         setStore((prev) =>
           prev
             ? { ...prev, isFavorited: true, favoriteCount: prev.favoriteCount + 1 }
@@ -219,7 +220,7 @@ const StoreDetailScreen = () => {
 
     try {
       setIsSubmittingRating(true);
-      await rateStore(storeId, user.id, selectedRating);
+      await rateStore(storeId, Number(user.id), selectedRating);
       // 刷新店铺详情获取新的平均评分
       await loadStoreDetail();
       closeRatingModal();
@@ -273,10 +274,10 @@ const StoreDetailScreen = () => {
     try {
       setIsSubmittingComment(true);
       await createStoreComment(storeId, {
-        userId: user.id,
+        userId: Number(user.id),
         content: commentText.trim(),
         parentId: replyTo?.commentId,
-        replyToUserId: replyTo ? user.id : undefined,
+        replyToUserId: replyTo ? Number(user.id) : undefined,
       });
       closeCommentInput();
       // 刷新评论列表
@@ -308,7 +309,7 @@ const StoreDetailScreen = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteStoreComment(commentId, user.id);
+            await deleteStoreComment(commentId, Number(user.id));
             setComments((prev) => prev.filter((c) => c.id !== commentId));
             setStore((prev) =>
               prev ? { ...prev, commentCount: prev.commentCount - 1 } : null
@@ -368,30 +369,31 @@ const StoreDetailScreen = () => {
         <Box
           w={40}
           h={40}
-          rounded="$full"
+          rounded="$sm"
           bg="$gray100"
           justifyContent="center"
           alignItems="center"
           mr="$sm"
         >
           {item.userAvatar ? (
-            <Box w={40} h={40} rounded="$full" overflow="hidden">
-              <Box as="img" src={item.userAvatar} w="100%" h="100%" />
-            </Box>
+            <Image
+              source={{ uri: item.userAvatar }}
+              style={{ width: 40, height: 40, borderRadius: 20 }}
+            />
           ) : (
             <Ionicons name="person" size={20} color={theme.colors.gray300} />
           )}
         </Box>
         <VStack flex={1}>
           <HStack justifyContent="between" alignItems="center">
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+            <Text fontSize="$sm" fontWeight="$semibold" color="$black" style={styles.textBold}>
               {item.username}
             </Text>
-            <Text fontSize="$xs" color="$gray200">
+            <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
               {new Date(item.createdAt).toLocaleDateString("zh-CN")}
             </Text>
           </HStack>
-          <Text fontSize="$md" color="$black" mt="$xs" lineHeight={22}>
+          <Text fontSize="$md" color="$black" mt="$xs" lineHeight={22} style={styles.textRegular}>
             {item.content}
           </Text>
           <HStack mt="$sm" gap="$lg">
@@ -405,19 +407,19 @@ const StoreDetailScreen = () => {
                 size={14}
                 color={theme.colors.gray300}
               />
-              <Text fontSize="$xs" color="$gray300" ml="$xs">
+              <Text fontSize="$xs" color="$gray300" ml="$xs" style={styles.textRegular}>
                 回复{item.replyCount > 0 ? ` ${item.replyCount}` : ""}
               </Text>
             </Pressable>
             <HStack alignItems="center">
               <Ionicons name="heart-outline" size={14} color={theme.colors.gray300} />
-              <Text fontSize="$xs" color="$gray300" ml="$xs">
+              <Text fontSize="$xs" color="$gray300" ml="$xs" style={styles.textRegular}>
                 {item.likeCount > 0 ? item.likeCount : ""}
               </Text>
             </HStack>
-            {user && item.userId === user.id && (
+            {user && item.userId === Number(user.id) && (
               <Pressable onPress={() => handleDeleteComment(item.id)}>
-                <Text fontSize="$xs" color="$error">
+                <Text fontSize="$xs" color="$error" style={styles.textRegular}>
                   删除
                 </Text>
               </Pressable>
@@ -434,11 +436,11 @@ const StoreDetailScreen = () => {
               key={reply.id}
               mb={reply === item.replies[item.replies.length - 1] ? 0 : "$sm"}
             >
-              <Text fontSize="$sm" color="$black">
-                <Text fontWeight="$semibold">{reply.username}</Text>
+              <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+                <Text fontWeight="$semibold" style={styles.textBold}>{reply.username}</Text>
                 {reply.replyToUsername && (
-                  <Text color="$gray300">
-                    {" "}回复 <Text fontWeight="$medium">{reply.replyToUsername}</Text>
+                  <Text color="$gray300" style={styles.textRegular}>
+                    {" "}回复 <Text fontWeight="$medium" style={styles.textRegular}>{reply.replyToUsername}</Text>
                   </Text>
                 )}
                 : {reply.content}
@@ -447,7 +449,7 @@ const StoreDetailScreen = () => {
           ))}
           {item.replyCount > item.replies.length && (
             <Pressable mt="$xs">
-              <Text fontSize="$xs" color="$gray300">
+              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
                 查看全部 {item.replyCount} 条回复
               </Text>
             </Pressable>
@@ -466,8 +468,8 @@ const StoreDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="large" color={theme.colors.black} />
-          <Text color="$gray300" mt="$md">
+          <ActivityIndicator size="small" color={theme.colors.black} />
+          <Text color="$gray300" mt="$md" style={styles.textRegular}>
             加载中...
           </Text>
         </VStack>
@@ -485,7 +487,7 @@ const StoreDetailScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <Ionicons name="storefront-outline" size={64} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md">
+          <Text color="$gray300" mt="$md" style={styles.textRegular}>
             店铺不存在
           </Text>
         </VStack>
@@ -532,10 +534,10 @@ const StoreDetailScreen = () => {
               {/* 店铺名称和状态 */}
               <HStack justifyContent="between" alignItems="start" mb="$sm">
                 <VStack flex={1}>
-                  <Text fontSize="$xl" fontWeight="$bold" color="$black">
+                  <Text fontSize="$xl" fontWeight="$bold" color="$black" style={styles.textBold}>
                     {store.name}
                   </Text>
-                  <Text fontSize="$sm" color="$gray300" mt="$xs">
+                  <Text fontSize="$sm" color="$gray300" mt="$xs" style={styles.textRegular}>
                     {store.city}, {store.country}
                   </Text>
                 </VStack>
@@ -549,6 +551,7 @@ const StoreDetailScreen = () => {
                     fontSize="$xs"
                     fontWeight="$bold"
                     color={store.isOpen ? "#27AE60" : "$gray300"}
+                    style={styles.textBold}
                   >
                     {store.isOpen ? "营业中" : "休息"}
                   </Text>
@@ -567,10 +570,10 @@ const StoreDetailScreen = () => {
                   <HStack alignItems="center" mb="$xs">
                     {renderStars(Math.round(store.averageRating || 0))}
                   </HStack>
-                  <Text fontSize="$lg" fontWeight="$bold" color="$black">
+                  <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
                     {store.averageRating?.toFixed(1) || "-"}
                   </Text>
-                  <Text fontSize="$xs" color="$gray300">
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
                     {store.ratingCount} 人评分
                   </Text>
                 </Pressable>
@@ -583,11 +586,8 @@ const StoreDetailScreen = () => {
                     size={24}
                     color={theme.colors.black}
                   />
-                  <Text fontSize="$lg" fontWeight="$bold" color="$black" mt="$xs">
-                    {store.commentCount}
-                  </Text>
-                  <Text fontSize="$xs" color="$gray300">
-                    条评论
+                  <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
+                    {store.commentCount} 条评价
                   </Text>
                 </Pressable>
 
@@ -599,11 +599,8 @@ const StoreDetailScreen = () => {
                     size={24}
                     color={store.isFavorited ? theme.colors.error : theme.colors.black}
                   />
-                  <Text fontSize="$lg" fontWeight="$bold" color="$black" mt="$xs">
-                    {store.favoriteCount}
-                  </Text>
-                  <Text fontSize="$xs" color="$gray300">
-                    人收藏
+                  <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
+                    {store.favoriteCount}人点赞
                   </Text>
                 </Pressable>
               </HStack>
@@ -616,9 +613,9 @@ const StoreDetailScreen = () => {
                 mb="$sm"
                 onPress={handleNavigate}
               >
-                <HStack alignItems="center">
+                <HStack alignItems="center" gap="$md">
                   <Ionicons name="location-outline" size={20} color={theme.colors.black} />
-                  <Text fontSize="$md" color="$black" ml="$sm" flex={1}>
+                  <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
                     {store.address}
                   </Text>
                   <Ionicons name="navigate-outline" size={18} color={theme.colors.gray300} />
@@ -628,9 +625,9 @@ const StoreDetailScreen = () => {
               {/* 营业时间 */}
               {store.hours && (
                 <Box bg="$gray50" rounded="$lg" p="$md" mb="$sm">
-                  <HStack alignItems="center">
+                  <HStack alignItems="center" gap="$md">
                     <Ionicons name="time-outline" size={20} color={theme.colors.black} />
-                    <Text fontSize="$md" color="$black" ml="$sm" flex={1}>
+                    <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
                       {store.hours}
                     </Text>
                   </HStack>
@@ -645,15 +642,16 @@ const StoreDetailScreen = () => {
                       key={idx}
                       flexDirection="row"
                       alignItems="center"
+                      gap="$md"
                       mt={idx > 0 ? "$sm" : 0}
                       onPress={() => handleCall(phone)}
                     >
                       <Ionicons name="call-outline" size={20} color={theme.colors.black} />
-                      <Text fontSize="$md" color="$black" ml="$sm" flex={1}>
+                      <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
                         {phone}
                       </Text>
                       <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold">
+                        <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold" style={styles.textBold}>
                           拨打
                         </Text>
                       </Box>
@@ -665,13 +663,13 @@ const StoreDetailScreen = () => {
               {/* 风格标签 */}
               {store.style.length > 0 && (
                 <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
                     店铺风格
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {store.style.map((s, idx) => (
-                      <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$full">
-                        <Text fontSize="$sm" color="$white" fontWeight="$medium">
+                      <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
+                        <Text fontSize="$sm" color="$white" fontWeight="$medium" style={styles.textRegular}>
                           {s}
                         </Text>
                       </Box>
@@ -683,13 +681,13 @@ const StoreDetailScreen = () => {
               {/* 品牌 */}
               {store.brands.length > 0 && (
                 <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
                     主营品牌
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {store.brands.map((brand, idx) => (
-                      <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$full">
-                        <Text fontSize="$sm" color="$black">
+                      <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
+                        <Text fontSize="$sm" color="$black" style={styles.textRegular}>
                           {brand}
                         </Text>
                       </Box>
@@ -708,7 +706,7 @@ const StoreDetailScreen = () => {
               borderTopWidth={8}
               borderTopColor="$gray50"
             >
-              <Text fontSize="$lg" fontWeight="$bold" color="$black">
+              <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
                 用户评价 ({commentsTotal})
               </Text>
               <Pressable
@@ -717,7 +715,7 @@ const StoreDetailScreen = () => {
                 onPress={() => openCommentInput()}
               >
                 <Ionicons name="create-outline" size={18} color={theme.colors.black} />
-                <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs">
+                <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs" style={styles.textRegular}>
                   写评价
                 </Text>
               </Pressable>
@@ -731,7 +729,7 @@ const StoreDetailScreen = () => {
               size={48}
               color={theme.colors.gray200}
             />
-            <Text color="$gray300" mt="$md">
+            <Text color="$gray300" mt="$md" style={styles.textRegular}>
               暂无评价，快来写下第一条吧！
             </Text>
             <Pressable
@@ -739,10 +737,10 @@ const StoreDetailScreen = () => {
               px="$lg"
               py="$sm"
               bg="$black"
-              rounded="$full"
+              rounded="$sm"
               onPress={() => openCommentInput()}
             >
-              <Text color="$white" fontWeight="$medium">
+              <Text color="$white" fontWeight="$medium" style={styles.textRegular}>
                 写评价
               </Text>
             </Pressable>
@@ -789,11 +787,11 @@ const StoreDetailScreen = () => {
               },
             ]}
           >
-            <Box w={40} h={4} bg="$gray200" rounded="$full" alignSelf="center" mb="$lg" />
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$md">
+            <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$lg" />
+            <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$md" style={styles.textBold}>
               为这家店打分
             </Text>
-            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg">
+            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
               {store.name}
             </Text>
 
@@ -802,24 +800,24 @@ const StoreDetailScreen = () => {
               {renderStars(selectedRating, 40, true)}
             </HStack>
 
-            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$xl">
+            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$xl" style={styles.textRegular}>
               {selectedRating === 0
                 ? "点击星星进行评分"
                 : selectedRating === 5
-                ? "太棒了！"
-                : selectedRating >= 4
-                ? "很不错"
-                : selectedRating >= 3
-                ? "还可以"
-                : selectedRating >= 2
-                ? "一般般"
-                : "不太满意"}
+                  ? "太棒了！"
+                  : selectedRating >= 4
+                    ? "很不错"
+                    : selectedRating >= 3
+                      ? "还可以"
+                      : selectedRating >= 2
+                        ? "一般般"
+                        : "不太满意"}
             </Text>
 
             <Pressable
               w="100%"
               py="$md"
-              rounded="$full"
+              rounded="$sm"
               bg={selectedRating > 0 ? "$black" : "$gray200"}
               alignItems="center"
               onPress={handleSubmitRating}
@@ -828,7 +826,7 @@ const StoreDetailScreen = () => {
               {isSubmittingRating ? (
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Text fontSize="$md" fontWeight="$bold" color="$white">
+                <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
                   提交评分
                 </Text>
               )}
@@ -867,7 +865,7 @@ const StoreDetailScreen = () => {
                 },
               ]}
             >
-              <Box w={40} h={4} bg="$gray200" rounded="$full" alignSelf="center" mb="$md" />
+              <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
 
               {/* 回复提示 */}
               {replyTo && (
@@ -880,8 +878,8 @@ const StoreDetailScreen = () => {
                   alignItems="center"
                   justifyContent="between"
                 >
-                  <Text fontSize="$sm" color="$gray300">
-                    回复 <Text fontWeight="$medium" color="$black">{replyTo.username}</Text>
+                  <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+                    回复 <Text fontWeight="$medium" color="$black" style={styles.textRegular}>{replyTo.username}</Text>
                   </Text>
                   <Pressable onPress={() => setReplyTo(null)}>
                     <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
@@ -890,7 +888,7 @@ const StoreDetailScreen = () => {
               )}
 
               {/* 评论建议 */}
-              <Text fontSize="$sm" color="$gray300" mb="$sm">
+              <Text fontSize="$sm" color="$gray300" mb="$sm" style={styles.textRegular}>
                 评论建议
               </Text>
               <ScrollView
@@ -902,13 +900,13 @@ const StoreDetailScreen = () => {
                   <Pressable
                     key={index}
                     bg="$gray100"
-                    rounded="$full"
+                    rounded="$sm"
                     px="$md"
                     py="$sm"
                     mr="$sm"
                     onPress={() => useSuggestion(suggestion)}
                   >
-                    <Text fontSize="$sm" color="$gray300" numberOfLines={1}>
+                    <Text fontSize="$sm" color="$gray300" numberOfLines={1} style={styles.textRegular}>
                       {suggestion.length > 20 ? suggestion.slice(0, 20) + "..." : suggestion}
                     </Text>
                   </Pressable>
@@ -938,13 +936,13 @@ const StoreDetailScreen = () => {
 
               {/* 字数统计和发送按钮 */}
               <HStack justifyContent="between" alignItems="center">
-                <Text fontSize="$xs" color="$gray200">
+                <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
                   {commentText.length}/500
                 </Text>
                 <Pressable
                   px="$xl"
                   py="$sm"
-                  rounded="$full"
+                  rounded="$sm"
                   bg={commentText.trim() ? "$black" : "$gray200"}
                   onPress={handleSubmitComment}
                   disabled={!commentText.trim() || isSubmittingComment}
@@ -952,7 +950,7 @@ const StoreDetailScreen = () => {
                   {isSubmittingComment ? (
                     <ActivityIndicator size="small" color={theme.colors.white} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
                       发布
                     </Text>
                   )}
@@ -976,7 +974,7 @@ const StoreDetailScreen = () => {
             flex={1}
             flexDirection="row"
             py="$md"
-            rounded="$full"
+            rounded="$sm"
             borderWidth={1}
             borderColor="$gray200"
             alignItems="center"
@@ -984,7 +982,7 @@ const StoreDetailScreen = () => {
             onPress={openRatingModal}
           >
             <Ionicons name="star-outline" size={18} color={theme.colors.black} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm">
+            <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm" style={styles.textBold}>
               {store.userRating ? `已评 ${store.userRating} 星` : "评分"}
             </Text>
           </Pressable>
@@ -993,14 +991,14 @@ const StoreDetailScreen = () => {
             flex={1}
             flexDirection="row"
             py="$md"
-            rounded="$full"
+            rounded="$sm"
             bg="$black"
             alignItems="center"
             justifyContent="center"
             onPress={() => openCommentInput()}
           >
             <Ionicons name="chatbubble-outline" size={18} color={theme.colors.white} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm">
+            <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm" style={styles.textBold}>
               写评价
             </Text>
           </Pressable>
@@ -1009,6 +1007,10 @@ const StoreDetailScreen = () => {
     </SafeAreaView>
   );
 };
+
+// 字体常量
+const FONT_REGULAR = "PlayfairDisplay-Regular";
+const FONT_BOLD = "PlayfairDisplay-Bold";
 
 const styles = StyleSheet.create({
   container: {
@@ -1040,6 +1042,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.black,
     minHeight: 80,
+    fontFamily: FONT_REGULAR,
+  },
+  // 文本样式
+  textRegular: {
+    fontFamily: FONT_REGULAR,
+  },
+  textBold: {
+    fontFamily: FONT_BOLD,
   },
 });
 

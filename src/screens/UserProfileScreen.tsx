@@ -416,10 +416,10 @@ const UserProfileScreen = () => {
           <Box ml="$sm">
             {!isCurrentUser ? (
               <Pressable
-                px="$lg"
-                py="$sm"
+                px="$xs"
+                py="$xs"
                 bg={isFollowing ? "$gray100" : "$black"}
-                borderRadius={20}
+                borderRadius="$sm"
                 borderWidth={isFollowing ? 1 : 0}
                 borderColor="$gray200"
                 onPress={handleFollowToggle}
@@ -449,7 +449,7 @@ const UserProfileScreen = () => {
                 bg="$white"
                 borderWidth={1}
                 borderColor="$gray200"
-                borderRadius={20}
+                borderRadius="$sm"
                 onPress={() => (navigation as any).navigate("EditProfile")}
               >
                 <Text fontSize="$sm" fontWeight="$medium" color="$black">
@@ -470,21 +470,21 @@ const UserProfileScreen = () => {
         {/* 标签（年龄、位置等） */}
         <HStack flexWrap="wrap" gap="$sm" mb="$md">
           {userProfile?.age != null && userProfile.age > 0 ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {getGenderText(userProfile?.gender)} {userProfile.age}岁
               </Text>
             </Box>
           ) : null}
           {userInfo?.location ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {userInfo.location}
               </Text>
             </Box>
           ) : null}
           {userProfile?.preference ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$full">
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
               <Text fontSize="$xs" color="$gray400">
                 {userProfile.preference}
               </Text>

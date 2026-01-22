@@ -67,7 +67,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   w={40}
                   h={40}
                   bg="$gray100"
-                  rounded="$full"
+                  rounded="$sm"
                   alignItems="center"
                   justifyContent="center"
                 >
@@ -97,7 +97,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                     w={40}
                     h={40}
                     bg="$gray100"
-                    rounded="$full"
+                    rounded="$sm"
                     alignItems="center"
                     justifyContent="center"
                   >
@@ -132,7 +132,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                     w={40}
                     h={40}
                     bg="$accent"
-                    rounded="$full"
+                    rounded="$sm"
                     alignItems="center"
                     justifyContent="center"
                   >
@@ -169,7 +169,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   w={40}
                   h={40}
                   bg="#FFE5E5"
-                  rounded="$full"
+                  rounded="$sm"
                   alignItems="center"
                   justifyContent="center"
                 >

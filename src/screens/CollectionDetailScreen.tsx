@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 8,
   },
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   },
   reviewTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 12,
   },
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   },
   ratingTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 16,
   },
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   },
   ratingScore: {
     fontSize: 48,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 8,
   },
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
   },
   relatedPostsTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 16,
   },

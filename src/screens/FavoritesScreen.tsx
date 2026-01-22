@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginTop: 16,
     marginBottom: 8,

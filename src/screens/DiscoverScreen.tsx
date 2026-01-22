@@ -778,7 +778,7 @@ const DiscoverScreen = () => {
                 right={0}
                 height={3}
                 bg="#000"
-                borderRadius="$full"
+                borderRadius="$sm"
               />
             )}
           </Pressable>
@@ -804,7 +804,7 @@ const DiscoverScreen = () => {
                 right={0}
                 height={3}
                 bg="#000"
-                borderRadius="$full"
+                borderRadius="$sm"
               />
             )}
           </Pressable>

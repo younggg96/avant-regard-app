@@ -242,7 +242,7 @@ const SearchScreen = () => {
         <Box
           flex={1}
           bg="$gray100"
-          rounded="$full"
+          rounded="$sm"
           px="$md"
           py="$xs"
           flexDirection="row"

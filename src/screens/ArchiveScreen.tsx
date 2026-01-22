@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: theme.colors.white,
     marginRight: 8,
     borderWidth: 1,
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: theme.colors.white,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
   },
   letterLine: {
     flex: 1,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: theme.colors.gray500,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
   },
   brandInfo: {
     flex: 1,

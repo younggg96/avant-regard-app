@@ -275,7 +275,7 @@ const SubmitStoreScreen = () => {
                     key={c}
                     px="$md"
                     py="$sm"
-                    rounded="$full"
+                    rounded="$sm"
                     bg={country === c ? "$black" : "$gray100"}
                     onPress={() => setCountry(c)}
                   >
@@ -378,7 +378,7 @@ const SubmitStoreScreen = () => {
                     key={style}
                     px="$md"
                     py="$sm"
-                    rounded="$full"
+                    rounded="$sm"
                     bg={selectedStyles.includes(style) ? "$black" : "$gray100"}
                     onPress={() => toggleStyle(style)}
                   >
@@ -474,7 +474,7 @@ const SubmitStoreScreen = () => {
                       right={-8}
                       w={24}
                       h={24}
-                      rounded="$full"
+                      rounded="$sm"
                       bg="$black"
                       justifyContent="center"
                       alignItems="center"
@@ -514,7 +514,7 @@ const SubmitStoreScreen = () => {
             <Pressable
               w="100%"
               py="$md"
-              rounded="$full"
+              rounded="$sm"
               bg={isSubmitting ? "$gray200" : "$black"}
               alignItems="center"
               justifyContent="center"

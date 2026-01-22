@@ -124,12 +124,12 @@ const NotificationsScreen = () => {
   const headerActions: HeaderAction[] =
     unreadCount > 0
       ? [
-          {
-            icon: "trash-outline",
-            onPress: markAllAsRead,
-            style: "secondary" as const,
-          },
-        ]
+        {
+          icon: "trash-outline",
+          onPress: markAllAsRead,
+          style: "secondary" as const,
+        },
+      ]
       : [];
 
   return (
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
   },
   iconBadge: {
     position: "absolute",
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     right: -2,
     width: 20,
     height: 20,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   systemIcon: {
     width: 50,
     height: 50,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: "#E74C3C",
     position: "absolute",
     top: theme.spacing.md + 4,

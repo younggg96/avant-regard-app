@@ -202,23 +202,23 @@ const PublishOutfitScreen = () => {
   useEffect(() => {
     if (editMode && draftPost) {
       console.log("Initializing edit mode with draft:", draftPost);
-      
+
       // 初始化标题
       if (draftPost.content?.title) {
         setTitle(draftPost.content.title);
       }
-      
+
       // 初始化描述
       if (draftPost.content?.description) {
         setDescription(draftPost.content.description);
       }
-      
+
       // 初始化图片（已上传的远程 URL）
       if (draftPost.content?.images && draftPost.content.images.length > 0) {
         setImages(draftPost.content.images);
         setCoverImage(draftPost.content.images[0]);
       }
-      
+
       // 初始化关联秀场
       if (draftPost.shows && draftPost.shows.length > 0) {
         const mappedShows: SelectedShow[] = draftPost.shows.map((show) => ({
@@ -754,7 +754,7 @@ const PublishOutfitScreen = () => {
                 key={index}
                 w={currentImageIndex === index ? 20 : 6}
                 h={6}
-                rounded="$full"
+                rounded="$sm"
                 bg={
                   currentImageIndex === index
                     ? "$white"

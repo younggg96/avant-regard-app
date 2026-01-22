@@ -330,7 +330,7 @@ const StoreListScreen = () => {
                         px="$lg"
                         py="$sm"
                         bg="$black"
-                        rounded="$full"
+                        rounded="$sm"
                         onPress={clearSearch}
                     >
                         <Text color="$white" fontWeight="$medium">
@@ -452,7 +452,7 @@ const StoreListScreen = () => {
                         <Box flex={1} />
                     </TouchableWithoutFeedback>
                     <Animated.View style={[styles.sheetContainer, detailSheetStyle, { maxHeight: "85%" }]}>
-                        <Box w={40} h={4} bg="$gray100" rounded="$full" alignSelf="center" mt="$sm" mb="$sm" />
+                        <Box w={40} h={4} bg="$gray100" rounded="$sm" alignSelf="center" mt="$sm" mb="$sm" />
 
                         {selectedStore && (
                             <>
@@ -484,7 +484,7 @@ const StoreListScreen = () => {
                                             <Box
                                                 w={8}
                                                 h={8}
-                                                rounded="$full"
+                                                rounded="$sm"
                                                 bg={selectedStore.isOpen ? "#27AE60" : "$gray300"}
                                                 mr="$sm"
                                             />
@@ -602,7 +602,7 @@ const StoreListScreen = () => {
                                         flex={1}
                                         flexDirection="row"
                                         py="$md"
-                                        rounded="$full"
+                                        rounded="$sm"
                                         borderWidth={1}
                                         borderColor="$gray100"
                                         alignItems="center"
@@ -620,7 +620,7 @@ const StoreListScreen = () => {
                                             flex={1}
                                             flexDirection="row"
                                             py="$md"
-                                            rounded="$full"
+                                            rounded="$sm"
                                             bg="$black"
                                             alignItems="center"
                                             justifyContent="center"
@@ -635,7 +635,7 @@ const StoreListScreen = () => {
                                         <Box
                                             flex={1}
                                             py="$md"
-                                            rounded="$full"
+                                            rounded="$sm"
                                             bg="$gray100"
                                             alignItems="center"
                                             justifyContent="center"

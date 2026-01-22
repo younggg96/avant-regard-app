@@ -134,10 +134,10 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
             {!isOwnPost && (
               <Pressable
                 onPress={onFollow}
-                px="$lg"
-                py="$sm"
+                px="$xs"
+                py="$xs"
                 bg={isFollowing ? "$gray100" : "$black"}
-                borderRadius={20}
+                borderRadius="$sm"
                 borderWidth={isFollowing ? 1 : 0}
                 borderColor="$gray200"
                 disabled={isFollowLoading}

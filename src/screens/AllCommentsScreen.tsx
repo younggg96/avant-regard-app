@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
   },
   headerRight: {
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   collectionTitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     marginBottom: 4,
     lineHeight: 22,

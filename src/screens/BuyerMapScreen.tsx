@@ -620,7 +620,7 @@ const BuyerMapScreen = () => {
         <Box
           w={isSelected ? 32 : 24}
           h={isSelected ? 32 : 24}
-          rounded="$full"
+          rounded="$sm"
           bg={isSelected ? "$white" : store.isOpen ? "$black" : "$gray200"}
           borderWidth={isSelected ? 3 : 2}
           borderColor={isSelected ? "$black" : "$white"}
@@ -631,7 +631,7 @@ const BuyerMapScreen = () => {
           <Box
             w={isSelected ? 10 : 8}
             h={isSelected ? 10 : 8}
-            rounded="$full"
+            rounded="$sm"
             bg={isSelected ? "$black" : "$white"}
           />
         </Box>
@@ -672,7 +672,7 @@ const BuyerMapScreen = () => {
             flexDirection="row"
             alignItems="center"
             bg="$gray100"
-            rounded="$full"
+            rounded="$sm"
             px="$md"
             h={44}
           >
@@ -703,7 +703,7 @@ const BuyerMapScreen = () => {
           <Pressable
             w={44}
             h={44}
-            rounded="$full"
+            rounded="$sm"
             bg={activeFilterCount > 0 ? "$black" : "$white"}
             borderWidth={1}
             borderColor={activeFilterCount > 0 ? "$black" : "$gray100"}
@@ -723,7 +723,7 @@ const BuyerMapScreen = () => {
                 right={-2}
                 w={18}
                 h={18}
-                rounded="$full"
+                rounded="$sm"
                 bg="$error"
                 justifyContent="center"
                 alignItems="center"
@@ -762,7 +762,7 @@ const BuyerMapScreen = () => {
             alignItems="center"
             px="$md"
             py="$xs"
-            rounded="$full"
+            rounded="$sm"
             bg={nearbyMode ? "$black" : "$white"}
             mr="$sm"
             onPress={toggleNearbyMode}
@@ -801,7 +801,7 @@ const BuyerMapScreen = () => {
             alignItems="center"
             px="$md"
             py="$xs"
-            rounded="$full"
+            rounded="$sm"
             bg={filters.openOnly ? "$black" : "$white"}
             mr="$sm"
             onPress={() => setFilters((prev) => ({ ...prev, openOnly: !prev.openOnly }))}
@@ -838,7 +838,7 @@ const BuyerMapScreen = () => {
               alignItems="center"
               px="$md"
               py="$xs"
-              rounded="$full"
+              rounded="$sm"
               bg={filters.country === country ? "$black" : "$white"}
               mr="$sm"
               onPress={() => handleCountrySelect(country)}
@@ -893,7 +893,7 @@ const BuyerMapScreen = () => {
                 alignItems="center"
                 px="$md"
                 py="$xs"
-                rounded="$full"
+                rounded="$sm"
                 bg={filters.city === city ? "$black" : "$white"}
                 borderWidth={1}
                 borderColor={filters.city === city ? "$black" : "$gray100"}
@@ -982,7 +982,7 @@ const BuyerMapScreen = () => {
               bg="rgba(255,255,255,0.95)"
               px="$md"
               py="$xs"
-              rounded="$full"
+              rounded="$sm"
               flexDirection="row"
               alignItems="center"
               onPress={() => (navigation.navigate as any)("SubmitStore")}
@@ -996,7 +996,7 @@ const BuyerMapScreen = () => {
               bg="$black"
               px="$md"
               py="$xs"
-              rounded="$full"
+              rounded="$sm"
               flexDirection="row"
               alignItems="center"
               onPress={() => (navigation.navigate as any)("StoreList")}
@@ -1091,7 +1091,7 @@ const BuyerMapScreen = () => {
                 <Pressable
                   w={36}
                   h={36}
-                  rounded="$full"
+                  rounded="$sm"
                   bg="$gray100"
                   justifyContent="center"
                   alignItems="center"
@@ -1104,7 +1104,7 @@ const BuyerMapScreen = () => {
                     <Pressable
                       w={36}
                       h={36}
-                      rounded="$full"
+                      rounded="$sm"
                       bg="$gray100"
                       justifyContent="center"
                       alignItems="center"
@@ -1116,7 +1116,7 @@ const BuyerMapScreen = () => {
                   <Pressable
                     w={36}
                     h={36}
-                    rounded="$full"
+                    rounded="$sm"
                     bg="$black"
                     justifyContent="center"
                     alignItems="center"
@@ -1143,7 +1143,7 @@ const BuyerMapScreen = () => {
             <Box flex={1} />
           </TouchableWithoutFeedback>
           <Animated.View style={[styles.sheetContainer, filterSheetStyle]}>
-            <Box w={40} h={4} bg="$gray100" rounded="$full" alignSelf="center" mt="$sm" mb="$sm" />
+            <Box w={40} h={4} bg="$gray100" rounded="$sm" alignSelf="center" mt="$sm" mb="$sm" />
 
             <HStack
               justifyContent="between"
@@ -1173,7 +1173,7 @@ const BuyerMapScreen = () => {
                       key={country}
                       px="$md"
                       py="$sm"
-                      rounded="$full"
+                      rounded="$sm"
                       borderWidth={1}
                       borderColor={filters.country === country ? "$black" : "$gray100"}
                       bg={filters.country === country ? "$black" : "$white"}
@@ -1212,7 +1212,7 @@ const BuyerMapScreen = () => {
                         key={city}
                         px="$md"
                         py="$sm"
-                        rounded="$full"
+                        rounded="$sm"
                         borderWidth={1}
                         borderColor={filters.city === city ? "$black" : "$gray100"}
                         bg={filters.city === city ? "$black" : "$white"}
@@ -1250,7 +1250,7 @@ const BuyerMapScreen = () => {
                       key={brand}
                       px="$md"
                       py="$sm"
-                      rounded="$full"
+                      rounded="$sm"
                       borderWidth={1}
                       borderColor={filters.brand === brand ? "$black" : "$gray100"}
                       bg={filters.brand === brand ? "$black" : "$white"}
@@ -1285,7 +1285,7 @@ const BuyerMapScreen = () => {
                         key={styleItem}
                         px="$md"
                         py="$sm"
-                        rounded="$full"
+                        rounded="$sm"
                         borderWidth={1}
                         borderColor={filters.styles.includes(styleItem) ? "$black" : "$gray100"}
                         bg={filters.styles.includes(styleItem) ? "$black" : "$white"}
@@ -1367,7 +1367,7 @@ const BuyerMapScreen = () => {
               <Pressable
                 flex={1}
                 py="$md"
-                rounded="$full"
+                rounded="$sm"
                 borderWidth={1}
                 borderColor="$gray100"
                 alignItems="center"
@@ -1381,7 +1381,7 @@ const BuyerMapScreen = () => {
               <Pressable
                 flex={2}
                 py="$md"
-                rounded="$full"
+                rounded="$sm"
                 bg="$black"
                 alignItems="center"
                 justifyContent="center"
@@ -1408,7 +1408,7 @@ const BuyerMapScreen = () => {
             <Box flex={1} />
           </TouchableWithoutFeedback>
           <Animated.View style={[styles.sheetContainer, detailSheetStyle, { maxHeight: "85%" }]}>
-            <Box w={40} h={4} bg="$gray100" rounded="$full" alignSelf="center" mt="$sm" mb="$sm" />
+            <Box w={40} h={4} bg="$gray100" rounded="$sm" alignSelf="center" mt="$sm" mb="$sm" />
 
             {selectedStore && (
               <>
@@ -1440,7 +1440,7 @@ const BuyerMapScreen = () => {
                       <Box
                         w={8}
                         h={8}
-                        rounded="$full"
+                        rounded="$sm"
                         bg={selectedStore.isOpen ? "#27AE60" : "$gray300"}
                         mr="$sm"
                       />
@@ -1558,7 +1558,7 @@ const BuyerMapScreen = () => {
                     flex={1}
                     flexDirection="row"
                     py="$md"
-                    rounded="$full"
+                    rounded="$sm"
                     borderWidth={1}
                     borderColor="$gray100"
                     alignItems="center"
@@ -1576,7 +1576,7 @@ const BuyerMapScreen = () => {
                       flex={1}
                       flexDirection="row"
                       py="$md"
-                      rounded="$full"
+                      rounded="$sm"
                       bg="$black"
                       alignItems="center"
                       justifyContent="center"
@@ -1591,7 +1591,7 @@ const BuyerMapScreen = () => {
                     <Box
                       flex={1}
                       py="$md"
-                      rounded="$full"
+                      rounded="$sm"
                       bg="$gray100"
                       alignItems="center"
                       justifyContent="center"
