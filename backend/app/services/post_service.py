@@ -312,6 +312,59 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
+    def search_posts(
+        self, keyword: str, limit: int = 50, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """
+        搜索帖子（支持标题、内容、作者名搜索）
+        仅返回已发布且审核通过的帖子
+        """
+        # 搜索帖子标题和内容
+        # 使用 or 条件搜索标题和内容
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .or_(f"title.ilike.%{keyword}%,content_text.ilike.%{keyword}%")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        
+        posts_from_content = [self._format_post(p, current_user_id) for p in result.data or []]
+        post_ids = {p.id for p in posts_from_content}
+        
+        # 搜索作者名匹配的帖子
+        user_result = (
+            self.db.table("users")
+            .select("id")
+            .ilike("username", f"%{keyword}%")
+            .execute()
+        )
+        
+        if user_result.data:
+            user_ids = [u["id"] for u in user_result.data]
+            for user_id in user_ids:
+                user_posts_result = (
+                    self.db.table("posts")
+                    .select("*")
+                    .eq("user_id", user_id)
+                    .eq("status", "PUBLISHED")
+                    .eq("audit_status", "APPROVED")
+                    .order("created_at", desc=True)
+                    .limit(limit)
+                    .execute()
+                )
+                for p in user_posts_result.data or []:
+                    if p["id"] not in post_ids:
+                        posts_from_content.append(self._format_post(p, current_user_id))
+                        post_ids.add(p["id"])
+        
+        # 按创建时间排序
+        posts_from_content.sort(key=lambda x: x.createdAt, reverse=True)
+        return posts_from_content[:limit]
+
 
 # 单例
 post_service = PostService()

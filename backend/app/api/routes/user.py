@@ -2,7 +2,7 @@
 用户路由
 """
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from app.schemas.user import (
     UserInfo,
     UserProfileInfo,
@@ -15,6 +15,16 @@ from app.api.deps import get_current_user_id
 from app.core.response import success
 
 router = APIRouter(prefix="/user-info", tags=["用户信息"])
+
+
+@router.get("/search")
+async def search_users(
+    keyword: str = Query(..., description="搜索关键词（用户名或用户ID）"),
+    limit: int = Query(20, description="返回数量限制"),
+):
+    """搜索用户（支持用户名模糊搜索和用户ID精确搜索）"""
+    results = user_service.search_users(keyword=keyword, limit=limit)
+    return success([r.model_dump() for r in results])
 
 
 @router.get("/{user_id}")

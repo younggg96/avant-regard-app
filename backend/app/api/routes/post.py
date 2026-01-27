@@ -12,6 +12,19 @@ from app.core.response import success
 router = APIRouter(prefix="/posts", tags=["帖子"])
 
 
+@router.get("/search")
+async def search_posts(
+    keyword: str = Query(..., description="搜索关键词"),
+    limit: int = Query(50, description="返回数量限制"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """搜索帖子（支持标题、内容、作者名搜索）"""
+    results = post_service.search_posts(
+        keyword=keyword, limit=limit, current_user_id=current_user_id
+    )
+    return success([r.model_dump() for r in results])
+
+
 @router.get("")
 async def get_posts(
     current_user_id: Optional[int] = Depends(get_current_user_optional),
