@@ -10,15 +10,15 @@ const StyledPressable = styled(Pressable, {
   paddingVertical: '$md',
   borderRadius: '$md',
   backgroundColor: '$black',
-  
+
   ':active': {
     opacity: 0.8,
   },
-  
+
   ':disabled': {
     opacity: 0.5,
   },
-  
+
   variants: {
     variant: {
       solid: {
@@ -66,7 +66,7 @@ const StyledPressable = styled(Pressable, {
       },
     },
   },
-  
+
   defaultProps: {
     variant: 'solid',
     size: 'md',
@@ -78,7 +78,7 @@ const StyledText = styled(RNText, {
   color: '$white',
   fontWeight: '$medium',
   fontSize: '$md',
-  
+
   variants: {
     variant: {
       solid: {
@@ -129,7 +129,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {isLoading ? (
-        <ActivityIndicator color={variant === 'solid' ? 'white' : 'black'} />
+        <ActivityIndicator size="small" color={variant === 'solid' ? 'white' : 'black'} />
       ) : (
         <>
           {leftIcon}

@@ -708,7 +708,7 @@ const ProfileScreen = () => {
                 {shouldShowLoading ? (
                   <VStack alignItems="center" justifyContent="center" py="$xl">
                     <ActivityIndicator
-                      size="large"
+                      size="small"
                       color={theme.colors.gray400}
                     />
                     <Text fontSize="$sm" color="$gray400" mt="$sm">
