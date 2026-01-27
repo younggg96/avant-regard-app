@@ -5,6 +5,7 @@
 from typing import List
 from app.db.supabase import get_supabase
 from app.schemas.follow import FollowingUser
+from app.services.notification_service import notification_service
 
 
 class FollowService:
@@ -21,9 +22,33 @@ class FollowService:
             self.db.table("user_follows").insert(
                 {"follower_id": follower_id, "following_id": target_user_id}
             ).execute()
+            
+            # 发送关注通知
+            self._send_follow_notification(follower_id, target_user_id)
+            
             return True
         except:
             return False
+    
+    def _send_follow_notification(self, follower_id: int, target_user_id: int):
+        """发送关注通知"""
+        try:
+            # 获取关注者信息
+            follower_result = self.db.table("users").select("username").eq("id", follower_id).execute()
+            follower_name = follower_result.data[0]["username"] if follower_result.data else "用户"
+            
+            # 获取关注者头像
+            follower_avatar_result = self.db.table("user_info").select("avatar_url").eq("user_id", follower_id).execute()
+            follower_avatar = follower_avatar_result.data[0]["avatar_url"] if follower_avatar_result.data else None
+            
+            notification_service.notify_user_followed(
+                followed_user_id=target_user_id,
+                follower_id=follower_id,
+                follower_name=follower_name,
+                follower_avatar=follower_avatar
+            )
+        except Exception as e:
+            print(f"Failed to send follow notification: {e}")
 
     def unfollow_user(self, follower_id: int, target_user_id: int) -> bool:
         """取消关注用户"""

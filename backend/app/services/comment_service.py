@@ -4,6 +4,7 @@
 from typing import Optional, List, Dict
 from app.db.supabase import get_supabase
 from app.schemas.comment import PostComment, CommentReply, ImageReview
+from app.services.notification_service import notification_service
 
 
 class CommentService:
@@ -132,6 +133,8 @@ class CommentService:
         if not result.data:
             return None
         
+        comment_id = result.data[0]["id"]
+        
         # 更新帖子评论数
         self.db.rpc("increment_post_comment_count", {"post_id_param": post_id}).execute()
         
@@ -144,7 +147,58 @@ class CommentService:
                     "reply_count": current_count + 1
                 }).eq("id", parent_id).execute()
         
+        # 发送通知
+        self._send_comment_notification(post_id, user_id, content, comment_id, parent_id, reply_to_user_id)
+        
         return self._format_comment(result.data[0])
+
+    def _send_comment_notification(self, post_id: int, commenter_id: int, content: str, comment_id: int, parent_id: int = None, reply_to_user_id: int = None):
+        """发送评论或回复通知"""
+        try:
+            # 获取评论者信息
+            commenter_result = self.db.table("users").select("username").eq("id", commenter_id).execute()
+            commenter_name = commenter_result.data[0]["username"] if commenter_result.data else "用户"
+            
+            # 获取评论者头像
+            commenter_avatar_result = self.db.table("user_info").select("avatar_url").eq("user_id", commenter_id).execute()
+            commenter_avatar = commenter_avatar_result.data[0]["avatar_url"] if commenter_avatar_result.data else None
+            
+            # 获取帖子信息
+            post_result = self.db.table("posts").select("user_id, title, image_urls").eq("id", post_id).execute()
+            if not post_result.data:
+                return
+            
+            post = post_result.data[0]
+            post_owner_id = post["user_id"]
+            post_image = post.get("image_urls", [])[0] if post.get("image_urls") else None
+            
+            if parent_id and reply_to_user_id:
+                # 这是一个回复，通知被回复的用户
+                notification_service.notify_comment_replied(
+                    comment_owner_id=reply_to_user_id,
+                    replier_id=commenter_id,
+                    replier_name=commenter_name,
+                    post_id=post_id,
+                    comment_id=comment_id,
+                    reply_content=content,
+                    replier_avatar=commenter_avatar,
+                    post_image=post_image
+                )
+            else:
+                # 这是一个新评论，通知帖子作者
+                notification_service.notify_post_commented(
+                    post_owner_id=post_owner_id,
+                    commenter_id=commenter_id,
+                    commenter_name=commenter_name,
+                    post_id=post_id,
+                    post_title=post["title"],
+                    comment_content=content,
+                    comment_id=comment_id,
+                    commenter_avatar=commenter_avatar,
+                    post_image=post_image
+                )
+        except Exception as e:
+            print(f"Failed to send comment notification: {e}")
 
     def like_comment(self, comment_id: int, user_id: int) -> bool:
         """点赞评论"""
@@ -256,6 +310,51 @@ class CommentService:
         """删除秀场图片评论"""
         result = self.db.table("show_image_reviews").delete().eq("id", review_id).execute()
         return bool(result.data)
+
+    # ==================== 用户评论管理 ====================
+
+    def get_user_comments(self, user_id: int) -> List[PostComment]:
+        """获取用户的所有帖子评论（包含帖子标题等信息）"""
+        result = self.db.table("post_comments").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+        
+        if not result.data:
+            return []
+        
+        user_info_cache = {}
+        return [self._format_comment(c, None, user_info_cache) for c in result.data]
+
+    def get_user_comment_likes(self, user_id: int) -> List[dict]:
+        """获取用户点赞的所有评论"""
+        # 获取用户点赞的评论 ID
+        result = self.db.table("comment_likes").select("comment_id, created_at").eq("user_id", user_id).order("created_at", desc=True).execute()
+        
+        if not result.data:
+            return []
+        
+        # 获取评论详情
+        comment_ids = [item["comment_id"] for item in result.data]
+        comments_result = self.db.table("post_comments").select("*").in_("id", comment_ids).execute()
+        
+        if not comments_result.data:
+            return []
+        
+        user_info_cache = {}
+        comments_map = {}
+        for c in comments_result.data:
+            comments_map[c["id"]] = self._format_comment(c, None, user_info_cache)
+        
+        # 按点赞时间排序返回
+        liked_comments = []
+        for item in result.data:
+            comment_id = item["comment_id"]
+            if comment_id in comments_map:
+                comment = comments_map[comment_id]
+                liked_comments.append({
+                    "comment": comment.model_dump(),
+                    "likedAt": item["created_at"]
+                })
+        
+        return liked_comments
 
 
 # 单例

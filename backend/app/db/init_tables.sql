@@ -228,6 +228,16 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 用户推送 Token 表
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    push_token TEXT NOT NULL,
+    platform VARCHAR(20) NOT NULL,  -- ios, android
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =====================================================
 -- 7. 索引
 -- =====================================================
@@ -246,6 +256,8 @@ CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id
 CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
 CREATE INDEX IF NOT EXISTS idx_designer_follows_user ON designer_follows(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(push_token);
 
 -- =====================================================
 -- 8. 触发器：自动更新 updated_at
@@ -275,4 +287,7 @@ CREATE TRIGGER update_designers_updated_at BEFORE UPDATE ON designers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_shows_updated_at BEFORE UPDATE ON shows
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_push_tokens_updated_at BEFORE UPDATE ON user_push_tokens
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

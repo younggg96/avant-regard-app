@@ -140,3 +140,31 @@ async def delete_image_review(
     if not ok:
         raise HTTPException(status_code=404, detail="评论不存在")
     return success(message="删除成功")
+
+
+# ==================== 用户评论管理 ====================
+
+@router.get("/users/{user_id}/comments")
+async def get_user_comments(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """获取用户的所有帖子评论"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权查看其他用户的评论")
+    
+    result = comment_service.get_user_comments(user_id)
+    return success([c.model_dump() for c in result])
+
+
+@router.get("/users/{user_id}/comment-likes")
+async def get_user_comment_likes(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """获取用户点赞的所有评论"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权查看其他用户的点赞")
+    
+    result = comment_service.get_user_comment_likes(user_id)
+    return success(result)

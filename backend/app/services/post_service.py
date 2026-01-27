@@ -5,6 +5,7 @@
 from typing import Optional, List
 from app.db.supabase import get_supabase
 from app.schemas.post import Post, PostType, PostStatus, AuditStatus
+from app.services.notification_service import notification_service
 
 
 class PostService:
@@ -195,9 +196,51 @@ class PostService:
             self.db.rpc(
                 "increment_post_like_count", {"post_id_param": post_id}
             ).execute()
+            
+            # 发送通知
+            self._send_like_notification(post_id, user_id)
+            
             return True
         except:
             return False
+    
+    def _send_like_notification(self, post_id: int, liker_id: int):
+        """发送点赞通知"""
+        try:
+            # 获取帖子信息
+            post_result = self.db.table("posts").select("user_id, title, image_urls").eq("id", post_id).execute()
+            if not post_result.data:
+                return
+            
+            post = post_result.data[0]
+            post_owner_id = post["user_id"]
+            
+            # 不给自己发通知
+            if post_owner_id == liker_id:
+                return
+            
+            # 获取点赞者信息
+            liker_result = self.db.table("users").select("username").eq("id", liker_id).execute()
+            liker_name = liker_result.data[0]["username"] if liker_result.data else "用户"
+            
+            # 获取点赞者头像
+            liker_avatar_result = self.db.table("user_info").select("avatar_url").eq("user_id", liker_id).execute()
+            liker_avatar = liker_avatar_result.data[0]["avatar_url"] if liker_avatar_result.data else None
+            
+            # 获取帖子第一张图片
+            post_image = post.get("image_urls", [])[0] if post.get("image_urls") else None
+            
+            notification_service.notify_post_liked(
+                post_owner_id=post_owner_id,
+                liker_id=liker_id,
+                liker_name=liker_name,
+                post_id=post_id,
+                post_title=post["title"],
+                liker_avatar=liker_avatar,
+                post_image=post_image
+            )
+        except Exception as e:
+            print(f"Failed to send like notification: {e}")
 
     def unlike_post(self, post_id: int, user_id: int) -> bool:
         """取消点赞"""
