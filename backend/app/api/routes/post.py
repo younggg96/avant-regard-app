@@ -88,6 +88,9 @@ async def update_post(
         title=request.title,
         content_text=request.contentText,
         image_urls=request.imageUrls,
+        product_name=request.productName,
+        brand_name=request.brandName,
+        rating=request.rating,
         show_ids=request.showIds,
     )
     if not result:

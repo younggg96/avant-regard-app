@@ -81,5 +81,9 @@ class UpdatePostRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     contentText: str = ""
     imageUrls: List[str] = []
+    # 单品评价专用字段
+    productName: Optional[str] = None
+    brandName: Optional[str] = None
+    rating: Optional[int] = Field(None, ge=1, le=5)
     # 关联秀场 ID 列表（支持关联多个秀场）
     showIds: List[int] = []

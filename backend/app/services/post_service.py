@@ -168,6 +168,13 @@ class PostService:
             update_data["content_text"] = kwargs["content_text"]
         if "image_urls" in kwargs:
             update_data["image_urls"] = kwargs["image_urls"]
+        # 单品评价专用字段
+        if "product_name" in kwargs:
+            update_data["product_name"] = kwargs["product_name"]
+        if "brand_name" in kwargs:
+            update_data["brand_name"] = kwargs["brand_name"]
+        if "rating" in kwargs:
+            update_data["rating"] = kwargs["rating"]
         if "show_ids" in kwargs:
             update_data["show_ids"] = kwargs["show_ids"]
 
