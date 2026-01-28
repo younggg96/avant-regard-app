@@ -20,6 +20,15 @@ class BuyerStoreService:
         self.db = get_supabase()
         self.db_admin = get_supabase_admin()
 
+    def _sanitize_search_keyword(self, keyword: str) -> str:
+        """清理搜索关键词，转义可能导致查询失败的特殊字符"""
+        sanitized = keyword.replace("\\", "\\\\")
+        sanitized = sanitized.replace("%", "\\%")
+        sanitized = sanitized.replace("_", "\\_")
+        sanitized = sanitized.replace(",", " ")
+        sanitized = sanitized.replace(".", " ")
+        return sanitized.strip()
+
     def _format_store(self, store: dict) -> BuyerStore:
         """格式化买手店数据"""
         return BuyerStore(
@@ -293,19 +302,26 @@ class BuyerStoreService:
         self, keyword: str, limit: int = 20
     ) -> List[BuyerStore]:
         """搜索买手店"""
-        result = (
-            self.db.table("buyer_stores")
-            .select("*")
-            .or_(
-                f"name.ilike.%{keyword}%,"
-                f"city.ilike.%{keyword}%,"
-                f"address.ilike.%{keyword}%"
+        safe_keyword = self._sanitize_search_keyword(keyword)
+        if not safe_keyword:
+            return []
+        
+        try:
+            result = (
+                self.db.table("buyer_stores")
+                .select("*")
+                .or_(
+                    f"name.ilike.*{safe_keyword}*,"
+                    f"city.ilike.*{safe_keyword}*,"
+                    f"address.ilike.*{safe_keyword}*"
+                )
+                .limit(limit)
+                .execute()
             )
-            .limit(limit)
-            .execute()
-        )
-
-        return [self._format_store(s) for s in result.data]
+            return [self._format_store(s) for s in result.data]
+        except Exception as e:
+            print(f"Search stores error: {e}")
+            return []
 
 
 # 创建单例

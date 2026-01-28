@@ -13,6 +13,15 @@ class BrandService:
     def __init__(self):
         self.db = get_supabase()
 
+    def _sanitize_search_keyword(self, keyword: str) -> str:
+        """清理搜索关键词，转义可能导致查询失败的特殊字符"""
+        sanitized = keyword.replace("\\", "\\\\")
+        sanitized = sanitized.replace("%", "\\%")
+        sanitized = sanitized.replace("_", "\\_")
+        sanitized = sanitized.replace(",", " ")
+        sanitized = sanitized.replace(".", " ")
+        return sanitized.strip()
+
     def _format_brand(self, brand: dict) -> Brand:
         """格式化品牌数据"""
         return Brand(
@@ -43,9 +52,11 @@ class BrandService:
 
         # 关键词搜索（品牌名、创始人、国家）
         if keyword:
-            query = query.or_(
-                f"name.ilike.%{keyword}%,founder.ilike.%{keyword}%,country.ilike.%{keyword}%"
-            )
+            safe_keyword = self._sanitize_search_keyword(keyword)
+            if safe_keyword:
+                query = query.or_(
+                    f"name.ilike.*{safe_keyword}*,founder.ilike.*{safe_keyword}*,country.ilike.*{safe_keyword}*"
+                )
 
         # 分类筛选
         if category and category != "all":
@@ -88,16 +99,23 @@ class BrandService:
 
     def search_brands(self, keyword: str, limit: int = 20) -> List[Brand]:
         """搜索品牌"""
-        result = (
-            self.db.table("brands")
-            .select("*")
-            .or_(f"name.ilike.%{keyword}%,founder.ilike.%{keyword}%")
-            .order("name")
-            .limit(limit)
-            .execute()
-        )
-
-        return [self._format_brand(b) for b in result.data]
+        safe_keyword = self._sanitize_search_keyword(keyword)
+        if not safe_keyword:
+            return []
+        
+        try:
+            result = (
+                self.db.table("brands")
+                .select("*")
+                .or_(f"name.ilike.*{safe_keyword}*,founder.ilike.*{safe_keyword}*")
+                .order("name")
+                .limit(limit)
+                .execute()
+            )
+            return [self._format_brand(b) for b in result.data]
+        except Exception as e:
+            print(f"Search brands error: {e}")
+            return []
 
     def get_brand_categories(self) -> List[str]:
         """获取所有品牌分类"""

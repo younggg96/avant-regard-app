@@ -13,6 +13,15 @@ class ShowService:
     def __init__(self):
         self.db = get_supabase()
 
+    def _sanitize_search_keyword(self, keyword: str) -> str:
+        """清理搜索关键词，转义可能导致查询失败的特殊字符"""
+        sanitized = keyword.replace("\\", "\\\\")
+        sanitized = sanitized.replace("%", "\\%")
+        sanitized = sanitized.replace("_", "\\_")
+        sanitized = sanitized.replace(",", " ")
+        sanitized = sanitized.replace(".", " ")
+        return sanitized.strip()
+
     def _format_show(self, show: dict) -> Show:
         """格式化秀场数据"""
         return Show(
@@ -107,18 +116,25 @@ class ShowService:
 
     def search_shows(self, keyword: str, limit: int = 50) -> List[Show]:
         """搜索秀场"""
-        result = (
-            self.db.table("shows")
-            .select("*")
-            .or_(
-                f"brand_name.ilike.%{keyword}%,season.ilike.%{keyword}%,category.ilike.%{keyword}%"
+        safe_keyword = self._sanitize_search_keyword(keyword)
+        if not safe_keyword:
+            return []
+        
+        try:
+            result = (
+                self.db.table("shows")
+                .select("*")
+                .or_(
+                    f"brand_name.ilike.*{safe_keyword}*,season.ilike.*{safe_keyword}*,category.ilike.*{safe_keyword}*"
+                )
+                .order("year", desc=True)
+                .limit(limit)
+                .execute()
             )
-            .order("year", desc=True)
-            .limit(limit)
-            .execute()
-        )
-
-        return [self._format_show(s) for s in result.data]
+            return [self._format_show(s) for s in result.data]
+        except Exception as e:
+            print(f"Search shows error: {e}")
+            return []
 
     def get_show_years(self) -> List[int]:
         """获取所有年份"""
