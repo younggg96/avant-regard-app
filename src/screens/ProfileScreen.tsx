@@ -9,10 +9,15 @@ import {
   NativeScrollEvent,
   ScrollView as RNScrollView,
   View,
+  Text as RNText,
+  StyleSheet,
+  Image as RNImage,
+  StatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Box,
   Text,
@@ -37,6 +42,7 @@ import {
   getFollowingCount,
   getFollowersCount,
 } from "../services/followService";
+import { getUnreadCount } from "../services/notificationService";
 import SimplePostCard from "../components/SimplePostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 
@@ -58,8 +64,14 @@ const initialTabState: TabData = {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+// 封面高度常量
+const COVER_HEIGHT = 220;
+const AVATAR_SIZE = 90;
+const AVATAR_BORDER = 4;
+
 const ProfileScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { user, logout, updateProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("published");
   const [refreshing, setRefreshing] = useState(false);
@@ -71,6 +83,8 @@ const ProfileScreen = () => {
   const [followingUsersCount, setFollowingUsersCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
 
   const tabScrollViewRef = useRef<RNScrollView>(null);
   const contentScrollViewRef = useRef<RNScrollView>(null);
@@ -115,6 +129,8 @@ const ProfileScreen = () => {
   ): DisplayPost => {
     return {
       id: String(apiPost.id),
+      type: apiPost.postType,
+      auditStatus: apiPost.auditStatus,
       title: apiPost.title || "无标题",
       image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
       author: {
@@ -135,7 +151,9 @@ const ProfileScreen = () => {
         isSaved: apiPost.favoritedByMe || false,
       },
       likes: apiPost.likeCount || 0,
-      status: apiPost.status,
+      productName: apiPost.productName,
+      brandName: apiPost.brandName,
+      rating: apiPost.rating,
     } as DisplayPost & { status?: string };
   };
 
@@ -144,6 +162,7 @@ const ProfileScreen = () => {
     loadUserProfile();
     loadFollowingUsersCount();
     loadFollowersCount();
+    loadUnreadNotificationCount();
     setTabsData({
       published: { ...initialTabState },
       pending: { ...initialTabState },
@@ -165,6 +184,9 @@ const ProfileScreen = () => {
           location: info.location,
           avatar: info.avatarUrl,
         });
+        if (info.coverUrl) {
+          setCoverImage(info.coverUrl);
+        }
       }
     } catch (error) {
       console.error("Error loading user info:", error);
@@ -191,11 +213,23 @@ const ProfileScreen = () => {
     }
   };
 
+  const loadUnreadNotificationCount = async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadNotificationCount(count);
+    } catch (error) {
+      console.error("Error loading unread notification count:", error);
+    }
+  };
+
   const loadUserProfile = async () => {
     if (!user?.userId) return;
     try {
       const profile = await userInfoService.getUserProfile(user.userId);
       setUserProfile(profile);
+      if (profile?.coverUrl) {
+        setCoverImage(profile.coverUrl);
+      }
     } catch (error) {
       console.error("Error loading user profile:", error);
     }
@@ -227,13 +261,12 @@ const ProfileScreen = () => {
 
           const pendingPosts = apiPosts
             .filter((p: ApiPost) => p.auditStatus === "PENDING")
-            .map((p) => ({
-              ...convertToDisplayPost(p, {
+            .map((p) =>
+              convertToDisplayPost(p, {
                 name: authorName,
                 avatar: authorAvatar,
-              }),
-              auditStatus: p.auditStatus,
-            }));
+              })
+            );
 
           const approvedPosts = apiPosts
             .filter((p: ApiPost) => p.auditStatus === "APPROVED")
@@ -318,6 +351,7 @@ const ProfileScreen = () => {
       loadUserProfile();
       loadFollowingUsersCount();
       loadFollowersCount();
+      loadUnreadNotificationCount();
       fetchTabData(activeTab, true);
     }, [activeTab, user?.userId])
   );
@@ -474,112 +508,132 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.colors.white }}
-      edges={["top", "bottom"]}
-    >
-      {/* 顶部操作栏 */}
-      <HStack justifyContent="flex-end" px="$md" py="$sm" gap="$md">
-        <Pressable
-          p="$xs"
-          onPress={() => (navigation as any).navigate("Settings")}
-        >
-          <Ionicons
-            name="settings-outline"
-            size={24}
-            color={theme.colors.black}
-          />
-        </Pressable>
-        <Pressable p="$xs" onPress={handleLogout}>
-          <Ionicons
-            name="log-out-outline"
-            size={24}
-            color={theme.colors.black}
-          />
-        </Pressable>
-      </HStack>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* 头部信息 */}
-      <VStack px="$md" pb="$md">
-        {/* 第一行：头像和用户名 */}
-        <HStack alignItems="center" mb="$md">
-          <Pressable
-            mr="$md"
-            onPress={() => (navigation as any).navigate("EditProfile")}
-          >
+      {/* 封面图片区域 - 小红书风格 */}
+      <View style={[styles.coverContainer]}>
+        {coverImage ? (
+          <RNImage
+            source={{ uri: coverImage }}
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.defaultCover} />
+        )}
+        {/* 渐变遮罩 */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0.3)", "transparent", "rgba(0,0,0,0.4)"]}
+          locations={[0, 0.5, 1]}
+          style={styles.coverGradient}
+        />
+        {/* 顶部操作栏 */}
+        <View style={[styles.topActions, { top: insets.top + 8 }]}>
+          <Pressable style={styles.actionButton}>
+            <Ionicons name="menu-outline" size={24} color="white" />
+          </Pressable>
+          <HStack gap="$sm">
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => (navigation as any).navigate("Notifications")}
+            >
+              <View style={{ position: "relative" }}>
+                <Ionicons name="notifications-outline" size={22} color="white" />
+                {unreadNotificationCount > 0 && (
+                  <View style={styles.badge}>
+                    <RNText style={styles.badgeText}>
+                      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                    </RNText>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => (navigation as any).navigate("Settings")}
+            >
+              <Ionicons name="settings-outline" size={22} color="white" />
+            </Pressable>
+            <Pressable style={styles.actionButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={22} color="white" />
+            </Pressable>
+          </HStack>
+        </View>
+      </View>
+
+      {/* 头部信息区域 - 小红书风格 */}
+      <View style={styles.profileInfo}>
+        {/* 头像和编辑按钮行 */}
+        <View style={styles.avatarRow}>
+          <View style={styles.avatarWrapper}>
             {userInfo?.avatarUrl || user?.avatar ? (
-              <Image
+              <RNImage
                 source={{ uri: userInfo?.avatarUrl || user?.avatar }}
-                width={80}
-                height={80}
-                borderRadius={40}
-                alt="avatar"
+                style={styles.avatar}
               />
             ) : (
-              <Box
-                width={80}
-                height={80}
-                borderRadius={40}
-                bg="$black"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Text color="$white" fontSize="$xl" fontWeight="$bold">
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <RNText style={styles.avatarText}>
                   {(userInfo?.username || user?.username)
                     ?.slice(0, 2)
                     .toUpperCase() || "AG"}
-                </Text>
-              </Box>
+                </RNText>
+              </View>
             )}
-          </Pressable>
+            <Pressable
+              style={styles.avatarAddButton}
+              onPress={() => (navigation as any).navigate("EditProfile")}
+            >
+              <Ionicons name="add" size={14} color="white" />
+            </Pressable>
+          </View>
+        </View>
 
-          <VStack flex={1}>
-            <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
-              {userInfo?.username || user?.username || "用户"}
+        {/* 用户名 */}
+        <VStack mt="$sm">
+          <Text fontSize="$xl" fontWeight="$bold" color="$black">
+            {userInfo?.username || user?.username || "用户"}
+          </Text>
+          {user?.userId && (
+            <Text fontSize="$xs" color="$gray400" mt="$xs">
+              用户号：{user.userId}
             </Text>
-            <Text fontSize="$xs" color="$gray300">
-              {userInfo?.location ? `  · ${userInfo.location}` : ""}
-            </Text>
-          </VStack>
-        </HStack>
+          )}
+        </VStack>
 
         {/* Bio */}
-        <Pressable
-          mb="$sm"
-          onPress={() => (navigation as any).navigate("EditProfile")}
-        >
-          <Text fontSize="$sm" color="$gray400" numberOfLines={2}>
-            {userInfo?.bio || "点击编辑个人简介..."}
-          </Text>
-        </Pressable>
+        <Text fontSize="$sm" color="$gray400" numberOfLines={2}>
+          {userInfo?.bio || "点击编辑个人简介..."}
+        </Text>
 
-        {/* 标签（年龄、位置等） */}
-        <HStack flexWrap="wrap" gap="$sm" mb="$md">
-          {userProfile?.age != null && userProfile.age > 0 ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
+        {/* 标签 */}
+        <HStack flexWrap="wrap" gap="$sm" mt="$sm">
+          {userProfile?.age != null && userProfile.age > 0 && (
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
               <Text fontSize="$xs" color="$gray400">
                 {getGenderText(userProfile?.gender)} {userProfile.age}岁
               </Text>
             </Box>
-          ) : null}
-          {userInfo?.location ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
+          )}
+          {userInfo?.location && (
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
               <Text fontSize="$xs" color="$gray400">
                 {userInfo.location}
               </Text>
             </Box>
-          ) : null}
-          {userProfile?.preference ? (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius="$sm">
+          )}
+          {userProfile?.preference && (
+            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
               <Text fontSize="$xs" color="$gray400">
                 {userProfile.preference}
               </Text>
             </Box>
-          ) : null}
+          )}
         </HStack>
 
         {/* 统计数据 */}
-        <HStack alignItems="center" gap="$lg">
+        <HStack alignItems="center" gap="$lg" mt="$md">
           <Pressable
             onPress={() =>
               (navigation as any).navigate("FollowingUsers", {
@@ -612,26 +666,23 @@ const ProfileScreen = () => {
               </Text>
             </HStack>
           </Pressable>
-          <Pressable>
-            <HStack alignItems="baseline" gap="$xs">
-              <Text fontSize="$lg" fontWeight="$bold" color="$black">
-                {tabsData.published.count > 0
-                  ? tabsData.published.count
-                  : userInfo?.userId
-                    ? "0"
-                    : "-"}
-              </Text>
-              <Text fontSize="$xs" color="$gray300">
-                获赞与收藏
-              </Text>
-            </HStack>
-          </Pressable>
+          <HStack alignItems="baseline" gap="$xs">
+            <Text fontSize="$lg" fontWeight="$bold" color="$black">
+              {tabsData.published.count > 0
+                ? tabsData.published.count
+                : userInfo?.userId
+                  ? "0"
+                  : "-"}
+            </Text>
+            <Text fontSize="$xs" color="$gray300">
+              获赞与收藏
+            </Text>
+          </HStack>
         </HStack>
-      </VStack>
+      </View>
 
-      {/* 帖子区域 */}
+      {/* 帖子区域 - 保持原有 Tab 样式 */}
       <Box flex={1}>
-        {/* 标签栏 */}
         <RNScrollView
           ref={tabScrollViewRef}
           horizontal
@@ -671,7 +722,6 @@ const ProfileScreen = () => {
           ))}
         </RNScrollView>
 
-        {/* 可滑动的内容区域 */}
         <RNScrollView
           ref={contentScrollViewRef}
           horizontal
@@ -707,10 +757,7 @@ const ProfileScreen = () => {
               >
                 {shouldShowLoading ? (
                   <VStack alignItems="center" justifyContent="center" py="$xl">
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.gray400}
-                    />
+                    <ActivityIndicator color={theme.colors.gray400} />
                     <Text fontSize="$sm" color="$gray400" mt="$sm">
                       加载中...
                     </Text>
@@ -797,7 +844,6 @@ const ProfileScreen = () => {
                 width={SCREEN_WIDTH - 80}
                 overflow="hidden"
               >
-                {/* 标题 */}
                 <VStack px="$lg" pt="$lg" pb="$md">
                   <Text
                     fontSize="$lg"
@@ -817,12 +863,9 @@ const ProfileScreen = () => {
                   </Text>
                 </VStack>
 
-                {/* 分割线 */}
                 <Box height={1} bg="$gray100" />
 
-                {/* 按钮区域 */}
                 <HStack>
-                  {/* 取消按钮 */}
                   <Pressable
                     flex={1}
                     py="$md"
@@ -837,16 +880,11 @@ const ProfileScreen = () => {
                     disabled={isDeleting}
                     opacity={isDeleting ? 0.5 : 1}
                   >
-                    <Text
-                      fontSize="$md"
-                      fontWeight="$medium"
-                      color="$gray600"
-                    >
+                    <Text fontSize="$md" fontWeight="$medium" color="$gray600">
                       取消
                     </Text>
                   </Pressable>
 
-                  {/* 删除按钮 */}
                   <Pressable
                     flex={1}
                     py="$md"
@@ -858,7 +896,6 @@ const ProfileScreen = () => {
                       {isDeleting ? (
                         <>
                           <ActivityIndicator
-                            size="small"
                             color="#FF3040"
                             style={{ marginRight: 8 }}
                           />
@@ -887,8 +924,153 @@ const ProfileScreen = () => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.white,
+  },
+  // 封面图片样式 - 小红书风格
+  coverContainer: {
+    height: COVER_HEIGHT,
+    position: "relative",
+    overflow: "hidden",
+  },
+  coverImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+  },
+  defaultCover: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#2C2C2C",
+  },
+  coverGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  topActions: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#FF3B30",
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  // 头部信息样式 - 小红书风格
+  profileInfo: {
+    backgroundColor: theme.colors.white,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  avatarRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: -(AVATAR_SIZE / 2),
+  },
+  avatarWrapper: {
+    position: "relative",
+  },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: AVATAR_BORDER,
+    borderColor: theme.colors.white,
+    backgroundColor: theme.colors.gray200,
+  },
+  avatarPlaceholder: {
+    backgroundColor: "#1A1A1A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    color: "#FFD700",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  avatarAddButton: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FFD700",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: theme.colors.white,
+  },
+  actionButtonsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  editProfileButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    backgroundColor: theme.colors.white,
+  },
+  editProfileText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+  },
+  settingsIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    backgroundColor: theme.colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
 
 export default ProfileScreen;

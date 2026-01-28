@@ -25,6 +25,7 @@ export interface UserInfo {
   bio: string;
   location: string;
   avatarUrl: string;
+  coverUrl?: string;
 }
 
 // 用户完整资料类型（包含性别、年龄、偏好等）
@@ -35,6 +36,7 @@ export interface UserProfileInfo {
   bio: string;
   location: string;
   avatarUrl: string;
+  coverUrl?: string;
   gender: Gender;
   age: number;
   preference: string;
@@ -46,6 +48,7 @@ export interface UpdateUserInfoParams {
   bio?: string;
   location?: string;
   avatarUrl?: string;
+  coverUrl?: string;
 }
 
 // 更新用户资料请求参数（注册后填写）
@@ -54,6 +57,7 @@ export interface UpdateUserProfileParams {
   bio?: string;
   location?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   gender?: Gender;
   age?: number;
   preference?: string;
@@ -252,6 +256,32 @@ export async function uploadAvatar(
 }
 
 /**
+ * 上传用户背景图
+ * POST /api/user-info/{userId}/cover
+ * @param userId 用户ID
+ * @param imageUri 图片本地URI
+ */
+export async function uploadCover(
+  userId: number,
+  imageUri: string
+): Promise<UserInfo> {
+  const formData = new FormData();
+
+  // 处理图片文件
+  const filename = imageUri.split("/").pop() || "cover.jpg";
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : "image/jpeg";
+
+  formData.append("file", {
+    uri: imageUri,
+    name: filename,
+    type,
+  } as any);
+
+  return uploadRequest<UserInfo>(`/api/user-info/${userId}/cover`, formData);
+}
+
+/**
  * 更新用户完整资料（注册成功后填写）
  * PUT /api/user-info/{userId}/profile
  * @param userId 用户ID
@@ -278,13 +308,33 @@ export async function getUserProfile(userId: number): Promise<UserProfileInfo> {
   });
 }
 
+/**
+ * 搜索用户（支持用户名模糊搜索和用户ID精确搜索）
+ * GET /api/user-info/search
+ * @param keyword 搜索关键词
+ * @param limit 返回数量限制
+ */
+export async function searchUsers(
+  keyword: string,
+  limit: number = 20
+): Promise<UserInfo[]> {
+  return request<UserInfo[]>(
+    `/api/user-info/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
   updateUserInfo,
   uploadAvatar,
+  uploadCover,
   updateUserProfile,
   getUserProfile,
+  searchUsers,
 };
 
 export default userInfoService;

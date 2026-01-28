@@ -87,7 +87,7 @@ const NotificationsScreen = () => {
       case "like":
       case "comment":
         if (notification.actionData?.postId) {
-          (navigation.navigate as any)("LookDetail", {
+          (navigation.navigate as any)("PostDetail", {
             id: notification.actionData.postId,
           });
         }
@@ -95,14 +95,14 @@ const NotificationsScreen = () => {
       case "follow":
       case "mention":
         if (notification.actionData?.userId) {
-          (navigation.navigate as any)("Profile", {
+          (navigation.navigate as any)("UserProfile", {
             userId: notification.actionData.userId,
           });
         }
         break;
       case "collection":
         if (notification.actionData?.collectionId) {
-          (navigation.navigate as any)("LookbookDetail", {
+          (navigation.navigate as any)("CollectionDetail", {
             id: notification.actionData.collectionId,
           });
         }

@@ -16,6 +16,7 @@ import {
   Pressable,
   Image,
   Input,
+  HStack,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -58,6 +59,9 @@ const PublishLookbookScreen = () => {
   const [draftPostId, setDraftPostId] = useState<number | null>(
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
+  
+  // 判断是否编辑已发布/审核中的帖子（需要重新审核）
+  const isEditingPublishedPost = editMode && draftPost?.auditStatus;
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -215,10 +219,16 @@ const PublishLookbookScreen = () => {
       Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
-        (navigation as any).reset({
-          index: 0,
-          routes: [{ name: "Main", params: { screen: "Home" } }],
-        });
+        if (editMode) {
+          // 编辑模式：返回上一页（帖子详情页）
+          navigation.goBack();
+        } else {
+          // 新建模式：导航到主页
+          (navigation as any).reset({
+            index: 0,
+            routes: [{ name: "Main", params: { screen: "Home" } }],
+          });
+        }
       }, 2000);
     } catch (error) {
       console.error("Publish error:", error);
@@ -686,6 +696,18 @@ const PublishLookbookScreen = () => {
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
+
+      {/* 编辑已发布帖子时显示提示 */}
+      {isEditingPublishedPost && (
+        <Box bg="$accent" px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="information-circle" size={20} color={theme.colors.white} />
+            <Text color="$white" fontSize="$sm" flex={1}>
+              编辑后帖子将重新进入审核状态
+            </Text>
+          </HStack>
+        </Box>
+      )}
 
       <ScrollView
         style={styles.content}

@@ -86,6 +86,7 @@ const EditProfileScreen = () => {
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [cover, setCover] = useState("");
   const [gender, setGender] = useState<Gender>("OTHER");
   const [age, setAge] = useState<string>("");
   const [preference, setPreference] = useState("");
@@ -104,6 +105,7 @@ const EditProfileScreen = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [showProvinceModal, setShowProvinceModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
@@ -215,6 +217,7 @@ const EditProfileScreen = () => {
         setBio(userProfile.bio || "");
         setLocation(userProfile.location || "");
         setAvatar(userProfile.avatarUrl || user.avatar || "");
+        setCover(userProfile.coverUrl || "");
         setGender(userProfile.gender || "OTHER");
         setAge(userProfile.age ? String(userProfile.age) : "");
         setPreference(userProfile.preference || "");
@@ -228,6 +231,7 @@ const EditProfileScreen = () => {
           setBio(userInfo.bio || "");
           setLocation(userInfo.location || "");
           setAvatar(userInfo.avatarUrl || user.avatar || "");
+          setCover(userInfo.coverUrl || "");
         } catch (fallbackError) {
           console.warn("加载基本用户信息也失败，使用本地数据:", fallbackError);
           // 使用本地数据作为后备
@@ -235,6 +239,7 @@ const EditProfileScreen = () => {
           setBio(user.bio || "");
           setLocation(user.location || "");
           setAvatar(user.avatar || "");
+          setCover("");
         }
       }
 
@@ -271,6 +276,7 @@ const EditProfileScreen = () => {
         bio: bio.trim(),
         location: location,
         avatarUrl: avatar,
+        coverUrl: cover,
         gender: gender,
         age: ageNum,
         preference: preference.trim(),
@@ -368,6 +374,56 @@ const EditProfileScreen = () => {
       setAvatar(previousAvatar);
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  // 选择并上传封面图片
+  const handlePickCoverImage = async () => {
+    if (!user?.userId) {
+      Alert.show("错误: 用户未登录");
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.show("权限不足: 需要访问相册权限来更换封面");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const imageUri = result.assets[0].uri;
+    const previousCover = cover;
+
+    // 先显示本地图片
+    setCover(imageUri);
+    setUploadingCover(true);
+
+    try {
+      // 上传到服务器
+      const updatedInfo = await userInfoService.uploadCover(
+        user.userId,
+        imageUri
+      );
+
+      if (updatedInfo.coverUrl) {
+        setCover(updatedInfo.coverUrl);
+        Alert.show("封面上传成功");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "上传失败";
+      Alert.show("封面上传失败: " + message);
+      // 恢复原来的封面
+      setCover(previousCover);
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -481,7 +537,48 @@ const EditProfileScreen = () => {
               {uploadingAvatar ? "上传中..." : "点击更换头像"}
             </Text>
           </View>
-
+          {/* 封面图片区域 */}
+          <View style={styles.coverSection}>
+            <TouchableOpacity
+              style={styles.coverContainer}
+              onPress={handlePickCoverImage}
+              disabled={uploadingCover}
+            >
+              {cover ? (
+                <Image
+                  source={{ uri: cover }}
+                  style={styles.coverImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <Ionicons
+                    name="image-outline"
+                    size={32}
+                    color={theme.colors.gray400}
+                  />
+                  <Text style={styles.coverPlaceholderText}>添加封面图片</Text>
+                </View>
+              )}
+              {uploadingCover ? (
+                <View style={styles.coverLoadingOverlay}>
+                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <Text style={styles.coverLoadingText}>上传中...</Text>
+                </View>
+              ) : (
+                <View style={styles.coverEditIcon}>
+                  <Ionicons
+                    name="camera"
+                    size={18}
+                    color={theme.colors.white}
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.coverHint}>
+              {uploadingCover ? "上传中..." : "点击更换封面（推荐比例 16:9）"}
+            </Text>
+          </View>
           {/* 表单区域 */}
           <View style={styles.formSection}>
             {/* 用户名 */}
@@ -927,7 +1024,6 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: "center",
     paddingVertical: 32,
-    backgroundColor: theme.colors.gray50,
   },
   avatarContainer: {
     position: "relative",
@@ -966,6 +1062,67 @@ const styles = StyleSheet.create({
   avatarHint: {
     fontSize: 13,
     color: theme.colors.gray500,
+  },
+  // 封面区域
+  coverSection: {
+    alignItems: "center",
+    paddingTop: 16,
+    paddingHorizontal: 20,
+  },
+  coverContainer: {
+    width: "100%",
+    height: 160,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: theme.colors.gray100,
+    position: "relative",
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
+  },
+  coverPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.colors.gray100,
+  },
+  coverPlaceholderText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.gray400,
+  },
+  coverEditIcon: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  coverLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  coverLoadingText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: theme.colors.white,
+  },
+  coverHint: {
+    marginTop: 8,
+    fontSize: 13,
+    color: theme.colors.gray500,
+    textAlign: "center",
   },
   // 表单区域
   formSection: {

@@ -30,6 +30,7 @@ import {
   FullscreenImageViewer,
   OptionsMenuModal,
   DeleteConfirmDialog,
+  EditConfirmDialog,
   PostDetailRouteParams,
   styles,
   // Hooks
@@ -40,6 +41,7 @@ import {
   usePostActions,
   useNavigationHandlers,
 } from "../components/PostDetail";
+import { ShareModal } from "../components/ShareModal";
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -83,12 +85,21 @@ const PostDetailScreen = () => {
   });
 
   // 社交互动 Hook
-  const { isFollowing, isFollowLoading, handleLike, handleSave, handleShare, handleFollow } =
-    useEngagement({
-      post,
-      userId: user?.userId,
-      setPost,
-    });
+  const {
+    isFollowing,
+    isFollowLoading,
+    showShareModal,
+    handleLike,
+    handleSave,
+    handleShare,
+    handleCloseShareModal,
+    handleShareComplete,
+    handleFollow,
+  } = useEngagement({
+    post,
+    userId: user?.userId,
+    setPost,
+  });
 
   // 图片查看器 Hook
   const {
@@ -103,10 +114,14 @@ const PostDetailScreen = () => {
   const {
     showOptionsMenu,
     showDeleteDialog,
+    showEditConfirmDialog,
     isDeleting,
     setShowOptionsMenu,
     setShowDeleteDialog,
+    setShowEditConfirmDialog,
     handleContinueEdit,
+    handleEditPost,
+    handleConfirmEdit,
     handleDeletePost,
     handleConfirmDelete,
   } = usePostActions({
@@ -348,7 +363,9 @@ const PostDetailScreen = () => {
         {/* Options Menu Modal */}
         <OptionsMenuModal
           visible={showOptionsMenu}
+          showEditOption={isOwnPost && postStatus === "PUBLISHED"}
           onClose={() => setShowOptionsMenu(false)}
+          onEdit={handleEditPost}
           onDelete={handleDeletePost}
         />
 
@@ -358,6 +375,21 @@ const PostDetailScreen = () => {
           isDeleting={isDeleting}
           onClose={() => setShowDeleteDialog(false)}
           onConfirm={handleConfirmDelete}
+        />
+
+        {/* Edit Confirmation Dialog */}
+        <EditConfirmDialog
+          visible={showEditConfirmDialog}
+          onClose={() => setShowEditConfirmDialog(false)}
+          onConfirm={handleConfirmEdit}
+        />
+
+        {/* Share Modal */}
+        <ShareModal
+          visible={showShareModal}
+          post={post}
+          onClose={handleCloseShareModal}
+          onShareComplete={handleShareComplete}
         />
       </SafeAreaView>
     </View>

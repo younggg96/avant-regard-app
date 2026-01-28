@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import { View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +10,12 @@ import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { config } from "./gluestack.config";
+
+// Push Notifications
+import { usePushNotifications } from "./src/hooks/usePushNotifications";
+
+// Deep Linking
+import { LINKING_CONFIG, setNavigationRef, initDeepLinking } from "./src/utils/deepLinking";
 
 // Splash Video
 import SplashVideo from "./src/components/SplashVideo";
@@ -50,6 +56,11 @@ import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
 import MerchantReviewScreen from "./src/screens/MerchantReviewScreen";
+// Search Screen
+import SearchScreen from "./src/screens/SearchScreen";
+// User Management Screens
+import MyCommentsScreen from "./src/screens/MyCommentsScreen";
+import MyLikesScreen from "./src/screens/MyLikesScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -173,6 +184,9 @@ function TabNavigator() {
 function AppNavigator() {
   const { isAuthenticated } = useAuthStore();
 
+  // 初始化推送通知
+  usePushNotifications();
+
   if (!isAuthenticated) {
     // Show only auth flow for unauthenticated users
     return <AuthNavigator />;
@@ -218,12 +232,11 @@ function AppNavigator() {
         component={PostDetailScreen}
         options={{ headerShown: false }}
       />
-      {/* Search 页面暂时隐藏 */}
-      {/* <Stack.Screen
+      <Stack.Screen
         name="Search"
         component={SearchScreen}
         options={{ headerShown: false }}
-      /> */}
+      />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
@@ -302,7 +315,6 @@ function AppNavigator() {
         component={PublishTypeScreen}
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
@@ -310,7 +322,6 @@ function AppNavigator() {
         component={PublishLookbookScreen}
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
@@ -318,7 +329,6 @@ function AppNavigator() {
         component={PublishOutfitScreen}
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
@@ -326,7 +336,6 @@ function AppNavigator() {
         component={PublishReviewScreen}
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
@@ -334,7 +343,6 @@ function AppNavigator() {
         component={PublishArticleScreen}
         options={{
           headerShown: false,
-          presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
@@ -352,6 +360,16 @@ function AppNavigator() {
         component={MerchantReviewScreen}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="MyComments"
+        component={MyCommentsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MyLikes"
+        component={MyLikesScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
@@ -360,6 +378,7 @@ export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [appIsReady, setAppIsReady] = useState(false);
   const [showSplashVideo, setShowSplashVideo] = useState(true);
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   useEffect(() => {
     async function prepare() {
@@ -385,6 +404,17 @@ export default function App() {
     prepare();
   }, []);
 
+  // 初始化深度链接处理
+  useEffect(() => {
+    if (appIsReady && navigationRef.current) {
+      setNavigationRef(navigationRef.current);
+      const unsubscribe = initDeepLinking();
+      return () => {
+        unsubscribe.then((unsub) => unsub?.());
+      };
+    }
+  }, [appIsReady]);
+
   const handleSplashVideoFinish = useCallback(() => {
     setShowSplashVideo(false);
   }, []);
@@ -399,7 +429,10 @@ export default function App() {
         <SafeAreaProvider>
           <ToastProvider>
             <View style={{ flex: 1 }}>
-              <NavigationContainer>
+              <NavigationContainer
+                ref={navigationRef}
+                linking={LINKING_CONFIG}
+              >
                 <AppNavigator />
                 <StatusBar style="dark" />
               </NavigationContainer>

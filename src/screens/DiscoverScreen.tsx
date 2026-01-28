@@ -589,7 +589,7 @@ const DiscoverScreen = () => {
             )}
             {loading && (
               <HStack justifyContent="center" alignItems="center" py="$lg">
-                <ActivityIndicator size="small" color={theme.colors.accent} />
+                <ActivityIndicator  color={theme.colors.accent} />
                 <Text color="$gray400" fontSize="$sm" ml="$sm">
                   加载更多...
                 </Text>
@@ -705,9 +705,13 @@ const DiscoverScreen = () => {
 
         {/* Tab 栏骨架 */}
         <Box borderBottomWidth={1} borderBottomColor="$gray100">
-          <HStack justifyContent="center" alignItems="center" py="$sm" gap="$sm">
-            <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
-            <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+          <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
+            <Box width={40} />
+            <HStack justifyContent="center" alignItems="center" gap="$sm">
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+            </HStack>
+            <SkeletonBox width={24} height={24} style={{ borderRadius: 4 }} />
           </HStack>
         </Box>
 
@@ -756,57 +760,72 @@ const DiscoverScreen = () => {
 
       {/* Tab View with Types - 吸顶 */}
       <Box borderBottomWidth={1} borderBottomColor="$gray100">
-        <HStack justifyContent="center" alignItems="center" py="$sm" gap="$sm">
-          <Pressable
-            py="$sm"
-            px="$md"
-            position="relative"
-            onPress={() => handleTabChange("recommend")}
-          >
-            <Text
-              color={activeTab === "recommend" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "recommend" ? "$semibold" : "$normal"}
-              fontSize="$md"
-            >
-              推荐
-            </Text>
-            {activeTab === "recommend" && (
-              <Box
-                position="absolute"
-                bottom={-4}
-                left={0}
-                right={0}
-                height={3}
-                bg="#000"
-                borderRadius="$sm"
-              />
-            )}
-          </Pressable>
+        <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
+          {/* 左侧占位 */}
+          <Box width={40} />
 
-          <Pressable
-            py="$sm"
-            px="$md"
-            position="relative"
-            onPress={() => handleTabChange("following")}
-          >
-            <Text
-              color={activeTab === "following" ? "$black" : "$gray400"}
-              fontWeight={activeTab === "following" ? "$semibold" : "$normal"}
-              fontSize="$md"
+          {/* 中间 Tab 切换 */}
+          <HStack justifyContent="center" alignItems="center" gap="$sm">
+            <Pressable
+              py="$sm"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("recommend")}
             >
-              关注
-            </Text>
-            {activeTab === "following" && (
-              <Box
-                position="absolute"
-                bottom={-4}
-                left={0}
-                right={0}
-                height={3}
-                bg="#000"
-                borderRadius="$sm"
-              />
-            )}
+              <Text
+                color={activeTab === "recommend" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "recommend" ? "$semibold" : "$normal"}
+                fontSize="$md"
+              >
+                推荐
+              </Text>
+              {activeTab === "recommend" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
+            </Pressable>
+
+            <Pressable
+              py="$sm"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("following")}
+            >
+              <Text
+                color={activeTab === "following" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "following" ? "$semibold" : "$normal"}
+                fontSize="$md"
+              >
+                关注
+              </Text>
+              {activeTab === "following" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
+            </Pressable>
+          </HStack>
+
+          {/* 右侧搜索按钮 */}
+          <Pressable
+            onPress={handleSearchPress}
+            p="$xs"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="search-outline" size={24} color={theme.colors.black} />
           </Pressable>
         </HStack>
       </Box>

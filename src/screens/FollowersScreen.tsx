@@ -138,12 +138,12 @@ const FollowersScreen = () => {
       <ScrollView
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
         }
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color={theme.colors.gray400} />
+            <ActivityIndicator  color={theme.colors.gray400} />
             <Text style={styles.loadingText}>加载中...</Text>
           </View>
         ) : followers.length > 0 ? (

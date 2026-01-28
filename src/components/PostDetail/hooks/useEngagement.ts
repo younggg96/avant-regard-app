@@ -1,9 +1,9 @@
 import { useCallback, useState, useEffect } from "react";
-import { Share } from "react-native";
 import { Post } from "../../PostCard";
 import { postService } from "../../../services/postService";
 import { followService, isFollowingUser } from "../../../services/followService";
 import { Alert } from "../../../utils/Alert";
+import { SharePlatform } from "../../../services/shareService";
 
 interface UseEngagementOptions {
   post: Post | null;
@@ -14,9 +14,12 @@ interface UseEngagementOptions {
 interface UseEngagementReturn {
   isFollowing: boolean;
   isFollowLoading: boolean;
+  showShareModal: boolean;
   handleLike: () => Promise<void>;
   handleSave: () => Promise<void>;
-  handleShare: () => Promise<void>;
+  handleShare: () => void;
+  handleCloseShareModal: () => void;
+  handleShareComplete: (platform: SharePlatform, success: boolean) => void;
   handleFollow: () => Promise<void>;
 }
 
@@ -30,6 +33,7 @@ export const useEngagement = ({
 }: UseEngagementOptions): UseEngagementReturn => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // 获取帖子作者ID
   const authorId = post?.author?.id ? parseInt(post.author.id, 10) : undefined;
@@ -154,21 +158,27 @@ export const useEngagement = ({
     }
   }, [post, userId, setPost]);
 
-  // 处理分享
-  const handleShare = useCallback(async () => {
+  // 处理分享 - 打开分享弹窗
+  const handleShare = useCallback(() => {
     if (!post) return;
-
-    try {
-      await Share.share({
-        message: `查看这篇精彩内容：${
-          post.content?.title || ""
-        }\n分享自 AVANT REGARD`,
-        title: post.content?.title,
-      });
-    } catch (error) {
-      console.error("分享失败:", error);
-    }
+    setShowShareModal(true);
   }, [post]);
+
+  // 关闭分享弹窗
+  const handleCloseShareModal = useCallback(() => {
+    setShowShareModal(false);
+  }, []);
+
+  // 分享完成回调
+  const handleShareComplete = useCallback(
+    (platform: SharePlatform, success: boolean) => {
+      if (success) {
+        console.log(`分享到 ${platform} 成功`);
+        // 可以在这里增加分享统计等逻辑
+      }
+    },
+    []
+  );
 
   // 处理关注
   const handleFollow = useCallback(async () => {
@@ -216,9 +226,12 @@ export const useEngagement = ({
   return {
     isFollowing,
     isFollowLoading,
+    showShareModal,
     handleLike,
     handleSave,
     handleShare,
+    handleCloseShareModal,
+    handleShareComplete,
     handleFollow,
   };
 };

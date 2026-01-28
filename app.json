@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/logo.jpg",
     "userInterfaceStyle": "light",
+    "scheme": "avantregard",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -23,9 +24,18 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
-        }
+        },
+        "LSApplicationQueriesSchemes": [
+          "weixin",
+          "weixinULAPI",
+          "sinaweibo",
+          "sinaweibohd"
+        ]
       },
-      "bundleIdentifier": "com.yanggg96.avant-regard"
+      "bundleIdentifier": "com.yanggg96.avant-regard",
+      "associatedDomains": [
+        "applinks:app.avantregard.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -39,7 +49,26 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
-      "package": "com.yanggg96.avantregard"
+      "package": "com.yanggg96.avantregard",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.avantregard.com",
+              "pathPrefix": "/post"
+            },
+            {
+              "scheme": "https",
+              "host": "app.avantregard.com",
+              "pathPrefix": "/share"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/images/logo.jpg"
@@ -52,6 +81,15 @@
           "backgroundColor": "#000000",
           "image": "./assets/splash.png",
           "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#000000",
+          "sounds": [],
+          "defaultChannel": "default"
         }
       ]
     ],

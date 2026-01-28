@@ -62,6 +62,9 @@ const PublishReviewScreen = () => {
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
 
+  // 判断是否编辑已发布/审核中的帖子（需要重新审核）
+  const isEditingPublishedPost = editMode && draftPost?.auditStatus;
+
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
@@ -181,37 +184,37 @@ const PublishReviewScreen = () => {
   useEffect(() => {
     if (editMode && draftPost) {
       console.log("Initializing edit mode with draft:", draftPost);
-      
+
       // 初始化标题
       if (draftPost.content?.title) {
         setTitle(draftPost.content.title);
       }
-      
+
       // 初始化评价内容
       if (draftPost.content?.description) {
         setReviewText(draftPost.content.description);
       }
-      
+
       // 初始化图片（已上传的远程 URL）
       if (draftPost.content?.images && draftPost.content.images.length > 0) {
         setImages(draftPost.content.images);
       }
-      
+
       // 初始化产品名称
       if (draftPost.productName) {
         setProductName(draftPost.productName);
       }
-      
+
       // 初始化品牌
       if (draftPost.brandName) {
         setBrand(draftPost.brandName);
       }
-      
+
       // 初始化评分
       if (draftPost.rating) {
         setRating(draftPost.rating);
       }
-      
+
       // 初始化关联秀场
       if (draftPost.shows && draftPost.shows.length > 0) {
         const mappedShows: SelectedShow[] = draftPost.shows.map((show) => ({
@@ -362,6 +365,9 @@ const PublishReviewScreen = () => {
           title: title.trim(),
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
+          productName: productName.trim(),
+          brandName: brand.trim(),
+          rating: rating,
           showIds: showIds,
         });
       } else {
@@ -383,10 +389,16 @@ const PublishReviewScreen = () => {
       Alert.show("发布成功！", "", 2000);
       setTimeout(() => {
         resetForm();
-        (navigation as any).reset({
-          index: 0,
-          routes: [{ name: "Main", params: { screen: "Home" } }],
-        });
+        if (editMode) {
+          // 编辑模式：返回上一页（帖子详情页）
+          navigation.goBack();
+        } else {
+          // 新建模式：导航到主页
+          (navigation as any).reset({
+            index: 0,
+            routes: [{ name: "Main", params: { screen: "Home" } }],
+          });
+        }
       }, 2000);
     } catch (error) {
       console.error("Publish error:", error);
@@ -438,6 +450,9 @@ const PublishReviewScreen = () => {
           title: title.trim() || "单品评价草稿",
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
+          productName: productName.trim(),
+          brandName: brand.trim(),
+          rating: rating,
           showIds: showIds,
         });
       } else {
@@ -559,6 +574,18 @@ const PublishReviewScreen = () => {
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
+
+      {/* 编辑已发布帖子时显示提示 */}
+      {isEditingPublishedPost && (
+        <Box bg="$accent" px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="information-circle" size={20} color={theme.colors.white} />
+            <Text color="$white" fontSize="$sm" flex={1}>
+              编辑后帖子将重新进入审核状态
+            </Text>
+          </HStack>
+        </Box>
+      )}
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}

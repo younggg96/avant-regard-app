@@ -223,6 +223,45 @@ export async function replyToComment(
   });
 }
 
+// ==================== 用户评论管理 ====================
+
+/**
+ * 用户评论（带帖子信息）
+ */
+export interface UserComment extends PostComment {
+  // 评论所属帖子的基本信息可以通过 postId 获取
+}
+
+/**
+ * 用户点赞的评论
+ */
+export interface LikedComment {
+  comment: PostComment;
+  likedAt: string;
+}
+
+/**
+ * 获取用户的所有帖子评论
+ * GET /api/users/{userId}/comments
+ */
+export async function getUserComments(userId: number): Promise<PostComment[]> {
+  return request<PostComment[]>(`/api/users/${userId}/comments`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 获取用户点赞的所有评论
+ * GET /api/users/{userId}/comment-likes
+ */
+export async function getUserCommentLikes(
+  userId: number
+): Promise<LikedComment[]> {
+  return request<LikedComment[]>(`/api/users/${userId}/comment-likes`, {
+    method: "GET",
+  });
+}
+
 // 导出 commentService 对象
 export const commentService = {
   getPostComments,
@@ -232,6 +271,8 @@ export const commentService = {
   deleteComment,
   getCommentReplies,
   replyToComment,
+  getUserComments,
+  getUserCommentLikes,
 };
 
 export default commentService;

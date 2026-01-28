@@ -653,7 +653,7 @@ const StoreDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="small" color={theme.colors.black} />
+          <ActivityIndicator  color={theme.colors.black} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
             加载中...
           </Text>
@@ -1213,7 +1213,7 @@ const StoreDetailScreen = () => {
         ListFooterComponent={
           isLoadingComments ? (
             <Box py="$md" alignItems="center">
-              <ActivityIndicator size="small" color={theme.colors.black} />
+              <ActivityIndicator  color={theme.colors.black} />
             </Box>
           ) : null
         }
@@ -1282,7 +1282,7 @@ const StoreDetailScreen = () => {
               disabled={selectedRating === 0 || isSubmittingRating}
             >
               {isSubmittingRating ? (
-                <ActivityIndicator size="small" color={theme.colors.white} />
+                <ActivityIndicator  color={theme.colors.white} />
               ) : (
                 <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
                   提交评分
@@ -1406,7 +1406,7 @@ const StoreDetailScreen = () => {
                   disabled={!commentText.trim() || isSubmittingComment}
                 >
                   {isSubmittingComment ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
+                    <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
                       发布
@@ -1614,7 +1614,7 @@ const StoreDetailScreen = () => {
                   mb="$lg"
                 >
                   {isSubmittingApply ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
+                    <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
                       提交申请

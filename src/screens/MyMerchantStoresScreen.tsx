@@ -356,7 +356,7 @@ const MyMerchantStoresScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
-                    <ActivityIndicator size="small" color={theme.colors.black} />
+                    <ActivityIndicator  color={theme.colors.black} />
                     <Text color="$gray300" mt="$md" style={styles.textRegular}>
                         加载中...
                     </Text>
@@ -392,7 +392,7 @@ const MyMerchantStoresScreen = () => {
                 ListFooterComponent={
                     isLoading && merchants.length > 0 ? (
                         <Box py="$md" alignItems="center">
-                            <ActivityIndicator size="small" color={theme.colors.black} />
+                            <ActivityIndicator  color={theme.colors.black} />
                         </Box>
                     ) : null
                 }

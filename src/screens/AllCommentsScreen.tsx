@@ -317,7 +317,7 @@ const AllCommentsScreen = () => {
         contentContainerStyle={styles.commentsListContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

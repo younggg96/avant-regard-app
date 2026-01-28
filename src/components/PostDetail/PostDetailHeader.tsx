@@ -78,7 +78,6 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
 
       {/* Right: Actions based on status */}
       <HStack space="xs" alignItems="center">
-        {console.log("postStatus", postStatus)}
         {postStatus === "DRAFT" ? (
           // 草稿状态：显示继续修改按钮和删除按钮
           <>

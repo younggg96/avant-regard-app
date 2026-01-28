@@ -299,7 +299,7 @@ const StoreListScreen = () => {
         if (!isLoadingMore) return null;
         return (
             <Box py="$lg" alignItems="center">
-                <ActivityIndicator size="small" color={theme.colors.black} />
+                <ActivityIndicator  color={theme.colors.black} />
                 <Text color="$gray300" fontSize="$sm" mt="$sm">
                     加载更多...
                 </Text>
@@ -351,7 +351,7 @@ const StoreListScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center" bg="$gray50">
-                    <ActivityIndicator size="small" color={theme.colors.black} />
+                    <ActivityIndicator  color={theme.colors.black} />
                     <Text color="$gray300" mt="$md">加载中...</Text>
                 </VStack>
             </SafeAreaView>
@@ -385,7 +385,7 @@ const StoreListScreen = () => {
                     autoCorrect={false}
                 />
                 {isSearching && (
-                    <ActivityIndicator size="small" color={theme.colors.gray300} />
+                    <ActivityIndicator  color={theme.colors.gray300} />
                 )}
                 {searchQuery.length > 0 && !isSearching && (
                     <Pressable onPress={clearSearch} hitSlop={8}>

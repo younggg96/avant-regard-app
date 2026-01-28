@@ -10,6 +10,7 @@ export type { CommentInputBarRef } from "./CommentInputBar";
 export { FullscreenImageViewer } from "./FullscreenImageViewer";
 export { OptionsMenuModal } from "./OptionsMenuModal";
 export { DeleteConfirmDialog } from "./DeleteConfirmDialog";
+export { EditConfirmDialog } from "./EditConfirmDialog";
 
 // 导出 hooks
 export * from "./hooks";

@@ -602,12 +602,12 @@ const AdminScreen = () => {
     <ScrollView
       style={styles.commentsList}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
       }
     >
       {commentsLoading && comments.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={theme.colors.black} />
+          <ActivityIndicator  color={theme.colors.black} />
           <Text style={styles.loadingText}>加载中...</Text>
         </View>
       ) : comments.length === 0 ? (
@@ -771,7 +771,7 @@ const AdminScreen = () => {
                   disabled={actionLoading || selectedPostIds.size === 0}
                 >
                   {actionLoading ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
+                    <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <>
                       <Ionicons name="checkmark-circle" size={16} color={theme.colors.white} />
@@ -800,12 +800,12 @@ const AdminScreen = () => {
           style={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
           }
         >
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color={theme.colors.black} />
+              <ActivityIndicator  color={theme.colors.black} />
               <Text style={styles.loadingText}>加载中...</Text>
             </View>
           ) : pendingPosts.length === 0 ? (
@@ -858,7 +858,7 @@ const AdminScreen = () => {
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator  color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认拒绝</Text>
                 )}
@@ -900,7 +900,7 @@ const AdminScreen = () => {
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator  color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认拒绝</Text>
                 )}
@@ -952,7 +952,7 @@ const AdminScreen = () => {
                 disabled={actionLoading || !deleteUserId}
               >
                 {actionLoading ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator  color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认删除</Text>
                 )}

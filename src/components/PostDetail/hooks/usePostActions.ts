@@ -12,10 +12,14 @@ interface UsePostActionsOptions {
 interface UsePostActionsReturn {
   showOptionsMenu: boolean;
   showDeleteDialog: boolean;
+  showEditConfirmDialog: boolean;
   isDeleting: boolean;
   setShowOptionsMenu: (visible: boolean) => void;
   setShowDeleteDialog: (visible: boolean) => void;
+  setShowEditConfirmDialog: (visible: boolean) => void;
   handleContinueEdit: () => void;
+  handleEditPost: () => void;
+  handleConfirmEdit: () => void;
   handleDeletePost: () => void;
   handleConfirmDelete: () => Promise<void>;
 }
@@ -25,7 +29,7 @@ const POST_TYPE_TO_SCREEN: Record<string, string> = {
   OUTFIT: "PublishLookbook",
   DAILY_SHARE: "PublishOutfit",
   ITEM_REVIEW: "PublishReview",
-  ARTICLE: "PublishArticle",
+  ARTICLES: "PublishArticle",
 };
 
 /**
@@ -38,30 +42,54 @@ export const usePostActions = ({
 }: UsePostActionsOptions): UsePostActionsReturn => {
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditConfirmDialog, setShowEditConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 处理继续编辑（草稿）
-  const handleContinueEdit = useCallback(() => {
+  // 导航到编辑页面
+  const navigateToEditScreen = useCallback(() => {
     if (!post) {
       Alert.show("错误", "帖子数据不存在");
       return;
     }
 
     const postType = post.type;
+    console.log("Post type:", postType, "Post:", post);
+    
     const screenName = POST_TYPE_TO_SCREEN[postType as keyof typeof POST_TYPE_TO_SCREEN];
 
+    console.log("Screen name:", screenName);
     if (!screenName) {
-      Alert.show("错误", "不支持的帖子类型");
+      console.error("Unsupported post type:", postType);
+      Alert.show("错误", `不支持的帖子类型: ${postType || "未知"}`);
       return;
     }
 
-    console.log("draftPost", post);
+    console.log("Navigating to", screenName, "with editMode and draftPost");
     // 导航到对应的发布页面，传递编辑数据
     navigation.navigate(screenName, {
       editMode: true,
       draftPost: post,
     });
   }, [post, navigation]);
+
+  // 处理继续编辑（草稿）- 直接导航，无需确认
+  const handleContinueEdit = useCallback(() => {
+    navigateToEditScreen();
+  }, [navigateToEditScreen]);
+
+  // 处理编辑已发布/审核中帖子 - 显示确认对话框
+  const handleEditPost = useCallback(() => {
+    setShowEditConfirmDialog(true);
+  }, []);
+
+  // 确认编辑（用户确认后导航到编辑页面）
+  const handleConfirmEdit = useCallback(() => {
+    setShowEditConfirmDialog(false);
+    // 添加延迟确保对话框关闭动画完成后再导航
+    setTimeout(() => {
+      navigateToEditScreen();
+    }, 300);
+  }, [navigateToEditScreen]);
 
   // 处理删除帖子
   const handleDeletePost = useCallback(() => {
@@ -136,10 +164,14 @@ export const usePostActions = ({
   return {
     showOptionsMenu,
     showDeleteDialog,
+    showEditConfirmDialog,
     isDeleting,
     setShowOptionsMenu,
     setShowDeleteDialog,
+    setShowEditConfirmDialog,
     handleContinueEdit,
+    handleEditPost,
+    handleConfirmEdit,
     handleDeletePost,
     handleConfirmDelete,
   };

@@ -64,18 +64,21 @@ const PublishArticleScreen = () => {
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
 
+  // 判断是否编辑已发布/审核中的帖子（需要重新审核）
+  const isEditingPublishedPost = editMode && draftPost?.auditStatus;
+
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {
     if (editMode && draftPost) {
       console.log("Initializing edit mode with draft:", draftPost);
-      
+
       // 初始化标题
       if (draftPost.content?.title) {
         setTitle(draftPost.content.title);
       }
-      
+
       // 初始化内容（HTML）
       if (draftPost.content?.description) {
         setHtmlContent(draftPost.content.description);
@@ -85,7 +88,7 @@ const PublishArticleScreen = () => {
           richText.current?.setContentHTML(draftPost.content?.description || "");
         }, 500);
       }
-      
+
       // 初始化封面图片
       if (draftPost.content?.images && draftPost.content.images.length > 0) {
         setCoverImage(draftPost.content.images[0]);
@@ -172,10 +175,16 @@ const PublishArticleScreen = () => {
       Alert.show("发布成功！", "", 1500);
       setTimeout(() => {
         resetForm();
-        (navigation as any).reset({
-          index: 0,
-          routes: [{ name: "Main", params: { screen: "Home" } }],
-        });
+        if (editMode) {
+          // 编辑模式：返回上一页（帖子详情页）
+          navigation.goBack();
+        } else {
+          // 新建模式：导航到主页
+          (navigation as any).reset({
+            index: 0,
+            routes: [{ name: "Main", params: { screen: "Home" } }],
+          });
+        }
       }, 1500);
     } catch (error) {
       console.error("Publish error:", error);
@@ -312,6 +321,18 @@ const PublishArticleScreen = () => {
         onBackPress={() => navigation.goBack()}
       />
 
+      {/* 编辑已发布帖子时显示提示 */}
+      {isEditingPublishedPost && (
+        <Box bg="$accent" px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="information-circle" size={20} color={theme.colors.white} />
+            <Text color="$white" fontSize="$sm" flex={1}>
+              编辑后帖子将重新进入审核状态
+            </Text>
+          </HStack>
+        </Box>
+      )}
+
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -362,7 +383,7 @@ const PublishArticleScreen = () => {
               mb="$sm"
               borderWidth={1}
               borderColor="$gray200"
-              borderRadius="$md"
+              borderRadius="$sm"
               overflow="hidden"
             >
               <RichToolbar
@@ -399,7 +420,7 @@ const PublishArticleScreen = () => {
             <Box
               borderWidth={1}
               borderColor="$gray200"
-              borderRadius="$md"
+              borderRadius="$sm"
               overflow="hidden"
               minHeight={300}
             >

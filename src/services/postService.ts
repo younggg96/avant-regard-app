@@ -72,6 +72,10 @@ export interface UpdatePostParams {
   title: string;
   contentText: string;
   imageUrls: string[];
+  // 单品评价专用字段
+  productName?: string;
+  brandName?: string;
+  rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场）
   showIds?: number[];
 }
@@ -553,6 +557,24 @@ export async function getPostsByShowId(showId: number): Promise<Post[]> {
   });
 }
 
+/**
+ * 搜索帖子（支持标题、内容、作者名搜索）
+ * GET /api/posts/search
+ * @param keyword 搜索关键词
+ * @param limit 返回数量限制
+ */
+export async function searchPosts(
+  keyword: string,
+  limit: number = 50
+): Promise<Post[]> {
+  return request<Post[]>(
+    `/api/posts/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -576,6 +598,8 @@ export const postService = {
   getFavoritePostsByUserId,
   // 秀场关联帖子
   getPostsByShowId,
+  // 搜索
+  searchPosts,
 };
 
 export default postService;

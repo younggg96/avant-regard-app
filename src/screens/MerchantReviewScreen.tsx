@@ -467,7 +467,7 @@ const MerchantReviewScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="small" color={theme.colors.black} />
+          <ActivityIndicator  color={theme.colors.black} />
           <Text color="$gray300" mt="$md">
             加载中...
           </Text>
@@ -536,7 +536,7 @@ const MerchantReviewScreen = () => {
         ListFooterComponent={
           isLoadingMore ? (
             <Box py="$md" alignItems="center">
-              <ActivityIndicator size="small" color={theme.colors.black} />
+              <ActivityIndicator  color={theme.colors.black} />
             </Box>
           ) : null
         }
@@ -738,7 +738,7 @@ const MerchantReviewScreen = () => {
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator size="small" color={theme.colors.white} />
+                      <ActivityIndicator  color={theme.colors.white} />
                     ) : (
                       <Text fontSize="$md" fontWeight="$semibold" color="$white">
                         通过
@@ -815,7 +815,7 @@ const MerchantReviewScreen = () => {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator  color={theme.colors.white} />
                 ) : (
                   <Text fontSize="$md" fontWeight="$semibold" color="$white">
                     确认拒绝

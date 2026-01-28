@@ -981,7 +981,7 @@ const MerchantManageScreen = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
+                    <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
                       保存
@@ -1409,7 +1409,7 @@ const MerchantManageScreen = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
+                    <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
                       保存
@@ -2013,7 +2013,7 @@ const MerchantManageScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="small" color={theme.colors.black} />
+          <ActivityIndicator  color={theme.colors.black} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
             加载中...
           </Text>
@@ -2140,7 +2140,7 @@ const MerchantManageScreen = () => {
               </Text>
               <Pressable onPress={handleSave} disabled={isSubmitting}>
                 {isSubmitting ? (
-                  <ActivityIndicator size="small" color={theme.colors.black} />
+                  <ActivityIndicator  color={theme.colors.black} />
                 ) : (
                   <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
                     保存

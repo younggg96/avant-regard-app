@@ -112,12 +112,12 @@ const FollowingUsersScreen = () => {
       <ScrollView
         flex={1}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
         }
       >
         {loading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl">
-            <ActivityIndicator size="small" color={theme.colors.gray400} />
+            <ActivityIndicator  color={theme.colors.gray400} />
             <Text fontSize="$sm" color="$gray400" mt="$sm">
               加载中...
             </Text>

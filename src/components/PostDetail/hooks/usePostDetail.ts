@@ -87,6 +87,11 @@ export const usePostDetail = ({
     // 如果已经有 post 数据（从路由参数传入），不需要再加载
     if (params.post) {
       setPost(params.post);
+      // 从路由参数传入的帖子，根据 auditStatus 判断状态
+      // 如果有 auditStatus，说明是已发布的帖子
+      if (params.post.auditStatus) {
+        setPostStatus("PUBLISHED");
+      }
       setIsLoading(false);
       return;
     }

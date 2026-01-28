@@ -41,6 +41,18 @@ const SettingsScreen = () => {
           icon: "person-outline",
           onPress: () => (navigation as any).navigate("EditProfile"),
         },
+        {
+          id: "myComments",
+          label: "我的评论",
+          icon: "chatbubble-ellipses-outline",
+          onPress: () => (navigation as any).navigate("MyComments"),
+        },
+        {
+          id: "myLikes",
+          label: "我的点赞",
+          icon: "heart-outline",
+          onPress: () => (navigation as any).navigate("MyLikes"),
+        },
       ],
     },
     {
@@ -78,21 +90,21 @@ const SettingsScreen = () => {
   // 如果用户是管理员，添加管理员设置项
   const settingSections = user?.is_admin
     ? [
-        {
-          title: "管理员",
-          items: [
-            {
-              id: "admin",
-              label: "管理员后台",
-              icon: "shield-checkmark-outline",
-              onPress: () => (navigation as any).navigate("Admin"),
-              rightText: "Admin",
-              rightColor: theme.colors.error,
-            },
-          ],
-        },
-        ...baseSections,
-      ]
+      {
+        title: "管理员",
+        items: [
+          {
+            id: "admin",
+            label: "管理员后台",
+            icon: "shield-checkmark-outline",
+            onPress: () => (navigation as any).navigate("Admin"),
+            rightText: "Admin",
+            rightColor: theme.colors.error,
+          },
+        ],
+      },
+      ...baseSections,
+    ]
     : baseSections;
 
   return (

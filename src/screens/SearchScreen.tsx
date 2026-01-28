@@ -6,6 +6,8 @@ import {
   FlatList,
   Keyboard,
   ScrollView,
+  Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -13,7 +15,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
 import { theme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
-import { getPosts } from "../services/postService";
+import { searchPosts, Post as PostData } from "../services/postService";
+import { searchUsers, UserInfo } from "../services/userInfoService";
+
+// 搜索类型
+type SearchType = "posts" | "users";
 
 interface SearchHistory {
   id: string;
@@ -24,27 +30,12 @@ interface SearchHistory {
 const SearchScreen = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchType, setSearchType] = useState<SearchType>("posts");
+  const [postResults, setPostResults] = useState<PostData[]>([]);
+  const [userResults, setUserResults] = useState<UserInfo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  const [allPosts, setAllPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // 加载帖子数据
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        setIsLoading(true);
-        const posts = await getPosts();
-        setAllPosts(posts);
-      } catch (error) {
-        console.error("Failed to load posts:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadPosts();
-  }, []);
+  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
 
   // 加载搜索历史
   useEffect(() => {
@@ -54,99 +45,121 @@ const SearchScreen = () => {
   }, []);
 
   // 执行搜索
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
-      setSearchResults([]);
+      setPostResults([]);
+      setUserResults([]);
       setIsSearching(false);
       return;
     }
 
     Keyboard.dismiss();
     setIsSearching(true);
+    setIsLoading(true);
 
-    // 搜索逻辑：匹配标题、内容、作者名
-    const query = searchQuery.toLowerCase().trim();
-    const results = allPosts.filter((post) => {
-      // 搜索标题
-      if (post.title?.toLowerCase().includes(query)) return true;
+    try {
+      const query = searchQuery.trim();
 
-      // 搜索内容
-      if (post.contentText?.toLowerCase().includes(query)) return true;
+      // 根据当前搜索类型执行对应搜索
+      if (searchType === "posts") {
+        const posts = await searchPosts(query);
+        setPostResults(posts);
+      } else {
+        const users = await searchUsers(query);
+        setUserResults(users);
+      }
 
-      // 搜索作者名
-      if (post.username?.toLowerCase().includes(query)) return true;
+      // 保存搜索历史
+      const newHistoryItem: SearchHistory = {
+        id: Date.now().toString(),
+        keyword: query,
+        timestamp: Date.now(),
+      };
 
-      // 搜索帖子类型
-      if (post.postType?.toLowerCase().includes(query)) return true;
+      setSearchHistory((prev) => {
+        const filtered = prev.filter(
+          (item) => item.keyword.toLowerCase() !== query.toLowerCase()
+        );
+        return [newHistoryItem, ...filtered].slice(0, 10);
+      });
+    } catch (error) {
+      console.error("Search failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, searchType]);
 
-      return false;
-    });
+  // 切换搜索类型时重新搜索
+  const handleSearchTypeChange = useCallback(
+    async (type: SearchType) => {
+      setSearchType(type);
 
-    setSearchResults(results);
+      if (!searchQuery.trim() || !isSearching) return;
 
-    // 保存搜索历史
-    const newHistoryItem: SearchHistory = {
-      id: Date.now().toString(),
-      keyword: searchQuery.trim(),
-      timestamp: Date.now(),
-    };
-
-    setSearchHistory((prev) => {
-      // 移除重复的关键词
-      const filtered = prev.filter(
-        (item) => item.keyword.toLowerCase() !== query
-      );
-      // 添加新搜索到顶部，最多保留10条
-      return [newHistoryItem, ...filtered].slice(0, 10);
-    });
-
-    // 这里应该保存到 AsyncStorage
-  }, [searchQuery, allPosts]);
+      setIsLoading(true);
+      try {
+        const query = searchQuery.trim();
+        if (type === "posts") {
+          const posts = await searchPosts(query);
+          setPostResults(posts);
+        } else {
+          const users = await searchUsers(query);
+          setUserResults(users);
+        }
+      } catch (error) {
+        console.error("Search failed:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchQuery, isSearching]
+  );
 
   // 清除搜索
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
-    setSearchResults([]);
+    setPostResults([]);
+    setUserResults([]);
     setIsSearching(false);
   }, []);
 
   // 点击历史记录
   const handleHistoryClick = useCallback(
-    (keyword: string) => {
+    async (keyword: string) => {
       setSearchQuery(keyword);
-      // 自动执行搜索
-      setTimeout(() => {
-        const query = keyword.toLowerCase().trim();
-        const results = allPosts.filter((post) => {
-          if (post.title?.toLowerCase().includes(query)) return true;
-          if (post.contentText?.toLowerCase().includes(query)) return true;
-          if (post.username?.toLowerCase().includes(query)) return true;
-          if (post.postType?.toLowerCase().includes(query)) return true;
-          return false;
-        });
-        setSearchResults(results);
-        setIsSearching(true);
-      }, 100);
+      setIsSearching(true);
+      setIsLoading(true);
+
+      try {
+        if (searchType === "posts") {
+          const posts = await searchPosts(keyword);
+          setPostResults(posts);
+        } else {
+          const users = await searchUsers(keyword);
+          setUserResults(users);
+        }
+      } catch (error) {
+        console.error("Search failed:", error);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [allPosts]
+    [searchType]
   );
 
   // 删除历史记录项
   const handleDeleteHistory = useCallback((id: string) => {
     setSearchHistory((prev) => prev.filter((item) => item.id !== id));
-    // 这里应该更新 AsyncStorage
   }, []);
 
   // 清空所有历史
   const handleClearAllHistory = useCallback(() => {
     setSearchHistory([]);
-    // 这里应该清空 AsyncStorage
   }, []);
 
   // 处理帖子点击
   const handlePostPress = useCallback(
-    (post: any) => {
-      console.log("查看帖子详情:", post.id);
+    (post: PostData) => {
       (navigation.navigate as any)("PostDetail", { postId: post.id });
     },
     [navigation]
@@ -155,8 +168,15 @@ const SearchScreen = () => {
   // 处理作者点击
   const handleAuthorPress = useCallback(
     (authorId: string) => {
-      console.log("查看作者资料:", authorId);
-      (navigation.navigate as any)("BrandDetail", { id: authorId });
+      (navigation.navigate as any)("UserProfile", { userId: Number(authorId) });
+    },
+    [navigation]
+  );
+
+  // 处理用户点击
+  const handleUserPress = useCallback(
+    (user: UserInfo) => {
+      (navigation.navigate as any)("UserProfile", { userId: user.userId });
     },
     [navigation]
   );
@@ -164,11 +184,10 @@ const SearchScreen = () => {
   // 处理点赞
   const handleLike = useCallback((postId: string) => {
     console.log("点赞帖子:", postId);
-    // 这里应该更新帖子状态
   }, []);
 
   // 转换帖子格式
-  const convertToPost = (post: any): Post => {
+  const convertToPost = (post: PostData): Post => {
     const userId = post.userId?.toString() || "0";
     return {
       id: post.id?.toString() || "",
@@ -180,18 +199,18 @@ const SearchScreen = () => {
         avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
       },
       likes: post.likeCount || 0,
-      isLiked: false,
+      isLiked: post.likedByMe || false,
     };
   };
 
   // 分离左右列数据
   const getLeftColumnPosts = useCallback(() => {
-    return searchResults.filter((_, index) => index % 2 === 0);
-  }, [searchResults]);
+    return postResults.filter((_, index) => index % 2 === 0);
+  }, [postResults]);
 
   const getRightColumnPosts = useCallback(() => {
-    return searchResults.filter((_, index) => index % 2 === 1);
-  }, [searchResults]);
+    return postResults.filter((_, index) => index % 2 === 1);
+  }, [postResults]);
 
   // 渲染历史记录项
   const renderHistoryItem = ({ item }: { item: SearchHistory }) => (
@@ -220,6 +239,246 @@ const SearchScreen = () => {
         </Pressable>
       </HStack>
     </Pressable>
+  );
+
+  // 渲染用户项
+  const renderUserItem = ({ item }: { item: UserInfo }) => (
+    <Pressable onPress={() => handleUserPress(item)} px="$md" py="$md">
+      <HStack alignItems="center" space="md">
+        {/* 用户头像 */}
+        <Box
+          width={56}
+          height={56}
+          rounded="$full"
+          overflow="hidden"
+          bg="$gray100"
+        >
+          <Image
+            source={{
+              uri:
+                item.avatarUrl ||
+                `https://api.dicebear.com/7.x/avataaars/png?seed=${item.userId}`,
+            }}
+            style={{ width: 56, height: 56 }}
+          />
+        </Box>
+
+        {/* 用户信息 */}
+        <VStack flex={1} space="xs">
+          <HStack alignItems="center" space="sm">
+            <Text fontSize="$md" fontWeight="$semibold" color="$black">
+              {item.username}
+            </Text>
+            <Text fontSize="$sm" color="$gray400">
+              ID: {item.userId}
+            </Text>
+          </HStack>
+          {item.bio ? (
+            <Text fontSize="$sm" color="$gray600" numberOfLines={1}>
+              {item.bio}
+            </Text>
+          ) : null}
+          {item.location ? (
+            <HStack alignItems="center" space="xs">
+              <Ionicons
+                name="location-outline"
+                size={14}
+                color={theme.colors.gray400}
+              />
+              <Text fontSize="$xs" color="$gray400">
+                {item.location}
+              </Text>
+            </HStack>
+          ) : null}
+        </VStack>
+
+        {/* 箭头 */}
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={theme.colors.gray400}
+        />
+      </HStack>
+    </Pressable>
+  );
+
+  // 渲染搜索类型选择 Tab
+  const renderSearchTypeTabs = () => (
+    <HStack
+      px="$md"
+      py="$sm"
+      space="md"
+      borderBottomWidth={1}
+      borderBottomColor="$gray100"
+    >
+      <Pressable
+        onPress={() => handleSearchTypeChange("posts")}
+        px="$md"
+        py="$xs"
+        rounded="$full"
+        bg={searchType === "posts" ? "$black" : "$gray100"}
+      >
+        <Text
+          fontSize="$sm"
+          fontWeight="$medium"
+          color={searchType === "posts" ? "$white" : "$gray600"}
+        >
+          帖子
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => handleSearchTypeChange("users")}
+        px="$md"
+        py="$xs"
+        rounded="$full"
+        bg={searchType === "users" ? "$black" : "$gray100"}
+      >
+        <Text
+          fontSize="$sm"
+          fontWeight="$medium"
+          color={searchType === "users" ? "$white" : "$gray600"}
+        >
+          用户
+        </Text>
+      </Pressable>
+    </HStack>
+  );
+
+  // 渲染帖子搜索结果
+  const renderPostResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" color="$gray600">
+          找到{" "}
+          <Text fontWeight="$semibold" color="$black">
+            {postResults.length}
+          </Text>{" "}
+          个帖子
+        </Text>
+      </HStack>
+
+      {postResults.length > 0 ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <HStack px="$sm" pt="$sm">
+            {/* Left Column */}
+            <VStack flex={1} pr="$xs">
+              {getLeftColumnPosts().map((item) => {
+                const post = convertToPost(item);
+                return (
+                  <Box key={item.id} mb="$sm">
+                    <PostCard
+                      post={post}
+                      onPress={() => handlePostPress(item)}
+                      onAuthorPress={handleAuthorPress}
+                      onLike={handleLike}
+                    />
+                  </Box>
+                );
+              })}
+            </VStack>
+
+            {/* Right Column */}
+            <VStack flex={1} pl="$xs">
+              {getRightColumnPosts().map((item) => {
+                const post = convertToPost(item);
+                return (
+                  <Box key={item.id} mb="$sm">
+                    <PostCard
+                      post={post}
+                      onPress={() => handlePostPress(item)}
+                      onAuthorPress={handleAuthorPress}
+                      onLike={handleLike}
+                    />
+                  </Box>
+                );
+              })}
+            </VStack>
+          </HStack>
+        </ScrollView>
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons
+            name="document-text-outline"
+            size={64}
+            color={theme.colors.gray300}
+          />
+          <Text
+            fontSize="$lg"
+            color="$gray600"
+            fontWeight="$medium"
+            mt="$md"
+            textAlign="center"
+          >
+            未找到相关帖子
+          </Text>
+          <Text
+            fontSize="$sm"
+            color="$gray400"
+            mt="$sm"
+            textAlign="center"
+            lineHeight="$lg"
+          >
+            试试其他关键词吧
+          </Text>
+        </VStack>
+      )}
+    </VStack>
+  );
+
+  // 渲染用户搜索结果
+  const renderUserResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" color="$gray600">
+          找到{" "}
+          <Text fontWeight="$semibold" color="$black">
+            {userResults.length}
+          </Text>{" "}
+          个用户
+        </Text>
+      </HStack>
+
+      {userResults.length > 0 ? (
+        <FlatList
+          data={userResults}
+          renderItem={renderUserItem}
+          keyExtractor={(item) => item.userId.toString()}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => (
+            <Box height={1} bg="$gray100" mx="$md" />
+          )}
+        />
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons
+            name="person-outline"
+            size={64}
+            color={theme.colors.gray300}
+          />
+          <Text
+            fontSize="$lg"
+            color="$gray600"
+            fontWeight="$medium"
+            mt="$md"
+            textAlign="center"
+          >
+            未找到相关用户
+          </Text>
+          <Text
+            fontSize="$sm"
+            color="$gray400"
+            mt="$sm"
+            textAlign="center"
+            lineHeight="$lg"
+          >
+            支持用户名模糊搜索和用户ID精确搜索
+          </Text>
+        </VStack>
+      )}
+    </VStack>
   );
 
   return (
@@ -256,7 +515,11 @@ const SearchScreen = () => {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="搜索帖子、作者、品牌..."
+            placeholder={
+              searchType === "posts"
+                ? "搜索帖子标题、内容、作者..."
+                : "搜索用户名或用户ID..."
+            }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -291,6 +554,9 @@ const SearchScreen = () => {
           </Text>
         </Pressable>
       </HStack>
+
+      {/* Search Type Tabs */}
+      {renderSearchTypeTabs()}
 
       {/* Content Area */}
       {!isSearching ? (
@@ -342,7 +608,7 @@ const SearchScreen = () => {
                 mt="$md"
                 textAlign="center"
               >
-                搜索帖子
+                {searchType === "posts" ? "搜索帖子" : "搜索用户"}
               </Text>
               <Text
                 fontSize="$sm"
@@ -351,98 +617,24 @@ const SearchScreen = () => {
                 textAlign="center"
                 lineHeight="$lg"
               >
-                输入关键词搜索帖子、作者、品牌等内容
+                {searchType === "posts"
+                  ? "输入关键词搜索帖子标题、内容或作者"
+                  : "输入用户名模糊搜索或用户ID精确搜索"}
               </Text>
             </VStack>
           )}
+        </VStack>
+      ) : isLoading ? (
+        // 显示加载状态
+        <VStack flex={1} justifyContent="center" alignItems="center">
+          <ActivityIndicator size="small" color={theme.colors.black} />
+          <Text fontSize="$md" color="$gray600" mt="$md">
+            搜索中...
+          </Text>
         </VStack>
       ) : (
         // 显示搜索结果
-        <VStack flex={1}>
-          <HStack px="$md" py="$md" alignItems="center">
-            <Text fontSize="$md" color="$gray600">
-              找到{" "}
-              <Text fontWeight="$semibold" color="$black">
-                {searchResults.length}
-              </Text>{" "}
-              个结果
-            </Text>
-          </HStack>
-
-          {searchResults.length > 0 ? (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              <HStack px="$sm" pt="$sm">
-                {/* Left Column */}
-                <VStack flex={1} pr="$xs">
-                  {getLeftColumnPosts().map((item) => {
-                    const post = convertToPost(item);
-                    return (
-                      <Box key={item.id} mb="$sm">
-                        <PostCard
-                          post={post}
-                          onPress={() => handlePostPress(item)}
-                          onAuthorPress={handleAuthorPress}
-                          onLike={handleLike}
-                        />
-                      </Box>
-                    );
-                  })}
-                </VStack>
-
-                {/* Right Column */}
-                <VStack flex={1} pl="$xs">
-                  {getRightColumnPosts().map((item) => {
-                    const post = convertToPost(item);
-                    return (
-                      <Box key={item.id} mb="$sm">
-                        <PostCard
-                          post={post}
-                          onPress={() => handlePostPress(item)}
-                          onAuthorPress={handleAuthorPress}
-                          onLike={handleLike}
-                        />
-                      </Box>
-                    );
-                  })}
-                </VStack>
-              </HStack>
-            </ScrollView>
-          ) : (
-            <VStack
-              flex={1}
-              justifyContent="center"
-              alignItems="center"
-              px="$xl"
-            >
-              <Ionicons
-                name="search-outline"
-                size={64}
-                color={theme.colors.gray300}
-              />
-              <Text
-                fontSize="$lg"
-                color="$gray600"
-                fontWeight="$medium"
-                mt="$md"
-                textAlign="center"
-              >
-                未找到相关内容
-              </Text>
-              <Text
-                fontSize="$sm"
-                color="$gray400"
-                mt="$sm"
-                textAlign="center"
-                lineHeight="$lg"
-              >
-                试试其他关键词吧
-              </Text>
-            </VStack>
-          )}
-        </VStack>
+        searchType === "posts" ? renderPostResults() : renderUserResults()
       )}
     </SafeAreaView>
   );

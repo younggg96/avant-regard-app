@@ -12,13 +12,17 @@ import { styles } from "./styles";
 
 interface OptionsMenuModalProps {
   visible: boolean;
+  showEditOption?: boolean; // 是否显示编辑选项
   onClose: () => void;
+  onEdit?: () => void; // 编辑回调
   onDelete: () => void;
 }
 
 export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
   visible,
+  showEditOption = false,
   onClose,
+  onEdit,
   onDelete,
 }) => {
   return (
@@ -47,6 +51,27 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
               </View>
 
               <View style={styles.optionsMenuContent}>
+                {/* 编辑选项 - 仅在已发布或审核中帖子显示 */}
+                {showEditOption && onEdit && (
+                  <TouchableOpacity
+                    style={styles.optionsMenuItem}
+                    onPress={() => {
+                      onClose();
+                      setTimeout(() => {
+                        onEdit();
+                      }, 300);
+                    }}
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={22}
+                      color={theme.colors.black}
+                      style={styles.optionsMenuIcon}
+                    />
+                    <Text style={styles.optionsMenuItemText}>编辑帖子</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* 删除选项 */}
                 <TouchableOpacity
                   style={styles.optionsMenuItem}
