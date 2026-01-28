@@ -52,6 +52,7 @@ async def update_user_info(
         bio=request.bio,
         location=request.location,
         avatarUrl=request.avatarUrl,
+        coverUrl=request.coverUrl,
     )
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -86,6 +87,34 @@ async def upload_avatar(
     return success(result.model_dump())
 
 
+@router.post("/{user_id}/cover")
+async def upload_cover(
+    user_id: int,
+    file: UploadFile = File(...),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """上传用户封面图片"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户封面")
+
+    # 验证文件类型
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="只能上传图片文件")
+
+    # 上传图片
+    content = await file.read()
+    cover_url = file_service.upload_image(content, file.filename, file.content_type)
+
+    if not cover_url:
+        raise HTTPException(status_code=500, detail="封面上传失败")
+
+    # 更新用户封面
+    result = user_service.upload_cover(user_id, cover_url)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result.model_dump())
+
+
 @router.get("/{user_id}/profile")
 async def get_user_profile(user_id: int):
     """获取用户完整资料"""
@@ -111,6 +140,7 @@ async def update_user_profile(
         bio=request.bio,
         location=request.location,
         avatarUrl=request.avatarUrl,
+        coverUrl=request.coverUrl,
         gender=request.gender.value if request.gender else None,
         age=request.age,
         preference=request.preference,

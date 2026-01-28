@@ -30,7 +30,8 @@ class UserService:
             username=user["username"],
             bio=info.get("bio", ""),
             location=info.get("location", ""),
-            avatarUrl=info.get("avatar_url", "")
+            avatarUrl=info.get("avatar_url", ""),
+            coverUrl=info.get("cover_url", "")
         )
 
     def update_user_info(self, user_id: int, **kwargs) -> Optional[UserInfo]:
@@ -47,6 +48,8 @@ class UserService:
             update_data["location"] = kwargs["location"]
         if "avatarUrl" in kwargs and kwargs["avatarUrl"] is not None:
             update_data["avatar_url"] = kwargs["avatarUrl"]
+        if "coverUrl" in kwargs and kwargs["coverUrl"] is not None:
+            update_data["cover_url"] = kwargs["coverUrl"]
         
         # 更新用户表
         if user_update:
@@ -79,6 +82,7 @@ class UserService:
             bio=info.get("bio", ""),
             location=info.get("location", ""),
             avatarUrl=info.get("avatar_url", ""),
+            coverUrl=info.get("cover_url", ""),
             gender=info.get("gender", "OTHER"),
             age=info.get("age", 0),
             preference=info.get("preference", "")
@@ -98,6 +102,8 @@ class UserService:
             update_data["location"] = kwargs["location"]
         if "avatarUrl" in kwargs and kwargs["avatarUrl"] is not None:
             update_data["avatar_url"] = kwargs["avatarUrl"]
+        if "coverUrl" in kwargs and kwargs["coverUrl"] is not None:
+            update_data["cover_url"] = kwargs["coverUrl"]
         if "gender" in kwargs and kwargs["gender"] is not None:
             update_data["gender"] = kwargs["gender"]
         if "age" in kwargs and kwargs["age"] is not None:
@@ -118,6 +124,11 @@ class UserService:
     def upload_avatar(self, user_id: int, avatar_url: str) -> Optional[UserInfo]:
         """更新用户头像"""
         self.db.table("user_info").update({"avatar_url": avatar_url}).eq("user_id", user_id).execute()
+        return self.get_user_info(user_id)
+
+    def upload_cover(self, user_id: int, cover_url: str) -> Optional[UserInfo]:
+        """更新用户封面图片"""
+        self.db.table("user_info").update({"cover_url": cover_url}).eq("user_id", user_id).execute()
         return self.get_user_info(user_id)
 
     def search_users(self, keyword: str, limit: int = 20) -> List[UserInfo]:
@@ -164,7 +175,8 @@ class UserService:
                         username=user["username"],
                         bio=info.get("bio", ""),
                         location=info.get("location", ""),
-                        avatarUrl=info.get("avatar_url", "")
+                        avatarUrl=info.get("avatar_url", ""),
+                        coverUrl=info.get("cover_url", "")
                     ))
         
         return results[:limit]

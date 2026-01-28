@@ -20,6 +20,7 @@ class UserInfo(BaseModel):
     bio: str = ""
     location: str = ""
     avatarUrl: str = ""
+    coverUrl: str = ""
 
 
 class UserProfileInfo(BaseModel):
@@ -30,6 +31,7 @@ class UserProfileInfo(BaseModel):
     bio: str = ""
     location: str = ""
     avatarUrl: str = ""
+    coverUrl: str = ""
     gender: Gender = Gender.OTHER
     age: int = 0
     preference: str = ""
@@ -41,6 +43,7 @@ class UpdateUserInfoRequest(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     avatarUrl: Optional[str] = None
+    coverUrl: Optional[str] = None
 
 
 class UpdateUserProfileRequest(BaseModel):
@@ -49,6 +52,7 @@ class UpdateUserProfileRequest(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     avatarUrl: Optional[str] = None
+    coverUrl: Optional[str] = None
     gender: Optional[Gender] = None
     age: Optional[int] = None
     preference: Optional[str] = None
