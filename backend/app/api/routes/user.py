@@ -94,19 +94,35 @@ async def upload_cover(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """上传用户封面图片"""
+    print(f"[Upload Cover] user_id: {user_id}, current_user_id: {current_user_id}")
+
     if user_id != current_user_id:
         raise HTTPException(status_code=403, detail="无权修改其他用户封面")
 
     # 验证文件类型
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="只能上传图片文件")
+    print(
+        f"[Upload Cover] file content_type: {file.content_type}, filename: {file.filename}"
+    )
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400, detail=f"只能上传图片文件，当前类型: {file.content_type}"
+        )
 
     # 上传图片
     content = await file.read()
+    print(f"[Upload Cover] file size: {len(content)} bytes")
+
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="文件内容为空")
+
     cover_url = file_service.upload_image(content, file.filename, file.content_type)
 
     if not cover_url:
-        raise HTTPException(status_code=500, detail="封面上传失败")
+        raise HTTPException(
+            status_code=500, detail="封面上传失败，请检查 Supabase Storage 配置"
+        )
+
+    print(f"[Upload Cover] cover_url: {cover_url}")
 
     # 更新用户封面
     result = user_service.upload_cover(user_id, cover_url)
