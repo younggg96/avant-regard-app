@@ -783,9 +783,6 @@ const ProfileScreen = () => {
 
           <View style={styles.userNameSection}>
             <RNText style={styles.userName}>{userInfo?.username || user?.username || "用户"}</RNText>
-            {user?.userId && (
-              <RNText style={styles.userIdText}>用户号：{user.userId}</RNText>
-            )}
             <RNText style={styles.bio} numberOfLines={2}>
               {userInfo?.bio || "点击编辑个人简介..."}
             </RNText>
