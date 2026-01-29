@@ -74,6 +74,7 @@ import { useAuthStore } from "./src/store/authStore";
 
 // Providers
 import { ToastProvider } from "./src/components/ToastProvider";
+import ProfileReminderModal from "./src/components/ProfileReminderModal";
 
 // 防止原生 splash screen 自动隐藏
 SplashScreen.preventAutoHideAsync();
@@ -182,10 +183,37 @@ function TabNavigator() {
 }
 
 function AppNavigator() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, shouldShowProfileReminder, updateLastProfileReminderTime } = useAuthStore();
+  const [showProfileReminder, setShowProfileReminder] = useState(false);
 
   // 初始化推送通知
   usePushNotifications();
+
+  // 检查是否需要显示资料填写提醒
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // 首次检查（延迟3秒，等待应用完全加载）
+    const initialCheck = setTimeout(() => {
+      if (shouldShowProfileReminder()) {
+        setShowProfileReminder(true);
+        updateLastProfileReminderTime();
+      }
+    }, 3000);
+
+    // 每隔1小时检查一次
+    const interval = setInterval(() => {
+      if (shouldShowProfileReminder()) {
+        setShowProfileReminder(true);
+        updateLastProfileReminderTime();
+      }
+    }, 60 * 60 * 1000); // 1小时
+
+    return () => {
+      clearTimeout(initialCheck);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, shouldShowProfileReminder, updateLastProfileReminderTime]);
 
   if (!isAuthenticated) {
     // Show only auth flow for unauthenticated users
@@ -194,183 +222,191 @@ function AppNavigator() {
 
   // Show main app for authenticated users
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.white,
-        },
-        headerTintColor: theme.colors.black,
-        headerTitleStyle: {
-          fontFamily: "PlayfairDisplay-Bold",
-          fontSize: 20,
-        },
-        headerBackTitle: "",
-      }}
-    >
-      <Stack.Screen
-        name="Main"
-        component={TabNavigator}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CollectionDetail"
-        component={CollectionDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="BrandDetail"
-        component={BrandDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AllComments"
-        component={AllCommentsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="PostDetail"
-        component={PostDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Search"
-        component={SearchScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="EditProfile"
-        component={EditProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="UserProfile"
-        component={UserProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Terms"
-        component={TermsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Privacy"
-        component={PrivacyScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Favorites"
-        component={FavoritesScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="FollowingUsers"
-        component={FollowingUsersScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Followers"
-        component={FollowersScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Admin"
-        component={AdminScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="StoreList"
-        component={StoreListScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="SubmitStore"
-        component={SubmitStoreScreen}
-        options={{
-          headerShown: false,
-          presentation: "fullScreenModal",
+    <>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: theme.colors.white,
+          },
+          headerTintColor: theme.colors.black,
+          headerTitleStyle: {
+            fontFamily: "PlayfairDisplay-Bold",
+            fontSize: 20,
+          },
+          headerBackTitle: "",
         }}
+      >
+        <Stack.Screen
+          name="Main"
+          component={TabNavigator}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="CollectionDetail"
+          component={CollectionDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="BrandDetail"
+          component={BrandDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AllComments"
+          component={AllCommentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PostDetail"
+          component={PostDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UserProfile"
+          component={UserProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Terms"
+          component={TermsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Privacy"
+          component={PrivacyScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Favorites"
+          component={FavoritesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="FollowingUsers"
+          component={FollowingUsersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Followers"
+          component={FollowersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Admin"
+          component={AdminScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StoreList"
+          component={StoreListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SubmitStore"
+          component={SubmitStoreScreen}
+          options={{
+            headerShown: false,
+            presentation: "fullScreenModal",
+          }}
+        />
+        <Stack.Screen
+          name="StoreDetail"
+          component={StoreDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StoreReview"
+          component={StoreReviewScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishType"
+          component={PublishTypeScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PublishLookbook"
+          component={PublishLookbookScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PublishOutfit"
+          component={PublishOutfitScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PublishReview"
+          component={PublishReviewScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PublishArticle"
+          component={PublishArticleScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="MyMerchantStores"
+          component={MyMerchantStoresScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MerchantManage"
+          component={MerchantManageScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MerchantReview"
+          component={MerchantReviewScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyComments"
+          component={MyCommentsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyLikes"
+          component={MyLikesScreen}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+
+      {/* 资料填写提醒 Modal */}
+      <ProfileReminderModal
+        visible={showProfileReminder}
+        onClose={() => setShowProfileReminder(false)}
       />
-      <Stack.Screen
-        name="StoreDetail"
-        component={StoreDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="StoreReview"
-        component={StoreReviewScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="PublishType"
-        component={PublishTypeScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="PublishLookbook"
-        component={PublishLookbookScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="PublishOutfit"
-        component={PublishOutfitScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="PublishReview"
-        component={PublishReviewScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="PublishArticle"
-        component={PublishArticleScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="MyMerchantStores"
-        component={MyMerchantStoresScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="MerchantManage"
-        component={MerchantManageScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="MerchantReview"
-        component={MerchantReviewScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="MyComments"
-        component={MyCommentsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="MyLikes"
-        component={MyLikesScreen}
-        options={{ headerShown: false }}
-      />
-    </Stack.Navigator>
+    </>
   );
 }
 

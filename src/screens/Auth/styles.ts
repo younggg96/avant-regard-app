@@ -385,4 +385,195 @@ export const styles = StyleSheet.create({
     textAlignVertical: "top",
     paddingTop: 12,
   },
+  // 个人简介输入样式
+  bioInput: {
+    minHeight: 100,
+    textAlignVertical: "top",
+    paddingTop: 12,
+  },
+  // 字符计数样式
+  charCount: {
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray400,
+    textAlign: "right",
+    marginTop: 4,
+  },
+  // 资料填写提示样式
+  profileHintContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 24,
+    gap: 8,
+  },
+  profileHintText: {
+    fontSize: 13,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+    flex: 1,
+    lineHeight: 18,
+  },
+  // Modal 样式
+  profileModalContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  profileModalHeader: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  profileModalTitle: {
+    fontSize: 28,
+    fontFamily: "PlayfairDisplay-Bold",
+    color: theme.colors.black,
+    marginBottom: 8,
+  },
+  profileModalSubtitle: {
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray400,
+    letterSpacing: 0.5,
+  },
+  // 品牌选择相关样式
+  brandSelectedCount: {
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+    marginTop: 6,
+  },
+  brandModalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.white,
+  },
+  brandModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E8E8E8",
+  },
+  brandModalTitle: {
+    fontSize: 17,
+    fontFamily: "Inter-Bold",
+    color: theme.colors.black,
+  },
+  brandModalCloseButton: {
+    padding: 4,
+  },
+  brandSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    gap: 8,
+  },
+  brandSearchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.black,
+    paddingVertical: 0,
+  },
+  brandLoadingContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandLoadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+  },
+  brandItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  brandItemSelected: {
+    backgroundColor: "#F8F8F8",
+  },
+  brandInfo: {
+    flex: 1,
+  },
+  brandName: {
+    fontSize: 15,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.black,
+  },
+  brandNameSelected: {
+    fontFamily: "Inter-Medium",
+  },
+  brandCategory: {
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+    marginTop: 2,
+  },
+  brandCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.gray300,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  brandCheckboxSelected: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  brandEmptyList: {
+    padding: 40,
+    alignItems: "center",
+  },
+  brandEmptyText: {
+    fontSize: 14,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+  },
+  brandLoadMoreContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  brandLoadMoreText: {
+    fontSize: 13,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray500,
+  },
+  brandLoadMoreHint: {
+    fontSize: 12,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray400,
+  },
+  brandConfirmButton: {
+    margin: 20,
+    backgroundColor: theme.colors.black,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  brandConfirmButtonText: {
+    fontSize: 16,
+    fontFamily: "Inter-Bold",
+    color: theme.colors.white,
+  },
 });

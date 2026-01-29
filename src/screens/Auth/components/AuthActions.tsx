@@ -8,7 +8,6 @@ interface AuthActionsProps {
   loading: boolean;
   setMode: (mode: AuthMode) => void;
   handleMainAction: () => void;
-  handleSkipProfile: () => void;
 }
 
 const getButtonText = (mode: AuthMode, loading: boolean): string => {
@@ -23,8 +22,6 @@ const getButtonText = (mode: AuthMode, loading: boolean): string => {
       return "重置密码";
     case "verification":
       return "验证并登录";
-    case "completeProfile":
-      return "完成注册";
     default:
       return "确定";
   }
@@ -35,7 +32,6 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   loading,
   setMode,
   handleMainAction,
-  handleSkipProfile,
 }) => {
   return (
     <View style={styles.actionsContainer}>
@@ -48,56 +44,43 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
       </TouchableOpacity>
 
       {/* 切换模式的链接 */}
-      {mode !== "completeProfile" && (
-        <View style={styles.linksContainer}>
-          {mode === "login" && (
-            <>
-              <TouchableOpacity onPress={() => setMode("verification")}>
-                <Text style={styles.linkText}>验证码登录</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setMode("forgotPassword")}>
-                <Text style={styles.linkText}>忘记密码？</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {mode !== "login" && (
-            <TouchableOpacity onPress={() => setMode("login")}>
-              <Text style={styles.linkText}>返回登录</Text>
+      <View style={styles.linksContainer}>
+        {mode === "login" && (
+          <>
+            <TouchableOpacity onPress={() => setMode("verification")}>
+              <Text style={styles.linkText}>验证码登录</Text>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
+            <TouchableOpacity onPress={() => setMode("forgotPassword")}>
+              <Text style={styles.linkText}>忘记密码？</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
-      {/* completeProfile模式下的跳过按钮 */}
-      {mode === "completeProfile" && (
-        <View style={styles.skipContainer}>
-          <TouchableOpacity onPress={handleSkipProfile}>
-            <Text style={styles.skipText}>跳过，稍后填写</Text>
+        {mode !== "login" && (
+          <TouchableOpacity onPress={() => setMode("login")}>
+            <Text style={styles.linkText}>返回登录</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* 登录注册切换 */}
-      {mode !== "completeProfile" && (
-        <View style={styles.switchContainer}>
-          {mode === "login" ? (
-            <View style={styles.switchRow}>
-              <Text style={styles.switchText}>还没有账户？</Text>
-              <TouchableOpacity onPress={() => setMode("register")}>
-                <Text style={styles.switchLink}>立即注册</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.switchRow}>
-              <Text style={styles.switchText}>已有账户？</Text>
-              <TouchableOpacity onPress={() => setMode("login")}>
-                <Text style={styles.switchLink}>立即登录</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      )}
+      <View style={styles.switchContainer}>
+        {mode === "login" ? (
+          <View style={styles.switchRow}>
+            <Text style={styles.switchText}>还没有账户？</Text>
+            <TouchableOpacity onPress={() => setMode("register")}>
+              <Text style={styles.switchLink}>立即注册</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.switchRow}>
+            <Text style={styles.switchText}>已有账户？</Text>
+            <TouchableOpacity onPress={() => setMode("login")}>
+              <Text style={styles.switchLink}>立即登录</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   );
 };

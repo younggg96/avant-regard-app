@@ -291,7 +291,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               onSubmitEditing={handlePasswordSubmit}
               onFocus={() => scrollToInput("password")}
               autoComplete="off"
-              textContentType="none"
+              textContentType="oneTimeCode"
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
             />
             <TouchableOpacity
               style={styles.eyeButton}
@@ -329,7 +332,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onSubmitEditing={handleConfirmPasswordSubmit}
             onFocus={() => scrollToInput("confirmPassword")}
             autoComplete="off"
-            textContentType="none"
+            textContentType="oneTimeCode"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
           />
         </View>
       )}

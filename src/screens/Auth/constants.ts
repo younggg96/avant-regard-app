@@ -91,4 +91,6 @@ export const INITIAL_FORM_DATA = {
   gender: "" as const,
   age: "",
   preference: "",
+  bio: "",
+  favoriteBrandIds: [] as number[],
 };

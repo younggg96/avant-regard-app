@@ -15,6 +15,7 @@ export interface AuthUser {
   avatar?: string;
   is_admin: boolean;
   userType: string;
+  profileCompleted?: boolean; // 是否已完善资料
 }
 
 interface AuthTokens {
@@ -29,6 +30,7 @@ interface AuthState {
   tokens: AuthTokens | null;
   isLoading: boolean;
   isRefreshing: boolean; // 是否正在刷新 token
+  lastProfileReminderTime: number | null; // 上次提醒填写资料的时间戳
 }
 
 interface AuthActions {
@@ -44,6 +46,10 @@ interface AuthActions {
   isTokenExpiringSoon: () => boolean; // 检查 token 是否即将过期
   startAutoRefresh: () => void; // 启动自动刷新
   stopAutoRefresh: () => void; // 停止自动刷新
+  // 资料填写提醒相关
+  setProfileCompleted: (completed: boolean) => void;
+  updateLastProfileReminderTime: () => void;
+  shouldShowProfileReminder: () => boolean; // 是否应该显示提醒
 }
 
 // 自动刷新定时器
@@ -101,6 +107,7 @@ export const useAuthStore = create<AuthStore>()(
       tokens: null,
       isLoading: false,
       isRefreshing: false,
+      lastProfileReminderTime: null,
 
       // Actions
       loginWithResponse: (response: LoginResponse) => {
@@ -320,6 +327,42 @@ export const useAuthStore = create<AuthStore>()(
           refreshTimer = null;
         }
       },
+
+      // 设置资料是否已完善
+      setProfileCompleted: (completed: boolean) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({
+            user: { ...currentUser, profileCompleted: completed },
+          });
+        }
+      },
+
+      // 更新上次提醒时间
+      updateLastProfileReminderTime: () => {
+        set({ lastProfileReminderTime: Date.now() });
+      },
+
+      // 检查是否应该显示资料填写提醒
+      // 条件：已登录 + 未完善资料 + (从未提醒过 或 距离上次提醒超过1小时)
+      shouldShowProfileReminder: () => {
+        const { isAuthenticated, user, lastProfileReminderTime } = get();
+        
+        // 未登录或已完善资料，不需要提醒
+        if (!isAuthenticated || !user || user.profileCompleted) {
+          return false;
+        }
+
+        // 从未提醒过
+        if (!lastProfileReminderTime) {
+          return true;
+        }
+
+        // 检查是否距离上次提醒超过1小时（3600000毫秒）
+        const oneHour = 60 * 60 * 1000;
+        const timeSinceLastReminder = Date.now() - lastProfileReminderTime;
+        return timeSinceLastReminder >= oneHour;
+      },
     }),
     {
       name: "avant-regard-auth",
@@ -329,6 +372,7 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
         user: state.user,
         tokens: state.tokens,
+        lastProfileReminderTime: state.lastProfileReminderTime,
       }),
       // Add error handling for storage failures
       onRehydrateStorage: () => (state) => {

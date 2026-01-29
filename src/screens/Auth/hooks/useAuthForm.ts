@@ -3,8 +3,9 @@ import { TextInput, ScrollView, LayoutChangeEvent } from "react-native";
 import { Alert } from "../../../utils/Alert";
 import { authService } from "../../../services/authService";
 import { userInfoService, Gender } from "../../../services/userInfoService";
+import { brandService } from "../../../services/brandService";
 import { useAuthStore } from "../../../store/authStore";
-import { AuthMode, FormData, RegisteredTokens } from "../types";
+import { AuthMode, FormData, RegisteredTokens, BrandOption } from "../types";
 import { INITIAL_FORM_DATA } from "../constants";
 
 export const useAuthForm = () => {
@@ -14,12 +15,26 @@ export const useAuthForm = () => {
   const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  // 注册后用户ID
+  // 注册后用户ID和tokens
   const [registeredUserId, setRegisteredUserId] = useState<number | null>(null);
   const [registeredTokens, setRegisteredTokens] =
     useState<RegisteredTokens | null>(null);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showAgePicker, setShowAgePicker] = useState(false);
+  
+  // 注册成功后显示资料填写 Modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // 品牌选择相关状态
+  const [showBrandPicker, setShowBrandPicker] = useState(false);
+  const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
+  const [loadingBrands, setLoadingBrands] = useState(false);
+  const [loadingMoreBrands, setLoadingMoreBrands] = useState(false);
+  const [brandPage, setBrandPage] = useState(1);
+  const [hasMoreBrands, setHasMoreBrands] = useState(true);
+  const [brandSearchKeyword, setBrandSearchKeyword] = useState("");
+  const brandPageSize = 50;
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 输入框引用
   const phoneInputRef = useRef<TextInput>(null);
@@ -32,7 +47,7 @@ export const useAuthForm = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const inputPositions = useRef<{ [key: string]: number }>({});
 
-  const { loginWithResponse } = useAuthStore();
+  const { loginWithResponse, setProfileCompleted } = useAuthStore();
 
   // 记录输入框位置
   const handleInputLayout = useCallback(
@@ -102,6 +117,78 @@ export const useAuthForm = () => {
     const cleanPhone = formData.phone.replace(/[\s\-]/g, "");
     return `${dialCode}${cleanPhone}`;
   }, [formData.phone, formData.countryCode]);
+
+  // 加载品牌数据（支持分页和搜索）
+  const loadBrands = useCallback(
+    async (page: number = 1, keyword: string = "", reset: boolean = false) => {
+      if (page === 1) {
+        setLoadingBrands(true);
+      } else {
+        setLoadingMoreBrands(true);
+      }
+
+      try {
+        const response = await brandService.getBrands({
+          page,
+          pageSize: brandPageSize,
+          keyword: keyword || undefined,
+        });
+
+        const options: BrandOption[] = response.brands.map((b) => ({
+          id: b.id,
+          name: b.name,
+          category: b.category || null,
+        }));
+
+        if (reset || page === 1) {
+          setBrandOptions(options);
+        } else {
+          setBrandOptions((prev) => [...prev, ...options]);
+        }
+
+        const totalLoaded = page * brandPageSize;
+        setHasMoreBrands(totalLoaded < response.total);
+        setBrandPage(page);
+      } catch (error) {
+        console.error("Failed to load brands:", error);
+      } finally {
+        setLoadingBrands(false);
+        setLoadingMoreBrands(false);
+      }
+    },
+    []
+  );
+
+  // 加载更多品牌
+  const loadMoreBrands = useCallback(() => {
+    if (loadingMoreBrands || !hasMoreBrands) return;
+    loadBrands(brandPage + 1, brandSearchKeyword);
+  }, [loadingMoreBrands, hasMoreBrands, brandPage, brandSearchKeyword, loadBrands]);
+
+  // 搜索品牌（防抖处理）
+  const handleBrandSearch = useCallback(
+    (keyword: string) => {
+      setBrandSearchKeyword(keyword);
+
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      searchTimeoutRef.current = setTimeout(() => {
+        setBrandPage(1);
+        setHasMoreBrands(true);
+        loadBrands(1, keyword, true);
+      }, 300);
+    },
+    [loadBrands]
+  );
+
+  // 当显示品牌选择器时加载品牌
+  useEffect(() => {
+    if (showBrandPicker && brandOptions.length === 0) {
+      loadBrands(1, "", true);
+    }
+  }, [showBrandPicker, brandOptions.length, loadBrands]);
 
   // 倒计时效果
   useEffect(() => {
@@ -258,29 +345,15 @@ export const useAuthForm = () => {
         code: formData.verificationCode,
       });
 
+      // 保存注册信息，用于后续填写资料和登录
       setRegisteredUserId(response.userId);
       setRegisteredTokens({
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       });
 
-      // 临时登录
-      const tempLoginResponse = {
-        userId: response.userId,
-        username: formData.username,
-        phone: fullPhone,
-        is_admin: false,
-        userType: "USER",
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-      };
-      loginWithResponse(tempLoginResponse);
-
-      Alert.show("注册成功: 请完善您的资料", "", 1000);
-
-      setTimeout(() => {
-        setMode("completeProfile");
-      }, 1000);
+      // 显示资料填写 Modal
+      setShowProfileModal(true);
     } catch (error) {
       const message =
         error instanceof Error
@@ -293,37 +366,67 @@ export const useAuthForm = () => {
   }, [
     formData,
     validatePhone,
-    loginWithResponse,
     getFullPhoneNumber,
   ]);
 
-  // 处理完善资料
+  // 处理完善资料（所有字段均为可选，填写完成后直接登录进入主页面）
   const handleCompleteProfile = useCallback(async () => {
-    if (!formData.location) {
-      Alert.show("提示: 请选择您的所在地");
-      return;
-    }
-
-    if (!formData.gender) {
-      Alert.show("提示: 请选择您的性别");
-      return;
-    }
-
-    if (!formData.age) {
-      Alert.show("提示: 请选择您的年龄段");
-      return;
-    }
-
     if (!registeredUserId || !registeredTokens) {
       Alert.show("错误: 请重新注册");
-      setMode("register");
+      setShowProfileModal(false);
       return;
     }
 
     const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      const tempLoginResponse = {
+      // 计算年龄值（如果选择了年龄段）
+      let ageValue = 0;
+      if (formData.age) {
+        if (formData.age === "50+") {
+          ageValue = 55;
+        } else {
+          const ageParts = formData.age.split("-");
+          if (ageParts.length === 2) {
+            ageValue = Math.floor(
+              (parseInt(ageParts[0]) + parseInt(ageParts[1])) / 2
+            );
+          }
+        }
+      }
+
+      // 构建更新数据（仅包含用户填写的字段）
+      const updateData: {
+        location?: string;
+        gender?: Gender;
+        age?: number;
+        preference?: string;
+        bio?: string;
+      } = {};
+
+      if (formData.location) {
+        updateData.location = formData.location;
+      }
+      if (formData.gender) {
+        updateData.gender = formData.gender as Gender;
+      }
+      if (ageValue > 0) {
+        updateData.age = ageValue;
+      }
+      if (formData.preference) {
+        updateData.preference = formData.preference;
+      }
+      if (formData.bio) {
+        updateData.bio = formData.bio;
+      }
+
+      // 只有当用户填写了数据时才调用更新接口
+      if (Object.keys(updateData).length > 0) {
+        await userInfoService.updateUserProfile(registeredUserId, updateData);
+      }
+
+      // 填写完成后直接登录进入主页面
+      const loginResponse = {
         userId: registeredUserId,
         username: formData.username,
         phone: fullPhone,
@@ -332,47 +435,19 @@ export const useAuthForm = () => {
         accessToken: registeredTokens.accessToken,
         refreshToken: registeredTokens.refreshToken,
       };
-      loginWithResponse(tempLoginResponse);
+      loginWithResponse(loginResponse);
+      
+      // 标记资料已完善（注册时填写的）
+      setProfileCompleted(true);
 
-      let ageValue = 25;
-      if (formData.age === "50+") {
-        ageValue = 55;
-      } else {
-        const ageParts = formData.age.split("-");
-        if (ageParts.length === 2) {
-          ageValue = Math.floor(
-            (parseInt(ageParts[0]) + parseInt(ageParts[1])) / 2
-          );
-        }
-      }
+      // 关闭 Modal 并清理状态
+      setShowProfileModal(false);
+      setRegisteredUserId(null);
+      setRegisteredTokens(null);
+      setFormData(INITIAL_FORM_DATA);
 
-      await userInfoService.updateUserProfile(registeredUserId, {
-        location: formData.location,
-        gender: formData.gender as Gender,
-        age: ageValue,
-        preference: formData.preference,
-      });
-
-      Alert.show("资料完善成功: 请使用账号密码登录", "", 1500);
-
-      setTimeout(() => {
-        useAuthStore.getState().logout();
-        setMode("login");
-        setFormData((prev) => ({
-          ...prev,
-          password: "",
-          confirmPassword: "",
-          verificationCode: "",
-          location: "",
-          gender: "",
-          age: "",
-          preference: "",
-        }));
-        setRegisteredUserId(null);
-        setRegisteredTokens(null);
-      }, 1500);
+      Alert.show("注册成功: 欢迎加入！", "", 1000);
     } catch (error) {
-      useAuthStore.getState().logout();
       const message =
         error instanceof Error ? error.message : "保存资料失败，请稍后重试";
       Alert.show("保存失败: " + message);
@@ -508,15 +583,6 @@ export const useAuthForm = () => {
     handleCompleteProfile,
   ]);
 
-  // 跳过资料填写
-  const handleSkipProfile = useCallback(() => {
-    if (registeredTokens && registeredUserId) {
-      useAuthStore.getState().logout();
-    }
-    setMode("login");
-    Alert.show("提示: 您可以稍后在设置中完善资料");
-  }, [registeredTokens, registeredUserId]);
-
   return {
     // 状态
     mode,
@@ -531,6 +597,18 @@ export const useAuthForm = () => {
     setShowLocationPicker,
     showAgePicker,
     setShowAgePicker,
+    showProfileModal,
+    setShowProfileModal,
+    // 品牌选择相关
+    showBrandPicker,
+    setShowBrandPicker,
+    brandOptions,
+    loadingBrands,
+    loadingMoreBrands,
+    hasMoreBrands,
+    brandSearchKeyword,
+    handleBrandSearch,
+    loadMoreBrands,
 
     // 引用
     phoneInputRef,
@@ -550,6 +628,6 @@ export const useAuthForm = () => {
     handlePasswordSubmit,
     handleConfirmPasswordSubmit,
     handleMainAction,
-    handleSkipProfile,
+    handleCompleteProfile,
   };
 };

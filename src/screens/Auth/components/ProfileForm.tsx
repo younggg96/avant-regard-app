@@ -1,11 +1,21 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { Gender } from "../../../services/userInfoService";
-import { FormData } from "../types";
+import { FormData, BrandOption } from "../types";
 import { PROVINCES, AGE_RANGES } from "../constants";
 import { styles } from "../styles";
+import { Alert } from "../../../utils/Alert";
 
 interface ProfileFormProps {
   formData: FormData;
@@ -14,6 +24,16 @@ interface ProfileFormProps {
   setShowLocationPicker: (show: boolean) => void;
   showAgePicker: boolean;
   setShowAgePicker: (show: boolean) => void;
+  // 品牌选择相关
+  showBrandPicker: boolean;
+  setShowBrandPicker: (show: boolean) => void;
+  brandOptions: BrandOption[];
+  loadingBrands: boolean;
+  loadingMoreBrands: boolean;
+  hasMoreBrands: boolean;
+  brandSearchKeyword: string;
+  onBrandSearch: (keyword: string) => void;
+  onLoadMoreBrands: () => void;
 }
 
 export const ProfileForm: React.FC<ProfileFormProps> = ({
@@ -23,9 +43,73 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   setShowLocationPicker,
   showAgePicker,
   setShowAgePicker,
+  showBrandPicker,
+  setShowBrandPicker,
+  brandOptions,
+  loadingBrands,
+  loadingMoreBrands,
+  hasMoreBrands,
+  brandSearchKeyword,
+  onBrandSearch,
+  onLoadMoreBrands,
 }) => {
+  // 切换品牌选择
+  const handleToggleBrand = (brandId: number) => {
+    const currentIds = formData.favoriteBrandIds || [];
+    if (currentIds.includes(brandId)) {
+      setFormData({
+        ...formData,
+        favoriteBrandIds: currentIds.filter((id) => id !== brandId),
+      });
+    } else {
+      if (currentIds.length >= 5) {
+        Alert.show("提示: 最多选择 5 个品牌");
+        return;
+      }
+      setFormData({
+        ...formData,
+        favoriteBrandIds: [...currentIds, brandId],
+      });
+    }
+  };
+
+  // 获取已选品牌名称
+  const getSelectedBrandNames = () => {
+    const selectedIds = formData.favoriteBrandIds || [];
+    return brandOptions
+      .filter((b) => selectedIds.includes(b.id))
+      .map((b) => b.name)
+      .join(", ");
+  };
   return (
     <View style={styles.formContainer}>
+      {/* 提示文字 */}
+      <View style={styles.profileHintContainer}>
+        <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
+        <Text style={styles.profileHintText}>
+          以下信息均为选填，您可以随时在设置中修改
+        </Text>
+      </View>
+
+      {/* 个人简介 */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>个人简介</Text>
+        <TextInput
+          style={[styles.input, styles.bioInput]}
+          placeholder="介绍一下自己..."
+          placeholderTextColor={theme.colors.gray400}
+          value={formData.bio}
+          onChangeText={(text) =>
+            setFormData({ ...formData, bio: text })
+          }
+          maxLength={200}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+        <Text style={styles.charCount}>{formData.bio.length}/200</Text>
+      </View>
+
       {/* 所在地选择 */}
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>所在地</Text>
@@ -164,10 +248,11 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 时尚偏好 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>时尚偏好（选填）</Text>
+        <Text style={styles.inputLabel}>时尚偏好</Text>
         <TextInput
           style={[styles.input, styles.preferenceInput]}
           placeholder="例如：极简主义、街头风格、复古..."
+          placeholderTextColor={theme.colors.gray400}
           value={formData.preference}
           onChangeText={(text) =>
             setFormData({ ...formData, preference: text })
@@ -176,6 +261,156 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           multiline
         />
       </View>
+
+      {/* 喜欢的品牌 */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.inputLabel}>喜欢的品牌（最多5个）</Text>
+        <TouchableOpacity
+          style={styles.pickerButton}
+          onPress={() => setShowBrandPicker(true)}
+        >
+          <Text
+            style={
+              formData.favoriteBrandIds?.length > 0
+                ? styles.pickerText
+                : styles.pickerPlaceholder
+            }
+            numberOfLines={2}
+          >
+            {formData.favoriteBrandIds?.length > 0
+              ? getSelectedBrandNames()
+              : "选择您喜欢的品牌"}
+          </Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
+        </TouchableOpacity>
+        {formData.favoriteBrandIds?.length > 0 && (
+          <Text style={styles.brandSelectedCount}>
+            已选择 {formData.favoriteBrandIds.length}/5
+          </Text>
+        )}
+      </View>
+
+      {/* 品牌选择 Modal */}
+      <Modal
+        visible={showBrandPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowBrandPicker(false)}
+      >
+        <View style={styles.brandModalContainer}>
+          <View style={styles.brandModalHeader}>
+            <Text style={styles.brandModalTitle}>
+              选择喜欢的品牌（{formData.favoriteBrandIds?.length || 0}/5）
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowBrandPicker(false)}
+              style={styles.brandModalCloseButton}
+            >
+              <Ionicons name="close" size={24} color={theme.colors.black} />
+            </TouchableOpacity>
+          </View>
+
+          {/* 搜索框 */}
+          <View style={styles.brandSearchContainer}>
+            <Ionicons name="search" size={18} color={theme.colors.gray400} />
+            <TextInput
+              style={styles.brandSearchInput}
+              placeholder="搜索品牌..."
+              placeholderTextColor={theme.colors.gray400}
+              value={brandSearchKeyword}
+              onChangeText={onBrandSearch}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {brandSearchKeyword.length > 0 && (
+              <TouchableOpacity onPress={() => onBrandSearch("")}>
+                <Ionicons name="close-circle" size={18} color={theme.colors.gray400} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {loadingBrands ? (
+            <View style={styles.brandLoadingContainer}>
+              <ActivityIndicator size="small" color={theme.colors.black} />
+              <Text style={styles.brandLoadingText}>加载中...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={brandOptions}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => {
+                const isSelected = formData.favoriteBrandIds?.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.brandItem,
+                      isSelected && styles.brandItemSelected,
+                    ]}
+                    onPress={() => handleToggleBrand(item.id)}
+                  >
+                    <View style={styles.brandInfo}>
+                      <Text
+                        style={[
+                          styles.brandName,
+                          isSelected && styles.brandNameSelected,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      {item.category && (
+                        <Text style={styles.brandCategory}>{item.category}</Text>
+                      )}
+                    </View>
+                    <View
+                      style={[
+                        styles.brandCheckbox,
+                        isSelected && styles.brandCheckboxSelected,
+                      ]}
+                    >
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={16} color={theme.colors.white} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              showsVerticalScrollIndicator={false}
+              onEndReached={onLoadMoreBrands}
+              onEndReachedThreshold={0.3}
+              ListEmptyComponent={
+                <View style={styles.brandEmptyList}>
+                  <Text style={styles.brandEmptyText}>
+                    {brandSearchKeyword ? "没有找到匹配的品牌" : "暂无品牌"}
+                  </Text>
+                </View>
+              }
+              ListFooterComponent={
+                loadingMoreBrands ? (
+                  <View style={styles.brandLoadMoreContainer}>
+                    <ActivityIndicator size="small" color={theme.colors.black} />
+                    <Text style={styles.brandLoadMoreText}>加载更多...</Text>
+                  </View>
+                ) : hasMoreBrands && brandOptions.length > 0 ? (
+                  <View style={styles.brandLoadMoreContainer}>
+                    <Text style={styles.brandLoadMoreHint}>上滑加载更多</Text>
+                  </View>
+                ) : brandOptions.length > 0 ? (
+                  <View style={styles.brandLoadMoreContainer}>
+                    <Text style={styles.brandLoadMoreHint}>已加载全部品牌</Text>
+                  </View>
+                ) : null
+              }
+            />
+          )}
+
+          <TouchableOpacity
+            style={styles.brandConfirmButton}
+            onPress={() => setShowBrandPicker(false)}
+          >
+            <Text style={styles.brandConfirmButtonText}>确定</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 };

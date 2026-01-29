@@ -27,6 +27,15 @@ export interface FormData {
   gender: Gender | "";
   age: string;
   preference: string;
+  bio: string;
+  favoriteBrandIds: number[];
+}
+
+// 品牌选项类型
+export interface BrandOption {
+  id: number;
+  name: string;
+  category: string | null;
 }
 
 export interface RegisteredTokens {
