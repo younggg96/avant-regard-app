@@ -26,7 +26,6 @@ import {
   ScrollView,
 } from "../components/ui";
 import { theme } from "../theme";
-import ScreenHeader from "../components/ScreenHeader";
 import {
   BuyerStore,
   getAllStores,
@@ -172,8 +171,6 @@ const getCityDisplayName = (city: string): string => {
   const translation = CITY_TRANSLATIONS[city];
   return translation ? `${city} ${translation}` : city;
 };
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const BuyerMapScreen = () => {
   const navigation = useNavigation();
@@ -737,14 +734,36 @@ const BuyerMapScreen = () => {
         </HStack>
       </Box>
 
-      {/* 快速筛选标签 - 浮在地图上方 */}
+      {/* 地图视图 */}
+      <Box flex={1}>
+        {isLoading ? (
+          <VStack flex={1} justifyContent="center" alignItems="center">
+            <ActivityIndicator size="small" color={theme.colors.black} />
+            <Text color="$gray300" mt="$md">加载中...</Text>
+          </VStack>
+        ) : (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={initialRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+            rotateEnabled={false}
+          >
+            {filteredStores.map(renderMarker)}
+          </MapView>
+        )}
+      </Box>
+
+      {/* 快速筛选标签 - 浮在地图上方，位于搜索栏下方 (渲染在 Map 之后以确保显示在上层) */}
       <Box
         position="absolute"
-        top={110}
+        top={120}
         left={0}
         right={0}
-        zIndex={10}
-        sx={{ elevation: 5 }}
+        zIndex={100}
+        sx={{ elevation: 10 }}
       >
         <ScrollView
           horizontal
@@ -924,28 +943,6 @@ const BuyerMapScreen = () => {
               </Pressable>
             ))}
           </ScrollView>
-        )}
-      </Box>
-
-      {/* 地图视图 */}
-      <Box flex={1}>
-        {isLoading ? (
-          <VStack flex={1} justifyContent="center" alignItems="center">
-            <ActivityIndicator size="small" color={theme.colors.black} />
-            <Text color="$gray300" mt="$md">加载中...</Text>
-          </VStack>
-        ) : (
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={PROVIDER_DEFAULT}
-            initialRegion={initialRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            rotateEnabled={false}
-          >
-            {filteredStores.map(renderMarker)}
-          </MapView>
         )}
       </Box>
 

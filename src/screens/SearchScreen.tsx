@@ -547,7 +547,7 @@ const SearchScreen = () => {
           px="$lg"
           py="$sm"
           bg="$black"
-          rounded="$md"
+          rounded="$sm"
         >
           <Text color="$white" fontSize="$sm" fontWeight="$semibold">
             搜索
