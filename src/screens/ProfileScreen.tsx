@@ -5,8 +5,6 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Dimensions,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   ScrollView as RNScrollView,
   View,
   Text as RNText,
@@ -14,10 +12,18 @@ import {
   Image as RNImage,
   StatusBar,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  interpolate,
+  Extrapolation,
+  runOnJS,
+} from "react-native-reanimated";
 import {
   Box,
   Text,
@@ -62,22 +68,34 @@ const initialTabState: TabData = {
   count: 0,
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// 封面高度常量
-const COVER_HEIGHT = 220;
-const AVATAR_SIZE = 90;
+// --- 布局常量 ---
+const COVER_HEIGHT = 240;
+const AVATAR_SIZE = 80;
+const AVATAR_SIZE_SMALL = 32;
 const AVATAR_BORDER = 4;
+const HEADER_CONTENT_HEIGHT = 44;
+const TAB_BAR_HEIGHT = 44;
+
+const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user, logout, updateProfile } = useAuthStore();
+
+  // 动态计算 Header 总高度 (刘海 + 44px)
+  const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
+  // 计算准确的吸顶/变色阈值
+  const headerFadeThreshold = COVER_HEIGHT - headerTotalHeight;
+
   const [activeTab, setActiveTab] = useState<TabType>("published");
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [followingUsersCount, setFollowingUsersCount] = useState(0);
@@ -86,8 +104,9 @@ const ProfileScreen = () => {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
+  const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
-  const contentScrollViewRef = useRef<RNScrollView>(null);
+  const scrollY = useSharedValue(0);
 
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     published: { ...initialTabState },
@@ -368,42 +387,77 @@ const ProfileScreen = () => {
     setRefreshing(false);
   };
 
-  const handleTabSwipe = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, layoutMeasurement } = event.nativeEvent;
-    const pageIndex = Math.round(contentOffset.x / layoutMeasurement.width);
-    const tabIds: TabType[] = [
-      "published",
-      "pending",
-      "liked",
-      "saved",
-      "draft",
-    ];
-    if (
-      pageIndex >= 0 &&
-      pageIndex < tabIds.length &&
-      tabIds[pageIndex] !== activeTab
-    ) {
-      setActiveTab(tabIds[pageIndex]);
-    }
-  };
-
   const handleTabPress = (tabId: TabType) => {
-    const tabIds: TabType[] = [
-      "published",
-      "pending",
-      "liked",
-      "saved",
-      "draft",
-    ];
-    const index = tabIds.indexOf(tabId);
-    if (index >= 0 && contentScrollViewRef.current) {
-      contentScrollViewRef.current.scrollTo({
-        x: index * SCREEN_WIDTH,
-        animated: true,
-      });
-    }
     setActiveTab(tabId);
   };
+
+  // 更新折叠状态
+  const updateCollapsedState = useCallback((collapsed: boolean) => {
+    setIsCollapsed(collapsed);
+  }, []);
+
+  // 滚动事件处理
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+      const collapsed = event.contentOffset.y > headerFadeThreshold;
+      runOnJS(updateCollapsedState)(collapsed);
+    },
+  });
+
+  // 1. 封面视差动画
+  const coverAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [0, headerFadeThreshold],
+      [0, headerFadeThreshold / 2],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ translateY }] };
+  });
+
+  // 2. 吸顶 Header 背景透明度
+  const collapsedHeaderAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [headerFadeThreshold - 20, headerFadeThreshold],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  // 3. 顶部透明按钮区 渐隐
+  const topActionsAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [headerFadeThreshold - 20, headerFadeThreshold],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  // 4. 吸顶 Tab 栏动画
+  const stickyTabBarAnimatedStyle = useAnimatedStyle(() => {
+    if (tabBarAnchorY.value === 9999) return { opacity: 0, zIndex: -1 };
+    const stickyTriggerOffset = tabBarAnchorY.value - headerTotalHeight;
+    const opacity = interpolate(
+      scrollY.value,
+      [stickyTriggerOffset, stickyTriggerOffset + 1],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    const zIndex = scrollY.value > stickyTriggerOffset ? 99 : -1;
+    return { opacity, zIndex };
+  });
+
+  // 5. 内联 Tab 栏动画
+  const inlineTabBarAnimatedStyle = useAnimatedStyle(() => {
+    return { opacity: 1 };
+  });
+
+  const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
   const getGenderText = (gender?: string): string => {
     switch (gender) {
@@ -507,319 +561,304 @@ const ProfileScreen = () => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+  const avatarUri = userInfo?.avatarUrl || user?.avatar;
+  const statusBarStyle = isCollapsed ? "dark-content" : "light-content";
 
-      {/* 封面图片区域 - 小红书风格 */}
-      <View style={[styles.coverContainer]}>
-        {coverImage ? (
-          <RNImage
-            source={{ uri: coverImage }}
-            style={styles.coverImage}
-            resizeMode="cover"
+  // 渲染帖子内容
+  const renderPostsContent = () => {
+    const currentTabData = tabsData[activeTab];
+    const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
+
+    if (shouldShowLoading) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <ActivityIndicator color={theme.colors.gray400} />
+          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+        </VStack>
+      );
+    }
+
+    if (currentTabData.posts.length > 0) {
+      return (
+        <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
+          {currentTabData.posts.map((post) => (
+            <Box key={post.id} width="48%" mb="$md">
+              <Pressable
+                onPress={() => handlePostPress(post)}
+                onLongPress={() => {
+                  if (activeTab === "published" || activeTab === "draft" || activeTab === "pending") {
+                    handleDeletePost(post);
+                  }
+                }}
+              >
+                <SimplePostCard post={post} onPress={() => handlePostPress(post)} />
+              </Pressable>
+            </Box>
+          ))}
+        </HStack>
+      );
+    }
+
+    if (currentTabData.hasLoaded) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <Ionicons
+            name={
+              activeTab === "saved" ? "bookmark-outline" :
+                activeTab === "liked" ? "heart-outline" :
+                  activeTab === "pending" ? "time-outline" : "document-text-outline"
+            }
+            size={24}
+            color={theme.colors.gray300}
           />
-        ) : (
-          <View style={styles.defaultCover} />
-        )}
-        {/* 渐变遮罩 */}
-        <LinearGradient
-          colors={["rgba(0,0,0,0.3)", "transparent", "rgba(0,0,0,0.4)"]}
-          locations={[0, 0.5, 1]}
-          style={styles.coverGradient}
-        />
-        {/* 顶部操作栏 */}
-        <View style={[styles.topActions, { top: insets.top + 8 }]}>
-          <Pressable style={styles.actionButton}>
-            <Ionicons name="menu-outline" size={24} color="white" />
-          </Pressable>
-          <HStack gap="$sm">
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => (navigation as any).navigate("Notifications")}
-            >
-              <View style={{ position: "relative" }}>
-                <Ionicons name="notifications-outline" size={22} color="white" />
-                {unreadNotificationCount > 0 && (
-                  <View style={styles.badge}>
-                    <RNText style={styles.badgeText}>
-                      {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                    </RNText>
-                  </View>
-                )}
-              </View>
-            </Pressable>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => (navigation as any).navigate("Settings")}
-            >
-              <Ionicons name="settings-outline" size={22} color="white" />
-            </Pressable>
-            <Pressable style={styles.actionButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={22} color="white" />
-            </Pressable>
-          </HStack>
-        </View>
-      </View>
+          <Text color="$gray400" mt="$md">
+            {activeTab === "published" && "还没有发布内容"}
+            {activeTab === "pending" && "没有待审核的帖子"}
+            {activeTab === "draft" && "还没有草稿"}
+            {activeTab === "saved" && "还没有收藏帖子"}
+            {activeTab === "liked" && "还没有点赞帖子"}
+          </Text>
+        </VStack>
+      );
+    }
+    return null;
+  };
 
-      {/* 头部信息区域 - 小红书风格 */}
-      <View style={styles.profileInfo}>
-        {/* 头像和编辑按钮行 */}
-        <View style={styles.avatarRow}>
-          <View style={styles.avatarWrapper}>
-            {userInfo?.avatarUrl || user?.avatar ? (
-              <RNImage
-                source={{ uri: userInfo?.avatarUrl || user?.avatar }}
-                style={styles.avatar}
-              />
+  return (
+    <View style={[styles.container, { backgroundColor: '#FFF' }]}>
+      <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />
+
+      {/* --- 吸顶头部 (Sticky Header - 白色背景) --- */}
+      <Animated.View
+        style={[
+          styles.collapsedHeader,
+          { paddingTop: insets.top, height: headerTotalHeight },
+          collapsedHeaderAnimatedStyle,
+        ]}
+        pointerEvents={isCollapsed ? "auto" : "none"}
+      >
+        <View style={[styles.collapsedHeaderBg, { backgroundColor: '#FFF' }]} />
+        <View style={[styles.collapsedHeaderContent, { height: HEADER_CONTENT_HEIGHT }]}>
+          <Pressable
+            style={styles.headerButton}
+            onPress={() => (navigation as any).navigate("Notifications")}
+          >
+            <View style={{ position: "relative" }}>
+              <Ionicons name="notifications-outline" size={20} color="#1A1A1A" />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.badge}>
+                  <RNText style={styles.badgeText}>
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </RNText>
+                </View>
+              )}
+            </View>
+          </Pressable>
+          <View style={styles.collapsedAvatarContainer}>
+            {avatarUri ? (
+              <RNImage source={{ uri: avatarUri }} style={styles.collapsedAvatar} />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <RNText style={styles.avatarText}>
-                  {(userInfo?.username || user?.username)
-                    ?.slice(0, 2)
-                    .toUpperCase() || "AG"}
+              <View style={[styles.collapsedAvatar, styles.avatarPlaceholder]}>
+                <RNText style={styles.avatarTextSmall}>
+                  {(userInfo?.username || user?.username)?.slice(0, 1).toUpperCase() || "U"}
                 </RNText>
               </View>
             )}
+          </View>
+          <View style={styles.headerRightButtons}>
             <Pressable
-              style={styles.avatarAddButton}
-              onPress={() => (navigation as any).navigate("EditProfile")}
+              style={styles.headerButton}
+              onPress={() => (navigation as any).navigate("Settings")}
             >
-              <Ionicons name="add" size={14} color="white" />
+              <Ionicons name="settings-outline" size={20} color="#1A1A1A" />
             </Pressable>
           </View>
         </View>
+      </Animated.View>
 
-        {/* 用户名 */}
-        <VStack mt="$sm">
-          <Text fontSize="$xl" fontWeight="$bold" color="$black">
-            {userInfo?.username || user?.username || "用户"}
-          </Text>
-          {user?.userId && (
-            <Text fontSize="$xs" color="$gray400" mt="$xs">
-              用户号：{user.userId}
-            </Text>
-          )}
-        </VStack>
-
-        {/* Bio */}
-        <Text fontSize="$sm" color="$gray400" numberOfLines={2}>
-          {userInfo?.bio || "点击编辑个人简介..."}
-        </Text>
-
-        {/* 标签 */}
-        <HStack flexWrap="wrap" gap="$sm" mt="$sm">
-          {userProfile?.age != null && userProfile.age > 0 && (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
-              <Text fontSize="$xs" color="$gray400">
-                {getGenderText(userProfile?.gender)} {userProfile.age}岁
-              </Text>
-            </Box>
-          )}
-          {userInfo?.location && (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
-              <Text fontSize="$xs" color="$gray400">
-                {userInfo.location}
-              </Text>
-            </Box>
-          )}
-          {userProfile?.preference && (
-            <Box bg="$gray100" px="$sm" py="$xs" borderRadius={14}>
-              <Text fontSize="$xs" color="$gray400">
-                {userProfile.preference}
-              </Text>
-            </Box>
-          )}
-        </HStack>
-
-        {/* 统计数据 */}
-        <HStack alignItems="center" gap="$lg" mt="$md">
-          <Pressable
-            onPress={() =>
-              (navigation as any).navigate("FollowingUsers", {
-                userId: user?.userId,
-              })
-            }
+      {/* --- 吸顶 Tab 栏 (Sticky Tab Bar) --- */}
+      <Animated.View
+        style={[
+          styles.stickyTabBar,
+          { top: headerTotalHeight },
+          stickyTabBarAnimatedStyle,
+        ]}
+        pointerEvents="box-none"
+      >
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF' }}>
+          <RNScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabScrollContent}
           >
-            <HStack alignItems="baseline" gap="$xs">
-              <Text fontSize="$lg" fontWeight="$bold" color="$black">
-                {followingUsersCount}
-              </Text>
-              <Text fontSize="$xs" color="$gray300">
-                关注
-              </Text>
-            </HStack>
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              (navigation as any).navigate("Followers", {
-                userId: userInfo?.userId,
-              })
-            }
-          >
-            <HStack alignItems="baseline" gap="$xs">
-              <Text fontSize="$lg" fontWeight="$bold" color="$black">
-                {followersCount}
-              </Text>
-              <Text fontSize="$xs" color="$gray300">
-                粉丝
-              </Text>
-            </HStack>
-          </Pressable>
-          <HStack alignItems="baseline" gap="$xs">
-            <Text fontSize="$lg" fontWeight="$bold" color="$black">
-              {tabsData.published.count > 0
-                ? tabsData.published.count
-                : userInfo?.userId
-                  ? "0"
-                  : "-"}
-            </Text>
-            <Text fontSize="$xs" color="$gray300">
-              获赞与收藏
-            </Text>
-          </HStack>
-        </HStack>
-      </View>
+            {tabs.map((tab) => (
+              <Pressable key={tab.id} style={styles.tabItem} onPress={() => handleTabPress(tab.id)}>
+                <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                  {tab.label}
+                </RNText>
+                {activeTab === tab.id && <View style={styles.tabIndicator} />}
+              </Pressable>
+            ))}
+          </RNScrollView>
+        </View>
+      </Animated.View>
 
-      {/* 帖子区域 - 保持原有 Tab 样式 */}
-      <Box flex={1}>
-        <RNScrollView
-          ref={tabScrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.gray100,
-            maxHeight: 44,
-          }}
-          contentContainerStyle={{ paddingHorizontal: theme.spacing.md }}
-        >
-          {tabs.map((tab) => (
-            <Pressable
-              key={tab.id}
-              py="$sm"
-              mr="$lg"
-              position="relative"
-              onPress={() => handleTabPress(tab.id)}
-            >
-              <Text
-                color={activeTab === tab.id ? "$black" : "$gray300"}
-                fontWeight={activeTab === tab.id ? "$semibold" : "$medium"}
-              >
-                {tab.label}
-              </Text>
-              {activeTab === tab.id && (
-                <Box
-                  position="absolute"
-                  bottom={0}
-                  left={0}
-                  right={0}
-                  height={2}
-                  bg="$black"
-                />
-              )}
+      {/* --- 滚动内容 --- */}
+      <AnimatedScrollView
+        style={styles.scrollView}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            progressViewOffset={headerTotalHeight}
+          />
+        }
+      >
+        {/* 封面 */}
+        <Animated.View style={[styles.coverContainer, coverAnimatedStyle]}>
+          {coverImage ? (
+            <RNImage source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
+          ) : (
+            <View style={styles.defaultCover} />
+          )}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.5)"]}
+            locations={[0, 0.4, 1]}
+            style={styles.coverGradient}
+          />
+          {/* 透明 Header 时的顶部按钮 */}
+          <Animated.View style={[styles.topActions, { top: insets.top + 8 }, topActionsAnimatedStyle]}>
+            <Pressable>
             </Pressable>
-          ))}
-        </RNScrollView>
-
-        <RNScrollView
-          ref={contentScrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleTabSwipe}
-          scrollEventThrottle={16}
-          style={{ flex: 1 }}
-          nestedScrollEnabled={true}
-        >
-          {tabs.map((tab) => {
-            const currentTabData = tabsData[tab.id];
-            const isCurrentTab = activeTab === tab.id;
-            const shouldShowLoading =
-              currentTabData.isLoading && !currentTabData.hasLoaded;
-
-            return (
-              <RNScrollView
-                key={tab.id}
-                style={{ width: SCREEN_WIDTH }}
-                contentContainerStyle={{
-                  flexGrow: 1,
-                  paddingBottom: theme.spacing.xl,
-                }}
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing && isCurrentTab}
-                    onRefresh={onRefresh}
-                  />
-                }
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled={true}
+            <HStack gap="$sm">
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => (navigation as any).navigate("Notifications")}
               >
-                {shouldShowLoading ? (
-                  <VStack alignItems="center" justifyContent="center" py="$xl">
-                    <ActivityIndicator color={theme.colors.gray400} />
-                    <Text fontSize="$sm" color="$gray400" mt="$sm">
-                      加载中...
-                    </Text>
-                  </VStack>
-                ) : currentTabData.posts.length > 0 ? (
-                  <HStack
-                    flexWrap="wrap"
-                    px="$md"
-                    pt="$sm"
-                    justifyContent="space-between"
-                  >
-                    {currentTabData.posts.map((post) => (
-                      <Box key={post.id} width="48%" mb="$md" position="relative">
-                        <Pressable
-                          onPress={() => handlePostPress(post)}
-                          onLongPress={() => {
-                            if (
-                              tab.id === "published" ||
-                              tab.id === "draft" ||
-                              tab.id === "pending"
-                            ) {
-                              handleDeletePost(post);
-                            }
-                          }}
-                        >
-                          <SimplePostCard
-                            post={post}
-                            onPress={() => handlePostPress(post)}
-                          />
-                        </Pressable>
-                      </Box>
-                    ))}
-                  </HStack>
-                ) : currentTabData.hasLoaded ? (
-                  <VStack alignItems="center" justifyContent="center" py="$xl">
-                    <Ionicons
-                      name={
-                        tab.id === "saved"
-                          ? "bookmark-outline"
-                          : tab.id === "liked"
-                            ? "heart-outline"
-                            : tab.id === "pending"
-                              ? "time-outline"
-                              : "document-text-outline"
-                      }
-                      size={24}
-                      color={theme.colors.gray300}
-                    />
-                    <Text color="$gray400" mt="$md">
-                      {tab.id === "published" && "还没有发布内容"}
-                      {tab.id === "pending" && "没有待审核的帖子"}
-                      {tab.id === "draft" && "还没有草稿"}
-                      {tab.id === "saved" && "还没有收藏帖子"}
-                      {tab.id === "liked" && "还没有点赞帖子"}
-                    </Text>
-                  </VStack>
-                ) : null}
-              </RNScrollView>
-            );
-          })}
-        </RNScrollView>
-      </Box>
+                <View style={{ position: "relative" }}>
+                  <Ionicons name="notifications-outline" size={22} color="white" />
+                  {unreadNotificationCount > 0 && (
+                    <View style={styles.badge}>
+                      <RNText style={styles.badgeText}>
+                        {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                      </RNText>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+              <Pressable
+                style={styles.actionButton}
+                onPress={() => (navigation as any).navigate("Settings")}
+              >
+                <Ionicons name="settings-outline" size={22} color="white" />
+              </Pressable>
+            </HStack>
+          </Animated.View>
+        </Animated.View>
+
+        {/* 用户信息 */}
+        <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
+          <View style={styles.avatarRow}>
+            <View style={styles.avatarWrapper}>
+              {avatarUri ? (
+                <RNImage source={{ uri: avatarUri }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <RNText style={styles.avatarText}>
+                    {(userInfo?.username || user?.username)?.slice(0, 2).toUpperCase() || "AG"}
+                  </RNText>
+                </View>
+              )}
+              <Pressable
+                style={styles.avatarAddButton}
+                onPress={() => (navigation as any).navigate("EditProfile")}
+              >
+                <Ionicons name="add" size={14} color="white" />
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.userNameSection}>
+            <RNText style={styles.userName}>{userInfo?.username || user?.username || "用户"}</RNText>
+            {user?.userId && (
+              <RNText style={styles.userIdText}>用户号：{user.userId}</RNText>
+            )}
+            <RNText style={styles.bio} numberOfLines={2}>
+              {userInfo?.bio || "点击编辑个人简介..."}
+            </RNText>
+          </View>
+
+          <View style={styles.tagsContainer}>
+            {userProfile?.age != null && userProfile.age > 0 && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}岁</RNText>
+              </View>
+            )}
+            {userInfo?.location && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>{userInfo.location}</RNText>
+              </View>
+            )}
+            {userProfile?.preference && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>{userProfile.preference}</RNText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.statsContainer}>
+            <Pressable style={styles.statItem} onPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}>
+              <RNText style={styles.statNumber}>{followingUsersCount}</RNText>
+              <RNText style={styles.statLabel}>关注</RNText>
+            </Pressable>
+            <Pressable style={styles.statItem} onPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}>
+              <RNText style={styles.statNumber}>{followersCount}</RNText>
+              <RNText style={styles.statLabel}>粉丝</RNText>
+            </Pressable>
+            <View style={styles.statItem}>
+              <RNText style={styles.statNumber}>
+                {tabsData.published.count > 0 ? tabsData.published.count : userInfo?.userId ? "0" : "-"}
+              </RNText>
+              <RNText style={styles.statLabel}>获赞与收藏</RNText>
+            </View>
+          </View>
+        </View>
+
+        {/* --- Inline Tab 栏 (随页面滚动) --- */}
+        <Animated.View
+          style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
+          onLayout={(event) => {
+            const layoutY = event.nativeEvent.layout.y;
+            if (Math.abs(tabBarAnchorY.value - layoutY) > 1) {
+              tabBarAnchorY.value = layoutY;
+            }
+          }}
+        >
+          <RNScrollView
+            ref={tabScrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabScrollContent}
+          >
+            {tabs.map((tab) => (
+              <Pressable key={tab.id} style={styles.tabItem} onPress={() => handleTabPress(tab.id)}>
+                <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                  {tab.label}
+                </RNText>
+                {activeTab === tab.id && <View style={styles.tabIndicator} />}
+              </Pressable>
+            ))}
+          </RNScrollView>
+        </Animated.View>
+
+        {/* 帖子列表 */}
+        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: '#FFF' }]}>
+          {renderPostsContent()}
+        </View>
+      </AnimatedScrollView>
 
       {/* Delete Confirmation Dialog */}
       <Modal
@@ -931,12 +970,13 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
-  // 封面图片样式 - 小红书风格
+  scrollView: {
+    flex: 1,
+  },
+  // 封面图片
   coverContainer: {
     height: COVER_HEIGHT,
-    position: "relative",
     overflow: "hidden",
   },
   coverImage: {
@@ -954,7 +994,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#2C2C2C",
+    backgroundColor: theme.colors.black,
   },
   coverGradient: {
     position: "absolute",
@@ -965,19 +1005,68 @@ const styles = StyleSheet.create({
   },
   topActions: {
     position: "absolute",
-    left: 16,
-    right: 16,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    zIndex: 10,
   },
   actionButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: theme.borderRadius.sm,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  // 折叠头部
+  collapsedHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#E0E0E0",
+  },
+  collapsedHeaderBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  collapsedHeaderContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+  },
+  headerButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  collapsedAvatarContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  collapsedAvatar: {
+    width: AVATAR_SIZE_SMALL,
+    height: AVATAR_SIZE_SMALL,
+    borderRadius: AVATAR_SIZE_SMALL / 2,
+    backgroundColor: theme.colors.gray200,
+  },
+  avatarTextSmall: {
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  headerRightButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   badge: {
     position: "absolute",
@@ -996,10 +1085,19 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "bold",
   },
-  // 头部信息样式 - 小红书风格
+  // 吸顶 Tab 栏
+  stickyTabBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 99,
+    height: TAB_BAR_HEIGHT,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  // 用户信息
   profileInfo: {
-    backgroundColor: theme.colors.white,
-    paddingHorizontal: 16,
     paddingBottom: 16,
   },
   avatarRow: {
@@ -1007,26 +1105,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     marginTop: -(AVATAR_SIZE / 2),
+    paddingHorizontal: 16,
   },
   avatarWrapper: {
+    borderRadius: (AVATAR_SIZE + AVATAR_BORDER * 2) / 2,
+    borderWidth: AVATAR_BORDER,
+    borderColor: '#FFF',
     position: "relative",
   },
   avatar: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
-    borderWidth: AVATAR_BORDER,
-    borderColor: theme.colors.white,
     backgroundColor: theme.colors.gray200,
   },
   avatarPlaceholder: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: theme.colors.black,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    color: "#FFD700",
-    fontSize: 24,
+    color: theme.colors.white,
+    fontSize: 22,
     fontWeight: "bold",
   },
   avatarAddButton: {
@@ -1040,36 +1140,102 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: theme.colors.white,
+    borderColor: '#FFF',
   },
-  actionButtonsRow: {
+  userNameSection: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: theme.colors.black,
+  },
+  userIdText: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    marginTop: 2,
+  },
+  bio: {
+    fontSize: 14,
+    color: theme.colors.gray600,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  tag: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: theme.colors.gray100,
+  },
+  tagText: {
+    fontSize: 12,
+    color: theme.colors.gray600,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 24,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: theme.colors.black,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: theme.colors.gray600,
+  },
+  // Tab 栏
+  tabBarContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
   },
-  editProfileButton: {
+  tabScrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    backgroundColor: theme.colors.white,
+    flex: 1,
   },
-  editProfileText: {
-    fontSize: 14,
+  tabItem: {
+    paddingVertical: 12,
+    marginRight: 24,
+    position: "relative",
+  },
+  tabText: {
+    fontSize: 15,
+    color: theme.colors.gray600,
     fontWeight: "500",
-    color: "#333",
   },
-  settingsIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    backgroundColor: theme.colors.white,
-    justifyContent: "center",
-    alignItems: "center",
+  tabTextActive: {
+    color: theme.colors.black,
+    fontWeight: "600",
+  },
+  tabIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: theme.colors.black,
+    borderRadius: 1,
+  },
+  // 帖子
+  postsContainer: {
+    paddingBottom: theme.spacing.xl,
   },
 });
 

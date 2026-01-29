@@ -459,8 +459,6 @@ const UserProfileScreen = () => {
     return { opacity };
   });
 
-  // 注意：移除了 userInfoAnimatedStyle 对 profileInfo 的控制，让用户信息自然滚动，不消失。
-
   // 4. 吸顶 Tab 栏动画
   const stickyTabBarAnimatedStyle = useAnimatedStyle(() => {
     if (tabBarAnchorY.value === 9999) return { opacity: 0, zIndex: -1 };

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
+import { Alert } from "../utils/Alert";
 
 interface SettingItem {
   id: string;
@@ -28,7 +29,14 @@ interface SettingItem {
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    Alert.show("正在退出...");
+    setTimeout(() => {
+      logout();
+    }, 500);
+  };
 
   // 基础设置项
   const baseSections: { title: string; items: SettingItem[] }[] = [
@@ -161,6 +169,12 @@ const SettingsScreen = () => {
           </View>
         ))}
 
+        {/* 退出登录按钮 */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+          <Text style={styles.logoutText}>退出登录</Text>
+        </TouchableOpacity>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>Avant Regard v1.0.0</Text>
           <Text style={styles.footerText}>© 2024 时装档案</Text>
@@ -213,6 +227,24 @@ const styles = StyleSheet.create({
   rightText: {
     ...theme.typography.caption,
     fontWeight: "500",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.white,
+  },
+  logoutText: {
+    ...theme.typography.body,
+    color: theme.colors.error,
+    fontWeight: "500",
+    marginLeft: theme.spacing.sm,
   },
   footer: {
     alignItems: "center",
