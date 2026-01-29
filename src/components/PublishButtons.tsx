@@ -32,7 +32,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
       px="$lg"
       py="$md"
       borderTopWidth={1}
-      borderTopColor="$gray100"
+      borderTopColor="$gray200"
     >
       <HStack>
         {showDraftButton && (
@@ -40,7 +40,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
             flex={1}
             py="$md"
             mr="$sm"
-            bg="$gray100"
+            bg="$gray200"
             rounded="$md"
             onPress={draftDisabled ? undefined : onSaveDraft}
             opacity={draftDisabled ? 0.6 : 1}
@@ -62,7 +62,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
           flex={showDraftButton ? 2 : 1}
           py="$md"
           ml={showDraftButton ? "$sm" : undefined}
-          bg={publishDisabled ? "$gray300" : "$accent"}
+          bg={publishDisabled ? "$gray200" : "$accent"}
           rounded="$md"
           onPress={publishDisabled ? undefined : onPublish}
           opacity={publishDisabled ? 0.6 : 1}

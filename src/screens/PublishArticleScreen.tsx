@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
-  Modal,
   Keyboard,
   Platform,
   KeyboardAvoidingView,
@@ -20,10 +19,8 @@ import {
   Box,
   Text,
   ScrollView,
-  Pressable,
   HStack,
   Input,
-  Image,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -60,14 +57,12 @@ const PublishArticleScreen = () => {
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   // 编辑模式：保存草稿 ID 用于更新
-  const [draftPostId, setDraftPostId] = useState<number | null>(
+  const [draftPostId] = useState<number | null>(
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
 
   // 判断是否编辑已发布/审核中的帖子（需要重新审核）
   const isEditingPublishedPost = editMode && draftPost?.auditStatus;
-
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {
@@ -261,7 +256,6 @@ const PublishArticleScreen = () => {
     setContent("");
     setHtmlContent("");
     setCoverImage(null);
-    setSelectedTags([]);
     richText.current?.setContentHTML("");
   };
 
@@ -281,21 +275,32 @@ const PublishArticleScreen = () => {
         result = await ImagePicker.launchCameraAsync({
           allowsEditing: true,
           aspect: [4, 3],
-          quality: 1.0,
+          quality: 0.8,
         });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
           aspect: [4, 3],
-          quality: 1.0,
+          quality: 0.8,
         });
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
-        richText.current?.insertImage(imageUri);
-        Alert.show("图片已插入", "", 1500);
+
+        // 先上传图片到服务器，获取远程 URL 后再插入
+        setUploadProgress("上传图片中...");
+        try {
+          const uploadedUrl = await postService.uploadImage(imageUri);
+          richText.current?.insertImage(uploadedUrl);
+          Alert.show("图片已插入", "", 1500);
+        } catch (uploadError) {
+          console.error("Image upload error:", uploadError);
+          Alert.show("图片上传失败，请重试");
+        } finally {
+          setUploadProgress(null);
+        }
       }
     } catch (error) {
       console.error("Image selection error:", error);
@@ -401,7 +406,7 @@ const PublishArticleScreen = () => {
                   actions.alignRight,
                   actions.code,
                   actions.line,
-                  "insertImage",
+                  actions.insertImage,
                 ]}
                 iconMap={{
                   insertImage: ({ tintColor }: { tintColor: string }) => (
@@ -458,20 +463,20 @@ const PublishArticleScreen = () => {
           </Box>
         </ScrollView>
 
-        {/* Bottom Buttons */}
-        <PublishButtons
-          onSaveDraft={handleSaveDraft}
-          onPublish={handlePublish}
-          publishDisabled={!canPublish() || isPublishing || isSavingDraft}
-          draftDisabled={isPublishing || isSavingDraft}
-          publishButtonText={
-            isPublishing ? uploadProgress || "发布中..." : "发布"
-          }
-          draftButtonText={
-            isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
-          }
-        />
       </KeyboardAvoidingView>
+      {/* Bottom Buttons */}
+      <PublishButtons
+        onSaveDraft={handleSaveDraft}
+        onPublish={handlePublish}
+        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+        draftDisabled={isPublishing || isSavingDraft}
+        publishButtonText={
+          isPublishing ? uploadProgress || "发布中..." : "发布"
+        }
+        draftButtonText={
+          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+        }
+      />
 
       {/* Modals */}
       <ImagePickerModal
