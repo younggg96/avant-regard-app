@@ -496,7 +496,7 @@ const AdminScreen = () => {
   const handleUploadBannerImage = async () => {
     // 使用 expo-image-picker 选择图片
     const ImagePicker = require("expo-image-picker");
-    
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("权限不足", "需要访问相册权限才能上传图片");
@@ -512,16 +512,16 @@ const AdminScreen = () => {
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      
+
       try {
         setBannerImageUploading(true);
-        
+
         // 上传图片到服务器
         const formData = new FormData();
         const filename = asset.uri.split("/").pop() || "banner.jpg";
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : "image/jpeg";
-        
+
         formData.append("file", {
           uri: asset.uri,
           name: filename,
@@ -541,7 +541,7 @@ const AdminScreen = () => {
         );
 
         const data = await response.json();
-        
+
         if (data.code === 0 && data.data?.url) {
           setBannerForm(prev => ({ ...prev, image_url: data.data.url }));
           Alert.alert("成功", "图片上传成功");
@@ -827,12 +827,12 @@ const AdminScreen = () => {
     <ScrollView
       style={styles.commentsList}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {commentsLoading && comments.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator  color={theme.colors.black} />
+          <ActivityIndicator color={theme.colors.black} />
           <Text style={styles.loadingText}>加载中...</Text>
         </View>
       ) : comments.length === 0 ? (
@@ -906,7 +906,7 @@ const AdminScreen = () => {
         style={styles.bannerPreviewImage}
         resizeMode="cover"
       />
-      
+
       {/* 状态标签 */}
       <View style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
         <Text style={styles.bannerStatusText}>{banner.isActive ? "启用" : "禁用"}</Text>
@@ -998,8 +998,13 @@ const AdminScreen = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title="管理员后台" showBack={true} />
 
-      {/* 标签页切换 */}
-      <View style={styles.tabContainer}>
+      {/* 标签页切换 - 可横向滑动 */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabScrollContainer}
+        contentContainerStyle={styles.tabContentContainer}
+      >
         <TouchableOpacity
           style={[styles.tab, activeTab === "pending" && styles.tabActive]}
           onPress={() => setActiveTab("pending")}
@@ -1068,7 +1073,7 @@ const AdminScreen = () => {
             </View>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {/* 批量操作工具栏 */}
       {activeTab === "pending" && pendingPosts.length > 0 && (
@@ -1107,7 +1112,7 @@ const AdminScreen = () => {
                   disabled={actionLoading || selectedPostIds.size === 0}
                 >
                   {actionLoading ? (
-                    <ActivityIndicator  color={theme.colors.white} />
+                    <ActivityIndicator color={theme.colors.white} />
                   ) : (
                     <>
                       <Ionicons name="checkmark-circle" size={16} color={theme.colors.white} />
@@ -1136,12 +1141,12 @@ const AdminScreen = () => {
           style={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
           {loading && !refreshing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator  color={theme.colors.black} />
+              <ActivityIndicator color={theme.colors.black} />
               <Text style={styles.loadingText}>加载中...</Text>
             </View>
           ) : pendingPosts.length === 0 ? (
@@ -1196,7 +1201,7 @@ const AdminScreen = () => {
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <ActivityIndicator  color={theme.colors.white} />
+                  <ActivityIndicator color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认拒绝</Text>
                 )}
@@ -1238,7 +1243,7 @@ const AdminScreen = () => {
                 disabled={actionLoading}
               >
                 {actionLoading ? (
-                  <ActivityIndicator  color={theme.colors.white} />
+                  <ActivityIndicator color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认拒绝</Text>
                 )}
@@ -1290,7 +1295,7 @@ const AdminScreen = () => {
                 disabled={actionLoading || !deleteUserId}
               >
                 {actionLoading ? (
-                  <ActivityIndicator  color={theme.colors.white} />
+                  <ActivityIndicator color={theme.colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>确认删除</Text>
                 )}
@@ -1401,9 +1406,9 @@ const AdminScreen = () => {
                     style={styles.modalInput}
                     placeholder={
                       bannerForm.link_type === "POST" ? "输入帖子 ID" :
-                      bannerForm.link_type === "BRAND" ? "输入品牌标识（如 CHANEL）" :
-                      bannerForm.link_type === "SHOW" ? "输入秀场 ID" :
-                      "输入完整 URL（https://...）"
+                        bannerForm.link_type === "BRAND" ? "输入品牌标识（如 CHANEL）" :
+                          bannerForm.link_type === "SHOW" ? "输入秀场 ID" :
+                            "输入完整 URL（https://...）"
                     }
                     placeholderTextColor={theme.colors.gray300}
                     value={bannerForm.link_value}
@@ -1470,18 +1475,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  tabContainer: {
-    flexDirection: "row",
+  tabScrollContainer: {
     backgroundColor: theme.colors.white,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  tabContentContainer: {
+    flexDirection: "row",
+    paddingHorizontal: theme.spacing.xs,
+    alignItems: "center",
   },
   tab: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
@@ -2063,7 +2074,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.success,
   },
   bannerDisableBtn: {
-    backgroundColor: theme.colors.warning,
+    backgroundColor: "#F59E0B",
   },
   bannerDeleteBtn: {
     backgroundColor: theme.colors.error,
