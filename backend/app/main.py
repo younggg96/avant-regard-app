@@ -22,6 +22,7 @@ from app.api.routes.shows import router as shows_router
 from app.api.routes.buyer_store import router as buyer_store_router
 from app.api.routes.store_merchant import router as store_merchant_router
 from app.api.routes.notification import router as notification_router
+from app.api.routes.banner import router as banner_router
 
 
 @asynccontextmanager
@@ -78,6 +79,7 @@ app.include_router(shows_router, prefix="/api")
 app.include_router(buyer_store_router, prefix="/api")
 app.include_router(store_merchant_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")
+app.include_router(banner_router, prefix="/api")
 
 
 # 健康检查
