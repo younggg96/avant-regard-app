@@ -9,6 +9,7 @@ import {
   ScrollView as RNScrollView,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -24,6 +25,7 @@ import {
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
+import BannerCarousel from "../components/BannerCarousel";
 import {
   getPosts,
   Post as ApiPost,
@@ -33,6 +35,7 @@ import {
 import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
 import { getFollowingUsers, FollowingUser } from "../services/followService";
+import { getActiveBanners, Banner } from "../services/bannerService";
 
 // 用于展示的Post类型（与PostCard组件兼容）
 interface DisplayPost {
@@ -131,6 +134,7 @@ const DiscoverScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [posts, setPosts] = useState<DisplayPost[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [followingUserIds, setFollowingUserIds] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("recommend");
   const [refreshing, setRefreshing] = useState(false);
@@ -200,14 +204,25 @@ const DiscoverScreen = () => {
     }
   }, []);
 
+  // 获取 Banner 数据
+  const fetchBanners = useCallback(async () => {
+    try {
+      const activeBanners = await getActiveBanners();
+      setBanners(activeBanners);
+    } catch (err) {
+      console.error("获取 Banner 失败:", err);
+      setBanners([]);
+    }
+  }, []);
+
   // 初始化加载数据
   useEffect(() => {
     const initData = async () => {
-      await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+      await Promise.all([fetchPosts(), fetchFollowingUsers(), fetchBanners()]);
       setIsInitialized(true);
     };
     initData();
-  }, [fetchPosts]);
+  }, [fetchPosts, fetchBanners]);
 
   // 获取关注的用户列表
   const fetchFollowingUsers = useCallback(async () => {
@@ -345,13 +360,49 @@ const DiscoverScreen = () => {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     if (activeTab === "recommend") {
-      await fetchPosts();
+      await Promise.all([fetchPosts(), fetchBanners()]);
     } else {
       // 关注标签页也刷新帖子和关注列表
       await Promise.all([fetchPosts(), fetchFollowingUsers()]);
     }
     setRefreshing(false);
-  }, [fetchPosts, fetchFollowingUsers, activeTab]);
+  }, [fetchPosts, fetchFollowingUsers, fetchBanners, activeTab]);
+
+  // 处理 Banner 点击
+  const handleBannerPress = useCallback(
+    (banner: Banner) => {
+      console.log("Banner 点击:", banner.linkType, banner.linkValue);
+
+      switch (banner.linkType) {
+        case "POST":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("PostDetail", { postId: banner.linkValue });
+          }
+          break;
+        case "BRAND":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("BrandDetail", { brandSlug: banner.linkValue });
+          }
+          break;
+        case "SHOW":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("CollectionDetail", { showId: parseInt(banner.linkValue) });
+          }
+          break;
+        case "EXTERNAL":
+          if (banner.linkValue) {
+            Linking.openURL(banner.linkValue).catch((err) =>
+              console.error("打开链接失败:", err)
+            );
+          }
+          break;
+        default:
+          // NONE - 不做任何跳转
+          break;
+      }
+    },
+    [navigation]
+  );
 
   // 处理垂直滚动（控制 header 显示/隐藏）
   const lastScrollY = useRef(0);
@@ -538,58 +589,76 @@ const DiscoverScreen = () => {
                 </Pressable>
               </VStack>
             ) : currentPosts.length === 0 ? (
-              <VStack
-                flex={1}
-                justifyContent="center"
-                alignItems="center"
-                py="$2xl"
-              >
-                <Ionicons
-                  name="newspaper-outline"
-                  size={48}
-                  color={theme.colors.gray400}
-                />
-                <Text
-                  fontSize="$lg"
-                  color="$black"
-                  fontWeight="$medium"
-                  mb="$sm"
-                  mt="$md"
-                  textAlign="center"
+              <>
+                {/* 推荐页显示 Banner 轮播图 */}
+                {tab === "recommend" && banners.length > 0 && (
+                  <BannerCarousel
+                    banners={banners}
+                    onBannerPress={handleBannerPress}
+                  />
+                )}
+                <VStack
+                  flex={1}
+                  justifyContent="center"
+                  alignItems="center"
+                  py="$2xl"
                 >
-                  {tab === "recommend" && "暂无推荐内容"}
-                  {tab === "following" && "暂无关注内容"}
-                </Text>
-                <Text color="$gray400" textAlign="center" lineHeight="$lg">
-                  {tab === "recommend" && "下拉刷新获取最新内容"}
-                  {tab === "following" && "关注更多用户查看他们的动态"}
-                </Text>
-              </VStack>
+                  <Ionicons
+                    name="newspaper-outline"
+                    size={48}
+                    color={theme.colors.gray400}
+                  />
+                  <Text
+                    fontSize="$lg"
+                    color="$black"
+                    fontWeight="$medium"
+                    mb="$sm"
+                    mt="$md"
+                    textAlign="center"
+                  >
+                    {tab === "recommend" && "暂无推荐内容"}
+                    {tab === "following" && "暂无关注内容"}
+                  </Text>
+                  <Text color="$gray400" textAlign="center" lineHeight="$lg">
+                    {tab === "recommend" && "下拉刷新获取最新内容"}
+                    {tab === "following" && "关注更多用户查看他们的动态"}
+                  </Text>
+                </VStack>
+              </>
             ) : (
-              <HStack px="$sm" pt="$sm" alignItems="start">
-                <VStack flex={1} pr="$xs">
-                  {currentPosts
-                    .filter((_, index) => index % 2 === 0)
-                    .map((post, index) => (
-                      <Box key={post.id || `left-${index}`} mb="$sm">
-                        {renderPost(post, index * 2)}
-                      </Box>
-                    ))}
-                </VStack>
-                <VStack flex={1} pl="$xs">
-                  {currentPosts
-                    .filter((_, index) => index % 2 === 1)
-                    .map((post, index) => (
-                      <Box key={post.id || `right-${index}`} mb="$sm">
-                        {renderPost(post, index * 2 + 1)}
-                      </Box>
-                    ))}
-                </VStack>
-              </HStack>
+              <>
+                {/* 推荐页显示 Banner 轮播图 */}
+                {tab === "recommend" && banners.length > 0 && (
+                  <BannerCarousel
+                    banners={banners}
+                    onBannerPress={handleBannerPress}
+                  />
+                )}
+                <HStack px="$sm" pt="$sm" alignItems="start">
+                  <VStack flex={1} pr="$xs">
+                    {currentPosts
+                      .filter((_, index) => index % 2 === 0)
+                      .map((post, index) => (
+                        <Box key={post.id || `left-${index}`} mb="$sm">
+                          {renderPost(post, index * 2)}
+                        </Box>
+                      ))}
+                  </VStack>
+                  <VStack flex={1} pl="$xs">
+                    {currentPosts
+                      .filter((_, index) => index % 2 === 1)
+                      .map((post, index) => (
+                        <Box key={post.id || `right-${index}`} mb="$sm">
+                          {renderPost(post, index * 2 + 1)}
+                        </Box>
+                      ))}
+                  </VStack>
+                </HStack>
+              </>
             )}
             {loading && (
               <HStack justifyContent="center" alignItems="center" py="$lg">
-                <ActivityIndicator  color={theme.colors.accent} />
+                <ActivityIndicator color={theme.colors.accent} />
                 <Text color="$gray400" fontSize="$sm" ml="$sm">
                   加载更多...
                 </Text>
@@ -601,11 +670,13 @@ const DiscoverScreen = () => {
     },
     [
       posts,
+      banners,
       followingUserIds,
       convertToPost,
       error,
       refreshing,
       handleRefresh,
+      handleBannerPress,
       handleVerticalScroll,
       renderPost,
       loading,

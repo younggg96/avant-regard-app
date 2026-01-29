@@ -19,8 +19,18 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { adminService, AdminComment } from "../services/adminService";
 import { Post } from "../services/postService";
+import {
+  Banner,
+  getAllBanners,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+  toggleBannerStatus,
+} from "../services/bannerService";
+import { config } from "../config/env";
+import { useAuthStore } from "../store/authStore";
 
-type TabType = "pending" | "comments" | "users" | "stores" | "merchants";
+type TabType = "pending" | "comments" | "users" | "stores" | "merchants" | "banners";
 
 const AdminScreen = () => {
   const navigation = useNavigation();
@@ -51,6 +61,22 @@ const AdminScreen = () => {
   const [commentsPage, setCommentsPage] = useState(1);
   const [commentsTotalPages, setCommentsTotalPages] = useState(0);
   const [commentsTotal, setCommentsTotal] = useState(0);
+
+  // Banner 管理状态
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [bannersLoading, setBannersLoading] = useState(false);
+  const [bannerModalVisible, setBannerModalVisible] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+  const [bannerForm, setBannerForm] = useState({
+    title: "",
+    subtitle: "",
+    image_url: "",
+    link_type: "NONE" as string,
+    link_value: "",
+    sort_order: 0,
+    is_active: true,
+  });
+  const [bannerImageUploading, setBannerImageUploading] = useState(false);
 
   // 获取待审核帖子
   const fetchPendingPosts = useCallback(async () => {
@@ -83,6 +109,20 @@ const AdminScreen = () => {
     }
   }, []);
 
+  // 获取所有 Banner
+  const fetchBanners = useCallback(async () => {
+    try {
+      setBannersLoading(true);
+      const result = await getAllBanners();
+      setBanners(result);
+    } catch (error) {
+      console.error("获取 Banner 列表失败:", error);
+      Alert.alert("错误", error instanceof Error ? error.message : "获取 Banner 列表失败");
+    } finally {
+      setBannersLoading(false);
+    }
+  }, []);
+
   // 下拉刷新
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -90,17 +130,21 @@ const AdminScreen = () => {
       await fetchPendingPosts();
     } else if (activeTab === "comments") {
       await fetchComments(1);
+    } else if (activeTab === "banners") {
+      await fetchBanners();
     }
     setRefreshing(false);
-  }, [activeTab, fetchPendingPosts, fetchComments]);
+  }, [activeTab, fetchPendingPosts, fetchComments, fetchBanners]);
 
   useEffect(() => {
     if (activeTab === "pending") {
       fetchPendingPosts();
     } else if (activeTab === "comments") {
       fetchComments(1);
+    } else if (activeTab === "banners") {
+      fetchBanners();
     }
-  }, [activeTab, fetchPendingPosts, fetchComments]);
+  }, [activeTab, fetchPendingPosts, fetchComments, fetchBanners]);
 
   // 审核通过
   const handleApprove = async (postId: number) => {
@@ -342,6 +386,187 @@ const AdminScreen = () => {
     if (commentsPage < commentsTotalPages && !commentsLoading) {
       fetchComments(commentsPage + 1);
     }
+  };
+
+  // ==================== Banner 管理 ====================
+
+  // 打开创建 Banner Modal
+  const handleOpenCreateBannerModal = () => {
+    setEditingBanner(null);
+    setBannerForm({
+      title: "",
+      subtitle: "",
+      image_url: "",
+      link_type: "NONE",
+      link_value: "",
+      sort_order: banners.length,
+      is_active: true,
+    });
+    setBannerModalVisible(true);
+  };
+
+  // 打开编辑 Banner Modal
+  const handleOpenEditBannerModal = (banner: Banner) => {
+    setEditingBanner(banner);
+    setBannerForm({
+      title: banner.title,
+      subtitle: banner.subtitle || "",
+      image_url: banner.imageUrl,
+      link_type: banner.linkType,
+      link_value: banner.linkValue || "",
+      sort_order: banner.sortOrder,
+      is_active: banner.isActive,
+    });
+    setBannerModalVisible(true);
+  };
+
+  // 保存 Banner（创建或更新）
+  const handleSaveBanner = async () => {
+    if (!bannerForm.title.trim()) {
+      Alert.alert("错误", "请输入 Banner 标题");
+      return;
+    }
+    if (!bannerForm.image_url.trim()) {
+      Alert.alert("错误", "请上传或输入图片 URL");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      if (editingBanner) {
+        // 更新
+        await updateBanner(editingBanner.id, bannerForm);
+        Alert.alert("成功", "Banner 更新成功");
+      } else {
+        // 创建
+        await createBanner(bannerForm);
+        Alert.alert("成功", "Banner 创建成功");
+      }
+      setBannerModalVisible(false);
+      fetchBanners();
+    } catch (error) {
+      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 删除 Banner
+  const handleDeleteBanner = async (bannerId: number) => {
+    Alert.alert(
+      "确认删除",
+      "确定要删除这个 Banner 吗？",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              await deleteBanner(bannerId);
+              Alert.alert("成功", "Banner 已删除");
+              fetchBanners();
+            } catch (error) {
+              Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 切换 Banner 状态
+  const handleToggleBannerStatus = async (banner: Banner) => {
+    try {
+      setActionLoading(true);
+      await toggleBannerStatus(banner.id);
+      Alert.alert("成功", `Banner 已${banner.isActive ? "禁用" : "启用"}`);
+      fetchBanners();
+    } catch (error) {
+      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 上传 Banner 图片
+  const handleUploadBannerImage = async () => {
+    // 使用 expo-image-picker 选择图片
+    const ImagePicker = require("expo-image-picker");
+    
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("权限不足", "需要访问相册权限才能上传图片");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      
+      try {
+        setBannerImageUploading(true);
+        
+        // 上传图片到服务器
+        const formData = new FormData();
+        const filename = asset.uri.split("/").pop() || "banner.jpg";
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : "image/jpeg";
+        
+        formData.append("file", {
+          uri: asset.uri,
+          name: filename,
+          type,
+        } as any);
+
+        const token = useAuthStore.getState().getAccessToken();
+        const response = await fetch(
+          `${config.EXPO_PUBLIC_API_BASE_URL}/api/files/upload-image`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+        
+        if (data.code === 0 && data.data?.url) {
+          setBannerForm(prev => ({ ...prev, image_url: data.data.url }));
+          Alert.alert("成功", "图片上传成功");
+        } else {
+          throw new Error(data.message || "上传失败");
+        }
+      } catch (error) {
+        console.error("图片上传失败:", error);
+        Alert.alert("错误", error instanceof Error ? error.message : "图片上传失败");
+      } finally {
+        setBannerImageUploading(false);
+      }
+    }
+  };
+
+  // 获取链接类型显示名称
+  const getLinkTypeName = (type: string) => {
+    const typeMap: Record<string, string> = {
+      NONE: "无链接",
+      POST: "帖子",
+      BRAND: "品牌",
+      SHOW: "秀场",
+      EXTERNAL: "外部链接",
+    };
+    return typeMap[type] || type;
   };
 
   // 删除用户
@@ -672,6 +897,103 @@ const AdminScreen = () => {
     </View>
   );
 
+  // 渲染 Banner 卡片
+  const renderBannerCard = (banner: Banner) => (
+    <View key={banner.id} style={styles.bannerCard}>
+      {/* 预览图 */}
+      <Image
+        source={{ uri: banner.imageUrl }}
+        style={styles.bannerPreviewImage}
+        resizeMode="cover"
+      />
+      
+      {/* 状态标签 */}
+      <View style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
+        <Text style={styles.bannerStatusText}>{banner.isActive ? "启用" : "禁用"}</Text>
+      </View>
+
+      {/* 信息区域 */}
+      <View style={styles.bannerInfo}>
+        <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
+        {banner.subtitle && (
+          <Text style={styles.bannerSubtitle} numberOfLines={1}>{banner.subtitle}</Text>
+        )}
+        <View style={styles.bannerMeta}>
+          <Text style={styles.bannerMetaText}>
+            链接: {getLinkTypeName(banner.linkType)}
+            {banner.linkValue && ` → ${banner.linkValue}`}
+          </Text>
+          <Text style={styles.bannerMetaText}>排序: {banner.sortOrder}</Text>
+        </View>
+      </View>
+
+      {/* 操作按钮 */}
+      <View style={styles.bannerActions}>
+        <TouchableOpacity
+          style={[styles.bannerActionBtn, styles.bannerEditBtn]}
+          onPress={() => handleOpenEditBannerModal(banner)}
+          disabled={actionLoading}
+        >
+          <Ionicons name="create-outline" size={18} color={theme.colors.white} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.bannerActionBtn, banner.isActive ? styles.bannerDisableBtn : styles.bannerEnableBtn]}
+          onPress={() => handleToggleBannerStatus(banner)}
+          disabled={actionLoading}
+        >
+          <Ionicons name={banner.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.bannerActionBtn, styles.bannerDeleteBtn]}
+          onPress={() => handleDeleteBanner(banner.id)}
+          disabled={actionLoading}
+        >
+          <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // 渲染 Banner 管理标签页
+  const renderBannersTab = () => (
+    <ScrollView
+      style={styles.bannersList}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* 添加按钮 */}
+      <TouchableOpacity
+        style={styles.addBannerButton}
+        onPress={handleOpenCreateBannerModal}
+      >
+        <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
+        <Text style={styles.addBannerButtonText}>添加 Banner</Text>
+      </TouchableOpacity>
+
+      {bannersLoading && banners.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color={theme.colors.black} />
+          <Text style={styles.loadingText}>加载中...</Text>
+        </View>
+      ) : banners.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="images-outline" size={48} color={theme.colors.gray300} />
+          <Text style={styles.emptyText}>暂无 Banner</Text>
+          <Text style={styles.emptySubtext}>点击上方按钮添加轮播图</Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.bannersHeader}>
+            <Text style={styles.bannersHeaderText}>共 {banners.length} 个 Banner</Text>
+          </View>
+          {banners.map(renderBannerCard)}
+        </>
+      )}
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title="管理员后台" showBack={true} />
@@ -731,6 +1053,20 @@ const AdminScreen = () => {
           <Text style={[styles.tabText, activeTab === "merchants" && styles.tabTextActive]}>
             商家入驻
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "banners" && styles.tabActive]}
+          onPress={() => setActiveTab("banners")}
+        >
+          <Text style={[styles.tabText, activeTab === "banners" && styles.tabTextActive]}>
+            Banner
+          </Text>
+          {banners.length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{banners.length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -822,6 +1158,8 @@ const AdminScreen = () => {
         </ScrollView>
       ) : activeTab === "comments" ? (
         renderCommentsTab()
+      ) : activeTab === "banners" ? (
+        renderBannersTab()
       ) : (
         renderUsersTab()
       )}
@@ -958,6 +1296,168 @@ const AdminScreen = () => {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Banner 编辑 Modal */}
+      <Modal
+        visible={bannerModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBannerModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.bannerModalContent]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>
+                {editingBanner ? "编辑 Banner" : "创建 Banner"}
+              </Text>
+
+              {/* 图片预览 */}
+              {bannerForm.image_url ? (
+                <Image
+                  source={{ uri: bannerForm.image_url }}
+                  style={styles.bannerFormPreview}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.bannerFormPlaceholder}>
+                  <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
+                  <Text style={styles.bannerFormPlaceholderText}>点击下方按钮上传图片</Text>
+                </View>
+              )}
+
+              {/* 上传图片按钮 */}
+              <TouchableOpacity
+                style={styles.uploadImageButton}
+                onPress={handleUploadBannerImage}
+                disabled={bannerImageUploading}
+              >
+                {bannerImageUploading ? (
+                  <ActivityIndicator color={theme.colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
+                    <Text style={styles.uploadImageButtonText}>
+                      {bannerForm.image_url ? "更换图片" : "上传图片"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* 标题 */}
+              <Text style={styles.formLabel}>标题 *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="输入 Banner 标题"
+                placeholderTextColor={theme.colors.gray300}
+                value={bannerForm.title}
+                onChangeText={(text) => setBannerForm(prev => ({ ...prev, title: text }))}
+              />
+
+              {/* 副标题 */}
+              <Text style={styles.formLabel}>副标题</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="输入副标题（可选）"
+                placeholderTextColor={theme.colors.gray300}
+                value={bannerForm.subtitle}
+                onChangeText={(text) => setBannerForm(prev => ({ ...prev, subtitle: text }))}
+              />
+
+              {/* 链接类型 */}
+              <Text style={styles.formLabel}>链接类型</Text>
+              <View style={styles.linkTypeContainer}>
+                {["NONE", "POST", "BRAND", "SHOW", "EXTERNAL"].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.linkTypeButton,
+                      bannerForm.link_type === type && styles.linkTypeButtonActive
+                    ]}
+                    onPress={() => setBannerForm(prev => ({ ...prev, link_type: type }))}
+                  >
+                    <Text style={[
+                      styles.linkTypeButtonText,
+                      bannerForm.link_type === type && styles.linkTypeButtonTextActive
+                    ]}>
+                      {getLinkTypeName(type)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* 链接值 */}
+              {bannerForm.link_type !== "NONE" && (
+                <>
+                  <Text style={styles.formLabel}>
+                    {bannerForm.link_type === "POST" && "帖子 ID"}
+                    {bannerForm.link_type === "BRAND" && "品牌标识"}
+                    {bannerForm.link_type === "SHOW" && "秀场 ID"}
+                    {bannerForm.link_type === "EXTERNAL" && "外部链接 URL"}
+                  </Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder={
+                      bannerForm.link_type === "POST" ? "输入帖子 ID" :
+                      bannerForm.link_type === "BRAND" ? "输入品牌标识（如 CHANEL）" :
+                      bannerForm.link_type === "SHOW" ? "输入秀场 ID" :
+                      "输入完整 URL（https://...）"
+                    }
+                    placeholderTextColor={theme.colors.gray300}
+                    value={bannerForm.link_value}
+                    onChangeText={(text) => setBannerForm(prev => ({ ...prev, link_value: text }))}
+                    autoCapitalize={bannerForm.link_type === "EXTERNAL" ? "none" : "characters"}
+                  />
+                </>
+              )}
+
+              {/* 排序 */}
+              <Text style={styles.formLabel}>排序（数字越小越靠前）</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="输入排序数字"
+                placeholderTextColor={theme.colors.gray300}
+                value={String(bannerForm.sort_order)}
+                onChangeText={(text) => setBannerForm(prev => ({ ...prev, sort_order: parseInt(text) || 0 }))}
+                keyboardType="numeric"
+              />
+
+              {/* 启用状态 */}
+              <TouchableOpacity
+                style={styles.statusToggle}
+                onPress={() => setBannerForm(prev => ({ ...prev, is_active: !prev.is_active }))}
+              >
+                <Text style={styles.formLabel}>启用状态</Text>
+                <View style={[styles.statusToggleSwitch, bannerForm.is_active && styles.statusToggleSwitchActive]}>
+                  <View style={[styles.statusToggleThumb, bannerForm.is_active && styles.statusToggleThumbActive]} />
+                </View>
+              </TouchableOpacity>
+
+              {/* 操作按钮 */}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalCancelButton]}
+                  onPress={() => setBannerModalVisible(false)}
+                >
+                  <Text style={styles.modalCancelText}>取消</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
+                  onPress={handleSaveBanner}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color={theme.colors.white} />
+                  ) : (
+                    <Text style={styles.modalConfirmText}>
+                      {editingBanner ? "保存修改" : "创建 Banner"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1466,6 +1966,210 @@ const styles = StyleSheet.create({
   pageInfo: {
     ...theme.typography.body,
     color: theme.colors.gray400,
+  },
+  // ==================== Banner 管理样式 ====================
+  bannersList: {
+    flex: 1,
+    padding: theme.spacing.md,
+  },
+  addBannerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.black,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  addBannerButtonText: {
+    ...theme.typography.button,
+    color: theme.colors.white,
+  },
+  bannersHeader: {
+    marginBottom: theme.spacing.md,
+  },
+  bannersHeaderText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray400,
+  },
+  bannerCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.lg,
+    overflow: "hidden",
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  bannerPreviewImage: {
+    width: "100%",
+    height: 120,
+    backgroundColor: theme.colors.gray100,
+  },
+  bannerStatusBadge: {
+    position: "absolute",
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+  },
+  bannerStatusActive: {
+    backgroundColor: theme.colors.success,
+  },
+  bannerStatusInactive: {
+    backgroundColor: theme.colors.gray400,
+  },
+  bannerStatusText: {
+    ...theme.typography.caption,
+    color: theme.colors.white,
+    fontWeight: "600",
+  },
+  bannerInfo: {
+    padding: theme.spacing.md,
+  },
+  bannerTitle: {
+    ...theme.typography.h4,
+    color: theme.colors.black,
+    marginBottom: 4,
+  },
+  bannerSubtitle: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray400,
+    marginBottom: theme.spacing.sm,
+  },
+  bannerMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  bannerMetaText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+  },
+  bannerActions: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
+  },
+  bannerActionBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: theme.spacing.md,
+  },
+  bannerEditBtn: {
+    backgroundColor: theme.colors.black,
+  },
+  bannerEnableBtn: {
+    backgroundColor: theme.colors.success,
+  },
+  bannerDisableBtn: {
+    backgroundColor: theme.colors.warning,
+  },
+  bannerDeleteBtn: {
+    backgroundColor: theme.colors.error,
+  },
+  // Banner Modal 样式
+  bannerModalContent: {
+    maxHeight: "90%",
+    width: "95%",
+    maxWidth: 500,
+  },
+  bannerFormPreview: {
+    width: "100%",
+    height: 160,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.gray100,
+  },
+  bannerFormPlaceholder: {
+    width: "100%",
+    height: 160,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.gray100,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: theme.spacing.md,
+  },
+  bannerFormPlaceholderText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray300,
+    marginTop: theme.spacing.sm,
+  },
+  uploadImageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.black,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.lg,
+    gap: theme.spacing.xs,
+  },
+  uploadImageButtonText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.white,
+    fontWeight: "600",
+  },
+  formLabel: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.black,
+    fontWeight: "600",
+    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
+  },
+  linkTypeContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  linkTypeButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.gray100,
+  },
+  linkTypeButtonActive: {
+    backgroundColor: theme.colors.black,
+  },
+  linkTypeButtonText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    fontWeight: "500",
+  },
+  linkTypeButtonTextActive: {
+    color: theme.colors.white,
+  },
+  statusToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: theme.spacing.md,
+  },
+  statusToggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.gray200,
+    padding: 2,
+    justifyContent: "center",
+  },
+  statusToggleSwitchActive: {
+    backgroundColor: theme.colors.success,
+  },
+  statusToggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.white,
+  },
+  statusToggleThumbActive: {
+    alignSelf: "flex-end",
+  },
+  emptySubtext: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+    marginTop: theme.spacing.xs,
   },
 });
 
