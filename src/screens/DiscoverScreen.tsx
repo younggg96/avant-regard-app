@@ -777,7 +777,6 @@ const DiscoverScreen = () => {
         {/* Tab 栏骨架 */}
         <Box borderBottomWidth={1} borderBottomColor="$gray100">
           <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
-            <Box width={40} />
             <HStack justifyContent="center" alignItems="center" gap="$sm">
               <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
               <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
@@ -832,10 +831,6 @@ const DiscoverScreen = () => {
       {/* Tab View with Types - 吸顶 */}
       <Box borderBottomWidth={1} borderBottomColor="$gray100">
         <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
-          {/* 左侧占位 */}
-          <Box width={40} />
-
-          {/* 中间 Tab 切换 */}
           <HStack justifyContent="center" alignItems="center" gap="$sm">
             <Pressable
               py="$sm"

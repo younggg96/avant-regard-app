@@ -617,7 +617,7 @@ const BuyerMapScreen = () => {
         <Box
           w={isSelected ? 32 : 24}
           h={isSelected ? 32 : 24}
-          rounded="$sm"
+          rounded="$full"
           bg={isSelected ? "$white" : store.isOpen ? "$black" : "$gray200"}
           borderWidth={isSelected ? 3 : 2}
           borderColor={isSelected ? "$black" : "$white"}
@@ -628,7 +628,7 @@ const BuyerMapScreen = () => {
           <Box
             w={isSelected ? 10 : 8}
             h={isSelected ? 10 : 8}
-            rounded="$sm"
+            rounded="$full"
             bg={isSelected ? "$black" : "$white"}
           />
         </Box>

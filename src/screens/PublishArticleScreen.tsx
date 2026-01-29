@@ -1,9 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
-  Keyboard,
   Platform,
   KeyboardAvoidingView,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+  Animated,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,25 +15,32 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import {
-  RichEditor,
-  RichToolbar,
-  actions,
-} from "react-native-pell-rich-editor";
-import {
   Box,
   Text,
   ScrollView,
   HStack,
+  VStack,
   Input,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
-import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
+import ImagePickerModal from "../components/ImagePickerModal";
 import { postService } from "../services/postService";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// 内容块类型定义
+type ContentBlockType = "text" | "image";
+
+interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  content: string; // 文本内容或图片 URI
+}
 
 // 路由参数类型
 type PublishArticleRouteParams = {
@@ -37,24 +48,33 @@ type PublishArticleRouteParams = {
   draftPost?: Post;
 };
 
+// 生成唯一 ID
+const generateId = () => `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 const PublishArticleScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishArticleRouteParams }, "params">>();
   const { user } = useAuthStore();
-  const richText = useRef<RichEditor>(null);
+  const scrollViewRef = useRef<any>(null);
 
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [htmlContent, setHtmlContent] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [showContentImagePicker, setShowContentImagePicker] = useState(false);
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
+    { id: generateId(), type: "text", content: "" },
+  ]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [insertAfterBlockId, setInsertAfterBlockId] = useState<string | null>(null);
+  const [showAddMenu, setShowAddMenu] = useState<string | null>(null);
+
+  // 动画
+  const addMenuAnim = useRef(new Animated.Value(0)).current;
 
   // 编辑模式：保存草稿 ID 用于更新
   const [draftPostId] = useState<number | null>(
@@ -74,27 +94,50 @@ const PublishArticleScreen = () => {
         setTitle(draftPost.content.title);
       }
 
-      // 初始化内容（HTML）
-      if (draftPost.content?.description) {
-        setHtmlContent(draftPost.content.description);
-        setContent(draftPost.content.description.replace(/<[^>]*>/g, ""));
-        // 设置富文本编辑器内容
-        setTimeout(() => {
-          richText.current?.setContentHTML(draftPost.content?.description || "");
-        }, 500);
-      }
-
       // 初始化封面图片
       if (draftPost.content?.images && draftPost.content.images.length > 0) {
         setCoverImage(draftPost.content.images[0]);
       }
+
+      // 尝试解析内容块
+      if (draftPost.content?.description) {
+        try {
+          const parsed = JSON.parse(draftPost.content.description);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setContentBlocks(parsed);
+            return;
+          }
+        } catch {
+          // 如果不是 JSON，作为纯文本处理
+          setContentBlocks([
+            { id: generateId(), type: "text", content: draftPost.content.description },
+          ]);
+        }
+      }
     }
   }, [editMode, draftPost]);
 
+  // 显示/隐藏添加菜单动画
+  useEffect(() => {
+    Animated.timing(addMenuAnim, {
+      toValue: showAddMenu ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [showAddMenu]);
+
+  // 计算总字数
+  const getTotalWordCount = (): number => {
+    return contentBlocks
+      .filter((block) => block.type === "text")
+      .reduce((sum, block) => sum + block.content.trim().length, 0);
+  };
+
   // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
-    const textContent = content.replace(/<[^>]*>/g, "").trim();
-    return title.trim().length > 0 && textContent.length >= 100;
+    const hasTitle = title.trim().length > 0;
+    const hasEnoughContent = getTotalWordCount() >= 100;
+    return hasTitle && hasEnoughContent;
   };
 
   const validateForm = (): boolean => {
@@ -102,9 +145,7 @@ const PublishArticleScreen = () => {
       Alert.show("提示: 请填写标题");
       return false;
     }
-    // 移除 HTML 标签来计算纯文本长度
-    const textContent = content.replace(/<[^>]*>/g, "").trim();
-    if (!textContent || textContent.length < 100) {
+    if (getTotalWordCount() < 100) {
       Alert.show("提示: 文章内容至少需要100字");
       return false;
     }
@@ -114,6 +155,117 @@ const PublishArticleScreen = () => {
   // 判断是否为远程 URL（已上传的图片）
   const isRemoteUrl = (uri: string) => {
     return uri.startsWith("http://") || uri.startsWith("https://");
+  };
+
+  // 更新内容块
+  const updateBlockContent = (blockId: string, content: string) => {
+    setContentBlocks((prev) =>
+      prev.map((block) =>
+        block.id === blockId ? { ...block, content } : block
+      )
+    );
+  };
+
+  // 删除内容块
+  const deleteBlock = (blockId: string) => {
+    setContentBlocks((prev) => {
+      const filtered = prev.filter((block) => block.id !== blockId);
+      // 确保至少有一个文本块
+      if (filtered.length === 0) {
+        return [{ id: generateId(), type: "text", content: "" }];
+      }
+      return filtered;
+    });
+  };
+
+  // 在指定块后插入新块
+  const insertBlockAfter = (afterBlockId: string, type: ContentBlockType, content: string = "") => {
+    const newBlock: ContentBlock = { id: generateId(), type, content };
+    setContentBlocks((prev) => {
+      const index = prev.findIndex((block) => block.id === afterBlockId);
+      if (index === -1) {
+        return [...prev, newBlock];
+      }
+      const newBlocks = [...prev];
+      newBlocks.splice(index + 1, 0, newBlock);
+      return newBlocks;
+    });
+    setShowAddMenu(null);
+  };
+
+  // 添加文本块
+  const handleAddTextBlock = (afterBlockId: string) => {
+    insertBlockAfter(afterBlockId, "text", "");
+  };
+
+  // 添加图片块
+  const handleAddImageBlock = (afterBlockId: string) => {
+    setInsertAfterBlockId(afterBlockId);
+    setShowAddMenu(null);
+    setShowImagePicker(true);
+  };
+
+  // 处理图片选择
+  const handleImageSelection = async (source: "camera" | "gallery") => {
+    setShowImagePicker(false);
+
+    try {
+      let result;
+
+      if (source === "camera") {
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [16, 9],
+          quality: 0.8,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [16, 9],
+          quality: 0.8,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        if (insertAfterBlockId) {
+          insertBlockAfter(insertAfterBlockId, "image", imageUri);
+          // 插入图片后，自动在图片下方添加一个空文本块
+          setTimeout(() => {
+            const blocks = contentBlocks;
+            const lastBlock = blocks[blocks.length - 1];
+            if (lastBlock.type === "image") {
+              setContentBlocks((prev) => [
+                ...prev,
+                { id: generateId(), type: "text", content: "" },
+              ]);
+            }
+          }, 100);
+        }
+        setInsertAfterBlockId(null);
+      }
+    } catch (error) {
+      console.error("Image selection error:", error);
+      Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  // 序列化内容块为 JSON
+  const serializeContent = (): string => {
+    return JSON.stringify(contentBlocks);
+  };
+
+  // 获取所有图片 URL（封面图 + 内容中的图片）
+  const getAllImageUrls = (): string[] => {
+    const contentImages = contentBlocks
+      .filter((block) => block.type === "image" && block.content)
+      .map((block) => block.content);
+
+    if (coverImage) {
+      return [coverImage, ...contentImages];
+    }
+    return contentImages;
   };
 
   const handlePublish = async () => {
@@ -128,23 +280,37 @@ const PublishArticleScreen = () => {
 
     setIsPublishing(true);
     try {
-      let uploadedUrls: string[] = [];
+      const allImages = getAllImageUrls();
+      const uploadedUrls: string[] = [];
+      const imageMapping: Record<string, string> = {};
 
-      // 如果有封面图，处理上传
-      if (coverImage) {
-        if (isRemoteUrl(coverImage)) {
-          // 已上传的图片，直接使用
-          uploadedUrls = [coverImage];
+      // 上传所有本地图片
+      for (let i = 0; i < allImages.length; i++) {
+        const imageUri = allImages[i];
+        if (isRemoteUrl(imageUri)) {
+          uploadedUrls.push(imageUri);
+          imageMapping[imageUri] = imageUri;
         } else {
-          // 新图片，需要上传
-          setUploadProgress("上传封面图片...");
-          const coverUrl = await postService.uploadImage(coverImage);
-          uploadedUrls = [coverUrl];
+          setUploadProgress(`上传图片 ${i + 1}/${allImages.length}...`);
+          const uploadedUrl = await postService.uploadImage(imageUri);
+          uploadedUrls.push(uploadedUrl);
+          imageMapping[imageUri] = uploadedUrl;
         }
       }
 
+      // 更新内容块中的图片 URL
+      const updatedBlocks = contentBlocks.map((block) => {
+        if (block.type === "image" && imageMapping[block.content]) {
+          return { ...block, content: imageMapping[block.content] };
+        }
+        return block;
+      });
+
       // 创建或更新帖子
       setUploadProgress("正在发布...");
+
+      const contentText = JSON.stringify(updatedBlocks);
+      const finalCoverImage = coverImage ? imageMapping[coverImage] || coverImage : null;
 
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
@@ -152,8 +318,8 @@ const PublishArticleScreen = () => {
           postType: "ARTICLES",
           status: "PUBLISHED",
           title: title.trim(),
-          contentText: htmlContent,
-          imageUrls: uploadedUrls,
+          contentText,
+          imageUrls: finalCoverImage ? [finalCoverImage] : [],
         });
       } else {
         await postService.createPost({
@@ -161,8 +327,8 @@ const PublishArticleScreen = () => {
           postType: "ARTICLES",
           postStatus: "PUBLISHED",
           title: title.trim(),
-          contentText: htmlContent,
-          imageUrls: uploadedUrls,
+          contentText,
+          imageUrls: finalCoverImage ? [finalCoverImage] : [],
         });
       }
 
@@ -171,10 +337,8 @@ const PublishArticleScreen = () => {
       setTimeout(() => {
         resetForm();
         if (editMode) {
-          // 编辑模式：返回上一页（帖子详情页）
           navigation.goBack();
         } else {
-          // 新建模式：导航到主页
           (navigation as any).reset({
             index: 0,
             routes: [{ name: "Main", params: { screen: "Home" } }],
@@ -197,28 +361,46 @@ const PublishArticleScreen = () => {
     }
 
     // 草稿至少需要有标题或内容
-    if (!title.trim() && !content.trim()) {
+    const hasContent = contentBlocks.some(
+      (block) => block.content.trim().length > 0
+    );
+    if (!title.trim() && !hasContent) {
       Alert.show("请至少填写标题或内容");
       return;
     }
 
     setIsSavingDraft(true);
     try {
-      let uploadedUrls: string[] = [];
+      const allImages = getAllImageUrls();
+      const uploadedUrls: string[] = [];
+      const imageMapping: Record<string, string> = {};
 
-      // 如果有封面图，处理上传
-      if (coverImage) {
-        if (isRemoteUrl(coverImage)) {
-          uploadedUrls = [coverImage];
+      // 上传所有本地图片
+      for (let i = 0; i < allImages.length; i++) {
+        const imageUri = allImages[i];
+        if (isRemoteUrl(imageUri)) {
+          uploadedUrls.push(imageUri);
+          imageMapping[imageUri] = imageUri;
         } else {
-          setUploadProgress("上传封面图片...");
-          const coverUrl = await postService.uploadImage(coverImage);
-          uploadedUrls = [coverUrl];
+          setUploadProgress(`上传图片 ${i + 1}/${allImages.length}...`);
+          const uploadedUrl = await postService.uploadImage(imageUri);
+          uploadedUrls.push(uploadedUrl);
+          imageMapping[imageUri] = uploadedUrl;
         }
       }
 
-      // 保存草稿
+      // 更新内容块中的图片 URL
+      const updatedBlocks = contentBlocks.map((block) => {
+        if (block.type === "image" && imageMapping[block.content]) {
+          return { ...block, content: imageMapping[block.content] };
+        }
+        return block;
+      });
+
       setUploadProgress("正在保存...");
+
+      const contentText = JSON.stringify(updatedBlocks);
+      const finalCoverImage = coverImage ? imageMapping[coverImage] || coverImage : null;
 
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
@@ -226,8 +408,8 @@ const PublishArticleScreen = () => {
           postType: "ARTICLES",
           status: "DRAFT",
           title: title.trim() || "文章草稿",
-          contentText: htmlContent,
-          imageUrls: uploadedUrls,
+          contentText,
+          imageUrls: finalCoverImage ? [finalCoverImage] : [],
         });
       } else {
         await postService.createPost({
@@ -235,8 +417,8 @@ const PublishArticleScreen = () => {
           postType: "ARTICLES",
           postStatus: "DRAFT",
           title: title.trim() || "文章草稿",
-          contentText: htmlContent,
-          imageUrls: uploadedUrls,
+          contentText,
+          imageUrls: finalCoverImage ? [finalCoverImage] : [],
         });
       }
 
@@ -253,70 +435,247 @@ const PublishArticleScreen = () => {
 
   const resetForm = () => {
     setTitle("");
-    setContent("");
-    setHtmlContent("");
     setCoverImage(null);
-    richText.current?.setContentHTML("");
+    setContentBlocks([{ id: generateId(), type: "text", content: "" }]);
   };
 
-  // 处理文章内容中插入图片
-  const handleInsertContentImage = () => {
-    Keyboard.dismiss();
-    setShowContentImagePicker(true);
+  const wordCount = getTotalWordCount();
+
+  // 渲染文本块
+  const renderTextBlock = (block: ContentBlock, index: number) => {
+    const isFirst = index === 0;
+    const isLast = index === contentBlocks.length - 1;
+    const canDelete = contentBlocks.length > 1 || block.content.trim().length > 0;
+
+    return (
+      <Box key={block.id} mx="$md" mb="$sm">
+        <Box
+          borderWidth={1}
+          borderColor="$gray200"
+          borderRadius="$md"
+          overflow="hidden"
+          bg="$white"
+        >
+          <TextInput
+            value={block.content}
+            onChangeText={(text) => updateBlockContent(block.id, text)}
+            placeholder={isFirst ? "开始写下你的时尚观点..." : "继续写..."}
+            placeholderTextColor={theme.colors.gray400}
+            multiline
+            textAlignVertical="top"
+            style={styles.textBlockInput}
+          />
+
+          {/* 文本块底部操作栏 */}
+          <HStack
+            borderTopWidth={1}
+            borderTopColor="$gray100"
+            px="$sm"
+            py="$xs"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <HStack gap="$sm">
+              <TouchableOpacity
+                onPress={() => setShowAddMenu(showAddMenu === block.id ? null : block.id)}
+                style={styles.blockActionButton}
+              >
+                <Ionicons name="add-circle-outline" size={22} color={theme.colors.gray500} />
+              </TouchableOpacity>
+            </HStack>
+
+            {canDelete && (
+              <TouchableOpacity
+                onPress={() => deleteBlock(block.id)}
+                style={styles.blockActionButton}
+              >
+                <Ionicons name="trash-outline" size={18} color={theme.colors.gray400} />
+              </TouchableOpacity>
+            )}
+          </HStack>
+        </Box>
+
+        {/* 添加内容菜单 */}
+        {showAddMenu === block.id && (
+          <Animated.View
+            style={[
+              styles.addMenuContainer,
+              {
+                opacity: addMenuAnim,
+                transform: [
+                  {
+                    translateY: addMenuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <HStack gap="$md" p="$sm" bg="$gray50" w="100%" borderRadius="$md">
+              <TouchableOpacity
+                onPress={() => handleAddTextBlock(block.id)}
+                style={styles.addMenuItem}
+              >
+                <Box
+                  w={44}
+                  h={44}
+                  borderRadius="$full"
+                  bg="$white"
+                  alignItems="center"
+                  justifyContent="center"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                >
+                  <Ionicons name="text" size={20} color={theme.colors.accent} />
+                </Box>
+                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                  文字
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleAddImageBlock(block.id)}
+                style={styles.addMenuItem}
+              >
+                <Box
+                  w={44}
+                  h={44}
+                  borderRadius="$full"
+                  bg="$white"
+                  alignItems="center"
+                  justifyContent="center"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                >
+                  <Ionicons name="image" size={20} color={theme.colors.accent} />
+                </Box>
+                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                  图片
+                </Text>
+              </TouchableOpacity>
+            </HStack>
+          </Animated.View>
+        )}
+      </Box>
+    );
   };
 
-  const handleContentImageSelection = async (source: "camera" | "gallery") => {
-    setShowContentImagePicker(false);
+  // 渲染图片块
+  const renderImageBlock = (block: ContentBlock, index: number) => {
+    return (
+      <Box key={block.id} mx="$md" mb="$sm">
+        <Box borderRadius="$md" overflow="hidden" bg="$gray100">
+          <Image
+            source={{ uri: block.content }}
+            style={styles.imageBlock}
+            resizeMode="cover"
+          />
 
-    try {
-      let result;
+          {/* 图片块操作栏 */}
+          <HStack
+            position="absolute"
+            top={8}
+            right={8}
+            gap="$xs"
+          >
+            <TouchableOpacity
+              onPress={() => deleteBlock(block.id)}
+              style={styles.imageActionButton}
+            >
+              <Ionicons name="close" size={18} color={theme.colors.white} />
+            </TouchableOpacity>
+          </HStack>
+        </Box>
 
-      if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
-      } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [4, 3],
-          quality: 0.8,
-        });
-      }
+        {/* 图片下方添加内容按钮 */}
+        <HStack justifyContent="center" mt="$sm">
+          <TouchableOpacity
+            onPress={() => setShowAddMenu(showAddMenu === block.id ? null : block.id)}
+            style={styles.addBetweenButton}
+          >
+            <Ionicons name="add" size={16} color={theme.colors.gray500} />
+            <Text fontSize="$xs" color="$gray500" ml="$xs">
+              添加内容
+            </Text>
+          </TouchableOpacity>
+        </HStack>
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const imageUri = result.assets[0].uri;
+        {/* 添加内容菜单 */}
+        {showAddMenu === block.id && (
+          <Animated.View
+            style={[
+              styles.addMenuContainer,
+              {
+                opacity: addMenuAnim,
+                transform: [
+                  {
+                    translateY: addMenuAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-10, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <HStack gap="$md" p="$sm" bg="$gray50" borderRadius="$md" justifyContent="center">
+              <TouchableOpacity
+                onPress={() => handleAddTextBlock(block.id)}
+                style={styles.addMenuItem}
+              >
+                <Box
+                  w={44}
+                  h={44}
+                  borderRadius="$full"
+                  bg="$white"
+                  alignItems="center"
+                  justifyContent="center"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                >
+                  <Ionicons name="text" size={20} color={theme.colors.accent} />
+                </Box>
+                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                  文字
+                </Text>
+              </TouchableOpacity>
 
-        // 先上传图片到服务器，获取远程 URL 后再插入
-        setUploadProgress("上传图片中...");
-        try {
-          const uploadedUrl = await postService.uploadImage(imageUri);
-          richText.current?.insertImage(uploadedUrl);
-          Alert.show("图片已插入", "", 1500);
-        } catch (uploadError) {
-          console.error("Image upload error:", uploadError);
-          Alert.show("图片上传失败，请重试");
-        } finally {
-          setUploadProgress(null);
-        }
-      }
-    } catch (error) {
-      console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+              <TouchableOpacity
+                onPress={() => handleAddImageBlock(block.id)}
+                style={styles.addMenuItem}
+              >
+                <Box
+                  w={44}
+                  h={44}
+                  borderRadius="$full"
+                  bg="$white"
+                  alignItems="center"
+                  justifyContent="center"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                >
+                  <Ionicons name="image" size={20} color={theme.colors.accent} />
+                </Box>
+                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                  图片
+                </Text>
+              </TouchableOpacity>
+            </HStack>
+          </Animated.View>
+        )}
+      </Box>
+    );
+  };
+
+  // 渲染内容块
+  const renderContentBlock = (block: ContentBlock, index: number) => {
+    if (block.type === "text") {
+      return renderTextBlock(block, index);
     }
+    return renderImageBlock(block, index);
   };
-
-  // 处理富文本编辑器内容变化
-  const handleContentChange = (html: string) => {
-    setHtmlContent(html);
-    // 移除 HTML 标签以获取纯文本用于计数
-    const text = html.replace(/<[^>]*>/g, "");
-    setContent(text);
-  };
-
-  const wordCount = content.trim().length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -344,6 +703,7 @@ const PublishArticleScreen = () => {
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ScrollView
+          ref={scrollViewRef}
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
@@ -361,7 +721,7 @@ const PublishArticleScreen = () => {
           />
 
           {/* Title Input */}
-          <Box mx="$md" mb="$md">
+          <Box mx="$sm" mb="$md" w="100%">
             <Input
               value={title}
               onChangeText={setTitle}
@@ -381,110 +741,52 @@ const PublishArticleScreen = () => {
             />
           </Box>
 
-          {/* Rich Text Editor */}
-          <Box mx="$md" mb="$md">
-            {/* Toolbar */}
-            <Box
-              mb="$sm"
-              borderWidth={1}
-              borderColor="$gray200"
-              borderRadius="$sm"
-              overflow="hidden"
-            >
-              <RichToolbar
-                editor={richText}
-                actions={[
-                  actions.setBold,
-                  actions.setItalic,
-                  actions.setUnderline,
-                  actions.heading1,
-                  actions.insertBulletsList,
-                  actions.insertOrderedList,
-                  actions.blockquote,
-                  actions.alignLeft,
-                  actions.alignCenter,
-                  actions.alignRight,
-                  actions.code,
-                  actions.line,
-                  actions.insertImage,
-                ]}
-                iconMap={{
-                  insertImage: ({ tintColor }: { tintColor: string }) => (
-                    <Ionicons name="image" size={20} color={tintColor} />
-                  ),
-                }}
-                onPressAddImage={handleInsertContentImage}
-                style={styles.richToolbar}
-                selectedIconTint={theme.colors.accent}
-                disabledIconTint={theme.colors.gray300}
-                iconTint={theme.colors.gray600}
-              />
-            </Box>
-
-            {/* Editor */}
-            <Box
-              borderWidth={1}
-              borderColor="$gray200"
-              borderRadius="$sm"
-              overflow="hidden"
-              minHeight={300}
-            >
-              <RichEditor
-                ref={richText}
-                onChange={handleContentChange}
-                placeholder="支持段落、加粗、引用、插图...分享你的时尚观点、趋势分析或专业见解。最少需要100字。"
-                style={styles.richEditor}
-                initialHeight={300}
-                useContainer={true}
-                editorStyle={{
-                  backgroundColor: theme.colors.white,
-                  color: theme.colors.gray700,
-                  placeholderColor: theme.colors.gray400,
-                  contentCSSText: `
-                    font-size: 16px;
-                    line-height: 1.6;
-                    padding: 12px;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                  `,
-                }}
-              />
-            </Box>
-          </Box>
+          {/* 内容块列表 */}
+          {contentBlocks.map((block, index) => renderContentBlock(block, index))}
 
           {/* Word Count */}
-          <Box mx="$md" mb="$md">
+          <Box mx="$md" mb="$md" mt="$sm">
             <Text
-              color={wordCount >= 100 ? "$gray500" : "$orange"}
+              color="$gray500"
               fontSize="$sm"
               textAlign="right"
             >
               {wordCount} / 100 字（最少）
             </Text>
           </Box>
-        </ScrollView>
 
+          {/* 提示信息 */}
+          <Box mx="$md" mb="$lg" p="$md" bg="$gray50" borderRadius="$md">
+            <HStack alignItems="center" gap="$sm">
+              <Ionicons name="bulb-outline" size={18} color={theme.colors.gray500} />
+              <Text color="$gray500" fontSize="$xs" flex={1}>
+                点击文本框下方的 + 按钮可以添加更多文字或图片
+              </Text>
+            </HStack>
+          </Box>
+        </ScrollView>
       </KeyboardAvoidingView>
+
       {/* Bottom Buttons */}
       <PublishButtons
         onSaveDraft={handleSaveDraft}
         onPublish={handlePublish}
         publishDisabled={!canPublish() || isPublishing || isSavingDraft}
         draftDisabled={isPublishing || isSavingDraft}
-        publishButtonText={
-          isPublishing ? uploadProgress || "发布中..." : "发布"
-        }
-        draftButtonText={
-          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
-        }
+        publishButtonText={isPublishing ? uploadProgress || "发布中..." : "发布"}
+        draftButtonText={isSavingDraft ? uploadProgress || "保存中..." : "存草稿"}
       />
 
-      {/* Modals */}
+      {/* Image Picker Modal */}
       <ImagePickerModal
-        visible={showContentImagePicker}
-        onClose={() => setShowContentImagePicker(false)}
-        onSelectCamera={() => handleContentImageSelection("camera")}
-        onSelectGallery={() => handleContentImageSelection("gallery")}
-        title="插入图片"
+        visible={showImagePicker}
+        onClose={() => {
+          setShowImagePicker(false);
+          setInsertAfterBlockId(null);
+        }}
+        onSelectCamera={() => handleImageSelection("camera")}
+        onSelectGallery={() => handleImageSelection("gallery")}
+        title="添加图片"
       />
     </SafeAreaView>
   );
@@ -504,15 +806,45 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingBottom: 100,
   },
-  richToolbar: {
+  textBlockInput: {
     backgroundColor: theme.colors.white,
-    borderBottomWidth: 0,
-    minHeight: 50,
+    minHeight: 120,
+    padding: 12,
+    fontSize: 16,
+    lineHeight: 24,
+    color: theme.colors.gray700,
+    textAlignVertical: "top",
   },
-  richEditor: {
-    backgroundColor: theme.colors.white,
-    flex: 1,
-    minHeight: 300,
+  blockActionButton: {
+    padding: 6,
+  },
+  addMenuContainer: {
+    marginTop: 8,
+    alignItems: "center",
+  },
+  addMenuItem: {
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  imageBlock: {
+    width: "100%",
+    height: 200,
+  },
+  imageActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addBetweenButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.gray100,
+    borderRadius: 16,
   },
 });
 

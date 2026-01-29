@@ -1,18 +1,82 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
+import React, { useMemo } from "react";
+import { View, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack, VStack, Image, Pressable, Box } from "../ui";
 import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import { styles } from "./styles";
 
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// 内容块类型定义
+interface ContentBlock {
+  id: string;
+  type: "text" | "image";
+  content: string;
+}
+
 interface PostContentSectionProps {
   post: Post;
 }
 
+// 解析内容：支持新的块格式和旧的纯文本格式
+const parseContent = (description: string | undefined): ContentBlock[] | null => {
+  if (!description) return null;
+  
+  try {
+    const parsed = JSON.parse(description);
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+      return parsed as ContentBlock[];
+    }
+  } catch {
+    // 不是 JSON，返回 null 表示使用纯文本模式
+  }
+  return null;
+};
+
+// 渲染内容块
+const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
+  if (block.type === "text") {
+    if (!block.content.trim()) return null;
+    return (
+      <Text
+        fontFamily="Inter-Regular"
+        fontSize={15}
+        color="$gray600"
+        style={contentStyles.blockText}
+      >
+        {block.content}
+      </Text>
+    );
+  }
+
+  if (block.type === "image") {
+    return (
+      <View style={contentStyles.blockImageContainer}>
+        <Image
+          source={{ uri: block.content }}
+          style={contentStyles.blockImage}
+          resizeMode="cover"
+        />
+      </View>
+    );
+  }
+
+  return null;
+};
+
 export const PostContentSection: React.FC<PostContentSectionProps> = ({
   post,
 }) => {
+  // 解析内容
+  const contentBlocks = useMemo(
+    () => parseContent(post.content?.description),
+    [post.content?.description]
+  );
+
+  // 判断是否使用块格式
+  const isBlockFormat = contentBlocks !== null;
+
   return (
     <VStack style={contentStyles.container}>
       {/* Title - 使用优雅的衬线字体 */}
@@ -25,16 +89,26 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
         {post.content?.title}
       </Text>
 
-      {/* Description */}
-      {post.content?.description && (
-        <Text
-          fontFamily="Inter-Regular"
-          fontSize={15}
-          color="$gray600"
-          style={contentStyles.description}
-        >
-          {post.content.description}
-        </Text>
+      {/* Description - 支持块格式和纯文本格式 */}
+      {isBlockFormat ? (
+        // 块格式：渲染每个内容块
+        <VStack style={contentStyles.blocksContainer}>
+          {contentBlocks.map((block) => (
+            <ContentBlockRenderer key={block.id} block={block} />
+          ))}
+        </VStack>
+      ) : (
+        // 纯文本格式：直接渲染
+        post.content?.description && (
+          <Text
+            fontFamily="Inter-Regular"
+            fontSize={15}
+            color="$gray600"
+            style={contentStyles.description}
+          >
+            {post.content.description}
+          </Text>
+        )
       )}
 
       {post.type === "article" && post.readTime && (
@@ -112,6 +186,23 @@ const contentStyles = StyleSheet.create({
     lineHeight: 24,
     letterSpacing: 0.2,
     marginBottom: 16,
+  },
+  // 块格式样式
+  blocksContainer: {
+    marginBottom: 16,
+  },
+  blockText: {
+    lineHeight: 24,
+    letterSpacing: 0.2,
+    marginBottom: 16,
+  },
+  blockImageContainer: {
+    marginHorizontal: -20, // 让图片撑满屏幕宽度
+    marginBottom: 16,
+  },
+  blockImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 0.5625, // 16:9 比例
   },
   metaRow: {
     flexDirection: "row",

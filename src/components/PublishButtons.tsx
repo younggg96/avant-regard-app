@@ -50,9 +50,9 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
               <Ionicons
                 name="bookmark-outline"
                 size={20}
-                color={theme.colors.gray600}
+                color={theme.colors.white}
               />
-              <Text color="$gray600" ml="$xs" fontWeight="$medium">
+              <Text color="$white" ml="$xs" fontWeight="$medium">
                 {draftButtonText}
               </Text>
             </HStack>
