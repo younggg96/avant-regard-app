@@ -37,6 +37,21 @@ class PostService:
         # 获取 show_ids
         show_ids = post_data.get("show_ids") or []
 
+        # 获取社区信息
+        community_id = post_data.get("community_id")
+        community_name = None
+        community_slug = None
+        if community_id:
+            community_result = (
+                self.db.table("communities")
+                .select("name, slug")
+                .eq("id", community_id)
+                .execute()
+            )
+            if community_result.data:
+                community_name = community_result.data[0]["name"]
+                community_slug = community_result.data[0]["slug"]
+
         return Post(
             id=post_data["id"],
             userId=post_data["user_id"],
@@ -56,6 +71,9 @@ class PostService:
             brandName=post_data.get("brand_name"),
             rating=post_data.get("rating"),
             showIds=show_ids,
+            communityId=community_id,
+            communityName=community_name,
+            communitySlug=community_slug,
             likedByMe=liked_by_me,
             favoritedByMe=favorited_by_me,
         )
@@ -115,6 +133,7 @@ class PostService:
         brand_name: str = None,
         rating: int = None,
         show_ids: List[int] = None,
+        community_id: int = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 插入帖子
@@ -130,6 +149,7 @@ class PostService:
             "brand_name": brand_name,
             "rating": rating,
             "show_ids": show_ids or [],
+            "community_id": community_id,
         }
 
         result = self.db.table("posts").insert(insert_data).execute()
@@ -138,6 +158,15 @@ class PostService:
             return None
 
         post = result.data[0]
+
+        # 更新社区帖子数
+        if community_id and post_status == "PUBLISHED":
+            try:
+                self.db.rpc(
+                    "increment_community_post_count", {"community_id_param": community_id}
+                ).execute()
+            except:
+                pass
 
         return self._format_post(post, user_id)
 
@@ -177,6 +206,9 @@ class PostService:
             update_data["rating"] = kwargs["rating"]
         if "show_ids" in kwargs:
             update_data["show_ids"] = kwargs["show_ids"]
+        # 论坛帖子专用字段
+        if "community_id" in kwargs:
+            update_data["community_id"] = kwargs["community_id"]
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
 
@@ -438,6 +470,37 @@ class PostService:
         except Exception as e:
             print(f"Search posts error: {e}")
             return []
+
+
+    def get_posts_by_community_id(
+        self, community_id: int, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """获取某个社区的帖子"""
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .eq("community_id", community_id)
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
+    def get_forum_posts(
+        self, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """获取所有论坛帖子（仅已发布且审核通过的）"""
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .eq("post_type", "FORUM")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
 
 
 # 单例

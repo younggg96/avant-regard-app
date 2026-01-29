@@ -64,6 +64,7 @@ async def create_post(
         brand_name=request.brandName,
         rating=request.rating,
         show_ids=request.showIds,
+        community_id=request.communityId,
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")
@@ -92,6 +93,7 @@ async def update_post(
         brand_name=request.brandName,
         rating=request.rating,
         show_ids=request.showIds,
+        community_id=request.communityId,
     )
     if not result:
         raise HTTPException(status_code=404, detail="帖子不存在或无权修改")
@@ -225,4 +227,25 @@ async def get_posts_by_show_id(
 ):
     """获取某个秀场关联的帖子"""
     result = post_service.get_posts_by_show_id(show_id, current_user_id)
+    return success([p.model_dump() for p in result])
+
+
+# ==================== 社区帖子 ====================
+
+
+@router.get("/community/{community_id}")
+async def get_posts_by_community_id(
+    community_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
+):
+    """获取某个社区的帖子"""
+    result = post_service.get_posts_by_community_id(community_id, current_user_id)
+    return success([p.model_dump() for p in result])
+
+
+@router.get("/forum/all")
+async def get_forum_posts(
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """获取所有论坛帖子"""
+    result = post_service.get_forum_posts(current_user_id)
     return success([p.model_dump() for p in result])

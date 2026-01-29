@@ -66,7 +66,7 @@ interface DisplayPost {
   showIds?: number[];
 }
 
-type TabType = "recommend" | "following";
+type TabType = "forum" | "recommend" | "following";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -466,6 +466,11 @@ const DiscoverScreen = () => {
 
   // 处理标签切换
   const handleTabChange = useCallback((tab: TabType) => {
+    if (tab === "forum") {
+      // 跳转到论坛专区页面
+      (navigation.navigate as any)("Forum");
+      return;
+    }
     setActiveTab(tab);
     // 滑动到对应页面
     const pageIndex = tab === "recommend" ? 0 : 1;
@@ -473,7 +478,7 @@ const DiscoverScreen = () => {
       x: pageIndex * SCREEN_WIDTH,
       animated: true,
     });
-  }, []);
+  }, [navigation]);
 
   // 处理滑动结束
   const handleScrollEnd = useCallback(
@@ -589,72 +594,54 @@ const DiscoverScreen = () => {
                 </Pressable>
               </VStack>
             ) : currentPosts.length === 0 ? (
-              <>
-                {/* 推荐页显示 Banner 轮播图 */}
-                {tab === "recommend" && banners.length > 0 && (
-                  <BannerCarousel
-                    banners={banners}
-                    onBannerPress={handleBannerPress}
-                  />
-                )}
-                <VStack
-                  flex={1}
-                  justifyContent="center"
-                  alignItems="center"
-                  py="$2xl"
+              <VStack
+                flex={1}
+                justifyContent="center"
+                alignItems="center"
+                py="$2xl"
+              >
+                <Ionicons
+                  name="newspaper-outline"
+                  size={48}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$lg"
+                  color="$black"
+                  fontWeight="$medium"
+                  mb="$sm"
+                  mt="$md"
+                  textAlign="center"
                 >
-                  <Ionicons
-                    name="newspaper-outline"
-                    size={48}
-                    color={theme.colors.gray400}
-                  />
-                  <Text
-                    fontSize="$lg"
-                    color="$black"
-                    fontWeight="$medium"
-                    mb="$sm"
-                    mt="$md"
-                    textAlign="center"
-                  >
-                    {tab === "recommend" && "暂无推荐内容"}
-                    {tab === "following" && "暂无关注内容"}
-                  </Text>
-                  <Text color="$gray400" textAlign="center" lineHeight="$lg">
-                    {tab === "recommend" && "下拉刷新获取最新内容"}
-                    {tab === "following" && "关注更多用户查看他们的动态"}
-                  </Text>
-                </VStack>
-              </>
+                  {tab === "recommend" && "暂无推荐内容"}
+                  {tab === "following" && "暂无关注内容"}
+                </Text>
+                <Text color="$gray400" textAlign="center" lineHeight="$lg">
+                  {tab === "recommend" && "下拉刷新获取最新内容"}
+                  {tab === "following" && "关注更多用户查看他们的动态"}
+                </Text>
+              </VStack>
             ) : (
-              <>
-                {/* 推荐页显示 Banner 轮播图 */}
-                {tab === "recommend" && banners.length > 0 && (
-                  <BannerCarousel
-                    banners={banners}
-                    onBannerPress={handleBannerPress}
-                  />
-                )}
-                <HStack px="$sm" pt="$sm" alignItems="start">
-                  <VStack flex={1} pr="$xs">
-                    {currentPosts
-                      .filter((_, index) => index % 2 === 0)
-                      .map((post, index) => (
-                        <Box key={post.id || `left-${index}`} mb="$sm">
-                          {renderPost(post, index * 2)}
-                        </Box>
-                      ))}
-                  </VStack>
-                  <VStack flex={1} pl="$xs">
-                    {currentPosts
-                      .filter((_, index) => index % 2 === 1)
-                      .map((post, index) => (
-                        <Box key={post.id || `right-${index}`} mb="$sm">
-                          {renderPost(post, index * 2 + 1)}
-                        </Box>
-                      ))}
-                  </VStack>
-                </HStack>
-              </>
+              <HStack px="$sm" pt="$sm" alignItems="start">
+                <VStack flex={1} pr="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 0)
+                    .map((post, index) => (
+                      <Box key={post.id || `left-${index}`} mb="$sm">
+                        {renderPost(post, index * 2)}
+                      </Box>
+                    ))}
+                </VStack>
+                <VStack flex={1} pl="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 1)
+                    .map((post, index) => (
+                      <Box key={post.id || `right-${index}`} mb="$sm">
+                        {renderPost(post, index * 2 + 1)}
+                      </Box>
+                    ))}
+                </VStack>
+              </HStack>
             )}
             {loading && (
               <HStack justifyContent="center" alignItems="center" py="$lg">
@@ -780,6 +767,7 @@ const DiscoverScreen = () => {
             <HStack justifyContent="center" alignItems="center" gap="$sm">
               <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
               <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
             </HStack>
             <SkeletonBox width={24} height={24} style={{ borderRadius: 4 }} />
           </HStack>
@@ -832,6 +820,21 @@ const DiscoverScreen = () => {
       <Box borderBottomWidth={1} borderBottomColor="$gray100">
         <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
           <HStack justifyContent="center" alignItems="center" gap="$sm">
+            <Pressable
+              py="$sm"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("forum")}
+            >
+              <Text
+                color="$gray400"
+                fontWeight="$normal"
+                fontSize="$md"
+              >
+                论坛
+              </Text>
+            </Pressable>
+
             <Pressable
               py="$sm"
               px="$md"

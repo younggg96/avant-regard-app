@@ -18,6 +18,14 @@ interface PublishType {
 
 const publishTypes: PublishType[] = [
   {
+    id: "forum",
+    title: "用户论坛",
+    description: "在社区发表话题和讨论",
+    icon: "chatbubbles",
+    color: "#000000",
+    route: "PublishForumPost",
+  },
+  {
     id: "lookbook",
     title: "发布Lookbook",
     description: "分享时装系列或造型集合",
@@ -40,14 +48,6 @@ const publishTypes: PublishType[] = [
     icon: "star",
     color: "#000000",
     route: "PublishReview",
-  },
-  {
-    id: "article",
-    title: "时尚文章",
-    description: "发表时尚观点或趋势分析",
-    icon: "document-text",
-    color: "#000000",
-    route: "PublishArticle",
   },
   {
     id: "store",

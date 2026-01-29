@@ -51,7 +51,11 @@ import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
 import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
+import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
+// Forum Screens
+import ForumScreen from "./src/screens/ForumScreen";
+import CommunityDetailScreen from "./src/screens/CommunityDetailScreen";
 // Merchant Screens
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
@@ -370,6 +374,27 @@ function AppNavigator() {
         <Stack.Screen
           name="PublishArticle"
           component={PublishArticleScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="PublishForumPost"
+          component={PublishForumPostScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="Forum"
+          component={ForumScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="CommunityDetail"
+          component={CommunityDetailScreen}
           options={{
             headerShown: false,
           }}

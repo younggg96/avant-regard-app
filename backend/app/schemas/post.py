@@ -13,6 +13,7 @@ class PostType(str, Enum):
     DAILY_SHARE = "DAILY_SHARE"
     ITEM_REVIEW = "ITEM_REVIEW"
     ARTICLES = "ARTICLES"
+    FORUM = "FORUM"  # 论坛帖子
 
 
 class PostStatus(str, Enum):
@@ -50,6 +51,10 @@ class Post(BaseModel):
     rating: Optional[int] = None
     # 关联秀场 ID 列表（支持关联多个秀场）
     showIds: List[int] = []
+    # 论坛帖子专用字段
+    communityId: Optional[int] = None
+    communityName: Optional[str] = None
+    communitySlug: Optional[str] = None
     # 当前用户交互状态
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
@@ -70,6 +75,8 @@ class CreatePostRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     # 关联秀场 ID 列表（支持关联多个秀场）
     showIds: List[int] = []
+    # 论坛帖子专用字段
+    communityId: Optional[int] = None
 
 
 class UpdatePostRequest(BaseModel):
@@ -87,3 +94,5 @@ class UpdatePostRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     # 关联秀场 ID 列表（支持关联多个秀场）
     showIds: List[int] = []
+    # 论坛帖子专用字段
+    communityId: Optional[int] = None

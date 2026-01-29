@@ -16,7 +16,7 @@ interface ApiResponse<T> {
 }
 
 // 帖子类型
-export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
+export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES" | "FORUM";
 
 // 审核状态
 export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -43,6 +43,10 @@ export interface Post {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场）
   showIds?: number[];
+  // 论坛帖子专用字段
+  communityId?: number;
+  communityName?: string;
+  communitySlug?: string;
   // 当前用户交互状态
   likedByMe?: boolean;
   favoritedByMe?: boolean;
@@ -62,6 +66,8 @@ export interface CreatePostParams {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场）
   showIds?: number[];
+  // 论坛帖子专用字段
+  communityId?: number;
 }
 
 // 更新帖子请求参数
@@ -78,6 +84,8 @@ export interface UpdatePostParams {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场）
   showIds?: number[];
+  // 论坛帖子专用字段
+  communityId?: number;
 }
 
 // 通用请求方法 - 默认携带 token，支持自动刷新
@@ -575,6 +583,31 @@ export async function searchPosts(
   );
 }
 
+// ==================== 社区帖子 ====================
+
+/**
+ * 获取某个社区的帖子
+ * GET /api/posts/community/{communityId}
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param communityId 社区ID
+ */
+export async function getPostsByCommunityId(communityId: number): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/community/${communityId}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 获取所有论坛帖子
+ * GET /api/posts/forum/all
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的论坛帖子
+ */
+export async function getForumPosts(): Promise<Post[]> {
+  return request<Post[]>("/api/posts/forum/all", {
+    method: "GET",
+  });
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -600,6 +633,9 @@ export const postService = {
   getPostsByShowId,
   // 搜索
   searchPosts,
+  // 社区帖子
+  getPostsByCommunityId,
+  getForumPosts,
 };
 
 export default postService;
