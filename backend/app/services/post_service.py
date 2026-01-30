@@ -2,7 +2,7 @@
 帖子服务
 """
 
-from typing import Optional, List
+from typing import Optional, List, Union
 from app.db.supabase import get_supabase
 from app.schemas.post import Post, PostType, PostStatus, AuditStatus
 from app.services.notification_service import notification_service
@@ -132,7 +132,7 @@ class PostService:
         product_name: str = None,
         brand_name: str = None,
         rating: int = None,
-        show_ids: List[int] = None,
+        show_ids: List[Union[int, str]] = None,
         community_id: int = None,
     ) -> Optional[Post]:
         """创建帖子"""

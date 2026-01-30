@@ -3,7 +3,7 @@
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum
 from datetime import datetime
 
@@ -49,8 +49,8 @@ class Post(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = None
-    # 关联秀场 ID 列表（支持关联多个秀场）
-    showIds: List[int] = []
+    # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+    showIds: List[Union[int, str]] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
     communityName: Optional[str] = None
@@ -73,8 +73,8 @@ class CreatePostRequest(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = Field(None, ge=1, le=5)
-    # 关联秀场 ID 列表（支持关联多个秀场）
-    showIds: List[int] = []
+    # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+    showIds: List[Union[int, str]] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
 
@@ -92,7 +92,7 @@ class UpdatePostRequest(BaseModel):
     productName: Optional[str] = None
     brandName: Optional[str] = None
     rating: Optional[int] = Field(None, ge=1, le=5)
-    # 关联秀场 ID 列表（支持关联多个秀场）
-    showIds: List[int] = []
+    # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+    showIds: List[Union[int, str]] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None

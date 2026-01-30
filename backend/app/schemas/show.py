@@ -2,13 +2,13 @@
 秀场相关的数据模型
 """
 
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Union
 
 
 class Show(BaseModel):
     """秀场响应"""
-    id: int
+    id: Union[int, str]                 # 支持整数或字符串类型的 ID
     brand: str                          # 品牌名称
     season: str                         # 季度
     title: Optional[str] = None         # 标题
@@ -18,6 +18,21 @@ class Show(BaseModel):
     category: Optional[str] = None      # 类别：Ready-to-Wear, Couture, Menswear 等
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+
+    @field_validator('id', mode='before')
+    @classmethod
+    def convert_id(cls, v):
+        """将 ID 转换为整数（如果可能），否则保留为字符串"""
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            # 尝试转换为整数
+            try:
+                return int(v)
+            except ValueError:
+                # 如果是 MongoDB ObjectId 等非数字字符串，保留原值
+                return v
+        return v
 
 
 class ShowListResponse(BaseModel):
