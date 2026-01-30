@@ -495,7 +495,7 @@ const CommunityDetailScreen = () => {
               px="$lg"
               py="$sm"
               bg="$black"
-              rounded="$md"
+              rounded="$sm"
             >
               <Text color="$white" fontWeight="$medium">
                 点击重试

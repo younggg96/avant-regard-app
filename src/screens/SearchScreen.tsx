@@ -249,7 +249,7 @@ const SearchScreen = () => {
         <Box
           width={56}
           height={56}
-          rounded="$full"
+          rounded="$sm"
           overflow="hidden"
           bg="$gray100"
         >
@@ -315,7 +315,7 @@ const SearchScreen = () => {
         onPress={() => handleSearchTypeChange("posts")}
         px="$md"
         py="$xs"
-        rounded="$full"
+        rounded="$sm"
         bg={searchType === "posts" ? "$black" : "$gray100"}
       >
         <Text
@@ -330,7 +330,7 @@ const SearchScreen = () => {
         onPress={() => handleSearchTypeChange("users")}
         px="$md"
         py="$xs"
-        rounded="$full"
+        rounded="$sm"
         bg={searchType === "users" ? "$black" : "$gray100"}
       >
         <Text
