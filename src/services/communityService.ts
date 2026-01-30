@@ -1,8 +1,17 @@
 /**
  * 社区服务
  */
-import { API_BASE_URL } from "../config/env";
-import { getAuthHeaders } from "./authService";
+import { config } from "../config/env";
+import { useAuthStore } from "../store/authStore";
+
+const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
+
+// API 响应包装类型
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+}
 
 // 社区分类
 export type CommunityCategory = "GENERAL" | "FASHION" | "LIFESTYLE" | "BEAUTY" | "CULTURE";
@@ -41,161 +50,205 @@ export interface CommunityStats {
   weekPostCount: number;
 }
 
+// 通用请求方法 - 默认携带 token，支持自动刷新
+async function request<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  isRetry: boolean = false
+): Promise<T> {
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "*/*",
+    ...((options.headers as Record<string, string>) || {}),
+  };
+
+  // 自动添加 Authorization header（如果已登录）
+  const authStore = useAuthStore.getState();
+  let token = authStore.getAccessToken();
+
+  // 如果 token 即将过期，先刷新
+  if (
+    token &&
+    authStore.isTokenExpiringSoon &&
+    authStore.isTokenExpiringSoon()
+  ) {
+    await authStore.refreshTokens();
+    token = authStore.getAccessToken();
+  }
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const requestConfig: RequestInit = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, requestConfig);
+    const contentType = response.headers.get("content-type");
+
+    if (!response.ok) {
+      // 如果是 401 错误且不是重试请求，尝试刷新 token 后重试
+      if (
+        response.status === 401 &&
+        !isRetry &&
+        authStore.tokens?.refreshToken
+      ) {
+        const refreshSuccess = await authStore.refreshTokens();
+        if (refreshSuccess) {
+          return request<T>(endpoint, options, true);
+        }
+      }
+
+      let errorMessage = "请求失败";
+
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        errorMessage =
+          errorData.detail ||
+          errorData.message ||
+          errorData.error ||
+          errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text || `HTTP ${response.status}`;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    if (contentType?.includes("application/json")) {
+      const jsonResponse = await response.json();
+
+      // 处理包装的 API 响应格式 { code, message, data }
+      if (
+        jsonResponse &&
+        typeof jsonResponse === "object" &&
+        "code" in jsonResponse
+      ) {
+        const apiResponse = jsonResponse as ApiResponse<T>;
+
+        if (apiResponse.code !== 0) {
+          throw new Error(apiResponse.message || "请求失败");
+        }
+
+        if ("data" in apiResponse) {
+          return apiResponse.data;
+        }
+      }
+
+      return jsonResponse as T;
+    }
+
+    const text = await response.text();
+    return text as unknown as T;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("网络请求失败，请检查网络连接");
+  }
+}
+
 /**
  * 获取社区列表（热门、关注、全部）
  */
 export async function getCommunities(): Promise<CommunityListResponse> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities`, {
+  return request<CommunityListResponse>("/api/communities", {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取社区列表失败");
-  }
-
-  const data = await response.json();
-  return data.data as CommunityListResponse;
 }
 
 /**
  * 获取热门社区
  */
 export async function getPopularCommunities(limit: number = 5): Promise<Community[]> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/popular?limit=${limit}`, {
+  return request<Community[]>(`/api/communities/popular?limit=${limit}`, {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取热门社区失败");
-  }
-
-  const data = await response.json();
-  return data.data as Community[];
 }
 
 /**
  * 获取我关注的社区
  */
 export async function getFollowingCommunities(): Promise<Community[]> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/following`, {
+  return request<Community[]>("/api/communities/following", {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取关注的社区失败");
-  }
-
-  const data = await response.json();
-  return data.data as Community[];
 }
 
 /**
  * 获取社区详情
  */
 export async function getCommunityById(communityId: number): Promise<Community> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/${communityId}`, {
+  return request<Community>(`/api/communities/${communityId}`, {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取社区详情失败");
-  }
-
-  const data = await response.json();
-  return data.data as Community;
 }
 
 /**
  * 通过 slug 获取社区详情
  */
 export async function getCommunityBySlug(slug: string): Promise<Community> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/slug/${slug}`, {
+  return request<Community>(`/api/communities/slug/${slug}`, {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取社区详情失败");
-  }
-
-  const data = await response.json();
-  return data.data as Community;
 }
 
 /**
  * 获取社区统计信息
  */
 export async function getCommunityStats(communityId: number): Promise<CommunityStats> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/${communityId}/stats`, {
+  return request<CommunityStats>(`/api/communities/${communityId}/stats`, {
     method: "GET",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("获取社区统计失败");
-  }
-
-  const data = await response.json();
-  return data.data as CommunityStats;
 }
 
 /**
  * 关注社区
  */
 export async function followCommunity(communityId: number): Promise<void> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/${communityId}/follow`, {
+  return request<void>(`/api/communities/${communityId}/follow`, {
     method: "POST",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("关注社区失败");
-  }
 }
 
 /**
  * 取消关注社区
  */
 export async function unfollowCommunity(communityId: number): Promise<void> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/communities/${communityId}/follow`, {
+  return request<void>(`/api/communities/${communityId}/follow`, {
     method: "DELETE",
-    headers,
   });
-
-  if (!response.ok) {
-    throw new Error("取消关注失败");
-  }
 }
 
 /**
  * 搜索社区
  */
 export async function searchCommunities(keyword: string, limit: number = 20): Promise<Community[]> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(
-    `${API_BASE_URL}/communities/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+  return request<Community[]>(
+    `/api/communities/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
     {
       method: "GET",
-      headers,
     }
   );
-
-  if (!response.ok) {
-    throw new Error("搜索社区失败");
-  }
-
-  const data = await response.json();
-  return data.data as Community[];
 }
+
+// 导出 communityService 对象
+export const communityService = {
+  getCommunities,
+  getPopularCommunities,
+  getFollowingCommunities,
+  getCommunityById,
+  getCommunityBySlug,
+  getCommunityStats,
+  followCommunity,
+  unfollowCommunity,
+  searchCommunities,
+};
+
+export default communityService;

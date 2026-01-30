@@ -1,5 +1,5 @@
 /**
- * 论坛专区主页
+ * 论坛专区主页 - 基于 DiscoverScreen 结构
  */
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
@@ -14,6 +14,7 @@ import {
   NativeSyntheticEvent,
   Image,
   TouchableOpacity,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -30,13 +31,26 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
 import BannerCarousel from "../components/BannerCarousel";
-import { getForumPosts, Post as ApiPost, likePost, unlikePost } from "../services/postService";
-import { getCommunities, Community, CommunityListResponse, followCommunity, unfollowCommunity } from "../services/communityService";
+import {
+  getForumPosts,
+  Post as ApiPost,
+  likePost,
+  unlikePost,
+} from "../services/postService";
+import {
+  getCommunities,
+  Community,
+  CommunityListResponse,
+  followCommunity,
+  unfollowCommunity,
+} from "../services/communityService";
 import { getActiveBanners, Banner } from "../services/bannerService";
 import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+type TabType = "hot" | "new" | "following";
 
 // 计算相对时间
 const getRelativeTime = (dateString: string): string => {
@@ -130,12 +144,20 @@ const ForumScreen = () => {
   const [posts, setPosts] = useState<DisplayPost[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [communities, setCommunities] = useState<CommunityListResponse | null>(null);
+  const [followingCommunityIds, setFollowingCommunityIds] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("hot");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const userInfoCache = useRef<Map<number, UserInfo>>(new Map());
+  const scrollViewRef = useRef<RNScrollView>(null);
+
+  // Header 动画值
+  const headerHeight = useRef(new Animated.Value(1)).current;
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const isHeaderVisible = useRef(true);
 
   // 获取论坛帖子
   const fetchPosts = useCallback(async () => {
@@ -194,6 +216,9 @@ const ForumScreen = () => {
     try {
       const communityData = await getCommunities();
       setCommunities(communityData);
+      // 提取关注的社区 ID
+      const followingIds = communityData.following.map((c) => c.id);
+      setFollowingCommunityIds(followingIds);
     } catch (err) {
       console.error("获取社区列表失败:", err);
     }
@@ -212,9 +237,35 @@ const ForumScreen = () => {
   const handleBannerPress = useCallback(
     (banner: Banner) => {
       console.log("Banner 点击:", banner.linkType, banner.linkValue);
-      // Banner 点击处理
+
+      switch (banner.linkType) {
+        case "POST":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("PostDetail", { postId: banner.linkValue });
+          }
+          break;
+        case "BRAND":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("BrandDetail", { brandSlug: banner.linkValue });
+          }
+          break;
+        case "SHOW":
+          if (banner.linkValue) {
+            (navigation.navigate as any)("CollectionDetail", { showId: parseInt(banner.linkValue) });
+          }
+          break;
+        case "EXTERNAL":
+          if (banner.linkValue) {
+            Linking.openURL(banner.linkValue).catch((err) =>
+              console.error("打开链接失败:", err)
+            );
+          }
+          break;
+        default:
+          break;
+      }
     },
-    []
+    [navigation]
   );
 
   // 处理社区点击
@@ -223,24 +274,6 @@ const ForumScreen = () => {
       (navigation.navigate as any)("CommunityDetail", { communityId: community.id });
     },
     [navigation]
-  );
-
-  // 处理关注/取消关注社区
-  const handleFollowCommunity = useCallback(
-    async (community: Community) => {
-      try {
-        if (community.isFollowing) {
-          await unfollowCommunity(community.id);
-        } else {
-          await followCommunity(community.id);
-        }
-        // 刷新社区列表
-        fetchCommunities();
-      } catch (err) {
-        console.error("关注操作失败:", err);
-      }
-    },
-    [fetchCommunities]
   );
 
   // Convert DisplayPost to PostCard Post format
@@ -291,22 +324,21 @@ const ForumScreen = () => {
       const isCurrentlyLiked = targetPost.engagement.isLiked;
 
       // 乐观更新
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                engagement: {
-                  ...post.engagement,
-                  isLiked: !isCurrentlyLiked,
-                  likes: isCurrentlyLiked
-                    ? post.engagement.likes - 1
-                    : post.engagement.likes + 1,
-                },
-              }
-            : post
-        )
-      );
+      const updatePost = (post: DisplayPost) =>
+        post.id === postId
+          ? {
+              ...post,
+              engagement: {
+                ...post.engagement,
+                isLiked: !isCurrentlyLiked,
+                likes: isCurrentlyLiked
+                  ? post.engagement.likes - 1
+                  : post.engagement.likes + 1,
+              },
+            }
+          : post;
+
+      setPosts((prevPosts) => prevPosts.map(updatePost));
 
       try {
         const numericPostId = parseInt(postId, 10);
@@ -341,16 +373,120 @@ const ForumScreen = () => {
     [posts, user]
   );
 
+  // 处理搜索按钮点击
+  const handleSearchPress = useCallback(() => {
+    (navigation.navigate as any)("Search");
+  }, [navigation]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([fetchPosts(), fetchBanners(), fetchCommunities()]);
     setRefreshing(false);
   }, [fetchPosts, fetchBanners, fetchCommunities]);
 
+  // 处理垂直滚动（控制 header 显示/隐藏）
+  const lastScrollY = useRef(0);
+  const handleVerticalScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const currentScrollY = event.nativeEvent.contentOffset.y;
+      const contentHeight = event.nativeEvent.contentSize.height;
+      const layoutHeight = event.nativeEvent.layoutMeasurement.height;
+      const scrollThreshold = 50;
+      const bottomThreshold = 100;
+
+      const isNearBottom =
+        currentScrollY + layoutHeight >= contentHeight - bottomThreshold;
+
+      if (
+        currentScrollY > scrollThreshold &&
+        currentScrollY > lastScrollY.current &&
+        isHeaderVisible.current
+      ) {
+        isHeaderVisible.current = false;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      } else if (
+        (currentScrollY < lastScrollY.current || currentScrollY <= 10) &&
+        !isHeaderVisible.current &&
+        !isNearBottom
+      ) {
+        isHeaderVisible.current = true;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+
+      lastScrollY.current = currentScrollY;
+    },
+    [headerHeight, headerOpacity]
+  );
+
+  // 处理标签切换
+  const handleTabChange = useCallback((tab: TabType) => {
+    setActiveTab(tab);
+    const pageIndex = tab === "hot" ? 0 : tab === "new" ? 1 : 2;
+    scrollViewRef.current?.scrollTo({
+      x: pageIndex * SCREEN_WIDTH,
+      animated: true,
+    });
+  }, []);
+
+  // 处理滑动结束
+  const handleScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
+      const newTab: TabType = pageIndex === 0 ? "hot" : pageIndex === 1 ? "new" : "following";
+
+      if (newTab !== activeTab) {
+        setActiveTab(newTab);
+      }
+    },
+    [activeTab]
+  );
+
   // 处理发帖按钮
   const handlePublishPress = useCallback(() => {
     (navigation.navigate as any)("PublishForumPost");
   }, [navigation]);
+
+  // 渲染帖子
+  const renderPost = useCallback(
+    (post: Post, index: number) => {
+      if (!post || !post.id || !post.author) {
+        return null;
+      }
+
+      return (
+        <PostCard
+          post={post}
+          onPress={handlePostPress}
+          onAuthorPress={handleAuthorPress}
+          onLike={handleLike}
+        />
+      );
+    },
+    [handlePostPress, handleAuthorPress, handleLike]
+  );
 
   // 渲染热门社区圆形按钮
   const renderPopularCommunities = () => {
@@ -359,7 +495,7 @@ const ForumScreen = () => {
     }
 
     return (
-      <Box py="$md" px="$md">
+      <Box py="$md" px="$md" bg="$white">
         <HStack justifyContent="space-between" alignItems="center" mb="$sm">
           <Text fontSize="$md" fontWeight="$semibold" color="$black">
             热门社区
@@ -409,90 +545,174 @@ const ForumScreen = () => {
     );
   };
 
-  // 渲染我关注的社区
-  const renderFollowingCommunities = () => {
-    if (!communities?.following || communities.following.length === 0) {
-      return null;
-    }
+  // 渲染标签页内容
+  const renderTabContent = useCallback(
+    (tab: TabType) => {
+      let tabPosts: DisplayPost[] = [];
 
-    return (
-      <Box py="$sm" px="$md">
-        <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$sm">
-          我关注的社区
-        </Text>
-        <VStack gap="$sm">
-          {communities.following.map((community) => (
-            <Pressable
-              key={community.id}
-              onPress={() => handleCommunityPress(community)}
-              bg="$white"
-              p="$sm"
-              rounded="$md"
-              borderWidth={1}
-              borderColor="$gray100"
-            >
-              <HStack alignItems="center" gap="$sm">
-                <View style={styles.communityListIcon}>
-                  {community.iconUrl ? (
-                    <Image
-                      source={{ uri: community.iconUrl }}
-                      style={styles.communityListImage}
-                    />
-                  ) : (
-                    <View style={styles.communityListPlaceholder}>
-                      <Text fontSize="$sm" fontWeight="$bold" color="$white">
-                        {community.name.charAt(0)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <VStack flex={1}>
-                  <Text fontSize="$sm" fontWeight="$medium" color="$black">
-                    {community.name}
-                  </Text>
-                  <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
-                    {community.memberCount} 成员 · {community.postCount} 帖子
-                  </Text>
-                </VStack>
-                <Pressable
-                  onPress={() => handleFollowCommunity(community)}
-                  px="$sm"
-                  py="$xs"
-                  rounded="$full"
-                  bg={community.isFollowing ? "$gray100" : "$black"}
-                >
-                  <Text
-                    fontSize="$xs"
-                    color={community.isFollowing ? "$black" : "$white"}
-                  >
-                    {community.isFollowing ? "已关注" : "关注"}
-                  </Text>
-                </Pressable>
-              </HStack>
-            </Pressable>
-          ))}
-        </VStack>
-      </Box>
-    );
-  };
-
-  // 渲染帖子
-  const renderPost = useCallback(
-    (post: Post, index: number) => {
-      if (!post || !post.id || !post.author) {
-        return null;
+      if (tab === "hot") {
+        // 热门：按点赞数排序
+        tabPosts = [...posts].sort((a, b) => b.engagement.likes - a.engagement.likes);
+      } else if (tab === "new") {
+        // 最新：按时间排序（默认已排序）
+        tabPosts = posts;
+      } else if (tab === "following") {
+        // 关注：只显示关注社区的帖子
+        tabPosts = posts.filter((post) => {
+          return post.communityId && followingCommunityIds.includes(post.communityId);
+        });
       }
 
+      const currentPosts = Array.isArray(tabPosts)
+        ? tabPosts.map(convertToPost)
+        : [];
+
       return (
-        <PostCard
-          post={post}
-          onPress={handlePostPress}
-          onAuthorPress={handleAuthorPress}
-          onLike={handleLike}
-        />
+        <View style={{ width: SCREEN_WIDTH }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            onScroll={handleVerticalScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[theme.colors.accent]}
+                tintColor={theme.colors.accent}
+              />
+            }
+          >
+            {/* Banner 轮播图 - 只在热门 tab 显示 */}
+            {tab === "hot" && banners.length > 0 && (
+              <BannerCarousel banners={banners} onBannerPress={handleBannerPress} />
+            )}
+
+            {/* 热门社区 - 只在热门 tab 显示 */}
+            {tab === "hot" && renderPopularCommunities()}
+
+            {error ? (
+              <VStack
+                flex={1}
+                justifyContent="center"
+                alignItems="center"
+                py="$2xl"
+              >
+                <Ionicons
+                  name="cloud-offline-outline"
+                  size={48}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$lg"
+                  color="$black"
+                  fontWeight="$medium"
+                  mb="$sm"
+                  mt="$md"
+                  textAlign="center"
+                >
+                  加载失败
+                </Text>
+                <Text
+                  color="$gray400"
+                  textAlign="center"
+                  lineHeight="$lg"
+                  mb="$md"
+                >
+                  {error}
+                </Text>
+                <Pressable
+                  onPress={handleRefresh}
+                  px="$lg"
+                  py="$sm"
+                  bg="$black"
+                  rounded="$md"
+                >
+                  <Text color="$white" fontWeight="$medium">
+                    点击重试
+                  </Text>
+                </Pressable>
+              </VStack>
+            ) : currentPosts.length === 0 ? (
+              <VStack
+                flex={1}
+                justifyContent="center"
+                alignItems="center"
+                py="$2xl"
+              >
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={48}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  fontSize="$lg"
+                  color="$black"
+                  fontWeight="$medium"
+                  mb="$sm"
+                  mt="$md"
+                  textAlign="center"
+                >
+                  {tab === "hot" && "暂无热门帖子"}
+                  {tab === "new" && "暂无最新帖子"}
+                  {tab === "following" && "暂无关注内容"}
+                </Text>
+                <Text color="$gray400" textAlign="center" lineHeight="$lg">
+                  {tab === "hot" && "快来发布第一篇帖子吧"}
+                  {tab === "new" && "快来发布第一篇帖子吧"}
+                  {tab === "following" && "关注更多社区查看动态"}
+                </Text>
+              </VStack>
+            ) : (
+              <HStack px="$sm" pt="$sm" alignItems="start">
+                <VStack flex={1} pr="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 0)
+                    .map((post, index) => (
+                      <Box key={post.id || `left-${index}`} mb="$sm">
+                        {renderPost(post, index * 2)}
+                      </Box>
+                    ))}
+                </VStack>
+                <VStack flex={1} pl="$xs">
+                  {currentPosts
+                    .filter((_, index) => index % 2 === 1)
+                    .map((post, index) => (
+                      <Box key={post.id || `right-${index}`} mb="$sm">
+                        {renderPost(post, index * 2 + 1)}
+                      </Box>
+                    ))}
+                </VStack>
+              </HStack>
+            )}
+            {loading && (
+              <HStack justifyContent="center" alignItems="center" py="$lg">
+                <ActivityIndicator color={theme.colors.accent} />
+                <Text color="$gray400" fontSize="$sm" ml="$sm">
+                  加载更多...
+                </Text>
+              </HStack>
+            )}
+          </ScrollView>
+        </View>
       );
     },
-    [handlePostPress, handleAuthorPress, handleLike]
+    [
+      posts,
+      banners,
+      followingCommunityIds,
+      communities,
+      convertToPost,
+      error,
+      refreshing,
+      handleRefresh,
+      handleBannerPress,
+      handleVerticalScroll,
+      renderPost,
+      loading,
+      handleCommunityPress,
+      navigation,
+    ]
   );
 
   // 骨架屏动画
@@ -524,7 +744,6 @@ const ForumScreen = () => {
     outputRange: [0.3, 0.7],
   });
 
-  // 骨架屏组件
   const SkeletonBox = ({
     width,
     height,
@@ -548,34 +767,45 @@ const ForumScreen = () => {
     />
   );
 
-  // 骨架屏帖子卡片
-  const SkeletonPostCard = () => {
-    return (
-      <View style={styles.skeletonCard}>
-        <Animated.View
-          style={[styles.skeletonImage, { opacity: skeletonOpacity }]}
-        />
-        <View style={styles.skeletonTitleArea}>
-          <SkeletonBox width="90%" height={14} style={{ marginBottom: 4 }} />
-          <SkeletonBox width="60%" height={14} />
-        </View>
-        <View style={styles.skeletonFooter}>
-          <View style={styles.skeletonUserInfo}>
-            <Animated.View
-              style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
-            />
-            <SkeletonBox width={50} height={10} />
-          </View>
-          <SkeletonBox width={30} height={14} />
-        </View>
+  const SkeletonPostCard = () => (
+    <View style={styles.skeletonCard}>
+      <Animated.View
+        style={[styles.skeletonImage, { opacity: skeletonOpacity }]}
+      />
+      <View style={styles.skeletonTitleArea}>
+        <SkeletonBox width="90%" height={14} style={{ marginBottom: 4 }} />
+        <SkeletonBox width="60%" height={14} />
       </View>
-    );
-  };
+      <View style={styles.skeletonFooter}>
+        <View style={styles.skeletonUserInfo}>
+          <Animated.View
+            style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
+          />
+          <SkeletonBox width={50} height={10} />
+        </View>
+        <SkeletonBox width={30} height={14} />
+      </View>
+    </View>
+  );
 
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <ScreenHeader title="论坛专区" boldTitle={true} borderless />
+        <ScreenHeader
+          title="论坛专区"
+          showBackButton
+          onBackPress={() => navigation.goBack()}
+        />
+        <Box borderBottomWidth={1} borderBottomColor="$gray100">
+          <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
+            <HStack justifyContent="center" alignItems="center" gap="$sm">
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+              <SkeletonBox width={40} height={20} style={{ borderRadius: 4 }} />
+            </HStack>
+            <SkeletonBox width={24} height={24} style={{ borderRadius: 4 }} />
+          </HStack>
+        </Box>
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <SkeletonBox width="100%" height={180} style={{ marginBottom: 16 }} />
           <HStack px="$sm" pt="$sm" alignItems="start">
@@ -593,127 +823,134 @@ const ForumScreen = () => {
     );
   }
 
-  const currentPosts = posts.map(convertToPost);
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScreenHeader title="论坛专区" boldTitle={true} borderless />
-
-      <ScrollView
-        flex={1}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
-          />
-        }
+      {/* 动画 Header */}
+      <Animated.View
+        style={{
+          height: headerHeight.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 56],
+          }),
+          opacity: headerOpacity,
+          overflow: "hidden",
+        }}
       >
-        {/* Banner 轮播图 */}
-        {banners.length > 0 && (
-          <BannerCarousel banners={banners} onBannerPress={handleBannerPress} />
-        )}
+        <ScreenHeader
+          title="论坛专区"
+          showBackButton
+          onBackPress={() => navigation.goBack()}
+        />
+      </Animated.View>
 
-        {/* 热门社区圆形按钮 */}
-        {renderPopularCommunities()}
-
-        {/* 我关注的社区 */}
-        {renderFollowingCommunities()}
-
-        {/* 帖子标题 */}
-        <Box px="$md" py="$sm">
-          <Text fontSize="$md" fontWeight="$semibold" color="$black">
-            最新帖子
-          </Text>
-        </Box>
-
-        {error ? (
-          <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
-            <Ionicons
-              name="cloud-offline-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
-              加载失败
-            </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
-              {error}
-            </Text>
+      {/* Tab View - 吸顶 */}
+      <Box borderBottomWidth={1} borderBottomColor="$gray100">
+        <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
+          <HStack justifyContent="center" alignItems="center" gap="$sm">
             <Pressable
-              onPress={handleRefresh}
-              px="$lg"
               py="$sm"
-              bg="$black"
-              rounded="$md"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("hot")}
             >
-              <Text color="$white" fontWeight="$medium">
-                点击重试
+              <Text
+                color={activeTab === "hot" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "hot" ? "$semibold" : "$normal"}
+                fontSize="$md"
+              >
+                热门
               </Text>
+              {activeTab === "hot" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
             </Pressable>
-          </VStack>
-        ) : currentPosts.length === 0 ? (
-          <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
-            <Ionicons
-              name="chatbubbles-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
-              暂无帖子
-            </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg">
-              快来发布第一篇帖子吧
-            </Text>
-          </VStack>
-        ) : (
-          <HStack px="$sm" pt="$sm" alignItems="start">
-            <VStack flex={1} pr="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 0)
-                .map((post, index) => (
-                  <Box key={post.id || `left-${index}`} mb="$sm">
-                    {renderPost(post, index * 2)}
-                  </Box>
-                ))}
-            </VStack>
-            <VStack flex={1} pl="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 1)
-                .map((post, index) => (
-                  <Box key={post.id || `right-${index}`} mb="$sm">
-                    {renderPost(post, index * 2 + 1)}
-                  </Box>
-                ))}
-            </VStack>
-          </HStack>
-        )}
 
-        {loading && (
-          <HStack justifyContent="center" alignItems="center" py="$lg">
-            <ActivityIndicator color={theme.colors.accent} />
-            <Text color="$gray400" fontSize="$sm" ml="$sm">
-              加载更多...
-            </Text>
+            <Pressable
+              py="$sm"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("new")}
+            >
+              <Text
+                color={activeTab === "new" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "new" ? "$semibold" : "$normal"}
+                fontSize="$md"
+              >
+                最新
+              </Text>
+              {activeTab === "new" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
+            </Pressable>
+
+            <Pressable
+              py="$sm"
+              px="$md"
+              position="relative"
+              onPress={() => handleTabChange("following")}
+            >
+              <Text
+                color={activeTab === "following" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "following" ? "$semibold" : "$normal"}
+                fontSize="$md"
+              >
+                关注
+              </Text>
+              {activeTab === "following" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
+            </Pressable>
           </HStack>
-        )}
-      </ScrollView>
+
+          {/* 右侧搜索按钮 */}
+          <Pressable
+            onPress={handleSearchPress}
+            p="$xs"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="search-outline" size={24} color={theme.colors.black} />
+          </Pressable>
+        </HStack>
+      </Box>
+
+      {/* 水平滑动容器 */}
+      <RNScrollView
+        ref={scrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
+        style={{ flex: 1 }}
+      >
+        {renderTabContent("hot")}
+        {renderTabContent("new")}
+        {renderTabContent("following")}
+      </RNScrollView>
 
       {/* 发帖按钮 */}
       <TouchableOpacity style={styles.publishButton} onPress={handlePublishPress}>
@@ -752,23 +989,6 @@ const styles = StyleSheet.create({
   },
   communityName: {
     width: 60,
-  },
-  communityListIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: "hidden",
-  },
-  communityListImage: {
-    width: "100%",
-    height: "100%",
-  },
-  communityListPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
   },
   publishButton: {
     position: "absolute",

@@ -10,6 +10,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Linking,
+  Image,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -28,6 +30,7 @@ import PostCard, { Post } from "../components/PostCard";
 import BannerCarousel from "../components/BannerCarousel";
 import {
   getPosts,
+  getForumPosts,
   Post as ApiPost,
   likePost,
   unlikePost,
@@ -36,6 +39,11 @@ import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
 import { getFollowingUsers, FollowingUser } from "../services/followService";
 import { getActiveBanners, Banner } from "../services/bannerService";
+import {
+  getCommunities,
+  Community,
+  CommunityListResponse,
+} from "../services/communityService";
 
 // 用于展示的Post类型（与PostCard组件兼容）
 interface DisplayPost {
@@ -134,8 +142,11 @@ const DiscoverScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [posts, setPosts] = useState<DisplayPost[]>([]);
+  const [forumPosts, setForumPosts] = useState<DisplayPost[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [followingUserIds, setFollowingUserIds] = useState<number[]>([]);
+  const [communities, setCommunities] = useState<CommunityListResponse | null>(null);
+  const [followingCommunityIds, setFollowingCommunityIds] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("recommend");
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -147,6 +158,7 @@ const DiscoverScreen = () => {
 
   // 滑动视图引用
   const scrollViewRef = useRef<RNScrollView>(null);
+  const hasInitialScrolled = useRef(false);
 
   // Header 动画值
   const headerHeight = useRef(new Animated.Value(1)).current; // 1 = 显示, 0 = 隐藏
@@ -215,14 +227,86 @@ const DiscoverScreen = () => {
     }
   }, []);
 
+  // 获取论坛帖子
+  const fetchForumPosts = useCallback(async () => {
+    try {
+      const apiPosts = await getForumPosts();
+
+      const userIds = [...new Set(apiPosts.map((post) => post.userId))];
+      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      const uncachedUserIds = userIds.filter((id) => !userInfoMap.has(id));
+
+      if (uncachedUserIds.length > 0) {
+        const userInfoPromises = uncachedUserIds.map(async (userId) => {
+          try {
+            const info = await userInfoService.getUserInfo(userId);
+            return { userId, info };
+          } catch (err) {
+            console.warn(`获取用户 ${userId} 信息失败:`, err);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(userInfoPromises);
+        results.forEach((result) => {
+          if (result && result.info) {
+            userInfoMap.set(result.userId, result.info);
+            userInfoCache.current.set(result.userId, result.info);
+          }
+        });
+      }
+
+      const displayPosts = apiPosts.map((post) =>
+        mapApiPostToDisplayPost(post, userInfoMap)
+      );
+      setForumPosts(displayPosts);
+    } catch (err) {
+      console.error("获取论坛帖子失败:", err);
+      setForumPosts([]);
+    }
+  }, []);
+
+  // 获取社区列表
+  const fetchCommunities = useCallback(async () => {
+    try {
+      const communityData = await getCommunities();
+      setCommunities(communityData);
+      // 提取关注的社区 ID
+      const followingIds = communityData.following.map((c) => c.id);
+      setFollowingCommunityIds(followingIds);
+    } catch (err) {
+      console.error("获取社区列表失败:", err);
+    }
+  }, []);
+
   // 初始化加载数据
   useEffect(() => {
     const initData = async () => {
-      await Promise.all([fetchPosts(), fetchFollowingUsers(), fetchBanners()]);
+      await Promise.all([
+        fetchPosts(),
+        fetchFollowingUsers(),
+        fetchBanners(),
+        fetchForumPosts(),
+        fetchCommunities(),
+      ]);
       setIsInitialized(true);
     };
     initData();
-  }, [fetchPosts, fetchBanners]);
+  }, [fetchPosts, fetchBanners, fetchForumPosts, fetchCommunities]);
+
+  // 初始化时滚动到推荐 tab（index 1）
+  useEffect(() => {
+    if (isInitialized && !hasInitialScrolled.current) {
+      hasInitialScrolled.current = true;
+      // 延迟一帧确保 ScrollView 已完成渲染
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          x: SCREEN_WIDTH, // recommend tab 在 index 1
+          animated: false,
+        });
+      }, 0);
+    }
+  }, [isInitialized]);
 
   // 获取关注的用户列表
   const fetchFollowingUsers = useCallback(async () => {
@@ -359,14 +443,16 @@ const DiscoverScreen = () => {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (activeTab === "recommend") {
+    if (activeTab === "forum") {
+      await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
+    } else if (activeTab === "recommend") {
       await Promise.all([fetchPosts(), fetchBanners()]);
     } else {
       // 关注标签页也刷新帖子和关注列表
       await Promise.all([fetchPosts(), fetchFollowingUsers()]);
     }
     setRefreshing(false);
-  }, [fetchPosts, fetchFollowingUsers, fetchBanners, activeTab]);
+  }, [fetchPosts, fetchFollowingUsers, fetchBanners, fetchForumPosts, fetchCommunities, activeTab]);
 
   // 处理 Banner 点击
   const handleBannerPress = useCallback(
@@ -466,26 +552,21 @@ const DiscoverScreen = () => {
 
   // 处理标签切换
   const handleTabChange = useCallback((tab: TabType) => {
-    if (tab === "forum") {
-      // 跳转到论坛专区页面
-      (navigation.navigate as any)("Forum");
-      return;
-    }
     setActiveTab(tab);
-    // 滑动到对应页面
-    const pageIndex = tab === "recommend" ? 0 : 1;
+    // 滑动到对应页面：forum=0, recommend=1, following=2
+    const pageIndex = tab === "forum" ? 0 : tab === "recommend" ? 1 : 2;
     scrollViewRef.current?.scrollTo({
       x: pageIndex * SCREEN_WIDTH,
       animated: true,
     });
-  }, [navigation]);
+  }, []);
 
   // 处理滑动结束
   const handleScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x;
       const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
-      const newTab: TabType = pageIndex === 0 ? "recommend" : "following";
+      const newTab: TabType = pageIndex === 0 ? "forum" : pageIndex === 1 ? "recommend" : "following";
 
       if (newTab !== activeTab) {
         setActiveTab(newTab);
@@ -493,6 +574,76 @@ const DiscoverScreen = () => {
     },
     [activeTab]
   );
+
+  // 处理社区点击
+  const handleCommunityPress = useCallback(
+    (community: Community) => {
+      (navigation.navigate as any)("CommunityDetail", { communityId: community.id });
+    },
+    [navigation]
+  );
+
+  // 处理发帖按钮
+  const handlePublishPress = useCallback(() => {
+    (navigation.navigate as any)("PublishForumPost");
+  }, [navigation]);
+
+  // 渲染热门社区圆形按钮
+  const renderPopularCommunities = useCallback(() => {
+    if (!communities?.popular || communities.popular.length === 0) {
+      return null;
+    }
+
+    return (
+      <Box py="$md" px="$md" bg="$white">
+        <HStack justifyContent="space-between" alignItems="center" mb="$sm">
+          <Text fontSize="$md" fontWeight="$semibold" color="$black">
+            热门社区
+          </Text>
+          <Pressable onPress={() => (navigation.navigate as any)("AllCommunities")}>
+            <Text fontSize="$sm" color="$gray500">
+              查看全部
+            </Text>
+          </Pressable>
+        </HStack>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <HStack gap="$md">
+            {communities.popular.slice(0, 5).map((community) => (
+              <TouchableOpacity
+                key={community.id}
+                onPress={() => handleCommunityPress(community)}
+                style={styles.communityButton}
+              >
+                <View style={styles.communityIcon}>
+                  {community.iconUrl ? (
+                    <Image
+                      source={{ uri: community.iconUrl }}
+                      style={styles.communityImage}
+                    />
+                  ) : (
+                    <View style={styles.communityPlaceholder}>
+                      <Text fontSize="$lg" fontWeight="$bold" color="$white">
+                        {community.name.charAt(0)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text
+                  fontSize="$xs"
+                  color="$black"
+                  textAlign="center"
+                  numberOfLines={1}
+                  style={styles.communityName}
+                >
+                  {community.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </HStack>
+        </ScrollView>
+      </Box>
+    );
+  }, [communities, handleCommunityPress, navigation]);
 
 
   const renderPost = useCallback(
@@ -520,7 +671,10 @@ const DiscoverScreen = () => {
     (tab: TabType) => {
       // 根据标签获取对应的帖子
       let tabPosts: DisplayPost[] = [];
-      if (tab === "recommend") {
+      if (tab === "forum") {
+        // 论坛显示论坛帖子（按点赞数排序-热门）
+        tabPosts = [...forumPosts].sort((a, b) => b.engagement.likes - a.engagement.likes);
+      } else if (tab === "recommend") {
         // 推荐显示所有帖子
         tabPosts = posts;
       } else if (tab === "following") {
@@ -551,6 +705,14 @@ const DiscoverScreen = () => {
               />
             }
           >
+            {/* Banner 轮播图 - 只在论坛 tab 显示 */}
+            {tab === "forum" && banners.length > 0 && (
+              <BannerCarousel banners={banners} onBannerPress={handleBannerPress} />
+            )}
+
+            {/* 热门社区 - 只在论坛 tab 显示 */}
+            {tab === "forum" && renderPopularCommunities()}
+
             {error ? (
               <VStack
                 flex={1}
@@ -601,7 +763,7 @@ const DiscoverScreen = () => {
                 py="$2xl"
               >
                 <Ionicons
-                  name="newspaper-outline"
+                  name={tab === "forum" ? "chatbubbles-outline" : "newspaper-outline"}
                   size={48}
                   color={theme.colors.gray400}
                 />
@@ -613,10 +775,12 @@ const DiscoverScreen = () => {
                   mt="$md"
                   textAlign="center"
                 >
+                  {tab === "forum" && "暂无论坛帖子"}
                   {tab === "recommend" && "暂无推荐内容"}
                   {tab === "following" && "暂无关注内容"}
                 </Text>
                 <Text color="$gray400" textAlign="center" lineHeight="$lg">
+                  {tab === "forum" && "快来发布第一篇帖子吧"}
                   {tab === "recommend" && "下拉刷新获取最新内容"}
                   {tab === "following" && "关注更多用户查看他们的动态"}
                 </Text>
@@ -657,8 +821,10 @@ const DiscoverScreen = () => {
     },
     [
       posts,
+      forumPosts,
       banners,
       followingUserIds,
+      communities,
       convertToPost,
       error,
       refreshing,
@@ -666,6 +832,7 @@ const DiscoverScreen = () => {
       handleBannerPress,
       handleVerticalScroll,
       renderPost,
+      renderPopularCommunities,
       loading,
     ]
   );
@@ -827,12 +994,23 @@ const DiscoverScreen = () => {
               onPress={() => handleTabChange("forum")}
             >
               <Text
-                color="$gray400"
-                fontWeight="$normal"
+                color={activeTab === "forum" ? "$black" : "$gray400"}
+                fontWeight={activeTab === "forum" ? "$semibold" : "$normal"}
                 fontSize="$md"
               >
                 论坛
               </Text>
+              {activeTab === "forum" && (
+                <Box
+                  position="absolute"
+                  bottom={-4}
+                  left={0}
+                  right={0}
+                  height={3}
+                  bg="#000"
+                  borderRadius="$sm"
+                />
+              )}
             </Pressable>
 
             <Pressable
@@ -909,6 +1087,7 @@ const DiscoverScreen = () => {
         onMomentumScrollEnd={handleScrollEnd}
         style={{ flex: 1 }}
       >
+        {renderTabContent("forum")}
         {renderTabContent("recommend")}
         {renderTabContent("following")}
       </RNScrollView>
@@ -920,6 +1099,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  // 社区样式
+  communityButton: {
+    alignItems: "center",
+    width: 64,
+  },
+  communityIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+    marginBottom: 4,
+  },
+  communityImage: {
+    width: "100%",
+    height: "100%",
+  },
+  communityPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  communityName: {
+    width: 60,
+  },
+  // 发帖按钮
+  publishButton: {
+    position: "absolute",
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   // 骨架屏样式（匹配 PostCard 组件结构）
   skeletonCard: {

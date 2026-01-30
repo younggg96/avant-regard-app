@@ -56,6 +56,7 @@ import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 // Forum Screens
 import ForumScreen from "./src/screens/ForumScreen";
 import CommunityDetailScreen from "./src/screens/CommunityDetailScreen";
+import AllCommunitiesScreen from "./src/screens/AllCommunitiesScreen";
 // Merchant Screens
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
@@ -395,6 +396,13 @@ function AppNavigator() {
         <Stack.Screen
           name="CommunityDetail"
           component={CommunityDetailScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="AllCommunities"
+          component={AllCommunitiesScreen}
           options={{
             headerShown: false,
           }}

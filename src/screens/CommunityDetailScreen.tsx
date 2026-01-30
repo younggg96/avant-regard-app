@@ -6,7 +6,6 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
-  Animated,
   View,
   Dimensions,
   Image,
@@ -217,10 +216,10 @@ const CommunityDetailScreen = () => {
         setCommunity((prev) =>
           prev
             ? {
-                ...prev,
-                isFollowing: false,
-                memberCount: prev.memberCount - 1,
-              }
+              ...prev,
+              isFollowing: false,
+              memberCount: prev.memberCount - 1,
+            }
             : null
         );
       } else {
@@ -228,10 +227,10 @@ const CommunityDetailScreen = () => {
         setCommunity((prev) =>
           prev
             ? {
-                ...prev,
-                isFollowing: true,
-                memberCount: prev.memberCount + 1,
-              }
+              ...prev,
+              isFollowing: true,
+              memberCount: prev.memberCount + 1,
+            }
             : null
         );
       }
@@ -292,15 +291,15 @@ const CommunityDetailScreen = () => {
         prevPosts.map((post) =>
           post.id === postId
             ? {
-                ...post,
-                engagement: {
-                  ...post.engagement,
-                  isLiked: !isCurrentlyLiked,
-                  likes: isCurrentlyLiked
-                    ? post.engagement.likes - 1
-                    : post.engagement.likes + 1,
-                },
-              }
+              ...post,
+              engagement: {
+                ...post.engagement,
+                isLiked: !isCurrentlyLiked,
+                likes: isCurrentlyLiked
+                  ? post.engagement.likes - 1
+                  : post.engagement.likes + 1,
+              },
+            }
             : post
         )
       );
@@ -321,15 +320,15 @@ const CommunityDetailScreen = () => {
           prevPosts.map((post) =>
             post.id === postId
               ? {
-                  ...post,
-                  engagement: {
-                    ...post.engagement,
-                    isLiked: isCurrentlyLiked,
-                    likes: isCurrentlyLiked
-                      ? post.engagement.likes + 1
-                      : post.engagement.likes - 1,
-                  },
-                }
+                ...post,
+                engagement: {
+                  ...post.engagement,
+                  isLiked: isCurrentlyLiked,
+                  likes: isCurrentlyLiked
+                    ? post.engagement.likes + 1
+                    : post.engagement.likes - 1,
+                },
+              }
               : post
           )
         );
@@ -368,79 +367,7 @@ const CommunityDetailScreen = () => {
     [handlePostPress, handleAuthorPress, handleLike]
   );
 
-  // 骨架屏动画
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!isInitialized) {
-      const shimmerAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(shimmerAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimmerAnim, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      shimmerAnimation.start();
-      return () => shimmerAnimation.stop();
-    }
-  }, [isInitialized, shimmerAnim]);
-
-  const skeletonOpacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  const SkeletonBox = ({
-    width,
-    height,
-    style,
-  }: {
-    width: number | string;
-    height: number;
-    style?: any;
-  }) => (
-    <Animated.View
-      style={[
-        {
-          width,
-          height,
-          backgroundColor: theme.colors.gray200,
-          borderRadius: 4,
-          opacity: skeletonOpacity,
-        },
-        style,
-      ]}
-    />
-  );
-
-  const SkeletonPostCard = () => (
-    <View style={styles.skeletonCard}>
-      <Animated.View
-        style={[styles.skeletonImage, { opacity: skeletonOpacity }]}
-      />
-      <View style={styles.skeletonTitleArea}>
-        <SkeletonBox width="90%" height={14} style={{ marginBottom: 4 }} />
-        <SkeletonBox width="60%" height={14} />
-      </View>
-      <View style={styles.skeletonFooter}>
-        <View style={styles.skeletonUserInfo}>
-          <Animated.View
-            style={[styles.skeletonAvatar, { opacity: skeletonOpacity }]}
-          />
-          <SkeletonBox width={50} height={10} />
-        </View>
-        <SkeletonBox width={30} height={14} />
-      </View>
-    </View>
-  );
-
+  // 加载状态
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -449,19 +376,12 @@ const CommunityDetailScreen = () => {
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
-        <ScrollView flex={1} showsVerticalScrollIndicator={false}>
-          <SkeletonBox width="100%" height={150} style={{ marginBottom: 16 }} />
-          <HStack px="$sm" pt="$sm" alignItems="start">
-            <VStack flex={1} pr="$xs">
-              <Box mb="$sm"><SkeletonPostCard /></Box>
-              <Box mb="$sm"><SkeletonPostCard /></Box>
-            </VStack>
-            <VStack flex={1} pl="$xs">
-              <Box mb="$sm"><SkeletonPostCard /></Box>
-              <Box mb="$sm"><SkeletonPostCard /></Box>
-            </VStack>
-          </HStack>
-        </ScrollView>
+        <VStack flex={1} justifyContent="center" alignItems="center">
+          <ActivityIndicator size="small" color={theme.colors.gray400} />
+          <Text color="$gray500" fontSize="$sm" mt="$md">
+            加载中...
+          </Text>
+        </VStack>
       </SafeAreaView>
     );
   }
@@ -526,7 +446,7 @@ const CommunityDetailScreen = () => {
                 onPress={handleFollowPress}
                 px="$md"
                 py="$sm"
-                rounded="$full"
+                rounded="$sm"
                 bg={community.isFollowing ? "$gray100" : "$black"}
               >
                 <Text
@@ -627,11 +547,6 @@ const CommunityDetailScreen = () => {
           </HStack>
         )}
       </ScrollView>
-
-      {/* 发帖按钮 */}
-      <TouchableOpacity style={styles.publishButton} onPress={handlePublishPress}>
-        <Ionicons name="add" size={28} color={theme.colors.white} />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -673,45 +588,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-  },
-  // 骨架屏样式
-  skeletonCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 8,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  skeletonImage: {
-    width: "100%",
-    aspectRatio: 3 / 4,
-    backgroundColor: theme.colors.gray200,
-  },
-  skeletonTitleArea: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  skeletonFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  skeletonUserInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  skeletonAvatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: theme.colors.gray200,
   },
 });
 
