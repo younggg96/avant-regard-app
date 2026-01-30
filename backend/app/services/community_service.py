@@ -205,7 +205,11 @@ class CommunityService:
         return bool(result.data)
 
     def follow_community(self, community_id: int, user_id: int) -> bool:
-        """关注社区"""
+        """关注社区（幂等操作）"""
+        # 先检查是否已关注
+        if self._check_following(community_id, user_id):
+            return True  # 已关注，直接返回成功（幂等）
+        
         try:
             self.db.table("community_follows").insert(
                 {"community_id": community_id, "user_id": user_id}
@@ -215,25 +219,33 @@ class CommunityService:
                 "increment_community_member_count", {"community_id_param": community_id}
             ).execute()
             return True
-        except:
+        except Exception as e:
+            print(f"关注社区失败: {e}")
             return False
 
     def unfollow_community(self, community_id: int, user_id: int) -> bool:
-        """取消关注社区"""
-        result = (
-            self.db.table("community_follows")
-            .delete()
-            .eq("community_id", community_id)
-            .eq("user_id", user_id)
-            .execute()
-        )
-        if result.data:
-            # 更新成员数
-            self.db.rpc(
-                "decrement_community_member_count", {"community_id_param": community_id}
-            ).execute()
+        """取消关注社区（幂等操作）"""
+        # 先检查是否已关注
+        if not self._check_following(community_id, user_id):
+            return True  # 未关注，直接返回成功（幂等）
+        
+        try:
+            result = (
+                self.db.table("community_follows")
+                .delete()
+                .eq("community_id", community_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+            if result.data:
+                # 更新成员数
+                self.db.rpc(
+                    "decrement_community_member_count", {"community_id_param": community_id}
+                ).execute()
             return True
-        return False
+        except Exception as e:
+            print(f"取消关注社区失败: {e}")
+            return False
 
     def get_community_stats(self, community_id: int) -> Optional[CommunityStats]:
         """获取社区统计信息"""
