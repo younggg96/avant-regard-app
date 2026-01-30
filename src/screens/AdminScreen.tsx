@@ -1372,11 +1372,11 @@ const AdminScreen = () => {
             <Text style={styles.communitySlug}>/{community.slug}</Text>
           </View>
         </View>
-        
+
         {community.description && (
           <Text style={styles.communityDescription} numberOfLines={2}>{community.description}</Text>
         )}
-        
+
         <View style={styles.communityMeta}>
           <View style={styles.communityMetaItem}>
             <Ionicons name="people-outline" size={14} color={theme.colors.gray400} />
@@ -1839,7 +1839,7 @@ const AdminScreen = () => {
       <Modal
         visible={bannerModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setBannerModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
@@ -2001,7 +2001,7 @@ const AdminScreen = () => {
       <Modal
         visible={communityModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setCommunityModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
@@ -2195,7 +2195,7 @@ const AdminScreen = () => {
       <Modal
         visible={communityPostsModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setCommunityPostsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
@@ -3181,9 +3181,9 @@ const styles = StyleSheet.create({
   },
   // 社区编辑 Modal 样式
   communityModalContent: {
-    maxHeight: "90%",
-    width: "95%",
-    maxWidth: 500,
+    height: "85%",
+    width: "92%",
+    padding: theme.spacing.lg,
   },
   communityFormImageRow: {
     flexDirection: "row",
@@ -3231,9 +3231,8 @@ const styles = StyleSheet.create({
   },
   // 社区帖子 Modal 样式
   communityPostsModalContent: {
-    maxHeight: "90%",
-    width: "95%",
-    maxWidth: 500,
+    height: "80%",
+    width: "92%",
     padding: 0,
   },
   communityPostsHeader: {

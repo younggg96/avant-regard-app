@@ -772,7 +772,7 @@ const UserProfileScreen = () => {
       </AnimatedScrollView>
 
       {/* Modal */}
-      <Modal visible={showCropper} animationType="slide" onRequestClose={handleCropCancel}>
+      <Modal visible={showCropper} animationType="fade" onRequestClose={handleCropCancel}>
         {tempCropImage && (
           <ImageCropper sourceUri={tempCropImage} aspect="16:9" onCancel={handleCropCancel} onDone={handleCropDone} />
         )}

@@ -121,7 +121,7 @@ const AuthScreen = () => {
       {/* 注册成功后填写资料的 Modal */}
       <Modal
         visible={showProfileModal}
-        animationType="slide"
+        animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => { }}
       >

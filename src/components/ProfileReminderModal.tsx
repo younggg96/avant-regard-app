@@ -221,7 +221,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={handleLater}
     >
@@ -447,7 +447,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
       {/* 品牌选择 Modal */}
       <Modal
         visible={showBrandPicker}
-        animationType="slide"
+        animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBrandPicker(false)}
       >

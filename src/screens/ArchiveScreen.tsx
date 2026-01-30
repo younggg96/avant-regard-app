@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -40,6 +41,12 @@ const ArchiveScreen = () => {
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
   const isLoadingMoreRef = useRef(false);
+
+  // Header 动画值
+  const headerHeight = useRef(new Animated.Value(1)).current; // 1 = 显示, 0 = 隐藏
+  const headerOpacity = useRef(new Animated.Value(1)).current;
+  const isHeaderVisible = useRef(true); // 追踪 header 当前状态，避免重复动画
+  const lastScrollY = useRef(0);
 
   // 加载品牌数据（首次加载或刷新）
   const loadBrands = useCallback(async (reset: boolean = true) => {
@@ -102,19 +109,67 @@ const ArchiveScreen = () => {
     }
   }, [page, hasMore, isLoading, brands.length]);
 
-  // 检测滚动到底部
+  // 检测滚动到底部 & 控制 header 显示/隐藏
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const currentScrollY = contentOffset.y;
+      const scrollThreshold = 50; // 滚动阈值
       const paddingToBottom = 100; // 距离底部多少像素时开始加载
+
+      // 检测是否接近底部
       const isCloseToBottom =
         layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
 
+      // 加载更多品牌
       if (isCloseToBottom && !isLoadingMoreRef.current) {
         loadMoreBrands();
       }
+
+      // 向下滚动且超过阈值 - 隐藏 header
+      if (
+        currentScrollY > scrollThreshold &&
+        currentScrollY > lastScrollY.current &&
+        isHeaderVisible.current
+      ) {
+        isHeaderVisible.current = false;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+      // 向上滚动或接近顶部 - 显示 header（但如果在底部附近则不显示）
+      else if (
+        (currentScrollY < lastScrollY.current || currentScrollY <= 10) &&
+        !isHeaderVisible.current &&
+        !isCloseToBottom
+      ) {
+        isHeaderVisible.current = true;
+        Animated.parallel([
+          Animated.timing(headerHeight, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: false,
+          }),
+        ]).start();
+      }
+
+      lastScrollY.current = currentScrollY;
     },
-    [loadMoreBrands]
+    [loadMoreBrands, headerHeight, headerOpacity]
   );
 
   useEffect(() => {
@@ -233,12 +288,24 @@ const ArchiveScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <ScreenHeader
-        title="Archive"
-        subtitle="探索全球时尚品牌"
-        boldTitle={true}
-        borderless
-      />
+      {/* 动画 Header */}
+      <Animated.View
+        style={{
+          height: headerHeight.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 80], // 根据实际 header 高度调整
+          }),
+          opacity: headerOpacity,
+          overflow: "hidden",
+        }}
+      >
+        <ScreenHeader
+          title="Archive"
+          subtitle="探索全球时尚品牌"
+          boldTitle={true}
+          borderless
+        />
+      </Animated.View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -311,7 +378,7 @@ const ArchiveScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
         onScroll={handleScroll}
-        scrollEventThrottle={400}
+        scrollEventThrottle={16}
       >
         {groupedBrands.map((group) => (
           <View key={group.letter}>

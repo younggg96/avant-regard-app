@@ -139,7 +139,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                   style={[
                     styles.pickerOption,
                     formData.location === province &&
-                      styles.pickerOptionSelected,
+                    styles.pickerOptionSelected,
                   ]}
                   onPress={() => {
                     setFormData({ ...formData, location: province });
@@ -150,7 +150,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                     style={[
                       styles.pickerOptionText,
                       formData.location === province &&
-                        styles.pickerOptionTextSelected,
+                      styles.pickerOptionTextSelected,
                     ]}
                   >
                     {province}
@@ -176,7 +176,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               style={[
                 styles.genderOption,
                 formData.gender === gender.value &&
-                  styles.genderOptionSelected,
+                styles.genderOptionSelected,
               ]}
               onPress={() =>
                 setFormData({ ...formData, gender: gender.value })
@@ -186,7 +186,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                 style={[
                   styles.genderOptionText,
                   formData.gender === gender.value &&
-                    styles.genderOptionTextSelected,
+                  styles.genderOptionTextSelected,
                 ]}
               >
                 {gender.label}
@@ -293,7 +293,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
       {/* 品牌选择 Modal */}
       <Modal
         visible={showBrandPicker}
-        animationType="slide"
+        animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBrandPicker(false)}
       >
