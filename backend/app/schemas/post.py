@@ -12,8 +12,7 @@ class PostType(str, Enum):
     OUTFIT = "OUTFIT"
     DAILY_SHARE = "DAILY_SHARE"
     ITEM_REVIEW = "ITEM_REVIEW"
-    ARTICLES = "ARTICLES"
-    FORUM = "FORUM"  # 论坛帖子
+    ARTICLES = "ARTICLES"  # 文章类型，论坛帖子也使用此类型（通过 community_id 区分）
 
 
 class PostStatus(str, Enum):
