@@ -163,7 +163,8 @@ class PostService:
         if community_id and post_status == "PUBLISHED":
             try:
                 self.db.rpc(
-                    "increment_community_post_count", {"community_id_param": community_id}
+                    "increment_community_post_count",
+                    {"community_id_param": community_id},
                 ).execute()
             except:
                 pass
@@ -235,40 +236,60 @@ class PostService:
             self.db.rpc(
                 "increment_post_like_count", {"post_id_param": post_id}
             ).execute()
-            
+
             # 发送通知
             self._send_like_notification(post_id, user_id)
-            
+
             return True
         except:
             return False
-    
+
     def _send_like_notification(self, post_id: int, liker_id: int):
         """发送点赞通知"""
         try:
             # 获取帖子信息
-            post_result = self.db.table("posts").select("user_id, title, image_urls").eq("id", post_id).execute()
+            post_result = (
+                self.db.table("posts")
+                .select("user_id, title, image_urls")
+                .eq("id", post_id)
+                .execute()
+            )
             if not post_result.data:
                 return
-            
+
             post = post_result.data[0]
             post_owner_id = post["user_id"]
-            
+
             # 不给自己发通知
             if post_owner_id == liker_id:
                 return
-            
+
             # 获取点赞者信息
-            liker_result = self.db.table("users").select("username").eq("id", liker_id).execute()
-            liker_name = liker_result.data[0]["username"] if liker_result.data else "用户"
-            
+            liker_result = (
+                self.db.table("users").select("username").eq("id", liker_id).execute()
+            )
+            liker_name = (
+                liker_result.data[0]["username"] if liker_result.data else "用户"
+            )
+
             # 获取点赞者头像
-            liker_avatar_result = self.db.table("user_info").select("avatar_url").eq("user_id", liker_id).execute()
-            liker_avatar = liker_avatar_result.data[0]["avatar_url"] if liker_avatar_result.data else None
-            
+            liker_avatar_result = (
+                self.db.table("user_info")
+                .select("avatar_url")
+                .eq("user_id", liker_id)
+                .execute()
+            )
+            liker_avatar = (
+                liker_avatar_result.data[0]["avatar_url"]
+                if liker_avatar_result.data
+                else None
+            )
+
             # 获取帖子第一张图片
-            post_image = post.get("image_urls", [])[0] if post.get("image_urls") else None
-            
+            post_image = (
+                post.get("image_urls", [])[0] if post.get("image_urls") else None
+            )
+
             notification_service.notify_post_liked(
                 post_owner_id=post_owner_id,
                 liker_id=liker_id,
@@ -276,7 +297,7 @@ class PostService:
                 post_id=post_id,
                 post_title=post["title"],
                 liker_avatar=liker_avatar,
-                post_image=post_image
+                post_image=post_image,
             )
         except Exception as e:
             print(f"Failed to send like notification: {e}")
@@ -420,7 +441,7 @@ class PostService:
         safe_keyword = self._sanitize_search_keyword(keyword)
         if not safe_keyword:
             return []
-        
+
         try:
             # 搜索帖子标题和内容
             # 使用 or 条件搜索标题和内容
@@ -429,15 +450,19 @@ class PostService:
                 .select("*")
                 .eq("status", "PUBLISHED")
                 .eq("audit_status", "APPROVED")
-                .or_(f"title.ilike.*{safe_keyword}*,content_text.ilike.*{safe_keyword}*")
+                .or_(
+                    f"title.ilike.*{safe_keyword}*,content_text.ilike.*{safe_keyword}*"
+                )
                 .order("created_at", desc=True)
                 .limit(limit)
                 .execute()
             )
-            
-            posts_from_content = [self._format_post(p, current_user_id) for p in result.data or []]
+
+            posts_from_content = [
+                self._format_post(p, current_user_id) for p in result.data or []
+            ]
             post_ids = {p.id for p in posts_from_content}
-            
+
             # 搜索作者名匹配的帖子
             user_result = (
                 self.db.table("users")
@@ -445,7 +470,7 @@ class PostService:
                 .ilike("username", f"*{safe_keyword}*")
                 .execute()
             )
-            
+
             if user_result.data:
                 user_ids = [u["id"] for u in user_result.data]
                 for user_id in user_ids:
@@ -461,16 +486,17 @@ class PostService:
                     )
                     for p in user_posts_result.data or []:
                         if p["id"] not in post_ids:
-                            posts_from_content.append(self._format_post(p, current_user_id))
+                            posts_from_content.append(
+                                self._format_post(p, current_user_id)
+                            )
                             post_ids.add(p["id"])
-            
+
             # 按创建时间排序
             posts_from_content.sort(key=lambda x: x.createdAt, reverse=True)
             return posts_from_content[:limit]
         except Exception as e:
             print(f"Search posts error: {e}")
             return []
-
 
     def get_posts_by_community_id(
         self, community_id: int, current_user_id: Optional[int] = None
@@ -487,9 +513,7 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
-    def get_forum_posts(
-        self, current_user_id: Optional[int] = None
-    ) -> List[Post]:
+    def get_forum_posts(self, current_user_id: Optional[int] = None) -> List[Post]:
         """获取所有论坛帖子（有 community_id 的帖子，仅已发布且审核通过的）"""
         result = (
             self.db.table("posts")
