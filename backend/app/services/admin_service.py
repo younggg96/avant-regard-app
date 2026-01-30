@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.post import Post
 from app.schemas.comment import PostComment
+from app.schemas.community import Community, CommunityCategory
 from app.services.post_service import post_service
 
 
@@ -127,6 +128,178 @@ class AdminService:
         """获取指定用户的所有评论"""
         result = self.db.table("post_comments").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
         return [self._format_admin_comment(c) for c in result.data or []]
+
+    # ==================== 社区管理 ====================
+
+    def _format_community(self, data: dict) -> dict:
+        """格式化社区数据"""
+        return {
+            "id": data["id"],
+            "name": data["name"],
+            "slug": data["slug"],
+            "description": data.get("description", ""),
+            "iconUrl": data.get("icon_url", ""),
+            "coverUrl": data.get("cover_url", ""),
+            "category": data.get("category", "GENERAL"),
+            "isOfficial": data.get("is_official", False),
+            "isActive": data.get("is_active", True),
+            "memberCount": data.get("member_count", 0),
+            "postCount": data.get("post_count", 0),
+            "sortOrder": data.get("sort_order", 0),
+            "createdAt": data["created_at"],
+            "updatedAt": data["updated_at"],
+        }
+
+    def get_all_communities(self, include_inactive: bool = True) -> List[dict]:
+        """获取所有社区（管理员可以看到未激活的社区）"""
+        query = self.db.table("communities").select("*")
+        if not include_inactive:
+            query = query.eq("is_active", True)
+        result = query.order("sort_order", desc=True).order("created_at", desc=True).execute()
+        return [self._format_community(c) for c in result.data or []]
+
+    def get_community_by_id(self, community_id: int) -> Optional[dict]:
+        """获取单个社区详情"""
+        result = self.db.table("communities").select("*").eq("id", community_id).execute()
+        if not result.data:
+            return None
+        return self._format_community(result.data[0])
+
+    def create_community(
+        self,
+        name: str,
+        slug: str,
+        description: str = "",
+        icon_url: str = "",
+        cover_url: str = "",
+        category: str = "GENERAL",
+        is_official: bool = False,
+        sort_order: int = 0,
+    ) -> Optional[dict]:
+        """创建社区"""
+        insert_data = {
+            "name": name,
+            "slug": slug,
+            "description": description,
+            "icon_url": icon_url,
+            "cover_url": cover_url,
+            "category": category,
+            "is_official": is_official,
+            "sort_order": sort_order,
+            "is_active": True,
+            "member_count": 0,
+            "post_count": 0,
+        }
+        result = self.db.table("communities").insert(insert_data).execute()
+        if not result.data:
+            return None
+        return self._format_community(result.data[0])
+
+    def update_community(self, community_id: int, **kwargs) -> Optional[dict]:
+        """更新社区"""
+        update_data = {}
+        field_mapping = {
+            "name": "name",
+            "description": "description",
+            "icon_url": "icon_url",
+            "cover_url": "cover_url",
+            "category": "category",
+            "is_official": "is_official",
+            "is_active": "is_active",
+            "sort_order": "sort_order",
+        }
+
+        for key, db_field in field_mapping.items():
+            if key in kwargs and kwargs[key] is not None:
+                update_data[db_field] = kwargs[key]
+
+        if not update_data:
+            return self.get_community_by_id(community_id)
+
+        self.db.table("communities").update(update_data).eq("id", community_id).execute()
+        return self.get_community_by_id(community_id)
+
+    def delete_community(self, community_id: int) -> bool:
+        """删除社区（同时删除关联的帖子和关注记录）"""
+        # 先删除该社区下的所有帖子
+        self.db.table("posts").delete().eq("community_id", community_id).execute()
+        # 删除关注记录
+        self.db.table("community_follows").delete().eq("community_id", community_id).execute()
+        # 删除社区
+        result = self.db.table("communities").delete().eq("id", community_id).execute()
+        return bool(result.data)
+
+    # ==================== 社区帖子管理 ====================
+
+    def get_community_posts(
+        self, community_id: int, page: int = 1, page_size: int = 20
+    ) -> dict:
+        """获取社区内的所有帖子（管理员视角，包括未发布/已拒绝的）"""
+        offset = (page - 1) * page_size
+        
+        # 获取总数
+        count_result = (
+            self.db.table("posts")
+            .select("id", count="exact")
+            .eq("community_id", community_id)
+            .execute()
+        )
+        total = count_result.count or 0
+        
+        # 获取分页数据
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .eq("community_id", community_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        
+        posts = [post_service._format_post(p) for p in result.data or []]
+        
+        return {
+            "posts": [p.model_dump() for p in posts],
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": (total + page_size - 1) // page_size if total > 0 else 0,
+        }
+
+    def delete_community_post(self, community_id: int, post_id: int) -> bool:
+        """删除社区内的指定帖子"""
+        # 验证帖子属于该社区
+        post_result = (
+            self.db.table("posts")
+            .select("id")
+            .eq("id", post_id)
+            .eq("community_id", community_id)
+            .execute()
+        )
+        if not post_result.data:
+            return False
+        
+        # 删除帖子
+        result = self.db.table("posts").delete().eq("id", post_id).execute()
+        if result.data:
+            # 更新社区帖子数
+            try:
+                self.db.rpc("decrement_community_post_count", {"community_id_param": community_id}).execute()
+            except:
+                pass  # 忽略更新失败
+            return True
+        return False
+
+    def batch_delete_community_posts(self, community_id: int, post_ids: List[int]) -> dict:
+        """批量删除社区内的帖子"""
+        success_count = 0
+        fail_count = 0
+        for post_id in post_ids:
+            if self.delete_community_post(community_id, post_id):
+                success_count += 1
+            else:
+                fail_count += 1
+        return {"successCount": success_count, "failCount": fail_count}
 
 
 # 单例

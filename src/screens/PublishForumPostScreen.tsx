@@ -86,6 +86,7 @@ const PublishForumPostScreen = () => {
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [showCommunityPicker, setShowCommunityPicker] = useState(false);
+  const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
 
   // 动画
   const addMenuAnim = useRef(new Animated.Value(0)).current;
@@ -101,6 +102,7 @@ const PublishForumPostScreen = () => {
   // 加载社区列表
   useEffect(() => {
     const loadCommunities = async () => {
+      setIsLoadingCommunities(true);
       try {
         const data = await getCommunities();
         setCommunities(data.all);
@@ -114,6 +116,8 @@ const PublishForumPostScreen = () => {
         }
       } catch (err) {
         console.error("加载社区列表失败:", err);
+      } finally {
+        setIsLoadingCommunities(false);
       }
     };
     loadCommunities();
@@ -748,52 +752,62 @@ const PublishForumPostScreen = () => {
             </Pressable>
           </HStack>
           <RNScrollView style={styles.communityList}>
-            {communities.map((community) => (
-              <Pressable
-                key={community.id}
-                onPress={() => {
-                  setSelectedCommunity(community);
-                  setShowCommunityPicker(false);
-                }}
-                style={[
-                  styles.communityItem,
-                  selectedCommunity?.id === community.id &&
+            {isLoadingCommunities ? (
+              <Box py="$xl" alignItems="center" justifyContent="center">
+                <Text color="$gray500" fontSize="$sm">加载中...</Text>
+              </Box>
+            ) : communities.length === 0 ? (
+              <Box py="$xl" alignItems="center" justifyContent="center">
+                <Text color="$gray500" fontSize="$sm">暂无社区</Text>
+              </Box>
+            ) : (
+              communities.map((community) => (
+                <Pressable
+                  key={community.id}
+                  onPress={() => {
+                    setSelectedCommunity(community);
+                    setShowCommunityPicker(false);
+                  }}
+                  style={[
+                    styles.communityItem,
+                    selectedCommunity?.id === community.id &&
                     styles.communityItemSelected,
-                ]}
-              >
-                <HStack alignItems="center" gap="$sm">
-                  <View style={styles.communityIconSmall}>
-                    {community.iconUrl ? (
-                      <Image
-                        source={{ uri: community.iconUrl }}
-                        style={styles.communityIconImage}
+                  ]}
+                >
+                  <HStack alignItems="center" gap="$sm">
+                    <View style={styles.communityIconSmall}>
+                      {community.iconUrl ? (
+                        <Image
+                          source={{ uri: community.iconUrl }}
+                          style={styles.communityIconImage}
+                        />
+                      ) : (
+                        <View style={styles.communityIconPlaceholder}>
+                          <Text fontSize="$sm" fontWeight="$bold" color="$white">
+                            {community.name.charAt(0)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <VStack flex={1}>
+                      <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                        {community.name}
+                      </Text>
+                      <Text fontSize="$xs" color="$gray500">
+                        {community.memberCount} 成员
+                      </Text>
+                    </VStack>
+                    {selectedCommunity?.id === community.id && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color={theme.colors.black}
                       />
-                    ) : (
-                      <View style={styles.communityIconPlaceholder}>
-                        <Text fontSize="$sm" fontWeight="$bold" color="$white">
-                          {community.name.charAt(0)}
-                        </Text>
-                      </View>
                     )}
-                  </View>
-                  <VStack flex={1}>
-                    <Text fontSize="$sm" fontWeight="$medium" color="$black">
-                      {community.name}
-                    </Text>
-                    <Text fontSize="$xs" color="$gray500">
-                      {community.memberCount} 成员
-                    </Text>
-                  </VStack>
-                  {selectedCommunity?.id === community.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={theme.colors.black}
-                    />
-                  )}
-                </HStack>
-              </Pressable>
-            ))}
+                  </HStack>
+                </Pressable>
+              ))
+            )}
           </RNScrollView>
         </View>
       </View>

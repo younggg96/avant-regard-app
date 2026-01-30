@@ -30,6 +30,66 @@ export interface CommentsPageResponse {
   totalPages: number;
 }
 
+// 社区类型
+export type CommunityCategory = "GENERAL" | "FASHION" | "LIFESTYLE" | "BEAUTY" | "CULTURE";
+
+// 社区数据
+export interface AdminCommunity {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  iconUrl: string;
+  coverUrl: string;
+  category: CommunityCategory;
+  isOfficial: boolean;
+  isActive: boolean;
+  memberCount: number;
+  postCount: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 创建社区请求
+export interface CreateCommunityParams {
+  name: string;
+  slug: string;
+  description?: string;
+  iconUrl?: string;
+  coverUrl?: string;
+  category?: CommunityCategory;
+  isOfficial?: boolean;
+  sortOrder?: number;
+}
+
+// 更新社区请求
+export interface UpdateCommunityParams {
+  name?: string;
+  description?: string;
+  iconUrl?: string;
+  coverUrl?: string;
+  category?: CommunityCategory;
+  isOfficial?: boolean;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
+// 社区帖子分页响应
+export interface CommunityPostsResponse {
+  posts: Post[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// 批量删除结果
+export interface BatchDeleteResult {
+  successCount: number;
+  failCount: number;
+}
+
 // API 响应包装类型
 interface ApiResponse<T> {
   code: number;
@@ -240,6 +300,137 @@ export async function deleteComment(commentId: number): Promise<void> {
   });
 }
 
+// ==================== 社区管理 ====================
+
+/**
+ * 获取所有社区（管理员）
+ * GET /api/admin/communities
+ * @param includeInactive 是否包含未激活的社区
+ */
+export async function getAllCommunities(
+  includeInactive: boolean = true
+): Promise<AdminCommunity[]> {
+  return request<AdminCommunity[]>(
+    `/api/admin/communities?include_inactive=${includeInactive}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+/**
+ * 获取社区详情（管理员）
+ * GET /api/admin/communities/{communityId}
+ * @param communityId 社区ID
+ */
+export async function getCommunityDetail(
+  communityId: number
+): Promise<AdminCommunity> {
+  return request<AdminCommunity>(`/api/admin/communities/${communityId}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 创建社区（管理员）
+ * POST /api/admin/communities
+ * @param params 创建参数
+ */
+export async function createCommunity(
+  params: CreateCommunityParams
+): Promise<AdminCommunity> {
+  return request<AdminCommunity>("/api/admin/communities", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 更新社区（管理员）
+ * PUT /api/admin/communities/{communityId}
+ * @param communityId 社区ID
+ * @param params 更新参数
+ */
+export async function updateCommunity(
+  communityId: number,
+  params: UpdateCommunityParams
+): Promise<AdminCommunity> {
+  return request<AdminCommunity>(`/api/admin/communities/${communityId}`, {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 删除社区（管理员）
+ * DELETE /api/admin/communities/{communityId}
+ * @param communityId 社区ID
+ */
+export async function deleteCommunity(communityId: number): Promise<void> {
+  return request<void>(`/api/admin/communities/${communityId}`, {
+    method: "DELETE",
+  });
+}
+
+// ==================== 社区帖子管理 ====================
+
+/**
+ * 获取社区内的帖子（管理员）
+ * GET /api/admin/communities/{communityId}/posts
+ * @param communityId 社区ID
+ * @param page 页码
+ * @param pageSize 每页数量
+ */
+export async function getCommunityPosts(
+  communityId: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<CommunityPostsResponse> {
+  return request<CommunityPostsResponse>(
+    `/api/admin/communities/${communityId}/posts?page=${page}&pageSize=${pageSize}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+/**
+ * 删除社区内的帖子（管理员）
+ * DELETE /api/admin/communities/{communityId}/posts/{postId}
+ * @param communityId 社区ID
+ * @param postId 帖子ID
+ */
+export async function deleteCommunityPost(
+  communityId: number,
+  postId: number
+): Promise<void> {
+  return request<void>(
+    `/api/admin/communities/${communityId}/posts/${postId}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+/**
+ * 批量删除社区内的帖子（管理员）
+ * POST /api/admin/communities/{communityId}/posts/batch-delete
+ * @param communityId 社区ID
+ * @param postIds 帖子ID数组
+ */
+export async function batchDeleteCommunityPosts(
+  communityId: number,
+  postIds: number[]
+): Promise<BatchDeleteResult> {
+  return request<BatchDeleteResult>(
+    `/api/admin/communities/${communityId}/posts/batch-delete`,
+    {
+      method: "POST",
+      body: JSON.stringify({ postIds }),
+    }
+  );
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子审核
@@ -254,6 +445,16 @@ export const adminService = {
   getCommentsByPost,
   getCommentsByUser,
   deleteComment,
+  // 社区管理
+  getAllCommunities,
+  getCommunityDetail,
+  createCommunity,
+  updateCommunity,
+  deleteCommunity,
+  // 社区帖子管理
+  getCommunityPosts,
+  deleteCommunityPost,
+  batchDeleteCommunityPosts,
 };
 
 export default adminService;
