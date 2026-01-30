@@ -52,11 +52,16 @@ class PostService:
                 community_name = community_result.data[0]["name"]
                 community_slug = community_result.data[0]["slug"]
 
+        # 清理 post_type 中可能存在的空白字符
+        post_type = (
+            post_data["post_type"].strip() if post_data.get("post_type") else "ARTICLES"
+        )
+
         return Post(
             id=post_data["id"],
             userId=post_data["user_id"],
             username=username,
-            postType=post_data["post_type"],
+            postType=post_type,
             status=post_data["status"],
             auditStatus=post_data.get("audit_status"),
             title=post_data["title"],
