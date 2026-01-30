@@ -210,6 +210,12 @@ const CommunityDetailScreen = () => {
   const handleFollowPress = useCallback(async () => {
     if (!community) return;
 
+    // 检查用户是否已登录
+    if (!user) {
+      (navigation.navigate as any)("Auth");
+      return;
+    }
+
     try {
       if (community.isFollowing) {
         await unfollowCommunity(community.id);
@@ -218,7 +224,7 @@ const CommunityDetailScreen = () => {
             ? {
               ...prev,
               isFollowing: false,
-              memberCount: prev.memberCount - 1,
+              memberCount: Math.max(0, prev.memberCount - 1),
             }
             : null
         );
@@ -236,8 +242,10 @@ const CommunityDetailScreen = () => {
       }
     } catch (err) {
       console.error("关注操作失败:", err);
+      // 显示用户友好的错误提示
+      alert("关注操作失败，请稍后重试");
     }
-  }, [community]);
+  }, [community, user, navigation]);
 
   // Convert DisplayPost to PostCard Post format
   const convertToPost = useCallback((post: DisplayPost): Post => {

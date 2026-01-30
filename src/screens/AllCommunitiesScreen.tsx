@@ -29,9 +29,11 @@ import {
   unfollowCommunity,
   searchCommunities,
 } from "../services/communityService";
+import { useAuthStore } from "../store/authStore";
 
 const AllCommunitiesScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [filteredCommunities, setFilteredCommunities] = useState<Community[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +92,12 @@ const AllCommunitiesScreen = () => {
   // 关注/取消关注
   const handleFollowPress = useCallback(
     async (community: Community) => {
+      // 检查用户是否已登录
+      if (!user) {
+        (navigation.navigate as any)("Auth");
+        return;
+      }
+
       try {
         if (community.isFollowing) {
           await unfollowCommunity(community.id);
@@ -104,7 +112,7 @@ const AllCommunitiesScreen = () => {
                   ...c,
                   isFollowing: !c.isFollowing,
                   memberCount: c.isFollowing
-                    ? c.memberCount - 1
+                    ? Math.max(0, c.memberCount - 1)
                     : c.memberCount + 1,
                 }
               : c
@@ -112,9 +120,10 @@ const AllCommunitiesScreen = () => {
         );
       } catch (err) {
         console.error("关注操作失败:", err);
+        alert("关注操作失败，请稍后重试");
       }
     },
-    []
+    [user, navigation]
   );
 
   // 渲染社区项

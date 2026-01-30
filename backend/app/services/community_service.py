@@ -206,21 +206,33 @@ class CommunityService:
 
     def follow_community(self, community_id: int, user_id: int) -> bool:
         """关注社区（幂等操作）"""
+        print(f"[DEBUG] follow_community called: community_id={community_id}, user_id={user_id}")
+        
         # 先检查是否已关注
         if self._check_following(community_id, user_id):
+            print(f"[DEBUG] 用户 {user_id} 已关注社区 {community_id}，返回成功")
             return True  # 已关注，直接返回成功（幂等）
         
         try:
-            self.db.table("community_follows").insert(
+            # 插入关注记录
+            insert_result = self.db.table("community_follows").insert(
                 {"community_id": community_id, "user_id": user_id}
             ).execute()
-            # 更新成员数
-            self.db.rpc(
-                "increment_community_member_count", {"community_id_param": community_id}
-            ).execute()
+            print(f"[DEBUG] 插入关注记录结果: {insert_result.data}")
+            
+            # 更新成员数（忽略错误，不影响关注成功）
+            try:
+                self.db.rpc(
+                    "increment_community_member_count", {"community_id_param": community_id}
+                ).execute()
+            except Exception as rpc_error:
+                print(f"[WARN] 更新成员数失败（不影响关注）: {rpc_error}")
+            
             return True
         except Exception as e:
-            print(f"关注社区失败: {e}")
+            print(f"[ERROR] 关注社区失败: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def unfollow_community(self, community_id: int, user_id: int) -> bool:

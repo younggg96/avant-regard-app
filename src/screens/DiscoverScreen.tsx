@@ -266,16 +266,30 @@ const DiscoverScreen = () => {
     }
   }, []);
 
-  // 获取社区列表
-  const fetchCommunities = useCallback(async () => {
+  // 获取社区列表（带重试机制）
+  const fetchCommunities = useCallback(async (retryCount = 0) => {
     try {
       const communityData = await getCommunities();
-      setCommunities(communityData);
-      // 提取关注的社区 ID
-      const followingIds = communityData.following.map((c) => c.id);
-      setFollowingCommunityIds(followingIds);
+      if (communityData && communityData.popular) {
+        setCommunities(communityData);
+        // 提取关注的社区 ID
+        const followingIds = communityData.following?.map((c) => c.id) || [];
+        setFollowingCommunityIds(followingIds);
+      } else {
+        // 数据格式异常，设置空默认值
+        console.warn("社区数据格式异常:", communityData);
+        setCommunities({ popular: [], following: [], all: [] });
+      }
     } catch (err) {
       console.error("获取社区列表失败:", err);
+      // 失败时重试最多2次
+      if (retryCount < 2) {
+        console.log(`重试获取社区列表... (${retryCount + 1}/2)`);
+        setTimeout(() => fetchCommunities(retryCount + 1), 1000);
+      } else {
+        // 最终失败，设置空默认值，避免热门社区消失
+        setCommunities({ popular: [], following: [], all: [] });
+      }
     }
   }, []);
 

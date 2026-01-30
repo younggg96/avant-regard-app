@@ -99,9 +99,16 @@ async def follow_community(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """关注社区"""
+    print(f"[API] 关注社区请求: community_id={community_id}, user_id={current_user_id}")
+    
+    # 先检查社区是否存在
+    community = community_service.get_community_by_id(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail="社区不存在")
+    
     ok = community_service.follow_community(community_id, current_user_id)
     if not ok:
-        raise HTTPException(status_code=400, detail="关注失败（可能已关注）")
+        raise HTTPException(status_code=500, detail="关注失败，请稍后重试")
     return success(message="关注成功")
 
 

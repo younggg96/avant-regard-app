@@ -490,11 +490,11 @@ class PostService:
     def get_forum_posts(
         self, current_user_id: Optional[int] = None
     ) -> List[Post]:
-        """获取所有论坛帖子（仅已发布且审核通过的）"""
+        """获取所有论坛帖子（有 community_id 的帖子，仅已发布且审核通过的）"""
         result = (
             self.db.table("posts")
             .select("*")
-            .eq("post_type", "FORUM")
+            .not_.is_("community_id", "null")  # 有社区 ID 的帖子都算论坛帖子
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
