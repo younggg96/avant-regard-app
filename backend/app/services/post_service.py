@@ -100,7 +100,9 @@ class PostService:
         )
         return bool(result.data)
 
-    def get_posts(self, current_user_id: Optional[int] = None) -> List[Post]:
+    def get_posts(
+        self, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
         """获取帖子列表（仅已发布且审核通过的）"""
         result = (
             self.db.table("posts")
@@ -108,6 +110,7 @@ class PostService:
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
+            .limit(limit)
             .execute()
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
@@ -513,7 +516,9 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
-    def get_forum_posts(self, current_user_id: Optional[int] = None) -> List[Post]:
+    def get_forum_posts(
+        self, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
         """获取所有论坛帖子（有 community_id 的帖子，仅已发布且审核通过的）"""
         result = (
             self.db.table("posts")
@@ -522,6 +527,7 @@ class PostService:
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
+            .limit(limit)
             .execute()
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]

@@ -27,10 +27,11 @@ async def search_posts(
 
 @router.get("")
 async def get_posts(
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取帖子列表"""
-    result = post_service.get_posts(current_user_id)
+    result = post_service.get_posts(current_user_id, limit=limit)
     return success([p.model_dump() for p in result])
 
 
@@ -244,8 +245,9 @@ async def get_posts_by_community_id(
 
 @router.get("/forum/all")
 async def get_forum_posts(
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取所有论坛帖子"""
-    result = post_service.get_forum_posts(current_user_id)
+    result = post_service.get_forum_posts(current_user_id, limit=limit)
     return success([p.model_dump() for p in result])
