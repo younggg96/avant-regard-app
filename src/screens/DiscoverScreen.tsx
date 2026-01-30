@@ -70,8 +70,8 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
-  // 关联的秀场 ID 列表
-  showIds?: number[];
+  // 关联的秀场 ID 列表（ID 可能是整数或字符串）
+  showIds?: (number | string)[];
 }
 
 type TabType = "forum" | "recommend" | "following";
@@ -622,7 +622,7 @@ const DiscoverScreen = () => {
         </HStack>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <HStack gap="$md">
-            {communities.popular.slice(0, 5).map((community) => (
+            {communities.popular.map((community: Community) => (
               <TouchableOpacity
                 key={community.id}
                 onPress={() => handleCommunityPress(community)}

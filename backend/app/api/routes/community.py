@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.schemas.community import CreateCommunityRequest, UpdateCommunityRequest
 from app.services.community_service import community_service
+from app.services.cache_service import cache_service, CacheService
 from app.api.deps import get_current_user_id, get_current_user_optional
 from app.core.response import success
 
@@ -17,12 +18,25 @@ async def get_communities(
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取社区列表（热门、关注、全部）"""
+    # 对于未登录用户，使用缓存
+    if current_user_id is None:
+        cache_key = cache_service.get_communities_list_key()
+        cached = cache_service.get(cache_key)
+        if cached is not None:
+            return success(cached)
+
     result = community_service.get_community_list(current_user_id)
-    return success({
+    data = {
         "popular": [c.model_dump() for c in result.popular],
         "following": [c.model_dump() for c in result.following],
         "all": [c.model_dump() for c in result.all],
-    })
+    }
+
+    # 只缓存未登录用户的数据
+    if current_user_id is None:
+        cache_service.set(cache_key, data, CacheService.TTL_MEDIUM)
+
+    return success(data)
 
 
 @router.get("/popular")
@@ -146,6 +160,10 @@ async def create_community(
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建社区失败")
+
+    # 清除社区缓存
+    cache_service.invalidate_communities()
+
     return success(result.model_dump())
 
 
@@ -170,6 +188,10 @@ async def update_community(
     )
     if not result:
         raise HTTPException(status_code=404, detail="社区不存在")
+
+    # 清除社区缓存
+    cache_service.invalidate_communities()
+
     return success(result.model_dump())
 
 
@@ -183,4 +205,8 @@ async def delete_community(
     ok = community_service.delete_community(community_id)
     if not ok:
         raise HTTPException(status_code=404, detail="社区不存在")
+
+    # 清除社区缓存
+    cache_service.invalidate_communities()
+
     return success(message="删除成功")

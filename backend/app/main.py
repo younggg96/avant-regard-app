@@ -25,14 +25,23 @@ from app.api.routes.notification import router as notification_router
 from app.api.routes.banner import router as banner_router
 from app.api.routes.community import router as community_router
 
+# 导入缓存服务
+from app.services.cache_service import cache_service
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时执行
     print("🚀 Avant Regard API starting...")
+    
+    # 连接 Redis
+    cache_service.connect()
+    
     yield
+    
     # 关闭时执行
+    cache_service.disconnect()
     print("👋 Avant Regard API shutting down...")
 
 
@@ -88,7 +97,17 @@ app.include_router(community_router, prefix="/api")
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    return {"status": "healthy", "service": "avant-regard-api"}
+    return {
+        "status": "healthy",
+        "service": "avant-regard-api",
+        "redis": cache_service.is_connected,
+    }
+
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """获取缓存统计信息"""
+    return cache_service.get_stats()
 
 
 @app.get("/")

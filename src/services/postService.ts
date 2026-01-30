@@ -41,8 +41,8 @@ export interface Post {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场 ID 列表（支持关联多个秀场）
-  showIds?: number[];
+  // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+  showIds?: (number | string)[];
   // 论坛帖子专用字段
   communityId?: number;
   communityName?: string;
@@ -64,8 +64,8 @@ export interface CreatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场 ID 列表（支持关联多个秀场）
-  showIds?: number[];
+  // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+  showIds?: (number | string)[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -82,8 +82,8 @@ export interface UpdatePostParams {
   productName?: string;
   brandName?: string;
   rating?: number;
-  // 关联秀场 ID 列表（支持关联多个秀场）
-  showIds?: number[];
+  // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
+  showIds?: (number | string)[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -401,9 +401,10 @@ export async function uploadImages(
 /**
  * 获取帖子列表
  * GET /api/posts
+ * @param limit 返回数量限制，默认 50
  */
-export async function getPosts(): Promise<Post[]> {
-  return request<Post[]>("/api/posts", {
+export async function getPosts(limit: number = 50): Promise<Post[]> {
+  return request<Post[]>(`/api/posts?limit=${limit}`, {
     method: "GET",
   });
 }
@@ -601,9 +602,10 @@ export async function getPostsByCommunityId(communityId: number): Promise<Post[]
  * 获取所有论坛帖子
  * GET /api/posts/forum/all
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的论坛帖子
+ * @param limit 返回数量限制，默认 50
  */
-export async function getForumPosts(): Promise<Post[]> {
-  return request<Post[]>("/api/posts/forum/all", {
+export async function getForumPosts(limit: number = 50): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/forum/all?limit=${limit}`, {
     method: "GET",
   });
 }

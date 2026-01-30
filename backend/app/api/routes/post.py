@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.schemas.post import CreatePostRequest, UpdatePostRequest, PostStatus
 from app.services.post_service import post_service
+from app.services.cache_service import cache_service, CacheService
 from app.api.deps import get_current_user_id, get_current_user_optional
 from app.core.response import success
 
@@ -31,8 +32,21 @@ async def get_posts(
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取帖子列表"""
+    # 对于未登录用户，使用缓存；登录用户需要个性化数据（是否点赞等）
+    if current_user_id is None:
+        cache_key = cache_service.get_posts_list_key(limit=limit)
+        cached = cache_service.get(cache_key)
+        if cached is not None:
+            return success(cached)
+
     result = post_service.get_posts(current_user_id, limit=limit)
-    return success([p.model_dump() for p in result])
+    data = [p.model_dump() for p in result]
+
+    # 只缓存未登录用户的数据
+    if current_user_id is None:
+        cache_service.set(cache_key, data, CacheService.TTL_SHORT)
+
+    return success(data)
 
 
 @router.get("/{post_id}")
@@ -69,6 +83,10 @@ async def create_post(
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")
+
+    # 清除帖子相关缓存
+    cache_service.invalidate_posts()
+
     return success(result.model_dump())
 
 
@@ -98,6 +116,10 @@ async def update_post(
     )
     if not result:
         raise HTTPException(status_code=404, detail="帖子不存在或无权修改")
+
+    # 清除帖子相关缓存
+    cache_service.invalidate_post(post_id)
+
     return success(result.model_dump())
 
 
@@ -114,6 +136,10 @@ async def delete_post(
     ok = post_service.delete_post(post_id, userId)
     if not ok:
         raise HTTPException(status_code=404, detail="帖子不存在或无权删除")
+
+    # 清除帖子相关缓存
+    cache_service.invalidate_post(post_id)
+
     return success(message="删除成功")
 
 
@@ -249,5 +275,18 @@ async def get_forum_posts(
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取所有论坛帖子"""
+    # 对于未登录用户，使用缓存
+    if current_user_id is None:
+        cache_key = cache_service.get_forum_posts_key(limit=limit)
+        cached = cache_service.get(cache_key)
+        if cached is not None:
+            return success(cached)
+
     result = post_service.get_forum_posts(current_user_id, limit=limit)
-    return success([p.model_dump() for p in result])
+    data = [p.model_dump() for p in result]
+
+    # 只缓存未登录用户的数据
+    if current_user_id is None:
+        cache_service.set(cache_key, data, CacheService.TTL_SHORT)
+
+    return success(data)

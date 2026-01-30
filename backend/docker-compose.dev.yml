@@ -17,10 +17,13 @@ services:
       - DEBUG=true
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8000
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       # 挂载代码目录实现热重载
       - ./app:/app/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - redis
     restart: unless-stopped
     networks:
       - avant-regard-network
@@ -30,9 +33,15 @@ services:
     container_name: avant-regard-redis-dev
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
     networks:
       - avant-regard-network
 
 networks:
   avant-regard-network:
     driver: bridge
+
+volumes:
+  redis_dev_data:

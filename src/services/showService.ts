@@ -16,7 +16,7 @@ interface ApiResponse<T> {
 
 // 秀场类型
 export interface Show {
-  id: number;
+  id: number | string;  // 支持整数或字符串类型的 ID
   brand: string;
   season: string;
   title?: string;

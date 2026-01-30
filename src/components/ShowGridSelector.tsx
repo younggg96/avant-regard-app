@@ -8,11 +8,11 @@ import { theme } from "../theme";
 const { width: screenWidth } = Dimensions.get("window");
 
 export interface SelectedShow {
-  id: number;
+  id: number | string;
   brand: string;
   season: string;
   imageUrl: string;
-  showId?: number;  // 秀场数据库 ID，用于直接关联到 shows 表
+  showId?: number | string;  // 秀场数据库 ID，用于直接关联到 shows 表
   showUrl?: string; // 秀场 URL，仅用于按钮点击跳转链接
 }
 
