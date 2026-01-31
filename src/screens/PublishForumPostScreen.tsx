@@ -359,7 +359,7 @@ const PublishForumPostScreen = () => {
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
           userId: user.userId,
-          postType: "FORUM",
+          postType: "ARTICLES",
           status: "PUBLISHED",
           title: title.trim(),
           contentText,
@@ -369,7 +369,7 @@ const PublishForumPostScreen = () => {
       } else {
         await postService.createPost({
           userId: user.userId,
-          postType: "FORUM",
+          postType: "ARTICLES",
           postStatus: "PUBLISHED",
           title: title.trim(),
           contentText,
@@ -451,7 +451,7 @@ const PublishForumPostScreen = () => {
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
           userId: user.userId,
-          postType: "FORUM",
+          postType: "ARTICLES",
           status: "DRAFT",
           title: title.trim() || "论坛草稿",
           contentText,
@@ -461,7 +461,7 @@ const PublishForumPostScreen = () => {
       } else {
         await postService.createPost({
           userId: user.userId,
-          postType: "FORUM",
+          postType: "ARTICLES",
           postStatus: "DRAFT",
           title: title.trim() || "论坛草稿",
           contentText,

@@ -69,9 +69,25 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                 {post.author.name}
               </Text>
             </HStack>
-            <Text fontSize="$xs" color="$gray600">
-              {post.timestamp ? formatTimestamp(post.timestamp) : ""}
-            </Text>
+            <HStack space="xs" alignItems="center">
+              <Text fontSize="$xs" color="$gray600">
+                {post.timestamp ? formatTimestamp(post.timestamp) : ""}
+              </Text>
+              {post.communityName && (
+                <View
+                  style={{
+                    backgroundColor: theme.colors.gray100,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 4,
+                  }}
+                >
+                  <Text fontSize="$xs" color="$gray600">
+                    # {post.communityName}
+                  </Text>
+                </View>
+              )}
+            </HStack>
           </VStack>
         </Pressable>
       </HStack>

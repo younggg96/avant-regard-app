@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Image, Pressable, HStack, VStack } from "./ui";
+import { Box, Text, Image, Pressable, HStack } from "./ui";
 import { theme } from "../theme";
 import { Show } from "../services/showService";
 
@@ -57,6 +57,9 @@ export interface Post {
   showImages?: ShowImageInfo[];
   // 关联的秀场（完整信息）
   shows?: Show[];
+  // 论坛帖子所属社区
+  communityId?: number;
+  communityName?: string;
 }
 
 interface PostCardProps {
@@ -120,6 +123,22 @@ const PostCard: React.FC<PostCardProps> = ({
             >
               <Text color="$white" fontSize="$xs" fontWeight="$semibold">
                 审核中
+              </Text>
+            </Box>
+          )}
+          {/* 社区标签（论坛帖子） */}
+          {!isPending && post.communityName && (
+            <Box
+              position="absolute"
+              top={8}
+              left={8}
+              bg="rgba(0, 0, 0, 0.6)"
+              px="$sm"
+              py="$xs"
+              rounded="$sm"
+            >
+              <Text color="$white" fontSize="$xs">
+                # {post.communityName}
               </Text>
             </Box>
           )}

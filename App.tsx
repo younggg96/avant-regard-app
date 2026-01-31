@@ -53,8 +53,7 @@ import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
-// Forum Screens
-import ForumScreen from "./src/screens/ForumScreen";
+
 import CommunityDetailScreen from "./src/screens/CommunityDetailScreen";
 import AllCommunitiesScreen from "./src/screens/AllCommunitiesScreen";
 // Merchant Screens
@@ -382,13 +381,6 @@ function AppNavigator() {
         <Stack.Screen
           name="PublishForumPost"
           component={PublishForumPostScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="Forum"
-          component={ForumScreen}
           options={{
             headerShown: false,
           }}

@@ -90,6 +90,9 @@ interface DisplayPost {
     isSaved?: boolean;
   };
   timestamp: string;
+  // 论坛帖子所属社区
+  communityId?: number;
+  communityName?: string;
 }
 
 // API Post类型到前端Post类型的映射
@@ -127,6 +130,9 @@ const mapApiPostToDisplayPost = (
       isSaved: apiPost.favoritedByMe || false,
     },
     timestamp: getRelativeTime(apiPost.createdAt),
+    // 论坛帖子所属社区
+    communityId: apiPost.communityId,
+    communityName: apiPost.communityName,
   };
 };
 
@@ -261,6 +267,9 @@ const CommunityDetailScreen = () => {
       },
       likes: post.engagement.likes,
       isLiked: post.engagement.isLiked,
+      // 论坛帖子所属社区
+      communityId: post.communityId,
+      communityName: post.communityName,
     };
   }, []);
 

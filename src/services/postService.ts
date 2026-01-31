@@ -16,7 +16,8 @@ interface ApiResponse<T> {
 }
 
 // 帖子类型
-export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES" | "FORUM";
+// 注意：论坛帖子使用 ARTICLES 类型，通过 community_id 来区分
+export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
 
 // 审核状态
 export type AuditStatus = "PENDING" | "APPROVED" | "REJECTED";
