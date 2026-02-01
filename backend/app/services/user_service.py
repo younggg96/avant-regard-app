@@ -3,7 +3,7 @@
 """
 from typing import Optional, List
 from app.db.supabase import get_supabase
-from app.schemas.user import UserInfo, UserProfileInfo
+from app.schemas.user import UserInfo, UserProfileInfo, UserPrivacySettings
 
 
 class UserService:
@@ -206,6 +206,36 @@ class UserService:
                     ))
         
         return results[:limit]
+
+    def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
+        """获取用户隐私设置"""
+        info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes").eq("user_id", user_id).execute()
+        if not info_result.data:
+            return None
+        info = info_result.data[0]
+        
+        return UserPrivacySettings(
+            userId=user_id,
+            hideFollowing=info.get("hide_following", True),
+            hideFollowers=info.get("hide_followers", True),
+            hideLikes=info.get("hide_likes", True)
+        )
+
+    def update_privacy_settings(self, user_id: int, **kwargs) -> Optional[UserPrivacySettings]:
+        """更新用户隐私设置"""
+        update_data = {}
+        
+        if "hideFollowing" in kwargs and kwargs["hideFollowing"] is not None:
+            update_data["hide_following"] = kwargs["hideFollowing"]
+        if "hideFollowers" in kwargs and kwargs["hideFollowers"] is not None:
+            update_data["hide_followers"] = kwargs["hideFollowers"]
+        if "hideLikes" in kwargs and kwargs["hideLikes"] is not None:
+            update_data["hide_likes"] = kwargs["hideLikes"]
+        
+        if update_data:
+            self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()
+        
+        return self.get_privacy_settings(user_id)
 
 
 # 单例

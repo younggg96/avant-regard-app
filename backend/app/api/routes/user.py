@@ -8,6 +8,8 @@ from app.schemas.user import (
     UserProfileInfo,
     UpdateUserInfoRequest,
     UpdateUserProfileRequest,
+    UserPrivacySettings,
+    UpdatePrivacySettingsRequest,
 )
 from app.services.user_service import user_service
 from app.services.file_service import file_service
@@ -161,6 +163,36 @@ async def update_user_profile(
         age=request.age,
         preference=request.preference,
         favoriteBrandIds=request.favoriteBrandIds,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result.model_dump())
+
+
+@router.get("/{user_id}/privacy")
+async def get_privacy_settings(user_id: int):
+    """获取用户隐私设置"""
+    result = user_service.get_privacy_settings(user_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result.model_dump())
+
+
+@router.put("/{user_id}/privacy")
+async def update_privacy_settings(
+    user_id: int,
+    request: UpdatePrivacySettingsRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """更新用户隐私设置"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户隐私设置")
+
+    result = user_service.update_privacy_settings(
+        user_id,
+        hideFollowing=request.hideFollowing,
+        hideFollowers=request.hideFollowers,
+        hideLikes=request.hideLikes,
     )
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")

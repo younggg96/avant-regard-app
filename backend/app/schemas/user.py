@@ -58,3 +58,18 @@ class UpdateUserProfileRequest(BaseModel):
     age: Optional[int] = None
     preference: Optional[str] = None
     favoriteBrandIds: Optional[List[int]] = None
+
+
+class UserPrivacySettings(BaseModel):
+    """用户隐私设置"""
+    userId: int
+    hideFollowing: bool = True
+    hideFollowers: bool = True
+    hideLikes: bool = True
+
+
+class UpdatePrivacySettingsRequest(BaseModel):
+    """更新隐私设置请求"""
+    hideFollowing: Optional[bool] = None
+    hideFollowers: Optional[bool] = None
+    hideLikes: Optional[bool] = None
