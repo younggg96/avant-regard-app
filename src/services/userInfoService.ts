@@ -40,6 +40,7 @@ export interface UserProfileInfo {
   gender: Gender;
   age: number;
   preference: string;
+  favoriteBrandIds: number[];
 }
 
 // 更新用户信息请求参数
@@ -61,6 +62,7 @@ export interface UpdateUserProfileParams {
   gender?: Gender;
   age?: number;
   preference?: string;
+  favoriteBrandIds?: number[];
 }
 
 // 通用请求方法

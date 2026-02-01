@@ -35,6 +35,7 @@ class UserProfileInfo(BaseModel):
     gender: Gender = Gender.OTHER
     age: int = 0
     preference: str = ""
+    favoriteBrandIds: List[int] = []
 
 
 class UpdateUserInfoRequest(BaseModel):
@@ -56,3 +57,4 @@ class UpdateUserProfileRequest(BaseModel):
     gender: Optional[Gender] = None
     age: Optional[int] = None
     preference: Optional[str] = None
+    favoriteBrandIds: Optional[List[int]] = None

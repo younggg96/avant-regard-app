@@ -193,6 +193,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         age?: number;
         preference?: string;
         bio?: string;
+        favoriteBrandIds?: number[];
       } = {};
 
       if (location) updateData.location = location;
@@ -200,6 +201,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
       if (ageValue > 0) updateData.age = ageValue;
       if (preference) updateData.preference = preference;
       if (bio) updateData.bio = bio;
+      if (favoriteBrandIds.length > 0) updateData.favoriteBrandIds = favoriteBrandIds;
 
       // 调用更新接口
       if (Object.keys(updateData).length > 0) {

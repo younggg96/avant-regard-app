@@ -221,6 +221,7 @@ const EditProfileScreen = () => {
         setGender(userProfile.gender || "OTHER");
         setAge(userProfile.age ? String(userProfile.age) : "");
         setPreference(userProfile.preference || "");
+        setSelectedBrandIds(userProfile.favoriteBrandIds || []);
       } catch (error) {
         console.warn("加载完整用户资料失败，尝试加载基本信息:", error);
 
@@ -280,6 +281,7 @@ const EditProfileScreen = () => {
         gender: gender,
         age: ageNum,
         preference: preference.trim(),
+        favoriteBrandIds: selectedBrandIds,
       });
 
       // 更新本地状态

@@ -402,6 +402,7 @@ export const useAuthForm = () => {
         age?: number;
         preference?: string;
         bio?: string;
+        favoriteBrandIds?: number[];
       } = {};
 
       if (formData.location) {
@@ -418,6 +419,9 @@ export const useAuthForm = () => {
       }
       if (formData.bio) {
         updateData.bio = formData.bio;
+      }
+      if (formData.favoriteBrandIds && formData.favoriteBrandIds.length > 0) {
+        updateData.favoriteBrandIds = formData.favoriteBrandIds;
       }
 
       // 只有当用户填写了数据时才调用更新接口
