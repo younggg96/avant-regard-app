@@ -27,6 +27,17 @@ class PostService:
         if user_result.data:
             username = user_result.data[0]["username"]
 
+        # 获取用户头像
+        avatar_url = None
+        user_info_result = (
+            self.db.table("user_info")
+            .select("avatar_url")
+            .eq("user_id", post_data["user_id"])
+            .execute()
+        )
+        if user_info_result.data:
+            avatar_url = user_info_result.data[0].get("avatar_url")
+
         # 检查当前用户是否点赞/收藏
         liked_by_me = False
         favorited_by_me = False
@@ -61,6 +72,7 @@ class PostService:
             id=post_data["id"],
             userId=post_data["user_id"],
             username=username,
+            avatarUrl=avatar_url,
             postType=post_type,
             status=post_data["status"],
             auditStatus=post_data.get("audit_status"),

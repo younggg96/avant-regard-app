@@ -33,6 +33,7 @@ class Post(BaseModel):
     id: int
     userId: int
     username: str
+    avatarUrl: Optional[str] = None  # 作者头像 URL
     postType: PostType
     status: PostStatus
     auditStatus: Optional[AuditStatus] = None
