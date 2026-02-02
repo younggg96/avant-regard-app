@@ -39,6 +39,10 @@ class NotificationService:
                 actorName=action_data.get("actor_name"),
                 actorAvatar=action_data.get("actor_avatar"),
                 postImage=action_data.get("post_image"),
+                # 自定义跳转
+                navigateTo=action_data.get("navigateTo"),
+                navigateParams=action_data.get("navigateParams"),
+                externalUrl=action_data.get("externalUrl"),
             ),
             createdAt=data["created_at"],
         )

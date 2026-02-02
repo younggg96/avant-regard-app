@@ -25,6 +25,10 @@ class NotificationActionData(BaseModel):
     actorName: Optional[str] = None
     actorAvatar: Optional[str] = None
     postImage: Optional[str] = None
+    # 自定义跳转
+    navigateTo: Optional[str] = None  # 应用内页面名称
+    navigateParams: Optional[Dict[str, Any]] = None  # 跳转参数
+    externalUrl: Optional[str] = None  # 外部链接
 
 
 class Notification(BaseModel):
