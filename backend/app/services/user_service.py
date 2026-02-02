@@ -161,49 +161,68 @@ class UserService:
         """
         搜索用户（支持用户名模糊搜索和用户ID精确搜索）
         """
+        import re
+        
         results = []
         
-        # 尝试按用户ID精确搜索
-        if keyword.isdigit():
-            user_id = int(keyword)
-            user_info = self.get_user_info(user_id)
-            if user_info:
-                results.append(user_info)
+        # 清理搜索关键词，移除可能导致查询问题的特殊字符
+        clean_keyword = re.sub(r'[%_\\]', '', keyword.strip())
+        if not clean_keyword:
+            return results
         
-        # 按用户名模糊搜索
-        user_result = (
-            self.db.table("users")
-            .select("id, username")
-            .ilike("username", f"%{keyword}%")
-            .limit(limit)
-            .execute()
-        )
-        
-        if user_result.data:
-            for user in user_result.data:
-                # 跳过已添加的用户（如果通过ID搜索到的话）
-                if any(r.userId == user["id"] for r in results):
-                    continue
-                    
-                # 获取用户详细信息
-                info_result = (
-                    self.db.table("user_info")
-                    .select("*")
-                    .eq("user_id", user["id"])
-                    .execute()
-                )
+        try:
+            # 尝试按用户ID精确搜索
+            if clean_keyword.isdigit():
+                user_id = int(clean_keyword)
+                user_info = self.get_user_info(user_id)
+                if user_info:
+                    results.append(user_info)
+            
+            # 按用户名模糊搜索
+            user_result = (
+                self.db.table("users")
+                .select("id, username")
+                .ilike("username", f"%{clean_keyword}%")
+                .limit(limit)
+                .execute()
+            )
+            
+            if user_result.data:
+                # 批量获取用户详细信息以减少请求次数
+                user_ids = [user["id"] for user in user_result.data 
+                           if not any(r.userId == user["id"] for r in results)]
                 
-                if info_result.data:
-                    info = info_result.data[0]
-                    results.append(UserInfo(
-                        userId=user["id"],
-                        infoId=info["id"],
-                        username=user["username"],
-                        bio=info.get("bio", ""),
-                        location=info.get("location", ""),
-                        avatarUrl=info.get("avatar_url", ""),
-                        coverUrl=info.get("cover_url", "")
-                    ))
+                if user_ids:
+                    info_result = (
+                        self.db.table("user_info")
+                        .select("*")
+                        .in_("user_id", user_ids)
+                        .execute()
+                    )
+                    
+                    # 创建 user_id 到 info 的映射
+                    info_map = {info["user_id"]: info for info in info_result.data} if info_result.data else {}
+                    
+                    for user in user_result.data:
+                        # 跳过已添加的用户（如果通过ID搜索到的话）
+                        if any(r.userId == user["id"] for r in results):
+                            continue
+                        
+                        info = info_map.get(user["id"])
+                        if info:
+                            results.append(UserInfo(
+                                userId=user["id"],
+                                infoId=info["id"],
+                                username=user["username"],
+                                bio=info.get("bio", ""),
+                                location=info.get("location", ""),
+                                avatarUrl=info.get("avatar_url", ""),
+                                coverUrl=info.get("cover_url", "")
+                            ))
+        except Exception as e:
+            print(f"[UserService] search_users error: {e}")
+            # 如果搜索失败，返回空列表而不是抛出异常
+            return []
         
         return results[:limit]
 
