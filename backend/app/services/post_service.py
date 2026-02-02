@@ -452,11 +452,13 @@ class PostService:
         show_ids = [str(show.id) for show in shows]
         
         # 查询包含这些秀场 ID 的帖子
-        # 使用 overlaps 操作符来检查 show_ids 数组是否与给定的秀场 ID 列表有交集
+        # 使用 PostgreSQL 数组 overlap 操作符 && 来检查数组是否有交集
+        # 需要将 show_ids 格式化为 PostgreSQL 数组字符串格式
+        show_ids_array = "{" + ",".join(f'"{sid}"' for sid in show_ids) + "}"
         result = (
             self.db.table("posts")
             .select("*")
-            .overlaps("show_ids", show_ids)
+            .filter("show_ids", "ov", show_ids_array)
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
