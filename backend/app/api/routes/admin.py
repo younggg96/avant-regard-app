@@ -1,11 +1,12 @@
 """
 管理员路由
 """
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
 from pydantic import BaseModel, Field
 from app.services.admin_service import admin_service
 from app.services.cache_service import cache_service
+from app.services.notification_service import notification_service
 from app.api.deps import get_current_admin_user
 from app.core.response import success
 
@@ -41,6 +42,13 @@ class UpdateCommunityRequest(BaseModel):
 class BatchDeletePostsRequest(BaseModel):
     """批量删除帖子请求"""
     postIds: List[int]
+
+
+class BroadcastNotificationRequest(BaseModel):
+    """广播通知请求"""
+    title: str = Field(..., min_length=1, max_length=100, description="通知标题")
+    message: str = Field(..., min_length=1, max_length=500, description="通知内容")
+    actionData: Optional[Dict[str, Any]] = Field(None, description="可选的操作数据")
 
 
 # ==================== 帖子审核 ====================
@@ -293,3 +301,27 @@ async def batch_delete_community_posts(
     
     result = admin_service.batch_delete_community_posts(community_id, request.postIds)
     return success(result)
+
+
+# ==================== 广播通知 ====================
+
+@router.post("/notifications/broadcast")
+async def broadcast_notification(
+    request: BroadcastNotificationRequest,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """
+    向所有用户发送广播通知（管理员）
+    - 同时创建 App 内通知和发送 Push 推送
+    """
+    result = notification_service.broadcast_notification(
+        title=request.title,
+        message=request.message,
+        action_data=request.actionData,
+    )
+    
+    return success({
+        "successCount": result["success_count"],
+        "failCount": result["fail_count"],
+        "totalUsers": result["total_users"],
+    })

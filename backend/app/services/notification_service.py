@@ -345,6 +345,112 @@ class NotificationService:
             action_data=action_data,
         )
 
+    # ======================= 广播通知 =======================
+
+    def broadcast_notification(
+        self,
+        title: str,
+        message: str,
+        action_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, int]:
+        """
+        向所有用户发送广播通知
+        Returns: {"success_count": int, "fail_count": int, "total_users": int}
+        """
+        # 获取所有用户 ID
+        users_result = self.db.table("users").select("id").execute()
+        all_user_ids = [user["id"] for user in (users_result.data or [])]
+        total_users = len(all_user_ids)
+
+        if total_users == 0:
+            return {"success_count": 0, "fail_count": 0, "total_users": 0}
+
+        success_count = 0
+        fail_count = 0
+
+        # 批量创建通知记录
+        notifications_data = []
+        for user_id in all_user_ids:
+            notifications_data.append({
+                "user_id": user_id,
+                "type": NotificationType.SYSTEM.value,
+                "title": title,
+                "message": message,
+                "is_read": False,
+                "action_data": action_data or {},
+            })
+
+        # 批量插入通知
+        try:
+            result = self.db.table("notifications").insert(notifications_data).execute()
+            success_count = len(result.data or [])
+            fail_count = total_users - success_count
+        except Exception as e:
+            print(f"Failed to batch insert notifications: {e}")
+            fail_count = total_users
+
+        # 批量发送 Push 通知
+        self._send_broadcast_push_notification(title, message, action_data)
+
+        return {
+            "success_count": success_count,
+            "fail_count": fail_count,
+            "total_users": total_users,
+        }
+
+    def _send_broadcast_push_notification(
+        self,
+        title: str,
+        body: str,
+        data: Optional[Dict[str, Any]] = None,
+    ):
+        """向所有注册了 Push Token 的用户发送推送通知"""
+        # 获取所有用户的 push token
+        token_result = self.db.table("user_push_tokens").select("push_token").execute()
+
+        if not token_result.data:
+            return
+
+        # 收集所有有效的 Expo Push Tokens
+        messages = []
+        for token_data in token_result.data:
+            push_token = token_data["push_token"]
+            if not push_token or not push_token.startswith("ExponentPushToken"):
+                continue
+
+            message = {
+                "to": push_token,
+                "title": title,
+                "body": body,
+                "sound": "default",
+                "badge": 1,
+            }
+            if data:
+                message["data"] = data
+            messages.append(message)
+
+        if not messages:
+            return
+
+        # 批量发送（Expo 支持一次最多发送 100 条）
+        batch_size = 100
+        for i in range(0, len(messages), batch_size):
+            batch = messages[i : i + batch_size]
+            try:
+                with httpx.Client() as client:
+                    response = client.post(
+                        self.expo_push_url,
+                        json=batch,
+                        headers={
+                            "Accept": "application/json",
+                            "Accept-Encoding": "gzip, deflate",
+                            "Content-Type": "application/json",
+                        },
+                    )
+                    print(f"Broadcast push notification sent: {response.status_code}, batch size: {len(batch)}")
+            except Exception as e:
+                print(f"Failed to send broadcast push notification: {e}")
+
 
 # 单例
 notification_service = NotificationService()
