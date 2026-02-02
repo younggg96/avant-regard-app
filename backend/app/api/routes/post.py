@@ -257,6 +257,20 @@ async def get_posts_by_show_id(
     return success([p.model_dump() for p in result])
 
 
+# ==================== 品牌关联帖子 ====================
+
+
+@router.get("/brand/{brand_name}")
+async def get_posts_by_brand_name(
+    brand_name: str,
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """获取某个品牌相关的所有帖子（通过该品牌的所有秀场）"""
+    result = post_service.get_posts_by_brand_name(brand_name, current_user_id, limit)
+    return success([p.model_dump() for p in result])
+
+
 # ==================== 社区帖子 ====================
 
 

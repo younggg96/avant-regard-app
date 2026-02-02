@@ -435,6 +435,36 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
+    def get_posts_by_brand_name(
+        self, brand_name: str, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
+        """
+        获取某个品牌相关的所有帖子
+        通过查询该品牌的所有秀场 ID，然后获取关联这些秀场的帖子
+        """
+        from app.services.show_service import show_service
+        
+        # 获取该品牌的所有秀场 ID
+        shows = show_service.get_shows_by_brand(brand_name)
+        if not shows:
+            return []
+        
+        show_ids = [str(show.id) for show in shows]
+        
+        # 查询包含这些秀场 ID 的帖子
+        # 使用 overlaps 操作符来检查 show_ids 数组是否与给定的秀场 ID 列表有交集
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .overlaps("show_ids", show_ids)
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
     def _sanitize_search_keyword(self, keyword: str) -> str:
         """
         清理搜索关键词，转义可能导致 PostgREST 查询失败的特殊字符
