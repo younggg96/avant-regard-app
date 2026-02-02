@@ -163,6 +163,7 @@ async def update_user_profile(
         age=request.age,
         preference=request.preference,
         favoriteBrandIds=request.favoriteBrandIds,
+        profileCompleted=request.profileCompleted,
     )
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")

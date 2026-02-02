@@ -95,7 +95,8 @@ class UserService:
             gender=info.get("gender", "OTHER"),
             age=info.get("age", 0),
             preference=info.get("preference", ""),
-            favoriteBrandIds=favorite_brand_ids
+            favoriteBrandIds=favorite_brand_ids,
+            profileCompleted=info.get("profile_completed", False)
         )
 
     def update_user_profile(self, user_id: int, **kwargs) -> Optional[UserProfileInfo]:
@@ -120,6 +121,9 @@ class UserService:
             update_data["age"] = kwargs["age"]
         if "preference" in kwargs and kwargs["preference"] is not None:
             update_data["preference"] = kwargs["preference"]
+        # 支持直接设置 profileCompleted
+        if "profileCompleted" in kwargs and kwargs["profileCompleted"] is not None:
+            update_data["profile_completed"] = kwargs["profileCompleted"]
         
         # 更新用户表
         if user_update:

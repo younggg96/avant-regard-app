@@ -36,6 +36,7 @@ class UserProfileInfo(BaseModel):
     age: int = 0
     preference: str = ""
     favoriteBrandIds: List[int] = []
+    profileCompleted: bool = False  # 是否已完善资料
 
 
 class UpdateUserInfoRequest(BaseModel):
@@ -58,6 +59,7 @@ class UpdateUserProfileRequest(BaseModel):
     age: Optional[int] = None
     preference: Optional[str] = None
     favoriteBrandIds: Optional[List[int]] = None
+    profileCompleted: Optional[bool] = None  # 是否已完善资料
 
 
 class UserPrivacySettings(BaseModel):
