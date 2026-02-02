@@ -1,12 +1,27 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { TextInput, ScrollView, LayoutChangeEvent } from "react-native";
 import { Alert } from "../../../utils/Alert";
-import { authService } from "../../../services/authService";
-import { userInfoService, Gender } from "../../../services/userInfoService";
+import { authService, LoginResponse } from "../../../services/authService";
+import { userInfoService, Gender, UserProfileInfo } from "../../../services/userInfoService";
 import { brandService } from "../../../services/brandService";
 import { useAuthStore } from "../../../store/authStore";
 import { AuthMode, FormData, RegisteredTokens, BrandOption } from "../types";
 import { INITIAL_FORM_DATA } from "../constants";
+
+/**
+ * 检查用户资料是否已填写
+ * 判断逻辑：如果 gender、location、age、bio、preference 任一字段有有效值，则认为已填写
+ */
+const checkProfileCompleted = (profile: UserProfileInfo): boolean => {
+  return !!(
+    profile.gender ||
+    profile.location ||
+    profile.age > 0 ||
+    profile.bio ||
+    profile.preference ||
+    (profile.favoriteBrandIds && profile.favoriteBrandIds.length > 0)
+  );
+};
 
 export const useAuthForm = () => {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -24,6 +39,9 @@ export const useAuthForm = () => {
   
   // 注册成功后显示资料填写 Modal
   const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // 用户协议确认 Modal 状态
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
 
   // 品牌选择相关状态
   const [showBrandPicker, setShowBrandPicker] = useState(false);
@@ -228,6 +246,24 @@ export const useAuthForm = () => {
     }
   }, [formData.phone, validatePhone, getFullPhoneNumber, countdown]);
 
+  // 登录成功后检查并同步用户资料状态
+  const syncProfileStatus = useCallback(async (response: LoginResponse) => {
+    try {
+      // 获取用户完整资料
+      const profile = await userInfoService.getUserProfile(response.userId);
+      
+      // 检查资料是否已填写
+      const isProfileCompleted = checkProfileCompleted(profile);
+      setProfileCompleted(isProfileCompleted);
+      
+      console.log("Profile status synced:", isProfileCompleted);
+    } catch (error) {
+      // 获取资料失败时，默认认为未填写（会触发提醒）
+      console.log("Failed to fetch profile, assuming not completed:", error);
+      setProfileCompleted(false);
+    }
+  }, [setProfileCompleted]);
+
   // 处理密码登录
   const handleLogin = useCallback(async () => {
     if (!validatePhone(formData.phone)) {
@@ -250,6 +286,10 @@ export const useAuthForm = () => {
 
       loginWithResponse(response);
       console.log("response", response);
+      
+      // 登录成功后同步用户资料状态
+      await syncProfileStatus(response);
+      
       Alert.show("登录成功: 欢迎回来！", "", 1000);
     } catch (error) {
       const message =
@@ -264,6 +304,7 @@ export const useAuthForm = () => {
     validatePhone,
     loginWithResponse,
     getFullPhoneNumber,
+    syncProfileStatus,
   ]);
 
   // 处理验证码登录
@@ -287,6 +328,10 @@ export const useAuthForm = () => {
       });
 
       loginWithResponse(response);
+      
+      // 登录成功后同步用户资料状态
+      await syncProfileStatus(response);
+      
       Alert.show("登录成功: 欢迎回来！", "", 1000);
     } catch (error) {
       const message =
@@ -301,40 +346,48 @@ export const useAuthForm = () => {
     validatePhone,
     loginWithResponse,
     getFullPhoneNumber,
+    syncProfileStatus,
   ]);
 
-  // 处理注册
-  const handleRegister = useCallback(async () => {
+  // 验证注册表单（不包含协议检查）
+  const validateRegisterForm = useCallback((): boolean => {
     if (!validatePhone(formData.phone)) {
       Alert.show("提示: 请输入正确的手机号码");
-      return;
+      return false;
     }
 
     if (!formData.verificationCode) {
       Alert.show("提示: 请输入验证码");
-      return;
+      return false;
     }
 
     if (!formData.username || formData.username.trim().length < 2) {
       Alert.show("提示: 用户名长度至少2个字符");
-      return;
+      return false;
     }
 
     if (!formData.password || formData.password.length < 6) {
       Alert.show("提示: 密码长度至少6位");
-      return;
+      return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
       Alert.show("提示: 两次输入的密码不一致");
-      return;
+      return false;
     }
 
-    if (!formData.agreement) {
-      Alert.show("提示: 请阅读并同意用户协议和隐私政策");
-      return;
-    }
+    return true;
+  }, [formData, validatePhone]);
 
+  // 显示协议确认弹窗
+  const showAgreementConfirmation = useCallback(() => {
+    if (validateRegisterForm()) {
+      setShowAgreementModal(true);
+    }
+  }, [validateRegisterForm]);
+
+  // 处理注册（用户确认协议后调用）
+  const handleRegister = useCallback(async () => {
     const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
@@ -380,6 +433,18 @@ export const useAuthForm = () => {
     const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
+      // 先登录以获取认证 token（这样后续的 API 调用才能通过认证）
+      const loginResponse = {
+        userId: registeredUserId,
+        username: formData.username,
+        phone: fullPhone,
+        is_admin: false,
+        userType: "USER",
+        accessToken: registeredTokens.accessToken,
+        refreshToken: registeredTokens.refreshToken,
+      };
+      loginWithResponse(loginResponse);
+
       // 计算年龄值（如果选择了年龄段）
       let ageValue = 0;
       if (formData.age) {
@@ -424,22 +489,10 @@ export const useAuthForm = () => {
         updateData.favoriteBrandIds = formData.favoriteBrandIds;
       }
 
-      // 只有当用户填写了数据时才调用更新接口
+      // 只有当用户填写了数据时才调用更新接口（此时已登录，有 token）
       if (Object.keys(updateData).length > 0) {
         await userInfoService.updateUserProfile(registeredUserId, updateData);
       }
-
-      // 填写完成后直接登录进入主页面
-      const loginResponse = {
-        userId: registeredUserId,
-        username: formData.username,
-        phone: fullPhone,
-        is_admin: false,
-        userType: "USER",
-        accessToken: registeredTokens.accessToken,
-        refreshToken: registeredTokens.refreshToken,
-      };
-      loginWithResponse(loginResponse);
       
       // 标记资料已完善（注册时填写的）
       setProfileCompleted(true);
@@ -570,7 +623,8 @@ export const useAuthForm = () => {
       case "login":
         return handleLogin();
       case "register":
-        return handleRegister();
+        // 注册时先显示协议确认弹窗
+        return showAgreementConfirmation();
       case "forgotPassword":
         return handleForgotPassword();
       case "verification":
@@ -581,7 +635,7 @@ export const useAuthForm = () => {
   }, [
     mode,
     handleLogin,
-    handleRegister,
+    showAgreementConfirmation,
     handleForgotPassword,
     handleSmsLogin,
     handleCompleteProfile,
@@ -603,6 +657,9 @@ export const useAuthForm = () => {
     setShowAgePicker,
     showProfileModal,
     setShowProfileModal,
+    // 用户协议确认 Modal
+    showAgreementModal,
+    setShowAgreementModal,
     // 品牌选择相关
     showBrandPicker,
     setShowBrandPicker,
@@ -633,5 +690,6 @@ export const useAuthForm = () => {
     handleConfirmPasswordSubmit,
     handleMainAction,
     handleCompleteProfile,
+    handleRegister,
   };
 };

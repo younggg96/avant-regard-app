@@ -36,8 +36,6 @@ import AuthScreen from "./src/screens/AuthScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
 import UserProfileScreen from "./src/screens/UserProfileScreen";
-import TermsScreen from "./src/screens/TermsScreen";
-import PrivacyScreen from "./src/screens/PrivacyScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowersScreen from "./src/screens/FollowersScreen";
@@ -283,16 +281,6 @@ function AppNavigator() {
         <Stack.Screen
           name="UserProfile"
           component={UserProfileScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Terms"
-          component={TermsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Privacy"
-          component={PrivacyScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

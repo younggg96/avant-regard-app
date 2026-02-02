@@ -7,62 +7,128 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
+import { useAuthStore } from "../../store/authStore";
+import { getUnreadCount } from "../../services/notificationService";
+import { userInfoService, UserInfo } from "../../services/userInfoService";
 import { TabType } from "./types";
 import { SCREEN_WIDTH, TAB_INDEX_MAP } from "./constants";
 import { styles } from "./styles";
 import { SkeletonPostCard, useSkeletonAnimation } from "./components/SkeletonPostCard";
+import { DiscoverHeader } from "./components/DiscoverHeader";
 import { DiscoverTabBar } from "./components/DiscoverTabBar";
 import { TabContent } from "./components/TabContent";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 
+// 骨架屏 Logo Header 占位
+const SkeletonLogoHeader: React.FC<{
+  opacity: Animated.AnimatedInterpolation<number>;
+}> = ({ opacity }) => (
+  <Box bg="$white" px="$lg" pt="$sm" pb="$sm" alignItems="center">
+    {/* Logo 骨架 */}
+    <Animated.View
+      style={{
+        width: 160,
+        height: 28,
+        borderRadius: 4,
+        backgroundColor: "#e5e5e5",
+        opacity,
+        marginBottom: 4,
+      }}
+    />
+    {/* 副标题骨架 */}
+    <Animated.View
+      style={{
+        width: 80,
+        height: 12,
+        borderRadius: 4,
+        backgroundColor: "#e5e5e5",
+        opacity,
+      }}
+    />
+  </Box>
+);
+
+// 骨架屏 搜索栏 占位
+const SkeletonSearchBar: React.FC<{
+  opacity: Animated.AnimatedInterpolation<number>;
+}> = ({ opacity }) => (
+  <Box bg="$white" px="$md" py="$sm">
+    <HStack alignItems="center" justifyContent="space-between">
+      {/* 头像骨架 - 方形小圆角 */}
+      <Animated.View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 4,
+          backgroundColor: "#e5e5e5",
+          opacity,
+        }}
+      />
+      {/* 搜索框骨架 - 方形小圆角 */}
+      <Animated.View
+        style={{
+          flex: 1,
+          marginHorizontal: 12,
+          height: 40,
+          borderRadius: 4,
+          backgroundColor: "#e5e5e5",
+          opacity,
+        }}
+      />
+      {/* 消息图标骨架 */}
+      <Animated.View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 4,
+          backgroundColor: "#e5e5e5",
+          opacity,
+        }}
+      />
+    </HStack>
+  </Box>
+);
+
 // 骨架屏 Tab 栏占位
 const SkeletonTabBar: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
 }> = ({ opacity }) => (
-  <Box borderBottomWidth={1} borderBottomColor="$gray100">
-    <HStack justifyContent="space-between" alignItems="center" py="$sm" px="$md">
-      <HStack justifyContent="center" alignItems="center" gap="$sm">
-        <Animated.View
-          style={{
-            width: 40,
-            height: 20,
-            borderRadius: 4,
-            backgroundColor: "#e5e5e5",
-            opacity,
-          }}
-        />
-        <Animated.View
-          style={{
-            width: 40,
-            height: 20,
-            borderRadius: 4,
-            backgroundColor: "#e5e5e5",
-            opacity,
-          }}
-        />
-        <Animated.View
-          style={{
-            width: 40,
-            height: 20,
-            borderRadius: 4,
-            backgroundColor: "#e5e5e5",
-            opacity,
-          }}
-        />
-      </HStack>
+  <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
+    <HStack justifyContent="center" alignItems="center" py="$xs">
       <Animated.View
         style={{
-          width: 24,
-          height: 24,
+          width: 40,
+          height: 20,
           borderRadius: 4,
           backgroundColor: "#e5e5e5",
           opacity,
+          marginHorizontal: 20,
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 40,
+          height: 20,
+          borderRadius: 4,
+          backgroundColor: "#e5e5e5",
+          opacity,
+          marginHorizontal: 20,
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 40,
+          height: 20,
+          borderRadius: 4,
+          backgroundColor: "#e5e5e5",
+          opacity,
+          marginHorizontal: 20,
         }}
       />
     </HStack>
@@ -74,7 +140,10 @@ const SkeletonTabBar: React.FC<{
  */
 const DiscoverScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("recommend");
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
 
   // 滑动视图引用
   const scrollViewRef = useRef<RNScrollView>(null);
@@ -106,6 +175,38 @@ const DiscoverScreen: React.FC = () => {
   // 骨架屏动画
   const { skeletonOpacity } = useSkeletonAnimation();
 
+  // 获取当前用户详细信息
+  useEffect(() => {
+    const fetchCurrentUserInfo = async () => {
+      if (user?.userId) {
+        try {
+          const info = await userInfoService.getUserInfo(user.userId);
+          setCurrentUserInfo(info);
+        } catch (err) {
+          console.warn("获取当前用户信息失败:", err);
+        }
+      }
+    };
+    fetchCurrentUserInfo();
+  }, [user?.userId]);
+
+  // 获取未读消息数量
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadNotificationCount(count);
+    } catch (err) {
+      console.warn("获取未读消息数量失败:", err);
+    }
+  }, []);
+
+  // 页面聚焦时刷新未读消息数
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
+
   // 初始化时滚动到推荐 tab（index 1）
   useEffect(() => {
     if (isInitialized && !hasInitialScrolled.current) {
@@ -122,6 +223,16 @@ const DiscoverScreen: React.FC = () => {
   // 处理搜索按钮点击
   const handleSearchPress = useCallback(() => {
     (navigation.navigate as any)("Search");
+  }, [navigation]);
+
+  // 处理头像点击 - 跳转到个人主页
+  const handleAvatarPress = useCallback(() => {
+    (navigation.navigate as any)("Profile");
+  }, [navigation]);
+
+  // 处理消息图标点击
+  const handleNotificationPress = useCallback(() => {
+    (navigation.navigate as any)("Notifications");
   }, [navigation]);
 
   // 处理标签切换
@@ -220,12 +331,8 @@ const DiscoverScreen: React.FC = () => {
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <ScreenHeader
-          title="AVANT REGARD"
-          subtitle="时尚内容流"
-          boldTitle={true}
-          borderless
-        />
+        <SkeletonLogoHeader opacity={skeletonOpacity} />
+        <SkeletonSearchBar opacity={skeletonOpacity} />
         <SkeletonTabBar opacity={skeletonOpacity} />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
@@ -257,9 +364,12 @@ const DiscoverScreen: React.FC = () => {
     );
   }
 
+  // 获取用户头像URL
+  const userAvatarUrl = currentUserInfo?.avatarUrl || user?.avatar;
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      {/* 动画 Header */}
+      {/* Logo Header - 可收起 */}
       <Animated.View
         style={{
           height: interpolatedHeaderHeight,
@@ -275,11 +385,20 @@ const DiscoverScreen: React.FC = () => {
         />
       </Animated.View>
 
-      {/* Tab 栏 - 吸顶 */}
+      {/* 搜索栏 - 头像 + 搜索框 + 消息 */}
+      <DiscoverHeader
+        username={currentUserInfo?.username || user?.username}
+        avatar={userAvatarUrl}
+        unreadCount={unreadNotificationCount}
+        onAvatarPress={handleAvatarPress}
+        onSearchPress={handleSearchPress}
+        onNotificationPress={handleNotificationPress}
+      />
+
+      {/* Tab 栏 - 居中样式 */}
       <DiscoverTabBar
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        onSearchPress={handleSearchPress}
       />
 
       {/* 水平滑动容器 */}

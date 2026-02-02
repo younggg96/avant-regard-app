@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
 import { theme } from "../../../theme";
 import PostCard, { Post } from "../../../components/PostCard";
+import ForumPostCard from "../../../components/ForumPostCard";
 import BannerCarousel from "../../../components/BannerCarousel";
 import { Banner } from "../../../services/bannerService";
 import { CommunityListResponse } from "../../../services/communityService";
@@ -48,8 +49,22 @@ const convertToPost = (post: DisplayPost): Post => ({
     name: post.author.name,
     avatar: post.author.avatar,
   },
+  content: {
+    title: post.content.title,
+    description: post.content.description,
+    images: post.content.images,
+    tags: post.content.tags,
+  },
+  engagement: {
+    likes: post.engagement.likes,
+    saves: post.engagement.saves,
+    comments: post.engagement.comments,
+    isLiked: post.engagement.isLiked,
+    isSaved: post.engagement.isSaved,
+  },
   likes: post.engagement.likes,
   isLiked: post.engagement.isLiked,
+  timestamp: post.timestamp,
   // 论坛帖子所属社区
   communityId: post.communityId,
   communityName: post.communityName,
@@ -104,13 +119,13 @@ export const TabContent: React.FC<TabContentProps> = ({
         (a, b) => b.engagement.likes - a.engagement.likes
       );
     } else if (tab === "recommend") {
-      // 推荐显示所有帖子
-      return posts;
+      // 发现显示非论坛帖子（排除有 communityId 的帖子）
+      return posts.filter((post) => !post.communityId);
     } else if (tab === "following") {
-      // 关注标签只显示关注用户的帖子
+      // 关注标签只显示关注用户的非论坛帖子
       return posts.filter((post) => {
         const authorId = parseInt(post.author.id, 10);
-        return followingUserIds.includes(authorId);
+        return followingUserIds.includes(authorId) && !post.communityId;
       });
     }
     return [];
@@ -125,7 +140,7 @@ export const TabContent: React.FC<TabContentProps> = ({
       case "forum":
         return { title: "暂无论坛帖子", subtitle: "快来发布第一篇帖子吧" };
       case "recommend":
-        return { title: "暂无推荐内容", subtitle: "下拉刷新获取最新内容" };
+        return { title: "暂无发现内容", subtitle: "下拉刷新获取最新内容" };
       case "following":
         return { title: "暂无关注内容", subtitle: "关注更多用户查看他们的动态" };
       default:
@@ -214,8 +229,21 @@ export const TabContent: React.FC<TabContentProps> = ({
               {emptyState.subtitle}
             </Text>
           </VStack>
+        ) : tab === "forum" ? (
+          // 论坛帖子列表（横向排版）
+          <VStack>
+            {currentPosts.map((post, index) => (
+              <ForumPostCard
+                key={post.id || `forum-${index}`}
+                post={post}
+                onPress={onPostPress}
+                onAuthorPress={onAuthorPress}
+                onLike={onLike}
+              />
+            ))}
+          </VStack>
         ) : (
-          // 帖子列表（两列瀑布流布局）
+          // 发现/关注帖子列表（两列瀑布流布局）
           <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
               {currentPosts

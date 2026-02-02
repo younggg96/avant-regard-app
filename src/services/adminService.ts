@@ -90,6 +90,20 @@ export interface BatchDeleteResult {
   failCount: number;
 }
 
+// 广播通知请求
+export interface BroadcastNotificationParams {
+  title: string;
+  message: string;
+  actionData?: Record<string, unknown>;
+}
+
+// 广播通知响应
+export interface BroadcastNotificationResult {
+  successCount: number;
+  failCount: number;
+  totalUsers: number;
+}
+
 // API 响应包装类型
 interface ApiResponse<T> {
   code: number;
@@ -431,6 +445,25 @@ export async function batchDeleteCommunityPosts(
   );
 }
 
+// ==================== 广播通知 ====================
+
+/**
+ * 向所有用户发送广播通知（管理员）
+ * POST /api/admin/notifications/broadcast
+ * @param params 广播通知参数
+ */
+export async function broadcastNotification(
+  params: BroadcastNotificationParams
+): Promise<BroadcastNotificationResult> {
+  return request<BroadcastNotificationResult>(
+    "/api/admin/notifications/broadcast",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子审核
@@ -455,6 +488,8 @@ export const adminService = {
   getCommunityPosts,
   deleteCommunityPost,
   batchDeleteCommunityPosts,
+  // 广播通知
+  broadcastNotification,
 };
 
 export default adminService;

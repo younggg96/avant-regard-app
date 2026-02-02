@@ -22,6 +22,7 @@ import {
   unfollowUser,
   isFollowingUser,
 } from "../services/followService";
+import { userInfoService } from "../services/userInfoService";
 
 type RouteParams = {
   Followers: {
@@ -37,9 +38,27 @@ const FollowersScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followingStatus, setFollowingStatus] = useState<Record<number, boolean>>({});
+  const [isPrivate, setIsPrivate] = useState(false);
 
   // 从路由参数获取 userId，如果没有则使用当前用户的 userId
   const userId = route.params?.userId || user?.userId;
+  const isOwnProfile = userId === user?.userId;
+
+  // 检查隐私设置
+  const checkPrivacySettings = async () => {
+    if (!userId || isOwnProfile) {
+      setIsPrivate(false);
+      return;
+    }
+
+    try {
+      const settings = await userInfoService.getPrivacySettings(userId);
+      setIsPrivate(settings.hideFollowers);
+    } catch (error) {
+      console.error("Error checking privacy settings:", error);
+      setIsPrivate(false);
+    }
+  };
 
   // 加载粉丝列表
   const loadFollowers = async () => {
@@ -47,6 +66,18 @@ const FollowersScreen = () => {
 
     try {
       setLoading(true);
+
+      // 先检查隐私设置
+      if (!isOwnProfile) {
+        const settings = await userInfoService.getPrivacySettings(userId);
+        if (settings.hideFollowers) {
+          setIsPrivate(true);
+          setFollowers([]);
+          return;
+        }
+        setIsPrivate(false);
+      }
+
       const users = await getFollowers(userId);
       setFollowers(users);
 
@@ -145,6 +176,15 @@ const FollowersScreen = () => {
           <View style={styles.loadingState}>
             <ActivityIndicator  color={theme.colors.gray400} />
             <Text style={styles.loadingText}>加载中...</Text>
+          </View>
+        ) : isPrivate ? (
+          <View style={styles.emptyState}>
+            <Ionicons
+              name="lock-closed-outline"
+              size={24}
+              color={theme.colors.gray300}
+            />
+            <Text style={styles.emptyText}>该用户已隐藏粉丝列表</Text>
           </View>
         ) : followers.length > 0 ? (
           <View style={styles.userList}>

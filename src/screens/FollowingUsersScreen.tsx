@@ -20,6 +20,7 @@ import {
   FollowingUser,
   unfollowUser,
 } from "../services/followService";
+import { userInfoService } from "../services/userInfoService";
 
 type RouteParams = {
   FollowingUsers: {
@@ -34,9 +35,11 @@ const FollowingUsersScreen = () => {
   const [followingUsers, setFollowingUsers] = useState<FollowingUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   // 从路由参数获取 userId，如果没有则使用当前用户的 userId
   const userId = route.params?.userId || user?.userId;
+  const isOwnProfile = userId === user?.userId;
 
   // 加载关注的用户列表
   const loadFollowingUsers = async () => {
@@ -44,6 +47,18 @@ const FollowingUsersScreen = () => {
 
     try {
       setLoading(true);
+
+      // 先检查隐私设置
+      if (!isOwnProfile) {
+        const settings = await userInfoService.getPrivacySettings(userId);
+        if (settings.hideFollowing) {
+          setIsPrivate(true);
+          setFollowingUsers([]);
+          return;
+        }
+        setIsPrivate(false);
+      }
+
       const users = await getFollowingUsers(userId);
       setFollowingUsers(users);
     } catch (error) {
@@ -120,6 +135,17 @@ const FollowingUsersScreen = () => {
             <ActivityIndicator  color={theme.colors.gray400} />
             <Text fontSize="$sm" color="$gray400" mt="$sm">
               加载中...
+            </Text>
+          </VStack>
+        ) : isPrivate ? (
+          <VStack alignItems="center" justifyContent="center" py="$xl">
+            <Ionicons
+              name="lock-closed-outline"
+              size={24}
+              color={theme.colors.gray300}
+            />
+            <Text color="$gray400" mt="$md">
+              该用户已隐藏关注列表
             </Text>
           </VStack>
         ) : followingUsers.length > 0 ? (

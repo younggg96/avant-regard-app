@@ -65,6 +65,21 @@ export interface UpdateUserProfileParams {
   favoriteBrandIds?: number[];
 }
 
+// 用户隐私设置
+export interface UserPrivacySettings {
+  userId: number;
+  hideFollowing: boolean;
+  hideFollowers: boolean;
+  hideLikes: boolean;
+}
+
+// 更新隐私设置请求参数
+export interface UpdatePrivacySettingsParams {
+  hideFollowing?: boolean;
+  hideFollowers?: boolean;
+  hideLikes?: boolean;
+}
+
 // 通用请求方法
 async function request<T>(
   endpoint: string,
@@ -328,6 +343,35 @@ export async function searchUsers(
   );
 }
 
+/**
+ * 获取用户隐私设置
+ * GET /api/user-info/{userId}/privacy
+ * @param userId 用户ID
+ */
+export async function getPrivacySettings(
+  userId: number
+): Promise<UserPrivacySettings> {
+  return request<UserPrivacySettings>(`/api/user-info/${userId}/privacy`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 更新用户隐私设置
+ * PUT /api/user-info/{userId}/privacy
+ * @param userId 用户ID
+ * @param params 隐私设置参数
+ */
+export async function updatePrivacySettings(
+  userId: number,
+  params: UpdatePrivacySettingsParams
+): Promise<UserPrivacySettings> {
+  return request<UserPrivacySettings>(`/api/user-info/${userId}/privacy`, {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
@@ -337,6 +381,8 @@ export const userInfoService = {
   updateUserProfile,
   getUserProfile,
   searchUsers,
+  getPrivacySettings,
+  updatePrivacySettings,
 };
 
 export default userInfoService;

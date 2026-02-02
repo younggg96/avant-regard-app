@@ -340,30 +340,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </View>
       )}
 
-      {/* 用户协议（注册时显示） */}
-      {mode === "register" && (
-        <View style={styles.agreementContainer}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() =>
-              setFormData({ ...formData, agreement: !formData.agreement })
-            }
-          >
-            <Ionicons
-              name={formData.agreement ? "checkbox" : "square-outline"}
-              size={20}
-              color={
-                formData.agreement ? theme.colors.accent : theme.colors.gray400
-              }
-            />
-          </TouchableOpacity>
-          <Text style={styles.agreementText}>
-            我已阅读并同意
-            <Text style={styles.agreementLink}>《用户协议》</Text>和
-            <Text style={styles.agreementLink}>《隐私政策》</Text>
-          </Text>
-        </View>
-      )}
     </View>
   );
 };

@@ -1,25 +1,16 @@
 import React from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthForm } from "./hooks/useAuthForm";
 import {
   BrandLogo,
   AuthTitle,
   AuthForm,
-  ProfileForm,
   AuthActions,
+  AgreementModal,
+  ProfileModal,
 } from "./components";
 import { styles } from "./styles";
-import { theme } from "../../theme";
 
 const AuthScreen = () => {
   const {
@@ -37,6 +28,9 @@ const AuthScreen = () => {
     showAgePicker,
     setShowAgePicker,
     showProfileModal,
+    // 用户协议确认 Modal
+    showAgreementModal,
+    setShowAgreementModal,
     // 品牌选择相关
     showBrandPicker,
     setShowBrandPicker,
@@ -67,7 +61,14 @@ const AuthScreen = () => {
     handleConfirmPasswordSubmit,
     handleMainAction,
     handleCompleteProfile,
+    handleRegister,
   } = useAuthForm();
+
+  // 用户确认协议并注册
+  const handleConfirmAgreement = () => {
+    setShowAgreementModal(false);
+    handleRegister();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -118,66 +119,35 @@ const AuthScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* 用户协议和隐私政策确认 Modal */}
+      <AgreementModal
+        visible={showAgreementModal}
+        loading={loading}
+        onClose={() => setShowAgreementModal(false)}
+        onConfirm={handleConfirmAgreement}
+      />
+
       {/* 注册成功后填写资料的 Modal */}
-      <Modal
+      <ProfileModal
         visible={showProfileModal}
-        animationType="fade"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { }}
-      >
-        <SafeAreaView style={styles.container}>
-          <KeyboardAvoidingView
-            style={styles.keyboardAvoid}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={styles.profileModalContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Modal 标题 */}
-              <View style={styles.profileModalHeader}>
-                <Text style={styles.profileModalTitle}>完善个人资料</Text>
-                <Text style={styles.profileModalSubtitle}>
-                  让我们更好地了解您
-                </Text>
-              </View>
-
-              <ProfileForm
-                formData={formData}
-                setFormData={setFormData}
-                showLocationPicker={showLocationPicker}
-                setShowLocationPicker={setShowLocationPicker}
-                showAgePicker={showAgePicker}
-                setShowAgePicker={setShowAgePicker}
-                showBrandPicker={showBrandPicker}
-                setShowBrandPicker={setShowBrandPicker}
-                brandOptions={brandOptions}
-                loadingBrands={loadingBrands}
-                loadingMoreBrands={loadingMoreBrands}
-                hasMoreBrands={hasMoreBrands}
-                brandSearchKeyword={brandSearchKeyword}
-                onBrandSearch={handleBrandSearch}
-                onLoadMoreBrands={loadMoreBrands}
-              />
-
-              {/* 完成按钮 */}
-              <TouchableOpacity
-                style={[styles.mainButton, loading && styles.mainButtonDisabled]}
-                onPress={handleCompleteProfile}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
-                ) : (
-                  <Text style={styles.mainButtonText}>完成并进入</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </Modal>
+        loading={loading}
+        formData={formData}
+        setFormData={setFormData}
+        showLocationPicker={showLocationPicker}
+        setShowLocationPicker={setShowLocationPicker}
+        showAgePicker={showAgePicker}
+        setShowAgePicker={setShowAgePicker}
+        showBrandPicker={showBrandPicker}
+        setShowBrandPicker={setShowBrandPicker}
+        brandOptions={brandOptions}
+        loadingBrands={loadingBrands}
+        loadingMoreBrands={loadingMoreBrands}
+        hasMoreBrands={hasMoreBrands}
+        brandSearchKeyword={brandSearchKeyword}
+        onBrandSearch={handleBrandSearch}
+        onLoadMoreBrands={loadMoreBrands}
+        onComplete={handleCompleteProfile}
+      />
     </SafeAreaView>
   );
 };

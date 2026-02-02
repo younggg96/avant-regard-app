@@ -50,9 +50,10 @@ import {
 } from "../services/followService";
 import { getUnreadCount } from "../services/notificationService";
 import SimplePostCard from "../components/SimplePostCard";
+import ForumPostCard from "../components/ForumPostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 
-type TabType = "published" | "pending" | "draft" | "saved" | "liked";
+type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "forum";
 
 type TabData = {
   posts: DisplayPost[];
@@ -114,6 +115,7 @@ const ProfileScreen = () => {
     draft: { ...initialTabState },
     saved: { ...initialTabState },
     liked: { ...initialTabState },
+    forum: { ...initialTabState },
   });
 
   const updateTabState = useCallback(
@@ -137,6 +139,7 @@ const ProfileScreen = () => {
       label: "待审核",
       count: tabsData.pending.count,
     },
+    { id: "forum" as TabType, label: "论坛", count: tabsData.forum.count },
     { id: "liked" as TabType, label: "我喜欢的", count: tabsData.liked.count },
     { id: "saved" as TabType, label: "我收藏的", count: tabsData.saved.count },
     { id: "draft" as TabType, label: "草稿", count: tabsData.draft.count },
@@ -188,6 +191,7 @@ const ProfileScreen = () => {
       draft: { ...initialTabState },
       saved: { ...initialTabState },
       liked: { ...initialTabState },
+      forum: { ...initialTabState },
     });
   }, [user?.userId]);
 
@@ -278,8 +282,9 @@ const ProfileScreen = () => {
             "PUBLISHED"
           );
 
+          // 过滤掉论坛帖子（有 communityId 的帖子），只显示普通帖子
           const pendingPosts = apiPosts
-            .filter((p: ApiPost) => p.auditStatus === "PENDING")
+            .filter((p: ApiPost) => p.auditStatus === "PENDING" && p.communityId == null)
             .map((p) =>
               convertToDisplayPost(p, {
                 name: authorName,
@@ -288,7 +293,7 @@ const ProfileScreen = () => {
             );
 
           const approvedPosts = apiPosts
-            .filter((p: ApiPost) => p.auditStatus === "APPROVED")
+            .filter((p: ApiPost) => p.auditStatus === "APPROVED" && p.communityId == null)
             .map((p) =>
               convertToDisplayPost(p, {
                 name: authorName,
@@ -318,18 +323,20 @@ const ProfileScreen = () => {
           const apiPosts = await postService.getFavoritePostsByUserId(
             user.userId
           );
+          // 对于收藏的帖子，使用帖子返回的原作者信息
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: authorName,
-              avatar: authorAvatar,
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
         } else if (targetTab === "liked") {
           const apiPosts = await postService.getLikedPostsByUserId(user.userId);
+          // 对于点赞的帖子，使用帖子返回的原作者信息
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: authorName,
-              avatar: authorAvatar,
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
         } else if (targetTab === "draft") {
@@ -343,6 +350,21 @@ const ProfileScreen = () => {
               avatar: authorAvatar,
             })
           );
+        } else if (targetTab === "forum") {
+          // 获取用户的所有已发布帖子，然后筛选出论坛帖子（有 communityId 的帖子）
+          const apiPosts = await postService.getPostsByUserId(
+            user.userId,
+            "PUBLISHED"
+          );
+          const forumPosts = apiPosts
+            .filter((p: ApiPost) => p.communityId != null && p.auditStatus === "APPROVED")
+            .map((p) =>
+              convertToDisplayPost(p, {
+                name: authorName,
+                avatar: authorAvatar,
+              })
+            );
+          newPosts = forumPosts;
         }
 
         updateTabState(targetTab, {
@@ -579,6 +601,25 @@ const ProfileScreen = () => {
     }
 
     if (currentTabData.posts.length > 0) {
+      // 论坛帖子使用单列竖排列表布局
+      if (activeTab === "forum") {
+        return (
+          <View style={{ width: '100%' }}>
+            {currentTabData.posts.map((post) => (
+              <Pressable
+                key={post.id}
+                onPress={() => handlePostPress(post)}
+                onLongPress={() => handleDeletePost(post)}
+                style={{ width: '100%' }}
+              >
+                <ForumPostCard post={post} onPress={() => handlePostPress(post)} />
+              </Pressable>
+            ))}
+          </View>
+        );
+      }
+
+      // 其他 tab 使用两列网格布局
       return (
         <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
           {currentTabData.posts.map((post) => (
@@ -606,7 +647,8 @@ const ProfileScreen = () => {
             name={
               activeTab === "saved" ? "bookmark-outline" :
                 activeTab === "liked" ? "heart-outline" :
-                  activeTab === "pending" ? "time-outline" : "document-text-outline"
+                  activeTab === "pending" ? "time-outline" :
+                    activeTab === "forum" ? "chatbubbles-outline" : "document-text-outline"
             }
             size={24}
             color={theme.colors.gray300}
@@ -617,6 +659,7 @@ const ProfileScreen = () => {
             {activeTab === "draft" && "还没有草稿"}
             {activeTab === "saved" && "还没有收藏帖子"}
             {activeTab === "liked" && "还没有点赞帖子"}
+            {activeTab === "forum" && "还没有论坛帖子"}
           </Text>
         </VStack>
       );

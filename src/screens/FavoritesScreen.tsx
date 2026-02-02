@@ -49,7 +49,7 @@ const FavoritesScreen = () => {
       author: {
         id: String(apiPost.userId),
         name: apiPost.username || "用户",
-        avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+        avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
       },
       content: {
         title: apiPost.title || "无标题",

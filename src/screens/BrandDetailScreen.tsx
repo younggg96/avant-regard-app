@@ -17,8 +17,14 @@ import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../theme";
 import { brandService, Brand } from "../services/brandService";
 import { showService, Show } from "../services/showService";
+import { postService, Post } from "../services/postService";
+
+type TabType = "shows" | "posts";
 
 const { width: screenWidth } = Dimensions.get("window");
+const SHOWS_PADDING = 20;
+const SHOWS_GAP = 12;
+const SHOW_CARD_WIDTH = (screenWidth - SHOWS_PADDING * 2 - SHOWS_GAP) / 2;
 
 interface RouteParams {
   id?: string;
@@ -38,8 +44,31 @@ const BrandDetailScreen = () => {
 
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandShows, setBrandShows] = useState<Show[]>([]);
+  const [brandPosts, setBrandPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("posts");
+
+  // 加载品牌相关的帖子（通过品牌名一次性获取所有相关帖子）
+  const loadBrandPosts = useCallback(async (brandNameToLoad: string) => {
+    if (!brandNameToLoad) {
+      setBrandPosts([]);
+      return;
+    }
+
+    setIsLoadingPosts(true);
+    try {
+      // 使用新的 API 一次性获取品牌相关的所有帖子
+      const posts = await postService.getPostsByBrandName(brandNameToLoad);
+      setBrandPosts(posts);
+    } catch (err) {
+      console.error("Failed to load brand posts:", err);
+      setBrandPosts([]);
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }, []);
 
   // 加载品牌和秀场数据
   const loadData = useCallback(async () => {
@@ -66,13 +95,16 @@ const BrandDetailScreen = () => {
       // 获取该品牌的秀场
       const shows = await showService.getShowsByBrand(loadedBrand.name);
       setBrandShows(shows);
+
+      // 获取该品牌相关的帖子（通过新的品牌帖子 API）
+      loadBrandPosts(loadedBrand.name);
     } catch (err) {
       console.error("Failed to load brand data:", err);
       setError("加载数据失败");
     } finally {
       setIsLoading(false);
     }
-  }, [brandId, brandName]);
+  }, [brandId, brandName, loadBrandPosts]);
 
   useEffect(() => {
     loadData();
@@ -116,6 +148,20 @@ const BrandDetailScreen = () => {
         },
         brandName: show.brand,
       });
+    },
+    [navigation]
+  );
+
+  const handlePostPress = useCallback(
+    (post: Post) => {
+      (navigation.navigate as any)("PostDetail", { postId: post.id });
+    },
+    [navigation]
+  );
+
+  const handleAuthorPress = useCallback(
+    (userId: number) => {
+      (navigation.navigate as any)("UserProfile", { userId });
     },
     [navigation]
   );
@@ -294,51 +340,158 @@ const BrandDetailScreen = () => {
           </View>
         </View>
 
-        {/* Shows Section */}
-        {brandShows.length > 0 && (
-          <View style={styles.showsSection}>
-            <Text style={styles.sectionTitle}>秀场</Text>
-            <Text style={styles.showsCount}>{brandShows.length} 场秀</Text>
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "posts" && styles.tabActive]}
+            onPress={() => setActiveTab("posts")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "posts" && styles.tabTextActive,
+              ]}
+            >
+              帖子
+            </Text>
+            <Text style={styles.tabCount}>{brandPosts.length}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "shows" && styles.tabActive]}
+            onPress={() => setActiveTab("shows")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "shows" && styles.tabTextActive,
+              ]}
+            >
+              秀场
+            </Text>
+            <Text style={styles.tabCount}>{brandShows.length}</Text>
+          </TouchableOpacity>
+        </View>
 
-            <View style={styles.showsGrid}>
-              {brandShows.map((show, index) => (
-                <TouchableOpacity
-                  key={`${show.showUrl}-${index}`}
-                  style={styles.showCard}
-                  onPress={() => handleShowPress(show)}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={{ uri: show.coverImage }}
-                    style={styles.showImage}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={["transparent", "rgba(0,0,0,0.6)"]}
-                    style={styles.showGradient}
-                  />
-                  <View style={styles.showInfo}>
-                    <Text style={styles.showSeason} numberOfLines={1}>
-                      {show.season}
-                    </Text>
-                    <Text style={styles.showCategory}>{show.category}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        {/* Posts Section */}
+        {activeTab === "posts" && (
+          <>
+            {isLoadingPosts ? (
+              <View style={styles.loadingPosts}>
+                <ActivityIndicator size="small" color={theme.colors.black} />
+                <Text style={styles.loadingText}>加载中...</Text>
+              </View>
+            ) : brandPosts.length > 0 ? (
+              <View style={styles.postsSection}>
+                <View style={styles.postsGrid}>
+                  {brandPosts.map((post) => (
+                    <TouchableOpacity
+                      key={post.id}
+                      style={styles.postCard}
+                      onPress={() => handlePostPress(post)}
+                      activeOpacity={0.9}
+                    >
+                      <Image
+                        source={{ uri: post.imageUrls[0] }}
+                        style={styles.postImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.postContent}>
+                        <Text style={styles.postTitle} numberOfLines={2}>
+                          {post.title}
+                        </Text>
+                        <View style={styles.postFooter}>
+                          <TouchableOpacity
+                            style={styles.postAuthor}
+                            onPress={() => handleAuthorPress(post.userId)}
+                          >
+                            {post.avatarUrl ? (
+                              <Image
+                                source={{ uri: post.avatarUrl }}
+                                style={styles.postAvatar}
+                              />
+                            ) : (
+                              <View style={styles.postAvatarPlaceholder}>
+                                <Text style={styles.postAvatarText}>
+                                  {post.username?.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                            <Text style={styles.postUsername} numberOfLines={1}>
+                              {post.username}
+                            </Text>
+                          </TouchableOpacity>
+                          <View style={styles.postStats}>
+                            <Ionicons
+                              name="heart"
+                              size={12}
+                              color={theme.colors.gray400}
+                            />
+                            <Text style={styles.postLikes}>
+                              {post.likeCount}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={48}
+                  color={theme.colors.gray200}
+                />
+                <Text style={styles.emptyText}>暂无相关帖子</Text>
+              </View>
+            )}
+          </>
         )}
 
-        {/* Empty State for Shows */}
-        {brandShows.length === 0 && (
-          <View style={styles.emptyShows}>
-            <Ionicons
-              name="images-outline"
-              size={48}
-              color={theme.colors.gray200}
-            />
-            <Text style={styles.emptyText}>暂无时装秀数据</Text>
-          </View>
+        {/* Shows Section */}
+        {activeTab === "shows" && (
+          <>
+            {brandShows.length > 0 ? (
+              <View style={styles.showsSection}>
+                <View style={styles.showsGrid}>
+                  {brandShows.map((show, index) => (
+                    <TouchableOpacity
+                      key={`${show.showUrl}-${index}`}
+                      style={styles.showCard}
+                      onPress={() => handleShowPress(show)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: show.showUrl }}
+                        style={styles.showImage}
+                        resizeMode="cover"
+                      />
+                      <LinearGradient
+                        colors={["transparent", "rgba(0,0,0,0.6)"]}
+                        style={styles.showGradient}
+                      />
+                      <View style={styles.showInfo}>
+                        <Text style={styles.showSeason} numberOfLines={1}>
+                          {show.season}
+                        </Text>
+                        <Text style={styles.showCategory}>{show.category}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="images-outline"
+                  size={48}
+                  color={theme.colors.gray200}
+                />
+                <Text style={styles.emptyText}>暂无时装秀数据</Text>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
@@ -515,29 +668,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.black,
   },
+  // Tab Navigation
+  tabContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  tab: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    marginRight: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabActive: {
+    borderBottomColor: theme.colors.black,
+  },
+  tabText: {
+    fontFamily: "Inter-Medium",
+    fontSize: 15,
+    color: theme.colors.gray400,
+  },
+  tabTextActive: {
+    color: theme.colors.black,
+  },
+  tabCount: {
+    fontFamily: "Inter-Regular",
+    fontSize: 13,
+    color: theme.colors.gray400,
+    marginLeft: 6,
+  },
   // Shows Section
   showsSection: {
     padding: 20,
   },
-  sectionTitle: {
-    fontFamily: "PlayfairDisplay-Bold",
-    fontSize: 22,
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  showsCount: {
-    fontFamily: "Inter-Regular",
-    fontSize: 14,
-    color: theme.colors.gray400,
-    marginBottom: 16,
-  },
   showsGrid: {
-    gap: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SHOWS_GAP,
   },
   showCard: {
-    width: "100%",
-    height: 180,
-    borderRadius: 16,
+    width: SHOW_CARD_WIDTH,
+    height: SHOW_CARD_WIDTH * 1.4,
+    borderRadius: 12,
     overflow: "hidden",
     position: "relative",
   },
@@ -550,27 +727,110 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 80,
   },
   showInfo: {
     position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
+    bottom: 12,
+    left: 12,
+    right: 12,
   },
   showSeason: {
     fontFamily: "Inter-Bold",
-    fontSize: 16,
+    fontSize: 13,
     color: theme.colors.white,
   },
   showCategory: {
     fontFamily: "Inter-Regular",
-    fontSize: 13,
+    fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     marginTop: 2,
   },
+  // Posts Section
+  postsSection: {
+    padding: 20,
+  },
+  postsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SHOWS_GAP,
+  },
+  postCard: {
+    width: SHOW_CARD_WIDTH,
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    overflow: "hidden",
+    ...theme.shadows.sm,
+  },
+  postImage: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    backgroundColor: theme.colors.gray100,
+  },
+  postContent: {
+    padding: 10,
+  },
+  postTitle: {
+    fontFamily: "Inter-Medium",
+    fontSize: 13,
+    color: theme.colors.black,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  postFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  postAuthor: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 8,
+  },
+  postAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.gray100,
+    marginRight: 6,
+  },
+  postAvatarPlaceholder: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.gray200,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  postAvatarText: {
+    fontFamily: "Inter-Medium",
+    fontSize: 10,
+    color: theme.colors.gray500,
+  },
+  postUsername: {
+    fontFamily: "Inter-Regular",
+    fontSize: 11,
+    color: theme.colors.gray500,
+    flex: 1,
+  },
+  postStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  postLikes: {
+    fontFamily: "Inter-Regular",
+    fontSize: 11,
+    color: theme.colors.gray400,
+  },
+  loadingPosts: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
   // Empty State
-  emptyShows: {
+  emptyState: {
     alignItems: "center",
     paddingVertical: 48,
     paddingHorizontal: 20,

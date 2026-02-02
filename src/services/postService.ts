@@ -27,6 +27,7 @@ export interface Post {
   id: number;
   userId: number;
   username: string;
+  avatarUrl?: string;  // 作者头像 URL
   postType: PostType;
   status: PostStatus;
   auditStatus?: AuditStatus;
@@ -559,12 +560,31 @@ export async function getFavoritePostsByUserId(
  * 获取某个秀场关联的帖子
  * GET /api/posts/show/{showId}
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
- * @param showId 秀场ID
+ * @param showId 秀场ID（支持整数或字符串类型）
  */
-export async function getPostsByShowId(showId: number): Promise<Post[]> {
+export async function getPostsByShowId(showId: number | string): Promise<Post[]> {
   return request<Post[]>(`/api/posts/show/${showId}`, {
     method: "GET",
   });
+}
+
+/**
+ * 获取某个品牌相关的所有帖子
+ * GET /api/posts/brand/{brandName}
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param brandName 品牌名称
+ * @param limit 返回数量限制
+ */
+export async function getPostsByBrandName(
+  brandName: string,
+  limit: number = 50
+): Promise<Post[]> {
+  return request<Post[]>(
+    `/api/posts/brand/${encodeURIComponent(brandName)}?limit=${limit}`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 /**
@@ -634,6 +654,8 @@ export const postService = {
   getFavoritePostsByUserId,
   // 秀场关联帖子
   getPostsByShowId,
+  // 品牌关联帖子
+  getPostsByBrandName,
   // 搜索
   searchPosts,
   // 社区帖子

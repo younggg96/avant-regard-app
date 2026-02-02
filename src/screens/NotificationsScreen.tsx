@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -88,7 +89,7 @@ const NotificationsScreen = () => {
       case "comment":
         if (notification.actionData?.postId) {
           (navigation.navigate as any)("PostDetail", {
-            id: notification.actionData.postId,
+            postId: notification.actionData.postId,
           });
         }
         break;
@@ -104,6 +105,29 @@ const NotificationsScreen = () => {
         if (notification.actionData?.collectionId) {
           (navigation.navigate as any)("CollectionDetail", {
             id: notification.actionData.collectionId,
+          });
+        }
+        break;
+      case "system":
+        // 处理系统通知的跳转
+        if (notification.actionData?.externalUrl) {
+          // 打开外部链接
+          Linking.openURL(notification.actionData.externalUrl).catch((err) =>
+            console.error("Failed to open URL:", err)
+          );
+        } else if (notification.actionData?.navigateTo) {
+          // 跳转到应用内页面
+          const params = notification.actionData.navigateParams || {};
+          (navigation.navigate as any)(notification.actionData.navigateTo, params);
+        } else if (notification.actionData?.postId) {
+          // 兼容帖子跳转
+          (navigation.navigate as any)("PostDetail", {
+            postId: notification.actionData.postId,
+          });
+        } else if (notification.actionData?.userId) {
+          // 兼容用户跳转
+          (navigation.navigate as any)("UserProfile", {
+            userId: notification.actionData.userId,
           });
         }
         break;

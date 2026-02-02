@@ -62,8 +62,8 @@ const MyLikesScreen = () => {
             image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
             author: {
                 id: String(apiPost.userId),
-                name: apiPost.username,
-                avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+                name: apiPost.username || "用户",
+                avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
             },
             content: {
                 title: apiPost.title || "无标题",

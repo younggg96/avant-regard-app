@@ -13,4 +13,4 @@ export const TAB_INDEX_MAP = {
 export const HEADER_ANIMATION_DURATION = 150;
 export const SCROLL_THRESHOLD = 50;
 export const BOTTOM_THRESHOLD = 100;
-export const HEADER_HEIGHT = 80;
+export const HEADER_HEIGHT = 72; // Logo Header 高度

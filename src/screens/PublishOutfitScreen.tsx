@@ -69,7 +69,7 @@ const PublishOutfitScreen = () => {
   const [draftPostId, setDraftPostId] = useState<number | null>(
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
-  
+
   // 判断是否编辑已发布/审核中的帖子（需要重新审核）
   const isEditingPublishedPost = editMode && draftPost?.auditStatus;
 
@@ -132,7 +132,7 @@ const PublishOutfitScreen = () => {
         show_url: show.showUrl || "",
         year: show.year || 0,
         category: show.category || "",
-        show_id: show.id,
+        show_id: show.id as number,
       }));
 
       if (reset) {
@@ -179,7 +179,7 @@ const PublishOutfitScreen = () => {
         show_url: show.showUrl || "",
         year: show.year || 0,
         category: show.category || "",
-        show_id: show.id,
+        show_id: show.id as number,
       }));
 
       if (shows.length > 0) {
@@ -273,7 +273,7 @@ const PublishOutfitScreen = () => {
       id: 0, // 本地数据没有数据库 ID，使用 0
       brand: show.brand,
       season: show.season,
-      imageUrl: show.cover_image,
+      imageUrl: show.show_url,
       showId: show.show_id, // 数据库秀场 ID，用于关联帖子
       showUrl: show.show_url, // 仅用于按钮点击跳转链接
     };

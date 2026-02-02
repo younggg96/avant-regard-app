@@ -7,6 +7,7 @@ import { getActiveBanners, Banner } from "../../../services/bannerService";
 import { getCommunities, CommunityListResponse } from "../../../services/communityService";
 import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
+import { Alert } from "../../../utils/Alert";
 
 interface UseDiscoverDataReturn {
   // 状态
@@ -223,10 +224,14 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    */
   const handleLike = useCallback(
     async (postId: string) => {
+      // 同时在 posts 和 forumPosts 中查找目标帖子
       const targetPost = posts.find((p) => p.id === postId);
-      if (!targetPost) return;
+      const targetForumPost = forumPosts.find((p) => p.id === postId);
+      const target = targetPost || targetForumPost;
+      
+      if (!target) return;
 
-      const isCurrentlyLiked = targetPost.engagement.isLiked;
+      const isCurrentlyLiked = target.engagement.isLiked;
 
       // 乐观更新 UI
       const updatePost = (post: DisplayPost) =>
@@ -243,7 +248,13 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
             }
           : post;
 
-      setPosts((prevPosts) => prevPosts.map(updatePost));
+      // 根据帖子来源更新对应的状态
+      if (targetPost) {
+        setPosts((prevPosts) => prevPosts.map(updatePost));
+      }
+      if (targetForumPost) {
+        setForumPosts((prevPosts) => prevPosts.map(updatePost));
+      }
 
       // 调用 API
       try {
@@ -252,31 +263,37 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
         if (isCurrentlyLiked) {
           await unlikePost(numericPostId, userId);
+          Alert.show("已取消点赞");
         } else {
           await likePost(numericPostId, userId);
+          Alert.show("点赞成功");
         }
       } catch (err) {
         console.error("点赞操作失败:", err);
         // 回滚 UI 状态
-        setPosts((prevPosts) =>
-          prevPosts.map((post) =>
-            post.id === postId
-              ? {
-                  ...post,
-                  engagement: {
-                    ...post.engagement,
-                    isLiked: isCurrentlyLiked,
-                    likes: isCurrentlyLiked
-                      ? post.engagement.likes + 1
-                      : post.engagement.likes - 1,
-                  },
-                }
-              : post
-          )
-        );
+        const rollbackPost = (post: DisplayPost) =>
+          post.id === postId
+            ? {
+                ...post,
+                engagement: {
+                  ...post.engagement,
+                  isLiked: isCurrentlyLiked,
+                  likes: isCurrentlyLiked
+                    ? post.engagement.likes + 1
+                    : post.engagement.likes - 1,
+                },
+              }
+            : post;
+
+        if (targetPost) {
+          setPosts((prevPosts) => prevPosts.map(rollbackPost));
+        }
+        if (targetForumPost) {
+          setForumPosts((prevPosts) => prevPosts.map(rollbackPost));
+        }
       }
     },
-    [posts, user]
+    [posts, forumPosts, user]
   );
 
   return {

@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -84,6 +85,20 @@ const SearchScreen = () => {
       });
     } catch (error) {
       console.error("Search failed:", error);
+      // 显示用户友好的错误提示
+      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      if (errorMessage.includes("JSON could not be generated") || 
+          errorMessage.includes("Worker threw exception")) {
+        Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+      } else {
+        Alert.alert("搜索失败", "网络连接异常，请检查网络后重试");
+      }
+      // 搜索失败时清空结果
+      if (searchType === "posts") {
+        setPostResults([]);
+      } else {
+        setUserResults([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -108,6 +123,17 @@ const SearchScreen = () => {
         }
       } catch (error) {
         console.error("Search failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "未知错误";
+        if (errorMessage.includes("JSON could not be generated") || 
+            errorMessage.includes("Worker threw exception")) {
+          Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+        }
+        // 搜索失败时清空结果
+        if (type === "posts") {
+          setPostResults([]);
+        } else {
+          setUserResults([]);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -140,6 +166,17 @@ const SearchScreen = () => {
         }
       } catch (error) {
         console.error("Search failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "未知错误";
+        if (errorMessage.includes("JSON could not be generated") || 
+            errorMessage.includes("Worker threw exception")) {
+          Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+        }
+        // 搜索失败时清空结果
+        if (searchType === "posts") {
+          setPostResults([]);
+        } else {
+          setUserResults([]);
+        }
       } finally {
         setIsLoading(false);
       }

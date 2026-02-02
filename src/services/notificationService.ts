@@ -41,6 +41,10 @@ export interface Notification {
     collectionId?: string;
     commentId?: string;
     actorName?: string; // 操作人名称
+    // 自定义跳转
+    navigateTo?: string; // 应用内页面名称
+    navigateParams?: Record<string, unknown>; // 跳转参数
+    externalUrl?: string; // 外部链接
   };
 }
 
@@ -60,6 +64,10 @@ interface NotificationResponse {
     actorName?: string;
     actorAvatar?: string;
     postImage?: string;
+    // 自定义跳转
+    navigateTo?: string;
+    navigateParams?: Record<string, unknown>;
+    externalUrl?: string;
   };
   createdAt: string;
 }
@@ -159,6 +167,10 @@ function transformNotification(data: NotificationResponse): Notification {
         ? String(data.actionData.commentId)
         : undefined,
       actorName: data.actionData?.actorName,
+      // 自定义跳转
+      navigateTo: data.actionData?.navigateTo,
+      navigateParams: data.actionData?.navigateParams,
+      externalUrl: data.actionData?.externalUrl,
     },
   };
 }

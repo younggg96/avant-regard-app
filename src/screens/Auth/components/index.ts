@@ -3,3 +3,7 @@ export { AuthTitle } from "./AuthTitle";
 export { AuthForm } from "./AuthForm";
 export { ProfileForm } from "./ProfileForm";
 export { AuthActions } from "./AuthActions";
+export { AgreementModal } from "./AgreementModal";
+export { ProfileModal } from "./ProfileModal";
+export { TermsContent } from "./TermsContent";
+export { PrivacyContent } from "./PrivacyContent";

@@ -49,12 +49,14 @@ import {
   userInfoService,
   UserInfo,
   UserProfileInfo,
+  UserPrivacySettings,
 } from "../services/userInfoService";
 import SimplePostCard from "../components/SimplePostCard";
+import ForumPostCard from "../components/ForumPostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 import { ImageCropper } from "../components/ImageCropper";
 
-type TabType = "posts" | "saved" | "liked";
+type TabType = "posts" | "forum" | "saved" | "liked";
 
 type TabData = {
   posts: DisplayPost[];
@@ -116,6 +118,7 @@ const UserProfileScreen = () => {
   const [tempCropImage, setTempCropImage] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
 
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
@@ -124,6 +127,7 @@ const UserProfileScreen = () => {
 
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     posts: { ...initialTabState },
+    forum: { ...initialTabState },
     saved: { ...initialTabState },
     liked: { ...initialTabState },
   });
@@ -138,11 +142,23 @@ const UserProfileScreen = () => {
     []
   );
 
-  const tabs = [
+  // 根据隐私设置过滤 tabs
+  const allTabs = [
     { id: "posts" as TabType, label: "笔记" },
+    { id: "forum" as TabType, label: "论坛" },
     { id: "saved" as TabType, label: "收藏" },
     { id: "liked" as TabType, label: "赞过" },
   ];
+  
+  // 如果是自己的主页或者隐私设置允许，显示所有 tab
+  // 否则根据隐私设置隐藏收藏和点赞 tab
+  const tabs = isCurrentUser
+    ? allTabs
+    : allTabs.filter((tab) => {
+        if (tab.id === "saved") return true; // 收藏始终显示，但内容可能为空
+        if (tab.id === "liked") return !(privacySettings?.hideLikes ?? true);
+        return true;
+      });
 
   const convertToDisplayPost = (
     apiPost: ApiPost,
@@ -205,6 +221,15 @@ const UserProfileScreen = () => {
     }
   };
 
+  const loadPrivacySettings = async () => {
+    try {
+      const settings = await userInfoService.getPrivacySettings(userId);
+      setPrivacySettings(settings);
+    } catch (error) {
+      console.error("Error loading privacy settings:", error);
+    }
+  };
+
   const loadFollowCounts = async () => {
     try {
       const [followers, following] = await Promise.all([
@@ -251,21 +276,52 @@ const UserProfileScreen = () => {
             userId,
             "PUBLISHED"
           );
+          // 只显示非论坛帖子（没有 communityId 的帖子）
           const approvedPosts = apiPosts.filter(
-            (p: ApiPost) => p.auditStatus === "APPROVED"
+            (p: ApiPost) => p.auditStatus === "APPROVED" && p.communityId == null
           );
           newPosts = approvedPosts.map((p) =>
             convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
           );
-        } else if (targetTab === "saved") {
-          const apiPosts = await postService.getFavoritePostsByUserId(userId);
-          newPosts = apiPosts.map((p) =>
+        } else if (targetTab === "forum") {
+          // 获取用户的论坛帖子（有 communityId 的帖子）
+          const apiPosts = await postService.getPostsByUserId(
+            userId,
+            "PUBLISHED"
+          );
+          const forumPosts = apiPosts.filter(
+            (p: ApiPost) => p.auditStatus === "APPROVED" && p.communityId != null
+          );
+          newPosts = forumPosts.map((p) =>
             convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
           );
-        } else if (targetTab === "liked") {
-          const apiPosts = await postService.getLikedPostsByUserId(userId);
+        } else if (targetTab === "saved") {
+          const apiPosts = await postService.getFavoritePostsByUserId(userId);
+          // 对于收藏的帖子，使用帖子返回的原作者信息
           newPosts = apiPosts.map((p) =>
-            convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
+          );
+        } else if (targetTab === "liked") {
+          // 检查隐私设置 - 如果不是自己的主页且设置了隐藏点赞，则不加载
+          if (!isCurrentUser && privacySettings?.hideLikes) {
+            updateTabState(targetTab, {
+              posts: [],
+              count: 0,
+              isLoading: false,
+              hasLoaded: true,
+            });
+            return;
+          }
+          const apiPosts = await postService.getLikedPostsByUserId(userId);
+          // 对于点赞的帖子，使用帖子返回的原作者信息
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
           );
         }
         updateTabState(targetTab, {
@@ -279,7 +335,7 @@ const UserProfileScreen = () => {
         updateTabState(targetTab, { isLoading: false });
       }
     },
-    [userId, userInfo, username, avatar, tabsData, updateTabState]
+    [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings]
   );
 
   useEffect(() => {
@@ -287,8 +343,10 @@ const UserProfileScreen = () => {
     loadUserProfile();
     loadFollowCounts();
     checkFollowStatus();
+    loadPrivacySettings();
     setTabsData({
       posts: { ...initialTabState },
+      forum: { ...initialTabState },
       saved: { ...initialTabState },
       liked: { ...initialTabState },
     });
@@ -304,6 +362,7 @@ const UserProfileScreen = () => {
       loadUserProfile();
       loadFollowCounts();
       checkFollowStatus();
+      loadPrivacySettings();
       fetchTabData(activeTab, true);
     }, [activeTab, userId])
   );
@@ -498,6 +557,24 @@ const UserProfileScreen = () => {
     }
 
     if (currentTabData.posts.length > 0) {
+      // 论坛帖子使用单列竖排列表布局
+      if (activeTab === "forum") {
+        return (
+          <View style={{ width: '100%' }}>
+            {currentTabData.posts.map((post) => (
+              <Pressable
+                key={post.id}
+                onPress={() => handlePostPress(post)}
+                style={{ width: '100%' }}
+              >
+                <ForumPostCard post={post} onPress={() => handlePostPress(post)} />
+              </Pressable>
+            ))}
+          </View>
+        );
+      }
+
+      // 其他 tab 使用两列网格布局
       return (
         <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
           {currentTabData.posts.map((post) => (
@@ -517,13 +594,15 @@ const UserProfileScreen = () => {
           <Ionicons
             name={
               activeTab === "saved" ? "bookmark-outline" :
-                activeTab === "liked" ? "heart-outline" : "camera-outline"
+                activeTab === "liked" ? "heart-outline" :
+                  activeTab === "forum" ? "chatbubbles-outline" : "camera-outline"
             }
             size={24}
             color={theme.colors.gray300}
           />
           <Text color="$gray400" mt="$md">
             {activeTab === "posts" && "还没有发布内容"}
+            {activeTab === "forum" && "还没有论坛帖子"}
             {activeTab === "saved" && "还没有收藏帖子"}
             {activeTab === "liked" && "还没有点赞帖子"}
           </Text>
@@ -723,11 +802,29 @@ const UserProfileScreen = () => {
           </View>
 
           <View style={styles.statsContainer}>
-            <Pressable style={styles.statItem} onPress={() => (navigation as any).navigate("FollowingUsers", { userId })}>
+            <Pressable 
+              style={styles.statItem} 
+              onPress={() => {
+                if (!isCurrentUser && privacySettings?.hideFollowing) {
+                  Alert.show("该用户已隐藏关注列表");
+                  return;
+                }
+                (navigation as any).navigate("FollowingUsers", { userId });
+              }}
+            >
               <RNText style={styles.statNumber}>{followingCount}</RNText>
               <RNText style={styles.statLabel}>关注</RNText>
             </Pressable>
-            <Pressable style={styles.statItem} onPress={() => (navigation as any).navigate("Followers", { userId })}>
+            <Pressable 
+              style={styles.statItem} 
+              onPress={() => {
+                if (!isCurrentUser && privacySettings?.hideFollowers) {
+                  Alert.show("该用户已隐藏粉丝列表");
+                  return;
+                }
+                (navigation as any).navigate("Followers", { userId });
+              }}
+            >
               <RNText style={styles.statNumber}>{followersCount}</RNText>
               <RNText style={styles.statLabel}>粉丝</RNText>
             </Pressable>
