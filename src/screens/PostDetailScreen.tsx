@@ -25,6 +25,7 @@ import {
   OutfitItemsSection,
   ImageGrid,
   RelatedLooks,
+  RelatedBrands,
   CommentsSection,
   CommentInputBar,
   FullscreenImageViewer,
@@ -131,7 +132,7 @@ const PostDetailScreen = () => {
   });
 
   // 导航 Hook
-  const { handleAuthorPress, handleUserPress, handleShowPress } =
+  const { handleAuthorPress, handleUserPress, handleShowPress, handleBrandPress } =
     useNavigationHandlers({
       post,
       navigation,
@@ -295,11 +296,19 @@ const PostDetailScreen = () => {
             {/* 搭配单品 */}
             {post.type === "OUTFIT" && <OutfitItemsSection items={post.items} />}
 
-            {/* 关联秀场区域 - 仅 DAILY_SHARE 类型显示 */}
-            {post.type === "DAILY_SHARE" || post.type === "ITEM_REVIEW" && post.shows && (
+            {/* 关联秀场区域 */}
+            {(post.type === "DAILY_SHARE" || post.type === "ITEM_REVIEW") && post.shows && post.shows.length > 0 && (
               <RelatedLooks
                 shows={post.shows}
                 onShowPress={handleShowPress}
+              />
+            )}
+
+            {/* 关联品牌区域 */}
+            {post.brands && post.brands.length > 0 && (
+              <RelatedBrands
+                brands={post.brands}
+                onBrandPress={handleBrandPress}
               />
             )}
 

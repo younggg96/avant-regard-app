@@ -368,7 +368,7 @@ const DiscoverScreen: React.FC = () => {
   const userAvatarUrl = currentUserInfo?.avatarUrl || user?.avatar;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Logo Header - 可收起 */}
       <Animated.View
         style={{

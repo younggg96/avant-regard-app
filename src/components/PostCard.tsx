@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, Pressable, HStack } from "./ui";
 import { theme } from "../theme";
 import { Show } from "../services/showService";
+import { Brand } from "../services/brandService";
 
 // 关联秀场类型（兼容旧数据）
 export interface ShowImageInfo {
@@ -57,6 +58,8 @@ export interface Post {
   showImages?: ShowImageInfo[];
   // 关联的秀场（完整信息）
   shows?: Show[];
+  // 关联的品牌（完整信息）
+  brands?: Brand[];
   // 论坛帖子所属社区
   communityId?: number;
   communityName?: string;

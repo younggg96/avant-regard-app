@@ -8,21 +8,6 @@ import { useAuthStore } from "../../../store/authStore";
 import { AuthMode, FormData, RegisteredTokens, BrandOption } from "../types";
 import { INITIAL_FORM_DATA } from "../constants";
 
-/**
- * 检查用户资料是否已填写
- * 判断逻辑：如果 gender、location、age、bio、preference 任一字段有有效值，则认为已填写
- */
-const checkProfileCompleted = (profile: UserProfileInfo): boolean => {
-  return !!(
-    profile.gender ||
-    profile.location ||
-    profile.age > 0 ||
-    profile.bio ||
-    profile.preference ||
-    (profile.favoriteBrandIds && profile.favoriteBrandIds.length > 0)
-  );
-};
-
 export const useAuthForm = () => {
   const [mode, setMode] = useState<AuthMode>("login");
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
@@ -252,15 +237,14 @@ export const useAuthForm = () => {
       // 获取用户完整资料
       const profile = await userInfoService.getUserProfile(response.userId);
       
-      // 检查资料是否已填写
-      const isProfileCompleted = checkProfileCompleted(profile);
-      setProfileCompleted(isProfileCompleted);
+      // 直接使用后端返回的 profileCompleted 字段
+      setProfileCompleted(profile.profileCompleted);
       
-      console.log("Profile status synced:", isProfileCompleted);
+      console.log("Profile status synced from server:", profile.profileCompleted);
     } catch (error) {
-      // 获取资料失败时，默认认为未填写（会触发提醒）
-      console.log("Failed to fetch profile, assuming not completed:", error);
-      setProfileCompleted(false);
+      // 获取资料失败时，不改变状态，避免误判
+      // 下次登录或应用重启时会重新检查
+      console.log("Failed to fetch profile, keeping current status:", error);
     }
   }, [setProfileCompleted]);
 
@@ -468,7 +452,11 @@ export const useAuthForm = () => {
         preference?: string;
         bio?: string;
         favoriteBrandIds?: number[];
-      } = {};
+        profileCompleted?: boolean;
+      } = {
+        // 标记资料已完善（保存到数据库）
+        profileCompleted: true,
+      };
 
       if (formData.location) {
         updateData.location = formData.location;
@@ -489,12 +477,10 @@ export const useAuthForm = () => {
         updateData.favoriteBrandIds = formData.favoriteBrandIds;
       }
 
-      // 只有当用户填写了数据时才调用更新接口（此时已登录，有 token）
-      if (Object.keys(updateData).length > 0) {
-        await userInfoService.updateUserProfile(registeredUserId, updateData);
-      }
+      // 调用更新接口（包含 profileCompleted: true）
+      await userInfoService.updateUserProfile(registeredUserId, updateData);
       
-      // 标记资料已完善（注册时填写的）
+      // 同步更新本地状态
       setProfileCompleted(true);
 
       // 关闭 Modal 并清理状态

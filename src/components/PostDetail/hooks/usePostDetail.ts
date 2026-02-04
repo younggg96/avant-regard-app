@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Post } from "../../PostCard";
 import { postService, Post as ApiPost } from "../../../services/postService";
 import { showService, Show } from "../../../services/showService";
+import { brandService, Brand } from "../../../services/brandService";
 import { userInfoService } from "../../../services/userInfoService";
 import { PostDetailRouteParams, PostStatus } from "../types";
 
@@ -23,6 +24,20 @@ export const convertApiPostToUiPost = async (
       shows = showResults.filter((show): show is Show => show !== null);
     } catch (error) {
       console.error("Error fetching show details:", error);
+    }
+  }
+
+  // 获取关联品牌的完整信息
+  let brands: Brand[] = [];
+  if (apiPost.brandIds && apiPost.brandIds.length > 0) {
+    try {
+      const brandPromises = apiPost.brandIds.map((id) =>
+        brandService.getBrandById(id).catch(() => null)
+      );
+      const brandResults = await Promise.all(brandPromises);
+      brands = brandResults.filter((brand): brand is Brand => brand !== null);
+    } catch (error) {
+      console.error("Error fetching brand details:", error);
     }
   }
 
@@ -57,6 +72,7 @@ export const convertApiPostToUiPost = async (
     brandName: apiPost.brandName,
     productName: apiPost.productName,
     shows: shows.length > 0 ? shows : undefined,
+    brands: brands.length > 0 ? brands : undefined,
     communityId: apiPost.communityId,
     communityName: apiPost.communityName,
   };

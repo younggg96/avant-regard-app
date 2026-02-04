@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Post } from "../../PostCard";
 import { Show } from "../../../services/showService";
+import { Brand } from "../../../services/brandService";
 
 interface UseNavigationHandlersOptions {
   post: Post | null;
@@ -11,6 +12,7 @@ interface UseNavigationHandlersReturn {
   handleAuthorPress: () => void;
   handleUserPress: (userId: number, userName: string, userAvatar: string) => void;
   handleShowPress: (show: Show) => void;
+  handleBrandPress: (brand: Brand) => void;
 }
 
 /**
@@ -60,9 +62,21 @@ export const useNavigationHandlers = ({
     [navigation]
   );
 
+  const handleBrandPress = useCallback(
+    (brand: Brand) => {
+      // Navigate to BrandDetail
+      (navigation.navigate as any)("BrandDetail", {
+        brandId: brand.id,
+        brandName: brand.name,
+      });
+    },
+    [navigation]
+  );
+
   return {
     handleAuthorPress,
     handleUserPress,
     handleShowPress,
+    handleBrandPress,
   };
 };

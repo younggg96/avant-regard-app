@@ -194,7 +194,11 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         preference?: string;
         bio?: string;
         favoriteBrandIds?: number[];
-      } = {};
+        profileCompleted?: boolean;
+      } = {
+        // 标记资料已完善（保存到数据库）
+        profileCompleted: true,
+      };
 
       if (location) updateData.location = location;
       if (gender) updateData.gender = gender as Gender;
@@ -203,12 +207,10 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
       if (bio) updateData.bio = bio;
       if (favoriteBrandIds.length > 0) updateData.favoriteBrandIds = favoriteBrandIds;
 
-      // 调用更新接口
-      if (Object.keys(updateData).length > 0) {
-        await userInfoService.updateUserProfile(user.userId, updateData);
-      }
+      // 调用更新接口（包含 profileCompleted: true）
+      await userInfoService.updateUserProfile(user.userId, updateData);
 
-      // 标记资料已完善
+      // 同步更新本地状态
       setProfileCompleted(true);
       Alert.show("资料已保存", "", 1000);
       onClose();

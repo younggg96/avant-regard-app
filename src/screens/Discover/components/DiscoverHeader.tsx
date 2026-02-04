@@ -46,7 +46,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                         <RNImage source={{ uri: avatar }} style={styles.avatar} />
                     ) : (
                         <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                            <Ionicons name="person" size={16} color={theme.colors.white} />
+                            <Ionicons name="person" size={20} color={theme.colors.white} />
                         </View>
                     )}
                 </Pressable>
@@ -55,9 +55,9 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                 <Pressable onPress={onSearchPress} style={styles.searchContainer}>
                     <HStack alignItems="center" flex={1}>
                         <Ionicons
-                            name="search-outline"
-                            size={16}
-                            color={theme.colors.gray300}
+                            name="search"
+                            size={20}
+                            color={theme.colors.gray400}
                             style={styles.searchIcon}
                         />
                         <Text style={styles.searchText} numberOfLines={1}>
@@ -92,9 +92,9 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
 
 const styles = StyleSheet.create({
     avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: theme.borderRadius.sm, // 方形小圆角
+        width: 40,
+        height: 40,
+        borderRadius: 20, // 圆形
         borderWidth: 1,
         borderColor: theme.colors.gray100,
     },
@@ -117,8 +117,9 @@ const styles = StyleSheet.create({
     },
     searchText: {
         flex: 1,
-        fontSize: 13,
-        color: theme.colors.gray300,
+        fontSize: 16,
+        fontFamily: __DEV__ ? "System" : "Inter-Regular",
+        color: theme.colors.gray400,
     },
     notificationButton: {
         position: "relative",

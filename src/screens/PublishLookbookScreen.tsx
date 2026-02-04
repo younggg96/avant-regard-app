@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   Image as RNImage,
@@ -26,7 +26,10 @@ import ImageGallery from "../components/ImageGallery";
 import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import ImagePreviewModal from "../components/ImagePreviewModal";
+import BrandSelectorModal from "../components/BrandSelectorModal";
+import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
 import { postService } from "../services/postService";
+import { brandService, Brand } from "../services/brandService";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 
@@ -66,6 +69,137 @@ const PublishLookbookScreen = () => {
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
+
+  // 品牌相关状态
+  const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
+  const [showBrandSelector, setShowBrandSelector] = useState(false);
+  const [allBrands, setAllBrands] = useState<Brand[]>([]);
+  const [brandSearchQuery, setBrandSearchQuery] = useState("");
+  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
+  const [brandsPage, setBrandsPage] = useState(1);
+  const [hasMoreBrands, setHasMoreBrands] = useState(true);
+  const isLoadingMoreBrandsRef = useRef(false);
+
+  const MAX_BRANDS = 6;
+  const BRAND_PAGE_SIZE = 30;
+
+  // 加载品牌数据
+  const loadBrands = useCallback(async (reset: boolean = true) => {
+    if (isLoadingMoreBrandsRef.current && !reset) return;
+
+    try {
+      if (reset) {
+        setIsLoadingBrands(true);
+        setBrandsPage(1);
+        setHasMoreBrands(true);
+      }
+      isLoadingMoreBrandsRef.current = true;
+
+      const response = await brandService.getBrands({
+        page: reset ? 1 : brandsPage,
+        pageSize: BRAND_PAGE_SIZE,
+      });
+
+      if (reset) {
+        setAllBrands(response.brands);
+        setBrandsPage(1);
+      } else {
+        setAllBrands((prev) => [...prev, ...response.brands]);
+      }
+
+      setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
+    } catch (error) {
+      console.error("Failed to load brands:", error);
+      if (reset) {
+        Alert.show("加载品牌数据失败");
+      }
+    } finally {
+      setIsLoadingBrands(false);
+      isLoadingMoreBrandsRef.current = false;
+    }
+  }, [brandsPage]);
+
+  // 加载更多品牌
+  const loadMoreBrands = useCallback(async () => {
+    if (isLoadingMoreBrandsRef.current || !hasMoreBrands || isLoadingBrands || brandSearchQuery.trim()) {
+      return;
+    }
+
+    isLoadingMoreBrandsRef.current = true;
+    setIsLoadingBrands(true);
+
+    try {
+      const nextPage = brandsPage + 1;
+      const response = await brandService.getBrands({
+        page: nextPage,
+        pageSize: BRAND_PAGE_SIZE,
+      });
+
+      if (response.brands.length > 0) {
+        setAllBrands((prev) => [...prev, ...response.brands]);
+        setBrandsPage(nextPage);
+        setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
+      } else {
+        setHasMoreBrands(false);
+      }
+    } catch (error) {
+      console.error("Failed to load more brands:", error);
+    } finally {
+      setIsLoadingBrands(false);
+      isLoadingMoreBrandsRef.current = false;
+    }
+  }, [brandsPage, hasMoreBrands, isLoadingBrands, brandSearchQuery]);
+
+  // 根据搜索词过滤品牌
+  const filteredBrands = useMemo(() => {
+    const query = brandSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return allBrands;
+    }
+    return allBrands.filter(
+      (brand) =>
+        brand.name.toLowerCase().includes(query) ||
+        (brand.category && brand.category.toLowerCase().includes(query))
+    );
+  }, [allBrands, brandSearchQuery]);
+
+  // 选择品牌
+  const handleSelectBrand = (brand: Brand) => {
+    if (selectedBrands.length >= MAX_BRANDS) {
+      Alert.show("提示: 最多只能关联" + MAX_BRANDS + "个品牌");
+      return;
+    }
+
+    // 检查是否已添加
+    const isDuplicate = selectedBrands.some((item) => item.id === brand.id);
+    if (isDuplicate) {
+      Alert.show("提示: 该品牌已经添加过了");
+      return;
+    }
+
+    const selectedBrand: SelectedBrand = {
+      id: brand.id,
+      name: brand.name,
+      coverImage: brand.coverImage,
+      category: brand.category,
+      country: brand.country,
+    };
+
+    setSelectedBrands([...selectedBrands, selectedBrand]);
+    setShowBrandSelector(false);
+    Alert.show("已关联品牌", "", 1500);
+  };
+
+  // 移除品牌
+  const handleRemoveBrand = (index: number) => {
+    const newBrands = selectedBrands.filter((_, i) => i !== index);
+    setSelectedBrands(newBrands);
+    Alert.show("已取消关联");
+  };
+
+  useEffect(() => {
+    loadBrands(true);
+  }, []);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {
@@ -192,7 +326,10 @@ const PublishLookbookScreen = () => {
       // 1. 处理图片
       const uploadedUrls = await processImages(images);
 
-      // 2. 创建或更新帖子
+      // 2. 获取所有关联品牌的 brandIds
+      const brandIds = selectedBrands.map((brand) => brand.id);
+
+      // 3. 创建或更新帖子
       setUploadProgress("正在发布...");
 
       if (editMode && draftPostId) {
@@ -203,6 +340,7 @@ const PublishLookbookScreen = () => {
           title: title.trim(),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          brandIds: brandIds,
         });
       } else {
         await postService.createPost({
@@ -212,6 +350,7 @@ const PublishLookbookScreen = () => {
           title: title.trim(),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          brandIds: brandIds,
         });
       }
 
@@ -259,6 +398,9 @@ const PublishLookbookScreen = () => {
         uploadedUrls = await processImages(images);
       }
 
+      // 获取所有关联品牌的 brandIds
+      const brandIds = selectedBrands.map((brand) => brand.id);
+
       // 保存草稿
       setUploadProgress("正在保存...");
 
@@ -270,6 +412,7 @@ const PublishLookbookScreen = () => {
           title: title.trim() || "未命名草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          brandIds: brandIds,
         });
       } else {
         await postService.createPost({
@@ -279,6 +422,7 @@ const PublishLookbookScreen = () => {
           title: title.trim() || "未命名草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          brandIds: brandIds,
         });
       }
 
@@ -298,6 +442,7 @@ const PublishLookbookScreen = () => {
     setDescription("");
     setImages([]);
     setCoverImage(null);
+    setSelectedBrands([]);
   };
 
   const handleAddImage = () => {
@@ -755,6 +900,17 @@ const PublishLookbookScreen = () => {
             }}
           />
         </Box>
+
+        {/* 关联品牌 */}
+        <BrandGridSelector
+          selectedBrands={selectedBrands}
+          onBrandPress={() => {}}
+          onRemoveBrand={handleRemoveBrand}
+          onAddBrand={() => setShowBrandSelector(true)}
+          maxBrands={MAX_BRANDS}
+          label="关联品牌"
+          required={false}
+        />
       </ScrollView>
 
       <PublishButtons
@@ -795,6 +951,18 @@ const PublishLookbookScreen = () => {
         initialIndex={previewInitialIndex}
         title={title || "Lookbook 预览"}
         onClose={() => setShowImagePreview(false)}
+      />
+
+      <BrandSelectorModal
+        visible={showBrandSelector}
+        brands={filteredBrands}
+        searchQuery={brandSearchQuery}
+        isLoading={isLoadingBrands}
+        hasMore={hasMoreBrands && !brandSearchQuery.trim()}
+        onSearchChange={setBrandSearchQuery}
+        onSelectBrand={handleSelectBrand}
+        onClose={() => setShowBrandSelector(false)}
+        onLoadMore={loadMoreBrands}
       />
     </SafeAreaView>
   );

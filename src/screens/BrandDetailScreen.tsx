@@ -50,17 +50,17 @@ const BrandDetailScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
 
-  // 加载品牌相关的帖子（通过品牌名一次性获取所有相关帖子）
-  const loadBrandPosts = useCallback(async (brandNameToLoad: string) => {
-    if (!brandNameToLoad) {
+  // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
+  const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
+    if (!brandIdToLoad) {
       setBrandPosts([]);
       return;
     }
 
     setIsLoadingPosts(true);
     try {
-      // 使用新的 API 一次性获取品牌相关的所有帖子
-      const posts = await postService.getPostsByBrandName(brandNameToLoad);
+      // 使用新的 API 通过品牌 ID 获取关联的帖子
+      const posts = await postService.getPostsByBrandId(brandIdToLoad);
       setBrandPosts(posts);
     } catch (err) {
       console.error("Failed to load brand posts:", err);
@@ -96,8 +96,8 @@ const BrandDetailScreen = () => {
       const shows = await showService.getShowsByBrand(loadedBrand.name);
       setBrandShows(shows);
 
-      // 获取该品牌相关的帖子（通过新的品牌帖子 API）
-      loadBrandPosts(loadedBrand.name);
+      // 获取该品牌关联的帖子（通过品牌 ID）
+      loadBrandPosts(loadedBrand.id);
     } catch (err) {
       console.error("Failed to load brand data:", err);
       setError("加载数据失败");

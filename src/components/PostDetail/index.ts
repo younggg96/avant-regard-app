@@ -4,6 +4,7 @@ export { LookbookContent } from "./LookbookContent";
 export { PostContentSection, OutfitItemsSection } from "./PostContentSection";
 export { ImageGrid } from "./ImageGrid";
 export { RelatedLooks } from "./RelatedLooks";
+export { RelatedBrands } from "./RelatedBrands";
 export { CommentsSection } from "./CommentsSection";
 export { CommentInputBar } from "./CommentInputBar";
 export type { CommentInputBarRef } from "./CommentInputBar";

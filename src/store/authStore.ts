@@ -111,6 +111,7 @@ export const useAuthStore = create<AuthStore>()(
 
       // Actions
       loginWithResponse: (response: LoginResponse) => {
+        const currentUser = get().user;
         const user: AuthUser = {
           id: String(response.userId),
           userId: response.userId,
@@ -118,7 +119,9 @@ export const useAuthStore = create<AuthStore>()(
           username: response.username,
           is_admin: response.is_admin,
           userType: response.userType,
-          avatar: "https://via.placeholder.com/100x100",
+          avatar: currentUser?.avatar || "https://via.placeholder.com/100x100",
+          // 如果是同一用户重新登录，保留之前的 profileCompleted 状态
+          profileCompleted: currentUser?.userId === response.userId ? currentUser.profileCompleted : undefined,
         };
 
         // 从 token 中解析过期时间
@@ -223,6 +226,7 @@ export const useAuthStore = create<AuthStore>()(
             refreshToken: currentTokens.refreshToken,
           });
 
+          const currentUser = get().user;
           const user: AuthUser = {
             id: String(response.userId),
             userId: response.userId,
@@ -230,7 +234,9 @@ export const useAuthStore = create<AuthStore>()(
             username: response.username,
             is_admin: response.is_admin,
             userType: response.userType,
-            avatar: get().user?.avatar || "https://via.placeholder.com/100x100",
+            avatar: currentUser?.avatar || "https://via.placeholder.com/100x100",
+            // 刷新 token 时保留 profileCompleted 状态
+            profileCompleted: currentUser?.profileCompleted,
           };
 
           const expiresAt =
@@ -344,12 +350,18 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       // 检查是否应该显示资料填写提醒
-      // 条件：已登录 + 未完善资料 + (从未提醒过 或 距离上次提醒超过1小时)
+      // 条件：已登录 + 明确未完善资料 (profileCompleted === false) + (从未提醒过 或 距离上次提醒超过1小时)
       shouldShowProfileReminder: () => {
         const { isAuthenticated, user, lastProfileReminderTime } = get();
         
-        // 未登录或已完善资料，不需要提醒
-        if (!isAuthenticated || !user || user.profileCompleted) {
+        // 未登录，不需要提醒
+        if (!isAuthenticated || !user) {
+          return false;
+        }
+
+        // 只有当 profileCompleted 明确为 false 时才可能显示提醒
+        // 如果是 true 或 undefined（状态未知/未检查），不显示
+        if (user.profileCompleted !== false) {
           return false;
         }
 

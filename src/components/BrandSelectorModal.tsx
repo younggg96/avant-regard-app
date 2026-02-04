@@ -10,44 +10,34 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, Image, VStack } from "./ui";
 import { theme } from "../theme";
+import { Brand } from "../services/brandService";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-export interface Show {
-  brand: string;
-  season: string;
-  title: string;
-  cover_image: string;
-  show_url: string;
-  year: number;
-  category: string;
-  show_id?: number;  // 数据库中的秀场 ID
-}
-
-interface ShowSelectorModalProps {
+interface BrandSelectorModalProps {
   visible: boolean;
-  shows: Show[];
+  brands: Brand[];
   searchQuery: string;
   isLoading?: boolean;
   hasMore?: boolean;
   onSearchChange: (query: string) => void;
-  onSelectShow: (show: Show) => void;
+  onSelectBrand: (brand: Brand) => void;
   onClose: () => void;
   onLoadMore?: () => void;
 }
 
-const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
+const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
   visible,
-  shows,
+  brands,
   searchQuery,
   isLoading = false,
   hasMore = false,
   onSearchChange,
-  onSelectShow,
+  onSelectBrand,
   onClose,
   onLoadMore,
 }) => {
-  const showWidth = (screenWidth - 48) / 2;
+  const brandWidth = (screenWidth - 48) / 2;
 
   const handleEndReached = () => {
     if (!isLoading && hasMore && onLoadMore) {
@@ -78,7 +68,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
                 <Text fontSize="$lg" color="$black" fontWeight="$medium">
-                  选择相关秀场
+                  选择关联品牌
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
                   <Ionicons
@@ -91,7 +81,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               <Input
                 value={searchQuery}
                 onChangeText={onSearchChange}
-                placeholder="搜索设计师或季节..."
+                placeholder="搜索品牌名称..."
                 placeholderTextColor={theme.colors.gray400}
                 variant="outline"
                 sx={{
@@ -102,10 +92,8 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
             </Box>
 
             <FlatList
-              data={shows}
-              keyExtractor={(item, index) =>
-                `${item.brand}-${item.season}-${index}`
-              }
+              data={brands}
+              keyExtractor={(item, index) => `${item.id}-${item.name}-${index}`}
               numColumns={2}
               contentContainerStyle={styles.listContent}
               columnWrapperStyle={styles.columnWrapper}
@@ -114,13 +102,41 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               onEndReachedThreshold={0.5}
               renderItem={({ item }) => (
                 <Pressable
-                  onPress={() => onSelectShow(item)}
-                  style={[styles.showItem, { width: showWidth }]}
+                  onPress={() => onSelectBrand(item)}
+                  style={[styles.brandItem, { width: brandWidth }]}
                 >
-                  <Image
-                    source={{ uri: item.show_url }}
-                    style={[styles.showImage, { height: showWidth * 1.4 }]}
-                  />
+                  <Box
+                    style={[styles.brandImageContainer, { height: brandWidth * 0.8 }]}
+                    bg="$gray100"
+                    rounded="$md"
+                    alignItems="center"
+                    justifyContent="center"
+                    overflow="hidden"
+                  >
+                    {item.coverImage ? (
+                      <Image
+                        source={{ uri: item.coverImage }}
+                        style={styles.brandImage}
+                      />
+                    ) : (
+                      <Box
+                        flex={1}
+                        alignItems="center"
+                        justifyContent="center"
+                        w="100%"
+                        h="100%"
+                      >
+                        <Text
+                          fontSize="$xl"
+                          fontWeight="$bold"
+                          color="$gray400"
+                          textAlign="center"
+                        >
+                          {item.name.substring(0, 2).toUpperCase()}
+                        </Text>
+                      </Box>
+                    )}
+                  </Box>
                   <VStack mt="$xs" px="$xs">
                     <Text
                       fontSize="$sm"
@@ -128,19 +144,23 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                       fontWeight="$medium"
                       numberOfLines={1}
                     >
-                      {item.brand}
+                      {item.name}
                     </Text>
-                    <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
-                      {item.season}
-                    </Text>
-                    <Text fontSize={10} color="$gray400" numberOfLines={1}>
-                      {item.category}
-                    </Text>
+                    {item.category && (
+                      <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
+                        {item.category}
+                      </Text>
+                    )}
+                    {item.country && (
+                      <Text fontSize={10} color="$gray400" numberOfLines={1}>
+                        {item.country}
+                      </Text>
+                    )}
                   </VStack>
                 </Pressable>
               )}
               ListFooterComponent={
-                isLoading && shows.length > 0 ? (
+                isLoading && brands.length > 0 ? (
                   <Box py="$md" alignItems="center">
                     <Text color="$gray400" fontSize="$sm">
                       加载中...
@@ -157,12 +177,12 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                   minHeight={400}
                 >
                   <Ionicons
-                    name="albums-outline"
+                    name="pricetag-outline"
                     size={24}
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray400" mt="$md">
-                    {isLoading ? "加载中..." : "未找到相关秀场"}
+                    {isLoading ? "加载中..." : "未找到相关品牌"}
                   </Text>
                 </Box>
               }
@@ -208,13 +228,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 6,
   },
-  showItem: {
+  brandItem: {
     marginBottom: 16,
   },
-  showImage: {
+  brandImageContainer: {
     width: "100%",
+  },
+  brandImage: {
+    width: "100%",
+    height: "100%",
     borderRadius: 8,
   },
 });
 
-export default ShowSelectorModal;
+export default BrandSelectorModal;

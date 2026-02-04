@@ -145,9 +145,9 @@ const CollectionDetailScreen = () => {
       >
         <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+      {/* <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
         <Ionicons name="share-outline" size={24} color={theme.colors.black} />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
@@ -155,7 +155,7 @@ const CollectionDetailScreen = () => {
     const imagesToShow =
       collectionImages.length > 0
         ? collectionImages.map((img) => img.imageUrl)
-        : [collection.coverImage];
+        : [collection.showUrl || ""];
 
     return (
       <ImageGallery
@@ -169,12 +169,12 @@ const CollectionDetailScreen = () => {
 
   const renderCollectionInfo = () => (
     <View style={styles.infoContainer}>
-      <Text style={styles.title}>{collection.title}</Text>
+      {/* <Text style={styles.title}>{collection.title}</Text> */}
       <Text style={styles.subtitle}>
         {collection.season} {collection.year}
       </Text>
 
-      {collection.showUrl && (
+      {/* {collection.showUrl && (
         <TouchableOpacity style={styles.urlButton} onPress={handleOpenUrl}>
           <Ionicons
             name="link-outline"
@@ -183,7 +183,7 @@ const CollectionDetailScreen = () => {
           />
           <Text style={styles.urlButtonText}>查看官方链接</Text>
         </TouchableOpacity>
-      )}
+      )} */}
     </View>
   );
 

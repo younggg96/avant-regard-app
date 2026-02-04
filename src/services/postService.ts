@@ -45,6 +45,8 @@ export interface Post {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
   showIds?: (number | string)[];
+  // 关联品牌 ID 列表（支持关联多个品牌）
+  brandIds?: number[];
   // 论坛帖子专用字段
   communityId?: number;
   communityName?: string;
@@ -68,6 +70,8 @@ export interface CreatePostParams {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
   showIds?: (number | string)[];
+  // 关联品牌 ID 列表（支持关联多个品牌）
+  brandIds?: number[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -86,6 +90,8 @@ export interface UpdatePostParams {
   rating?: number;
   // 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
   showIds?: (number | string)[];
+  // 关联品牌 ID 列表（支持关联多个品牌）
+  brandIds?: number[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -569,7 +575,26 @@ export async function getPostsByShowId(showId: number | string): Promise<Post[]>
 }
 
 /**
- * 获取某个品牌相关的所有帖子
+ * 获取某个品牌关联的所有帖子（通过 brand_ids 数组查询）
+ * GET /api/posts/brand/id/{brandId}
+ * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param brandId 品牌 ID
+ * @param limit 返回数量限制
+ */
+export async function getPostsByBrandId(
+  brandId: number,
+  limit: number = 50
+): Promise<Post[]> {
+  return request<Post[]>(
+    `/api/posts/brand/id/${brandId}?limit=${limit}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+/**
+ * 获取某个品牌相关的所有帖子（通过该品牌的所有秀场，兼容旧数据）
  * GET /api/posts/brand/{brandName}
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
  * @param brandName 品牌名称
@@ -655,6 +680,7 @@ export const postService = {
   // 秀场关联帖子
   getPostsByShowId,
   // 品牌关联帖子
+  getPostsByBrandId,
   getPostsByBrandName,
   // 搜索
   searchPosts,

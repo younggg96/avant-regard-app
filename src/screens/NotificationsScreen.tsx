@@ -24,7 +24,6 @@ import {
 const NotificationsScreen = () => {
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   // 加载通知
@@ -50,10 +49,15 @@ const NotificationsScreen = () => {
   );
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
-  const filteredNotifications =
-    filter === "unread"
-      ? notifications.filter((n) => !n.isRead)
-      : notifications;
+
+  // 排序：未读在前，然后按时间倒序
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    // 未读优先
+    if (!a.isRead && b.isRead) return -1;
+    if (a.isRead && !b.isRead) return 1;
+    // 同为已读或未读时，按时间倒序（假设timestamp是可比较的字符串或可转换为Date）
+    return 0; // 保持原有顺序（假设后端已按时间排序）
+  });
 
   const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {
@@ -164,41 +168,6 @@ const NotificationsScreen = () => {
         showBackButton={true}
       />
 
-      {/* Filter Tabs */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterTab, filter === "all" && styles.activeFilterTab]}
-          onPress={() => setFilter("all")}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "all" && styles.activeFilterText,
-            ]}
-          >
-            全部 ({notifications.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            filter === "unread" && styles.activeFilterTab,
-          ]}
-          onPress={() => setFilter("unread")}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              filter === "unread" && styles.activeFilterText,
-            ]}
-          >
-            未读 ({unreadCount})
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Notifications List */}
       <ScrollView
         style={styles.content}
@@ -211,25 +180,21 @@ const NotificationsScreen = () => {
           />
         }
       >
-        {filteredNotifications.length === 0 ? (
+        {sortedNotifications.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons
               name="notifications-outline"
               size={48}
               color={theme.colors.gray400}
             />
-            <Text style={styles.emptyTitle}>
-              {filter === "unread" ? "没有未读通知" : "暂无通知"}
-            </Text>
+            <Text style={styles.emptyTitle}>暂无通知</Text>
             <Text style={styles.emptyText}>
-              {filter === "unread"
-                ? "您已阅读了所有通知"
-                : "当有新的互动时，您会在这里收到通知"}
+              当有新的互动时，您会在这里收到通知
             </Text>
           </View>
         ) : (
           <View style={styles.notificationsList}>
-            {filteredNotifications.map((notification) => {
+            {sortedNotifications.map((notification) => {
               const icon = getNotificationIcon(notification.type);
               return (
                 <TouchableOpacity
@@ -313,29 +278,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  filterContainer: {
-    flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  filterTab: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    marginRight: theme.spacing.md,
-  },
-  activeFilterTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.black,
-  },
-  filterText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-  },
-  activeFilterText: {
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
   content: {
     flex: 1,
   },
@@ -369,7 +311,9 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.gray100,
   },
   unreadNotification: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: `${theme.colors.accent}08`,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.accent,
   },
   notificationIcon: {
     marginRight: theme.spacing.md,
@@ -429,8 +373,8 @@ const styles = StyleSheet.create({
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: "#E74C3C",
+    borderRadius: 4,
+    backgroundColor: theme.colors.accent,
     position: "absolute",
     top: theme.spacing.md + 4,
     right: theme.spacing.md,
