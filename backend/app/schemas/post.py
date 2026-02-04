@@ -51,6 +51,8 @@ class Post(BaseModel):
     rating: Optional[int] = None
     # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
     showIds: List[Union[int, str]] = []
+    # 关联品牌 ID 列表（支持关联多个品牌）
+    brandIds: List[int] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
     communityName: Optional[str] = None
@@ -75,6 +77,8 @@ class CreatePostRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
     showIds: List[Union[int, str]] = []
+    # 关联品牌 ID 列表（支持关联多个品牌）
+    brandIds: List[int] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
 
@@ -94,5 +98,7 @@ class UpdatePostRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     # 关联秀场 ID 列表（支持关联多个秀场，ID 可能是整数或字符串）
     showIds: List[Union[int, str]] = []
+    # 关联品牌 ID 列表（支持关联多个品牌）
+    brandIds: List[int] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None

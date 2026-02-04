@@ -48,6 +48,9 @@ class PostService:
         # 获取 show_ids
         show_ids = post_data.get("show_ids") or []
 
+        # 获取 brand_ids
+        brand_ids = post_data.get("brand_ids") or []
+
         # 获取社区信息
         community_id = post_data.get("community_id")
         community_name = None
@@ -88,6 +91,7 @@ class PostService:
             brandName=post_data.get("brand_name"),
             rating=post_data.get("rating"),
             showIds=show_ids,
+            brandIds=brand_ids,
             communityId=community_id,
             communityName=community_name,
             communitySlug=community_slug,
@@ -153,6 +157,7 @@ class PostService:
         brand_name: str = None,
         rating: int = None,
         show_ids: List[Union[int, str]] = None,
+        brand_ids: List[int] = None,
         community_id: int = None,
     ) -> Optional[Post]:
         """创建帖子"""
@@ -169,6 +174,7 @@ class PostService:
             "brand_name": brand_name,
             "rating": rating,
             "show_ids": show_ids or [],
+            "brand_ids": brand_ids or [],
             "community_id": community_id,
         }
 
@@ -227,6 +233,8 @@ class PostService:
             update_data["rating"] = kwargs["rating"]
         if "show_ids" in kwargs:
             update_data["show_ids"] = kwargs["show_ids"]
+        if "brand_ids" in kwargs:
+            update_data["brand_ids"] = kwargs["brand_ids"]
         # 论坛帖子专用字段
         if "community_id" in kwargs:
             update_data["community_id"] = kwargs["community_id"]

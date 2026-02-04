@@ -79,6 +79,7 @@ async def create_post(
         brand_name=request.brandName,
         rating=request.rating,
         show_ids=request.showIds,
+        brand_ids=request.brandIds,
         community_id=request.communityId,
     )
     if not result:
@@ -112,6 +113,7 @@ async def update_post(
         brand_name=request.brandName,
         rating=request.rating,
         show_ids=request.showIds,
+        brand_ids=request.brandIds,
         community_id=request.communityId,
     )
     if not result:
