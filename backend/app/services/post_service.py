@@ -451,11 +451,11 @@ class PostService:
         直接查询 brand_ids 数组中包含该品牌 ID 的帖子
         """
         # 使用 PostgreSQL 数组操作符 @> 查询包含指定 brand_id 的帖子
-        # brand_ids 在数据库中存储为整数数组
+        # Supabase SDK 的 contains 方法需要字符串类型的数组元素
         result = (
             self.db.table("posts")
             .select("*")
-            .contains("brand_ids", [brand_id])
+            .contains("brand_ids", [str(brand_id)])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
