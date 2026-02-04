@@ -443,6 +443,27 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
+    def get_posts_by_brand_id(
+        self, brand_id: int, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
+        """
+        获取某个品牌关联的所有帖子（通过 brand_ids 数组查询）
+        直接查询 brand_ids 数组中包含该品牌 ID 的帖子
+        """
+        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 brand_id 的帖子
+        # brand_ids 在数据库中存储为整数数组
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .contains("brand_ids", [brand_id])
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
     def get_posts_by_brand_name(
         self, brand_name: str, current_user_id: Optional[int] = None, limit: int = 50
     ) -> List[Post]:
