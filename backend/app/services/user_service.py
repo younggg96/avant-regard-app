@@ -186,7 +186,7 @@ class UserService:
             user_result = (
                 self.db.table("users")
                 .select("id, username")
-                .ilike("username", f"%{clean_keyword}%")
+                .ilike("username", f"*{clean_keyword}*")
                 .limit(limit)
                 .execute()
             )
