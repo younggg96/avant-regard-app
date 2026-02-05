@@ -178,7 +178,7 @@ class UserService:
             # 尝试按用户ID精确搜索
             if clean_keyword.isdigit():
                 user_id = int(clean_keyword)
-                user_info = self.get_user_info(user_id)
+                user_info = self._get_user_info_or_basic(user_id)
                 if user_info:
                     results.append(user_info)
             
@@ -223,12 +223,56 @@ class UserService:
                                 avatarUrl=info.get("avatar_url", ""),
                                 coverUrl=info.get("cover_url", "")
                             ))
+                        else:
+                            # 即使没有 user_info 记录，也返回用户基本信息
+                            results.append(UserInfo(
+                                userId=user["id"],
+                                infoId=0,  # 没有 user_info 记录
+                                username=user["username"],
+                                bio="",
+                                location="",
+                                avatarUrl="",
+                                coverUrl=""
+                            ))
         except Exception as e:
             print(f"[UserService] search_users error: {e}")
             # 如果搜索失败，返回空列表而不是抛出异常
             return []
         
         return results[:limit]
+    
+    def _get_user_info_or_basic(self, user_id: int) -> Optional[UserInfo]:
+        """获取用户信息，如果没有 user_info 记录则返回基本信息"""
+        # 获取用户基本信息
+        user_result = self.db.table("users").select("id, username").eq("id", user_id).execute()
+        if not user_result.data:
+            return None
+        user = user_result.data[0]
+        
+        # 获取用户详细信息
+        info_result = self.db.table("user_info").select("*").eq("user_id", user_id).execute()
+        if info_result.data:
+            info = info_result.data[0]
+            return UserInfo(
+                userId=user["id"],
+                infoId=info["id"],
+                username=user["username"],
+                bio=info.get("bio", ""),
+                location=info.get("location", ""),
+                avatarUrl=info.get("avatar_url", ""),
+                coverUrl=info.get("cover_url", "")
+            )
+        else:
+            # 没有 user_info 记录，返回基本信息
+            return UserInfo(
+                userId=user["id"],
+                infoId=0,
+                username=user["username"],
+                bio="",
+                location="",
+                avatarUrl="",
+                coverUrl=""
+            )
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
         """获取用户隐私设置"""
