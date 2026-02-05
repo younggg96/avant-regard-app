@@ -12,6 +12,21 @@ class PostService:
     def __init__(self):
         self.db = get_supabase()
 
+    def _validate_show_ids(self, show_ids: List[Union[int, str]]) -> List[str]:
+        """
+        验证并转换 show_ids 为字符串列表
+        支持整数 ID 和 MongoDB ObjectId 字符串
+        """
+        if not show_ids:
+            return []
+        
+        valid_ids = []
+        for sid in show_ids:
+            if sid is not None:
+                # 统一转换为字符串（支持整数和 MongoDB ObjectId）
+                valid_ids.append(str(sid))
+        return valid_ids
+
     def _format_post(
         self, post_data: dict, current_user_id: Optional[int] = None
     ) -> Post:
@@ -161,6 +176,9 @@ class PostService:
         community_id: int = None,
     ) -> Optional[Post]:
         """创建帖子"""
+        # 验证 show_ids（确保是有效的整数列表）
+        validated_show_ids = self._validate_show_ids(show_ids or [])
+        
         # 插入帖子
         insert_data = {
             "user_id": user_id,
@@ -173,7 +191,7 @@ class PostService:
             "product_name": product_name,
             "brand_name": brand_name,
             "rating": rating,
-            "show_ids": show_ids or [],
+            "show_ids": validated_show_ids,
             "brand_ids": brand_ids or [],
             "community_id": community_id,
         }
@@ -232,7 +250,8 @@ class PostService:
         if "rating" in kwargs:
             update_data["rating"] = kwargs["rating"]
         if "show_ids" in kwargs:
-            update_data["show_ids"] = kwargs["show_ids"]
+            # 验证 show_ids（确保是有效的整数列表）
+            update_data["show_ids"] = self._validate_show_ids(kwargs["show_ids"] or [])
         if "brand_ids" in kwargs:
             update_data["brand_ids"] = kwargs["brand_ids"]
         # 论坛帖子专用字段
