@@ -88,6 +88,22 @@ class NearbyStoreParams(BaseModel):
     radius: float = Field(default=50.0, description="搜索半径（公里）")
 
 
+class ViewportStoreParams(BaseModel):
+    """地图视口范围查询参数"""
+    ne_lat: float = Field(..., description="东北角纬度")
+    ne_lng: float = Field(..., description="东北角经度")
+    sw_lat: float = Field(..., description="西南角纬度")
+    sw_lng: float = Field(..., description="西南角经度")
+    country: Optional[str] = Field(None, description="国家筛选")
+    city: Optional[str] = Field(None, description="城市筛选")
+    brand: Optional[str] = Field(None, description="品牌筛选")
+    style: Optional[str] = Field(None, description="风格筛选")
+    styles: Optional[List[str]] = Field(None, description="多风格筛选")
+    openOnly: Optional[bool] = Field(None, description="仅显示营业中")
+    hasPhone: Optional[bool] = Field(None, description="有联系电话")
+    searchQuery: Optional[str] = Field(None, description="搜索关键词")
+
+
 class BrandRecommendation(BaseModel):
     """品牌推荐响应"""
     stores: List[BuyerStore]

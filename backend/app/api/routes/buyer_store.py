@@ -12,6 +12,7 @@ from app.schemas.buyer_store import (
     BuyerStoreCreate,
     BuyerStoreUpdate,
     NearbyStoreParams,
+    ViewportStoreParams,
     UserSubmittedStoreCreate,
     BuyerStoreCommentCreate,
     BuyerStoreRatingCreate,
@@ -107,6 +108,29 @@ async def get_brand_recommendations(brand: str):
     return success({
         "stores": [s.model_dump() for s in recommendation.stores],
         "relatedBrands": recommendation.relatedBrands,
+    })
+
+
+@router.post("/viewport")
+async def get_stores_in_viewport(params: ViewportStoreParams):
+    """获取地图视口范围内的买手店"""
+    stores = buyer_store_service.get_stores_in_viewport(
+        ne_lat=params.ne_lat,
+        ne_lng=params.ne_lng,
+        sw_lat=params.sw_lat,
+        sw_lng=params.sw_lng,
+        country=params.country,
+        city=params.city,
+        brand=params.brand,
+        style=params.style,
+        styles=params.styles,
+        open_only=params.openOnly,
+        has_phone=params.hasPhone,
+        search_query=params.searchQuery,
+    )
+    return success({
+        "stores": [s.model_dump() for s in stores],
+        "total": len(stores),
     })
 
 

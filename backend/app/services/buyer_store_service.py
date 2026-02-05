@@ -254,6 +254,80 @@ class BuyerStoreService:
             relatedBrands=sorted(list(related_brands)),
         )
 
+    def get_stores_in_viewport(
+        self,
+        ne_lat: float,
+        ne_lng: float,
+        sw_lat: float,
+        sw_lng: float,
+        country: Optional[str] = None,
+        city: Optional[str] = None,
+        brand: Optional[str] = None,
+        style: Optional[str] = None,
+        styles: Optional[List[str]] = None,
+        open_only: Optional[bool] = None,
+        has_phone: Optional[bool] = None,
+        search_query: Optional[str] = None,
+    ) -> List[BuyerStore]:
+        """获取地图视口范围内的买手店"""
+        query = self.db.table("buyer_stores").select("*")
+
+        # 视口范围筛选（经纬度边界框）
+        query = query.gte("latitude", sw_lat).lte("latitude", ne_lat)
+        query = query.gte("longitude", sw_lng).lte("longitude", ne_lng)
+
+        # 国家筛选
+        if country:
+            query = query.eq("country", country)
+
+        # 城市筛选
+        if city:
+            query = query.eq("city", city)
+
+        # 营业状态筛选
+        if open_only:
+            query = query.eq("is_open", True)
+
+        # 品牌筛选
+        if brand:
+            query = query.contains("brands", [brand])
+
+        # 单风格筛选
+        if style:
+            query = query.contains("style", [style])
+
+        # 搜索查询
+        if search_query:
+            query = query.or_(
+                f"name.ilike.%{search_query}%,"
+                f"city.ilike.%{search_query}%,"
+                f"address.ilike.%{search_query}%"
+            )
+
+        query = query.order("city").order("name")
+        result = query.execute()
+
+        stores = [self._format_store(s) for s in result.data]
+
+        # 多风格筛选（应用层过滤，因为 Supabase 不支持多个 contains OR）
+        if styles and len(styles) > 0:
+            stores = [
+                store for store in stores
+                if any(
+                    any(st.lower() in s.lower() for s in store.style)
+                    for st in styles
+                )
+            ]
+
+        # 有联系方式筛选
+        if has_phone:
+            stores = [
+                store for store in stores
+                if store.phone and len(store.phone) > 0
+            ]
+
+        return stores
+
     def get_nearby_stores(
         self,
         latitude: float,
