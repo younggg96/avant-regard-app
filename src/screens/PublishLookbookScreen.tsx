@@ -150,18 +150,49 @@ const PublishLookbookScreen = () => {
     }
   }, [brandsPage, hasMoreBrands, isLoadingBrands, brandSearchQuery]);
 
-  // 根据搜索词过滤品牌
-  const filteredBrands = useMemo(() => {
-    const query = brandSearchQuery.trim().toLowerCase();
-    if (!query) {
-      return allBrands;
+  // 搜索结果状态
+  const [searchResults, setSearchResults] = useState<Brand[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 通过后端 API 搜索品牌（带防抖）
+  useEffect(() => {
+    const query = brandSearchQuery.trim();
+
+    // 清除上一次的定时器
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
     }
-    return allBrands.filter(
-      (brand) =>
-        brand.name.toLowerCase().includes(query) ||
-        (brand.category && brand.category.toLowerCase().includes(query))
-    );
-  }, [allBrands, brandSearchQuery]);
+
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await brandService.searchBrands(query, 30);
+        setSearchResults(results);
+      } catch (error) {
+        console.error("Failed to search brands:", error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [brandSearchQuery]);
+
+  // 根据是否有搜索词决定显示哪些品牌
+  const displayedBrands = brandSearchQuery.trim() ? searchResults : allBrands;
 
   // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
@@ -955,9 +986,9 @@ const PublishLookbookScreen = () => {
 
       <BrandSelectorModal
         visible={showBrandSelector}
-        brands={filteredBrands}
+        brands={displayedBrands}
         searchQuery={brandSearchQuery}
-        isLoading={isLoadingBrands}
+        isLoading={isLoadingBrands || isSearching}
         hasMore={hasMoreBrands && !brandSearchQuery.trim()}
         onSearchChange={setBrandSearchQuery}
         onSelectBrand={handleSelectBrand}
