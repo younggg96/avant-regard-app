@@ -99,11 +99,14 @@ const PublishOutfitScreen = () => {
   // 秀场数据和分页状态
   const [allShows, setAllShows] = useState<Show[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Show[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isLoadingShows, setIsLoadingShows] = useState(false);
   const [showsPage, setShowsPage] = useState(1);
   const [hasMoreShows, setHasMoreShows] = useState(true);
   const [totalShows, setTotalShows] = useState(0);
   const isLoadingMoreRef = useRef(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
@@ -211,6 +214,67 @@ const PublishOutfitScreen = () => {
       isLoadingMoreRef.current = false;
     }
   }, [showsPage, hasMoreShows, isLoadingShows, searchQuery]);
+
+  // 搜索秀场（通过 API）
+  const searchShowsFromApi = useCallback(async (keyword: string) => {
+    if (!keyword.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await showService.searchShows(keyword.trim(), 50);
+      const shows: Show[] = results.map((show: ShowFromApi) => ({
+        brand: show.brand || "",
+        season: show.season,
+        title: show.title || show.brand || "",
+        cover_image: show.coverImage || "",
+        show_url: show.showUrl || "",
+        year: show.year || 0,
+        category: show.category || "",
+        show_id: show.id as number,
+      }));
+      setSearchResults(shows);
+    } catch (error) {
+      console.error("Failed to search shows:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // 处理搜索词变化（带 debounce）
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+
+    // 清除之前的定时器
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // 设置 debounce 延迟搜索
+    setIsSearching(true);
+    searchTimeoutRef.current = setTimeout(() => {
+      searchShowsFromApi(query);
+    }, 300);
+  }, [searchShowsFromApi]);
+
+  // 清理搜索定时器
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadShows(true);
@@ -367,19 +431,13 @@ const PublishOutfitScreen = () => {
     }
   }, [editMode, draftPost]);
 
-  // 根据搜索词过滤秀场
+  // 获取显示的秀场列表：搜索模式返回搜索结果，否则返回分页数据
   const filteredShows = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) {
-      return allShows;
+    if (searchQuery.trim()) {
+      return searchResults;
     }
-    return allShows.filter(
-      (show) =>
-        show.brand.toLowerCase().includes(query) ||
-        show.season.toLowerCase().includes(query) ||
-        show.category.toLowerCase().includes(query)
-    );
-  }, [allShows, searchQuery]);
+    return allShows;
+  }, [allShows, searchQuery, searchResults]);
 
   // 选择秀场
   const handleSelectShow = (show: Show) => {
@@ -486,10 +544,10 @@ const PublishOutfitScreen = () => {
       // 1. 处理图片（上传新图片，保留已有图片）
       const uploadedUrls = await processImages(images);
 
-      // 2. 获取所有关联秀场的 showIds
+      // 2. 获取所有关联秀场的 showIds（支持整数和字符串 ID）
       const showIds = selectedShows
         .map((show) => show.showId)
-        .filter((id): id is number => id !== undefined);
+        .filter((id): id is number | string => id !== undefined && id !== null);
 
       // 获取所有关联品牌的 brandIds
       const brandIds = selectedBrands.map((brand) => brand.id);
@@ -572,10 +630,10 @@ const PublishOutfitScreen = () => {
         uploadedUrls = await processImages(images);
       }
 
-      // 获取所有关联秀场的 showIds
+      // 获取所有关联秀场的 showIds（支持整数和字符串 ID）
       const showIds = selectedShows
         .map((show) => show.showId)
-        .filter((id): id is number => id !== undefined);
+        .filter((id): id is number | string => id !== undefined && id !== null);
 
       // 获取所有关联品牌的 brandIds
       const brandIds = selectedBrands.map((brand) => brand.id);
@@ -1129,9 +1187,9 @@ const PublishOutfitScreen = () => {
         visible={showSelector}
         shows={filteredShows}
         searchQuery={searchQuery}
-        isLoading={isLoadingShows}
+        isLoading={isLoadingShows || isSearching}
         hasMore={hasMoreShows && !searchQuery.trim()}
-        onSearchChange={setSearchQuery}
+        onSearchChange={handleSearchChange}
         onSelectShow={handleSelectShow}
         onClose={() => setShowSelector(false)}
         onLoadMore={loadMoreShows}

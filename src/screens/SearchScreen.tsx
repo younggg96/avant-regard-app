@@ -233,7 +233,7 @@ const SearchScreen = () => {
       author: {
         id: userId,
         name: post.username || "用户",
-        avatar: `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
+        avatar: post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
       },
       likes: post.likeCount || 0,
       isLiked: post.likedByMe || false,

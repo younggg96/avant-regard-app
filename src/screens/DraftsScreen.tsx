@@ -340,8 +340,11 @@ const DraftsScreen = () => {
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color={theme.colors.gray400} />
-            <Text style={styles.loadingText}>加载中...</Text>
+            <Image
+              source={require("../../assets/gif/profile-loading.gif")}
+              style={styles.loadingGif}
+              resizeMode="contain"
+            />
           </View>
         ) : drafts.length > 0 ? (
           <View style={styles.draftsList}>{drafts.map(renderDraftItem)}</View>
@@ -539,6 +542,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: __DEV__ ? "System" : "Inter-Medium",
     color: theme.colors.white,
+  },
+  loadingGif: {
+    width: 200,
+    height: 200,
   },
 });
 

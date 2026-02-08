@@ -9,7 +9,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
-import ScreenHeader from "../../components/ScreenHeader";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useAuthStore } from "../../store/authStore";
@@ -25,73 +24,58 @@ import { TabContent } from "./components/TabContent";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 
-// 骨架屏 Logo Header 占位
-const SkeletonLogoHeader: React.FC<{
+// 骨架屏 Header 占位（匹配 DiscoverHeader 布局）
+const SkeletonHeader: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
 }> = ({ opacity }) => (
-  <Box bg="$white" px="$lg" pt="$sm" pb="$sm" alignItems="center">
-    {/* Logo 骨架 */}
-    <Animated.View
-      style={{
-        width: 160,
-        height: 28,
-        borderRadius: 4,
-        backgroundColor: "#e5e5e5",
-        opacity,
-        marginBottom: 4,
-      }}
-    />
-    {/* 副标题骨架 */}
-    <Animated.View
-      style={{
-        width: 80,
-        height: 12,
-        borderRadius: 4,
-        backgroundColor: "#e5e5e5",
-        opacity,
-      }}
-    />
-  </Box>
-);
-
-// 骨架屏 搜索栏 占位
-const SkeletonSearchBar: React.FC<{
-  opacity: Animated.AnimatedInterpolation<number>;
-}> = ({ opacity }) => (
-  <Box bg="$white" px="$md" py="$sm">
-    <HStack alignItems="center" justifyContent="space-between">
-      {/* 头像骨架 - 方形小圆角 */}
+  <Box bg="$white" px="$md" pt="$sm" pb="$md">
+    <VStack space="sm">
+      {/* 第一行：Logo + 头像 + 通知 */}
+      <HStack alignItems="center" justifyContent="space-between">
+        {/* 左侧 Logo 骨架 */}
+        <Animated.View
+          style={{
+            width: 140,
+            height: 36,
+            borderRadius: 4,
+            backgroundColor: "#e5e5e5",
+            opacity,
+          }}
+        />
+        {/* 右侧：头像 + 通知图标骨架 */}
+        <HStack alignItems="center" space="md">
+          {/* 头像骨架 - 圆形 */}
+          <Animated.View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: "#e5e5e5",
+              opacity,
+            }}
+          />
+          {/* 通知图标骨架 */}
+          <Animated.View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 4,
+              backgroundColor: "#e5e5e5",
+              opacity,
+            }}
+          />
+        </HStack>
+      </HStack>
+      {/* 第二行：搜索框骨架 */}
       <Animated.View
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 4,
-          backgroundColor: "#e5e5e5",
-          opacity,
-        }}
-      />
-      {/* 搜索框骨架 - 方形小圆角 */}
-      <Animated.View
-        style={{
-          flex: 1,
-          marginHorizontal: 12,
           height: 40,
           borderRadius: 4,
           backgroundColor: "#e5e5e5",
           opacity,
         }}
       />
-      {/* 消息图标骨架 */}
-      <Animated.View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 4,
-          backgroundColor: "#e5e5e5",
-          opacity,
-        }}
-      />
-    </HStack>
+    </VStack>
   </Box>
 );
 
@@ -161,8 +145,11 @@ const DiscoverScreen: React.FC = () => {
     loading,
     error,
     userInfoCache,
+    tabLoading,
+    tabLoaded,
     handleRefresh,
     handleLike,
+    loadTabData,
   } = useDiscoverData();
 
   // Header 动画 Hook
@@ -235,16 +222,18 @@ const DiscoverScreen: React.FC = () => {
     (navigation.navigate as any)("Notifications");
   }, [navigation]);
 
-  // 处理标签切换
+  // 处理标签切换 - 点击 tab 时也触发懒加载
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab);
     scrollViewRef.current?.scrollTo({
       x: TAB_INDEX_MAP[tab] * SCREEN_WIDTH,
       animated: true,
     });
-  }, []);
+    // 触发懒加载
+    loadTabData(tab);
+  }, [loadTabData]);
 
-  // 处理滑动结束
+  // 处理滑动结束 - 切换 tab 时触发懒加载
   const handleScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x;
@@ -254,9 +243,11 @@ const DiscoverScreen: React.FC = () => {
 
       if (newTab !== activeTab) {
         setActiveTab(newTab);
+        // 触发懒加载：如果该 tab 尚未加载，则加载数据
+        loadTabData(newTab);
       }
     },
-    [activeTab]
+    [activeTab, loadTabData]
   );
 
   // 处理刷新
@@ -276,7 +267,6 @@ const DiscoverScreen: React.FC = () => {
   // 处理作者点击
   const handleAuthorPress = useCallback(
     (authorId: string) => {
-      console.log("查看作者资料:", authorId);
       const post = posts.find((p) => p.author.id === authorId);
       const userId = parseInt(authorId, 10);
       const cachedUserInfo = userInfoCache.current.get(userId);
@@ -331,8 +321,7 @@ const DiscoverScreen: React.FC = () => {
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <SkeletonLogoHeader opacity={skeletonOpacity} />
-        <SkeletonSearchBar opacity={skeletonOpacity} />
+        <SkeletonHeader opacity={skeletonOpacity} />
         <SkeletonTabBar opacity={skeletonOpacity} />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
@@ -369,7 +358,7 @@ const DiscoverScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Logo Header - 可收起 */}
+      {/* 顶部栏 - Logo视频 + 头像 + 通知 + 搜索框（滚动时可收起） */}
       <Animated.View
         style={{
           height: interpolatedHeaderHeight,
@@ -377,23 +366,14 @@ const DiscoverScreen: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        <ScreenHeader
-          title="AVANT REGARD"
-          subtitle="时尚内容流"
-          boldTitle={true}
-          borderless
+        <DiscoverHeader
+          avatar={userAvatarUrl}
+          unreadCount={unreadNotificationCount}
+          onAvatarPress={handleAvatarPress}
+          onSearchPress={handleSearchPress}
+          onNotificationPress={handleNotificationPress}
         />
       </Animated.View>
-
-      {/* 搜索栏 - 头像 + 搜索框 + 消息 */}
-      <DiscoverHeader
-        username={currentUserInfo?.username || user?.username}
-        avatar={userAvatarUrl}
-        unreadCount={unreadNotificationCount}
-        onAvatarPress={handleAvatarPress}
-        onSearchPress={handleSearchPress}
-        onNotificationPress={handleNotificationPress}
-      />
 
       {/* Tab 栏 - 居中样式 */}
       <DiscoverTabBar
@@ -421,6 +401,8 @@ const DiscoverScreen: React.FC = () => {
           error={error}
           loading={loading}
           refreshing={refreshing}
+          tabLoading={tabLoading.forum}
+          tabLoaded={tabLoaded.forum}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}
@@ -438,6 +420,8 @@ const DiscoverScreen: React.FC = () => {
           error={error}
           loading={loading}
           refreshing={refreshing}
+          tabLoading={tabLoading.recommend}
+          tabLoaded={tabLoaded.recommend}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}
@@ -455,6 +439,8 @@ const DiscoverScreen: React.FC = () => {
           error={error}
           loading={loading}
           refreshing={refreshing}
+          tabLoading={tabLoading.following}
+          tabLoaded={tabLoaded.following}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}

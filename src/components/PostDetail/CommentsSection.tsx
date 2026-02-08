@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Image as RNImage } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, Image } from "../ui";
 import { theme } from "../../theme";
@@ -249,10 +249,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       {/* Loading State */}
       {isLoading && (
         <Box py="$lg" alignItems="center">
-          <ActivityIndicator size="small" color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">
-            加载评论中...
-          </Text>
+          <RNImage
+            source={require("../../../assets/gif/profile-loading.gif")}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         </Box>
       )}
 

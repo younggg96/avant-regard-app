@@ -394,10 +394,11 @@ const CommunityDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator size="small" color={theme.colors.gray400} />
-          <Text color="$gray500" fontSize="$sm" mt="$md">
-            加载中...
-          </Text>
+          <Image
+            source={require("../../assets/gif/profile-loading.gif")}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         </VStack>
       </SafeAreaView>
     );
@@ -605,6 +606,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  loadingGif: {
+    width: Dimensions.get("window").width * 0.5,
+    height: Dimensions.get("window").width * 0.5,
   },
 });
 

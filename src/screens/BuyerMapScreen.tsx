@@ -11,6 +11,7 @@ import {
   ScrollView as RNScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -33,6 +34,7 @@ import {
   getAllCountries,
   filterStores,
   getNearbyStores,
+  getStoresInViewport,
 } from "../services/buyerStoreService";
 
 interface FilterState {
@@ -47,6 +49,13 @@ interface FilterState {
 interface UserLocation {
   latitude: number;
   longitude: number;
+}
+
+interface MapRegion {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
 }
 
 // 热门品牌列表
@@ -187,6 +196,9 @@ const BuyerMapScreen = () => {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyMode, setNearbyMode] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [visibleStores, setVisibleStores] = useState<BuyerStore[]>([]);
+  const [currentMapRegion, setCurrentMapRegion] = useState<MapRegion | null>(null);
+  const viewportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 默认北京坐标
   const [initialRegion, setInitialRegion] = useState({
     latitude: 39.9042,
@@ -392,6 +404,83 @@ const BuyerMapScreen = () => {
   };
 
   const deg2rad = (deg: number) => deg * (Math.PI / 180);
+
+  // 根据地图区域计算视口边界
+  const getViewportBounds = useCallback((region: MapRegion) => {
+    return {
+      ne_lat: region.latitude + region.latitudeDelta / 2,
+      ne_lng: region.longitude + region.longitudeDelta / 2,
+      sw_lat: region.latitude - region.latitudeDelta / 2,
+      sw_lng: region.longitude - region.longitudeDelta / 2,
+    };
+  }, []);
+
+  // 获取视口内的店铺（通过后端 API）
+  const fetchVisibleStores = useCallback(
+    async (region: MapRegion) => {
+      try {
+        const bounds = getViewportBounds(region);
+        const stores = await getStoresInViewport({
+          ...bounds,
+          country: filters.country || undefined,
+          city: filters.city || undefined,
+          brand: filters.brand || undefined,
+          style: filters.styles.length === 1 ? filters.styles[0] : undefined,
+          styles: filters.styles.length > 1 ? filters.styles : undefined,
+          openOnly: filters.openOnly || undefined,
+          hasPhone: filters.hasPhone || undefined,
+          searchQuery: searchQuery || undefined,
+        });
+        setVisibleStores(stores);
+      } catch (error) {
+        console.error("Error fetching viewport stores:", error);
+        // 降级方案：从已加载的 filteredStores 中本地筛选
+        const bounds = getViewportBounds(region);
+        const localVisible = filteredStores.filter((store) => {
+          const { latitude, longitude } = store.coordinates;
+          return (
+            latitude >= bounds.sw_lat &&
+            latitude <= bounds.ne_lat &&
+            longitude >= bounds.sw_lng &&
+            longitude <= bounds.ne_lng
+          );
+        });
+        setVisibleStores(localVisible);
+      }
+    },
+    [filters, searchQuery, filteredStores, getViewportBounds]
+  );
+
+  // 地图区域变化回调（带防抖）
+  const handleRegionChangeComplete = useCallback(
+    (region: MapRegion) => {
+      setCurrentMapRegion(region);
+      // 防抖：避免频繁请求
+      if (viewportDebounceRef.current) {
+        clearTimeout(viewportDebounceRef.current);
+      }
+      viewportDebounceRef.current = setTimeout(() => {
+        fetchVisibleStores(region);
+      }, 300);
+    },
+    [fetchVisibleStores]
+  );
+
+  // 当筛选条件变化时，重新获取视口内店铺
+  useEffect(() => {
+    if (currentMapRegion) {
+      fetchVisibleStores(currentMapRegion);
+    }
+  }, [filters, searchQuery, nearbyMode]);
+
+  // 清理防抖定时器
+  useEffect(() => {
+    return () => {
+      if (viewportDebounceRef.current) {
+        clearTimeout(viewportDebounceRef.current);
+      }
+    };
+  }, []);
 
   // 应用筛选（当不在附近模式时）
   useEffect(() => {
@@ -681,7 +770,7 @@ const BuyerMapScreen = () => {
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="搜索品牌、店铺或风格..."
+              placeholder="搜索店铺或风格..."
               placeholderTextColor={theme.colors.gray200}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -738,8 +827,11 @@ const BuyerMapScreen = () => {
       <Box flex={1}>
         {isLoading ? (
           <VStack flex={1} justifyContent="center" alignItems="center">
-            <ActivityIndicator size="small" color={theme.colors.black} />
-            <Text color="$gray300" mt="$md">加载中...</Text>
+            <Image
+              source={require("../../assets/gif/map-loading.gif")}
+              style={styles.loadingGif}
+              resizeMode="contain"
+            />
           </VStack>
         ) : (
           <MapView
@@ -750,6 +842,7 @@ const BuyerMapScreen = () => {
             showsUserLocation={true}
             showsMyLocationButton={true}
             rotateEnabled={false}
+            onRegionChangeComplete={handleRegionChangeComplete}
           >
             {filteredStores.map(renderMarker)}
           </MapView>
@@ -946,7 +1039,7 @@ const BuyerMapScreen = () => {
         )}
       </Box>
 
-      {/* 底部店铺列表 */}
+      {/* 底部店铺列表（仅显示当前视口内的店铺） */}
       <Box position="absolute" bottom={20} left={0} right={0}>
         <HStack
           justifyContent="between"
@@ -956,7 +1049,7 @@ const BuyerMapScreen = () => {
         >
           <Box bg="rgba(255,255,255,0.95)" px="$sm" py="$xs" rounded="$sm">
             <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              发现 {filteredStores.length} 家好店
+              发现 {visibleStores.length} 家好店
             </Text>
           </Box>
           <HStack gap="$sm">
@@ -1011,7 +1104,7 @@ const BuyerMapScreen = () => {
           snapToInterval={280 + theme.spacing.sm}
           decelerationRate="fast"
         >
-          {filteredStores.map((store) => (
+          {visibleStores.map((store) => (
             <Pressable
               key={store.id}
               w={280}
@@ -1619,6 +1712,10 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  loadingGif: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").width,
   },
   markerShadow: {
     shadowColor: "#000",

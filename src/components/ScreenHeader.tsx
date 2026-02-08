@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Box, Text, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
+import { ResizeMode, Video } from "expo-av";
 
 export interface HeaderAction {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -30,11 +31,13 @@ export interface ScreenHeaderProps {
   borderless?: boolean;
   onBackPress?: () => void;
   boldTitle?: boolean;
+  useHeaderVideo?: boolean;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   subtitle,
+  useHeaderVideo = false,
   showBack = false,
   showBackButton = false,
   showCloseButton = false,
@@ -166,29 +169,30 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       <HStack alignItems="center" justifyContent="between">
         {renderLeftButton()}
 
-        <VStack flex={1} alignItems="center" px="$sm">
-          <Text
-            textAlign="center"
-            style={[boldTitle ? styles.boldTitle : getTitleStyle()]}
-          >
-            {title}
-          </Text>
-          {subtitle && (
+        {useHeaderVideo ?
+          <Video source={require("../../assets/video/header1.mp4")} style={{ flex: 1, height: 80 }} resizeMode={ResizeMode.CONTAIN} shouldPlay isLooping isMuted /> :
+          <VStack flex={1} alignItems="center" px="$sm">
             <Text
-              color="$gray400"
-              fontSize="$xs"
-              lineHeight="$xs"
               textAlign="center"
-              mt="$xs"
-              sx={{
-                letterSpacing: 1,
-              }}
+              style={[boldTitle ? styles.boldTitle : getTitleStyle()]}
             >
-              {subtitle}
+              {title}
             </Text>
-          )}
-        </VStack>
-
+            {subtitle && (
+              <Text
+                color="$gray400"
+                fontSize="$xs"
+                lineHeight="$xs"
+                textAlign="center"
+                mt="$xs"
+                sx={{
+                  letterSpacing: 1,
+                }}
+              >
+                {subtitle}
+              </Text>
+            )}
+          </VStack>}
         {renderRightActions()}
       </HStack>
     </Box>

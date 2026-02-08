@@ -10,6 +10,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Animated,
+  Dimensions,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -18,14 +20,11 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { brandService, Brand } from "../services/brandService";
 
-// Category filter options
-const CATEGORY_FILTERS = [
-  { label: "全部", value: "all" },
-  { label: "时装品牌", value: "时装品牌" },
-  { label: "奢侈", value: "奢侈" },
-  { label: "先锋", value: "先锋" },
-  { label: "工匠品牌", value: "工匠品牌" },
-];
+// Category filter type
+interface CategoryFilter {
+  label: string;
+  value: string;
+}
 
 const PAGE_SIZE = 30;
 
@@ -34,6 +33,9 @@ const ArchiveScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([
+    { label: "全部", value: "all" },
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,9 +174,25 @@ const ArchiveScreen = () => {
     [loadMoreBrands, headerHeight, headerOpacity]
   );
 
+  // 加载分类数据
+  const loadCategories = useCallback(async () => {
+    try {
+      const categories = await brandService.getBrandCategories();
+      const filters: CategoryFilter[] = [
+        { label: "全部", value: "all" },
+        ...categories.map((cat) => ({ label: cat, value: cat })),
+      ];
+      setCategoryFilters(filters);
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+      // 加载失败时保持默认的"全部"选项
+    }
+  }, []);
+
   useEffect(() => {
     loadBrands();
-  }, [loadBrands]);
+    loadCategories();
+  }, [loadBrands, loadCategories]);
 
   // Filter brands by search query and category
   const filteredBrands = useMemo(() => {
@@ -236,8 +254,11 @@ const ArchiveScreen = () => {
     if (isLoadingMore) {
       return (
         <View style={styles.footerContainer}>
-          <ActivityIndicator size="small" color={theme.colors.gray400} />
-          <Text style={styles.footerText}>加载更多...</Text>
+          <Image
+            source={require("../../assets/gif/archive-loading.gif")}
+            style={styles.footerLoadingGif}
+            resizeMode="contain"
+          />
         </View>
       );
     }
@@ -255,8 +276,11 @@ const ArchiveScreen = () => {
           borderless
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={theme.colors.black} />
-          <Text style={styles.loadingText}>加载中...</Text>
+          <Image
+            source={require("../../assets/gif/archive-loading.gif")}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         </View>
       </SafeAreaView>
     );
@@ -342,7 +366,7 @@ const ArchiveScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScrollContent}
         >
-          {CATEGORY_FILTERS.map((filter) => (
+          {categoryFilters.map((filter) => (
             <TouchableOpacity
               key={filter.value}
               style={[
@@ -456,7 +480,7 @@ const ArchiveScreen = () => {
         {renderFooter()}
 
         {/* Bottom Padding */}
-        <View style={{ height: 40 }} />
+        {/* <View style={{ height: 20 }} /> */}
       </ScrollView>
     </SafeAreaView>
   );
@@ -471,6 +495,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingGif: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height,
   },
   loadingText: {
     marginTop: theme.spacing.md,
@@ -676,6 +704,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.gray400,
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
+  },
+  footerLoadingGif: {
+    width: 60,
+    height: 60,
   },
 });
 

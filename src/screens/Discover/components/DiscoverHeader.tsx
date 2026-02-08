@@ -1,11 +1,11 @@
 import React from "react";
 import { StyleSheet, Image as RNImage, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack } from "../../../components/ui";
+import { ResizeMode, Video } from "expo-av";
+import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { theme } from "../../../theme";
 
 interface DiscoverHeaderProps {
-    username?: string;
     avatar?: string;
     unreadCount?: number;
     onAvatarPress: () => void;
@@ -14,44 +14,71 @@ interface DiscoverHeaderProps {
 }
 
 /**
- * 发现页顶部栏组件 - B站风格
- * 左侧：用户头像
- * 中间：搜索框（带欢迎语）
- * 右侧：消息通知图标
+ * 发现页顶部栏组件 - FARFETCH 风格
+ * 第一行：左侧 Logo/视频，右侧头像+通知
+ * 第二行：搜索框独立一行
  */
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
-    username,
     avatar,
     unreadCount = 0,
     onAvatarPress,
     onSearchPress,
     onNotificationPress,
 }) => {
-    // 获取显示的用户名（最多显示8个字符）
-    const displayName = username
-        ? username.length > 8
-            ? username.slice(0, 8) + "..."
-            : username
-        : "时尚爱好者";
-
     return (
-        <Box bg="$white" px="$md" py="$sm">
-            <HStack alignItems="center" justifyContent="space-between">
-                {/* 左侧头像 */}
-                <Pressable
-                    onPress={onAvatarPress}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    {avatar ? (
-                        <RNImage source={{ uri: avatar }} style={styles.avatar} />
-                    ) : (
-                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                            <Ionicons name="person" size={20} color={theme.colors.white} />
-                        </View>
-                    )}
-                </Pressable>
+        <Box bg="$white" px="$md" pt="$sm" pb="$md">
+            <VStack space="sm">
+                {/* 第一行：Logo/视频 + 头像 + 通知 */}
+                <HStack alignItems="center" justifyContent="space-between">
+                    {/* 左侧 Logo 视频 */}
+                    <Video
+                        source={require("../../../../assets/video/header1.mp4")}
+                        style={styles.logoVideo}
+                        resizeMode={ResizeMode.CONTAIN}
+                        shouldPlay
+                        isLooping
+                        isMuted
+                    />
 
-                {/* 中间搜索框 */}
+                    {/* 右侧：头像 + 通知图标 */}
+                    <HStack alignItems="center" space="md">
+                        {/* 头像 */}
+                        <Pressable
+                            onPress={onAvatarPress}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            {avatar ? (
+                                <RNImage source={{ uri: avatar }} style={styles.avatar} />
+                            ) : (
+                                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                                    <Ionicons name="person" size={18} color={theme.colors.white} />
+                                </View>
+                            )}
+                        </Pressable>
+
+                        {/* 通知图标 */}
+                        <Pressable
+                            onPress={onNotificationPress}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.notificationButton}
+                        >
+                            <Ionicons
+                                name="notifications-outline"
+                                size={24}
+                                color={theme.colors.black}
+                            />
+                            {unreadCount > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>
+                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </Pressable>
+                    </HStack>
+                </HStack>
+
+                {/* 第二行：搜索框 */}
                 <Pressable onPress={onSearchPress} style={styles.searchContainer}>
                     <HStack alignItems="center" flex={1}>
                         <Ionicons
@@ -61,40 +88,24 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             style={styles.searchIcon}
                         />
                         <Text style={styles.searchText} numberOfLines={1}>
-                            欢迎，{displayName}
+                            搜索品牌、单品、穿搭...
                         </Text>
                     </HStack>
                 </Pressable>
-
-                {/* 右侧消息图标 */}
-                <Pressable
-                    onPress={onNotificationPress}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={styles.notificationButton}
-                >
-                    <Ionicons
-                        name="notifications-outline"
-                        size={22}
-                        color={theme.colors.black}
-                    />
-                    {unreadCount > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>
-                                {unreadCount > 99 ? "99+" : unreadCount}
-                            </Text>
-                        </View>
-                    )}
-                </Pressable>
-            </HStack>
+            </VStack>
         </Box>
     );
 };
 
 const styles = StyleSheet.create({
+    logoVideo: {
+        width: 140,
+        height: 36,
+    },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20, // 圆形
+        width: 32,
+        height: 32,
+        borderRadius: 16, // 圆形
         borderWidth: 1,
         borderColor: theme.colors.gray100,
     },
@@ -104,11 +115,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     searchContainer: {
-        flex: 1,
-        marginHorizontal: 12,
         height: 40,
         backgroundColor: theme.colors.gray50,
-        borderRadius: theme.borderRadius.sm, // 方形小圆角
+        borderRadius: theme.borderRadius.sm,
         paddingHorizontal: 12,
         justifyContent: "center",
     },
@@ -142,8 +151,11 @@ const styles = StyleSheet.create({
     },
     badgeText: {
         color: theme.colors.white,
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: "600",
+        textAlign: "center",
+        lineHeight: 16,
+        includeFontPadding: false,
     },
 });
 

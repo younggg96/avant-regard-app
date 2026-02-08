@@ -14,7 +14,10 @@ import {
     Animated,
     TouchableWithoutFeedback,
     Image,
+    Dimensions,
 } from "react-native";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -311,7 +314,7 @@ const StoreReviewScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
-                    <ActivityIndicator  color={theme.colors.black} />
+                    <ActivityIndicator color={theme.colors.black} />
                     <Text color="$gray300" mt="$md">
                         加载中...
                     </Text>
@@ -348,7 +351,7 @@ const StoreReviewScreen = () => {
                 ListFooterComponent={
                     isLoadingMore ? (
                         <Box py="$md" alignItems="center">
-                            <ActivityIndicator  color={theme.colors.black} />
+                            <ActivityIndicator color={theme.colors.black} />
                         </Box>
                     ) : null
                 }
@@ -381,10 +384,8 @@ const StoreReviewScreen = () => {
                         ]}
                     >
                         <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
-
                         {selectedSubmission && (
-                            <ScrollView showsVerticalScrollIndicator={false}>
-                                {/* 店铺名称 */}
+                            <>
                                 <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
                                     {selectedSubmission.name}
                                 </Text>
@@ -543,7 +544,7 @@ const StoreReviewScreen = () => {
                                         disabled={isSubmitting}
                                     >
                                         {isSubmitting ? (
-                                            <ActivityIndicator  color={theme.colors.white} />
+                                            <ActivityIndicator color={theme.colors.white} />
                                         ) : (
                                             <Text fontSize="$md" fontWeight="$semibold" color="$white">
                                                 通过
@@ -551,7 +552,7 @@ const StoreReviewScreen = () => {
                                         )}
                                     </Pressable>
                                 </HStack>
-                            </ScrollView>
+                            </>
                         )}
                     </Animated.View>
                 </Box>
@@ -620,7 +621,7 @@ const StoreReviewScreen = () => {
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? (
-                                    <ActivityIndicator  color={theme.colors.white} />
+                                    <ActivityIndicator color={theme.colors.white} />
                                 ) : (
                                     <Text fontSize="$md" fontWeight="$semibold" color="$white">
                                         确认拒绝
@@ -651,7 +652,7 @@ const styles = StyleSheet.create({
         padding: theme.spacing.lg,
         paddingTop: theme.spacing.sm,
         paddingBottom: 34,
-        maxHeight: "85%",
+        maxHeight: SCREEN_HEIGHT * 0.85,
     },
     rejectModalContent: {
         backgroundColor: theme.colors.white,

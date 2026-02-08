@@ -379,4 +379,8 @@ export const styles = StyleSheet.create({
     color: "#FF3040",
     fontWeight: "500",
   },
+  loadingGif: {
+    width: SCREEN_WIDTH * 0.5,
+    height: SCREEN_WIDTH * 0.5,
+  },
 });

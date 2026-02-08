@@ -8,6 +8,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
@@ -331,8 +332,11 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
           {loadingBrands ? (
             <View style={styles.brandLoadingContainer}>
-              <ActivityIndicator size="small" color={theme.colors.black} />
-              <Text style={styles.brandLoadingText}>加载中...</Text>
+              <Image
+                source={require("../../../../assets/gif/profile-loading.gif")}
+                style={styles.loadingGif}
+                resizeMode="contain"
+              />
             </View>
           ) : (
             <FlatList

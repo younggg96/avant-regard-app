@@ -3,8 +3,10 @@ import {
   RefreshControl,
   ActivityIndicator,
   View,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
@@ -28,6 +30,8 @@ interface TabContentProps {
   error: string | null;
   loading: boolean;
   refreshing: boolean;
+  tabLoading: boolean; // 当前 tab 是否正在加载
+  tabLoaded: boolean;  // 当前 tab 是否已加载过
   onRefresh: () => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onPostPress: (post: Post) => void;
@@ -35,6 +39,32 @@ interface TabContentProps {
   onLike: (postId: string) => void;
   onBannerPress: (banner: Banner) => void;
 }
+
+/**
+ * GIF 加载组件 - 所有 tab 通用
+ */
+const GifLoading: React.FC = () => (
+  <View style={loadingStyles.container}>
+    <Image
+      source={require("../../../../assets/gif/home-loading.gif")}
+      style={loadingStyles.gif}
+      resizeMode="contain"
+    />
+  </View>
+);
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.colors.white,
+  },
+  gif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
+  },
+});
 
 /**
  * 将 DisplayPost 转换为 PostCard 需要的 Post 格式
@@ -73,6 +103,7 @@ const convertToPost = (post: DisplayPost): Post => ({
 /**
  * Tab 内容组件
  * 渲染单个 Tab 页面的内容（帖子列表）
+ * 支持懒加载：未加载时显示加载状态
  */
 export const TabContent: React.FC<TabContentProps> = ({
   tab,
@@ -84,6 +115,8 @@ export const TabContent: React.FC<TabContentProps> = ({
   error,
   loading,
   refreshing,
+  tabLoading,
+  tabLoaded,
   onRefresh,
   onScroll,
   onPostPress,
@@ -149,6 +182,16 @@ export const TabContent: React.FC<TabContentProps> = ({
   };
 
   const emptyState = getEmptyStateText();
+
+  // 懒加载：如果当前 tab 正在加载或尚未加载，显示加载状态
+  // 论坛和关注 tab 使用视频 loading，推荐 tab 使用默认 loading
+  if (tabLoading || !tabLoaded) {
+    return (
+      <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        <GifLoading />
+      </View>
+    );
+  }
 
   return (
     <View style={{ width: SCREEN_WIDTH }}>

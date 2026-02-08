@@ -113,29 +113,29 @@ const CollectionDetailScreen = () => {
 
   }, [collection, images, id]);
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `查看这个精彩的时装系列：${collection.title} - ${collection.season} ${collection.year}`,
-        url: collection.showUrl || "",
-      });
-    } catch (error) {
-      console.log("分享失败:", error);
-    }
-  };
+  // const handleShare = async () => {
+  //   try {
+  //     await Share.share({
+  //       message: `查看这个精彩的时装系列：${collection.title} - ${collection.season} ${collection.year}`,
+  //       url: collection.showUrl || "",
+  //     });
+  //   } catch (error) {
+  //     console.log("分享失败:", error);
+  //   }
+  // };
 
-  const handleOpenUrl = async () => {
-    if (collection.showUrl) {
-      try {
-        const supported = await Linking.canOpenURL(collection.showUrl);
-        if (supported) {
-          await Linking.openURL(collection.showUrl);
-        }
-      } catch (error) {
-        console.log("无法打开链接:", error);
-      }
-    }
-  };
+  // const handleOpenUrl = async () => {
+  //   if (collection.showUrl) {
+  //     try {
+  //       const supported = await Linking.canOpenURL(collection.showUrl);
+  //       if (supported) {
+  //         await Linking.openURL(collection.showUrl);
+  //       }
+  //     } catch (error) {
+  //       console.log("无法打开链接:", error);
+  //     }
+  //   }
+  // };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -187,111 +187,111 @@ const CollectionDetailScreen = () => {
     </View>
   );
 
-  const renderRating = () => {
-    if (!collection.rating) return null;
+  // const renderRating = () => {
+  //   if (!collection.rating) return null;
 
-    const { average, totalReviews, distribution } = collection.rating;
+  //   const { average, totalReviews, distribution } = collection.rating;
 
-    const renderStars = (rating: number) => {
-      const stars = [];
-      const fullStars = Math.floor(rating);
-      const hasHalfStar = rating % 1 >= 0.5;
+  //   const renderStars = (rating: number) => {
+  //     const stars = [];
+  //     const fullStars = Math.floor(rating);
+  //     const hasHalfStar = rating % 1 >= 0.5;
 
-      for (let i = 1; i <= 5; i++) {
-        if (i <= fullStars) {
-          stars.push(
-            <Ionicons
-              key={i}
-              name="star"
-              size={16}
-              color={theme.colors.black}
-            />
-          );
-        } else if (i === fullStars + 1 && hasHalfStar) {
-          stars.push(
-            <Ionicons
-              key={i}
-              name="star-half"
-              size={16}
-              color={theme.colors.black}
-            />
-          );
-        } else {
-          stars.push(
-            <Ionicons
-              key={i}
-              name="star-outline"
-              size={16}
-              color={theme.colors.gray400}
-            />
-          );
-        }
-      }
-      return stars;
-    };
+  //     for (let i = 1; i <= 5; i++) {
+  //       if (i <= fullStars) {
+  //         stars.push(
+  //           <Ionicons
+  //             key={i}
+  //             name="star"
+  //             size={16}
+  //             color={theme.colors.black}
+  //           />
+  //         );
+  //       } else if (i === fullStars + 1 && hasHalfStar) {
+  //         stars.push(
+  //           <Ionicons
+  //             key={i}
+  //             name="star-half"
+  //             size={16}
+  //             color={theme.colors.black}
+  //           />
+  //         );
+  //       } else {
+  //         stars.push(
+  //           <Ionicons
+  //             key={i}
+  //             name="star-outline"
+  //             size={16}
+  //             color={theme.colors.gray400}
+  //           />
+  //         );
+  //       }
+  //     }
+  //     return stars;
+  //   };
 
-    const renderDistributionBar = (starCount: number, percentage: number) => {
-      return (
-        <View key={starCount} style={styles.distributionRow}>
-          <Text style={styles.starLabel}>{starCount}</Text>
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBackground}>
-              <View
-                style={[styles.progressBarFill, { width: `${percentage}%` }]}
-              />
-            </View>
-          </View>
-          <Text style={styles.percentageLabel}>{percentage.toFixed(1)}%</Text>
-        </View>
-      );
-    };
+  //   const renderDistributionBar = (starCount: number, percentage: number) => {
+  //     return (
+  //       <View key={starCount} style={styles.distributionRow}>
+  //         <Text style={styles.starLabel}>{starCount}</Text>
+  //         <View style={styles.progressBarContainer}>
+  //           <View style={styles.progressBarBackground}>
+  //             <View
+  //               style={[styles.progressBarFill, { width: `${percentage}%` }]}
+  //             />
+  //           </View>
+  //         </View>
+  //         <Text style={styles.percentageLabel}>{percentage.toFixed(1)}%</Text>
+  //       </View>
+  //     );
+  //   };
 
-    const totalVotes = Object.values(distribution).reduce(
-      (sum, count) => sum + count,
-      0
-    );
+  //   const totalVotes = Object.values(distribution).reduce(
+  //     (sum, count) => sum + count,
+  //     0
+  //   );
 
-    return (
-      <View style={styles.ratingContainer}>
-        <Text style={styles.ratingTitle}>评分与评价</Text>
+  //   return (
+  //     <View style={styles.ratingContainer}>
+  //       <Text style={styles.ratingTitle}>评分与评价</Text>
 
-        <View style={styles.ratingOverview}>
-          <View style={styles.ratingLeft}>
-            <Text style={styles.ratingScore}>{average.toFixed(1)}</Text>
-            <View style={styles.starsContainer}>{renderStars(average)}</View>
-            <Text style={styles.totalReviews}>{totalReviews}人评分</Text>
-          </View>
+  //       <View style={styles.ratingOverview}>
+  //         <View style={styles.ratingLeft}>
+  //           <Text style={styles.ratingScore}>{average.toFixed(1)}</Text>
+  //           <View style={styles.starsContainer}>{renderStars(average)}</View>
+  //           <Text style={styles.totalReviews}>{totalReviews}人评分</Text>
+  //         </View>
 
-          <View style={styles.distributionContainer}>
-            {[5, 4, 3, 2, 1].map((starCount) => {
-              const count =
-                distribution[starCount as keyof typeof distribution];
-              const percentage =
-                totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-              return renderDistributionBar(starCount, percentage);
-            })}
-          </View>
-        </View>
+  //         <View style={styles.distributionContainer}>
+  //           {[5, 4, 3, 2, 1].map((starCount) => {
+  //             const count =
+  //               distribution[starCount as keyof typeof distribution];
+  //             const percentage =
+  //               totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+  //             return renderDistributionBar(starCount, percentage);
+  //           })}
+  //         </View>
+  //       </View>
 
-        <TouchableOpacity
-          style={styles.viewCommentsButton}
-          onPress={() =>
-            (navigation as any).navigate("AllComments", {
-              collection,
-              brandName,
-            })
-          }
-        >
-          <Text style={styles.viewCommentsText}>查看所有评论</Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={theme.colors.gray600}
-          />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+  //       <TouchableOpacity
+  //         style={styles.viewCommentsButton}
+  //         onPress={() =>
+  //           (navigation as any).navigate("AllComments", {
+  //             collection,
+  //             brandName,
+  //           })
+  //         }
+  //       >
+  //         <Text style={styles.viewCommentsText}>查看所有评论</Text>
+  //         <Ionicons
+  //           name="chevron-forward"
+  //           size={16}
+  //           color={theme.colors.gray600}
+  //         />
+  //       </TouchableOpacity>
+  //     </View>
+  //   );
+  // };
 
   const renderReview = () => {
     if (!collection.reviewText) return null;
@@ -364,7 +364,11 @@ const CollectionDetailScreen = () => {
 
         {postsLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.gray400} />
+            <Image
+              source={require("../../assets/gif/profile-loading.gif")}
+              style={styles.loadingGif}
+              resizeMode="contain"
+            />
           </View>
         ) : relatedPosts.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -707,6 +711,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.gray400,
+  },
+  loadingGif: {
+    width: screenWidth * 0.5,
+    height: screenWidth * 0.5,
   },
 });
 

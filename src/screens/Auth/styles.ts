@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Dimensions } from "react-native";
 import { theme } from "../../theme";
 import { SCREEN_WIDTH } from "./constants";
 
@@ -486,9 +486,13 @@ export const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   brandLoadingContainer: {
-    padding: 40,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  loadingGif: {
+    width: Dimensions.get("window").width * 0.5,
+    height: Dimensions.get("window").width * 0.5,
   },
   brandLoadingText: {
     marginTop: 8,
@@ -510,11 +514,6 @@ export const styles = StyleSheet.create({
   },
   brandInfo: {
     flex: 1,
-  },
-  brandName: {
-    fontSize: 15,
-    fontFamily: "Inter-Regular",
-    color: theme.colors.black,
   },
   brandNameSelected: {
     fontFamily: "Inter-Medium",

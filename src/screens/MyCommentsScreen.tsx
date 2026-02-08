@@ -7,6 +7,8 @@ import {
     TouchableWithoutFeedback,
     View,
     Dimensions,
+    Image as RNImage,
+    StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -246,10 +248,11 @@ const MyCommentsScreen = () => {
 
             {isLoading ? (
                 <VStack alignItems="center" justifyContent="center" flex={1}>
-                    <ActivityIndicator size="small" color={theme.colors.gray400} />
-                    <Text fontSize="$sm" color="$gray400" mt="$sm">
-                        加载中...
-                    </Text>
+                    <RNImage
+                        source={require("../../assets/gif/profile-loading.gif")}
+                        style={styles.loadingGif}
+                        resizeMode="contain"
+                    />
                 </VStack>
             ) : (
                 <FlatList
@@ -381,5 +384,12 @@ const MyCommentsScreen = () => {
         </SafeAreaView>
     );
 };
+
+const styles = StyleSheet.create({
+    loadingGif: {
+        width: Dimensions.get("window").width * 0.5,
+        height: Dimensions.get("window").width * 0.5,
+    },
+});
 
 export default MyCommentsScreen;

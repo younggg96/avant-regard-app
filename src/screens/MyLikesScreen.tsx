@@ -7,6 +7,8 @@ import {
     ScrollView as RNScrollView,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    Image as RNImage,
+    StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -38,6 +40,13 @@ import { Post as DisplayPost } from "../components/PostCard";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type TabType = "posts" | "comments";
+
+const styles = StyleSheet.create({
+    loadingGif: {
+        width: SCREEN_WIDTH,
+        height: SCREEN_WIDTH,
+    },
+});
 
 const MyLikesScreen = () => {
     const navigation = useNavigation();
@@ -186,10 +195,11 @@ const MyLikesScreen = () => {
         if (postsLoading) {
             return (
                 <VStack alignItems="center" justifyContent="center" flex={1} py="$xxl">
-                    <ActivityIndicator color={theme.colors.gray400} />
-                    <Text fontSize="$sm" color="$gray400" mt="$sm">
-                        加载中...
-                    </Text>
+                    <RNImage
+                        source={require("../../assets/gif/profile-loading.gif")}
+                        style={styles.loadingGif}
+                        resizeMode="contain"
+                    />
                 </VStack>
             );
         }
@@ -231,18 +241,6 @@ const MyLikesScreen = () => {
                                     post={post}
                                     onPress={() => handlePostPress(post)}
                                 />
-                            </Pressable>
-                            {/* 取消点赞按钮 */}
-                            <Pressable
-                                position="absolute"
-                                top={8}
-                                right={8}
-                                bg="rgba(0,0,0,0.5)"
-                                p="$xs"
-                                borderRadius={16}
-                                onPress={() => handleUnlikePost(post)}
-                            >
-                                <Ionicons name="heart" size={16} color="#FF3040" />
                             </Pressable>
                         </Box>
                     ))}
@@ -347,10 +345,11 @@ const MyLikesScreen = () => {
         if (commentsLoading) {
             return (
                 <VStack alignItems="center" justifyContent="center" flex={1} py="$xxl">
-                    <ActivityIndicator color={theme.colors.gray400} />
-                    <Text fontSize="$sm" color="$gray400" mt="$sm">
-                        加载中...
-                    </Text>
+                    <RNImage
+                        source={require("../../assets/gif/profile-loading.gif")}
+                        style={styles.loadingGif}
+                        resizeMode="contain"
+                    />
                 </VStack>
             );
         }

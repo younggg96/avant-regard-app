@@ -9,6 +9,20 @@ import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
 import { Alert } from "../../../utils/Alert";
 
+// 每个 Tab 的加载状态
+interface TabLoadingState {
+  forum: boolean;
+  recommend: boolean;
+  following: boolean;
+}
+
+// 每个 Tab 是否已加载过
+interface TabLoadedState {
+  forum: boolean;
+  recommend: boolean;
+  following: boolean;
+}
+
 interface UseDiscoverDataReturn {
   // 状态
   posts: DisplayPost[];
@@ -21,9 +35,13 @@ interface UseDiscoverDataReturn {
   loading: boolean;
   error: string | null;
   userInfoCache: React.MutableRefObject<UserInfoCache>;
+  // Tab 独立加载状态
+  tabLoading: TabLoadingState;
+  tabLoaded: TabLoadedState;
   // 操作方法
   handleRefresh: (activeTab: TabType) => Promise<void>;
   handleLike: (postId: string) => Promise<void>;
+  loadTabData: (tab: TabType) => Promise<void>;
   setPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
   setForumPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
 }
@@ -31,6 +49,7 @@ interface UseDiscoverDataReturn {
 /**
  * 发现页数据获取 Hook
  * 管理所有数据的获取、缓存和刷新逻辑
+ * 支持懒加载：滑动到对应 tab 时才加载数据
  */
 export const useDiscoverData = (): UseDiscoverDataReturn => {
   const { user } = useAuthStore();
@@ -43,6 +62,20 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 每个 Tab 独立的加载状态
+  const [tabLoading, setTabLoading] = useState<TabLoadingState>({
+    forum: false,
+    recommend: false,
+    following: false,
+  });
+
+  // 每个 Tab 是否已加载过
+  const [tabLoaded, setTabLoaded] = useState<TabLoadedState>({
+    forum: false,
+    recommend: false,
+    following: false,
+  });
 
   // 缓存用户信息
   const userInfoCache = useRef<UserInfoCache>(new Map());
@@ -185,36 +218,75 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   }, []);
 
   /**
-   * 初始化加载数据
+   * 加载指定 Tab 的数据（懒加载）
+   */
+  const loadTabData = useCallback(
+    async (tab: TabType) => {
+      // 如果已经加载过或正在加载，则跳过
+      if (tabLoaded[tab] || tabLoading[tab]) {
+        return;
+      }
+
+      setTabLoading((prev) => ({ ...prev, [tab]: true }));
+
+      try {
+        if (tab === "forum") {
+          await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
+        } else if (tab === "recommend") {
+          await Promise.all([fetchPosts(), fetchBanners()]);
+        } else if (tab === "following") {
+          await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+        }
+        setTabLoaded((prev) => ({ ...prev, [tab]: true }));
+      } catch (err) {
+        console.error(`加载 ${tab} tab 数据失败:`, err);
+      } finally {
+        setTabLoading((prev) => ({ ...prev, [tab]: false }));
+      }
+    },
+    [tabLoaded, tabLoading, fetchPosts, fetchForumPosts, fetchBanners, fetchCommunities, fetchFollowingUsers]
+  );
+
+  /**
+   * 初始化加载数据 - 只加载推荐 tab 的数据（默认显示的 tab）
    */
   useEffect(() => {
     const initData = async () => {
-      await Promise.all([
-        fetchPosts(),
-        fetchFollowingUsers(),
-        fetchBanners(),
-        fetchForumPosts(),
-        fetchCommunities(),
-      ]);
+      setTabLoading((prev) => ({ ...prev, recommend: true }));
+      try {
+        await Promise.all([fetchPosts(), fetchBanners()]);
+        setTabLoaded((prev) => ({ ...prev, recommend: true }));
+      } catch (err) {
+        console.error("初始化加载推荐数据失败:", err);
+      } finally {
+        setTabLoading((prev) => ({ ...prev, recommend: false }));
+      }
       setIsInitialized(true);
     };
     initData();
-  }, [fetchPosts, fetchBanners, fetchForumPosts, fetchCommunities, fetchFollowingUsers]);
+  }, [fetchPosts, fetchBanners]);
 
   /**
-   * 刷新数据
+   * 刷新数据 - 刷新时也更新 tabLoaded 状态
    */
   const handleRefresh = useCallback(
     async (activeTab: TabType) => {
       setRefreshing(true);
-      if (activeTab === "forum") {
-        await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
-      } else if (activeTab === "recommend") {
-        await Promise.all([fetchPosts(), fetchBanners()]);
-      } else {
-        await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+      try {
+        if (activeTab === "forum") {
+          await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
+        } else if (activeTab === "recommend") {
+          await Promise.all([fetchPosts(), fetchBanners()]);
+        } else {
+          await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+        }
+        // 刷新成功后确保标记为已加载
+        setTabLoaded((prev) => ({ ...prev, [activeTab]: true }));
+      } catch (err) {
+        console.error(`刷新 ${activeTab} 数据失败:`, err);
+      } finally {
+        setRefreshing(false);
       }
-      setRefreshing(false);
     },
     [fetchPosts, fetchFollowingUsers, fetchBanners, fetchForumPosts, fetchCommunities]
   );
@@ -307,8 +379,11 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     loading,
     error,
     userInfoCache,
+    tabLoading,
+    tabLoaded,
     handleRefresh,
     handleLike,
+    loadTabData,
     setPosts,
     setForumPosts,
   };

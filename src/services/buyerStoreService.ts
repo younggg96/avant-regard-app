@@ -63,6 +63,22 @@ export interface BrandRecommendation {
   relatedBrands: string[];
 }
 
+// 地图视口查询参数
+export interface ViewportStoreParams {
+  ne_lat: number;
+  ne_lng: number;
+  sw_lat: number;
+  sw_lng: number;
+  country?: string;
+  city?: string;
+  brand?: string;
+  style?: string;
+  styles?: string[];
+  openOnly?: boolean;
+  hasPhone?: boolean;
+  searchQuery?: string;
+}
+
 // 通用请求方法
 async function request<T>(
   endpoint: string,
@@ -318,6 +334,23 @@ export const getNearbyStores = async (
     }
   );
 
+  return result.stores;
+};
+
+/**
+ * 获取地图视口范围内的买手店
+ * POST /api/buyer-stores/viewport
+ */
+export const getStoresInViewport = async (
+  params: ViewportStoreParams
+): Promise<BuyerStore[]> => {
+  const result = await request<{ stores: BuyerStore[]; total: number }>(
+    `/api/buyer-stores/viewport`,
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
   return result.stores;
 };
 
@@ -836,6 +869,7 @@ export const buyerStoreService = {
   getStoresByBrand,
   getBrandRecommendations,
   getNearbyStores,
+  getStoresInViewport,
   searchStores,
   createStore,
   updateStore,

@@ -594,8 +594,11 @@ const ProfileScreen = () => {
     if (shouldShowLoading) {
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          <Image
+            source={require("../../assets/gif/profile-loading.gif")}
+            style={styles.profileLoadingGif}
+            resizeMode="contain"
+          />
         </VStack>
       );
     }
@@ -1276,6 +1279,10 @@ const styles = StyleSheet.create({
   // 帖子
   postsContainer: {
     paddingBottom: theme.spacing.xl,
+  },
+  profileLoadingGif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT / 2,
   },
 });
 
