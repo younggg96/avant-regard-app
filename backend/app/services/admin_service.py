@@ -526,11 +526,12 @@ class AdminService:
         return bool(result.data)
 
     def admin_upload_brand_image(self, brand_id: int, image_url: str, admin_id: int) -> dict:
-        """管理员上传品牌图片（直接 APPROVED）"""
+        """管理员上传品牌图片（直接 APPROVED + 选中）"""
         result = self.db.table("brand_images").insert({
             "brand_id": brand_id,
             "image_url": image_url,
             "status": "APPROVED",
+            "is_selected": True,
             "uploaded_by": admin_id,
         }).execute()
         if not result.data:

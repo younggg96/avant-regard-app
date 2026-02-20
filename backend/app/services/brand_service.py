@@ -23,13 +23,29 @@ class BrandService:
         return sanitized.strip()
 
     def _get_brand_cover_images(self, brand_id: int) -> List[str]:
-        """获取品牌被选中展示的图片 URL 列表"""
+        """获取品牌被选中展示的图片 URL 列表，无选中图片时回退到所有已审核图片"""
+        try:
+            result = (
+                self.db.table("brand_images")
+                .select("image_url")
+                .eq("brand_id", brand_id)
+                .eq("status", "APPROVED")
+                .eq("is_selected", True)
+                .order("sort_order")
+                .order("created_at")
+                .execute()
+            )
+            urls = [r["image_url"] for r in result.data if r.get("image_url")]
+            if urls:
+                return urls
+        except Exception:
+            pass
+
         result = (
             self.db.table("brand_images")
             .select("image_url")
             .eq("brand_id", brand_id)
             .eq("status", "APPROVED")
-            .eq("is_selected", True)
             .order("sort_order")
             .order("created_at")
             .execute()
