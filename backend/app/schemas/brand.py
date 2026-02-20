@@ -33,6 +33,7 @@ class BrandImage(BaseModel):
     imageUrl: str
     sortOrder: int = 0
     status: str = "PENDING"
+    isSelected: bool = False
     uploadedBy: Optional[int] = None
     createdAt: Optional[str] = None
 

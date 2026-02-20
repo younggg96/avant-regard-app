@@ -476,6 +476,7 @@ class AdminService:
             "imageUrl": row["image_url"],
             "sortOrder": row.get("sort_order", 0),
             "status": row.get("status", "PENDING"),
+            "isSelected": row.get("is_selected", False),
             "uploadedBy": row.get("uploaded_by"),
             "createdAt": row.get("created_at"),
         }
@@ -548,6 +549,18 @@ class AdminService:
             .execute()
         )
         return [self._format_brand_image(r) for r in result.data]
+
+    def toggle_brand_image_selected(self, image_id: int, selected: bool) -> dict:
+        """切换品牌图片的选中状态"""
+        result = (
+            self.db.table("brand_images")
+            .update({"is_selected": selected})
+            .eq("id", image_id)
+            .execute()
+        )
+        if not result.data:
+            raise Exception("图片不存在")
+        return self._format_brand_image(result.data[0])
 
 
 # 单例

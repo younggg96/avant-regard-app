@@ -408,6 +408,22 @@ class AdminUploadBrandImageRequest(BaseModel):
     imageUrl: str
 
 
+class ToggleBrandImageSelectedRequest(BaseModel):
+    selected: bool
+
+
+@router.post("/brand-images/{image_id}/toggle-select")
+async def toggle_brand_image_selected(
+    image_id: int,
+    request: ToggleBrandImageSelectedRequest,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """切换品牌图片选中状态（管理员）"""
+    image = admin_service.toggle_brand_image_selected(image_id, request.selected)
+    cache_service.invalidate_brands()
+    return success(image)
+
+
 @router.get("/brand-images/pending")
 async def get_pending_brand_images(
     current_user_id: int = Depends(get_current_admin_user)
