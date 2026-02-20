@@ -303,6 +303,42 @@ async def batch_delete_community_posts(
     return success(result)
 
 
+# ==================== 品牌提交审核 ====================
+
+@router.get("/brand-submissions/pending")
+async def get_pending_brand_submissions(
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """获取待审核品牌提交列表"""
+    result = admin_service.get_pending_brand_submissions()
+    return success(result)
+
+
+@router.post("/brand-submissions/{submission_id}/approve")
+async def approve_brand_submission(
+    submission_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """审核通过品牌提交"""
+    ok = admin_service.approve_brand_submission(submission_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="提交记录不存在或已审核")
+    return success(message="品牌审核通过")
+
+
+@router.post("/brand-submissions/{submission_id}/reject")
+async def reject_brand_submission(
+    submission_id: int,
+    reason: str = Query(None),
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """审核拒绝品牌提交"""
+    ok = admin_service.reject_brand_submission(submission_id, reason)
+    if not ok:
+        raise HTTPException(status_code=404, detail="提交记录不存在或已审核")
+    return success(message="品牌审核已拒绝")
+
+
 # ==================== 广播通知 ====================
 
 @router.post("/notifications/broadcast")

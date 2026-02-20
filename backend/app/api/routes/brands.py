@@ -2,12 +2,14 @@
 品牌相关 API 路由
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import Optional
 
 from app.core.response import success
 from app.services.brand_service import brand_service
 from app.services.cache_service import cache_service, CacheService
+from app.schemas.brand import BrandSubmitRequest
+from app.api.deps import get_current_user_id
 
 router = APIRouter(prefix="/brands", tags=["品牌"])
 
@@ -66,6 +68,34 @@ async def get_brand_categories():
     cache_service.set(cache_key, result, CacheService.TTL_STATIC)
 
     return success(result)
+
+
+@router.post("/submit")
+async def submit_brand(
+    request: BrandSubmitRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """用户提交品牌（需登录）"""
+    submission = brand_service.submit_brand(
+        user_id=current_user_id,
+        name=request.name,
+        category=request.category,
+        founded_year=request.foundedYear,
+        founder=request.founder,
+        country=request.country,
+        website=request.website,
+        cover_image=request.coverImage,
+    )
+    return success(submission.model_dump())
+
+
+@router.get("/my-submissions")
+async def get_my_submissions(
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """获取当前用户的品牌提交记录"""
+    submissions = brand_service.get_user_submissions(current_user_id)
+    return success([s.model_dump() for s in submissions])
 
 
 @router.get("/search")

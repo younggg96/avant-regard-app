@@ -38,3 +38,32 @@ class BrandSearchParams(BaseModel):
     category: Optional[str] = None
     page: int = 1
     pageSize: int = 50
+
+
+class BrandSubmitRequest(BaseModel):
+    """用户提交品牌请求"""
+    name: str
+    category: Optional[str] = None
+    foundedYear: Optional[str] = None
+    founder: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
+    coverImage: Optional[str] = None
+
+
+class BrandSubmission(BaseModel):
+    """品牌提交记录响应"""
+    id: int
+    userId: int
+    name: str
+    category: Optional[str] = None
+    foundedYear: Optional[str] = None
+    founder: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
+    coverImage: Optional[str] = None
+    status: str = "PENDING"
+    rejectReason: Optional[str] = None
+    reviewedAt: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None

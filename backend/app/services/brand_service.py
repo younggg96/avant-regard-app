@@ -4,7 +4,7 @@
 
 from typing import Optional, List, Tuple
 from app.db.supabase import get_supabase
-from app.schemas.brand import Brand
+from app.schemas.brand import Brand, BrandSubmission
 
 
 class BrandService:
@@ -134,6 +134,65 @@ class BrandService:
                     categories.add(cat.strip())
 
         return sorted(list(categories))
+
+
+    def _format_submission(self, data: dict) -> BrandSubmission:
+        """格式化品牌提交记录"""
+        return BrandSubmission(
+            id=data["id"],
+            userId=data["user_id"],
+            name=data["name"],
+            category=data.get("category"),
+            foundedYear=data.get("founded_year"),
+            founder=data.get("founder"),
+            country=data.get("country"),
+            website=data.get("website"),
+            coverImage=data.get("cover_image"),
+            status=data.get("status", "PENDING"),
+            rejectReason=data.get("reject_reason"),
+            reviewedAt=data.get("reviewed_at"),
+            createdAt=data.get("created_at"),
+            updatedAt=data.get("updated_at"),
+        )
+
+    def submit_brand(
+        self,
+        user_id: int,
+        name: str,
+        category: Optional[str] = None,
+        founded_year: Optional[str] = None,
+        founder: Optional[str] = None,
+        country: Optional[str] = None,
+        website: Optional[str] = None,
+        cover_image: Optional[str] = None,
+    ) -> BrandSubmission:
+        """用户提交品牌"""
+        insert_data = {
+            "user_id": user_id,
+            "name": name.strip(),
+            "category": category,
+            "founded_year": founded_year,
+            "founder": founder,
+            "country": country,
+            "website": website,
+            "cover_image": cover_image,
+            "status": "PENDING",
+        }
+        result = self.db.table("brand_submissions").insert(insert_data).execute()
+        if not result.data:
+            raise Exception("提交品牌失败")
+        return self._format_submission(result.data[0])
+
+    def get_user_submissions(self, user_id: int) -> List[BrandSubmission]:
+        """获取用户自己的品牌提交记录"""
+        result = (
+            self.db.table("brand_submissions")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_submission(s) for s in result.data or []]
 
 
 # 创建单例

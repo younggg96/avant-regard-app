@@ -2,10 +2,12 @@
 管理员服务
 """
 from typing import List, Optional
+from datetime import datetime, timezone
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.post import Post
 from app.schemas.comment import PostComment
 from app.schemas.community import Community, CommunityCategory
+from app.schemas.brand import BrandSubmission
 from app.services.post_service import post_service
 
 
@@ -300,6 +302,91 @@ class AdminService:
             else:
                 fail_count += 1
         return {"successCount": success_count, "failCount": fail_count}
+
+    # ==================== 品牌提交审核 ====================
+
+    def _format_brand_submission(self, data: dict) -> dict:
+        """格式化品牌提交记录（管理员视角，包含用户名）"""
+        username = ""
+        user_result = self.db.table("users").select("username").eq("id", data["user_id"]).execute()
+        if user_result.data:
+            username = user_result.data[0]["username"]
+
+        return {
+            "id": data["id"],
+            "userId": data["user_id"],
+            "username": username,
+            "name": data["name"],
+            "category": data.get("category"),
+            "foundedYear": data.get("founded_year"),
+            "founder": data.get("founder"),
+            "country": data.get("country"),
+            "website": data.get("website"),
+            "coverImage": data.get("cover_image"),
+            "status": data.get("status", "PENDING"),
+            "rejectReason": data.get("reject_reason"),
+            "reviewedAt": data.get("reviewed_at"),
+            "createdAt": data.get("created_at"),
+            "updatedAt": data.get("updated_at"),
+        }
+
+    def get_pending_brand_submissions(self) -> List[dict]:
+        """获取待审核品牌提交列表"""
+        result = (
+            self.db.table("brand_submissions")
+            .select("*")
+            .eq("status", "PENDING")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_brand_submission(s) for s in result.data or []]
+
+    def approve_brand_submission(self, submission_id: int) -> bool:
+        """审核通过品牌提交：更新状态并插入 brands 表"""
+        result = (
+            self.db.table("brand_submissions")
+            .select("*")
+            .eq("id", submission_id)
+            .eq("status", "PENDING")
+            .execute()
+        )
+        if not result.data:
+            return False
+
+        submission = result.data[0]
+
+        brand_data = {
+            "name": submission["name"],
+            "category": submission.get("category"),
+            "founded_year": submission.get("founded_year"),
+            "founder": submission.get("founder"),
+            "country": submission.get("country"),
+            "website": submission.get("website"),
+            "cover_image": submission.get("cover_image"),
+        }
+        self.db.table("brands").insert(brand_data).execute()
+
+        self.db.table("brand_submissions").update({
+            "status": "APPROVED",
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", submission_id).execute()
+
+        return True
+
+    def reject_brand_submission(self, submission_id: int, reason: Optional[str] = None) -> bool:
+        """审核拒绝品牌提交"""
+        result = (
+            self.db.table("brand_submissions")
+            .update({
+                "status": "REJECTED",
+                "reject_reason": reason,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            })
+            .eq("id", submission_id)
+            .eq("status", "PENDING")
+            .execute()
+        )
+        return bool(result.data)
 
 
 # 单例

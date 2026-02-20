@@ -1,0 +1,13 @@
+# Supabase Configuration
+SUPABASE_URL=https://d61omf0g91hgk1gnp7i0.baseapi.memfiredb.com
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImV4cCI6MzM0NzAyODU0MCwiaWF0IjoxNzcwMjI4NTQwLCJpc3MiOiJzdXBhYmFzZSJ9.5i1SEUf-Okn4OyKUIMmuK8foe5FiRjqRnG3CC-MbRoY
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiZXhwIjozMzQ3MDI4NTQwLCJpYXQiOjE3NzAyMjg1NDAsImlzcyI6InN1cGFiYXNlIn0.bJWO0-ob7ewPVK4f_MCsnTGwWQcsc3QjjsS5bBIzOuU
+
+# Redis Configuration (optional, for rate limiting)
+REDIS_URL=redis://localhost:6379/0
+
+# Server Configuration
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8000
+DEBUG=true
+CORS_ORIGINS=["http://localhost:3000","http://localhost:19006","exp://localhost:8081"]
