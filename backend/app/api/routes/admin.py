@@ -44,6 +44,17 @@ class BatchDeletePostsRequest(BaseModel):
     postIds: List[int]
 
 
+class UpdateBrandRequest(BaseModel):
+    """更新品牌请求"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    category: Optional[str] = None
+    foundedYear: Optional[str] = None
+    founder: Optional[str] = None
+    country: Optional[str] = None
+    website: Optional[str] = None
+    coverImage: Optional[str] = None
+
+
 class BroadcastNotificationRequest(BaseModel):
     """广播通知请求"""
     title: str = Field(..., min_length=1, max_length=100, description="通知标题")
@@ -337,6 +348,58 @@ async def reject_brand_submission(
     if not ok:
         raise HTTPException(status_code=404, detail="提交记录不存在或已审核")
     return success(message="品牌审核已拒绝")
+
+
+# ==================== 品牌管理 ====================
+
+@router.get("/brands")
+async def get_all_brands_admin(
+    keyword: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(50, ge=1, le=200),
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """获取品牌列表（管理员）"""
+    result = admin_service.get_all_brands_admin(keyword=keyword, page=page, page_size=pageSize)
+    return success(result)
+
+
+@router.put("/brands/{brand_id}")
+async def update_brand(
+    brand_id: int,
+    request: UpdateBrandRequest,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """更新品牌信息（管理员）"""
+    result = admin_service.update_brand(
+        brand_id,
+        name=request.name,
+        category=request.category,
+        founded_year=request.foundedYear,
+        founder=request.founder,
+        country=request.country,
+        website=request.website,
+        cover_image=request.coverImage,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="品牌不存在")
+
+    cache_service.invalidate_brands()
+    return success(result)
+
+
+@router.delete("/brands/{brand_id}")
+async def delete_brand(
+    brand_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """删除品牌（管理员）"""
+    ok = admin_service.delete_brand(brand_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="品牌不存在")
+
+    cache_service.invalidate_brands()
+    return success(message="品牌删除成功")
 
 
 # ==================== 广播通知 ====================

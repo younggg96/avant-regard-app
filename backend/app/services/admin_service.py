@@ -388,6 +388,83 @@ class AdminService:
         )
         return bool(result.data)
 
+    # ==================== 品牌管理 ====================
+
+    def _format_admin_brand(self, data: dict) -> dict:
+        """格式化品牌数据（管理员视角）"""
+        return {
+            "id": data["id"],
+            "name": data["name"],
+            "category": data.get("category"),
+            "foundedYear": data.get("founded_year"),
+            "founder": data.get("founder"),
+            "country": data.get("country"),
+            "website": data.get("website"),
+            "coverImage": data.get("cover_image"),
+            "createdAt": data.get("created_at"),
+            "updatedAt": data.get("updated_at"),
+        }
+
+    def get_all_brands_admin(
+        self, keyword: Optional[str] = None, page: int = 1, page_size: int = 50
+    ) -> dict:
+        """获取品牌列表（管理员，支持搜索和分页）"""
+        query = self.db.table("brands").select("*", count="exact")
+
+        if keyword and keyword.strip():
+            safe = keyword.strip().replace("%", "\\%").replace("_", "\\_")
+            query = query.or_(
+                f"name.ilike.*{safe}*,founder.ilike.*{safe}*,country.ilike.*{safe}*"
+            )
+
+        query = query.order("name")
+        offset = (page - 1) * page_size
+        query = query.range(offset, offset + page_size - 1)
+
+        result = query.execute()
+        total = result.count or 0
+        brands = [self._format_admin_brand(b) for b in result.data or []]
+
+        return {
+            "brands": brands,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+    def update_brand(self, brand_id: int, **kwargs) -> Optional[dict]:
+        """更新品牌信息"""
+        update_data = {}
+        field_mapping = {
+            "name": "name",
+            "category": "category",
+            "founded_year": "founded_year",
+            "founder": "founder",
+            "country": "country",
+            "website": "website",
+            "cover_image": "cover_image",
+        }
+        for key, db_field in field_mapping.items():
+            if key in kwargs and kwargs[key] is not None:
+                update_data[db_field] = kwargs[key]
+
+        if not update_data:
+            result = self.db.table("brands").select("*").eq("id", brand_id).execute()
+            if not result.data:
+                return None
+            return self._format_admin_brand(result.data[0])
+
+        self.db.table("brands").update(update_data).eq("id", brand_id).execute()
+        result = self.db.table("brands").select("*").eq("id", brand_id).execute()
+        if not result.data:
+            return None
+        return self._format_admin_brand(result.data[0])
+
+    def delete_brand(self, brand_id: int) -> bool:
+        """删除品牌"""
+        result = self.db.table("brands").delete().eq("id", brand_id).execute()
+        return bool(result.data)
+
 
 # 单例
 admin_service = AdminService()
