@@ -2,9 +2,10 @@
 秀场服务
 """
 
+import time
 from typing import Optional, List, Tuple
 from app.db.supabase import get_supabase
-from app.schemas.show import Show
+from app.schemas.show import Show, CreateShowRequest
 
 
 class ShowService:
@@ -33,9 +34,75 @@ class ShowService:
             showUrl=show.get("show_url"),
             year=show.get("year"),
             category=show.get("category"),
+            description=show.get("description"),
+            designer=show.get("designer"),
+            createdBy=show.get("created_by"),
+            status=show.get("status") or "APPROVED",
+            rejectReason=show.get("reject_reason"),
             createdAt=show.get("created_at"),
             updatedAt=show.get("updated_at"),
         )
+
+    def create_show(self, data: CreateShowRequest, user_id: int) -> Show:
+        """创建秀场（状态为 PENDING，等待管理员审核）"""
+        brand_slug = data.brand.replace(" ", "_").lower()
+        show_id = f"{brand_slug}_{data.year}_{int(time.time())}"
+
+        row = {
+            "id": show_id,
+            "brand_name": data.brand,
+            "title": data.title,
+            "year": data.year,
+            "season": data.season,
+            "category": data.category,
+            "designer": data.designer,
+            "description": data.description,
+            "cover_image": data.coverImage,
+            "created_by": user_id,
+            "status": "PENDING",
+        }
+
+        result = self.db.table("shows").insert(row).execute()
+
+        if not result.data:
+            raise Exception("创建秀场失败")
+
+        return self._format_show(result.data[0])
+
+    def get_pending_shows(self) -> List[Show]:
+        """获取待审核秀场列表"""
+        result = (
+            self.db.table("shows")
+            .select("*")
+            .eq("status", "PENDING")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_show(s) for s in result.data]
+
+    def approve_show(self, show_id: str) -> Show:
+        """审核通过秀场"""
+        result = (
+            self.db.table("shows")
+            .update({"status": "APPROVED", "reject_reason": None})
+            .eq("id", show_id)
+            .execute()
+        )
+        if not result.data:
+            raise Exception("秀场不存在")
+        return self._format_show(result.data[0])
+
+    def reject_show(self, show_id: str, reason: Optional[str] = None) -> Show:
+        """拒绝秀场"""
+        result = (
+            self.db.table("shows")
+            .update({"status": "REJECTED", "reject_reason": reason})
+            .eq("id", show_id)
+            .execute()
+        )
+        if not result.data:
+            raise Exception("秀场不存在")
+        return self._format_show(result.data[0])
 
     def get_all_shows(
         self,
@@ -46,31 +113,28 @@ class ShowService:
         page: int = 1,
         page_size: int = 50,
     ) -> Tuple[List[Show], int]:
-        """获取秀场列表"""
+        """获取秀场列表（仅已审核通过的）"""
         query = self.db.table("shows").select("*", count="exact")
 
-        # 关键词搜索（品牌、季度、类别）
+        # 只返回已审核通过的（含旧数据 NULL status）
+        query = query.or_("status.eq.APPROVED,status.is.null")
+
         if keyword:
             query = query.or_(
                 f"brand_name.ilike.%{keyword}%,season.ilike.%{keyword}%,category.ilike.%{keyword}%"
             )
 
-        # 品牌筛选
         if brand:
             query = query.ilike("brand_name", f"%{brand}%")
 
-        # 年份筛选
         if year:
             query = query.eq("year", year)
 
-        # 分类筛选
         if category:
             query = query.ilike("category", f"%{category}%")
 
-        # 排序：按年份降序，然后按品牌名升序
         query = query.order("year", desc=True).order("brand_name")
 
-        # 分页
         offset = (page - 1) * page_size
         query = query.range(offset, offset + page_size - 1)
 
@@ -103,11 +167,12 @@ class ShowService:
         return self._format_show(result.data[0])
 
     def get_shows_by_brand(self, brand_name: str) -> List[Show]:
-        """获取某品牌的所有秀场"""
+        """获取某品牌的所有已审核通过的秀场"""
         result = (
             self.db.table("shows")
             .select("*")
             .ilike("brand_name", brand_name)
+            .or_("status.eq.APPROVED,status.is.null")
             .order("year", desc=True)
             .execute()
         )

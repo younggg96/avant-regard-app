@@ -2,12 +2,14 @@
 秀场相关 API 路由
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
 
 from app.core.response import success
 from app.services.show_service import show_service
 from app.services.cache_service import cache_service, CacheService
+from app.schemas.show import CreateShowRequest
+from app.api.deps import get_current_user_id, get_current_admin_user
 
 router = APIRouter(prefix="/shows", tags=["秀场"])
 
@@ -126,6 +128,52 @@ async def get_shows_by_brand(brand_name: str):
     cache_service.set(cache_key, result, CacheService.TTL_LONG)
 
     return success(result)
+
+
+@router.post("")
+async def create_show(
+    data: CreateShowRequest,
+    user_id: int = Depends(get_current_user_id),
+):
+    """创建秀场（需要登录，状态为 PENDING 等待审核）"""
+    show = show_service.create_show(data, user_id)
+    return success(show.model_dump())
+
+
+@router.get("/admin/pending")
+async def get_pending_shows(
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """获取待审核秀场列表（管理员）"""
+    shows = show_service.get_pending_shows()
+    return success({
+        "shows": [s.model_dump() for s in shows],
+        "total": len(shows),
+    })
+
+
+@router.post("/admin/{show_id}/approve")
+async def approve_show(
+    show_id: str,
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """审核通过秀场（管理员）"""
+    show = show_service.approve_show(show_id)
+
+    cache_service.delete(cache_service.get_shows_by_brand_key(show.brand))
+
+    return success(show.model_dump())
+
+
+@router.post("/admin/{show_id}/reject")
+async def reject_show(
+    show_id: str,
+    reason: Optional[str] = Query(None, description="拒绝原因"),
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """拒绝秀场（管理员）"""
+    show = show_service.reject_show(show_id, reason)
+    return success(show.model_dump())
 
 
 @router.get("/by-url")

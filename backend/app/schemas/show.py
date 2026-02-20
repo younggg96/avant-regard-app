@@ -16,6 +16,11 @@ class Show(BaseModel):
     showUrl: Optional[str] = None       # 秀场链接
     year: Optional[int] = None          # 年份
     category: Optional[str] = None      # 类别：Ready-to-Wear, Couture, Menswear 等
+    description: Optional[str] = None   # 秀场介绍
+    designer: Optional[str] = None      # 主设计师
+    createdBy: Optional[int] = None     # 创建者用户 ID
+    status: Optional[str] = "APPROVED"  # PENDING / APPROVED / REJECTED
+    rejectReason: Optional[str] = None  # 拒绝原因
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -41,6 +46,18 @@ class ShowListResponse(BaseModel):
     total: int
     page: int
     pageSize: int
+
+
+class CreateShowRequest(BaseModel):
+    """创建秀场请求"""
+    brand: str                          # 品牌名称（必填）
+    title: str                          # 秀场标题（必填）
+    year: int                           # 年份（必填）
+    season: str                         # 季度（必填）
+    category: Optional[str] = None      # 类别
+    designer: Optional[str] = None      # 主设计师
+    description: Optional[str] = None   # 秀场介绍
+    coverImage: Optional[str] = None    # 封面图片 URL
 
 
 class ShowSearchParams(BaseModel):
