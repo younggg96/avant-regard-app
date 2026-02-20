@@ -17,11 +17,24 @@ class Brand(BaseModel):
     country: Optional[str] = None
     website: Optional[str] = None
     coverImage: Optional[str] = None
+    coverImages: Optional[List[str]] = None
     latestSeason: Optional[str] = None
     vogueSlug: Optional[str] = None
     vogueUrl: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+
+
+class BrandImage(BaseModel):
+    """品牌图片"""
+    id: int
+    brandId: int
+    brandName: Optional[str] = None
+    imageUrl: str
+    sortOrder: int = 0
+    status: str = "PENDING"
+    uploadedBy: Optional[int] = None
+    createdAt: Optional[str] = None
 
 
 class BrandListResponse(BaseModel):

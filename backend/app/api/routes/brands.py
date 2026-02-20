@@ -8,6 +8,7 @@ from typing import Optional
 from app.core.response import success
 from app.services.brand_service import brand_service
 from app.services.cache_service import cache_service, CacheService
+from pydantic import BaseModel
 from app.schemas.brand import BrandSubmitRequest
 from app.api.deps import get_current_user_id
 
@@ -96,6 +97,26 @@ async def get_my_submissions(
     """获取当前用户的品牌提交记录"""
     submissions = brand_service.get_user_submissions(current_user_id)
     return success([s.model_dump() for s in submissions])
+
+
+class UploadBrandImageRequest(BaseModel):
+    imageUrl: str
+
+
+@router.post("/{brand_id}/images")
+async def upload_brand_image(
+    brand_id: int,
+    request: UploadBrandImageRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """用户上传品牌图片（需登录，状态为 PENDING 等待审核）"""
+    brand = brand_service.get_brand_by_id(brand_id)
+    if not brand:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="品牌不存在")
+
+    image = brand_service.add_brand_image(brand_id, request.imageUrl, current_user_id)
+    return success(image.model_dump())
 
 
 @router.get("/search")

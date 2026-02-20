@@ -402,6 +402,77 @@ async def delete_brand(
     return success(message="品牌删除成功")
 
 
+# ==================== 品牌图片审核 ====================
+
+class AdminUploadBrandImageRequest(BaseModel):
+    imageUrl: str
+
+
+@router.get("/brand-images/pending")
+async def get_pending_brand_images(
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """获取待审核品牌图片"""
+    images = admin_service.get_pending_brand_images()
+    return success({"images": images, "total": len(images)})
+
+
+@router.post("/brand-images/{image_id}/approve")
+async def approve_brand_image(
+    image_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """审核通过品牌图片"""
+    image = admin_service.approve_brand_image(image_id)
+    cache_service.invalidate_brands()
+    return success(image)
+
+
+@router.post("/brand-images/{image_id}/reject")
+async def reject_brand_image(
+    image_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """拒绝品牌图片"""
+    image = admin_service.reject_brand_image(image_id)
+    return success(image)
+
+
+@router.delete("/brand-images/{image_id}")
+async def delete_brand_image(
+    image_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """删除品牌图片"""
+    ok = admin_service.delete_brand_image(image_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="图片不存在")
+    cache_service.invalidate_brands()
+    return success(message="图片已删除")
+
+
+@router.post("/brands/{brand_id}/images")
+async def admin_upload_brand_image(
+    brand_id: int,
+    request: AdminUploadBrandImageRequest,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """管理员上传品牌图片（直接 APPROVED）"""
+    image = admin_service.admin_upload_brand_image(brand_id, request.imageUrl, current_user_id)
+    cache_service.invalidate_brands()
+    return success(image)
+
+
+@router.get("/brands/{brand_id}/images")
+async def get_brand_images_admin(
+    brand_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """获取品牌的所有已审核图片（管理员）"""
+    images = admin_service.get_brand_images(brand_id)
+    return success({"images": images, "total": len(images)})
+
+
 # ==================== 广播通知 ====================
 
 @router.post("/notifications/broadcast")

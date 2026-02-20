@@ -465,6 +465,86 @@ class AdminService:
         result = self.db.table("brands").delete().eq("id", brand_id).execute()
         return bool(result.data)
 
+    # ==================== 品牌图片审核 ====================
+
+    def _format_brand_image(self, row: dict) -> dict:
+        """格式化品牌图片数据"""
+        return {
+            "id": row["id"],
+            "brandId": row["brand_id"],
+            "brandName": row.get("brand_name") or "",
+            "imageUrl": row["image_url"],
+            "sortOrder": row.get("sort_order", 0),
+            "status": row.get("status", "PENDING"),
+            "uploadedBy": row.get("uploaded_by"),
+            "createdAt": row.get("created_at"),
+        }
+
+    def get_pending_brand_images(self) -> list:
+        """获取待审核的品牌图片"""
+        result = (
+            self.db.table("brand_images")
+            .select("brand_images.*, brands.name as brand_name")
+            .eq("status", "PENDING")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_brand_image(r) for r in result.data]
+
+    def approve_brand_image(self, image_id: int) -> dict:
+        """审核通过品牌图片"""
+        result = (
+            self.db.table("brand_images")
+            .update({"status": "APPROVED"})
+            .eq("id", image_id)
+            .execute()
+        )
+        if not result.data:
+            raise Exception("图片不存在")
+        return self._format_brand_image(result.data[0])
+
+    def reject_brand_image(self, image_id: int) -> dict:
+        """拒绝品牌图片"""
+        result = (
+            self.db.table("brand_images")
+            .update({"status": "REJECTED"})
+            .eq("id", image_id)
+            .execute()
+        )
+        if not result.data:
+            raise Exception("图片不存在")
+        return self._format_brand_image(result.data[0])
+
+    def delete_brand_image(self, image_id: int) -> bool:
+        """删除品牌图片"""
+        result = self.db.table("brand_images").delete().eq("id", image_id).execute()
+        return bool(result.data)
+
+    def admin_upload_brand_image(self, brand_id: int, image_url: str, admin_id: int) -> dict:
+        """管理员上传品牌图片（直接 APPROVED）"""
+        result = self.db.table("brand_images").insert({
+            "brand_id": brand_id,
+            "image_url": image_url,
+            "status": "APPROVED",
+            "uploaded_by": admin_id,
+        }).execute()
+        if not result.data:
+            raise Exception("上传图片失败")
+        return self._format_brand_image(result.data[0])
+
+    def get_brand_images(self, brand_id: int) -> list:
+        """获取品牌的所有已审核图片"""
+        result = (
+            self.db.table("brand_images")
+            .select("*")
+            .eq("brand_id", brand_id)
+            .eq("status", "APPROVED")
+            .order("sort_order")
+            .order("created_at")
+            .execute()
+        )
+        return [self._format_brand_image(r) for r in result.data]
+
 
 # 单例
 admin_service = AdminService()

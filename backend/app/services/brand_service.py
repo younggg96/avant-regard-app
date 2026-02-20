@@ -4,7 +4,7 @@
 
 from typing import Optional, List, Tuple
 from app.db.supabase import get_supabase
-from app.schemas.brand import Brand, BrandSubmission
+from app.schemas.brand import Brand, BrandSubmission, BrandImage
 
 
 class BrandService:
@@ -22,8 +22,25 @@ class BrandService:
         sanitized = sanitized.replace(".", " ")
         return sanitized.strip()
 
-    def _format_brand(self, brand: dict) -> Brand:
+    def _get_brand_cover_images(self, brand_id: int) -> List[str]:
+        """获取品牌已审核通过的图片 URL 列表"""
+        result = (
+            self.db.table("brand_images")
+            .select("image_url")
+            .eq("brand_id", brand_id)
+            .eq("status", "APPROVED")
+            .order("sort_order")
+            .order("created_at")
+            .execute()
+        )
+        return [r["image_url"] for r in result.data if r.get("image_url")]
+
+    def _format_brand(self, brand: dict, include_images: bool = False) -> Brand:
         """格式化品牌数据"""
+        cover_images = None
+        if include_images:
+            cover_images = self._get_brand_cover_images(brand["id"])
+
         return Brand(
             id=brand["id"],
             name=brand["name"],
@@ -33,6 +50,7 @@ class BrandService:
             country=brand.get("country"),
             website=brand.get("website"),
             coverImage=brand.get("cover_image"),
+            coverImages=cover_images,
             latestSeason=brand.get("latest_season"),
             vogueSlug=brand.get("vogue_slug"),
             vogueUrl=brand.get("vogue_url"),
@@ -76,7 +94,7 @@ class BrandService:
         return brands, total
 
     def get_brand_by_id(self, brand_id: int) -> Optional[Brand]:
-        """通过 ID 获取品牌"""
+        """通过 ID 获取品牌（含图片列表）"""
         result = (
             self.db.table("brands").select("*").eq("id", brand_id).execute()
         )
@@ -84,10 +102,10 @@ class BrandService:
         if not result.data:
             return None
 
-        return self._format_brand(result.data[0])
+        return self._format_brand(result.data[0], include_images=True)
 
     def get_brand_by_name(self, name: str) -> Optional[Brand]:
-        """通过名称获取品牌"""
+        """通过名称获取品牌（含图片列表）"""
         result = (
             self.db.table("brands").select("*").ilike("name", name).execute()
         )
@@ -95,7 +113,7 @@ class BrandService:
         if not result.data:
             return None
 
-        return self._format_brand(result.data[0])
+        return self._format_brand(result.data[0], include_images=True)
 
     def search_brands(self, keyword: str, limit: int = 20) -> List[Brand]:
         """搜索品牌"""
@@ -193,6 +211,27 @@ class BrandService:
             .execute()
         )
         return [self._format_submission(s) for s in result.data or []]
+
+    def add_brand_image(self, brand_id: int, image_url: str, user_id: int) -> BrandImage:
+        """用户上传品牌图片（PENDING 状态，等待审核）"""
+        result = self.db.table("brand_images").insert({
+            "brand_id": brand_id,
+            "image_url": image_url,
+            "status": "PENDING",
+            "uploaded_by": user_id,
+        }).execute()
+        if not result.data:
+            raise Exception("上传图片失败")
+        row = result.data[0]
+        return BrandImage(
+            id=row["id"],
+            brandId=row["brand_id"],
+            imageUrl=row["image_url"],
+            sortOrder=row.get("sort_order", 0),
+            status=row["status"],
+            uploadedBy=row.get("uploaded_by"),
+            createdAt=row.get("created_at"),
+        )
 
 
 # 创建单例
