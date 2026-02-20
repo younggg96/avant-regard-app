@@ -484,12 +484,16 @@ class AdminService:
         """获取待审核的品牌图片"""
         result = (
             self.db.table("brand_images")
-            .select("brand_images.*, brands.name as brand_name")
+            .select("*, brands(name)")
             .eq("status", "PENDING")
             .order("created_at", desc=True)
             .execute()
         )
-        return [self._format_brand_image(r) for r in result.data]
+        images = []
+        for r in result.data:
+            r["brand_name"] = r.get("brands", {}).get("name", "") if r.get("brands") else ""
+            images.append(self._format_brand_image(r))
+        return images
 
     def approve_brand_image(self, image_id: int) -> dict:
         """审核通过品牌图片"""
