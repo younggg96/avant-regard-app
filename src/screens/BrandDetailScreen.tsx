@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   Image,
   TouchableOpacity,
   Dimensions,
   Linking,
   ActivityIndicator,
+  Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -18,6 +22,9 @@ import { theme } from "../theme";
 import { brandService, Brand } from "../services/brandService";
 import { showService, Show } from "../services/showService";
 import { postService, Post } from "../services/postService";
+import CreateShowModal from "../components/CreateShowModal";
+import ImagePreviewModal from "../components/ImagePreviewModal";
+import { pickAndUploadImage } from "./admin/adminUtils";
 
 type TabType = "shows" | "posts";
 
@@ -49,6 +56,11 @@ const BrandDetailScreen = () => {
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [createShowVisible, setCreateShowVisible] = useState(false);
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
+  const [imagePreviewIndex, setImagePreviewIndex] = useState(0);
+  const [uploadingBrandImage, setUploadingBrandImage] = useState(false);
 
   // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
   const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
@@ -110,6 +122,13 @@ const BrandDetailScreen = () => {
     loadData();
   }, [loadData]);
 
+  const refreshShows = useCallback(async () => {
+    if (brand) {
+      const shows = await showService.getShowsByBrand(brand.name);
+      setBrandShows(shows);
+    }
+  }, [brand]);
+
   const handleBack = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
@@ -166,6 +185,32 @@ const BrandDetailScreen = () => {
     [navigation]
   );
 
+  const handleHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+    setHeroImageIndex(idx);
+  }, []);
+
+  const handleImagePress = useCallback((index: number) => {
+    setImagePreviewIndex(index);
+    setImagePreviewVisible(true);
+  }, []);
+
+  const handleUploadBrandImage = useCallback(async () => {
+    if (!brand) return;
+    try {
+      setUploadingBrandImage(true);
+      const url = await pickAndUploadImage([3, 4]);
+      if (url) {
+        await brandService.uploadBrandImage(brand.id, url);
+        Alert.alert("提交成功", "图片已提交，等待管理员审核通过后展示。");
+      }
+    } catch (error) {
+      Alert.alert("错误", error instanceof Error ? error.message : "上传失败");
+    } finally {
+      setUploadingBrandImage(false);
+    }
+  }, [brand]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
@@ -205,7 +250,7 @@ const BrandDetailScreen = () => {
     );
   }
 
-  const coverImage = brand.coverImage || brandShows[0]?.coverImage;
+  const heroImages = brand?.coverImages || [];
 
   return (
     <View style={styles.container}>
@@ -216,11 +261,19 @@ const BrandDetailScreen = () => {
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          {coverImage ? (
-            <Image
-              source={{ uri: coverImage }}
-              style={styles.coverImage}
-              resizeMode="cover"
+          {heroImages.length > 0 ? (
+            <FlatList
+              data={heroImages}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleHeroScroll}
+              keyExtractor={(_, i) => String(i)}
+              renderItem={({ item, index }) => (
+                <TouchableOpacity activeOpacity={0.9} onPress={() => handleImagePress(index)}>
+                  <Image source={{ uri: item }} style={{ width: screenWidth, height: 320 }} resizeMode="cover" />
+                </TouchableOpacity>
+              )}
             />
           ) : (
             <View style={[styles.coverImage, styles.placeholderCover]}>
@@ -229,10 +282,16 @@ const BrandDetailScreen = () => {
               </Text>
             </View>
           )}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.7)"]}
-            style={styles.heroGradient}
-          />
+
+          {/* Pagination dots */}
+          {heroImages.length > 1 && (
+            <View style={styles.heroDots}>
+              {heroImages.map((_, i) => (
+                <View key={i} style={[styles.heroDot, i === heroImageIndex && styles.heroDotActive]} />
+              ))}
+            </View>
+          )}
+
           <SafeAreaView style={styles.heroContent} edges={["top"]}>
             <TouchableOpacity
               style={styles.backButtonHero}
@@ -338,6 +397,23 @@ const BrandDetailScreen = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Upload brand image button */}
+          <TouchableOpacity
+            style={styles.uploadBrandImageBtn}
+            onPress={handleUploadBrandImage}
+            disabled={uploadingBrandImage}
+            activeOpacity={0.7}
+          >
+            {uploadingBrandImage ? (
+              <ActivityIndicator size="small" color={theme.colors.black} />
+            ) : (
+              <>
+                <Ionicons name="camera-outline" size={18} color={theme.colors.black} />
+                <Text style={styles.uploadBrandImageText}>上传品牌图片</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Tab Navigation */}
@@ -452,6 +528,16 @@ const BrandDetailScreen = () => {
         {/* Shows Section */}
         {activeTab === "shows" && (
           <>
+            {/* Upload show button */}
+            <TouchableOpacity
+              style={styles.uploadShowButton}
+              onPress={() => setCreateShowVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={theme.colors.black} />
+              <Text style={styles.uploadShowButtonText}>上传秀场</Text>
+            </TouchableOpacity>
+
             {brandShows.length > 0 ? (
               <View style={styles.showsSection}>
                 <View style={styles.showsGrid}>
@@ -494,6 +580,25 @@ const BrandDetailScreen = () => {
           </>
         )}
       </ScrollView>
+
+      {/* Create Show Modal */}
+      {brand && (
+        <CreateShowModal
+          visible={createShowVisible}
+          brandName={brand.name}
+          onClose={() => setCreateShowVisible(false)}
+          onSuccess={refreshShows}
+        />
+      )}
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        visible={imagePreviewVisible}
+        imageUrls={heroImages}
+        initialIndex={imagePreviewIndex}
+        title={brand.name}
+        onClose={() => setImagePreviewVisible(false)}
+      />
     </View>
   );
 };
@@ -702,7 +807,63 @@ const styles = StyleSheet.create({
     color: theme.colors.gray400,
     marginLeft: 6,
   },
+  // Hero dots
+  heroDots: {
+    position: "absolute",
+    bottom: 52,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+  heroDotActive: {
+    backgroundColor: theme.colors.white,
+    width: 18,
+  },
+  // Upload brand image
+  uploadBrandImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderStyle: "dashed",
+  },
+  uploadBrandImageText: {
+    fontSize: 13,
+    color: theme.colors.black,
+    fontWeight: "500",
+  },
   // Shows Section
+  uploadShowButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderStyle: "dashed",
+  },
+  uploadShowButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: theme.colors.black,
+  },
   showsSection: {
     padding: 20,
   },

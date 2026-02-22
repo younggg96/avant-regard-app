@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   StyleSheet,
   Image as RNImage,
@@ -29,7 +29,8 @@ import ImagePreviewModal from "../components/ImagePreviewModal";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
 import { postService } from "../services/postService";
-import { brandService, Brand } from "../services/brandService";
+import { Brand } from "../services/brandService";
+import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 
@@ -73,126 +74,16 @@ const PublishLookbookScreen = () => {
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
   const [showBrandSelector, setShowBrandSelector] = useState(false);
-  const [allBrands, setAllBrands] = useState<Brand[]>([]);
-  const [brandSearchQuery, setBrandSearchQuery] = useState("");
-  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
-  const [brandsPage, setBrandsPage] = useState(1);
-  const [hasMoreBrands, setHasMoreBrands] = useState(true);
-  const isLoadingMoreBrandsRef = useRef(false);
+  const {
+    brands: displayedBrands,
+    searchQuery: brandSearchQuery,
+    isLoading: isLoadingBrands,
+    hasMore: hasMoreBrands,
+    setSearchQuery: setBrandSearchQuery,
+    loadMore: loadMoreBrands,
+  } = useBrandSearch();
 
   const MAX_BRANDS = 6;
-  const BRAND_PAGE_SIZE = 30;
-
-  // 加载品牌数据
-  const loadBrands = useCallback(async (reset: boolean = true) => {
-    if (isLoadingMoreBrandsRef.current && !reset) return;
-
-    try {
-      if (reset) {
-        setIsLoadingBrands(true);
-        setBrandsPage(1);
-        setHasMoreBrands(true);
-      }
-      isLoadingMoreBrandsRef.current = true;
-
-      const response = await brandService.getBrands({
-        page: reset ? 1 : brandsPage,
-        pageSize: BRAND_PAGE_SIZE,
-      });
-
-      if (reset) {
-        setAllBrands(response.brands);
-        setBrandsPage(1);
-      } else {
-        setAllBrands((prev) => [...prev, ...response.brands]);
-      }
-
-      setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
-    } catch (error) {
-      console.error("Failed to load brands:", error);
-      if (reset) {
-        Alert.show("加载品牌数据失败");
-      }
-    } finally {
-      setIsLoadingBrands(false);
-      isLoadingMoreBrandsRef.current = false;
-    }
-  }, [brandsPage]);
-
-  // 加载更多品牌
-  const loadMoreBrands = useCallback(async () => {
-    if (isLoadingMoreBrandsRef.current || !hasMoreBrands || isLoadingBrands || brandSearchQuery.trim()) {
-      return;
-    }
-
-    isLoadingMoreBrandsRef.current = true;
-    setIsLoadingBrands(true);
-
-    try {
-      const nextPage = brandsPage + 1;
-      const response = await brandService.getBrands({
-        page: nextPage,
-        pageSize: BRAND_PAGE_SIZE,
-      });
-
-      if (response.brands.length > 0) {
-        setAllBrands((prev) => [...prev, ...response.brands]);
-        setBrandsPage(nextPage);
-        setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
-      } else {
-        setHasMoreBrands(false);
-      }
-    } catch (error) {
-      console.error("Failed to load more brands:", error);
-    } finally {
-      setIsLoadingBrands(false);
-      isLoadingMoreBrandsRef.current = false;
-    }
-  }, [brandsPage, hasMoreBrands, isLoadingBrands, brandSearchQuery]);
-
-  // 搜索结果状态
-  const [searchResults, setSearchResults] = useState<Brand[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // 通过后端 API 搜索品牌（带防抖）
-  useEffect(() => {
-    const query = brandSearchQuery.trim();
-
-    // 清除上一次的定时器
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-
-    if (!query) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const results = await brandService.searchBrands(query, 30);
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Failed to search brands:", error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
-      }
-    };
-  }, [brandSearchQuery]);
-
-  // 根据是否有搜索词决定显示哪些品牌
-  const displayedBrands = brandSearchQuery.trim() ? searchResults : allBrands;
 
   // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
@@ -227,10 +118,6 @@ const PublishLookbookScreen = () => {
     setSelectedBrands(newBrands);
     Alert.show("已取消关联");
   };
-
-  useEffect(() => {
-    loadBrands(true);
-  }, []);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {
@@ -988,8 +875,8 @@ const PublishLookbookScreen = () => {
         visible={showBrandSelector}
         brands={displayedBrands}
         searchQuery={brandSearchQuery}
-        isLoading={isLoadingBrands || isSearching}
-        hasMore={hasMoreBrands && !brandSearchQuery.trim()}
+        isLoading={isLoadingBrands}
+        hasMore={hasMoreBrands}
         onSearchChange={setBrandSearchQuery}
         onSelectBrand={handleSelectBrand}
         onClose={() => setShowBrandSelector(false)}

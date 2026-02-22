@@ -16,7 +16,7 @@ interface ApiResponse<T> {
 
 // 秀场类型
 export interface Show {
-  id: number | string;  // 支持整数或字符串类型的 ID
+  id: number | string;
   brand: string;
   season: string;
   title?: string;
@@ -24,8 +24,25 @@ export interface Show {
   showUrl?: string;
   year?: number;
   category?: string;
+  description?: string;
+  designer?: string;
+  createdBy?: number;
+  status?: "PENDING" | "APPROVED" | "REJECTED";
+  rejectReason?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// 创建秀场参数
+export interface CreateShowParams {
+  brand: string;
+  title: string;
+  year: number;
+  season: string;
+  category?: string;
+  designer?: string;
+  description?: string;
+  coverImage?: string;
 }
 
 // 秀场列表响应
@@ -213,6 +230,48 @@ export const getShowCategories = async (): Promise<string[]> => {
   return result.categories;
 };
 
+/**
+ * 创建秀场
+ * POST /api/shows
+ */
+export const createShow = async (params: CreateShowParams): Promise<Show> => {
+  return request<Show>("/api/shows", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+};
+
+/**
+ * 获取待审核秀场列表（管理员）
+ * GET /api/shows/admin/pending
+ */
+export const getPendingShows = async (): Promise<{ shows: Show[]; total: number }> => {
+  return request<{ shows: Show[]; total: number }>("/api/shows/admin/pending", {
+    method: "GET",
+  });
+};
+
+/**
+ * 审核通过秀场（管理员）
+ * POST /api/shows/admin/{showId}/approve
+ */
+export const approveShow = async (showId: string): Promise<Show> => {
+  return request<Show>(`/api/shows/admin/${showId}/approve`, {
+    method: "POST",
+  });
+};
+
+/**
+ * 拒绝秀场（管理员）
+ * POST /api/shows/admin/{showId}/reject
+ */
+export const rejectShow = async (showId: string, reason?: string): Promise<Show> => {
+  const query = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+  return request<Show>(`/api/shows/admin/${showId}/reject${query}`, {
+    method: "POST",
+  });
+};
+
 // 导出服务对象
 export const showService = {
   getShows,
@@ -222,4 +281,8 @@ export const showService = {
   getShowByUrl,
   getShowYears,
   getShowCategories,
+  createShow,
+  getPendingShows,
+  approveShow,
+  rejectShow,
 };

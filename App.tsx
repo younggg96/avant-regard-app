@@ -39,7 +39,7 @@ import UserProfileScreen from "./src/screens/UserProfileScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowersScreen from "./src/screens/FollowersScreen";
-import AdminScreen from "./src/screens/AdminScreen";
+import AdminScreen from "./src/screens/admin/AdminScreen";
 import SubmitStoreScreen from "./src/screens/SubmitStoreScreen";
 import StoreDetailScreen from "./src/screens/StoreDetailScreen";
 import StoreReviewScreen from "./src/screens/StoreReviewScreen";

@@ -24,6 +24,7 @@ export interface Brand {
   country?: string;
   website?: string;
   coverImage?: string;
+  coverImages?: string[];
   latestSeason?: string;
   vogueSlug?: string;
   vogueUrl?: string;
@@ -190,6 +191,72 @@ export const getBrandCategories = async (): Promise<string[]> => {
   return result.categories;
 };
 
+// 品牌提交参数
+export interface SubmitBrandParams {
+  name: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+  country?: string;
+  website?: string;
+  coverImage?: string;
+}
+
+// 品牌提交记录
+export interface BrandSubmission {
+  id: number;
+  userId: number;
+  name: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+  country?: string;
+  website?: string;
+  coverImage?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectReason?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * 提交品牌（需登录）
+ * POST /api/brands/submit
+ */
+export const submitBrand = async (
+  params: SubmitBrandParams
+): Promise<BrandSubmission> => {
+  return request<BrandSubmission>("/api/brands/submit", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+};
+
+/**
+ * 获取当前用户的品牌提交记录
+ * GET /api/brands/my-submissions
+ */
+export const getMySubmissions = async (): Promise<BrandSubmission[]> => {
+  return request<BrandSubmission[]>("/api/brands/my-submissions", {
+    method: "GET",
+  });
+};
+
+/**
+ * 用户上传品牌图片（需登录，等待审核）
+ * POST /api/brands/{brandId}/images
+ */
+export const uploadBrandImage = async (
+  brandId: number,
+  imageUrl: string
+): Promise<void> => {
+  return request<void>(`/api/brands/${brandId}/images`, {
+    method: "POST",
+    body: JSON.stringify({ imageUrl }),
+  });
+};
+
 // 导出服务对象
 export const brandService = {
   getBrands,
@@ -197,4 +264,7 @@ export const brandService = {
   getBrandById,
   getBrandByName,
   getBrandCategories,
+  submitBrand,
+  getMySubmissions,
+  uploadBrandImage,
 };

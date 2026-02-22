@@ -293,7 +293,7 @@ const SettingsScreen = () => {
       {/* 用户协议和隐私政策 Modal */}
       <Modal
         visible={showAgreementModal}
-        animationType="slide"
+        animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAgreementModal(false)}
       >

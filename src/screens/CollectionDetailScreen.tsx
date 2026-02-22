@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-  Share,
   Linking,
   ActivityIndicator,
 } from "react-native";
@@ -17,6 +16,8 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
+import { ShareModal } from "../components/ShareModal";
+import { Post as SharePost } from "../components/PostCard";
 import { getPostsByShowId, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -79,6 +80,19 @@ const CollectionDetailScreen = () => {
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+
+  const sharePost = useMemo<SharePost>(() => ({
+    id: collection.id,
+    title: `${collection.title} - ${collection.season} ${collection.year}`,
+    image: collection.coverImage,
+    author: { id: "0", name: brandName || collection.title, avatar: "" },
+    content: {
+      title: `${collection.title} - ${collection.season} ${collection.year}`,
+      description: `${brandName || collection.title} ${collection.season} ${collection.year} 时装秀`,
+      images: collection.coverImage ? [collection.coverImage] : [],
+    },
+  }), [collection, brandName]);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -92,7 +106,6 @@ const CollectionDetailScreen = () => {
 
     // Load related posts
     const loadRelatedPosts = async () => {
-      console.log("showId", id);
       setPostsLoading(true);
       try {
         let posts: Post[] = [];
@@ -113,29 +126,22 @@ const CollectionDetailScreen = () => {
 
   }, [collection, images, id]);
 
-  // const handleShare = async () => {
-  //   try {
-  //     await Share.share({
-  //       message: `查看这个精彩的时装系列：${collection.title} - ${collection.season} ${collection.year}`,
-  //       url: collection.showUrl || "",
-  //     });
-  //   } catch (error) {
-  //     console.log("分享失败:", error);
-  //   }
-  // };
+  const handleShare = () => {
+    setShareModalVisible(true);
+  };
 
-  // const handleOpenUrl = async () => {
-  //   if (collection.showUrl) {
-  //     try {
-  //       const supported = await Linking.canOpenURL(collection.showUrl);
-  //       if (supported) {
-  //         await Linking.openURL(collection.showUrl);
-  //       }
-  //     } catch (error) {
-  //       console.log("无法打开链接:", error);
-  //     }
-  //   }
-  // };
+  const handleOpenUrl = async () => {
+    if (collection.showUrl) {
+      try {
+        const supported = await Linking.canOpenURL(collection.showUrl);
+        if (supported) {
+          await Linking.openURL(collection.showUrl);
+        }
+      } catch (error) {
+        console.log("无法打开链接:", error);
+      }
+    }
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -145,9 +151,9 @@ const CollectionDetailScreen = () => {
       >
         <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
       </TouchableOpacity>
-      {/* <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
         <Ionicons name="share-outline" size={24} color={theme.colors.black} />
-      </TouchableOpacity> */}
+      </TouchableOpacity>
     </View>
   );
 
@@ -174,7 +180,7 @@ const CollectionDetailScreen = () => {
         {collection.season} {collection.year}
       </Text>
 
-      {/* {collection.showUrl && (
+      {collection.showUrl && (
         <TouchableOpacity style={styles.urlButton} onPress={handleOpenUrl}>
           <Ionicons
             name="link-outline"
@@ -183,115 +189,9 @@ const CollectionDetailScreen = () => {
           />
           <Text style={styles.urlButtonText}>查看官方链接</Text>
         </TouchableOpacity>
-      )} */}
+      )}
     </View>
   );
-
-  // const renderRating = () => {
-  //   if (!collection.rating) return null;
-
-  //   const { average, totalReviews, distribution } = collection.rating;
-
-  //   const renderStars = (rating: number) => {
-  //     const stars = [];
-  //     const fullStars = Math.floor(rating);
-  //     const hasHalfStar = rating % 1 >= 0.5;
-
-  //     for (let i = 1; i <= 5; i++) {
-  //       if (i <= fullStars) {
-  //         stars.push(
-  //           <Ionicons
-  //             key={i}
-  //             name="star"
-  //             size={16}
-  //             color={theme.colors.black}
-  //           />
-  //         );
-  //       } else if (i === fullStars + 1 && hasHalfStar) {
-  //         stars.push(
-  //           <Ionicons
-  //             key={i}
-  //             name="star-half"
-  //             size={16}
-  //             color={theme.colors.black}
-  //           />
-  //         );
-  //       } else {
-  //         stars.push(
-  //           <Ionicons
-  //             key={i}
-  //             name="star-outline"
-  //             size={16}
-  //             color={theme.colors.gray400}
-  //           />
-  //         );
-  //       }
-  //     }
-  //     return stars;
-  //   };
-
-  //   const renderDistributionBar = (starCount: number, percentage: number) => {
-  //     return (
-  //       <View key={starCount} style={styles.distributionRow}>
-  //         <Text style={styles.starLabel}>{starCount}</Text>
-  //         <View style={styles.progressBarContainer}>
-  //           <View style={styles.progressBarBackground}>
-  //             <View
-  //               style={[styles.progressBarFill, { width: `${percentage}%` }]}
-  //             />
-  //           </View>
-  //         </View>
-  //         <Text style={styles.percentageLabel}>{percentage.toFixed(1)}%</Text>
-  //       </View>
-  //     );
-  //   };
-
-  //   const totalVotes = Object.values(distribution).reduce(
-  //     (sum, count) => sum + count,
-  //     0
-  //   );
-
-  //   return (
-  //     <View style={styles.ratingContainer}>
-  //       <Text style={styles.ratingTitle}>评分与评价</Text>
-
-  //       <View style={styles.ratingOverview}>
-  //         <View style={styles.ratingLeft}>
-  //           <Text style={styles.ratingScore}>{average.toFixed(1)}</Text>
-  //           <View style={styles.starsContainer}>{renderStars(average)}</View>
-  //           <Text style={styles.totalReviews}>{totalReviews}人评分</Text>
-  //         </View>
-
-  //         <View style={styles.distributionContainer}>
-  //           {[5, 4, 3, 2, 1].map((starCount) => {
-  //             const count =
-  //               distribution[starCount as keyof typeof distribution];
-  //             const percentage =
-  //               totalVotes > 0 ? (count / totalVotes) * 100 : 0;
-  //             return renderDistributionBar(starCount, percentage);
-  //           })}
-  //         </View>
-  //       </View>
-
-  //       <TouchableOpacity
-  //         style={styles.viewCommentsButton}
-  //         onPress={() =>
-  //           (navigation as any).navigate("AllComments", {
-  //             collection,
-  //             brandName,
-  //           })
-  //         }
-  //       >
-  //         <Text style={styles.viewCommentsText}>查看所有评论</Text>
-  //         <Ionicons
-  //           name="chevron-forward"
-  //           size={16}
-  //           color={theme.colors.gray600}
-  //         />
-  //       </TouchableOpacity>
-  //     </View>
-  //   );
-  // };
 
   const renderReview = () => {
     if (!collection.reviewText) return null;
@@ -431,6 +331,12 @@ const CollectionDetailScreen = () => {
         {renderReview()}
         {renderRelatedPosts()}
       </ScrollView>
+
+      <ShareModal
+        visible={shareModalVisible}
+        post={sharePost}
+        onClose={() => setShareModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };

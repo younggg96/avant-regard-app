@@ -19,6 +19,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { brandService, Brand } from "../services/brandService";
+import SubmitBrandModal from "../components/SubmitBrandModal";
+import { useAuthStore } from "../store/authStore";
+import { Alert } from "react-native";
 
 // Category filter type
 interface CategoryFilter {
@@ -30,6 +33,8 @@ const PAGE_SIZE = 30;
 
 const ArchiveScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -189,6 +194,14 @@ const ArchiveScreen = () => {
     }
   }, []);
 
+  const handleOpenSubmitModal = useCallback(() => {
+    if (!user?.userId) {
+      Alert.alert("提示", "请先登录后再提交品牌");
+      return;
+    }
+    setSubmitModalVisible(true);
+  }, [user]);
+
   useEffect(() => {
     loadBrands();
     loadCategories();
@@ -333,29 +346,31 @@ const ArchiveScreen = () => {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons
-            name="search"
-            size={18}
-            color={theme.colors.gray400}
-            style={{ marginRight: 10 }}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="搜索品牌、设计师、国家..."
-            placeholderTextColor={theme.colors.gray300}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons
-                name="close-circle"
-                size={18}
-                color={theme.colors.gray300}
-              />
-            </TouchableOpacity>
-          )}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { flex: 1 }]}>
+            <Ionicons
+              name="search"
+              size={18}
+              color={theme.colors.gray400}
+              style={{ marginRight: 10 }}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="搜索品牌、设计师、国家..."
+              placeholderTextColor={theme.colors.gray300}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <Ionicons
+                  name="close-circle"
+                  size={18}
+                  color={theme.colors.gray300}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 
@@ -390,10 +405,16 @@ const ArchiveScreen = () => {
       </View>
 
       {/* Results Count */}
-      <View style={styles.resultsBar}>
+      <View style={styles.resultsContainer}>
         <Text style={styles.resultsText}>
           {filteredBrands.length} / {total} 个品牌
         </Text>
+        <TouchableOpacity
+          onPress={handleOpenSubmitModal}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.submitLinkText}>上传品牌</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Brands List */}
@@ -478,10 +499,13 @@ const ArchiveScreen = () => {
 
         {/* Footer */}
         {renderFooter()}
-
-        {/* Bottom Padding */}
-        {/* <View style={{ height: 20 }} /> */}
       </ScrollView>
+
+      <SubmitBrandModal
+        visible={submitModalVisible}
+        onClose={() => setSubmitModalVisible(false)}
+        onSuccess={() => loadBrands(true)}
+      />
     </SafeAreaView>
   );
 };
@@ -529,11 +553,24 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.xs,
   },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  submitBrandButton: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.black,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: 12,
     borderWidth: 1,
@@ -574,15 +611,18 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: theme.colors.white,
   },
-  resultsBar: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-  },
   resultsText: {
     fontSize: 12,
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
+  },
+  submitLinkText: {
+    fontSize: 12,
+    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    color: theme.colors.gray500,
+    letterSpacing: 0.5,
+    textDecorationLine: "underline",
   },
   content: {
     flex: 1,
@@ -708,6 +748,13 @@ const styles = StyleSheet.create({
   footerLoadingGif: {
     width: 60,
     height: 60,
+  },
+  resultsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
 });
 

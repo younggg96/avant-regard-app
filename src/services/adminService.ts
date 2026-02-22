@@ -445,6 +445,192 @@ export async function batchDeleteCommunityPosts(
   );
 }
 
+// ==================== 品牌提交审核 ====================
+
+export interface AdminBrandSubmission {
+  id: number;
+  userId: number;
+  username: string;
+  name: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+  country?: string;
+  website?: string;
+  coverImage?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  rejectReason?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * GET /api/admin/brand-submissions/pending
+ */
+export async function getPendingBrandSubmissions(): Promise<
+  AdminBrandSubmission[]
+> {
+  return request<AdminBrandSubmission[]>(
+    "/api/admin/brand-submissions/pending",
+    { method: "GET" }
+  );
+}
+
+/**
+ * POST /api/admin/brand-submissions/{id}/approve
+ */
+export async function approveBrandSubmission(id: number): Promise<void> {
+  return request<void>(`/api/admin/brand-submissions/${id}/approve`, {
+    method: "POST",
+  });
+}
+
+/**
+ * POST /api/admin/brand-submissions/{id}/reject
+ */
+export async function rejectBrandSubmission(
+  id: number,
+  reason?: string
+): Promise<void> {
+  const query = reason ? `?reason=${encodeURIComponent(reason)}` : "";
+  return request<void>(`/api/admin/brand-submissions/${id}/reject${query}`, {
+    method: "POST",
+  });
+}
+
+// ==================== 品牌管理 ====================
+
+export interface AdminBrand {
+  id: number;
+  name: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+  country?: string;
+  website?: string;
+  coverImage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminBrandListResponse {
+  brands: AdminBrand[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface UpdateBrandParams {
+  name?: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+  country?: string;
+  website?: string;
+  coverImage?: string;
+}
+
+/**
+ * GET /api/admin/brands
+ */
+export async function getAdminBrands(
+  keyword?: string,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<AdminBrandListResponse> {
+  const params = new URLSearchParams();
+  if (keyword) params.append("keyword", keyword);
+  params.append("page", page.toString());
+  params.append("pageSize", pageSize.toString());
+  return request<AdminBrandListResponse>(
+    `/api/admin/brands?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+/**
+ * PUT /api/admin/brands/{id}
+ */
+export async function updateAdminBrand(
+  id: number,
+  params: UpdateBrandParams
+): Promise<AdminBrand> {
+  return request<AdminBrand>(`/api/admin/brands/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * DELETE /api/admin/brands/{id}
+ */
+export async function deleteAdminBrand(id: number): Promise<void> {
+  return request<void>(`/api/admin/brands/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// ==================== 品牌图片审核 ====================
+
+export interface AdminBrandImage {
+  id: number;
+  brandId: number;
+  brandName?: string;
+  imageUrl: string;
+  sortOrder: number;
+  status: string;
+  isSelected?: boolean;
+  uploadedBy?: number;
+  createdAt?: string;
+}
+
+export async function getPendingBrandImages(): Promise<{ images: AdminBrandImage[]; total: number }> {
+  return request<{ images: AdminBrandImage[]; total: number }>(
+    "/api/admin/brand-images/pending",
+    { method: "GET" }
+  );
+}
+
+export async function approveBrandImage(imageId: number): Promise<AdminBrandImage> {
+  return request<AdminBrandImage>(`/api/admin/brand-images/${imageId}/approve`, {
+    method: "POST",
+  });
+}
+
+export async function rejectBrandImage(imageId: number): Promise<AdminBrandImage> {
+  return request<AdminBrandImage>(`/api/admin/brand-images/${imageId}/reject`, {
+    method: "POST",
+  });
+}
+
+export async function deleteBrandImage(imageId: number): Promise<void> {
+  return request<void>(`/api/admin/brand-images/${imageId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function adminUploadBrandImage(brandId: number, imageUrl: string): Promise<AdminBrandImage> {
+  return request<AdminBrandImage>(`/api/admin/brands/${brandId}/images`, {
+    method: "POST",
+    body: JSON.stringify({ imageUrl }),
+  });
+}
+
+export async function getBrandImagesAdmin(brandId: number): Promise<{ images: AdminBrandImage[]; total: number }> {
+  return request<{ images: AdminBrandImage[]; total: number }>(
+    `/api/admin/brands/${brandId}/images`,
+    { method: "GET" }
+  );
+}
+
+export async function toggleBrandImageSelected(imageId: number, selected: boolean): Promise<AdminBrandImage> {
+  return request<AdminBrandImage>(`/api/admin/brand-images/${imageId}/toggle-select`, {
+    method: "POST",
+    body: JSON.stringify({ selected }),
+  });
+}
+
 // ==================== 广播通知 ====================
 
 /**
@@ -488,6 +674,22 @@ export const adminService = {
   getCommunityPosts,
   deleteCommunityPost,
   batchDeleteCommunityPosts,
+  // 品牌提交审核
+  getPendingBrandSubmissions,
+  approveBrandSubmission,
+  rejectBrandSubmission,
+  // 品牌管理
+  getAdminBrands,
+  updateAdminBrand,
+  deleteAdminBrand,
+  // 品牌图片审核
+  getPendingBrandImages,
+  approveBrandImage,
+  rejectBrandImage,
+  deleteBrandImage,
+  adminUploadBrandImage,
+  getBrandImagesAdmin,
+  toggleBrandImageSelected,
   // 广播通知
   broadcastNotification,
 };

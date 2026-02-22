@@ -27,7 +27,8 @@ import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
 import { postService } from "../services/postService";
 import { showService, Show as ShowFromApi } from "../services/showService";
-import { brandService, Brand } from "../services/brandService";
+import { Brand } from "../services/brandService";
+import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 
@@ -91,17 +92,18 @@ const PublishReviewScreen = () => {
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
   const [showBrandSelector, setShowBrandSelector] = useState(false);
-  const [allBrands, setAllBrands] = useState<Brand[]>([]);
-  const [brandSearchQuery, setBrandSearchQuery] = useState("");
-  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
-  const [brandsPage, setBrandsPage] = useState(1);
-  const [hasMoreBrands, setHasMoreBrands] = useState(true);
-  const isLoadingMoreBrandsRef = useRef(false);
+  const {
+    brands: displayedBrands,
+    searchQuery: brandSearchQuery,
+    isLoading: isLoadingBrands,
+    hasMore: hasMoreBrands,
+    setSearchQuery: setBrandSearchQuery,
+    loadMore: loadMoreBrands,
+  } = useBrandSearch();
 
   const MAX_IMAGES = 6;
   const MAX_SHOWS = 6;
   const MAX_BRANDS = 6;
-  const BRAND_PAGE_SIZE = 30;
 
   // 加载秀场数据（从 API）
   const loadShows = useCallback(async (reset: boolean = true) => {
@@ -256,88 +258,7 @@ const PublishReviewScreen = () => {
 
   useEffect(() => {
     loadShows(true);
-    loadBrands(true);
   }, []);
-
-  // 加载品牌数据
-  const loadBrands = useCallback(async (reset: boolean = true) => {
-    if (isLoadingMoreBrandsRef.current && !reset) return;
-
-    try {
-      if (reset) {
-        setIsLoadingBrands(true);
-        setBrandsPage(1);
-        setHasMoreBrands(true);
-      }
-      isLoadingMoreBrandsRef.current = true;
-
-      const response = await brandService.getBrands({
-        page: reset ? 1 : brandsPage,
-        pageSize: BRAND_PAGE_SIZE,
-      });
-
-      if (reset) {
-        setAllBrands(response.brands);
-        setBrandsPage(1);
-      } else {
-        setAllBrands((prev) => [...prev, ...response.brands]);
-      }
-
-      setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
-    } catch (error) {
-      console.error("Failed to load brands:", error);
-      if (reset) {
-        Alert.show("加载品牌数据失败");
-      }
-    } finally {
-      setIsLoadingBrands(false);
-      isLoadingMoreBrandsRef.current = false;
-    }
-  }, [brandsPage]);
-
-  // 加载更多品牌
-  const loadMoreBrands = useCallback(async () => {
-    if (isLoadingMoreBrandsRef.current || !hasMoreBrands || isLoadingBrands || brandSearchQuery.trim()) {
-      return;
-    }
-
-    isLoadingMoreBrandsRef.current = true;
-    setIsLoadingBrands(true);
-
-    try {
-      const nextPage = brandsPage + 1;
-      const response = await brandService.getBrands({
-        page: nextPage,
-        pageSize: BRAND_PAGE_SIZE,
-      });
-
-      if (response.brands.length > 0) {
-        setAllBrands((prev) => [...prev, ...response.brands]);
-        setBrandsPage(nextPage);
-        setHasMoreBrands(response.brands.length >= BRAND_PAGE_SIZE);
-      } else {
-        setHasMoreBrands(false);
-      }
-    } catch (error) {
-      console.error("Failed to load more brands:", error);
-    } finally {
-      setIsLoadingBrands(false);
-      isLoadingMoreBrandsRef.current = false;
-    }
-  }, [brandsPage, hasMoreBrands, isLoadingBrands, brandSearchQuery]);
-
-  // 根据搜索词过滤品牌
-  const filteredBrands = useMemo(() => {
-    const query = brandSearchQuery.trim().toLowerCase();
-    if (!query) {
-      return allBrands;
-    }
-    return allBrands.filter(
-      (brand) =>
-        brand.name.toLowerCase().includes(query) ||
-        (brand.category && brand.category.toLowerCase().includes(query))
-    );
-  }, [allBrands, brandSearchQuery]);
 
   // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
@@ -973,10 +894,10 @@ const PublishReviewScreen = () => {
 
       <BrandSelectorModal
         visible={showBrandSelector}
-        brands={filteredBrands}
+        brands={displayedBrands}
         searchQuery={brandSearchQuery}
         isLoading={isLoadingBrands}
-        hasMore={hasMoreBrands && !brandSearchQuery.trim()}
+        hasMore={hasMoreBrands}
         onSearchChange={setBrandSearchQuery}
         onSelectBrand={handleSelectBrand}
         onClose={() => setShowBrandSelector(false)}
