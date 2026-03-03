@@ -23,14 +23,19 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         """按优先级解析 Redis 连接地址：REDIS_URL > REDIS_CONNECTION_STRING > 拼接"""
+        url = ""
         if self.REDIS_URL:
-            return self.REDIS_URL
-        if self.REDIS_CONNECTION_STRING:
-            return self.REDIS_CONNECTION_STRING
-        if self.REDIS_HOST and self.REDIS_PORT:
+            url = self.REDIS_URL
+        elif self.REDIS_CONNECTION_STRING:
+            url = self.REDIS_CONNECTION_STRING
+        elif self.REDIS_HOST and self.REDIS_PORT:
             password_part = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
-            return f"redis://{password_part}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
-        return ""
+            url = f"redis://{password_part}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+
+        if url and not url.startswith(("redis://", "rediss://", "unix://")):
+            url = f"redis://{url}"
+
+        return url
 
     # Server
     SERVER_HOST: str = "0.0.0.0"

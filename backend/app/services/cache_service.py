@@ -36,18 +36,23 @@ class CacheService:
 
     def connect(self) -> bool:
         """连接 Redis"""
+        url = settings.redis_url
+        if not url:
+            print("ℹ️ Redis disabled (no Redis URL configured)")
+            self._connected = False
+            return False
+
         try:
             self._client = redis.from_url(
-                settings.REDIS_URL,
+                url,
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=5,
                 retry_on_timeout=True,
             )
-            # 测试连接
             self._client.ping()
             self._connected = True
-            print("✅ Redis connected successfully")
+            print(f"✅ Redis connected successfully ({settings.REDIS_HOST or url})")
             return True
         except (ConnectionError, TimeoutError) as e:
             print(f"⚠️ Redis connection failed: {e}")
