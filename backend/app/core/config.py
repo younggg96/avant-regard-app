@@ -32,7 +32,10 @@ class Settings(BaseSettings):
             password_part = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
             url = f"redis://{password_part}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
-        if url and not url.startswith(("redis://", "rediss://", "unix://")):
+        if not url or "${" in url:
+            return ""
+
+        if not url.startswith(("redis://", "rediss://", "unix://")):
             url = f"redis://{url}"
 
         return url
