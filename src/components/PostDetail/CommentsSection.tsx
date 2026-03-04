@@ -10,8 +10,11 @@ interface CommentsSectionProps {
   comments: Comment[];
   isLoading: boolean;
   postStatus: PostStatus;
+  currentUserId?: number;
   onCommentLike: (commentId: string) => void;
   onReplyLike: (replyId: string, parentId: string) => void;
+  onDeleteComment: (commentId: string) => void;
+  onDeleteReply: (replyId: string, parentId: string) => void;
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReplyPress: (target: ReplyTarget) => void;
   onToggleReplies: (commentId: string) => void;
@@ -20,10 +23,12 @@ interface CommentsSectionProps {
 // 单个回复项组件
 const ReplyItem: React.FC<{
   reply: CommentReply;
+  isOwner: boolean;
   onLike: () => void;
+  onDelete: () => void;
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReply: () => void;
-}> = ({ reply, onLike, onUserPress, onReply }) => (
+}> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply }) => (
   <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} borderLeftColor="$gray200">
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
@@ -80,6 +85,13 @@ const ReplyItem: React.FC<{
             回复
           </Text>
         </Pressable>
+        {isOwner && (
+          <Pressable onPress={onDelete}>
+            <Text fontSize="$xs" color="$error">
+              删除
+            </Text>
+          </Pressable>
+        )}
       </HStack>
     </VStack>
   </HStack>
@@ -88,16 +100,22 @@ const ReplyItem: React.FC<{
 // 单条评论组件
 const CommentItem: React.FC<{
   comment: Comment;
+  currentUserId?: number;
   onLike: () => void;
   onReplyLike: (replyId: string) => void;
+  onDelete: () => void;
+  onDeleteReply: (replyId: string) => void;
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReply: () => void;
   onReplyToReply: (reply: CommentReply) => void;
   onToggleReplies: () => void;
 }> = ({
   comment,
+  currentUserId,
   onLike,
   onReplyLike,
+  onDelete,
+  onDeleteReply,
   onUserPress,
   onReply,
   onReplyToReply,
@@ -154,6 +172,13 @@ const CommentItem: React.FC<{
                 回复
               </Text>
             </Pressable>
+            {currentUserId === comment.userId && (
+              <Pressable onPress={onDelete}>
+                <Text fontSize="$xs" color="$error">
+                  删除
+                </Text>
+              </Pressable>
+            )}
             {comment.replyCount > 0 && !comment.showReplies && (
               <Pressable onPress={onToggleReplies}>
                 <Text fontSize="$xs" color="$accent" fontWeight="$medium">
@@ -172,7 +197,9 @@ const CommentItem: React.FC<{
             <ReplyItem
               key={reply.id}
               reply={reply}
+              isOwner={currentUserId === reply.userId}
               onLike={() => onReplyLike(reply.id)}
+              onDelete={() => onDeleteReply(reply.id)}
               onUserPress={onUserPress}
               onReply={() => onReplyToReply(reply)}
             />
@@ -193,8 +220,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   comments,
   isLoading,
   postStatus,
+  currentUserId,
   onCommentLike,
   onReplyLike,
+  onDeleteComment,
+  onDeleteReply,
   onUserPress,
   onReplyPress,
   onToggleReplies,
@@ -277,8 +307,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           <CommentItem
             key={comment.id}
             comment={comment}
+            currentUserId={currentUserId}
             onLike={() => onCommentLike(comment.id)}
             onReplyLike={(replyId) => onReplyLike(replyId, comment.id)}
+            onDelete={() => onDeleteComment(comment.id)}
+            onDeleteReply={(replyId) => onDeleteReply(replyId, comment.id)}
             onUserPress={onUserPress}
             onReply={() =>
               onReplyPress({
@@ -289,7 +322,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             }
             onReplyToReply={(reply) =>
               onReplyPress({
-                commentId: comment.id, // 始终使用父评论ID
+                commentId: comment.id,
                 userId: reply.userId,
                 userName: reply.userName,
               })

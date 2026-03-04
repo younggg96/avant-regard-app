@@ -74,6 +74,8 @@ const PostDetailScreen = () => {
     handleOverlayPress,
     handleCommentLike,
     handleReplyLike,
+    handleDeleteComment,
+    handleDeleteReply,
     handleReplyPress,
     handleCancelReply,
     handleToggleReplies,
@@ -317,8 +319,11 @@ const PostDetailScreen = () => {
               comments={comments}
               isLoading={isLoadingComments}
               postStatus={postStatus}
+              currentUserId={user?.userId}
               onCommentLike={handleCommentLike}
               onReplyLike={handleReplyLike}
+              onDeleteComment={handleDeleteComment}
+              onDeleteReply={handleDeleteReply}
               onUserPress={handleUserPress}
               onReplyPress={handleReplyPress}
               onToggleReplies={handleToggleReplies}

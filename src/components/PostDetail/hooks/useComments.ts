@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Keyboard } from "react-native";
+import { Alert as RNAlert, Keyboard } from "react-native";
 import { Comment, CommentReply, ReplyTarget, formatTimestamp, PostStatus } from "../types";
 import { commentService } from "../../../services/commentService";
 import { userInfoService } from "../../../services/userInfoService";
@@ -32,6 +32,8 @@ interface UseCommentsReturn {
   handleOverlayPress: () => void;
   handleCommentLike: (commentId: string) => Promise<void>;
   handleReplyLike: (replyId: string, parentId: string) => Promise<void>;
+  handleDeleteComment: (commentId: string) => void;
+  handleDeleteReply: (replyId: string, parentId: string) => void;
   handleReplyPress: (target: ReplyTarget) => void;
   handleCancelReply: () => void;
   handleToggleReplies: (commentId: string) => void;
@@ -288,6 +290,76 @@ export const useComments = ({
     [userId, comments]
   );
 
+  // 删除评论
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      if (!userId) return;
+
+      RNAlert.alert("确认删除", "确定要删除这条评论吗？删除后不可恢复。", [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            const numericId = parseInt(commentId, 10);
+            if (isNaN(numericId)) return;
+
+            setComments((prev) => prev.filter((c) => c.id !== commentId));
+
+            try {
+              await commentService.deleteComment(numericId, userId);
+            } catch (error) {
+              console.error("Error deleting comment:", error);
+              Alert.show("错误", "删除失败，请重试");
+              loadComments();
+            }
+          },
+        },
+      ]);
+    },
+    [userId, loadComments]
+  );
+
+  // 删除回复
+  const handleDeleteReply = useCallback(
+    (replyId: string, parentId: string) => {
+      if (!userId) return;
+
+      RNAlert.alert("确认删除", "确定要删除这条回复吗？删除后不可恢复。", [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            const numericId = parseInt(replyId, 10);
+            if (isNaN(numericId)) return;
+
+            setComments((prev) =>
+              prev.map((comment) =>
+                comment.id === parentId
+                  ? {
+                      ...comment,
+                      replyCount: Math.max(0, comment.replyCount - 1),
+                      replies: comment.replies.filter((r) => r.id !== replyId),
+                    }
+                  : comment
+              )
+            );
+
+            try {
+              await commentService.deleteComment(numericId, userId);
+            } catch (error) {
+              console.error("Error deleting reply:", error);
+              Alert.show("错误", "删除失败，请重试");
+              loadComments();
+            }
+          },
+        },
+      ]);
+    },
+    [userId, loadComments]
+  );
+
   // 处理回复点击
   const handleReplyPress = useCallback((target: ReplyTarget) => {
     setReplyTarget(target);
@@ -438,6 +510,8 @@ export const useComments = ({
     handleOverlayPress,
     handleCommentLike,
     handleReplyLike,
+    handleDeleteComment,
+    handleDeleteReply,
     handleReplyPress,
     handleCancelReply,
     handleToggleReplies,
