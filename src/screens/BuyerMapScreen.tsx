@@ -199,12 +199,11 @@ const BuyerMapScreen = () => {
   const [visibleStores, setVisibleStores] = useState<BuyerStore[]>([]);
   const [currentMapRegion, setCurrentMapRegion] = useState<MapRegion | null>(null);
   const viewportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 默认北京坐标
   const [initialRegion, setInitialRegion] = useState({
     latitude: 39.9042,
     longitude: 116.4074,
-    latitudeDelta: 10,
-    longitudeDelta: 10,
+    latitudeDelta: 0.8,
+    longitudeDelta: 0.8,
   });
   const [filters, setFilters] = useState<FilterState>({
     country: "",
@@ -226,7 +225,6 @@ const BuyerMapScreen = () => {
     initUserLocation();
   }, []);
 
-  // 初始化用户位置
   const initUserLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -242,21 +240,20 @@ const BuyerMapScreen = () => {
         setInitialRegion({
           latitude: loc.latitude,
           longitude: loc.longitude,
-          latitudeDelta: 5,
-          longitudeDelta: 5,
+          latitudeDelta: 0.8,
+          longitudeDelta: 0.8,
         });
-        // 移动地图到用户位置
         if (mapRef.current) {
           mapRef.current.animateToRegion({
             latitude: loc.latitude,
             longitude: loc.longitude,
-            latitudeDelta: 5,
-            longitudeDelta: 5,
-          });
+            latitudeDelta: 0.8,
+            longitudeDelta: 0.8,
+          }, 600);
         }
       }
     } catch (error) {
-      console.log("无法获取用户位置，使用默认位置（北京）");
+      console.log("无法获取用户位置，使用默认位置");
     }
   };
 
@@ -275,6 +272,10 @@ const BuyerMapScreen = () => {
       const data = await getAllStores();
       setStores(data);
       setFilteredStores(data);
+      // 如果 map 已有 region（比如定位先于数据完成），立刻刷新可见店铺
+      if (currentMapRegion) {
+        fetchVisibleStores(currentMapRegion);
+      }
     } catch (error) {
       console.error("Error loading stores:", error);
     } finally {
@@ -332,17 +333,15 @@ const BuyerMapScreen = () => {
   // 切换附近模式
   const toggleNearbyMode = useCallback(async () => {
     if (nearbyMode) {
-      // 关闭附近模式，恢复显示所有店铺
       setNearbyMode(false);
       setFilteredStores(stores);
-      // 重置地图视图
-      if (mapRef.current) {
+      if (mapRef.current && userLocation) {
         mapRef.current.animateToRegion({
-          latitude: 45.5,
-          longitude: 9.0,
-          latitudeDelta: 20,
-          longitudeDelta: 20,
-        });
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          latitudeDelta: 0.8,
+          longitudeDelta: 0.8,
+        }, 600);
       }
     } else {
       // 开启附近模式
@@ -465,6 +464,19 @@ const BuyerMapScreen = () => {
     },
     [fetchVisibleStores]
   );
+
+  // 店铺数据和用户位置都就绪后，立即计算附近可见店铺
+  useEffect(() => {
+    if (stores.length > 0 && userLocation && !currentMapRegion) {
+      const initRegion: MapRegion = {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.8,
+        longitudeDelta: 0.8,
+      };
+      fetchVisibleStores(initRegion);
+    }
+  }, [stores, userLocation]);
 
   // 当筛选条件变化时，重新获取视口内店铺
   useEffect(() => {
