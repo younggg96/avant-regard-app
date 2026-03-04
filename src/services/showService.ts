@@ -190,8 +190,8 @@ export const getShowsByBrand = async (brandName: string): Promise<Show[]> => {
  * 通过 ID 获取秀场详情
  * GET /api/shows/{showId}
  */
-export const getShowById = async (showId: number): Promise<Show | null> => {
-  return request<Show | null>(`/api/shows/${showId}`, {
+export const getShowById = async (showId: number | string): Promise<Show | null> => {
+  return request<Show | null>(`/api/shows/${encodeURIComponent(showId)}`, {
     method: "GET",
   });
 };

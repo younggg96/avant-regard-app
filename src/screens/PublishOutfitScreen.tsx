@@ -382,9 +382,9 @@ const PublishOutfitScreen = () => {
       id: 0, // 本地数据没有数据库 ID，使用 0
       brand: show.brand,
       season: show.season,
-      imageUrl: show.show_url,
+      imageUrl: show.cover_image,
       showId: show.show_id, // 数据库秀场 ID，用于关联帖子
-      showUrl: show.show_url, // 仅用于按钮点击跳转链接
+      showUrl: show.cover_image, // 仅用于按钮点击跳转链接
     };
 
     setSelectedShows([...selectedShows, selectedShow]);
@@ -1067,7 +1067,7 @@ const PublishOutfitScreen = () => {
         {/* 关联品牌 */}
         <BrandGridSelector
           selectedBrands={selectedBrands}
-          onBrandPress={() => {}}
+          onBrandPress={() => { }}
           onRemoveBrand={handleRemoveBrand}
           onAddBrand={() => setShowBrandSelector(true)}
           maxBrands={MAX_BRANDS}

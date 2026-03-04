@@ -118,7 +118,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                   style={[styles.showItem, { width: showWidth }]}
                 >
                   <Image
-                    source={{ uri: item.show_url }}
+                    source={{ uri: item.cover_image }}
                     style={[styles.showImage, { height: showWidth * 1.4 }]}
                   />
                   <VStack mt="$xs" px="$xs">
