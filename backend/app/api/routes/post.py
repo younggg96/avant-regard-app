@@ -252,10 +252,11 @@ async def get_favorite_posts_by_user_id(
 
 @router.get("/show/{show_id}")
 async def get_posts_by_show_id(
-    show_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
+    show_id: str, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取某个秀场关联的帖子"""
-    result = post_service.get_posts_by_show_id(show_id, current_user_id)
+    # show_id 可以是字符串（如 MongoDB ObjectId）或数字字符串
+    result = post_service.get_posts_by_show_id_str(show_id, current_user_id)
     return success([p.model_dump() for p in result])
 
 

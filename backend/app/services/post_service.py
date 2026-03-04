@@ -451,15 +451,35 @@ class PostService:
         """获取某个秀场关联的帖子（通过 show_ids 数组查询）"""
         # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
         # 注意：show_ids 在数据库中存储为字符串数组，所以需要将 show_id 转为字符串
+        show_id_str = str(show_id)
         result = (
             self.db.table("posts")
             .select("*")
-            .contains("show_ids", [str(show_id)])
+            .contains("show_ids", [show_id_str])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .order("created_at", desc=True)
             .execute()
         )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
+    def get_posts_by_show_id_str(
+        self, show_id: str, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """获取某个秀场关联的帖子（通过 show_ids 数组查询，支持字符串ID）"""
+        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
+        # show_ids 在数据库中存储为字符串数组
+        print(f"Searching for posts with show_id: {show_id}")
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .contains("show_ids", [show_id])
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        print(f"Found {len(result.data or [])} posts for show_id: {show_id}")
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_posts_by_brand_id(

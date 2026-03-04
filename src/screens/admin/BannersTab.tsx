@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import {
   deleteBanner,
   toggleBannerStatus,
 } from "../../services/bannerService";
+import { searchPosts, Post } from "../../services/postService";
+import { searchShows, Show } from "../../services/showService";
 import { sharedStyles } from "./adminStyles";
 import { getLinkTypeName, pickAndUploadImage } from "./adminUtils";
 
@@ -42,6 +44,43 @@ const BannersTab = () => {
     sort_order: 0,
     is_active: true,
   });
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState<(Post | Show)[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = useCallback(async (keyword: string, linkType: string) => {
+    if (!keyword.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    try {
+      setSearchLoading(true);
+      if (linkType === "POST") {
+        const results = await searchPosts(keyword.trim(), 20);
+        setSearchResults(results);
+      } else if (linkType === "SHOW") {
+        const results = await searchShows(keyword.trim(), 20);
+        setSearchResults(results);
+      }
+    } catch (error) {
+      console.error("搜索失败:", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, []);
+
+  const handleSearchInputChange = useCallback((text: string, linkType: string) => {
+    setSearchKeyword(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => handleSearch(text, linkType), 400);
+  }, [handleSearch]);
+
+  const handleSelectSearchResult = useCallback((item: Post | Show) => {
+    setForm((prev) => ({ ...prev, link_value: String(item.id) }));
+    setSearchKeyword("");
+    setSearchResults([]);
+  }, []);
 
   const fetchBanners = useCallback(async () => {
     try {
@@ -77,6 +116,8 @@ const BannersTab = () => {
       sort_order: banners.length,
       is_active: true,
     });
+    setSearchKeyword("");
+    setSearchResults([]);
     setModalVisible(true);
   };
 
@@ -91,6 +132,8 @@ const BannersTab = () => {
       sort_order: banner.sortOrder,
       is_active: banner.isActive,
     });
+    setSearchKeyword("");
+    setSearchResults([]);
     setModalVisible(true);
   };
 
@@ -290,7 +333,7 @@ const BannersTab = () => {
                   <TouchableOpacity
                     key={type}
                     style={[sharedStyles.linkTypeButton, form.link_type === type && sharedStyles.linkTypeButtonActive]}
-                    onPress={() => setForm((prev) => ({ ...prev, link_type: type }))}
+                    onPress={() => { setForm((prev) => ({ ...prev, link_type: type })); setSearchKeyword(""); setSearchResults([]); }}
                   >
                     <Text style={[sharedStyles.linkTypeButtonText, form.link_type === type && sharedStyles.linkTypeButtonTextActive]}>
                       {getLinkTypeName(type)}
@@ -303,17 +346,80 @@ const BannersTab = () => {
                 <>
                   <Text style={sharedStyles.formLabel}>
                     {form.link_type === "POST" && "帖子 ID"}
-                    {form.link_type === "BRAND" && "品牌标识"}
+                    {form.link_type === "BRAND" && "品牌名字"}
                     {form.link_type === "SHOW" && "秀场 ID"}
                     {form.link_type === "EXTERNAL" && "外部链接 URL"}
                   </Text>
+
+                  {(form.link_type === "POST" || form.link_type === "SHOW") && (
+                    <View style={styles.searchSection}>
+                      <View style={styles.searchInputRow}>
+                        <Ionicons name="search-outline" size={18} color={theme.colors.gray300} style={styles.searchIcon} />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder={form.link_type === "POST" ? "搜索帖子标题 / 内容 / 作者..." : "搜索品牌 / 季节 / 类别..."}
+                          placeholderTextColor={theme.colors.gray300}
+                          value={searchKeyword}
+                          onChangeText={(text) => handleSearchInputChange(text, form.link_type)}
+                        />
+                        {searchLoading && <ActivityIndicator size="small" color={theme.colors.gray400} />}
+                        {searchKeyword.length > 0 && !searchLoading && (
+                          <TouchableOpacity onPress={() => { setSearchKeyword(""); setSearchResults([]); }}>
+                            <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      {searchResults.length > 0 && (
+                        <ScrollView 
+                          style={styles.searchResultsList}
+                          nestedScrollEnabled={true}
+                          showsVerticalScrollIndicator={true}
+                        >
+                          {searchResults.map((item) => {
+                            const isPost = form.link_type === "POST";
+                            const post = isPost ? (item as Post) : null;
+                            const show = !isPost ? (item as Show) : null;
+                            return (
+                              <TouchableOpacity
+                                key={String(item.id)}
+                                style={[
+                                  styles.searchResultItem,
+                                  String(item.id) === form.link_value && styles.searchResultItemSelected,
+                                ]}
+                                onPress={() => handleSelectSearchResult(item)}
+                              >
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.searchResultTitle} numberOfLines={1}>
+                                    {post ? post.title || post.contentText : `${show!.brand} ${show!.season}`}
+                                  </Text>
+                                  <Text style={styles.searchResultMeta} numberOfLines={1}>
+                                    {post
+                                      ? `ID: ${post.id} · ${post.username} · ${post.postType}`
+                                      : `ID: ${show!.id}${show!.year ? ` · ${show!.year}` : ""}${show!.category ? ` · ${show!.category}` : ""}`
+                                    }
+                                  </Text>
+                                </View>
+                                {String(item.id) === form.link_value && (
+                                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      )}
+                      {searchKeyword.length > 0 && !searchLoading && searchResults.length === 0 && (
+                        <Text style={styles.searchNoResult}>无搜索结果</Text>
+                      )}
+                    </View>
+                  )}
+
                   <TextInput
                     style={sharedStyles.modalInput}
                     placeholder={
                       form.link_type === "POST" ? "输入帖子 ID" :
-                      form.link_type === "BRAND" ? "输入品牌标识（如 CHANEL）" :
-                      form.link_type === "SHOW" ? "输入秀场 ID" :
-                      "输入完整 URL（https://...）"
+                        form.link_type === "BRAND" ? "输入品牌名字（如 Chanel）" :
+                          form.link_type === "SHOW" ? "输入秀场 ID" :
+                            "输入完整 URL（https://...）"
                     }
                     placeholderTextColor={theme.colors.gray300}
                     value={form.link_value}
@@ -490,6 +596,63 @@ const styles = StyleSheet.create({
     ...theme.typography.bodySmall,
     color: theme.colors.gray300,
     marginTop: theme.spacing.sm,
+  },
+  searchSection: {
+    marginBottom: theme.spacing.sm,
+  },
+  searchInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.sm,
+    minHeight: 44,
+    backgroundColor: theme.colors.gray100,
+  },
+  searchIcon: {
+    marginRight: theme.spacing.xs,
+  },
+  searchInput: {
+    flex: 1,
+    ...theme.typography.bodySmall,
+    color: theme.colors.black,
+    paddingVertical: theme.spacing.sm,
+  },
+  searchResultsList: {
+    marginTop: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderRadius: theme.borderRadius.md,
+    maxHeight: 200,
+    overflow: "hidden",
+  },
+  searchResultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  searchResultItemSelected: {
+    backgroundColor: theme.colors.gray100,
+  },
+  searchResultTitle: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.black,
+    fontWeight: "500",
+  },
+  searchResultMeta: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+    marginTop: 2,
+  },
+  searchNoResult: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+    textAlign: "center",
+    paddingVertical: theme.spacing.md,
   },
 });
 

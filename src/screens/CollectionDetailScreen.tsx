@@ -110,13 +110,17 @@ const CollectionDetailScreen = () => {
       try {
         let posts: Post[] = [];
         if (id) {
-          posts = await getPostsByShowId(parseInt(id));
+          // 直接使用 id，不进行类型转换，支持字符串和数字ID
+          posts = await getPostsByShowId(id);
         }
         setRelatedPosts(posts);
       } catch (error) {
         // 正确处理错误，提取错误消息
         let errorMessage = "加载相关帖子失败";
-        console.error("Failed to load related posts:", errorMessage);
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        console.error("Failed to load related posts:", errorMessage, error);
       } finally {
         setPostsLoading(false);
       }
@@ -160,8 +164,13 @@ const CollectionDetailScreen = () => {
   const renderImageGallery = () => {
     const imagesToShow =
       collectionImages.length > 0
-        ? collectionImages.map((img) => img.imageUrl)
-        : [collection.showUrl || ""];
+        ? collectionImages.map((img) => img.imageUrl).filter(url => url && url.trim() !== "")
+        : collection.coverImage ? [collection.coverImage] : [];
+
+    // 如果没有有效图片，显示占位符
+    if (imagesToShow.length === 0) {
+      imagesToShow.push("https://via.placeholder.com/400x480/f0f0f0/cccccc?text=No+Image");
+    }
 
     return (
       <ImageGallery
@@ -290,8 +299,9 @@ const CollectionDetailScreen = () => {
                 <Image
                   source={{
                     uri:
-                      post.imageUrls?.[0] ||
-                      "https://via.placeholder.com/150",
+                      (post.imageUrls?.[0] && post.imageUrls[0].trim() !== "") 
+                        ? post.imageUrls[0]
+                        : "https://via.placeholder.com/150x120/f0f0f0/cccccc?text=No+Image",
                   }}
                   style={styles.postImage}
                 />

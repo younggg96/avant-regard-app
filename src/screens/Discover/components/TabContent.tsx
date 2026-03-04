@@ -149,7 +149,7 @@ export const TabContent: React.FC<TabContentProps> = ({
     if (tab === "forum") {
       // 论坛显示论坛帖子（按点赞数排序-热门）
       return [...forumPosts].sort(
-        (a, b) => b.engagement.likes - a.engagement.likes
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
     } else if (tab === "recommend") {
       // 发现显示非论坛帖子（排除有 communityId 的帖子）

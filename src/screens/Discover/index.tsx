@@ -293,7 +293,7 @@ const DiscoverScreen: React.FC = () => {
           break;
         case "BRAND":
           if (banner.linkValue) {
-            (navigation.navigate as any)("BrandDetail", { brandSlug: banner.linkValue });
+            (navigation.navigate as any)("BrandDetail", { brandName: banner.linkValue });
           }
           break;
         case "SHOW":

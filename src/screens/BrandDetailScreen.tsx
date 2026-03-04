@@ -162,7 +162,8 @@ const BrandDetailScreen = () => {
           title: show.brand,
           season: show.season,
           year: show.year?.toString() || "",
-          coverImage: show.coverImage,
+          coverImage: show.coverImage || "",
+          imageCount: 0,
           showUrl: show.showUrl,
         },
         brandName: show.brand,
@@ -538,18 +539,20 @@ const BrandDetailScreen = () => {
               <Text style={styles.uploadShowButtonText}>上传秀场</Text>
             </TouchableOpacity>
 
+            <Text>{JSON.stringify(brandShows)}</Text>
+
             {brandShows.length > 0 ? (
               <View style={styles.showsSection}>
                 <View style={styles.showsGrid}>
                   {brandShows.map((show, index) => (
                     <TouchableOpacity
-                      key={`${show.showUrl}-${index}`}
+                      key={`${show.id}-${index}`}
                       style={styles.showCard}
                       onPress={() => handleShowPress(show)}
                       activeOpacity={0.8}
                     >
                       <Image
-                        source={{ uri: show.showUrl }}
+                        source={{ uri: show.coverImage }}
                         style={styles.showImage}
                         resizeMode="cover"
                       />

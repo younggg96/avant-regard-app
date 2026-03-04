@@ -27,9 +27,25 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
     return null;
   }
 
+  // 从富文本 JSON 中提取第一个文本块的内容
+  const parseContentText = (text: string): string => {
+    if (!text) return "";
+    try {
+      const blocks = JSON.parse(text);
+      if (Array.isArray(blocks) && blocks.length > 0) {
+        const firstTextBlock = blocks.find((b: any) => b.type === "text");
+        return firstTextBlock?.content || "";
+      }
+    } catch {
+      // not JSON, return as-is
+    }
+    return text;
+  };
+
   // 获取显示数据
   const displayTitle = post.content?.title || post.title || "";
-  const displayDescription = post.content?.description || "";
+  const rawDescription = post.content?.description || "";
+  const displayDescription = parseContentText(rawDescription);
   const displayImages = post.content?.images || (post.image ? [post.image] : []);
   const displayLikes = post.engagement?.likes || post.likes || 0;
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;

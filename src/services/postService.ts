@@ -569,7 +569,8 @@ export async function getFavoritePostsByUserId(
  * @param showId 秀场ID（支持整数或字符串类型）
  */
 export async function getPostsByShowId(showId: number | string): Promise<Post[]> {
-  return request<Post[]>(`/api/posts/show/${showId}`, {
+  // 直接使用传入的ID，不进行类型转换
+  return request<Post[]>(`/api/posts/show/${encodeURIComponent(showId)}`, {
     method: "GET",
   });
 }
