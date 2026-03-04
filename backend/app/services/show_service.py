@@ -144,10 +144,10 @@ class ShowService:
 
         return shows, total
 
-    def get_show_by_id(self, show_id: int) -> Optional[Show]:
+    def get_show_by_id(self, show_id) -> Optional[Show]:
         """通过 ID 获取秀场"""
         result = (
-            self.db.table("shows").select("*").eq("id", show_id).execute()
+            self.db.table("shows").select("*").eq("id", str(show_id)).execute()
         )
 
         if not result.data:

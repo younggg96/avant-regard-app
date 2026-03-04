@@ -188,15 +188,13 @@ async def get_show_by_url(url: str = Query(..., description="秀场链接")):
 
 
 @router.get("/{show_id}")
-async def get_show_by_id(show_id: int):
+async def get_show_by_id(show_id: str):
     """通过 ID 获取秀场详情"""
-    # 尝试从缓存获取
     cache_key = cache_service.get_show_key(show_id)
     cached = cache_service.get(cache_key)
     if cached is not None:
         return success(cached)
 
-    # 从数据库获取
     show = show_service.get_show_by_id(show_id)
 
     if not show:
@@ -204,7 +202,6 @@ async def get_show_by_id(show_id: int):
 
     result = show.model_dump()
 
-    # 缓存结果
     cache_service.set(cache_key, result, CacheService.TTL_LONG)
 
     return success(result)

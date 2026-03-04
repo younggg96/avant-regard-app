@@ -248,7 +248,7 @@ class CacheService:
             page_size=page_size,
         )
 
-    def get_show_key(self, show_id: int) -> str:
+    def get_show_key(self, show_id) -> str:
         """获取单个秀场缓存键"""
         return self._build_key(self.PREFIX_SHOWS, "detail", show_id)
 
