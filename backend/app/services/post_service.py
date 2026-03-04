@@ -649,6 +649,49 @@ class PostService:
         )
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
+    def get_recommend_posts(
+        self, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
+        """获取推荐帖子（无 community_id 的非论坛帖子，仅已发布且审核通过的）"""
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .is_("community_id", "null")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
+    def get_following_posts(
+        self, current_user_id: int, limit: int = 50
+    ) -> List[Post]:
+        """获取关注用户的帖子（当前用户关注的人发布的非论坛帖子）"""
+        follow_result = (
+            self.db.table("user_follows")
+            .select("following_id")
+            .eq("follower_id", current_user_id)
+            .execute()
+        )
+        following_ids = [f["following_id"] for f in follow_result.data or []]
+        if not following_ids:
+            return []
+
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .in_("user_id", following_ids)
+            .is_("community_id", "null")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._format_post(p, current_user_id) for p in result.data or []]
+
 
 # 单例
 post_service = PostService()

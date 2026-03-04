@@ -49,6 +49,26 @@ async def get_posts(
     return success(data)
 
 
+@router.get("/recommend")
+async def get_recommend_posts(
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """获取推荐帖子（非论坛帖子）"""
+    result = post_service.get_recommend_posts(current_user_id, limit=limit)
+    return success([p.model_dump() for p in result])
+
+
+@router.get("/following")
+async def get_following_posts(
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """获取关注用户的帖子"""
+    result = post_service.get_following_posts(current_user_id, limit=limit)
+    return success([p.model_dump() for p in result])
+
+
 @router.get("/{post_id}")
 async def get_post_by_id(
     post_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
@@ -318,3 +338,5 @@ async def get_forum_posts(
         cache_service.set(cache_key, data, CacheService.TTL_SHORT)
 
     return success(data)
+
+

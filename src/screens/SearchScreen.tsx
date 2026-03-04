@@ -16,8 +16,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
 import { theme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
-import { searchPosts, Post as PostData } from "../services/postService";
+import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
+import { useAuthStore } from "../store/authStore";
 
 // 搜索类型
 type SearchType = "posts" | "users";
@@ -30,6 +31,7 @@ interface SearchHistory {
 
 const SearchScreen = () => {
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("posts");
   const [postResults, setPostResults] = useState<PostData[]>([]);
@@ -87,8 +89,8 @@ const SearchScreen = () => {
       console.error("Search failed:", error);
       // 显示用户友好的错误提示
       const errorMessage = error instanceof Error ? error.message : "未知错误";
-      if (errorMessage.includes("JSON could not be generated") || 
-          errorMessage.includes("Worker threw exception")) {
+      if (errorMessage.includes("JSON could not be generated") ||
+        errorMessage.includes("Worker threw exception")) {
         Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
       } else {
         Alert.alert("搜索失败", "网络连接异常，请检查网络后重试");
@@ -124,8 +126,8 @@ const SearchScreen = () => {
       } catch (error) {
         console.error("Search failed:", error);
         const errorMessage = error instanceof Error ? error.message : "未知错误";
-        if (errorMessage.includes("JSON could not be generated") || 
-            errorMessage.includes("Worker threw exception")) {
+        if (errorMessage.includes("JSON could not be generated") ||
+          errorMessage.includes("Worker threw exception")) {
           Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
         }
         // 搜索失败时清空结果
@@ -167,8 +169,8 @@ const SearchScreen = () => {
       } catch (error) {
         console.error("Search failed:", error);
         const errorMessage = error instanceof Error ? error.message : "未知错误";
-        if (errorMessage.includes("JSON could not be generated") || 
-            errorMessage.includes("Worker threw exception")) {
+        if (errorMessage.includes("JSON could not be generated") ||
+          errorMessage.includes("Worker threw exception")) {
           Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
         }
         // 搜索失败时清空结果
@@ -219,9 +221,59 @@ const SearchScreen = () => {
   );
 
   // 处理点赞
-  const handleLike = useCallback((postId: string) => {
-    console.log("点赞帖子:", postId);
-  }, []);
+  const handleLike = useCallback(
+    async (postId: string) => {
+      const userId = user?.userId;
+      if (!userId) {
+        Alert.alert("提示", "请先登录");
+        return;
+      }
+
+      const target = postResults.find((p) => String(p.id) === postId);
+      if (!target) return;
+
+      const isCurrentlyLiked = target.likedByMe;
+
+      setPostResults((prev) =>
+        prev.map((p) =>
+          String(p.id) === postId
+            ? {
+                ...p,
+                likedByMe: !isCurrentlyLiked,
+                likeCount: isCurrentlyLiked
+                  ? (p.likeCount || 1) - 1
+                  : (p.likeCount || 0) + 1,
+              }
+            : p
+        )
+      );
+
+      try {
+        const numericPostId = parseInt(postId, 10);
+        if (isCurrentlyLiked) {
+          await unlikePost(numericPostId, userId);
+        } else {
+          await likePost(numericPostId, userId);
+        }
+      } catch (error) {
+        console.error("Like toggle failed:", error);
+        setPostResults((prev) =>
+          prev.map((p) =>
+            String(p.id) === postId
+              ? {
+                  ...p,
+                  likedByMe: isCurrentlyLiked,
+                  likeCount: isCurrentlyLiked
+                    ? (p.likeCount || 0) + 1
+                    : (p.likeCount || 1) - 1,
+                }
+              : p
+          )
+        );
+      }
+    },
+    [user, postResults]
+  );
 
   // 转换帖子格式
   const convertToPost = (post: PostData): Post => {

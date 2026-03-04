@@ -657,6 +657,30 @@ export async function getForumPosts(limit: number = 50): Promise<Post[]> {
   });
 }
 
+/**
+ * 获取推荐帖子（非论坛帖子）
+ * GET /api/posts/recommend
+ * 只返回无 communityId 的 PUBLISHED 且审核通过(APPROVED) 的帖子
+ * @param limit 返回数量限制，默认 50
+ */
+export async function getRecommendPosts(limit: number = 50): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/recommend?limit=${limit}`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 获取关注用户的帖子
+ * GET /api/posts/following
+ * 返回当前用户关注的人发布的非论坛帖子
+ * @param limit 返回数量限制，默认 50
+ */
+export async function getFollowingPosts(limit: number = 50): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/following?limit=${limit}`, {
+    method: "GET",
+  });
+}
+
 // 导出 postService 对象
 export const postService = {
   // 图片上传
@@ -688,6 +712,9 @@ export const postService = {
   // 社区帖子
   getPostsByCommunityId,
   getForumPosts,
+  // 推荐与关注
+  getRecommendPosts,
+  getFollowingPosts,
 };
 
 export default postService;

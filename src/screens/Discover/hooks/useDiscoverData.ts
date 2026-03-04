@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { getPosts, getForumPosts, likePost, unlikePost } from "../../../services/postService";
+import { getRecommendPosts, getForumPosts, getFollowingPosts, likePost, unlikePost } from "../../../services/postService";
 import { userInfoService, UserInfo } from "../../../services/userInfoService";
 import { useAuthStore } from "../../../store/authStore";
-import { getFollowingUsers, FollowingUser } from "../../../services/followService";
 import { getActiveBanners, Banner } from "../../../services/bannerService";
 import { getCommunities, CommunityListResponse } from "../../../services/communityService";
 import { DisplayPost, TabType, UserInfoCache } from "../types";
@@ -24,11 +23,11 @@ interface TabLoadedState {
 }
 
 interface UseDiscoverDataReturn {
-  // 状态
-  posts: DisplayPost[];
+  // 每个 Tab 独立的帖子数据
+  recommendPosts: DisplayPost[];
   forumPosts: DisplayPost[];
+  followingPosts: DisplayPost[];
   banners: Banner[];
-  followingUserIds: number[];
   communities: CommunityListResponse | null;
   isInitialized: boolean;
   refreshing: boolean;
@@ -42,8 +41,9 @@ interface UseDiscoverDataReturn {
   handleRefresh: (activeTab: TabType) => Promise<void>;
   handleLike: (postId: string) => Promise<void>;
   loadTabData: (tab: TabType) => Promise<void>;
-  setPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
+  setRecommendPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
   setForumPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
+  setFollowingPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
 }
 
 /**
@@ -53,10 +53,10 @@ interface UseDiscoverDataReturn {
  */
 export const useDiscoverData = (): UseDiscoverDataReturn => {
   const { user } = useAuthStore();
-  const [posts, setPosts] = useState<DisplayPost[]>([]);
+  const [recommendPosts, setRecommendPosts] = useState<DisplayPost[]>([]);
   const [forumPosts, setForumPosts] = useState<DisplayPost[]>([]);
+  const [followingPosts, setFollowingPosts] = useState<DisplayPost[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
-  const [followingUserIds, setFollowingUserIds] = useState<number[]>([]);
   const [communities, setCommunities] = useState<CommunityListResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -112,34 +112,25 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   );
 
   /**
-   * 从后端获取帖子数据
+   * 获取推荐帖子（非论坛帖子）
    */
-  const fetchPosts = useCallback(async () => {
+  const fetchRecommendPosts = useCallback(async () => {
     try {
       setError(null);
-      const apiPosts = await getPosts();
+      const apiPosts = await getRecommendPosts();
 
-      // 只显示已发布的帖子
-      const publishedPosts = apiPosts.filter(
-        (post) => post.status === "PUBLISHED"
-      );
-
-      // 收集所有不同的 userId
-      const userIds = [...new Set(publishedPosts.map((post) => post.userId))];
-
-      // 获取所有用户信息
+      const userIds = [...new Set(apiPosts.map((post) => post.userId))];
       const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
       await fetchUserInfos(userIds, userInfoMap);
 
-      // 转换为前端展示格式
-      const displayPosts = publishedPosts.map((post) =>
+      const displayPosts = apiPosts.map((post) =>
         mapApiPostToDisplayPost(post, userInfoMap)
       );
-      setPosts(displayPosts);
+      setRecommendPosts(displayPosts);
     } catch (err) {
-      console.error("获取帖子失败:", err);
-      setError(err instanceof Error ? err.message : "获取帖子失败");
-      setPosts([]);
+      console.error("获取推荐帖子失败:", err);
+      setError(err instanceof Error ? err.message : "获取推荐帖子失败");
+      setRecommendPosts([]);
     }
   }, [fetchUserInfos]);
 
@@ -178,21 +169,25 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   }, []);
 
   /**
-   * 获取关注的用户列表
+   * 获取关注用户的帖子
    */
-  const fetchFollowingUsers = useCallback(async () => {
-    if (!user?.userId) return;
-
+  const fetchFollowingPosts = useCallback(async () => {
     try {
-      const followingList = await getFollowingUsers(user.userId);
-      const userIds = followingList.map((item: FollowingUser) => item.userId);
-      setFollowingUserIds(userIds);
-      console.log("关注的用户数量:", userIds.length);
+      const apiPosts = await getFollowingPosts();
+
+      const userIds = [...new Set(apiPosts.map((post) => post.userId))];
+      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      await fetchUserInfos(userIds, userInfoMap);
+
+      const displayPosts = apiPosts.map((post) =>
+        mapApiPostToDisplayPost(post, userInfoMap)
+      );
+      setFollowingPosts(displayPosts);
     } catch (err) {
-      console.error("获取关注列表失败:", err);
-      setFollowingUserIds([]);
+      console.error("获取关注帖子失败:", err);
+      setFollowingPosts([]);
     }
-  }, [user?.userId]);
+  }, [fetchUserInfos]);
 
   /**
    * 获取社区列表（带重试机制）
@@ -222,7 +217,6 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    */
   const loadTabData = useCallback(
     async (tab: TabType) => {
-      // 如果已经加载过或正在加载，则跳过
       if (tabLoaded[tab] || tabLoading[tab]) {
         return;
       }
@@ -233,9 +227,9 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         if (tab === "forum") {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
         } else if (tab === "recommend") {
-          await Promise.all([fetchPosts(), fetchBanners()]);
+          await Promise.all([fetchRecommendPosts(), fetchBanners()]);
         } else if (tab === "following") {
-          await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+          await fetchFollowingPosts();
         }
         setTabLoaded((prev) => ({ ...prev, [tab]: true }));
       } catch (err) {
@@ -244,7 +238,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         setTabLoading((prev) => ({ ...prev, [tab]: false }));
       }
     },
-    [tabLoaded, tabLoading, fetchPosts, fetchForumPosts, fetchBanners, fetchCommunities, fetchFollowingUsers]
+    [tabLoaded, tabLoading, fetchRecommendPosts, fetchForumPosts, fetchFollowingPosts, fetchBanners, fetchCommunities]
   );
 
   /**
@@ -254,7 +248,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     const initData = async () => {
       setTabLoading((prev) => ({ ...prev, recommend: true }));
       try {
-        await Promise.all([fetchPosts(), fetchBanners()]);
+        await Promise.all([fetchRecommendPosts(), fetchBanners()]);
         setTabLoaded((prev) => ({ ...prev, recommend: true }));
       } catch (err) {
         console.error("初始化加载推荐数据失败:", err);
@@ -264,7 +258,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       setIsInitialized(true);
     };
     initData();
-  }, [fetchPosts, fetchBanners]);
+  }, [fetchRecommendPosts, fetchBanners]);
 
   /**
    * 刷新数据 - 刷新时也更新 tabLoaded 状态
@@ -276,11 +270,10 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         if (activeTab === "forum") {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
         } else if (activeTab === "recommend") {
-          await Promise.all([fetchPosts(), fetchBanners()]);
+          await Promise.all([fetchRecommendPosts(), fetchBanners()]);
         } else {
-          await Promise.all([fetchPosts(), fetchFollowingUsers()]);
+          await fetchFollowingPosts();
         }
-        // 刷新成功后确保标记为已加载
         setTabLoaded((prev) => ({ ...prev, [activeTab]: true }));
       } catch (err) {
         console.error(`刷新 ${activeTab} 数据失败:`, err);
@@ -288,7 +281,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         setRefreshing(false);
       }
     },
-    [fetchPosts, fetchFollowingUsers, fetchBanners, fetchForumPosts, fetchCommunities]
+    [fetchRecommendPosts, fetchFollowingPosts, fetchBanners, fetchForumPosts, fetchCommunities]
   );
 
   /**
@@ -296,16 +289,15 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    */
   const handleLike = useCallback(
     async (postId: string) => {
-      // 同时在 posts 和 forumPosts 中查找目标帖子
-      const targetPost = posts.find((p) => p.id === postId);
-      const targetForumPost = forumPosts.find((p) => p.id === postId);
-      const target = targetPost || targetForumPost;
-      
+      const targetRecommend = recommendPosts.find((p) => p.id === postId);
+      const targetForum = forumPosts.find((p) => p.id === postId);
+      const targetFollowing = followingPosts.find((p) => p.id === postId);
+      const target = targetRecommend || targetForum || targetFollowing;
+
       if (!target) return;
 
       const isCurrentlyLiked = target.engagement.isLiked;
 
-      // 乐观更新 UI
       const updatePost = (post: DisplayPost) =>
         post.id === postId
           ? {
@@ -320,15 +312,16 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
             }
           : post;
 
-      // 根据帖子来源更新对应的状态
-      if (targetPost) {
-        setPosts((prevPosts) => prevPosts.map(updatePost));
+      if (targetRecommend) {
+        setRecommendPosts((prev) => prev.map(updatePost));
       }
-      if (targetForumPost) {
-        setForumPosts((prevPosts) => prevPosts.map(updatePost));
+      if (targetForum) {
+        setForumPosts((prev) => prev.map(updatePost));
+      }
+      if (targetFollowing) {
+        setFollowingPosts((prev) => prev.map(updatePost));
       }
 
-      // 调用 API
       try {
         const numericPostId = parseInt(postId, 10);
         const userId = user?.id ? parseInt(user.id, 10) : 0;
@@ -342,7 +335,6 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         }
       } catch (err) {
         console.error("点赞操作失败:", err);
-        // 回滚 UI 状态
         const rollbackPost = (post: DisplayPost) =>
           post.id === postId
             ? {
@@ -357,22 +349,25 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
               }
             : post;
 
-        if (targetPost) {
-          setPosts((prevPosts) => prevPosts.map(rollbackPost));
+        if (targetRecommend) {
+          setRecommendPosts((prev) => prev.map(rollbackPost));
         }
-        if (targetForumPost) {
-          setForumPosts((prevPosts) => prevPosts.map(rollbackPost));
+        if (targetForum) {
+          setForumPosts((prev) => prev.map(rollbackPost));
+        }
+        if (targetFollowing) {
+          setFollowingPosts((prev) => prev.map(rollbackPost));
         }
       }
     },
-    [posts, forumPosts, user]
+    [recommendPosts, forumPosts, followingPosts, user]
   );
 
   return {
-    posts,
+    recommendPosts,
     forumPosts,
+    followingPosts,
     banners,
-    followingUserIds,
     communities,
     isInitialized,
     refreshing,
@@ -384,8 +379,9 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     handleRefresh,
     handleLike,
     loadTabData,
-    setPosts,
+    setRecommendPosts,
     setForumPosts,
+    setFollowingPosts,
   };
 };
 

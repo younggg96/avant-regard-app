@@ -22,16 +22,14 @@ import { PopularCommunities } from "./PopularCommunities";
 
 interface TabContentProps {
   tab: TabType;
-  posts: DisplayPost[];
-  forumPosts: DisplayPost[];
-  followingUserIds: number[];
+  tabPosts: DisplayPost[];
   banners: Banner[];
   communities: CommunityListResponse | null;
   error: string | null;
   loading: boolean;
   refreshing: boolean;
-  tabLoading: boolean; // 当前 tab 是否正在加载
-  tabLoaded: boolean;  // 当前 tab 是否已加载过
+  tabLoading: boolean;
+  tabLoaded: boolean;
   onRefresh: () => void;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onPostPress: (post: Post) => void;
@@ -107,9 +105,7 @@ const convertToPost = (post: DisplayPost): Post => ({
  */
 export const TabContent: React.FC<TabContentProps> = ({
   tab,
-  posts,
-  forumPosts,
-  followingUserIds,
+  tabPosts,
   banners,
   communities,
   error,
@@ -124,7 +120,6 @@ export const TabContent: React.FC<TabContentProps> = ({
   onLike,
   onBannerPress,
 }) => {
-  // 渲染单个帖子卡片
   const renderPost = useCallback(
     (post: Post) => {
       if (!post || !post.id || !post.author) {
@@ -144,27 +139,6 @@ export const TabContent: React.FC<TabContentProps> = ({
     [onPostPress, onAuthorPress, onLike]
   );
 
-  // 根据标签获取对应的帖子
-  const getTabPosts = (): DisplayPost[] => {
-    if (tab === "forum") {
-      // 论坛显示论坛帖子（按点赞数排序-热门）
-      return [...forumPosts].sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-    } else if (tab === "recommend") {
-      // 发现显示非论坛帖子（排除有 communityId 的帖子）
-      return posts.filter((post) => !post.communityId);
-    } else if (tab === "following") {
-      // 关注标签只显示关注用户的非论坛帖子
-      return posts.filter((post) => {
-        const authorId = parseInt(post.author.id, 10);
-        return followingUserIds.includes(authorId) && !post.communityId;
-      });
-    }
-    return [];
-  };
-
-  const tabPosts = getTabPosts();
   const currentPosts = Array.isArray(tabPosts) ? tabPosts.map(convertToPost) : [];
 
   // 获取空状态提示文案

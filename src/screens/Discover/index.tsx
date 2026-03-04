@@ -135,10 +135,10 @@ const DiscoverScreen: React.FC = () => {
 
   // 数据 Hook
   const {
-    posts,
+    recommendPosts,
     forumPosts,
+    followingPosts,
     banners,
-    followingUserIds,
     communities,
     isInitialized,
     refreshing,
@@ -267,7 +267,10 @@ const DiscoverScreen: React.FC = () => {
   // 处理作者点击
   const handleAuthorPress = useCallback(
     (authorId: string) => {
-      const post = posts.find((p) => p.author.id === authorId);
+      const post =
+        recommendPosts.find((p) => p.author.id === authorId) ||
+        forumPosts.find((p) => p.author.id === authorId) ||
+        followingPosts.find((p) => p.author.id === authorId);
       const userId = parseInt(authorId, 10);
       const cachedUserInfo = userInfoCache.current.get(userId);
 
@@ -277,7 +280,7 @@ const DiscoverScreen: React.FC = () => {
         avatar: cachedUserInfo?.avatarUrl || post?.author.avatar,
       });
     },
-    [navigation, posts, userInfoCache]
+    [navigation, recommendPosts, forumPosts, followingPosts, userInfoCache]
   );
 
   // 处理 Banner 点击
@@ -393,9 +396,7 @@ const DiscoverScreen: React.FC = () => {
       >
         <TabContent
           tab="forum"
-          posts={posts}
-          forumPosts={forumPosts}
-          followingUserIds={followingUserIds}
+          tabPosts={forumPosts}
           banners={banners}
           communities={communities}
           error={error}
@@ -412,9 +413,7 @@ const DiscoverScreen: React.FC = () => {
         />
         <TabContent
           tab="recommend"
-          posts={posts}
-          forumPosts={forumPosts}
-          followingUserIds={followingUserIds}
+          tabPosts={recommendPosts}
           banners={banners}
           communities={communities}
           error={error}
@@ -431,9 +430,7 @@ const DiscoverScreen: React.FC = () => {
         />
         <TabContent
           tab="following"
-          posts={posts}
-          forumPosts={forumPosts}
-          followingUserIds={followingUserIds}
+          tabPosts={followingPosts}
           banners={banners}
           communities={communities}
           error={error}
