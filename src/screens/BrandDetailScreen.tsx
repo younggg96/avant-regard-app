@@ -538,9 +538,6 @@ const BrandDetailScreen = () => {
               <Ionicons name="add-circle-outline" size={20} color={theme.colors.black} />
               <Text style={styles.uploadShowButtonText}>上传秀场</Text>
             </TouchableOpacity>
-
-            <Text>{JSON.stringify(brandShows)}</Text>
-
             {brandShows.length > 0 ? (
               <View style={styles.showsSection}>
                 <View style={styles.showsGrid}>
