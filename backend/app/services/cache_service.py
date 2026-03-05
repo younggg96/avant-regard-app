@@ -43,6 +43,8 @@ class CacheService:
             return False
 
         try:
+            safe_url = url.split("@")[-1] if "@" in url else url
+            print(f"🔗 Redis connecting to: {safe_url}")
             self._client = redis.from_url(
                 url,
                 decode_responses=True,
@@ -52,7 +54,7 @@ class CacheService:
             )
             self._client.ping()
             self._connected = True
-            print(f"✅ Redis connected successfully ({settings.REDIS_HOST or url})")
+            print(f"✅ Redis connected successfully ({safe_url})")
             return True
         except (ConnectionError, TimeoutError) as e:
             print(f"⚠️ Redis connection failed: {e}")
