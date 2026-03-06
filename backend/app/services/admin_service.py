@@ -341,6 +341,18 @@ class AdminService:
         )
         return [self._format_brand_submission(s) for s in result.data or []]
 
+    def _insert_brand_with_retry(self, brand_data: dict, max_retries: int = 10):
+        """插入品牌，遇到序列冲突时自动重试（每次重试 nextval 会自动前进）"""
+        for attempt in range(max_retries):
+            try:
+                self.db.table("brands").insert(brand_data).execute()
+                return
+            except Exception as e:
+                is_dup_key = "23505" in str(e) or "duplicate key" in str(e).lower()
+                if is_dup_key and attempt < max_retries - 1:
+                    continue
+                raise
+
     def approve_brand_submission(self, submission_id: int) -> bool:
         """审核通过品牌提交：更新状态并插入 brands 表"""
         result = (
@@ -354,9 +366,23 @@ class AdminService:
             return False
 
         submission = result.data[0]
+        brand_name = submission["name"]
+
+        existing = (
+            self.db.table("brands")
+            .select("id")
+            .eq("name", brand_name)
+            .execute()
+        )
+        if existing.data:
+            self.db.table("brand_submissions").update({
+                "status": "APPROVED",
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("id", submission_id).execute()
+            return True
 
         brand_data = {
-            "name": submission["name"],
+            "name": brand_name,
             "category": submission.get("category"),
             "founded_year": submission.get("founded_year"),
             "founder": submission.get("founder"),
@@ -364,7 +390,8 @@ class AdminService:
             "website": submission.get("website"),
             "cover_image": submission.get("cover_image"),
         }
-        self.db.table("brands").insert(brand_data).execute()
+
+        self._insert_brand_with_retry(brand_data)
 
         self.db.table("brand_submissions").update({
             "status": "APPROVED",

@@ -559,9 +559,23 @@ const BrandDetailScreen = () => {
                       />
                       <View style={styles.showInfo}>
                         <Text style={styles.showSeason} numberOfLines={1}>
-                          {show.season}
+                          {show.year
+                            ? `${show.year} ${show.season}`
+                            : show.season}
                         </Text>
-                        <Text style={styles.showCategory}>{show.category}</Text>
+                        {show.description && (
+                          <Text
+                            style={styles.showDescription}
+                            numberOfLines={2}
+                          >
+                            {show.description}
+                          </Text>
+                        )}
+                        {show.category && (
+                          <Text style={styles.showCategory}>
+                            {show.category}
+                          </Text>
+                        )}
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -888,7 +902,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 100,
   },
   showInfo: {
     position: "absolute",
@@ -906,6 +920,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     marginTop: 2,
+  },
+  showDescription: {
+    fontFamily: "Inter-Regular",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 3,
+    lineHeight: 15,
   },
   // Posts Section
   postsSection: {

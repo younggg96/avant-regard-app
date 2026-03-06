@@ -331,7 +331,10 @@ async def approve_brand_submission(
     current_user_id: int = Depends(get_current_admin_user)
 ):
     """审核通过品牌提交"""
-    ok = admin_service.approve_brand_submission(submission_id)
+    try:
+        ok = admin_service.approve_brand_submission(submission_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"品牌插入失败: {str(e)}")
     if not ok:
         raise HTTPException(status_code=404, detail="提交记录不存在或已审核")
     return success(message="品牌审核通过")
