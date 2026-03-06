@@ -341,17 +341,35 @@ class AdminService:
         )
         return [self._format_brand_submission(s) for s in result.data or []]
 
-    def _insert_brand_with_retry(self, brand_data: dict, max_retries: int = 10):
-        """插入品牌，遇到序列冲突时自动重试（每次重试 nextval 会自动前进）"""
-        for attempt in range(max_retries):
+    def _get_next_brand_id(self) -> int:
+        """查询 brands 表当前最大 id + 1，绕过失步的序列"""
+        result = (
+            self.db.table("brands")
+            .select("id")
+            .order("id", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return (result.data[0]["id"] + 1) if result.data else 1
+
+    def _insert_brand(self, brand_data: dict, max_retries: int = 5):
+        """使用显式 id 插入品牌，避免序列失步导致的主键冲突"""
+        last_error = None
+        for _ in range(max_retries):
             try:
-                self.db.table("brands").insert(brand_data).execute()
-                return
+                next_id = self._get_next_brand_id()
+                data = {**brand_data, "id": next_id}
+                result = self.db.table("brands").insert(data).execute()
+                if result.data:
+                    return result.data[0]
+                raise Exception("插入品牌失败：返回数据为空")
             except Exception as e:
-                is_dup_key = "23505" in str(e) or "duplicate key" in str(e).lower()
-                if is_dup_key and attempt < max_retries - 1:
+                last_error = e
+                err = str(e) + str(getattr(e, 'code', '')) + str(getattr(e, 'message', ''))
+                if "23505" in err or "duplicate key" in err.lower():
                     continue
                 raise
+        raise last_error  # type: ignore[misc]
 
     def approve_brand_submission(self, submission_id: int) -> bool:
         """审核通过品牌提交：更新状态并插入 brands 表"""
@@ -391,7 +409,7 @@ class AdminService:
             "cover_image": submission.get("cover_image"),
         }
 
-        self._insert_brand_with_retry(brand_data)
+        self._insert_brand(brand_data)
 
         self.db.table("brand_submissions").update({
             "status": "APPROVED",
