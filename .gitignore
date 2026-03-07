@@ -80,3 +80,4 @@ __pycache__/
 .eggs/
 venv/
 .venv/
+backend/.env.production
