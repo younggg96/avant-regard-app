@@ -60,6 +60,40 @@ export interface ForgetPasswordParams {
   code: string;
 }
 
+export interface EmailLoginParams {
+  email: string;
+  password: string;
+}
+
+export interface EmailLoginOtpParams {
+  email: string;
+  code: string;
+  username?: string;
+}
+
+export interface EmailRegisterParams {
+  email: string;
+  username: string;
+  password: string;
+  code: string;
+}
+
+export interface SendEmailOtpParams {
+  email: string;
+}
+
+export interface EmailForgetPasswordParams {
+  email: string;
+  password: string;
+  code: string;
+}
+
+export interface AppleLoginParams {
+  identityToken: string;
+  fullName?: string;
+  email?: string;
+}
+
 export interface RefreshTokenParams {
   refreshToken: string;
 }
@@ -173,6 +207,84 @@ export async function register(params: RegisterParams): Promise<LoginResponse> {
 }
 
 /**
+ * 邮箱密码登录
+ * POST /api/auth/login-email
+ */
+export async function loginEmail(
+  params: EmailLoginParams
+): Promise<LoginResponse> {
+  return request<LoginResponse>("/api/auth/login-email", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 邮箱验证码登录（自动注册）
+ * POST /api/auth/login-email-otp
+ */
+export async function loginEmailOtp(
+  params: EmailLoginOtpParams
+): Promise<LoginResponse> {
+  return request<LoginResponse>("/api/auth/login-email-otp", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 邮箱注册
+ * POST /api/auth/register-email
+ */
+export async function registerEmail(
+  params: EmailRegisterParams
+): Promise<LoginResponse> {
+  return request<LoginResponse>("/api/auth/register-email", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 发送邮箱验证码
+ * POST /api/auth/email/send
+ */
+export async function sendEmailOtp(
+  params: SendEmailOtpParams
+): Promise<string> {
+  return request<string>("/api/auth/email/send", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 邮箱重置密码
+ * POST /api/auth/forget-password-email
+ */
+export async function forgetPasswordEmail(
+  params: EmailForgetPasswordParams
+): Promise<string> {
+  return request<string>("/api/auth/forget-password-email", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * Apple 登录
+ * POST /api/auth/login-apple
+ */
+export async function loginApple(
+  params: AppleLoginParams
+): Promise<LoginResponse> {
+  return request<LoginResponse>("/api/auth/login-apple", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
  * 发送短信验证码
  * POST /api/auth/sms/send
  * 使用 Supabase Phone Auth 发送 OTP
@@ -226,6 +338,12 @@ export async function logout(): Promise<void> {
 export const authService = {
   login,
   loginSms,
+  loginEmail,
+  loginEmailOtp,
+  registerEmail,
+  sendEmailOtp,
+  forgetPasswordEmail,
+  loginApple,
   register,
   sendSms,
   forgetPassword,

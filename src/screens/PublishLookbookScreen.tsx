@@ -63,7 +63,7 @@ const PublishLookbookScreen = () => {
   const [draftPostId, setDraftPostId] = useState<number | null>(
     editMode && draftPost?.id ? parseInt(String(draftPost.id), 10) : null
   );
-  
+
   // 判断是否编辑已发布/审核中的帖子（需要重新审核）
   const isEditingPublishedPost = editMode && draftPost?.auditStatus;
 
@@ -123,17 +123,17 @@ const PublishLookbookScreen = () => {
   useEffect(() => {
     if (editMode && draftPost) {
       console.log("Initializing edit mode with draft:", draftPost);
-      
+
       // 初始化标题
       if (draftPost.content?.title) {
         setTitle(draftPost.content.title);
       }
-      
+
       // 初始化描述
       if (draftPost.content?.description) {
         setDescription(draftPost.content.description);
       }
-      
+
       // 初始化图片（已上传的远程 URL）
       if (draftPost.content?.images && draftPost.content.images.length > 0) {
         setImages(draftPost.content.images);
@@ -781,6 +781,14 @@ const PublishLookbookScreen = () => {
         {images.length > 0 && renderImageGallery()}
 
         <Box mx="$md" mb="$md">
+          <HStack mb="$sm" alignItems="center">
+            <Text color="$gray600" fontSize="$sm">
+              标题
+            </Text>
+            <Text color="$red500" fontSize="$sm" ml="$xs">
+              *
+            </Text>
+          </HStack>
           <Input
             value={title}
             onChangeText={setTitle}
@@ -801,6 +809,14 @@ const PublishLookbookScreen = () => {
         </Box>
 
         <Box mx="$md" mb="$md">
+          <HStack mb="$sm" alignItems="center">
+            <Text color="$gray600" fontSize="$sm">
+              简介
+            </Text>
+            <Text color="$red500" fontSize="$sm" ml="$xs">
+              *
+            </Text>
+          </HStack>
           <Input
             value={description}
             onChangeText={setDescription}
@@ -822,7 +838,7 @@ const PublishLookbookScreen = () => {
         {/* 关联品牌 */}
         <BrandGridSelector
           selectedBrands={selectedBrands}
-          onBrandPress={() => {}}
+          onBrandPress={() => { }}
           onRemoveBrand={handleRemoveBrand}
           onAddBrand={() => setShowBrandSelector(true)}
           maxBrands={MAX_BRANDS}

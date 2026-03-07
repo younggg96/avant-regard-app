@@ -81,6 +81,7 @@ export const DEFAULT_COUNTRY_CODE = {
 // 初始表单数据
 export const INITIAL_FORM_DATA = {
   phone: "",
+  email: "",
   countryCode: DEFAULT_COUNTRY_CODE,
   username: "",
   password: "",

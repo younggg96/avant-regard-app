@@ -7,6 +7,8 @@ export type AuthMode =
   | "verification"
   | "completeProfile";
 
+export type LoginMethod = "phone" | "email";
+
 export interface CountryCode {
   code: string;
   name: string;
@@ -16,6 +18,7 @@ export interface CountryCode {
 
 export interface FormData {
   phone: string;
+  email: string;
   countryCode: CountryCode;
   username: string;
   password: string;

@@ -386,8 +386,6 @@ const PublishReviewScreen = () => {
       productName.trim().length > 0 &&
       rating > 0 &&
       images.length > 0 &&
-      selectedShows.length > 0 &&
-      selectedBrands.length > 0 &&
       reviewText.trim().length >= 10 &&
       reviewText.trim().length <= 500
     );
@@ -780,7 +778,6 @@ const PublishReviewScreen = () => {
             onAddBrand={() => setShowBrandSelector(true)}
             maxBrands={MAX_BRANDS}
             label="关联品牌"
-            required
           />
 
           {/* 关联秀场 */}
@@ -794,7 +791,6 @@ const PublishReviewScreen = () => {
             onAddShow={() => setShowSelector(true)}
             maxShows={MAX_SHOWS}
             label="关联秀场"
-            required
           />
 
           {/* 评价内容 */}

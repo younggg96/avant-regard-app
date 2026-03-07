@@ -63,6 +63,35 @@ export const styles = StyleSheet.create({
   formContainer: {
     marginBottom: 24,
   },
+  methodTabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 24,
+  },
+  methodTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  methodTabActive: {
+    backgroundColor: theme.colors.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  methodTabText: {
+    fontSize: 14,
+    fontFamily: "Inter-Medium",
+    color: theme.colors.gray200,
+  },
+  methodTabTextActive: {
+    color: theme.colors.black,
+  },
   inputContainer: {
     marginBottom: 20,
   },
@@ -257,6 +286,41 @@ export const styles = StyleSheet.create({
     fontFamily: "Inter-Bold",
     color: theme.colors.white,
     letterSpacing: 0.5,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E8E8E8",
+  },
+  dividerText: {
+    fontSize: 13,
+    fontFamily: "Inter-Regular",
+    color: theme.colors.gray200,
+    marginHorizontal: 16,
+  },
+  appleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#000000",
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginBottom: 20,
+    gap: 8,
+  },
+  appleButtonDisabled: {
+    opacity: 0.5,
+  },
+  appleButtonText: {
+    fontSize: 16,
+    fontFamily: "Inter-Medium",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
   },
   linksContainer: {
     flexDirection: "row",

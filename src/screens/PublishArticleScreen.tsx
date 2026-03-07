@@ -133,20 +133,13 @@ const PublishArticleScreen = () => {
       .reduce((sum, block) => sum + block.content.trim().length, 0);
   };
 
-  // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
-    const hasTitle = title.trim().length > 0;
-    const hasEnoughContent = getTotalWordCount() >= 100;
-    return hasTitle && hasEnoughContent;
+    return title.trim().length > 0;
   };
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
       Alert.show("提示: 请填写标题");
-      return false;
-    }
-    if (getTotalWordCount() < 100) {
-      Alert.show("提示: 文章内容至少需要100字");
       return false;
     }
     return true;
@@ -751,7 +744,7 @@ const PublishArticleScreen = () => {
               fontSize="$sm"
               textAlign="right"
             >
-              {wordCount} / 100 字（最少）
+              {wordCount} 字
             </Text>
           </Box>
 

@@ -15,6 +15,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Avant Regard 需要访问您的相册来选择图片",
         "NSCameraUsageDescription": "Avant Regard 需要访问相机来拍摄照片",
@@ -74,6 +75,7 @@
       "favicon": "./assets/images/logo.jpg"
     },
     "plugins": [
+      "expo-apple-authentication",
       "expo-font",
       [
         "expo-splash-screen",

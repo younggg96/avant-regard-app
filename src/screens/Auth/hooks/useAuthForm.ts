@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { TextInput, ScrollView, LayoutChangeEvent } from "react-native";
+import { TextInput, ScrollView, LayoutChangeEvent, Platform } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { Alert } from "../../../utils/Alert";
 import { authService, LoginResponse } from "../../../services/authService";
 import { userInfoService, Gender, UserProfileInfo } from "../../../services/userInfoService";
 import { brandService } from "../../../services/brandService";
 import { useAuthStore } from "../../../store/authStore";
-import { AuthMode, FormData, RegisteredTokens, BrandOption } from "../types";
+import { AuthMode, LoginMethod, FormData, RegisteredTokens, BrandOption } from "../types";
 import { INITIAL_FORM_DATA } from "../constants";
 
 export const useAuthForm = () => {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [loginMethod, setLoginMethodRaw] = useState<LoginMethod>("phone");
   const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -41,6 +43,7 @@ export const useAuthForm = () => {
 
   // 输入框引用
   const phoneInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
   const verificationCodeInputRef = useRef<TextInput>(null);
   const usernameInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
@@ -69,6 +72,29 @@ export const useAuthForm = () => {
         animated: true,
       });
     }
+  }, []);
+
+  const setLoginMethod = useCallback(
+    (method: LoginMethod) => {
+      setLoginMethodRaw(method);
+      setFormData((prev) => ({
+        ...prev,
+        phone: "",
+        email: "",
+        verificationCode: "",
+        password: "",
+        confirmPassword: "",
+      }));
+      setCountdown(0);
+      if (method === "email" && mode === "verification") {
+        setMode("login");
+      }
+    },
+    [mode]
+  );
+
+  const validateEmail = useCallback((email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   }, []);
 
   // 验证手机号格式（根据国家区号验证）
@@ -193,6 +219,15 @@ export const useAuthForm = () => {
     }
   }, [showBrandPicker, brandOptions.length, loadBrands]);
 
+  // Apple 登录可用性（仅 iOS 13+）
+  const [isAppleLoginAvailable, setIsAppleLoginAvailable] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      AppleAuthentication.isAvailableAsync().then(setIsAppleLoginAvailable);
+    }
+  }, []);
+
   // 倒计时效果
   useEffect(() => {
     if (countdown > 0) {
@@ -201,35 +236,50 @@ export const useAuthForm = () => {
     }
   }, [countdown]);
 
-  // 发送验证码
+  // 发送验证码（根据 loginMethod 发送短信或邮箱验证码）
   const sendVerificationCode = useCallback(async () => {
-    // 防止倒计时期间重复发送
     if (countdown > 0) {
       Alert.show(`请等待 ${countdown} 秒后再试`);
       return;
     }
 
-    if (!validatePhone(formData.phone)) {
-      Alert.show("提示: 请输入正确的手机号码");
-      return;
+    if (loginMethod === "email") {
+      if (!validateEmail(formData.email)) {
+        Alert.show("提示: 请输入正确的邮箱地址");
+        return;
+      }
+      setLoading(true);
+      try {
+        await authService.sendEmailOtp({ email: formData.email.trim() });
+        setCountdown(60);
+        Alert.show("验证码已发送至 " + formData.email);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
+        Alert.show("发送失败: " + message);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      if (!validatePhone(formData.phone)) {
+        Alert.show("提示: 请输入正确的手机号码");
+        return;
+      }
+      const fullPhone = getFullPhoneNumber();
+      setLoading(true);
+      try {
+        await authService.sendSms({ phone: fullPhone });
+        setCountdown(60);
+        Alert.show("验证码已发送至 " + fullPhone);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
+        Alert.show("发送失败: " + message);
+      } finally {
+        setLoading(false);
+      }
     }
-
-    const fullPhone = getFullPhoneNumber();
-    setLoading(true);
-    try {
-      await authService.sendSms({ phone: fullPhone });
-
-      // 发送成功后启动 60 秒倒计时
-      setCountdown(60);
-      Alert.show("验证码已发送至 " + fullPhone);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
-      Alert.show("发送失败: " + message);
-    } finally {
-      setLoading(false);
-    }
-  }, [formData.phone, validatePhone, getFullPhoneNumber, countdown]);
+  }, [formData.phone, formData.email, loginMethod, validatePhone, validateEmail, getFullPhoneNumber, countdown]);
 
   // 登录成功后检查并同步用户资料状态
   const syncProfileStatus = useCallback(async (response: LoginResponse) => {
@@ -250,72 +300,98 @@ export const useAuthForm = () => {
 
   // 处理密码登录
   const handleLogin = useCallback(async () => {
-    if (!validatePhone(formData.phone)) {
-      Alert.show("提示: 请输入正确的手机号码");
-      return;
-    }
-
     if (!formData.password) {
       Alert.show("提示: 请输入密码");
       return;
     }
 
-    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      const response = await authService.login({
-        phone: fullPhone,
-        password: formData.password,
-      });
+      let response;
+      if (loginMethod === "email") {
+        if (!validateEmail(formData.email)) {
+          Alert.show("提示: 请输入正确的邮箱地址");
+          setLoading(false);
+          return;
+        }
+        response = await authService.loginEmail({
+          email: formData.email.trim(),
+          password: formData.password,
+        });
+      } else {
+        if (!validatePhone(formData.phone)) {
+          Alert.show("提示: 请输入正确的手机号码");
+          setLoading(false);
+          return;
+        }
+        const fullPhone = getFullPhoneNumber();
+        response = await authService.login({
+          phone: fullPhone,
+          password: formData.password,
+        });
+      }
 
       loginWithResponse(response);
-      console.log("response", response);
-      
-      // 登录成功后同步用户资料状态
       await syncProfileStatus(response);
-      
       Alert.show("登录成功: 欢迎回来！", "", 1000);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "手机号或密码错误";
+        error instanceof Error
+          ? error.message
+          : loginMethod === "email"
+          ? "邮箱或密码错误"
+          : "手机号或密码错误";
       Alert.show("登录失败: " + message);
     } finally {
       setLoading(false);
     }
   }, [
     formData.phone,
+    formData.email,
     formData.password,
+    loginMethod,
     validatePhone,
+    validateEmail,
     loginWithResponse,
     getFullPhoneNumber,
     syncProfileStatus,
   ]);
 
   // 处理验证码登录
-  const handleSmsLogin = useCallback(async () => {
-    if (!validatePhone(formData.phone)) {
-      Alert.show("提示: 请输入正确的手机号码");
-      return;
-    }
-
+  const handleOtpLogin = useCallback(async () => {
     if (!formData.verificationCode) {
       Alert.show("提示: 请输入验证码");
       return;
     }
 
-    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      const response = await authService.loginSms({
-        phone: fullPhone,
-        code: formData.verificationCode,
-      });
+      let response;
+      if (loginMethod === "email") {
+        if (!validateEmail(formData.email)) {
+          Alert.show("提示: 请输入正确的邮箱地址");
+          setLoading(false);
+          return;
+        }
+        response = await authService.loginEmailOtp({
+          email: formData.email.trim(),
+          code: formData.verificationCode,
+        });
+      } else {
+        if (!validatePhone(formData.phone)) {
+          Alert.show("提示: 请输入正确的手机号码");
+          setLoading(false);
+          return;
+        }
+        const fullPhone = getFullPhoneNumber();
+        response = await authService.loginSms({
+          phone: fullPhone,
+          code: formData.verificationCode,
+        });
+      }
 
       loginWithResponse(response);
-      
-      // 登录成功后同步用户资料状态
       await syncProfileStatus(response);
-      
       Alert.show("登录成功: 欢迎回来！", "", 1000);
     } catch (error) {
       const message =
@@ -326,18 +402,74 @@ export const useAuthForm = () => {
     }
   }, [
     formData.phone,
+    formData.email,
     formData.verificationCode,
+    loginMethod,
     validatePhone,
+    validateEmail,
     loginWithResponse,
     getFullPhoneNumber,
     syncProfileStatus,
   ]);
 
+  // Apple 登录
+  const handleAppleLogin = useCallback(async () => {
+    if (!isAppleLoginAvailable) {
+      Alert.show("当前设备不支持 Apple 登录");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        Alert.show("Apple 登录失败: 未获取到身份凭证");
+        return;
+      }
+
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName]
+        .filter(Boolean)
+        .join(" ") || undefined;
+
+      const response = await authService.loginApple({
+        identityToken: credential.identityToken,
+        fullName,
+        email: credential.email || undefined,
+      });
+
+      loginWithResponse(response);
+      await syncProfileStatus(response);
+      Alert.show("登录成功: 欢迎！", "", 1000);
+    } catch (error: any) {
+      if (error.code === "ERR_REQUEST_CANCELED") {
+        return;
+      }
+      const message =
+        error instanceof Error ? error.message : "Apple 登录失败，请稍后重试";
+      Alert.show("登录失败: " + message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAppleLoginAvailable, loginWithResponse, syncProfileStatus]);
+
   // 验证注册表单（不包含协议检查）
   const validateRegisterForm = useCallback((): boolean => {
-    if (!validatePhone(formData.phone)) {
-      Alert.show("提示: 请输入正确的手机号码");
-      return false;
+    if (loginMethod === "email") {
+      if (!validateEmail(formData.email)) {
+        Alert.show("提示: 请输入正确的邮箱地址");
+        return false;
+      }
+    } else {
+      if (!validatePhone(formData.phone)) {
+        Alert.show("提示: 请输入正确的手机号码");
+        return false;
+      }
     }
 
     if (!formData.verificationCode) {
@@ -361,7 +493,7 @@ export const useAuthForm = () => {
     }
 
     return true;
-  }, [formData, validatePhone]);
+  }, [formData, loginMethod, validatePhone, validateEmail]);
 
   // 显示协议确认弹窗
   const showAgreementConfirmation = useCallback(() => {
@@ -372,24 +504,31 @@ export const useAuthForm = () => {
 
   // 处理注册（用户确认协议后调用）
   const handleRegister = useCallback(async () => {
-    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      const response = await authService.register({
-        phone: fullPhone,
-        username: formData.username.trim(),
-        password: formData.password,
-        code: formData.verificationCode,
-      });
+      let response;
+      if (loginMethod === "email") {
+        response = await authService.registerEmail({
+          email: formData.email.trim(),
+          username: formData.username.trim(),
+          password: formData.password,
+          code: formData.verificationCode,
+        });
+      } else {
+        const fullPhone = getFullPhoneNumber();
+        response = await authService.register({
+          phone: fullPhone,
+          username: formData.username.trim(),
+          password: formData.password,
+          code: formData.verificationCode,
+        });
+      }
 
-      // 保存注册信息，用于后续填写资料和登录
       setRegisteredUserId(response.userId);
       setRegisteredTokens({
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
       });
-
-      // 显示资料填写 Modal
       setShowProfileModal(true);
     } catch (error) {
       const message =
@@ -402,7 +541,7 @@ export const useAuthForm = () => {
     }
   }, [
     formData,
-    validatePhone,
+    loginMethod,
     getFullPhoneNumber,
   ]);
 
@@ -414,14 +553,13 @@ export const useAuthForm = () => {
       return;
     }
 
-    const fullPhone = getFullPhoneNumber();
+    const phone = loginMethod === "phone" ? getFullPhoneNumber() : "";
     setLoading(true);
     try {
-      // 先登录以获取认证 token（这样后续的 API 调用才能通过认证）
       const loginResponse = {
         userId: registeredUserId,
         username: formData.username,
-        phone: fullPhone,
+        phone,
         is_admin: false,
         userType: "USER",
         accessToken: registeredTokens.accessToken,
@@ -499,6 +637,7 @@ export const useAuthForm = () => {
     }
   }, [
     formData,
+    loginMethod,
     registeredUserId,
     registeredTokens,
     loginWithResponse,
@@ -507,9 +646,16 @@ export const useAuthForm = () => {
 
   // 处理忘记密码
   const handleForgotPassword = useCallback(async () => {
-    if (!validatePhone(formData.phone)) {
-      Alert.show("提示: 请输入正确的手机号码");
-      return;
+    if (loginMethod === "email") {
+      if (!validateEmail(formData.email)) {
+        Alert.show("提示: 请输入正确的邮箱地址");
+        return;
+      }
+    } else {
+      if (!validatePhone(formData.phone)) {
+        Alert.show("提示: 请输入正确的手机号码");
+        return;
+      }
     }
 
     if (!formData.verificationCode) {
@@ -527,14 +673,22 @@ export const useAuthForm = () => {
       return;
     }
 
-    const fullPhone = getFullPhoneNumber();
     setLoading(true);
     try {
-      await authService.forgetPassword({
-        phone: fullPhone,
-        password: formData.password,
-        code: formData.verificationCode,
-      });
+      if (loginMethod === "email") {
+        await authService.forgetPasswordEmail({
+          email: formData.email.trim(),
+          password: formData.password,
+          code: formData.verificationCode,
+        });
+      } else {
+        const fullPhone = getFullPhoneNumber();
+        await authService.forgetPassword({
+          phone: fullPhone,
+          password: formData.password,
+          code: formData.verificationCode,
+        });
+      }
 
       Alert.show("密码重置成功: 请使用新密码登录", "", 1000);
 
@@ -554,10 +708,10 @@ export const useAuthForm = () => {
     } finally {
       setLoading(false);
     }
-  }, [formData, validatePhone, getFullPhoneNumber]);
+  }, [formData, loginMethod, validatePhone, validateEmail, getFullPhoneNumber]);
 
-  // 处理手机号输入完成后的跳转
-  const handlePhoneSubmit = useCallback(() => {
+  // 处理手机号/邮箱输入完成后的跳转
+  const handleAccountInputSubmit = useCallback(() => {
     if (mode === "login") {
       passwordInputRef.current?.focus();
     } else if (
@@ -576,9 +730,9 @@ export const useAuthForm = () => {
     } else if (mode === "forgotPassword") {
       passwordInputRef.current?.focus();
     } else if (mode === "verification") {
-      handleSmsLogin();
+      handleOtpLogin();
     }
-  }, [mode, handleSmsLogin]);
+  }, [mode, handleOtpLogin]);
 
   // 处理用户名输入完成后的跳转
   const handleUsernameSubmit = useCallback(() => {
@@ -609,12 +763,11 @@ export const useAuthForm = () => {
       case "login":
         return handleLogin();
       case "register":
-        // 注册时先显示协议确认弹窗
         return showAgreementConfirmation();
       case "forgotPassword":
         return handleForgotPassword();
       case "verification":
-        return handleSmsLogin();
+        return handleOtpLogin();
       case "completeProfile":
         return handleCompleteProfile();
     }
@@ -623,7 +776,7 @@ export const useAuthForm = () => {
     handleLogin,
     showAgreementConfirmation,
     handleForgotPassword,
-    handleSmsLogin,
+    handleOtpLogin,
     handleCompleteProfile,
   ]);
 
@@ -631,6 +784,8 @@ export const useAuthForm = () => {
     // 状态
     mode,
     setMode,
+    loginMethod,
+    setLoginMethod,
     formData,
     setFormData,
     loading,
@@ -659,17 +814,22 @@ export const useAuthForm = () => {
 
     // 引用
     phoneInputRef,
+    emailInputRef,
     verificationCodeInputRef,
     usernameInputRef,
     passwordInputRef,
     confirmPasswordInputRef,
     scrollViewRef,
 
+    // Apple 登录
+    isAppleLoginAvailable,
+    handleAppleLogin,
+
     // 方法
     handleInputLayout,
     scrollToInput,
     sendVerificationCode,
-    handlePhoneSubmit,
+    handleAccountInputSubmit,
     handleVerificationCodeSubmit,
     handleUsernameSubmit,
     handlePasswordSubmit,

@@ -48,6 +48,46 @@ class ResetPasswordRequest(BaseModel):
     code: str = Field(..., min_length=4, max_length=6, description="验证码")
 
 
+class SendEmailOtpRequest(BaseModel):
+    """发送邮箱验证码请求"""
+    email: str = Field(..., min_length=5, max_length=100, description="邮箱地址")
+
+
+class EmailLoginRequest(BaseModel):
+    """邮箱密码登录请求"""
+    email: str = Field(..., min_length=5, max_length=100, description="邮箱地址")
+    password: str = Field(..., min_length=6, description="密码")
+
+
+class EmailOtpLoginRequest(BaseModel):
+    """邮箱验证码登录请求"""
+    email: str = Field(..., min_length=5, max_length=100, description="邮箱地址")
+    code: str = Field(..., min_length=4, max_length=6, description="验证码")
+    username: Optional[str] = Field(None, min_length=2, max_length=50, description="用户名")
+
+
+class EmailRegisterRequest(BaseModel):
+    """邮箱注册请求"""
+    email: str = Field(..., min_length=5, max_length=100, description="邮箱地址")
+    username: str = Field(..., min_length=2, max_length=50, description="用户名")
+    password: str = Field(..., min_length=6, description="密码")
+    code: str = Field(..., min_length=4, max_length=6, description="验证码")
+
+
+class EmailResetPasswordRequest(BaseModel):
+    """邮箱重置密码请求"""
+    email: str = Field(..., min_length=5, max_length=100, description="邮箱地址")
+    password: str = Field(..., min_length=6, description="新密码")
+    code: str = Field(..., min_length=4, max_length=6, description="验证码")
+
+
+class AppleLoginRequest(BaseModel):
+    """Apple 登录请求"""
+    identityToken: str = Field(..., description="Apple identity token")
+    fullName: Optional[str] = Field(None, description="用户全名（仅首次授权时可用）")
+    email: Optional[str] = Field(None, description="用户邮箱（仅首次授权时可用）")
+
+
 class RefreshTokenRequest(BaseModel):
     """刷新令牌请求"""
     refreshToken: str = Field(..., description="刷新令牌")
@@ -115,6 +155,75 @@ async def register(request: RegisterRequest):
         logger.error(f"Register failed: {err}")
         raise HTTPException(status_code=400, detail=err)
     logger.info(f"Register success: user_id={result.get('userId')}")
+    return success(result)
+
+
+@router.post("/email/send")
+async def send_email_otp(request: SendEmailOtpRequest):
+    """发送邮箱验证码"""
+    ok, message = auth_service.send_email_otp(request.email)
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return success(message=message)
+
+
+@router.post("/login-email")
+async def login_email(request: EmailLoginRequest):
+    """邮箱密码登录"""
+    result, err = auth_service.login_with_email_password(
+        request.email, request.password
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return success(result)
+
+
+@router.post("/login-email-otp")
+async def login_email_otp(request: EmailOtpLoginRequest):
+    """邮箱验证码登录（自动注册）"""
+    result, err = auth_service.verify_email_otp(
+        request.email, request.code, request.username
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return success(result)
+
+
+@router.post("/register-email")
+async def register_email(request: EmailRegisterRequest):
+    """邮箱注册"""
+    result, err = auth_service.register_with_email(
+        request.email, request.username, request.password, request.code
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return success(result)
+
+
+@router.post("/forget-password-email")
+async def forget_password_email(request: EmailResetPasswordRequest):
+    """邮箱重置密码"""
+    ok, message = auth_service.reset_email_password(
+        request.email, request.password, request.code
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return success(message=message)
+
+
+@router.post("/login-apple")
+async def login_apple(request: AppleLoginRequest):
+    """
+    Apple 登录
+    使用 Apple Identity Token 通过 Supabase 验证并登录/注册
+    """
+    result, err = auth_service.login_with_apple(
+        request.identityToken,
+        request.fullName,
+        request.email,
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
     return success(result)
 
 

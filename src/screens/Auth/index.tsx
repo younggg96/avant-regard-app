@@ -17,6 +17,8 @@ const AuthScreen = () => {
     // 状态
     mode,
     setMode,
+    loginMethod,
+    setLoginMethod,
     formData,
     setFormData,
     loading,
@@ -44,6 +46,7 @@ const AuthScreen = () => {
 
     // 引用
     phoneInputRef,
+    emailInputRef,
     verificationCodeInputRef,
     usernameInputRef,
     passwordInputRef,
@@ -54,7 +57,7 @@ const AuthScreen = () => {
     handleInputLayout,
     scrollToInput,
     sendVerificationCode,
-    handlePhoneSubmit,
+    handleAccountInputSubmit,
     handleVerificationCodeSubmit,
     handleUsernameSubmit,
     handlePasswordSubmit,
@@ -62,6 +65,9 @@ const AuthScreen = () => {
     handleMainAction,
     handleCompleteProfile,
     handleRegister,
+    // Apple 登录
+    isAppleLoginAvailable,
+    handleAppleLogin,
   } = useAuthForm();
 
   // 用户确认协议并注册
@@ -89,6 +95,8 @@ const AuthScreen = () => {
 
           <AuthForm
             mode={mode}
+            loginMethod={loginMethod}
+            setLoginMethod={setLoginMethod}
             formData={formData}
             setFormData={setFormData}
             loading={loading}
@@ -96,6 +104,7 @@ const AuthScreen = () => {
             showPassword={showPassword}
             setShowPassword={setShowPassword}
             phoneInputRef={phoneInputRef}
+            emailInputRef={emailInputRef}
             verificationCodeInputRef={verificationCodeInputRef}
             usernameInputRef={usernameInputRef}
             passwordInputRef={passwordInputRef}
@@ -103,7 +112,7 @@ const AuthScreen = () => {
             handleInputLayout={handleInputLayout}
             scrollToInput={scrollToInput}
             sendVerificationCode={sendVerificationCode}
-            handlePhoneSubmit={handlePhoneSubmit}
+            handleAccountInputSubmit={handleAccountInputSubmit}
             handleVerificationCodeSubmit={handleVerificationCodeSubmit}
             handleUsernameSubmit={handleUsernameSubmit}
             handlePasswordSubmit={handlePasswordSubmit}
@@ -112,9 +121,12 @@ const AuthScreen = () => {
 
           <AuthActions
             mode={mode}
+            loginMethod={loginMethod}
             loading={loading}
             setMode={setMode}
             handleMainAction={handleMainAction}
+            isAppleLoginAvailable={isAppleLoginAvailable}
+            onAppleLogin={handleAppleLogin}
           />
         </ScrollView>
       </KeyboardAvoidingView>

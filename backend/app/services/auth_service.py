@@ -250,6 +250,296 @@ class AuthService:
         except Exception as e:
             return None, f"注册失败: {str(e)}"
 
+    def _get_or_create_email_user(
+        self, supabase_user_id: str, email: str, username: str = None
+    ) -> dict:
+        """Get or create an app user record for email-based auth."""
+        result = (
+            self.db.table("users")
+            .select("*")
+            .eq("supabase_uid", supabase_user_id)
+            .execute()
+        )
+        if result.data:
+            return result.data[0]
+
+        result = self.db.table("users").select("*").eq("email", email).execute()
+        if result.data:
+            self.db.table("users").update(
+                {"supabase_uid": supabase_user_id}
+            ).eq("id", result.data[0]["id"]).execute()
+            return result.data[0]
+
+        user_data = {
+            "supabase_uid": supabase_user_id,
+            "phone": "",
+            "email": email,
+            "username": username or f"用户{email.split('@')[0][:8]}",
+            "password_hash": "supabase_auth",
+            "is_admin": False,
+            "user_type": "USER",
+            "status": "ACTIVE",
+        }
+        result = self.db.table("users").insert(user_data).execute()
+        if result.data:
+            user = result.data[0]
+            self.db.table("user_info").insert(
+                {"user_id": user["id"], "bio": "", "location": "", "avatar_url": ""}
+            ).execute()
+            return user
+        return None
+
+    def send_email_otp(self, email: str) -> Tuple[bool, str]:
+        """Send OTP to an email address via Supabase Auth."""
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            logger.info(f"Sending email OTP to: {email}")
+            self.db.auth.sign_in_with_otp({"email": email})
+            logger.info(f"Email OTP sent successfully to: {email}")
+            return True, "验证码发送成功"
+        except AuthApiError as e:
+            logger.error(f"AuthApiError sending email OTP to {email}: {str(e)}")
+            return False, f"发送失败: {str(e)}"
+        except Exception as e:
+            logger.error(f"Exception sending email OTP to {email}: {str(e)}")
+            return False, f"发送失败: {str(e)}"
+
+    def verify_email_otp(
+        self, email: str, code: str, username: str = None
+    ) -> Tuple[Optional[dict], Optional[str]]:
+        """Verify email OTP and login/register the user."""
+        try:
+            response = self.db.auth.verify_otp(
+                {"email": email, "token": code, "type": "email"}
+            )
+            if not response.user:
+                return None, "验证码错误或已过期"
+
+            app_user = self._get_or_create_email_user(
+                supabase_user_id=response.user.id,
+                email=email,
+                username=username,
+            )
+            if not app_user:
+                return None, "创建用户失败"
+
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user.get("phone", ""),
+                "is_admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at,
+            }, None
+        except AuthApiError as e:
+            return None, f"验证失败: {str(e)}"
+        except Exception as e:
+            return None, f"验证失败: {str(e)}"
+
+    def login_with_email_password(
+        self, email: str, password: str
+    ) -> Tuple[Optional[dict], Optional[str]]:
+        """Login with email and password via Supabase Auth."""
+        try:
+            response = self.db.auth.sign_in_with_password(
+                {"email": email, "password": password}
+            )
+            if not response.user:
+                return None, "邮箱或密码错误"
+
+            app_user = self._get_or_create_email_user(
+                supabase_user_id=response.user.id, email=email
+            )
+            if not app_user:
+                return None, "获取用户信息失败"
+            if app_user.get("status") != "ACTIVE":
+                return None, "账号已被禁用"
+
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user.get("phone", ""),
+                "is_admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at,
+            }, None
+        except AuthApiError as e:
+            error_msg = str(e)
+            if "Invalid login credentials" in error_msg:
+                return None, "邮箱或密码错误"
+            return None, f"登录失败: {error_msg}"
+        except Exception as e:
+            return None, f"登录失败: {str(e)}"
+
+    def register_with_email(
+        self, email: str, username: str, password: str, code: str
+    ) -> Tuple[Optional[dict], Optional[str]]:
+        """Register with email, OTP verification, and password."""
+        try:
+            response = self.db.auth.verify_otp(
+                {"email": email, "token": code, "type": "email"}
+            )
+            if not response.user:
+                return None, "验证码错误或已过期"
+
+            try:
+                self.db.auth.update_user({"password": password})
+            except AuthApiError as pwd_err:
+                error_msg = str(pwd_err)
+                if "same" not in error_msg.lower() and "different" not in error_msg.lower():
+                    return None, f"设置密码失败: {error_msg}"
+
+            app_user = self._get_or_create_email_user(
+                supabase_user_id=response.user.id, email=email, username=username
+            )
+            if app_user and username:
+                self.db.table("users").update({"username": username}).eq(
+                    "id", app_user["id"]
+                ).execute()
+                app_user["username"] = username
+
+            if not app_user:
+                return None, "创建用户失败"
+
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user.get("phone", ""),
+                "is_admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at,
+            }, None
+        except AuthApiError as e:
+            error_msg = str(e)
+            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+                return None, "验证码已过期，请重新发送"
+            return None, f"注册失败: {error_msg}"
+        except Exception as e:
+            return None, f"注册失败: {str(e)}"
+
+    def reset_email_password(
+        self, email: str, new_password: str, code: str
+    ) -> Tuple[bool, str]:
+        """Reset password via email OTP."""
+        try:
+            response = self.db.auth.verify_otp(
+                {"email": email, "token": code, "type": "email"}
+            )
+            if not response.user:
+                return False, "验证码错误或已过期"
+            self.db.auth.update_user({"password": new_password})
+            return True, "密码重置成功"
+        except AuthApiError as e:
+            return False, f"重置失败: {str(e)}"
+        except Exception as e:
+            return False, f"重置失败: {str(e)}"
+
+    def login_with_apple(
+        self, identity_token: str, full_name: str = None, email: str = None
+    ) -> Tuple[Optional[dict], Optional[str]]:
+        """
+        Apple Sign-In: verify the identity token via Supabase and login/register the user.
+        Apple only provides the user's name on the first sign-in.
+        """
+        try:
+            response = self.db.auth.sign_in_with_id_token({
+                "provider": "apple",
+                "token": identity_token,
+            })
+
+            if not response.user:
+                return None, "Apple 登录验证失败"
+
+            username = full_name or f"Apple用户{response.user.id[:6]}"
+
+            app_user = self._get_or_create_apple_user(
+                supabase_user_id=response.user.id,
+                email=email or response.user.email,
+                username=username,
+            )
+
+            if not app_user:
+                return None, "创建用户失败"
+
+            if app_user.get("status") != "ACTIVE":
+                return None, "账号已被禁用"
+
+            return {
+                "userId": app_user["id"],
+                "username": app_user["username"],
+                "phone": app_user.get("phone", ""),
+                "is_admin": app_user.get("is_admin", False),
+                "userType": app_user.get("user_type", "USER"),
+                "accessToken": response.session.access_token,
+                "refreshToken": response.session.refresh_token,
+                "expiresAt": response.session.expires_at,
+            }, None
+
+        except AuthApiError as e:
+            error_msg = str(e)
+            if "invalid" in error_msg.lower():
+                return None, "Apple 登录凭证无效，请重试"
+            return None, f"Apple 登录失败: {error_msg}"
+        except Exception as e:
+            return None, f"Apple 登录失败: {str(e)}"
+
+    def _get_or_create_apple_user(
+        self, supabase_user_id: str, email: str = None, username: str = None
+    ) -> dict:
+        """Get or create an app user record for Apple Sign-In (no phone required)."""
+        result = (
+            self.db.table("users")
+            .select("*")
+            .eq("supabase_uid", supabase_user_id)
+            .execute()
+        )
+
+        if result.data:
+            user = result.data[0]
+            if username and user.get("username", "").startswith("Apple用户"):
+                self.db.table("users").update({"username": username}).eq(
+                    "id", user["id"]
+                ).execute()
+                user["username"] = username
+            return user
+
+        if email:
+            result = self.db.table("users").select("*").eq("email", email).execute()
+            if result.data:
+                self.db.table("users").update(
+                    {"supabase_uid": supabase_user_id}
+                ).eq("id", result.data[0]["id"]).execute()
+                return result.data[0]
+
+        user_data = {
+            "supabase_uid": supabase_user_id,
+            "phone": "",
+            "email": email or "",
+            "username": username or f"Apple用户{supabase_user_id[:6]}",
+            "password_hash": "apple_auth",
+            "is_admin": False,
+            "user_type": "USER",
+            "status": "ACTIVE",
+        }
+
+        result = self.db.table("users").insert(user_data).execute()
+
+        if result.data:
+            user = result.data[0]
+            self.db.table("user_info").insert(
+                {"user_id": user["id"], "bio": "", "location": "", "avatar_url": ""}
+            ).execute()
+            return user
+
+        return None
+
     def refresh_session(
         self, refresh_token: str
     ) -> Tuple[Optional[dict], Optional[str]]:

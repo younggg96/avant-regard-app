@@ -165,19 +165,11 @@ const PublishForumPostScreen = () => {
     }).start();
   }, [showAddMenu]);
 
-  // 计算总字数
-  const getTotalWordCount = (): number => {
-    return contentBlocks
-      .filter((block) => block.type === "text")
-      .reduce((sum, block) => sum + block.content.trim().length, 0);
-  };
-
   // 检查表单是否完整（用于禁用发布按钮）
   const canPublish = (): boolean => {
     const hasTitle = title.trim().length > 0;
-    const hasEnoughContent = getTotalWordCount() >= 100;
     const hasCommunity = selectedCommunity !== null;
-    return hasTitle && hasEnoughContent && hasCommunity;
+    return hasTitle && hasCommunity;
   };
 
   const validateForm = (): boolean => {
@@ -187,10 +179,6 @@ const PublishForumPostScreen = () => {
     }
     if (!selectedCommunity) {
       Alert.show("提示: 请选择发布的社区");
-      return false;
-    }
-    if (getTotalWordCount() < 100) {
-      Alert.show("提示: 帖子内容至少需要100字");
       return false;
     }
     return true;
@@ -487,8 +475,6 @@ const PublishForumPostScreen = () => {
     setContentBlocks([{ id: generateId(), type: "text", content: "" }]);
     setSelectedCommunity(null);
   };
-
-  const wordCount = getTotalWordCount();
 
   // 渲染文本块
   const renderTextBlock = (block: ContentBlock, index: number) => {
@@ -912,7 +898,15 @@ const PublishForumPostScreen = () => {
           />
 
           {/* Title Input */}
-          <Box mx="$sm" mb="$md" w="100%">
+          <Box mx="$md" mb="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                标题
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
             <Input
               value={title}
               onChangeText={setTitle}
@@ -935,16 +929,6 @@ const PublishForumPostScreen = () => {
           {/* 内容块列表 */}
           {contentBlocks.map((block, index) => renderContentBlock(block, index))}
 
-          {/* Word Count */}
-          <Box mx="$md" mb="$md" mt="$sm">
-            <Text
-              color="$gray500"
-              fontSize="$sm"
-              textAlign="right"
-            >
-              {wordCount} / 100 字（最少）
-            </Text>
-          </Box>
 
           {/* 提示信息 */}
           <Box mx="$md" mb="$lg" p="$md" bg="$gray50" borderRadius="$md">

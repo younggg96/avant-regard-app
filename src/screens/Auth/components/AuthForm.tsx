@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
-import { AuthMode, FormData, CountryCode } from "../types";
+import { AuthMode, LoginMethod, FormData, CountryCode } from "../types";
 import { styles } from "../styles";
 
 // 常用国家区号列表
@@ -47,6 +47,8 @@ export const DEFAULT_COUNTRY_CODE = COUNTRY_CODES[0];
 
 interface AuthFormProps {
   mode: AuthMode;
+  loginMethod: LoginMethod;
+  setLoginMethod: (method: LoginMethod) => void;
   formData: FormData;
   setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   loading: boolean;
@@ -55,6 +57,7 @@ interface AuthFormProps {
   setShowPassword: (show: boolean) => void;
   // 引用
   phoneInputRef: React.RefObject<TextInput>;
+  emailInputRef: React.RefObject<TextInput>;
   verificationCodeInputRef: React.RefObject<TextInput>;
   usernameInputRef: React.RefObject<TextInput>;
   passwordInputRef: React.RefObject<TextInput>;
@@ -63,7 +66,7 @@ interface AuthFormProps {
   handleInputLayout: (key: string) => (event: any) => void;
   scrollToInput: (key: string) => void;
   sendVerificationCode: () => void;
-  handlePhoneSubmit: () => void;
+  handleAccountInputSubmit: () => void;
   handleVerificationCodeSubmit: () => void;
   handleUsernameSubmit: () => void;
   handlePasswordSubmit: () => void;
@@ -72,6 +75,8 @@ interface AuthFormProps {
 
 export const AuthForm: React.FC<AuthFormProps> = ({
   mode,
+  loginMethod,
+  setLoginMethod,
   formData,
   setFormData,
   loading,
@@ -79,6 +84,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   showPassword,
   setShowPassword,
   phoneInputRef,
+  emailInputRef,
   verificationCodeInputRef,
   usernameInputRef,
   passwordInputRef,
@@ -86,7 +92,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   handleInputLayout,
   scrollToInput,
   sendVerificationCode,
-  handlePhoneSubmit,
+  handleAccountInputSubmit,
   handleVerificationCodeSubmit,
   handleUsernameSubmit,
   handlePasswordSubmit,
@@ -152,40 +158,102 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </Pressable>
       </Modal>
 
-      {/* 手机号输入 */}
-      <View style={styles.inputContainer} onLayout={handleInputLayout("phone")}>
-        <Text style={styles.inputLabel}>手机号</Text>
-        <View style={styles.inputWrapper}>
-          <TouchableOpacity
-            style={styles.countryCodeButton}
-            onPress={() => setShowCountryPicker(true)}
+      {/* 手机 / 邮箱切换 Tab */}
+      <View style={styles.methodTabContainer}>
+        <TouchableOpacity
+          style={[
+            styles.methodTab,
+            loginMethod === "phone" && styles.methodTabActive,
+          ]}
+          onPress={() => setLoginMethod("phone")}
+        >
+          <Text
+            style={[
+              styles.methodTabText,
+              loginMethod === "phone" && styles.methodTabTextActive,
+            ]}
           >
-            <Text style={styles.countryCode}>
-              {formData.countryCode?.dialCode || "+86"}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={14}
-              color={theme.colors.gray400}
+            手机号
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.methodTab,
+            loginMethod === "email" && styles.methodTabActive,
+          ]}
+          onPress={() => setLoginMethod("email")}
+        >
+          <Text
+            style={[
+              styles.methodTabText,
+              loginMethod === "email" && styles.methodTabTextActive,
+            ]}
+          >
+            邮箱
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 手机号输入 */}
+      {loginMethod === "phone" && (
+        <View style={styles.inputContainer} onLayout={handleInputLayout("phone")}>
+          <Text style={styles.inputLabel}>手机号</Text>
+          <View style={styles.inputWrapper}>
+            <TouchableOpacity
+              style={styles.countryCodeButton}
+              onPress={() => setShowCountryPicker(true)}
+            >
+              <Text style={styles.countryCode}>
+                {formData.countryCode?.dialCode || "+86"}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={14}
+                color={theme.colors.gray400}
+              />
+            </TouchableOpacity>
+            <TextInput
+              ref={phoneInputRef}
+              style={styles.phoneInput}
+              placeholder="请输入手机号"
+              value={formData.phone}
+              onChangeText={(text) => setFormData({ ...formData, phone: text })}
+              keyboardType="phone-pad"
+              maxLength={15}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={handleAccountInputSubmit}
+              onFocus={() => scrollToInput("phone")}
+              autoComplete="tel"
+              textContentType="telephoneNumber"
             />
-          </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* 邮箱输入 */}
+      {loginMethod === "email" && (
+        <View style={styles.inputContainer} onLayout={handleInputLayout("email")}>
+          <Text style={styles.inputLabel}>邮箱</Text>
           <TextInput
-            ref={phoneInputRef}
-            style={styles.phoneInput}
-            placeholder="请输入手机号"
-            value={formData.phone}
-            onChangeText={(text) => setFormData({ ...formData, phone: text })}
-            keyboardType="phone-pad"
-            maxLength={15}
+            ref={emailInputRef}
+            style={styles.input}
+            placeholder="请输入邮箱地址"
+            value={formData.email}
+            onChangeText={(text) => setFormData({ ...formData, email: text })}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={100}
             returnKeyType="next"
             blurOnSubmit={false}
-            onSubmitEditing={handlePhoneSubmit}
-            onFocus={() => scrollToInput("phone")}
-            autoComplete="tel"
-            textContentType="telephoneNumber"
+            onSubmitEditing={handleAccountInputSubmit}
+            onFocus={() => scrollToInput("email")}
+            autoComplete="email"
+            textContentType="emailAddress"
           />
         </View>
-      </View>
+      )}
 
       {/* 验证码输入（注册和忘记密码时显示） */}
       {(mode === "register" ||
