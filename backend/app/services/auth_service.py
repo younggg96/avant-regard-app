@@ -2,11 +2,18 @@
 认证服务 - 完全使用 Supabase Auth
 """
 
+import logging
 from datetime import datetime
 from typing import Optional, Tuple
+
+import httpx
+
 from app.db.supabase import get_supabase, get_supabase_admin
+from app.core.config import settings
 from app.core.security import hash_password, verify_password
 from gotrue.errors import AuthApiError
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -75,10 +82,6 @@ class AuthService:
         发送短信验证码
         使用 Supabase Auth OTP
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         try:
             formatted_phone = self._format_phone(phone)
             logger.info(f"Sending OTP to: {formatted_phone} (original: {phone})")
@@ -290,17 +293,32 @@ class AuthService:
         return None
 
     def send_email_otp(self, email: str) -> Tuple[bool, str]:
-        """Send OTP to an email address via Supabase Auth."""
-        import logging
-        logger = logging.getLogger(__name__)
+        """Send OTP to an email address via Supabase Auth.
+
+        Bypasses the supabase-py client to use a longer HTTP timeout,
+        because MemfireDB's SMTP relay can take 10-20s.
+        """
         try:
             logger.info(f"Sending email OTP to: {email}")
-            self.db.auth.sign_in_with_otp({"email": email})
-            logger.info(f"Email OTP sent successfully to: {email}")
+            response = httpx.post(
+                f"{settings.SUPABASE_URL}/auth/v1/otp",
+                json={"email": email},
+                headers={
+                    "apikey": settings.SUPABASE_KEY,
+                    "Content-Type": "application/json",
+                },
+                timeout=30.0,
+            )
+            if response.status_code == 200:
+                logger.info(f"Email OTP sent successfully to: {email}")
+                return True, "验证码发送成功"
+            error_data = response.json()
+            msg = error_data.get("msg") or error_data.get("error_description") or str(response.status_code)
+            logger.error(f"Email OTP API error for {email}: {msg}")
+            return False, f"发送失败: {msg}"
+        except httpx.TimeoutException:
+            logger.warning(f"Email OTP request timed out for {email}, email may still be sent")
             return True, "验证码发送成功"
-        except AuthApiError as e:
-            logger.error(f"AuthApiError sending email OTP to {email}: {str(e)}")
-            return False, f"发送失败: {str(e)}"
         except Exception as e:
             logger.error(f"Exception sending email OTP to {email}: {str(e)}")
             return False, f"发送失败: {str(e)}"
