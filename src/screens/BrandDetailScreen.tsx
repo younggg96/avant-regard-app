@@ -155,7 +155,6 @@ const BrandDetailScreen = () => {
 
   const handleShowPress = useCallback(
     (show: Show) => {
-      // Navigate to CollectionDetail
       (navigation.navigate as any)("CollectionDetail", {
         collection: {
           id: show.id.toString(),
@@ -168,6 +167,7 @@ const BrandDetailScreen = () => {
           designer: show.designer,
           description: show.description,
           category: show.category,
+          contributorName: show.contributorName,
         },
         brandName: show.brand,
       });
@@ -317,6 +317,16 @@ const BrandDetailScreen = () => {
             )}
           </View>
         </View>
+
+        {/* Contributor Info */}
+        {brand.contributorName && (
+          <View style={styles.contributorContainer}>
+            <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
+            <Text style={styles.contributorText}>
+              由 {brand.contributorName} 用户贡献的品牌
+            </Text>
+          </View>
+        )}
 
         {/* Info Section */}
         <View style={styles.infoSection}>
@@ -733,6 +743,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
     marginTop: 4,
+  },
+  contributorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F0FF",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  contributorText: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    fontFamily: "Inter-Regular",
   },
   // Info Section
   infoSection: {

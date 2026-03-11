@@ -374,6 +374,28 @@ export async function updatePrivacySettings(
   });
 }
 
+// 贡献榜用户类型
+export interface ContributionUser {
+  rank: number;
+  userId: number;
+  username: string;
+  avatarUrl: string;
+  contributionCount: number;
+}
+
+/**
+ * 获取 Archive 贡献榜
+ * GET /api/user-info/contribution-leaderboard
+ */
+export async function getContributionLeaderboard(
+  limit: number = 20
+): Promise<ContributionUser[]> {
+  return request<ContributionUser[]>(
+    `/api/user-info/contribution-leaderboard?limit=${limit}`,
+    { method: "GET" }
+  );
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
@@ -385,6 +407,7 @@ export const userInfoService = {
   searchUsers,
   getPrivacySettings,
   updatePrivacySettings,
+  getContributionLeaderboard,
 };
 
 export default userInfoService;

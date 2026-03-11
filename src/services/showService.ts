@@ -27,6 +27,7 @@ export interface Show {
   description?: string;
   designer?: string;
   createdBy?: number;
+  contributorName?: string;
   status?: "PENDING" | "APPROVED" | "REJECTED";
   rejectReason?: string;
   createdAt?: string;
@@ -284,6 +285,18 @@ export const rejectShow = async (showId: string, reason?: string): Promise<Show>
   });
 };
 
+/**
+ * 获取指定用户已通过审核的秀场（公开接口）
+ * GET /api/shows/user/{userId}
+ */
+export const getShowsByUser = async (userId: number): Promise<Show[]> => {
+  const result = await request<{ shows: Show[]; total: number }>(
+    `/api/shows/user/${userId}`,
+    { method: "GET" }
+  );
+  return result.shows;
+};
+
 // 导出服务对象
 export const showService = {
   getShows,
@@ -295,6 +308,7 @@ export const showService = {
   getShowCategories,
   createShow,
   getMyShows,
+  getShowsByUser,
   getPendingShows,
   approveShow,
   rejectShow,

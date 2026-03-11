@@ -743,6 +743,24 @@ const StoreDetailScreen = () => {
                 </Box>
               </HStack>
 
+              {/* 贡献者信息 */}
+              {store.contributorName && (
+                <HStack
+                  alignItems="center"
+                  bg="#F5F0FF"
+                  px="$md"
+                  py="$sm"
+                  rounded="$sm"
+                  mb="$md"
+                  gap="$xs"
+                >
+                  <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    由 {store.contributorName} 用户上传的买手店
+                  </Text>
+                </HStack>
+              )}
+
               {/* 评分和统计 */}
               <HStack
                 bg="$gray50"

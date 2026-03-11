@@ -20,6 +20,7 @@ import { DisplayPost, TabType } from "../types";
 import { SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
 
+
 interface TabContentProps {
   tab: TabType;
   tabPosts: DisplayPost[];

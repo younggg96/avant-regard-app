@@ -57,6 +57,10 @@ import { Post as DisplayPost } from "../components/PostCard";
 import { ImageCropper } from "../components/ImageCropper";
 import { showService, Show } from "../services/showService";
 import { brandService, BrandSubmission } from "../services/brandService";
+import {
+  buyerStoreService,
+  UserSubmittedStore,
+} from "../services/buyerStoreService";
 
 type TabType = "posts" | "forum" | "saved" | "liked" | "archive";
 
@@ -74,7 +78,18 @@ const initialTabState: TabData = {
   count: 0,
 };
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const CONTRIB_CARD_GAP = 12;
+const CONTRIB_CARD_PADDING = 16;
+const CONTRIB_CARD_WIDTH = (SCREEN_WIDTH - CONTRIB_CARD_PADDING * 2 - CONTRIB_CARD_GAP) / 2;
+
+type ContribSubTab = "show" | "brand" | "store";
+
+const CONTRIB_STATUS: Record<string, { bg: string; color: string; label: string }> = {
+  APPROVED: { bg: "#E8F5E9", color: "#2E7D32", label: "已通过" },
+  REJECTED: { bg: "#FFEBEE", color: "#C62828", label: "已拒绝" },
+  PENDING: { bg: "#FFF3E0", color: "#E65100", label: "审核中" },
+};
 
 // --- 布局常量 ---
 const COVER_HEIGHT = 200;
@@ -122,6 +137,14 @@ const UserProfileScreen = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
 
+  // Contribution states
+  const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
+  const [myShows, setMyShows] = useState<Show[]>([]);
+  const [myBrands, setMyBrands] = useState<BrandSubmission[]>([]);
+  const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
+  const [contribLoading, setContribLoading] = useState(false);
+  const [contribLoaded, setContribLoaded] = useState(false);
+
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
   const isCurrentUser = currentUser?.userId === userId;
@@ -135,11 +158,6 @@ const UserProfileScreen = () => {
     archive: { ...initialTabState },
   });
 
-  const [archiveShows, setArchiveShows] = useState<Show[]>([]);
-  const [archiveBrands, setArchiveBrands] = useState<BrandSubmission[]>([]);
-  const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archiveLoaded, setArchiveLoaded] = useState(false);
-
   const updateTabState = useCallback(
     (tab: TabType, updates: Partial<TabData>) => {
       setTabsData((prev) => ({
@@ -150,16 +168,17 @@ const UserProfileScreen = () => {
     []
   );
 
-  const baseTabs = [
-    { id: "posts" as TabType, label: "笔记" },
-    { id: "forum" as TabType, label: "论坛" },
-    { id: "saved" as TabType, label: "收藏" },
-    { id: "liked" as TabType, label: "赞过" },
+  const allTabs: { id: TabType; label: string }[] = [
+    { id: "posts", label: "笔记" },
+    { id: "forum", label: "论坛" },
+    { id: "saved", label: "收藏" },
+    { id: "liked", label: "赞过" },
+    { id: "archive", label: "贡献" },
   ];
 
   const tabs = isCurrentUser
-    ? [...baseTabs, { id: "archive" as TabType, label: "MyArchive" }]
-    : baseTabs.filter((tab) => {
+    ? allTabs
+    : allTabs.filter((tab) => {
         if (tab.id === "saved") return true;
         if (tab.id === "liked") return !(privacySettings?.hideLikes ?? true);
         return true;
@@ -261,34 +280,9 @@ const UserProfileScreen = () => {
     }
   };
 
-  const fetchArchiveData = useCallback(
-    async (isRefresh = false) => {
-      if (!isRefresh && archiveLoaded) return;
-      setArchiveLoading(true);
-      try {
-        const [shows, brands] = await Promise.all([
-          showService.getMyShows(),
-          brandService.getMySubmissions(),
-        ]);
-        setArchiveShows(shows);
-        setArchiveBrands(brands);
-        setArchiveLoaded(true);
-      } catch (error) {
-        console.error("Error loading archive:", error);
-      } finally {
-        setArchiveLoading(false);
-      }
-    },
-    [archiveLoaded]
-  );
-
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
-      if (targetTab === "archive") {
-        await fetchArchiveData(isRefresh);
-        return;
-      }
-
+      if (targetTab === "archive") return;
       if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
       }
@@ -361,8 +355,38 @@ const UserProfileScreen = () => {
         updateTabState(targetTab, { isLoading: false });
       }
     },
-    [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings, fetchArchiveData]
+    [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings]
   );
+
+  const loadContributions = useCallback(async () => {
+    setContribLoading(true);
+    try {
+      if (isCurrentUser && currentUser?.userId) {
+        const [showsRes, brandsRes, storesRes] = await Promise.all([
+          showService.getMyShows(),
+          brandService.getMySubmissions(),
+          buyerStoreService.getMySubmissions(1, 100),
+        ]);
+        setMyShows(showsRes);
+        setMyBrands(brandsRes);
+        setMyStores(storesRes.stores);
+      } else {
+        const [showsRes, brandsRes, storesRes] = await Promise.all([
+          showService.getShowsByUser(userId),
+          brandService.getSubmissionsByUser(userId),
+          buyerStoreService.getSubmissionsByUser(userId, 1, 100),
+        ]);
+        setMyShows(showsRes);
+        setMyBrands(brandsRes);
+        setMyStores(storesRes.stores);
+      }
+    } catch (err) {
+      console.error("Error loading contributions:", err);
+    } finally {
+      setContribLoading(false);
+      setContribLoaded(true);
+    }
+  }, [currentUser, isCurrentUser, userId]);
 
   useEffect(() => {
     loadUserInfo();
@@ -377,13 +401,15 @@ const UserProfileScreen = () => {
       liked: { ...initialTabState },
       archive: { ...initialTabState },
     });
-    setArchiveShows([]);
-    setArchiveBrands([]);
-    setArchiveLoaded(false);
+    setContribLoaded(false);
   }, [userId]);
 
   useEffect(() => {
-    fetchTabData(activeTab);
+    if (activeTab === "archive") {
+      if (!contribLoaded) loadContributions();
+    } else {
+      fetchTabData(activeTab);
+    }
   }, [activeTab, userId]);
 
   useFocusEffect(
@@ -393,19 +419,28 @@ const UserProfileScreen = () => {
       loadFollowCounts();
       checkFollowStatus();
       loadPrivacySettings();
-      fetchTabData(activeTab, true);
+      if (activeTab === "archive") {
+        loadContributions();
+      } else {
+        fetchTabData(activeTab, true);
+      }
     }, [activeTab, userId])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([
+    const tasks: Promise<any>[] = [
       loadUserInfo(),
       loadUserProfile(),
       loadFollowCounts(),
       checkFollowStatus(),
-      fetchTabData(activeTab, true),
-    ]);
+    ];
+    if (activeTab === "archive") {
+      tasks.push(loadContributions());
+    } else {
+      tasks.push(fetchTabData(activeTab, true));
+    }
+    await Promise.all(tasks);
     setRefreshing(false);
   };
 
@@ -573,15 +608,10 @@ const UserProfileScreen = () => {
 
   const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "APPROVED":
-        return { bg: "#E8F5E9", color: "#2E7D32", label: "已通过" };
-      case "REJECTED":
-        return { bg: "#FFEBEE", color: "#C62828", label: "已拒绝" };
-      default:
-        return { bg: "#FFF3E0", color: "#E65100", label: "审核中" };
-    }
+  const formatContribDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
   const handleShowPress = (show: Show) => {
@@ -597,113 +627,144 @@ const UserProfileScreen = () => {
         description: show.description,
         category: show.category,
         showUrl: show.showUrl,
+        contributorName: show.contributorName,
       },
       brandName: show.brand,
     });
   };
 
-  const handleBrandPress = (submission: BrandSubmission) => {
-    if (submission.status === "APPROVED") {
-      (navigation as any).navigate("BrandDetail", { name: submission.name });
+  const handleBrandSubmissionPress = (sub: BrandSubmission) => {
+    if (sub.status === "APPROVED") {
+      (navigation as any).navigate("BrandDetail", { name: sub.name });
     }
   };
 
-  const renderArchiveCard = (
-    item: { type: "show"; data: Show } | { type: "brand"; data: BrandSubmission }
-  ) => {
-    const isShow = item.type === "show";
-    const status = isShow ? (item.data as Show).status || "APPROVED" : (item.data as BrandSubmission).status;
-    const statusStyle = getStatusStyle(status);
-    const coverImage = isShow ? (item.data as Show).coverImage : (item.data as BrandSubmission).coverImage;
-    const title = isShow
-      ? `${(item.data as Show).brand} ${(item.data as Show).season}`
-      : (item.data as BrandSubmission).name;
-    const subtitle = isShow
-      ? (item.data as Show).category || (item.data as Show).year?.toString() || ""
-      : (item.data as BrandSubmission).category || "";
-    const key = `${item.type}-${item.data.id}`;
-
-    return (
-      <Pressable
-        key={key}
-        style={archiveStyles.card}
-        onPress={() => {
-          if (isShow) handleShowPress(item.data as Show);
-          else handleBrandPress(item.data as BrandSubmission);
-        }}
-      >
-        <View style={archiveStyles.cardImageContainer}>
-          {coverImage ? (
-            <RNImage source={{ uri: coverImage }} style={archiveStyles.cardImage} resizeMode="cover" />
-          ) : (
-            <View style={archiveStyles.cardImagePlaceholder}>
-              <Ionicons
-                name={isShow ? "film-outline" : "pricetag-outline"}
-                size={28}
-                color={theme.colors.gray300}
-              />
-            </View>
-          )}
-          <View style={[archiveStyles.typeBadge, { backgroundColor: isShow ? "#1A1A1A" : "#6B4EFF" }]}>
-            <RNText style={archiveStyles.typeBadgeText}>{isShow ? "秀场" : "品牌"}</RNText>
-          </View>
-        </View>
-        <View style={archiveStyles.cardInfo}>
-          <RNText style={archiveStyles.cardTitle} numberOfLines={2}>{title}</RNText>
-          {subtitle ? (
-            <RNText style={archiveStyles.cardSubtitle} numberOfLines={1}>{subtitle}</RNText>
-          ) : null}
-          <View style={[archiveStyles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-            <RNText style={[archiveStyles.statusText, { color: statusStyle.color }]}>{statusStyle.label}</RNText>
-          </View>
-        </View>
-      </Pressable>
-    );
+  const handleStoreCardPress = (store: UserSubmittedStore) => {
+    if (store.status === "APPROVED" && store.approvedStoreId) {
+      (navigation as any).navigate("StoreDetail", { storeId: store.approvedStoreId });
+    }
   };
 
-  const renderArchiveContent = () => {
-    if (archiveLoading && !archiveLoaded) {
-      return (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
-        </VStack>
-      );
-    }
-
-    const archiveItems: ({ type: "show"; data: Show } | { type: "brand"; data: BrandSubmission })[] = [
-      ...archiveShows.map((s) => ({ type: "show" as const, data: s })),
-      ...archiveBrands.map((b) => ({ type: "brand" as const, data: b })),
+  const renderContributionContent = () => {
+    const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
+      { id: "show", label: "秀场", count: myShows.length },
+      { id: "brand", label: "品牌", count: myBrands.length },
+      { id: "store", label: "买手店", count: myStores.length },
     ];
 
-    archiveItems.sort((a, b) => {
-      const dateA = a.data.createdAt ? new Date(a.data.createdAt).getTime() : 0;
-      const dateB = b.data.createdAt ? new Date(b.data.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
+    const getData = () => {
+      switch (contribSubTab) {
+        case "show": return myShows;
+        case "brand": return myBrands;
+        case "store": return myStores;
+      }
+    };
+    const data = getData();
 
-    if (archiveItems.length === 0 && archiveLoaded) {
+    const displayName = userInfo?.username || username || "该用户";
+    const emptyIcons: Record<ContribSubTab, string> = {
+      show: "film-outline",
+      brand: "pricetag-outline",
+      store: "storefront-outline",
+    };
+    const emptyTexts: Record<ContribSubTab, string> = {
+      show: isCurrentUser ? "暂无秀场贡献" : `${displayName} 暂无秀场贡献`,
+      brand: isCurrentUser ? "暂无品牌贡献" : `${displayName} 暂无品牌贡献`,
+      store: isCurrentUser ? "暂无买手店贡献" : `${displayName} 暂无买手店贡献`,
+    };
+
+    const renderCard = (item: any, type: ContribSubTab) => {
+      const status = item.status || "APPROVED";
+      const ss = CONTRIB_STATUS[status] || CONTRIB_STATUS.PENDING;
+      const key = `${type}-${item.id}`;
+      const image = type === "store"
+        ? (item.images && item.images.length > 0 ? item.images[0] : null)
+        : item.coverImage;
+      const title = type === "show" ? `${item.brand} ${item.season}` : item.name;
+      const subtitle = type === "show"
+        ? (item.category || item.year?.toString() || "")
+        : type === "brand"
+          ? (item.category || "")
+          : `${item.city}, ${item.country}`;
+      const icon = type === "show" ? "film-outline" : type === "brand" ? "pricetag-outline" : "storefront-outline";
+      const onPress = type === "show"
+        ? () => handleShowPress(item)
+        : type === "brand"
+          ? () => handleBrandSubmissionPress(item)
+          : () => handleStoreCardPress(item);
+
       return (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <Ionicons name="archive-outline" size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md">还没有上传秀场或品牌</Text>
-        </VStack>
+        <Pressable key={key} style={contribStyles.card} onPress={onPress}>
+          <View style={contribStyles.cardImageContainer}>
+            {image ? (
+              <RNImage source={{ uri: image }} style={contribStyles.cardImage} resizeMode="cover" />
+            ) : (
+              <View style={contribStyles.cardImagePlaceholder}>
+                <Ionicons name={icon as any} size={32} color={theme.colors.gray300} />
+              </View>
+            )}
+          </View>
+          <View style={contribStyles.cardInfo}>
+            <RNText style={contribStyles.cardTitle} numberOfLines={2}>{title}</RNText>
+            {subtitle ? <RNText style={contribStyles.cardSubtitle} numberOfLines={1}>{subtitle}</RNText> : null}
+            <View style={contribStyles.cardBottom}>
+              <View style={[contribStyles.statusBadge, { backgroundColor: ss.bg }]}>
+                <RNText style={[contribStyles.statusText, { color: ss.color }]}>{ss.label}</RNText>
+              </View>
+              <RNText style={contribStyles.dateText}>{formatContribDate(item.createdAt)}</RNText>
+            </View>
+          </View>
+        </Pressable>
       );
-    }
+    };
 
     return (
-      <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-        {archiveItems.map((item) => renderArchiveCard(item))}
-      </HStack>
+      <VStack>
+        {/* Sub filter buttons */}
+        <HStack px="$md" py="$sm" style={{ gap: 8 }}>
+          {subTabs.map((st) => {
+            const isActive = contribSubTab === st.id;
+            return (
+              <Pressable
+                key={st.id}
+                style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+                onPress={() => setContribSubTab(st.id)}
+              >
+                <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
+                  {st.label}
+                </RNText>
+                <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
+                  {st.count}
+                </RNText>
+              </Pressable>
+            );
+          })}
+        </HStack>
+
+        {/* Content */}
+        {contribLoading ? (
+          <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+            <ActivityIndicator color={theme.colors.gray400} />
+            <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          </VStack>
+        ) : data.length === 0 ? (
+          <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+            <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
+            <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
+          </VStack>
+        ) : (
+          <View style={contribStyles.cardGrid}>
+            {data.map((item) => renderCard(item, contribSubTab))}
+          </View>
+        )}
+      </VStack>
     );
   };
 
   const renderPostsContent = () => {
-    if (activeTab === "archive") {
-      return renderArchiveContent();
-    }
+    if (activeTab === "archive") return renderContributionContent();
 
-    const currentTabData = tabsData[activeTab];
+    const currentTabData = tabsData[activeTab as Exclude<TabType, "archive">];
     const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
     if (shouldShowLoading) {
@@ -1333,10 +1394,48 @@ const styles = StyleSheet.create({
   },
 });
 
-const archiveStyles = StyleSheet.create({
+const contribStyles = StyleSheet.create({
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: theme.colors.gray600,
+  },
+  filterChipTextActive: {
+    color: "#FFF",
+  },
+  filterChipCount: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+  },
+  filterChipCountActive: {
+    color: "rgba(255,255,255,0.7)",
+  },
+  cardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: CONTRIB_CARD_PADDING,
+    paddingTop: 4,
+    justifyContent: "space-between",
+  },
   card: {
-    width: "48%",
-    marginBottom: 12,
+    width: CONTRIB_CARD_WIDTH,
+    marginBottom: CONTRIB_CARD_GAP,
     borderRadius: 12,
     backgroundColor: "#FFF",
     overflow: "hidden",
@@ -1346,7 +1445,6 @@ const archiveStyles = StyleSheet.create({
   cardImageContainer: {
     width: "100%",
     aspectRatio: 3 / 4,
-    position: "relative",
   },
   cardImage: {
     width: "100%",
@@ -1358,19 +1456,6 @@ const archiveStyles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     justifyContent: "center",
     alignItems: "center",
-  },
-  typeBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  typeBadgeText: {
-    color: "#FFF",
-    fontSize: 10,
-    fontWeight: "600",
   },
   cardInfo: {
     padding: 10,
@@ -1386,16 +1471,24 @@ const archiveStyles = StyleSheet.create({
     color: "#999",
     marginTop: 2,
   },
+  cardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
   statusBadge: {
-    alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-    marginTop: 6,
   },
   statusText: {
     fontSize: 10,
     fontWeight: "600",
+  },
+  dateText: {
+    fontSize: 10,
+    color: theme.colors.gray300,
   },
 });
 

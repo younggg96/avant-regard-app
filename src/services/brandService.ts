@@ -25,6 +25,7 @@ export interface Brand {
   website?: string;
   coverImage?: string;
   coverImages?: string[];
+  contributorName?: string;
   latestSeason?: string;
   vogueSlug?: string;
   vogueUrl?: string;
@@ -257,6 +258,19 @@ export const uploadBrandImage = async (
   });
 };
 
+/**
+ * 获取指定用户已通过审核的品牌提交（公开接口）
+ * GET /api/brands/user/{userId}/submissions
+ */
+export const getSubmissionsByUser = async (
+  userId: number
+): Promise<BrandSubmission[]> => {
+  return request<BrandSubmission[]>(
+    `/api/brands/user/${userId}/submissions`,
+    { method: "GET" }
+  );
+};
+
 // 导出服务对象
 export const brandService = {
   getBrands,
@@ -266,5 +280,6 @@ export const brandService = {
   getBrandCategories,
   submitBrand,
   getMySubmissions,
+  getSubmissionsByUser,
   uploadBrandImage,
 };

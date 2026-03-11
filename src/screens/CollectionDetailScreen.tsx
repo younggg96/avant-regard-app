@@ -36,6 +36,7 @@ interface Collection {
   category?: string | null;
   reviewText?: string | null;
   showUrl?: string;
+  contributorName?: string | null;
   rating?: {
     average: number;
     totalReviews: number;
@@ -191,6 +192,15 @@ const CollectionDetailScreen = () => {
       <Text style={styles.subtitle}>
         {collection.season} {collection.year}
       </Text>
+
+      {collection.contributorName && (
+        <View style={styles.contributorBadge}>
+          <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
+          <Text style={styles.contributorText}>
+            由 {collection.contributorName} 用户贡献的秀场
+          </Text>
+        </View>
+      )}
 
       <View style={styles.metaInfo}>
         {brandName && (
@@ -428,6 +438,22 @@ const styles = StyleSheet.create({
     fontFamily: __DEV__ ? "System" : "Inter-Medium",
     color: theme.colors.gray600,
     marginBottom: 16,
+  },
+  contributorBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F0FF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    marginBottom: 16,
+    gap: 6,
+  },
+  contributorText: {
+    fontSize: 12,
+    color: theme.colors.gray500,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
   },
   metaInfo: {
     marginBottom: 20,

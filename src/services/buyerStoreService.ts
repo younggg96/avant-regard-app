@@ -533,6 +533,21 @@ export const getMySubmissions = async (
 };
 
 /**
+ * 获取指定用户已通过审核的买手店提交（公开接口）
+ * GET /api/buyer-stores/submissions/user/{userId}
+ */
+export const getSubmissionsByUser = async (
+  userId: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{ stores: UserSubmittedStore[]; total: number }> => {
+  return request<{ stores: UserSubmittedStore[]; total: number }>(
+    `/api/buyer-stores/submissions/user/${userId}?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/**
  * 获取待审核的买手店列表（管理员）
  * GET /api/buyer-stores/submissions/pending
  */
@@ -841,6 +856,7 @@ export interface BuyerStoreDetail extends BuyerStore {
   favoriteCount: number;
   isFavorited: boolean;
   userRating?: number;
+  contributorName?: string;
 }
 
 /**
@@ -878,6 +894,7 @@ export const buyerStoreService = {
   // 用户提交
   submitStore,
   getMySubmissions,
+  getSubmissionsByUser,
   getPendingSubmissions,
   reviewSubmission,
   // 评论

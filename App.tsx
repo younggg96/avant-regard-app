@@ -22,7 +22,7 @@ import SplashVideo from "./src/components/SplashVideo";
 
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
-import ArchiveScreen from "./src/screens/ArchiveScreen";
+import ArchiveScreen from "./src/screens/Archive/ArchiveScreen";
 import NotificationsScreen from "./src/screens/NotificationsScreen";
 import BuyerMapScreen from "./src/screens/BuyerMapScreen";
 import StoreListScreen from "./src/screens/StoreListScreen";
