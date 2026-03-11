@@ -176,6 +176,18 @@ async def reject_show(
     return success(show.model_dump())
 
 
+@router.get("/my-shows")
+async def get_my_shows(
+    user_id: int = Depends(get_current_user_id),
+):
+    """获取当前用户创建的秀场"""
+    shows = show_service.get_shows_by_user(user_id)
+    return success({
+        "shows": [s.model_dump() for s in shows],
+        "total": len(shows),
+    })
+
+
 @router.get("/by-url")
 async def get_show_by_url(url: str = Query(..., description="秀场链接")):
     """通过 URL 获取秀场详情"""

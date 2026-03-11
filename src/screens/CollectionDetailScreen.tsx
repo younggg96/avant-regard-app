@@ -31,6 +31,9 @@ interface Collection {
   imageCount: number;
   city?: string | null;
   author?: string | null;
+  designer?: string | null;
+  description?: string | null;
+  category?: string | null;
   reviewText?: string | null;
   showUrl?: string;
   rating?: {
@@ -184,10 +187,47 @@ const CollectionDetailScreen = () => {
 
   const renderCollectionInfo = () => (
     <View style={styles.infoContainer}>
-      {/* <Text style={styles.title}>{collection.title}</Text> */}
+      <Text style={styles.title}>{collection.title}</Text>
       <Text style={styles.subtitle}>
         {collection.season} {collection.year}
       </Text>
+
+      <View style={styles.metaInfo}>
+        {brandName && (
+          <View style={styles.metaItem}>
+            <Ionicons name="pricetag-outline" size={16} color={theme.colors.gray600} />
+            <Text style={styles.metaText}>{brandName}</Text>
+          </View>
+        )}
+        {collection.designer && (
+          <View style={styles.metaItem}>
+            <Ionicons name="brush-outline" size={16} color={theme.colors.gray600} />
+            <Text style={styles.metaText}>{collection.designer}</Text>
+          </View>
+        )}
+        {collection.category && (
+          <View style={styles.metaItem}>
+            <Ionicons name="grid-outline" size={16} color={theme.colors.gray600} />
+            <Text style={styles.metaText}>{collection.category}</Text>
+          </View>
+        )}
+        {collection.city && (
+          <View style={styles.metaItem}>
+            <Ionicons name="location-outline" size={16} color={theme.colors.gray600} />
+            <Text style={styles.metaText}>{collection.city}</Text>
+          </View>
+        )}
+        {collection.imageCount > 0 && (
+          <View style={styles.metaItem}>
+            <Ionicons name="images-outline" size={16} color={theme.colors.gray600} />
+            <Text style={styles.metaText}>{collection.imageCount} 张图片</Text>
+          </View>
+        )}
+      </View>
+
+      {collection.description && (
+        <Text style={styles.descriptionText}>{collection.description}</Text>
+      )}
 
       {collection.showUrl && (
         <TouchableOpacity style={styles.urlButton} onPress={handleOpenUrl}>
@@ -299,7 +339,7 @@ const CollectionDetailScreen = () => {
                 <Image
                   source={{
                     uri:
-                      (post.imageUrls?.[0] && post.imageUrls[0].trim() !== "") 
+                      (post.imageUrls?.[0] && post.imageUrls[0].trim() !== "")
                         ? post.imageUrls[0]
                         : "https://via.placeholder.com/150x120/f0f0f0/cccccc?text=No+Image",
                   }}
@@ -402,6 +442,13 @@ const styles = StyleSheet.create({
     fontFamily: __DEV__ ? "System" : "Inter-Regular",
     color: theme.colors.gray600,
     marginLeft: 8,
+  },
+  descriptionText: {
+    fontSize: 14,
+    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    color: theme.colors.gray600,
+    lineHeight: 22,
+    marginBottom: 16,
   },
   urlButton: {
     flexDirection: "row",

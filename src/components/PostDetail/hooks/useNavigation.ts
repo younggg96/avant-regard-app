@@ -55,6 +55,9 @@ export const useNavigationHandlers = ({
           year: show.year?.toString() || "",
           coverImage: show.coverImage,
           showUrl: show.showUrl,
+          designer: show.designer,
+          description: show.description,
+          category: show.category,
         },
         brandName: show.brand,
       });

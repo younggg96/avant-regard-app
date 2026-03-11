@@ -165,6 +165,9 @@ const BrandDetailScreen = () => {
           coverImage: show.coverImage || "",
           imageCount: 0,
           showUrl: show.showUrl,
+          designer: show.designer,
+          description: show.description,
+          category: show.category,
         },
         brandName: show.brand,
       });

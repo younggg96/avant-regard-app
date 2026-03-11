@@ -55,8 +55,10 @@ import SimplePostCard from "../components/SimplePostCard";
 import ForumPostCard from "../components/ForumPostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 import { ImageCropper } from "../components/ImageCropper";
+import { showService, Show } from "../services/showService";
+import { brandService, BrandSubmission } from "../services/brandService";
 
-type TabType = "posts" | "forum" | "saved" | "liked";
+type TabType = "posts" | "forum" | "saved" | "liked" | "archive";
 
 type TabData = {
   posts: DisplayPost[];
@@ -130,7 +132,13 @@ const UserProfileScreen = () => {
     forum: { ...initialTabState },
     saved: { ...initialTabState },
     liked: { ...initialTabState },
+    archive: { ...initialTabState },
   });
+
+  const [archiveShows, setArchiveShows] = useState<Show[]>([]);
+  const [archiveBrands, setArchiveBrands] = useState<BrandSubmission[]>([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveLoaded, setArchiveLoaded] = useState(false);
 
   const updateTabState = useCallback(
     (tab: TabType, updates: Partial<TabData>) => {
@@ -142,20 +150,17 @@ const UserProfileScreen = () => {
     []
   );
 
-  // 根据隐私设置过滤 tabs
-  const allTabs = [
+  const baseTabs = [
     { id: "posts" as TabType, label: "笔记" },
     { id: "forum" as TabType, label: "论坛" },
     { id: "saved" as TabType, label: "收藏" },
     { id: "liked" as TabType, label: "赞过" },
   ];
-  
-  // 如果是自己的主页或者隐私设置允许，显示所有 tab
-  // 否则根据隐私设置隐藏收藏和点赞 tab
+
   const tabs = isCurrentUser
-    ? allTabs
-    : allTabs.filter((tab) => {
-        if (tab.id === "saved") return true; // 收藏始终显示，但内容可能为空
+    ? [...baseTabs, { id: "archive" as TabType, label: "MyArchive" }]
+    : baseTabs.filter((tab) => {
+        if (tab.id === "saved") return true;
         if (tab.id === "liked") return !(privacySettings?.hideLikes ?? true);
         return true;
       });
@@ -256,8 +261,34 @@ const UserProfileScreen = () => {
     }
   };
 
+  const fetchArchiveData = useCallback(
+    async (isRefresh = false) => {
+      if (!isRefresh && archiveLoaded) return;
+      setArchiveLoading(true);
+      try {
+        const [shows, brands] = await Promise.all([
+          showService.getMyShows(),
+          brandService.getMySubmissions(),
+        ]);
+        setArchiveShows(shows);
+        setArchiveBrands(brands);
+        setArchiveLoaded(true);
+      } catch (error) {
+        console.error("Error loading archive:", error);
+      } finally {
+        setArchiveLoading(false);
+      }
+    },
+    [archiveLoaded]
+  );
+
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
+      if (targetTab === "archive") {
+        await fetchArchiveData(isRefresh);
+        return;
+      }
+
       if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
       }
@@ -276,7 +307,6 @@ const UserProfileScreen = () => {
             userId,
             "PUBLISHED"
           );
-          // 只显示非论坛帖子（没有 communityId 的帖子）
           const approvedPosts = apiPosts.filter(
             (p: ApiPost) => p.auditStatus === "APPROVED" && p.communityId == null
           );
@@ -284,7 +314,6 @@ const UserProfileScreen = () => {
             convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
           );
         } else if (targetTab === "forum") {
-          // 获取用户的论坛帖子（有 communityId 的帖子）
           const apiPosts = await postService.getPostsByUserId(
             userId,
             "PUBLISHED"
@@ -297,7 +326,6 @@ const UserProfileScreen = () => {
           );
         } else if (targetTab === "saved") {
           const apiPosts = await postService.getFavoritePostsByUserId(userId);
-          // 对于收藏的帖子，使用帖子返回的原作者信息
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || "用户",
@@ -305,7 +333,6 @@ const UserProfileScreen = () => {
             })
           );
         } else if (targetTab === "liked") {
-          // 检查隐私设置 - 如果不是自己的主页且设置了隐藏点赞，则不加载
           if (!isCurrentUser && privacySettings?.hideLikes) {
             updateTabState(targetTab, {
               posts: [],
@@ -316,7 +343,6 @@ const UserProfileScreen = () => {
             return;
           }
           const apiPosts = await postService.getLikedPostsByUserId(userId);
-          // 对于点赞的帖子，使用帖子返回的原作者信息
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || "用户",
@@ -335,7 +361,7 @@ const UserProfileScreen = () => {
         updateTabState(targetTab, { isLoading: false });
       }
     },
-    [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings]
+    [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings, fetchArchiveData]
   );
 
   useEffect(() => {
@@ -349,7 +375,11 @@ const UserProfileScreen = () => {
       forum: { ...initialTabState },
       saved: { ...initialTabState },
       liked: { ...initialTabState },
+      archive: { ...initialTabState },
     });
+    setArchiveShows([]);
+    setArchiveBrands([]);
+    setArchiveLoaded(false);
   }, [userId]);
 
   useEffect(() => {
@@ -543,7 +573,136 @@ const UserProfileScreen = () => {
 
   const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "APPROVED":
+        return { bg: "#E8F5E9", color: "#2E7D32", label: "已通过" };
+      case "REJECTED":
+        return { bg: "#FFEBEE", color: "#C62828", label: "已拒绝" };
+      default:
+        return { bg: "#FFF3E0", color: "#E65100", label: "审核中" };
+    }
+  };
+
+  const handleShowPress = (show: Show) => {
+    (navigation as any).navigate("CollectionDetail", {
+      collection: {
+        id: String(show.id),
+        title: `${show.brand} ${show.season}`,
+        season: show.season,
+        year: String(show.year || ""),
+        coverImage: show.coverImage || "",
+        imageCount: 0,
+        designer: show.designer,
+        description: show.description,
+        category: show.category,
+        showUrl: show.showUrl,
+      },
+      brandName: show.brand,
+    });
+  };
+
+  const handleBrandPress = (submission: BrandSubmission) => {
+    if (submission.status === "APPROVED") {
+      (navigation as any).navigate("BrandDetail", { name: submission.name });
+    }
+  };
+
+  const renderArchiveCard = (
+    item: { type: "show"; data: Show } | { type: "brand"; data: BrandSubmission }
+  ) => {
+    const isShow = item.type === "show";
+    const status = isShow ? (item.data as Show).status || "APPROVED" : (item.data as BrandSubmission).status;
+    const statusStyle = getStatusStyle(status);
+    const coverImage = isShow ? (item.data as Show).coverImage : (item.data as BrandSubmission).coverImage;
+    const title = isShow
+      ? `${(item.data as Show).brand} ${(item.data as Show).season}`
+      : (item.data as BrandSubmission).name;
+    const subtitle = isShow
+      ? (item.data as Show).category || (item.data as Show).year?.toString() || ""
+      : (item.data as BrandSubmission).category || "";
+    const key = `${item.type}-${item.data.id}`;
+
+    return (
+      <Pressable
+        key={key}
+        style={archiveStyles.card}
+        onPress={() => {
+          if (isShow) handleShowPress(item.data as Show);
+          else handleBrandPress(item.data as BrandSubmission);
+        }}
+      >
+        <View style={archiveStyles.cardImageContainer}>
+          {coverImage ? (
+            <RNImage source={{ uri: coverImage }} style={archiveStyles.cardImage} resizeMode="cover" />
+          ) : (
+            <View style={archiveStyles.cardImagePlaceholder}>
+              <Ionicons
+                name={isShow ? "film-outline" : "pricetag-outline"}
+                size={28}
+                color={theme.colors.gray300}
+              />
+            </View>
+          )}
+          <View style={[archiveStyles.typeBadge, { backgroundColor: isShow ? "#1A1A1A" : "#6B4EFF" }]}>
+            <RNText style={archiveStyles.typeBadgeText}>{isShow ? "秀场" : "品牌"}</RNText>
+          </View>
+        </View>
+        <View style={archiveStyles.cardInfo}>
+          <RNText style={archiveStyles.cardTitle} numberOfLines={2}>{title}</RNText>
+          {subtitle ? (
+            <RNText style={archiveStyles.cardSubtitle} numberOfLines={1}>{subtitle}</RNText>
+          ) : null}
+          <View style={[archiveStyles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <RNText style={[archiveStyles.statusText, { color: statusStyle.color }]}>{statusStyle.label}</RNText>
+          </View>
+        </View>
+      </Pressable>
+    );
+  };
+
+  const renderArchiveContent = () => {
+    if (archiveLoading && !archiveLoaded) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <ActivityIndicator color={theme.colors.gray400} />
+          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+        </VStack>
+      );
+    }
+
+    const archiveItems: ({ type: "show"; data: Show } | { type: "brand"; data: BrandSubmission })[] = [
+      ...archiveShows.map((s) => ({ type: "show" as const, data: s })),
+      ...archiveBrands.map((b) => ({ type: "brand" as const, data: b })),
+    ];
+
+    archiveItems.sort((a, b) => {
+      const dateA = a.data.createdAt ? new Date(a.data.createdAt).getTime() : 0;
+      const dateB = b.data.createdAt ? new Date(b.data.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    if (archiveItems.length === 0 && archiveLoaded) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <Ionicons name="archive-outline" size={24} color={theme.colors.gray300} />
+          <Text color="$gray400" mt="$md">还没有上传秀场或品牌</Text>
+        </VStack>
+      );
+    }
+
+    return (
+      <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
+        {archiveItems.map((item) => renderArchiveCard(item))}
+      </HStack>
+    );
+  };
+
   const renderPostsContent = () => {
+    if (activeTab === "archive") {
+      return renderArchiveContent();
+    }
+
     const currentTabData = tabsData[activeTab];
     const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
@@ -1171,6 +1330,72 @@ const styles = StyleSheet.create({
   },
   postsContainer: {
     paddingBottom: theme.spacing.xl,
+  },
+});
+
+const archiveStyles = StyleSheet.create({
+  card: {
+    width: "48%",
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  cardImageContainer: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    position: "relative",
+  },
+  cardImage: {
+    width: "100%",
+    height: "100%",
+  },
+  cardImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  typeBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  typeBadgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  cardInfo: {
+    padding: 10,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    lineHeight: 18,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 2,
+  },
+  statusBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 6,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "600",
   },
 });
 

@@ -69,6 +69,17 @@ class ShowService:
 
         return self._format_show(result.data[0])
 
+    def get_shows_by_user(self, user_id: int) -> List[Show]:
+        """获取用户创建的所有秀场（含各种状态）"""
+        result = (
+            self.db.table("shows")
+            .select("*")
+            .eq("created_by", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_show(s) for s in result.data]
+
     def get_pending_shows(self) -> List[Show]:
         """获取待审核秀场列表"""
         result = (

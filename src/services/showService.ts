@@ -242,6 +242,18 @@ export const createShow = async (params: CreateShowParams): Promise<Show> => {
 };
 
 /**
+ * 获取当前用户创建的秀场
+ * GET /api/shows/my-shows
+ */
+export const getMyShows = async (): Promise<Show[]> => {
+  const result = await request<{ shows: Show[]; total: number }>(
+    "/api/shows/my-shows",
+    { method: "GET" }
+  );
+  return result.shows;
+};
+
+/**
  * 获取待审核秀场列表（管理员）
  * GET /api/shows/admin/pending
  */
@@ -282,6 +294,7 @@ export const showService = {
   getShowYears,
   getShowCategories,
   createShow,
+  getMyShows,
   getPendingShows,
   approveShow,
   rejectShow,

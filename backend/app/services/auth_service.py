@@ -309,12 +309,20 @@ class AuthService:
                 },
                 timeout=30.0,
             )
+            logger.info(
+                f"Email OTP response: status={response.status_code}, body={response.text}"
+            )
             if response.status_code == 200:
                 logger.info(f"Email OTP sent successfully to: {email}")
                 return True, "验证码发送成功"
             error_data = response.json()
-            msg = error_data.get("msg") or error_data.get("error_description") or str(response.status_code)
-            logger.error(f"Email OTP API error for {email}: {msg}")
+            msg = (
+                error_data.get("msg")
+                or error_data.get("error_description")
+                or error_data.get("message")
+                or str(response.status_code)
+            )
+            logger.error(f"Email OTP API error for {email}: {msg} | full: {error_data}")
             return False, f"发送失败: {msg}"
         except httpx.TimeoutException:
             logger.warning(f"Email OTP request timed out for {email}, email may still be sent")
