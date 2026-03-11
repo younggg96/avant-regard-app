@@ -255,6 +255,18 @@ class BrandService:
         )
         return [self._format_submission(s) for s in result.data or []]
 
+    def get_approved_user_submissions(self, user_id: int) -> List[BrandSubmission]:
+        """获取用户已通过审核的品牌提交记录（公开可见）"""
+        result = (
+            self.db.table("brand_submissions")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("status", "APPROVED")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_submission(s) for s in result.data or []]
+
     def add_brand_image(self, brand_id: int, image_url: str, user_id: int) -> BrandImage:
         """用户上传品牌图片（PENDING 状态，等待审核）"""
         result = self.db.table("brand_images").insert({

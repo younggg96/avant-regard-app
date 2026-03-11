@@ -99,6 +99,13 @@ async def get_my_submissions(
     return success([s.model_dump() for s in submissions])
 
 
+@router.get("/user/{target_user_id}/submissions")
+async def get_user_submissions_public(target_user_id: int):
+    """获取指定用户已通过审核的品牌提交（公开接口）"""
+    submissions = brand_service.get_approved_user_submissions(target_user_id)
+    return success([s.model_dump() for s in submissions])
+
+
 class UploadBrandImageRequest(BaseModel):
     imageUrl: str
 

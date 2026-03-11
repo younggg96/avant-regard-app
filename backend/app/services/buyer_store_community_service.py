@@ -88,6 +88,36 @@ class BuyerStoreCommunityService:
         stores = [self._format_submitted_store(s) for s in result.data]
         return stores, total
 
+    def get_approved_user_submissions(
+        self, user_id: int, page: int = 1, page_size: int = 20
+    ) -> Tuple[List[UserSubmittedStore], int]:
+        """获取用户已通过审核的买手店提交（公开可见）"""
+        offset = (page - 1) * page_size
+
+        count_result = (
+            self.supabase.table("user_submitted_stores")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .eq("status", "APPROVED")
+            .execute()
+        )
+        total = count_result.count or 0
+
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .select(
+                "*, users!user_submitted_stores_user_id_fkey(username, user_info(avatar_url))"
+            )
+            .eq("user_id", user_id)
+            .eq("status", "APPROVED")
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+
+        stores = [self._format_submitted_store(s) for s in result.data]
+        return stores, total
+
     def get_pending_submissions(
         self, page: int = 1, page_size: int = 20
     ) -> Tuple[List[UserSubmittedStore], int]:

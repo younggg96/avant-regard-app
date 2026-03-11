@@ -95,6 +95,18 @@ class ShowService:
         )
         return [self._format_show(s) for s in result.data]
 
+    def get_approved_shows_by_user(self, user_id: int) -> List[Show]:
+        """获取用户已通过审核的秀场（公开可见）"""
+        result = (
+            self.db.table("shows")
+            .select("*")
+            .eq("created_by", user_id)
+            .eq("status", "APPROVED")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_show(s) for s in result.data]
+
     def get_pending_shows(self) -> List[Show]:
         """获取待审核秀场列表"""
         result = (

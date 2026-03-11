@@ -188,6 +188,16 @@ async def get_my_shows(
     })
 
 
+@router.get("/user/{target_user_id}")
+async def get_shows_by_user(target_user_id: int):
+    """获取指定用户已通过审核的秀场（公开接口）"""
+    shows = show_service.get_approved_shows_by_user(target_user_id)
+    return success({
+        "shows": [s.model_dump() for s in shows],
+        "total": len(shows),
+    })
+
+
 @router.get("/by-url")
 async def get_show_by_url(url: str = Query(..., description="秀场链接")):
     """通过 URL 获取秀场详情"""

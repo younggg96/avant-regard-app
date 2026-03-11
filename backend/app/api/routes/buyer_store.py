@@ -263,6 +263,24 @@ async def get_my_submissions(
     })
 
 
+@router.get("/submissions/user/{target_user_id}")
+async def get_user_submissions_public(
+    target_user_id: int,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+):
+    """获取指定用户已通过审核的买手店提交（公开接口）"""
+    stores, total = buyer_store_community_service.get_approved_user_submissions(
+        target_user_id, page, pageSize
+    )
+    return success({
+        "stores": [s.model_dump() for s in stores],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
 @router.get("/submissions/pending")
 async def get_pending_submissions(
     page: int = Query(1, ge=1),
