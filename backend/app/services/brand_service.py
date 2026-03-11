@@ -52,11 +52,36 @@ class BrandService:
         )
         return [r["image_url"] for r in result.data if r.get("image_url")]
 
-    def _format_brand(self, brand: dict, include_images: bool = False) -> Brand:
+    def _get_contributor_name(self, brand_name: str) -> Optional[str]:
+        """查找品牌的贡献者用户名（通过 brand_submissions 反查）"""
+        try:
+            result = (
+                self.db.table("brand_submissions")
+                .select("user_id")
+                .ilike("name", brand_name)
+                .eq("status", "APPROVED")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                user_id = result.data[0]["user_id"]
+                user_result = self.db.table("users").select("username").eq("id", user_id).execute()
+                if user_result.data:
+                    return user_result.data[0].get("username")
+        except Exception:
+            pass
+        return None
+
+    def _format_brand(self, brand: dict, include_images: bool = False, include_contributor: bool = False) -> Brand:
         """格式化品牌数据"""
         cover_images = None
         if include_images:
             cover_images = self._get_brand_cover_images(brand["id"])
+
+        contributor_name = None
+        if include_contributor:
+            contributor_name = self._get_contributor_name(brand["name"])
 
         return Brand(
             id=brand["id"],
@@ -71,6 +96,7 @@ class BrandService:
             latestSeason=brand.get("latest_season"),
             vogueSlug=brand.get("vogue_slug"),
             vogueUrl=brand.get("vogue_url"),
+            contributorName=contributor_name,
             createdAt=brand.get("created_at"),
             updatedAt=brand.get("updated_at"),
         )
@@ -119,7 +145,7 @@ class BrandService:
         if not result.data:
             return None
 
-        return self._format_brand(result.data[0], include_images=True)
+        return self._format_brand(result.data[0], include_images=True, include_contributor=True)
 
     def get_brand_by_name(self, name: str) -> Optional[Brand]:
         """通过名称获取品牌（含图片列表）"""
@@ -130,7 +156,7 @@ class BrandService:
         if not result.data:
             return None
 
-        return self._format_brand(result.data[0], include_images=True)
+        return self._format_brand(result.data[0], include_images=True, include_contributor=True)
 
     def search_brands(self, keyword: str, limit: int = 20) -> List[Brand]:
         """搜索品牌"""

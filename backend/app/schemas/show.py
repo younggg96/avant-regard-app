@@ -18,9 +18,10 @@ class Show(BaseModel):
     category: Optional[str] = None      # 类别：Ready-to-Wear, Couture, Menswear 等
     description: Optional[str] = None   # 秀场介绍
     designer: Optional[str] = None      # 主设计师
-    createdBy: Optional[int] = None     # 创建者用户 ID
-    status: Optional[str] = "APPROVED"  # PENDING / APPROVED / REJECTED
-    rejectReason: Optional[str] = None  # 拒绝原因
+    createdBy: Optional[int] = None         # 创建者用户 ID
+    contributorName: Optional[str] = None  # 贡献者用户名
+    status: Optional[str] = "APPROVED"     # PENDING / APPROVED / REJECTED
+    rejectReason: Optional[str] = None     # 拒绝原因
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 

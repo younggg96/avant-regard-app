@@ -23,8 +23,22 @@ class ShowService:
         sanitized = sanitized.replace(".", " ")
         return sanitized.strip()
 
-    def _format_show(self, show: dict) -> Show:
+    def _get_username(self, user_id: int) -> Optional[str]:
+        """通过用户 ID 获取用户名"""
+        try:
+            result = self.db.table("users").select("username").eq("id", user_id).execute()
+            if result.data:
+                return result.data[0].get("username")
+        except Exception:
+            pass
+        return None
+
+    def _format_show(self, show: dict, include_contributor: bool = False) -> Show:
         """格式化秀场数据"""
+        contributor_name = None
+        if include_contributor and show.get("created_by"):
+            contributor_name = self._get_username(show["created_by"])
+
         return Show(
             id=show["id"],
             brand=show.get("brand_name") or "",
@@ -37,6 +51,7 @@ class ShowService:
             description=show.get("description"),
             designer=show.get("designer"),
             createdBy=show.get("created_by"),
+            contributorName=contributor_name,
             status=show.get("status") or "APPROVED",
             rejectReason=show.get("reject_reason"),
             createdAt=show.get("created_at"),
@@ -164,7 +179,7 @@ class ShowService:
         if not result.data:
             return None
 
-        return self._format_show(result.data[0])
+        return self._format_show(result.data[0], include_contributor=True)
 
     def get_show_by_url(self, show_url: str) -> Optional[Show]:
         """通过 URL 获取秀场"""
@@ -188,7 +203,7 @@ class ShowService:
             .execute()
         )
 
-        return [self._format_show(s) for s in result.data]
+        return [self._format_show(s, include_contributor=True) for s in result.data]
 
     def search_shows(self, keyword: str, limit: int = 50) -> List[Show]:
         """搜索秀场"""

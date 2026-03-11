@@ -8,6 +8,7 @@ from typing import Optional, List
 from app.core.response import success, error
 from app.services.buyer_store_service import buyer_store_service
 from app.services.buyer_store_community_service import buyer_store_community_service
+from app.db.supabase import get_supabase
 from app.schemas.buyer_store import (
     BuyerStoreCreate,
     BuyerStoreUpdate,
@@ -525,5 +526,24 @@ async def get_store_detail(
     else:
         store_data["isFavorited"] = False
         store_data["userRating"] = None
+
+    # 查找贡献者（从 user_submitted_stores 反查）
+    try:
+        db = get_supabase()
+        sub_result = (
+            db.table("user_submitted_stores")
+            .select("user_id")
+            .eq("approved_store_id", store_id)
+            .eq("status", "APPROVED")
+            .limit(1)
+            .execute()
+        )
+        if sub_result.data:
+            contributor_id = sub_result.data[0]["user_id"]
+            user_result = db.table("users").select("username").eq("id", contributor_id).execute()
+            if user_result.data:
+                store_data["contributorName"] = user_result.data[0].get("username")
+    except Exception:
+        pass
 
     return success(store_data)

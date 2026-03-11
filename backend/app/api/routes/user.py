@@ -29,6 +29,15 @@ async def search_users(
     return success([r.model_dump() for r in results])
 
 
+@router.get("/contribution-leaderboard")
+async def get_contribution_leaderboard(
+    limit: int = Query(20, description="返回数量限制"),
+):
+    """获取 Archive 贡献榜"""
+    leaderboard = user_service.get_contribution_leaderboard(limit=limit)
+    return success(leaderboard)
+
+
 @router.get("/{user_id}")
 async def get_user_info(user_id: int):
     """获取用户信息"""

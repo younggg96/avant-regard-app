@@ -21,6 +21,7 @@ class Brand(BaseModel):
     latestSeason: Optional[str] = None
     vogueSlug: Optional[str] = None
     vogueUrl: Optional[str] = None
+    contributorName: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 

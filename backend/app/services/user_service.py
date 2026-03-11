@@ -274,6 +274,78 @@ class UserService:
                 coverUrl=""
             )
 
+    def get_contribution_leaderboard(self, limit: int = 20) -> List[dict]:
+        """获取 Archive 贡献榜：统计每个用户上传的秀场/品牌/买手店数量"""
+        from collections import defaultdict
+
+        contribution_counts: defaultdict[int, int] = defaultdict(int)
+
+        # 1) shows: created_by, status = APPROVED or NULL (legacy data)
+        shows_result = (
+            self.db.table("shows")
+            .select("created_by")
+            .or_("status.eq.APPROVED,status.is.null")
+            .not_.is_("created_by", "null")
+            .execute()
+        )
+        if shows_result.data:
+            for row in shows_result.data:
+                uid = row.get("created_by")
+                if uid:
+                    contribution_counts[uid] += 1
+
+        # 2) brand_submissions: user_id, status = APPROVED
+        brands_result = (
+            self.db.table("brand_submissions")
+            .select("user_id")
+            .eq("status", "APPROVED")
+            .execute()
+        )
+        if brands_result.data:
+            for row in brands_result.data:
+                uid = row.get("user_id")
+                if uid:
+                    contribution_counts[uid] += 1
+
+        # 3) user_submitted_stores: user_id, status = APPROVED
+        stores_result = (
+            self.db.table("user_submitted_stores")
+            .select("user_id")
+            .eq("status", "APPROVED")
+            .execute()
+        )
+        if stores_result.data:
+            for row in stores_result.data:
+                uid = row.get("user_id")
+                if uid:
+                    contribution_counts[uid] += 1
+
+        if not contribution_counts:
+            return []
+
+        sorted_users = sorted(contribution_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+        user_ids = [uid for uid, _ in sorted_users]
+
+        users_result = self.db.table("users").select("id, username").in_("id", user_ids).execute()
+        user_map = {u["id"]: u for u in users_result.data} if users_result.data else {}
+
+        info_result = self.db.table("user_info").select("user_id, avatar_url").in_("user_id", user_ids).execute()
+        info_map = {i["user_id"]: i for i in info_result.data} if info_result.data else {}
+
+        leaderboard = []
+        for rank, (uid, count) in enumerate(sorted_users, start=1):
+            user_data = user_map.get(uid, {})
+            info_data = info_map.get(uid, {})
+            leaderboard.append({
+                "rank": rank,
+                "userId": uid,
+                "username": user_data.get("username", ""),
+                "avatarUrl": info_data.get("avatar_url", ""),
+                "contributionCount": count,
+            })
+
+        return leaderboard
+
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
         """获取用户隐私设置"""
         info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes").eq("user_id", user_id).execute()
