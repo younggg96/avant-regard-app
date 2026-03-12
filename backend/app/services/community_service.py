@@ -12,7 +12,9 @@ class CommunityService:
         self.db = get_supabase()
 
     def _format_community(
-        self, data: dict, current_user_id: Optional[int] = None
+        self, data: dict, current_user_id: Optional[int] = None,
+        real_member_count: Optional[int] = None,
+        real_post_count: Optional[int] = None,
     ) -> Community:
         """格式化社区数据"""
         is_following = False
@@ -29,8 +31,8 @@ class CommunityService:
             category=data.get("category", "GENERAL"),
             isOfficial=data.get("is_official", False),
             isActive=data.get("is_active", True),
-            memberCount=data.get("member_count", 0),
-            postCount=data.get("post_count", 0),
+            memberCount=real_member_count if real_member_count is not None else data.get("member_count", 0),
+            postCount=real_post_count if real_post_count is not None else data.get("post_count", 0),
             sortOrder=data.get("sort_order", 0),
             createdAt=data["created_at"],
             updatedAt=data["updated_at"],
@@ -47,6 +49,36 @@ class CommunityService:
             .execute()
         )
         return bool(result.data)
+
+    def _compute_real_counts(self, community_id: int) -> tuple:
+        """动态计算社区的真实成员数和帖子数，并同步回缓存字段"""
+        member_result = (
+            self.db.table("community_follows")
+            .select("id", count="exact")
+            .eq("community_id", community_id)
+            .execute()
+        )
+        real_member_count = member_result.count or 0
+
+        post_result = (
+            self.db.table("posts")
+            .select("id", count="exact")
+            .eq("community_id", community_id)
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .execute()
+        )
+        real_post_count = post_result.count or 0
+
+        try:
+            self.db.table("communities").update({
+                "member_count": real_member_count,
+                "post_count": real_post_count,
+            }).eq("id", community_id).execute()
+        except Exception:
+            pass
+
+        return real_member_count, real_post_count
 
     def get_all_communities(
         self, current_user_id: Optional[int] = None
@@ -115,7 +147,7 @@ class CommunityService:
     def get_community_by_id(
         self, community_id: int, current_user_id: Optional[int] = None
     ) -> Optional[Community]:
-        """获取单个社区"""
+        """获取单个社区（动态计算真实成员数和帖子数）"""
         result = (
             self.db.table("communities")
             .select("*")
@@ -124,12 +156,18 @@ class CommunityService:
         )
         if not result.data:
             return None
-        return self._format_community(result.data[0], current_user_id)
+
+        real_member_count, real_post_count = self._compute_real_counts(community_id)
+        return self._format_community(
+            result.data[0], current_user_id,
+            real_member_count=real_member_count,
+            real_post_count=real_post_count,
+        )
 
     def get_community_by_slug(
         self, slug: str, current_user_id: Optional[int] = None
     ) -> Optional[Community]:
-        """通过 slug 获取社区"""
+        """通过 slug 获取社区（动态计算真实成员数和帖子数）"""
         result = (
             self.db.table("communities")
             .select("*")
@@ -138,7 +176,14 @@ class CommunityService:
         )
         if not result.data:
             return None
-        return self._format_community(result.data[0], current_user_id)
+
+        community_id = result.data[0]["id"]
+        real_member_count, real_post_count = self._compute_real_counts(community_id)
+        return self._format_community(
+            result.data[0], current_user_id,
+            real_member_count=real_member_count,
+            real_post_count=real_post_count,
+        )
 
     def create_community(
         self,

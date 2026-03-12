@@ -202,17 +202,6 @@ class PostService:
             return None
 
         post = result.data[0]
-
-        # 更新社区帖子数
-        if community_id and post_status == "PUBLISHED":
-            try:
-                self.db.rpc(
-                    "increment_community_post_count",
-                    {"community_id_param": community_id},
-                ).execute()
-            except:
-                pass
-
         return self._format_post(post, user_id)
 
     def update_post(self, post_id: int, user_id: int, **kwargs) -> Optional[Post]:

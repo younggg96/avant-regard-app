@@ -24,17 +24,45 @@ class AdminService:
         return [post_service._format_post(p) for p in result.data or []]
 
     def approve_post(self, post_id: int, remark: str = None) -> bool:
-        """审核通过帖子"""
+        """审核通过帖子，并同步更新社区帖子计数"""
+        post_result = self.db.table("posts").select("community_id, audit_status").eq("id", post_id).execute()
+        was_pending = post_result.data and post_result.data[0].get("audit_status") != "APPROVED"
+        community_id = post_result.data[0].get("community_id") if post_result.data else None
+
         result = self.db.table("posts").update({
             "audit_status": "APPROVED"
         }).eq("id", post_id).execute()
+
+        if result.data and was_pending and community_id:
+            try:
+                self.db.rpc(
+                    "increment_community_post_count",
+                    {"community_id_param": community_id},
+                ).execute()
+            except Exception:
+                pass
+
         return bool(result.data)
 
     def reject_post(self, post_id: int, remark: str = None) -> bool:
-        """审核拒绝帖子"""
+        """审核拒绝帖子，若之前已通过则同步递减社区帖子计数"""
+        post_result = self.db.table("posts").select("community_id, audit_status").eq("id", post_id).execute()
+        was_approved = post_result.data and post_result.data[0].get("audit_status") == "APPROVED"
+        community_id = post_result.data[0].get("community_id") if post_result.data else None
+
         result = self.db.table("posts").update({
             "audit_status": "REJECTED"
         }).eq("id", post_id).execute()
+
+        if result.data and was_approved and community_id:
+            try:
+                self.db.rpc(
+                    "decrement_community_post_count",
+                    {"community_id_param": community_id},
+                ).execute()
+            except Exception:
+                pass
+
         return bool(result.data)
 
     def admin_delete_post(self, post_id: int) -> bool:
