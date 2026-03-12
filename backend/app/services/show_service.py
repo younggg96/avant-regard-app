@@ -159,7 +159,8 @@ class ShowService:
 
         if keyword:
             query = query.or_(
-                f"brand_name.ilike.%{keyword}%,season.ilike.%{keyword}%,category.ilike.%{keyword}%"
+                f"brand_name.ilike.%{keyword}%,title.ilike.%{keyword}%,season.ilike.%{keyword}%,"
+                f"category.ilike.%{keyword}%,designer.ilike.%{keyword}%,description.ilike.%{keyword}%"
             )
 
         if brand:
@@ -218,23 +219,50 @@ class ShowService:
         return [self._format_show(s, include_contributor=True) for s in result.data]
 
     def search_shows(self, keyword: str, limit: int = 50) -> List[Show]:
-        """搜索秀场"""
+        """搜索秀场（品牌、标题、季度、类别、设计师、介绍、年份）"""
         safe_keyword = self._sanitize_search_keyword(keyword)
         if not safe_keyword:
             return []
-        
+
         try:
-            result = (
+            text_filters = (
+                f"brand_name.ilike.*{safe_keyword}*,"
+                f"title.ilike.*{safe_keyword}*,"
+                f"season.ilike.*{safe_keyword}*,"
+                f"category.ilike.*{safe_keyword}*,"
+                f"designer.ilike.*{safe_keyword}*,"
+                f"description.ilike.*{safe_keyword}*"
+            )
+
+            query = (
                 self.db.table("shows")
                 .select("*")
-                .or_(
-                    f"brand_name.ilike.*{safe_keyword}*,season.ilike.*{safe_keyword}*,category.ilike.*{safe_keyword}*"
-                )
+                .or_(text_filters)
+                .or_("status.eq.APPROVED,status.is.null")
                 .order("year", desc=True)
                 .limit(limit)
-                .execute()
             )
-            return [self._format_show(s) for s in result.data]
+
+            result = query.execute()
+            shows = [self._format_show(s) for s in result.data]
+
+            if safe_keyword.isdigit():
+                year_val = int(safe_keyword)
+                year_result = (
+                    self.db.table("shows")
+                    .select("*")
+                    .eq("year", year_val)
+                    .or_("status.eq.APPROVED,status.is.null")
+                    .order("year", desc=True)
+                    .limit(limit)
+                    .execute()
+                )
+                existing_ids = {s.id for s in shows}
+                for s in year_result.data:
+                    if s["id"] not in existing_ids:
+                        shows.append(self._format_show(s))
+
+            return shows[:limit]
         except Exception as e:
             print(f"Search shows error: {e}")
             return []
