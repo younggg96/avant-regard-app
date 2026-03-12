@@ -8,7 +8,7 @@ from typing import Optional
 from app.core.response import success
 from app.services.show_service import show_service
 from app.services.cache_service import cache_service, CacheService
-from app.schemas.show import CreateShowRequest
+from app.schemas.show import CreateShowRequest, UpdateShowRequest
 from app.api.deps import get_current_user_id, get_current_admin_user
 
 router = APIRouter(prefix="/shows", tags=["秀场"])
@@ -140,6 +140,36 @@ async def create_show(
     return success(show.model_dump())
 
 
+@router.get("/admin/all")
+async def admin_get_all_shows(
+    keyword: Optional[str] = Query(None, description="搜索关键词"),
+    status: Optional[str] = Query(None, description="状态筛选"),
+    page: int = Query(1, ge=1, description="页码"),
+    pageSize: int = Query(50, ge=1, le=200, description="每页数量"),
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员获取所有秀场（含全部状态）"""
+    shows, total = show_service.admin_get_all_shows(
+        keyword=keyword, status=status, page=page, page_size=pageSize
+    )
+    return success({
+        "shows": [s.model_dump() for s in shows],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+@router.post("/admin/create")
+async def admin_create_show(
+    data: CreateShowRequest,
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员直接创建秀场（状态为 APPROVED）"""
+    show = show_service.admin_create_show(data)
+    return success(show.model_dump())
+
+
 @router.get("/admin/pending")
 async def get_pending_shows(
     _admin_id: int = Depends(get_current_admin_user),
@@ -174,6 +204,33 @@ async def reject_show(
     """拒绝秀场（管理员）"""
     show = show_service.reject_show(show_id, reason)
     return success(show.model_dump())
+
+
+@router.put("/admin/{show_id}")
+async def admin_update_show(
+    show_id: str,
+    data: UpdateShowRequest,
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员更新秀场"""
+    show = show_service.admin_update_show(show_id, data)
+    cache_service.delete(cache_service.get_show_key(show_id))
+    cache_service.delete(cache_service.get_shows_by_brand_key(show.brand))
+    return success(show.model_dump())
+
+
+@router.delete("/admin/{show_id}")
+async def admin_delete_show(
+    show_id: str,
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员删除秀场"""
+    show = show_service.get_show_by_id(show_id)
+    show_service.admin_delete_show(show_id)
+    cache_service.delete(cache_service.get_show_key(show_id))
+    if show:
+        cache_service.delete(cache_service.get_shows_by_brand_key(show.brand))
+    return success({"deleted": True})
 
 
 @router.get("/my-shows")

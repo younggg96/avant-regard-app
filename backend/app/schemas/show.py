@@ -61,6 +61,19 @@ class CreateShowRequest(BaseModel):
     coverImage: Optional[str] = None    # 封面图片 URL
 
 
+class UpdateShowRequest(BaseModel):
+    """管理员更新秀场请求"""
+    brand: Optional[str] = None
+    title: Optional[str] = None
+    year: Optional[int] = None
+    season: Optional[str] = None
+    category: Optional[str] = None
+    designer: Optional[str] = None
+    description: Optional[str] = None
+    coverImage: Optional[str] = None
+    status: Optional[str] = None
+
+
 class ShowSearchParams(BaseModel):
     """秀场搜索参数"""
     keyword: Optional[str] = None       # 搜索关键词（品牌、季度、类别）

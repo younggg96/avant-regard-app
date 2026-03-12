@@ -5,7 +5,7 @@
 import time
 from typing import Optional, List, Tuple
 from app.db.supabase import get_supabase
-from app.schemas.show import Show, CreateShowRequest
+from app.schemas.show import Show, CreateShowRequest, UpdateShowRequest
 
 
 class ShowService:
@@ -270,6 +270,112 @@ class ShowService:
                 categories.add(s["category"])
 
         return sorted(list(categories))
+
+    def admin_get_all_shows(
+        self,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Tuple[List[Show], int]:
+        """管理员获取所有秀场（包含所有状态）"""
+        query = self.db.table("shows").select("*", count="exact")
+
+        if status:
+            query = query.eq("status", status)
+
+        if keyword:
+            safe_kw = self._sanitize_search_keyword(keyword)
+            if safe_kw:
+                query = query.or_(
+                    f"brand_name.ilike.%{safe_kw}%,title.ilike.%{safe_kw}%,designer.ilike.%{safe_kw}%"
+                )
+
+        query = query.order("created_at", desc=True)
+
+        offset = (page - 1) * page_size
+        query = query.range(offset, offset + page_size - 1)
+
+        result = query.execute()
+        total = result.count or 0
+        shows = [self._format_show(s, include_contributor=True) for s in result.data]
+
+        return shows, total
+
+    def admin_update_show(self, show_id: str, data: UpdateShowRequest) -> Show:
+        """管理员更新秀场"""
+        update_data = {}
+
+        field_map = {
+            "brand": "brand_name",
+            "title": "title",
+            "year": "year",
+            "season": "season",
+            "category": "category",
+            "designer": "designer",
+            "description": "description",
+            "coverImage": "cover_image",
+            "status": "status",
+        }
+
+        for field, col in field_map.items():
+            value = getattr(data, field, None)
+            if value is not None:
+                update_data[col] = value
+
+        if not update_data:
+            raise Exception("没有需要更新的字段")
+
+        result = (
+            self.db.table("shows")
+            .update(update_data)
+            .eq("id", show_id)
+            .execute()
+        )
+
+        if not result.data:
+            raise Exception("秀场不存在")
+
+        return self._format_show(result.data[0], include_contributor=True)
+
+    def admin_delete_show(self, show_id: str) -> bool:
+        """管理员删除秀场"""
+        result = (
+            self.db.table("shows")
+            .delete()
+            .eq("id", show_id)
+            .execute()
+        )
+
+        if not result.data:
+            raise Exception("秀场不存在或删除失败")
+
+        return True
+
+    def admin_create_show(self, data: CreateShowRequest) -> Show:
+        """管理员直接创建秀场（状态为 APPROVED）"""
+        brand_slug = data.brand.replace(" ", "_").lower()
+        show_id = f"{brand_slug}_{data.year}_{int(time.time())}"
+
+        row = {
+            "id": show_id,
+            "brand_name": data.brand,
+            "title": data.title,
+            "year": data.year,
+            "season": data.season,
+            "category": data.category,
+            "designer": data.designer,
+            "description": data.description,
+            "cover_image": data.coverImage,
+            "status": "APPROVED",
+        }
+
+        result = self.db.table("shows").insert(row).execute()
+
+        if not result.data:
+            raise Exception("创建秀场失败")
+
+        return self._format_show(result.data[0])
 
 
 # 创建单例
