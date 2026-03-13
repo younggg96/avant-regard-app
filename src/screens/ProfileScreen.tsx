@@ -52,8 +52,26 @@ import { getUnreadCount } from "../services/notificationService";
 import SimplePostCard from "../components/SimplePostCard";
 import ForumPostCard from "../components/ForumPostCard";
 import { Post as DisplayPost } from "../components/PostCard";
+import { showService, Show } from "../services/showService";
+import { brandService, BrandSubmission } from "../services/brandService";
+import {
+  buyerStoreService,
+  UserSubmittedStore,
+} from "../services/buyerStoreService";
 
-type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "forum";
+type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "forum" | "archive";
+
+type ContribSubTab = "show" | "brand" | "store";
+
+const CONTRIB_STATUS: Record<string, { bg: string; color: string; label: string }> = {
+  APPROVED: { bg: "#E8F5E9", color: "#2E7D32", label: "已通过" },
+  REJECTED: { bg: "#FFEBEE", color: "#C62828", label: "已拒绝" },
+  PENDING: { bg: "#FFF3E0", color: "#E65100", label: "审核中" },
+};
+
+const CONTRIB_CARD_GAP = 12;
+const CONTRIB_CARD_PADDING = 16;
+const CONTRIB_CARD_WIDTH = (Dimensions.get("window").width - CONTRIB_CARD_PADDING * 2 - CONTRIB_CARD_GAP) / 2;
 
 type TabData = {
   posts: DisplayPost[];
@@ -105,6 +123,13 @@ const ProfileScreen = () => {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
+  const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
+  const [myShows, setMyShows] = useState<Show[]>([]);
+  const [myBrands, setMyBrands] = useState<BrandSubmission[]>([]);
+  const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
+  const [contribLoading, setContribLoading] = useState(false);
+  const [contribLoaded, setContribLoaded] = useState(false);
+
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
   const scrollY = useSharedValue(0);
@@ -116,6 +141,7 @@ const ProfileScreen = () => {
     saved: { ...initialTabState },
     liked: { ...initialTabState },
     forum: { ...initialTabState },
+    archive: { ...initialTabState },
   });
 
   const updateTabState = useCallback(
@@ -143,6 +169,7 @@ const ProfileScreen = () => {
     { id: "liked" as TabType, label: "我喜欢的", count: tabsData.liked.count },
     { id: "saved" as TabType, label: "我收藏的", count: tabsData.saved.count },
     { id: "draft" as TabType, label: "草稿", count: tabsData.draft.count },
+    { id: "archive" as TabType, label: "贡献" },
   ];
 
   const convertToDisplayPost = (
@@ -192,7 +219,9 @@ const ProfileScreen = () => {
       saved: { ...initialTabState },
       liked: { ...initialTabState },
       forum: { ...initialTabState },
+      archive: { ...initialTabState },
     });
+    setContribLoaded(false);
   }, [user?.userId]);
 
   const loadUserInfo = async () => {
@@ -258,9 +287,30 @@ const ProfileScreen = () => {
     }
   };
 
+  const loadContributions = useCallback(async () => {
+    if (!user?.userId) return;
+    setContribLoading(true);
+    try {
+      const [showsRes, brandsRes, storesRes] = await Promise.all([
+        showService.getMyShows(),
+        brandService.getMySubmissions(),
+        buyerStoreService.getMySubmissions(1, 100),
+      ]);
+      setMyShows(showsRes);
+      setMyBrands(brandsRes);
+      setMyStores(storesRes.stores);
+    } catch (err) {
+      console.error("Error loading contributions:", err);
+    } finally {
+      setContribLoading(false);
+      setContribLoaded(true);
+    }
+  }, [user]);
+
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
       if (!user?.userId) return;
+      if (targetTab === "archive") return;
       if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
       }
@@ -383,7 +433,11 @@ const ProfileScreen = () => {
   );
 
   useEffect(() => {
-    fetchTabData(activeTab);
+    if (activeTab === "archive") {
+      if (!contribLoaded) loadContributions();
+    } else {
+      fetchTabData(activeTab);
+    }
   }, [activeTab, user?.userId]);
 
   useFocusEffect(
@@ -393,19 +447,28 @@ const ProfileScreen = () => {
       loadFollowingUsersCount();
       loadFollowersCount();
       loadUnreadNotificationCount();
-      fetchTabData(activeTab, true);
+      if (activeTab === "archive") {
+        loadContributions();
+      } else {
+        fetchTabData(activeTab, true);
+      }
     }, [activeTab, user?.userId])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([
+    const tasks: Promise<any>[] = [
       loadUserInfo(),
       loadUserProfile(),
-      fetchTabData(activeTab, true),
       loadFollowingUsersCount(),
       loadFollowersCount(),
-    ]);
+    ];
+    if (activeTab === "archive") {
+      tasks.push(loadContributions());
+    } else {
+      tasks.push(fetchTabData(activeTab, true));
+    }
+    await Promise.all(tasks);
     setRefreshing(false);
   };
 
@@ -586,9 +649,160 @@ const ProfileScreen = () => {
   const avatarUri = userInfo?.avatarUrl || user?.avatar;
   const statusBarStyle = isCollapsed ? "dark-content" : "light-content";
 
-  // 渲染帖子内容
+  const formatContribDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const handleShowPress = (show: Show) => {
+    (navigation as any).navigate("CollectionDetail", {
+      collection: {
+        id: String(show.id),
+        title: `${show.brand} ${show.season}`,
+        season: show.season,
+        year: String(show.year || ""),
+        coverImage: show.coverImage || "",
+        imageCount: 0,
+        designer: show.designer,
+        description: show.description,
+        category: show.category,
+        showUrl: show.showUrl,
+        contributorName: show.contributorName,
+      },
+      brandName: show.brand,
+    });
+  };
+
+  const handleBrandSubmissionPress = (sub: BrandSubmission) => {
+    if (sub.status === "APPROVED") {
+      (navigation as any).navigate("BrandDetail", { name: sub.name });
+    }
+  };
+
+  const handleStoreCardPress = (store: UserSubmittedStore) => {
+    if (store.status === "APPROVED" && store.approvedStoreId) {
+      (navigation as any).navigate("StoreDetail", { storeId: store.approvedStoreId });
+    }
+  };
+
+  const renderContributionContent = () => {
+    const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
+      { id: "show", label: "秀场", count: myShows.length },
+      { id: "brand", label: "品牌", count: myBrands.length },
+      { id: "store", label: "买手店", count: myStores.length },
+    ];
+
+    const getData = () => {
+      switch (contribSubTab) {
+        case "show": return myShows;
+        case "brand": return myBrands;
+        case "store": return myStores;
+      }
+    };
+    const data = getData();
+
+    const emptyIcons: Record<ContribSubTab, string> = {
+      show: "film-outline",
+      brand: "pricetag-outline",
+      store: "storefront-outline",
+    };
+    const emptyTexts: Record<ContribSubTab, string> = {
+      show: "暂无秀场贡献",
+      brand: "暂无品牌贡献",
+      store: "暂无买手店贡献",
+    };
+
+    const renderCard = (item: any, type: ContribSubTab) => {
+      const status = item.status || "APPROVED";
+      const ss = CONTRIB_STATUS[status] || CONTRIB_STATUS.PENDING;
+      const key = `${type}-${item.id}`;
+      const image = type === "store"
+        ? (item.images && item.images.length > 0 ? item.images[0] : null)
+        : item.coverImage;
+      const title = type === "show" ? `${item.brand} ${item.season}` : item.name;
+      const subtitle = type === "show"
+        ? (item.category || item.year?.toString() || "")
+        : type === "brand"
+          ? (item.category || "")
+          : `${item.city}, ${item.country}`;
+      const icon = type === "show" ? "film-outline" : type === "brand" ? "pricetag-outline" : "storefront-outline";
+      const onPress = type === "show"
+        ? () => handleShowPress(item)
+        : type === "brand"
+          ? () => handleBrandSubmissionPress(item)
+          : () => handleStoreCardPress(item);
+
+      return (
+        <Pressable key={key} style={contribStyles.card} onPress={onPress}>
+          <View style={contribStyles.cardImageContainer}>
+            {image ? (
+              <RNImage source={{ uri: image }} style={contribStyles.cardImage} resizeMode="cover" />
+            ) : (
+              <View style={contribStyles.cardImagePlaceholder}>
+                <Ionicons name={icon as any} size={32} color={theme.colors.gray300} />
+              </View>
+            )}
+          </View>
+          <View style={contribStyles.cardInfo}>
+            <RNText style={contribStyles.cardTitle} numberOfLines={2}>{title}</RNText>
+            {subtitle ? <RNText style={contribStyles.cardSubtitle} numberOfLines={1}>{subtitle}</RNText> : null}
+            <View style={contribStyles.cardBottom}>
+              <View style={[contribStyles.statusBadge, { backgroundColor: ss.bg }]}>
+                <RNText style={[contribStyles.statusText, { color: ss.color }]}>{ss.label}</RNText>
+              </View>
+              <RNText style={contribStyles.dateText}>{formatContribDate(item.createdAt)}</RNText>
+            </View>
+          </View>
+        </Pressable>
+      );
+    };
+
+    return (
+      <VStack>
+        <HStack px="$md" py="$sm" style={{ gap: 8 }}>
+          {subTabs.map((st) => {
+            const isActive = contribSubTab === st.id;
+            return (
+              <Pressable
+                key={st.id}
+                style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+                onPress={() => setContribSubTab(st.id)}
+              >
+                <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
+                  {st.label}
+                </RNText>
+                <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
+                  {st.count}
+                </RNText>
+              </Pressable>
+            );
+          })}
+        </HStack>
+
+        {contribLoading ? (
+          <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+            <ActivityIndicator color={theme.colors.gray400} />
+            <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          </VStack>
+        ) : data.length === 0 ? (
+          <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+            <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
+            <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
+          </VStack>
+        ) : (
+          <View style={contribStyles.cardGrid}>
+            {data.map((item) => renderCard(item, contribSubTab))}
+          </View>
+        )}
+      </VStack>
+    );
+  };
+
   const renderPostsContent = () => {
-    const currentTabData = tabsData[activeTab];
+    if (activeTab === "archive") return renderContributionContent();
+
+    const currentTabData = tabsData[activeTab as Exclude<TabType, "archive">];
     const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
     if (shouldShowLoading) {
@@ -1251,7 +1465,6 @@ const styles = StyleSheet.create({
   },
   tabScrollContent: {
     paddingHorizontal: 16,
-    flex: 1,
   },
   tabItem: {
     paddingVertical: 12,
@@ -1283,6 +1496,104 @@ const styles = StyleSheet.create({
   profileLoadingGif: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT / 2,
+  },
+});
+
+const contribStyles = StyleSheet.create({
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: theme.colors.gray600,
+  },
+  filterChipTextActive: {
+    color: "#FFF",
+  },
+  filterChipCount: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+  },
+  filterChipCountActive: {
+    color: "rgba(255,255,255,0.7)",
+  },
+  cardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: CONTRIB_CARD_PADDING,
+    paddingTop: 4,
+    justifyContent: "space-between",
+  },
+  card: {
+    width: CONTRIB_CARD_WIDTH,
+    marginBottom: CONTRIB_CARD_GAP,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  cardImageContainer: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+  },
+  cardImage: {
+    width: "100%",
+    height: "100%",
+  },
+  cardImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardInfo: {
+    padding: 10,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    lineHeight: 18,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    color: "#999",
+    marginTop: 2,
+  },
+  cardBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  dateText: {
+    fontSize: 10,
+    color: theme.colors.gray300,
   },
 });
 

@@ -19,6 +19,7 @@ import BroadcastTab from "./BroadcastTab";
 import BrandSubmissionsTab from "./BrandSubmissionsTab";
 import BrandManagementTab from "./BrandManagementTab";
 import ShowReviewTab from "./ShowReviewTab";
+import ShowManagementTab from "./ShowManagementTab";
 import BrandImageReviewTab from "./BrandImageReviewTab";
 
 type TabType =
@@ -33,6 +34,7 @@ type TabType =
   | "brandSubmissions"
   | "brandManagement"
   | "showReview"
+  | "showManagement"
   | "brandImageReview";
 
 interface TabConfig {
@@ -53,6 +55,7 @@ const TABS: TabConfig[] = [
   { key: "brandSubmissions", label: "品牌审核" },
   { key: "brandManagement", label: "品牌管理" },
   { key: "showReview", label: "秀场审核" },
+  { key: "showManagement", label: "秀场管理" },
   { key: "brandImageReview", label: "图片审核" },
 ];
 
@@ -88,6 +91,8 @@ const AdminScreen = () => {
         return <BrandManagementTab />;
       case "showReview":
         return <ShowReviewTab />;
+      case "showManagement":
+        return <ShowManagementTab />;
       case "brandImageReview":
         return <BrandImageReviewTab />;
       default:

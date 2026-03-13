@@ -10,6 +10,9 @@ import {
   Dimensions,
   Image,
   TouchableOpacity,
+  Modal,
+  ScrollView as RNScrollView,
+  Text as RNText,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -148,6 +151,7 @@ const CommunityDetailScreen = () => {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [descModalVisible, setDescModalVisible] = useState(false);
 
   const userInfoCache = useRef<Map<number, UserInfo>>(new Map());
 
@@ -451,6 +455,13 @@ const CommunityDetailScreen = () => {
                 <Text fontSize="$sm" color="$gray500" numberOfLines={2}>
                   {community.description || "暂无简介"}
                 </Text>
+                {community.description && community.description.length > 40 && (
+                  <Pressable onPress={() => setDescModalVisible(true)}>
+                    <Text fontSize="$xs" color="$black" fontWeight="$medium" mt={2}>
+                      查看全部
+                    </Text>
+                  </Pressable>
+                )}
                 <HStack gap="$md" mt="$xs">
                   <Text fontSize="$xs" color="$gray400">
                     {community.memberCount} 成员
@@ -565,6 +576,42 @@ const CommunityDetailScreen = () => {
           </HStack>
         )}
       </ScrollView>
+
+      {/* 简介详情 Modal */}
+      {community && (
+        <Modal
+          visible={descModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDescModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.descModalOverlay}
+            activeOpacity={1}
+            onPress={() => setDescModalVisible(false)}
+          >
+            <View
+              style={styles.descModalContent}
+              onStartShouldSetResponder={() => true}
+            >
+              <View style={styles.descModalHeader}>
+                <RNText style={styles.descModalTitle}>{community.name}</RNText>
+                <TouchableOpacity
+                  onPress={() => setDescModalVisible(false)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="close" size={22} color={theme.colors.gray500} />
+                </TouchableOpacity>
+              </View>
+              <RNScrollView showsVerticalScrollIndicator={false}>
+                <RNText style={styles.descModalText}>
+                  {community.description}
+                </RNText>
+              </RNScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -610,6 +657,36 @@ const styles = StyleSheet.create({
   loadingGif: {
     width: Dimensions.get("window").width * 0.5,
     height: Dimensions.get("window").width * 0.5,
+  },
+  descModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  descModalContent: {
+    width: "100%",
+    maxHeight: Dimensions.get("window").height * 0.6,
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    padding: 20,
+  },
+  descModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  descModalTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.black,
+    flex: 1,
+    marginRight: 12,
+  },
+  descModalText: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.gray500,
   },
 });
 

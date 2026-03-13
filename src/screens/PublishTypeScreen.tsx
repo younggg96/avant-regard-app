@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -75,72 +75,78 @@ const PublishTypeScreen = () => {
         onBackPress={() => navigation.goBack()}
       />
 
-      <VStack flex={1} px="$lg" py="$lg" gap="$md">
-        <Box mb="$md">
-          <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
-            创作内容
-          </Text>
-          <Text fontSize="$sm" color="$gray500">
-            选择适合您内容的发布类型
-          </Text>
-        </Box>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <VStack px="$lg" py="$lg" gap="$md">
+          <Box mb="$md">
+            <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
+              创作内容
+            </Text>
+            <Text fontSize="$sm" color="$gray500">
+              选择适合您内容的发布类型
+            </Text>
+          </Box>
 
-        {publishTypes.map((type) => (
-          <Pressable
-            key={type.id}
-            onPress={() => handleSelectType(type)}
-            bg="$white"
-            borderWidth={1}
-            borderColor="$gray100"
-            rounded="$lg"
-            p="$lg"
-            sx={{
-              shadowColor: "$black",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <HStack alignItems="center" gap="$md">
-              <Box
-                w={56}
-                h={56}
-                rounded="$md"
-                bg="$gray100"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Ionicons
-                  name={type.icon}
-                  size={28}
-                  color={theme.colors.black}
-                />
-              </Box>
-
-              <VStack flex={1}>
-                <Text
-                  fontSize="$lg"
-                  fontWeight="$medium"
-                  color="$black"
-                  mb="$xs"
+          {publishTypes.map((type) => (
+            <Pressable
+              key={type.id}
+              onPress={() => handleSelectType(type)}
+              bg="$white"
+              borderWidth={1}
+              borderColor="$gray100"
+              rounded="$lg"
+              p="$lg"
+              sx={{
+                shadowColor: "$black",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <HStack alignItems="center" gap="$md">
+                <Box
+                  w={56}
+                  h={56}
+                  rounded="$md"
+                  bg="$gray100"
+                  alignItems="center"
+                  justifyContent="center"
                 >
-                  {type.title}
-                </Text>
-                <Text fontSize="$sm" color="$gray500">
-                  {type.description}
-                </Text>
-              </VStack>
+                  <Ionicons
+                    name={type.icon}
+                    size={28}
+                    color={theme.colors.black}
+                  />
+                </Box>
 
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.gray400}
-              />
-            </HStack>
-          </Pressable>
-        ))}
-      </VStack>
+                <VStack flex={1}>
+                  <Text
+                    fontSize="$lg"
+                    fontWeight="$medium"
+                    color="$black"
+                    mb="$xs"
+                  >
+                    {type.title}
+                  </Text>
+                  <Text fontSize="$sm" color="$gray500">
+                    {type.description}
+                  </Text>
+                </VStack>
+
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={theme.colors.gray400}
+                />
+              </HStack>
+            </Pressable>
+          ))}
+        </VStack>
+      </ScrollView>
     </SafeAreaView>
   );
 };

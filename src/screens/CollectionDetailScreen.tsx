@@ -138,15 +138,12 @@ const CollectionDetailScreen = () => {
     setShareModalVisible(true);
   };
 
-  const handleOpenUrl = async () => {
+  const handleOpenShowWebsite = async () => {
     if (collection.showUrl) {
       try {
-        const supported = await Linking.canOpenURL(collection.showUrl);
-        if (supported) {
-          await Linking.openURL(collection.showUrl);
-        }
+        await Linking.openURL(collection.showUrl);
       } catch (error) {
-        console.log("无法打开链接:", error);
+        console.log("无法打开秀场网站:", error);
       }
     }
   };
@@ -240,13 +237,13 @@ const CollectionDetailScreen = () => {
       )}
 
       {collection.showUrl && (
-        <TouchableOpacity style={styles.urlButton} onPress={handleOpenUrl}>
+        <TouchableOpacity style={styles.urlButton} onPress={handleOpenShowWebsite}>
           <Ionicons
-            name="link-outline"
+            name="globe-outline"
             size={20}
             color={theme.colors.gray600}
           />
-          <Text style={styles.urlButtonText}>查看官方链接</Text>
+          <Text style={styles.urlButtonText}>查看秀场网站</Text>
         </TouchableOpacity>
       )}
     </View>

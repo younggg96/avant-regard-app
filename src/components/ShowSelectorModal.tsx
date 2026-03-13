@@ -91,7 +91,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               <Input
                 value={searchQuery}
                 onChangeText={onSearchChange}
-                placeholder="搜索设计师或季节..."
+                placeholder="搜索品牌、设计师、季度、类别、年份..."
                 placeholderTextColor={theme.colors.gray400}
                 variant="outline"
                 sx={{

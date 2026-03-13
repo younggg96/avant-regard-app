@@ -17,8 +17,16 @@ import { showService, CreateShowParams } from "../services/showService";
 import { sharedStyles } from "../screens/admin/adminStyles";
 import { pickAndUploadImage } from "../screens/admin/adminUtils";
 
-const SEASONS = ["Spring", "Fall", "Resort", "Pre-Fall"];
-const CATEGORIES = ["Ready-to-Wear", "Couture", "Menswear", "Co-Ed"];
+const SEASONS = [
+  "Spring/Summer", "Fall/Winter", "Autumn/Winter",
+  "Resort", "Pre-Fall",
+  "Printemps/Été", "Automne/Hiver",
+  "Primavera/Estate", "Autunno/Inverno",
+];
+const CATEGORIES = [
+  "Ready-to-Wear", "Couture", "Menswear", "Womenswear",
+  "Co-Ed", "Accessories", "Beauty", "Bridal", "Kids Wear",
+];
 
 interface Props {
   visible: boolean;

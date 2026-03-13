@@ -46,6 +46,19 @@ export interface CreateShowParams {
   coverImage?: string;
 }
 
+// 管理员更新秀场参数
+export interface UpdateShowParams {
+  brand?: string;
+  title?: string;
+  year?: number;
+  season?: string;
+  category?: string;
+  designer?: string;
+  description?: string;
+  coverImage?: string;
+  status?: string;
+}
+
 // 秀场列表响应
 export interface ShowListResponse {
   shows: Show[];
@@ -297,6 +310,62 @@ export const getShowsByUser = async (userId: number): Promise<Show[]> => {
   return result.shows;
 };
 
+/**
+ * 管理员获取所有秀场（含全部状态）
+ * GET /api/shows/admin/all
+ */
+export const adminGetAllShows = async (
+  params: { keyword?: string; status?: string; page?: number; pageSize?: number } = {}
+): Promise<ShowListResponse> => {
+  const queryParams = new URLSearchParams();
+  if (params.keyword) queryParams.append("keyword", params.keyword);
+  if (params.status) queryParams.append("status", params.status);
+  if (params.page) queryParams.append("page", params.page.toString());
+  if (params.pageSize) queryParams.append("pageSize", params.pageSize.toString());
+
+  const queryString = queryParams.toString();
+  return request<ShowListResponse>(
+    `/api/shows/admin/all${queryString ? `?${queryString}` : ""}`,
+    { method: "GET" }
+  );
+};
+
+/**
+ * 管理员直接创建秀场（APPROVED）
+ * POST /api/shows/admin/create
+ */
+export const adminCreateShow = async (params: CreateShowParams): Promise<Show> => {
+  return request<Show>("/api/shows/admin/create", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+};
+
+/**
+ * 管理员更新秀场
+ * PUT /api/shows/admin/{showId}
+ */
+export const adminUpdateShow = async (
+  showId: string,
+  params: UpdateShowParams
+): Promise<Show> => {
+  return request<Show>(`/api/shows/admin/${encodeURIComponent(showId)}`, {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+};
+
+/**
+ * 管理员删除秀场
+ * DELETE /api/shows/admin/{showId}
+ */
+export const adminDeleteShow = async (showId: string): Promise<void> => {
+  await request<{ deleted: boolean }>(
+    `/api/shows/admin/${encodeURIComponent(showId)}`,
+    { method: "DELETE" }
+  );
+};
+
 // 导出服务对象
 export const showService = {
   getShows,
@@ -312,4 +381,8 @@ export const showService = {
   getPendingShows,
   approveShow,
   rejectShow,
+  adminGetAllShows,
+  adminCreateShow,
+  adminUpdateShow,
+  adminDeleteShow,
 };

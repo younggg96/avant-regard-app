@@ -58,18 +58,37 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   const isLoadingMoreRef = useRef(false);
   const lastScrollY = useRef(0);
 
-  const loadBrands = useCallback(async (reset = true) => {
-    try {
-      if (reset) {
-        setIsLoading(true);
-        setPage(1);
-        setHasMore(true);
-      }
-      setError(null);
-      const response = await brandService.getBrands({
-        page: 1,
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 400);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [searchQuery]);
+
+  const buildParams = useCallback(
+    (pageNum: number) => {
+      const params: { page: number; pageSize: number; keyword?: string; category?: string } = {
+        page: pageNum,
         pageSize: PAGE_SIZE,
-      });
+      };
+      if (debouncedSearch) params.keyword = debouncedSearch;
+      if (selectedCategory !== "all") params.category = selectedCategory;
+      return params;
+    },
+    [debouncedSearch, selectedCategory]
+  );
+
+  const loadBrands = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await brandService.getBrands(buildParams(1));
       setBrands(response.brands);
       setTotal(response.total);
       setHasMore(
@@ -82,7 +101,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [buildParams]);
 
   const loadMoreBrands = useCallback(async () => {
     if (isLoadingMoreRef.current || !hasMore || isLoading) return;
@@ -90,10 +109,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const response = await brandService.getBrands({
-        page: nextPage,
-        pageSize: PAGE_SIZE,
-      });
+      const response = await brandService.getBrands(buildParams(nextPage));
       if (response.brands.length > 0) {
         setBrands((prev) => [...prev, ...response.brands]);
         setPage(nextPage);
@@ -110,7 +126,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       setIsLoadingMore(false);
       isLoadingMoreRef.current = false;
     }
-  }, [page, hasMore, isLoading, brands.length]);
+  }, [page, hasMore, isLoading, brands.length, buildParams]);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -125,9 +141,12 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   }, []);
 
   useEffect(() => {
-    loadBrands();
     loadCategories();
-  }, [loadBrands, loadCategories]);
+  }, [loadCategories]);
+
+  useEffect(() => {
+    loadBrands();
+  }, [loadBrands]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -160,24 +179,8 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
     setSubmitModalVisible(true);
   }, [user]);
 
-  const filteredBrands = useMemo(() => {
-    return brands.filter((brand) => {
-      const matchesSearch =
-        brand.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (brand.founder &&
-          brand.founder.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (brand.country &&
-          brand.country.toLowerCase().includes(searchQuery.toLowerCase()));
-      let matchesCategory = selectedCategory === "all";
-      if (!matchesCategory && brand.category) {
-        matchesCategory = brand.category.includes(selectedCategory);
-      }
-      return matchesSearch && matchesCategory;
-    });
-  }, [brands, searchQuery, selectedCategory]);
-
   const groupedBrands = useMemo(() => {
-    const groups = filteredBrands.reduce(
+    const groups = brands.reduce(
       (acc, brand) => {
         const firstLetter = brand.name.charAt(0).toUpperCase();
         if (!acc[firstLetter]) acc[firstLetter] = [];
@@ -198,7 +201,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         letter,
         brands: groups[letter].sort((a, b) => a.name.localeCompare(b.name)),
       }));
-  }, [filteredBrands]);
+  }, [brands]);
 
   const hasActiveFilter = selectedCategory !== "all";
   const activeFilterLabel = hasActiveFilter
@@ -311,7 +314,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       {/* Results count */}
       <HStack justifyContent="between" px="$md" py="$sm">
         <Text style={styles.resultsText}>
-          {filteredBrands.length} / {total} 个品牌
+          {brands.length} / {total} 个品牌
         </Text>
         <TouchableOpacity onPress={handleOpenSubmitModal} activeOpacity={0.7}>
           <Text style={styles.submitLinkText}>上传品牌</Text>
@@ -376,7 +379,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
           </Box>
         ))}
 
-        {filteredBrands.length === 0 && (
+        {brands.length === 0 && !isLoading && (
           <VStack style={styles.emptyState} alignItems="center">
             <Ionicons
               name="search-outline"
@@ -422,7 +425,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       <SubmitBrandModal
         visible={submitModalVisible}
         onClose={() => setSubmitModalVisible(false)}
-        onSuccess={() => loadBrands(true)}
+        onSuccess={loadBrands}
       />
     </Box>
   );

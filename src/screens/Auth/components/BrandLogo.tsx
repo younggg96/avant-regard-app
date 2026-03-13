@@ -10,9 +10,9 @@ export const BrandLogo: React.FC = () => {
         source={require("../../../../assets/video/logo-video.mp4")}
         style={styles.logoImage}
         resizeMode={ResizeMode.CONTAIN}
-        shouldPlay
-        isLooping
-        isMuted
+        shouldPlay={true}
+        isLooping={true}
+        isMuted={true}
       />
     </View>
   );
