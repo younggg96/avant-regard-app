@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -706,6 +707,8 @@ const BuyerMapScreen = () => {
 
   const renderMarker = (store: BuyerStore) => {
     const isSelected = selectedStore?.id === store.id;
+    const size = isSelected ? 32 : 24;
+    const innerSize = isSelected ? 10 : 8;
     return (
       <Marker
         key={store.id}
@@ -714,25 +717,33 @@ const BuyerMapScreen = () => {
         description={store.address}
         onPress={() => handleStorePress(store)}
         zIndex={isSelected ? 999 : 1}
+        tracksViewChanges={false}
       >
-        <Box
-          w={isSelected ? 32 : 24}
-          h={isSelected ? 32 : 24}
-          rounded="$full"
-          bg={isSelected ? "$white" : store.isOpen ? "$black" : "$gray200"}
-          borderWidth={isSelected ? 3 : 2}
-          borderColor={isSelected ? "$black" : "$white"}
-          justifyContent="center"
-          alignItems="center"
-          sx={styles.markerShadow}
+        <View
+          style={[
+            styles.markerOuter,
+            {
+              width: size,
+              height: size,
+              backgroundColor: isSelected
+                ? "#FFFFFF"
+                : store.isOpen
+                  ? "#000000"
+                  : "#AAAAAA",
+              borderWidth: isSelected ? 3 : 2,
+              borderColor: isSelected ? "#000000" : "#FFFFFF",
+            },
+          ]}
         >
-          <Box
-            w={isSelected ? 10 : 8}
-            h={isSelected ? 10 : 8}
-            rounded="$full"
-            bg={isSelected ? "$black" : "$white"}
+          <View
+            style={{
+              width: innerSize,
+              height: innerSize,
+              borderRadius: innerSize / 2,
+              backgroundColor: isSelected ? "#000000" : "#FFFFFF",
+            }}
           />
-        </Box>
+        </View>
       </Marker>
     );
   };
@@ -1729,7 +1740,10 @@ const styles = StyleSheet.create({
     width: Dimensions.get("window").width,
     height: Dimensions.get("window").width,
   },
-  markerShadow: {
+  markerOuter: {
+    borderRadius: 9999,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

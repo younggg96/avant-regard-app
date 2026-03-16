@@ -148,10 +148,52 @@ class BuyerStoreCommunityService:
         stores = [self._format_submitted_store(s) for s in result.data]
         return stores, total
 
+    def _generate_store_id(self, city: str, submission_id: int) -> str:
+        """为用户提交的买手店生成唯一ID，格式: u-{city}-{submission_id}"""
+        import re
+        # 保留英文字母和数字，中文转拼音首字母太复杂，直接用submission_id保证唯一
+        city_slug = re.sub(r'[^a-zA-Z0-9]', '', city.lower())[:10] or "city"
+        return f"u-{city_slug}-{submission_id}"
+
+    def _build_buyer_store_from_submission(self, submission: dict, store_id: str) -> dict:
+        """从user_submitted_stores行构建buyer_stores插入数据"""
+        return {
+            "id": store_id,
+            "name": submission["name"],
+            "address": submission["address"],
+            "city": submission["city"],
+            "country": submission["country"],
+            "latitude": submission.get("latitude"),
+            "longitude": submission.get("longitude"),
+            "brands": submission.get("brands") or [],
+            "style": submission.get("style") or [],
+            "phone": submission.get("phone") or [],
+            "hours": submission.get("hours"),
+            "description": submission.get("description"),
+            "images": submission.get("images") or [],
+            "is_open": True,
+            "submitted_by": submission.get("user_id"),
+        }
+
     def review_submission(
         self, submission_id: int, reviewer_id: int, data: ReviewSubmissionRequest
     ) -> UserSubmittedStore:
-        """审核用户提交的买手店"""
+        """审核用户提交的买手店。
+        批准时自动在 buyer_stores 表中创建对应记录。
+        """
+        submission_result = (
+            self.supabase.table("user_submitted_stores")
+            .select("*")
+            .eq("id", submission_id)
+            .execute()
+        )
+        if not submission_result.data:
+            raise Exception("找不到提交记录")
+
+        submission = submission_result.data[0]
+        if submission.get("status") != "PENDING":
+            raise Exception(f"该提交已被处理，当前状态: {submission['status']}")
+
         update_data = {
             "status": data.status,
             "reviewed_by": reviewer_id,
@@ -160,8 +202,23 @@ class BuyerStoreCommunityService:
 
         if data.status == "REJECTED":
             update_data["reject_reason"] = data.rejectReason
-        elif data.status == "APPROVED" and data.storeId:
-            update_data["approved_store_id"] = data.storeId
+
+        elif data.status == "APPROVED":
+            store_id = data.storeId or self._generate_store_id(
+                submission["city"], submission_id
+            )
+            update_data["approved_store_id"] = store_id
+
+            buyer_store_data = self._build_buyer_store_from_submission(
+                submission, store_id
+            )
+            insert_result = (
+                self.supabase.table("buyer_stores")
+                .insert(buyer_store_data)
+                .execute()
+            )
+            if not insert_result.data:
+                raise Exception("写入 buyer_stores 表失败")
 
         result = (
             self.supabase.table("user_submitted_stores")
@@ -169,10 +226,9 @@ class BuyerStoreCommunityService:
             .eq("id", submission_id)
             .execute()
         )
-
         if result.data:
             return self._format_submitted_store(result.data[0])
-        raise Exception("审核失败")
+        raise Exception("更新提交状态失败")
 
     def _format_submitted_store(self, data: dict) -> UserSubmittedStore:
         """格式化用户提交的买手店数据"""

@@ -16,6 +16,7 @@ import {
   Pressable,
   RefreshControl,
 } from "react-native";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -101,18 +102,36 @@ const ArchiveScreen = () => {
   const isHeaderVisible = useRef(true);
   const lastScrollY = useRef(0);
 
+  // Swipe gesture animation
+  const swipeTranslateX = useRef(new Animated.Value(0)).current;
+  const panGestureRef = useRef(null);
+
   const tabWidth = (screenWidth - 32) / MAIN_TABS.length;
 
   const handleTabChange = useCallback(
-    (tab: ArchiveTab) => {
+    (tab: ArchiveTab, animated: boolean = true) => {
       setActiveMainTab(tab);
       const tabIndex = MAIN_TABS.findIndex((t) => t.id === tab);
-      Animated.spring(tabIndicatorAnim, {
-        toValue: tabIndex,
-        useNativeDriver: true,
-        tension: 300,
-        friction: 30,
-      }).start();
+      
+      if (animated) {
+        Animated.spring(tabIndicatorAnim, {
+          toValue: tabIndex,
+          useNativeDriver: true,
+          tension: 300,
+          friction: 30,
+        }).start();
+        
+        // Animate content transition
+        Animated.timing(swipeTranslateX, {
+          toValue: -tabIndex * screenWidth,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        tabIndicatorAnim.setValue(tabIndex);
+        swipeTranslateX.setValue(-tabIndex * screenWidth);
+      }
+      
       if (tab !== "all" && !isHeaderVisible.current) {
         isHeaderVisible.current = true;
         Animated.parallel([
@@ -129,7 +148,52 @@ const ArchiveScreen = () => {
         ]).start();
       }
     },
-    [tabIndicatorAnim, headerHeight, headerOpacity]
+    [tabIndicatorAnim, headerHeight, headerOpacity, swipeTranslateX]
+  );
+
+  // Handle swipe gestures
+  const gestureTranslateX = useRef(new Animated.Value(0)).current;
+  
+  const onGestureEvent = useCallback(
+    Animated.event([{ nativeEvent: { translationX: gestureTranslateX } }], {
+      useNativeDriver: true,
+    }),
+    [gestureTranslateX]
+  );
+
+  const onHandlerStateChange = useCallback(
+    (event: any) => {
+      if (event.nativeEvent.state === State.END) {
+        const { translationX, velocityX } = event.nativeEvent;
+        const currentTabIndex = MAIN_TABS.findIndex((t) => t.id === activeMainTab);
+        
+        // Determine swipe direction and threshold
+        const swipeThreshold = screenWidth * 0.25;
+        const velocityThreshold = 500;
+        
+        let targetTabIndex = currentTabIndex;
+        
+        if (Math.abs(translationX) > swipeThreshold || Math.abs(velocityX) > velocityThreshold) {
+          if (translationX > 0 && currentTabIndex > 0) {
+            // Swipe right - go to previous tab
+            targetTabIndex = currentTabIndex - 1;
+          } else if (translationX < 0 && currentTabIndex < MAIN_TABS.length - 1) {
+            // Swipe left - go to next tab
+            targetTabIndex = currentTabIndex + 1;
+          }
+        }
+        
+        // Reset gesture translation
+        gestureTranslateX.setValue(0);
+        
+        // Animate to target position
+        const targetTab = MAIN_TABS[targetTabIndex];
+        if (targetTab && targetTab.id !== activeMainTab) {
+          handleTabChange(targetTab.id, true);
+        }
+      }
+    },
+    [activeMainTab, handleTabChange, gestureTranslateX]
   );
 
   // --- Brand list logic ---
@@ -250,7 +314,10 @@ const ArchiveScreen = () => {
   useEffect(() => {
     loadBrands();
     loadCategories();
-  }, [loadBrands, loadCategories]);
+    // Initialize swipe position
+    const initialTabIndex = MAIN_TABS.findIndex((t) => t.id === activeMainTab);
+    swipeTranslateX.setValue(-initialTabIndex * screenWidth);
+  }, [loadBrands, loadCategories, swipeTranslateX, activeMainTab]);
 
   useEffect(() => {
     if (activeMainTab === "myContribution" && !contributionLoaded && user?.userId) {
@@ -267,6 +334,7 @@ const ArchiveScreen = () => {
     await loadContributions();
     setContributionRefreshing(false);
   }, [loadContributions]);
+
 
   // --- Computed ---
   const filteredBrands = useMemo(() => {
@@ -653,7 +721,8 @@ const ArchiveScreen = () => {
 
     return (
       <View style={{ height: "100%" }}>
-
+        {/* Sub Filter Row */}
+        <View style={styles.subFilterRow}>
         {CONTRIBUTION_SUB_TABS.map((tab) => {
           const count =
             tab.id === "show" ? myShows.length : tab.id === "brand" ? myBrands.length : myStores.length;
@@ -674,6 +743,7 @@ const ArchiveScreen = () => {
             </TouchableOpacity>
           );
         })}
+        </View>
 
         {/* Content */}
         <ScrollView
@@ -770,14 +840,41 @@ const ArchiveScreen = () => {
 
   // --- Tab content switch ---
   const renderTabContent = () => {
-    switch (activeMainTab) {
-      case "all":
-        return renderBrandListContent();
-      case "myContribution":
-        return renderMyContributionContent();
-      case "leaderboard":
-        return renderLeaderboardContent();
-    }
+    const combinedTranslateX = Animated.add(swipeTranslateX, gestureTranslateX);
+    
+    return (
+      <PanGestureHandler
+        ref={panGestureRef}
+        onGestureEvent={onGestureEvent}
+        onHandlerStateChange={onHandlerStateChange}
+        activeOffsetX={[-10, 10]}
+        failOffsetY={[-5, 5]}
+      >
+        <Animated.View
+          style={[
+            styles.tabContentContainer,
+            {
+              transform: [
+                {
+                  translateX: combinedTranslateX,
+                },
+              ],
+            },
+          ]}
+        >
+          {/* All tabs content rendered side by side */}
+          <View style={[styles.tabPane, { width: screenWidth }]}>
+            {renderBrandListContent()}
+          </View>
+          <View style={[styles.tabPane, { width: screenWidth }]}>
+            {renderMyContributionContent()}
+          </View>
+          <View style={[styles.tabPane, { width: screenWidth }]}>
+            {renderLeaderboardContent()}
+          </View>
+        </Animated.View>
+      </PanGestureHandler>
+    );
   };
 
   return (
@@ -1287,6 +1384,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.gray500,
     fontWeight: "500",
+  },
+
+  // Swipe container styles
+  tabContentContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    width: screenWidth * MAIN_TABS.length,
+  },
+  tabPane: {
+    flex: 1,
   },
 });
 

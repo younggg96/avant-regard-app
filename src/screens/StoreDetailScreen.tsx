@@ -142,11 +142,25 @@ const StoreDetailScreen = () => {
         setSelectedRating(detail.userRating);
       }
     } catch (error: any) {
-      Alert.alert("加载失败", error.message || "请稍后重试");
+      console.error("Store detail load error:", error);
+      if (error.message?.includes("404") || error.message?.includes("不存在")) {
+        Alert.alert(
+          "店铺不存在", 
+          "该店铺可能已被删除或暂时不可用",
+          [
+            {
+              text: "返回",
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        Alert.alert("加载失败", error.message || "请稍后重试");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [storeId, user?.id]);
+  }, [storeId, user?.id, navigation]);
 
   // 加载评论
   const loadComments = useCallback(async (page: number = 1) => {
