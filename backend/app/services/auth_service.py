@@ -57,9 +57,8 @@ class AuthService:
         # 创建新用户记录
         user_data = {
             "supabase_uid": supabase_user_id,
-            "phone": phone,  # 保留完整手机号格式
+            "phone": phone,
             "username": username or f"用户{phone[-4:]}",
-            "password_hash": "supabase_auth",  # 占位符，实际密码由 Supabase Auth 管理
             "is_admin": False,
             "user_type": "USER",
             "status": "ACTIVE",
@@ -275,10 +274,8 @@ class AuthService:
 
         user_data = {
             "supabase_uid": supabase_user_id,
-            "phone": "",
             "email": email,
             "username": username or f"用户{email.split('@')[0][:8]}",
-            "password_hash": "supabase_auth",
             "is_admin": False,
             "user_type": "USER",
             "status": "ACTIVE",
@@ -546,10 +543,8 @@ class AuthService:
 
         user_data = {
             "supabase_uid": supabase_user_id,
-            "phone": "",
             "email": email or "",
             "username": username or f"Apple用户{supabase_user_id[:6]}",
-            "password_hash": "apple_auth",
             "is_admin": False,
             "user_type": "USER",
             "status": "ACTIVE",
