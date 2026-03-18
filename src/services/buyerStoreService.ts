@@ -582,6 +582,26 @@ export const reviewSubmission = async (
   );
 };
 
+/**
+ * 批量审核用户提交的买手店（管理员）
+ * PUT /api/buyer-stores/submissions/batch-review
+ */
+export const batchReviewSubmissions = async (
+  data: {
+    submissionIds: number[];
+    status: "APPROVED" | "REJECTED";
+    rejectReason?: string;
+  }
+): Promise<{ success: number; failed: number; failedIds: number[] }> => {
+  return request<{ success: number; failed: number; failedIds: number[] }>(
+    `/api/buyer-stores/submissions/batch-review`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+};
+
 // ==================== 买手店评论接口 ====================
 
 export interface StoreCommentReply {
@@ -897,6 +917,7 @@ export const buyerStoreService = {
   getSubmissionsByUser,
   getPendingSubmissions,
   reviewSubmission,
+  batchReviewSubmissions,
   // 评论
   getCommentSuggestions,
   getStoreComments,

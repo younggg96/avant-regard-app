@@ -16,28 +16,36 @@ class FileService:
         self._bucket_checked = False
 
     def _ensure_bucket_exists(self):
-        """确保存储桶存在"""
+        """确保存储桶存在且为公开状态"""
         if self._bucket_checked:
             return
 
         try:
-            # 列出所有 bucket
             buckets = self.db.storage.list_buckets()
             bucket_names = [b.name for b in buckets] if buckets else []
             print(f"[FileService] Existing buckets: {bucket_names}")
 
             if self.bucket_name not in bucket_names:
                 print(f"[FileService] Creating bucket: {self.bucket_name}")
-                # 创建公开的 bucket
                 self.db.storage.create_bucket(
                     self.bucket_name, options={"public": True}
                 )
                 print(f"[FileService] Bucket '{self.bucket_name}' created successfully")
+            else:
+                existing = next(
+                    (b for b in buckets if b.name == self.bucket_name), None
+                )
+                is_public = getattr(existing, "public", None)
+                if is_public is False:
+                    print(f"[FileService] Bucket '{self.bucket_name}' exists but is not public, updating...")
+                    self.db.storage.update_bucket(
+                        self.bucket_name, options={"public": True}
+                    )
+                    print(f"[FileService] Bucket '{self.bucket_name}' updated to public")
 
             self._bucket_checked = True
         except Exception as e:
             print(f"[FileService] Error checking/creating bucket: {e}")
-            # 即使创建失败也标记为已检查，避免重复尝试
             self._bucket_checked = True
 
     def upload_image(

@@ -5,7 +5,7 @@
 from typing import Optional, List, Tuple
 from datetime import datetime
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.buyer_store import (
     UserSubmittedStoreCreate,
     UserSubmittedStore,
@@ -16,6 +16,7 @@ from app.schemas.buyer_store import (
     BuyerStoreRating,
     BuyerStoreRatingStats,
     ReviewSubmissionRequest,
+    BatchReviewRequest,
 )
 
 
@@ -24,6 +25,7 @@ class BuyerStoreCommunityService:
 
     def __init__(self):
         self.supabase = get_supabase()
+        self.supabase_admin = get_supabase_admin()
 
     # ==================== 用户提交买手店 ====================
 
@@ -213,7 +215,7 @@ class BuyerStoreCommunityService:
                 submission, store_id
             )
             insert_result = (
-                self.supabase.table("buyer_stores")
+                self.supabase_admin.table("buyer_stores")
                 .insert(buyer_store_data)
                 .execute()
             )
@@ -221,7 +223,7 @@ class BuyerStoreCommunityService:
                 raise Exception("写入 buyer_stores 表失败")
 
         result = (
-            self.supabase.table("user_submitted_stores")
+            self.supabase_admin.table("user_submitted_stores")
             .update(update_data)
             .eq("id", submission_id)
             .execute()
@@ -229,6 +231,30 @@ class BuyerStoreCommunityService:
         if result.data:
             return self._format_submitted_store(result.data[0])
         raise Exception("更新提交状态失败")
+
+    def batch_review_submissions(
+        self, submission_ids: list, reviewer_id: int, data: BatchReviewRequest
+    ) -> dict:
+        """批量审核用户提交的买手店"""
+        success_count = 0
+        failed_ids = []
+
+        for sid in submission_ids:
+            try:
+                single_req = ReviewSubmissionRequest(
+                    status=data.status,
+                    rejectReason=data.rejectReason,
+                )
+                self.review_submission(sid, reviewer_id, single_req)
+                success_count += 1
+            except Exception:
+                failed_ids.append(sid)
+
+        return {
+            "success": success_count,
+            "failed": len(failed_ids),
+            "failedIds": failed_ids,
+        }
 
     def _format_submitted_store(self, data: dict) -> UserSubmittedStore:
         """格式化用户提交的买手店数据"""

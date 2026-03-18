@@ -18,6 +18,7 @@ interface ContributionCardProps {
   imageUri?: string;
   placeholderIcon: keyof typeof Ionicons.glyphMap;
   status: string;
+  rejectReason?: string;
   date?: string;
   onPress?: () => void;
 }
@@ -34,10 +35,12 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   imageUri,
   placeholderIcon,
   status,
+  rejectReason,
   date,
   onPress,
 }) => {
   const ss = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
+  const hasValidImage = imageUri && imageUri.trim().length > 0;
 
   return (
     <TouchableOpacity
@@ -46,7 +49,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
       onPress={onPress}
     >
       <Box style={styles.imageContainer}>
-        {imageUri ? (
+        {hasValidImage ? (
           <Image
             source={{ uri: imageUri }}
             style={styles.image}
@@ -56,9 +59,10 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
           <Box style={styles.imagePlaceholder}>
             <Ionicons
               name={placeholderIcon}
-              size={32}
+              size={36}
               color={theme.colors.gray300}
             />
+            <Text style={styles.placeholderText}>暂无图片</Text>
           </Box>
         )}
       </Box>
@@ -72,6 +76,15 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
             {subtitle}
           </Text>
         ) : null}
+
+        {status === "REJECTED" && rejectReason ? (
+          <Box style={styles.rejectReasonBox}>
+            <Text style={styles.rejectReasonText} numberOfLines={2}>
+              {rejectReason}
+            </Text>
+          </Box>
+        ) : null}
+
         <HStack justifyContent="between" mt={6}>
           <Box style={[styles.statusBadge, { backgroundColor: ss.bg }]}>
             <Text style={[styles.statusText, { color: ss.color }]}>
@@ -110,6 +123,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     justifyContent: "center",
     alignItems: "center",
+    gap: 6,
+  },
+  placeholderText: {
+    fontSize: 11,
+    color: theme.colors.gray300,
+    fontWeight: "400",
   },
   title: {
     fontSize: 13,
@@ -121,6 +140,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#999",
     marginTop: 2,
+  },
+  rejectReasonBox: {
+    backgroundColor: "#FFF5F5",
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    marginTop: 4,
+  },
+  rejectReasonText: {
+    fontSize: 10,
+    color: "#C62828",
+    lineHeight: 14,
   },
   statusBadge: {
     paddingHorizontal: 8,

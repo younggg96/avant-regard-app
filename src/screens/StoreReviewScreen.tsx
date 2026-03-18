@@ -1,8 +1,8 @@
 /**
  * 买手店审核页面（管理员）
- * 遵循 iOS Human Interface Guidelines 设计规范
+ * 支持单个审核和批量审核
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
     StyleSheet,
     FlatList,
@@ -35,6 +35,7 @@ import {
     UserSubmittedStore,
     getPendingSubmissions,
     reviewSubmission,
+    batchReviewSubmissions,
 } from "../services/buyerStoreService";
 
 const StoreReviewScreen = () => {
@@ -47,25 +48,27 @@ const StoreReviewScreen = () => {
     const [total, setTotal] = useState(0);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    // 批量选择状态
+    const [isBatchMode, setIsBatchMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
     // 拒绝弹窗状态
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [selectedSubmission, setSelectedSubmission] = useState<UserSubmittedStore | null>(null);
     const [rejectReason, setRejectReason] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const rejectModalAnim = React.useRef(new Animated.Value(0)).current;
+    const [isBatchReject, setIsBatchReject] = useState(false);
+    const rejectModalAnim = useRef(new Animated.Value(0)).current;
 
     // 详情弹窗状态
     const [showDetailModal, setShowDetailModal] = useState(false);
-    const detailModalAnim = React.useRef(new Animated.Value(0)).current;
+    const detailModalAnim = useRef(new Animated.Value(0)).current;
 
-    // 加载待审核列表
     const loadSubmissions = useCallback(async (pageNum: number = 1) => {
         try {
-            if (pageNum === 1) {
-                setIsLoading(true);
-            } else {
-                setIsLoadingMore(true);
-            }
+            if (pageNum === 1) setIsLoading(true);
+            else setIsLoadingMore(true);
+
             const result = await getPendingSubmissions(pageNum, 20);
             if (pageNum === 1) {
                 setSubmissions(result.stores);
@@ -86,22 +89,95 @@ const StoreReviewScreen = () => {
         loadSubmissions();
     }, [loadSubmissions]);
 
-    // 下拉刷新
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await loadSubmissions(1);
         setIsRefreshing(false);
     };
 
-    // 加载更多
     const handleLoadMore = () => {
         if (submissions.length < total && !isLoadingMore) {
             loadSubmissions(page + 1);
         }
     };
 
-    // 打开详情弹窗
+    // ==================== 批量选择 ====================
+
+    const toggleBatchMode = () => {
+        if (isBatchMode) {
+            setSelectedIds(new Set());
+        }
+        setIsBatchMode(!isBatchMode);
+    };
+
+    const toggleSelectItem = (id: number) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === submissions.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(submissions.map((s) => s.id)));
+        }
+    };
+
+    const handleBatchApprove = () => {
+        if (selectedIds.size === 0) return;
+        Alert.alert(
+            "批量通过",
+            `确定要通过选中的 ${selectedIds.size} 条审核吗？`,
+            [
+                { text: "取消", style: "cancel" },
+                {
+                    text: "全部通过",
+                    onPress: async () => {
+                        try {
+                            setIsSubmitting(true);
+                            await batchReviewSubmissions({
+                                submissionIds: Array.from(selectedIds),
+                                status: "APPROVED",
+                            });
+                            Alert.alert("成功", `已通过 ${selectedIds.size} 条审核`);
+                            setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+                            setTotal((prev) => prev - selectedIds.size);
+                            setSelectedIds(new Set());
+                            setIsBatchMode(false);
+                        } catch (error: any) {
+                            Alert.alert("操作失败", error.message || "请稍后重试");
+                        } finally {
+                            setIsSubmitting(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleBatchReject = () => {
+        if (selectedIds.size === 0) return;
+        setIsBatchReject(true);
+        setRejectReason("");
+        setShowRejectModal(true);
+        Animated.timing(rejectModalAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    // ==================== 详情弹窗 ====================
+
     const openDetailModal = (submission: UserSubmittedStore) => {
+        if (isBatchMode) {
+            toggleSelectItem(submission.id);
+            return;
+        }
         setSelectedSubmission(submission);
         setShowDetailModal(true);
         Animated.timing(detailModalAnim, {
@@ -111,19 +187,19 @@ const StoreReviewScreen = () => {
         }).start();
     };
 
-    // 关闭详情弹窗
-    const closeDetailModal = () => {
+    const closeDetailModal = (clearSelection = true) => {
         Animated.timing(detailModalAnim, {
             toValue: 0,
             duration: 250,
             useNativeDriver: true,
         }).start(() => {
             setShowDetailModal(false);
-            setSelectedSubmission(null);
+            if (clearSelection) setSelectedSubmission(null);
         });
     };
 
-    // 审核通过
+    // ==================== 单条审核 ====================
+
     const handleApprove = async (submission: UserSubmittedStore) => {
         Alert.alert(
             "审核通过",
@@ -135,15 +211,12 @@ const StoreReviewScreen = () => {
                     onPress: async () => {
                         try {
                             setIsSubmitting(true);
-                            // 生成店铺ID
                             const cityCode = submission.city.slice(0, 2).toLowerCase();
                             const storeId = `user-${cityCode}-${Date.now()}`;
-
                             await reviewSubmission(submission.id, {
                                 status: "APPROVED",
                                 storeId,
                             });
-
                             Alert.alert("成功", "审核已通过");
                             setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
                             setTotal((prev) => prev - 1);
@@ -159,11 +232,13 @@ const StoreReviewScreen = () => {
         );
     };
 
-    // 打开拒绝弹窗
+    // ==================== 拒绝弹窗 ====================
+
     const openRejectModal = (submission: UserSubmittedStore) => {
+        setIsBatchReject(false);
         setSelectedSubmission(submission);
         setRejectReason("");
-        closeDetailModal();
+        closeDetailModal(false);
         setTimeout(() => {
             setShowRejectModal(true);
             Animated.timing(rejectModalAnim, {
@@ -174,7 +249,6 @@ const StoreReviewScreen = () => {
         }, 300);
     };
 
-    // 关闭拒绝弹窗
     const closeRejectModal = () => {
         Animated.timing(rejectModalAnim, {
             toValue: 0,
@@ -183,12 +257,11 @@ const StoreReviewScreen = () => {
         }).start(() => {
             setShowRejectModal(false);
             setRejectReason("");
+            setIsBatchReject(false);
         });
     };
 
-    // 确认拒绝
     const handleConfirmReject = async () => {
-        if (!selectedSubmission) return;
         if (!rejectReason.trim()) {
             Alert.alert("提示", "请输入拒绝原因");
             return;
@@ -196,14 +269,29 @@ const StoreReviewScreen = () => {
 
         try {
             setIsSubmitting(true);
-            await reviewSubmission(selectedSubmission.id, {
-                status: "REJECTED",
-                rejectReason: rejectReason.trim(),
-            });
 
-            Alert.alert("成功", "已拒绝该提交");
-            setSubmissions((prev) => prev.filter((s) => s.id !== selectedSubmission.id));
-            setTotal((prev) => prev - 1);
+            if (isBatchReject) {
+                await batchReviewSubmissions({
+                    submissionIds: Array.from(selectedIds),
+                    status: "REJECTED",
+                    rejectReason: rejectReason.trim(),
+                });
+                Alert.alert("成功", `已拒绝 ${selectedIds.size} 条提交`);
+                setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)));
+                setTotal((prev) => prev - selectedIds.size);
+                setSelectedIds(new Set());
+                setIsBatchMode(false);
+            } else {
+                if (!selectedSubmission) return;
+                await reviewSubmission(selectedSubmission.id, {
+                    status: "REJECTED",
+                    rejectReason: rejectReason.trim(),
+                });
+                Alert.alert("成功", "已拒绝该提交");
+                setSubmissions((prev) => prev.filter((s) => s.id !== selectedSubmission!.id));
+                setTotal((prev) => prev - 1);
+            }
+
             closeRejectModal();
         } catch (error: any) {
             Alert.alert("操作失败", error.message || "请稍后重试");
@@ -212,83 +300,106 @@ const StoreReviewScreen = () => {
         }
     };
 
-    // 渲染提交项
-    const renderSubmissionItem = ({ item }: { item: UserSubmittedStore }) => (
-        <Pressable
-            bg="$white"
-            rounded="$lg"
-            p="$md"
-            mb="$md"
-            borderWidth={1}
-            borderColor="$gray100"
-            onPress={() => openDetailModal(item)}
-            sx={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 4,
-                elevation: 2,
-            }}
-        >
-            <HStack justifyContent="between" alignItems="start" mb="$sm">
-                <VStack flex={1}>
-                    <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
-                        {item.name}
-                    </Text>
-                    <Text fontSize="$sm" color="$gray300" mt="$xs">
-                        {item.city}, {item.country}
-                    </Text>
-                </VStack>
-                <Box bg="#FFF3E0" px="$sm" py="$xs" rounded="$sm">
-                    <Text fontSize="$xs" fontWeight="$bold" color="#FF9800">
-                        待审核
-                    </Text>
-                </Box>
-            </HStack>
+    // ==================== 渲染 ====================
 
-            <HStack alignItems="center" mb="$sm">
-                <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
-                <Text fontSize="$sm" color="$gray300" ml="$xs" flex={1} numberOfLines={1}>
-                    {item.address}
-                </Text>
-            </HStack>
+    const renderSubmissionItem = ({ item }: { item: UserSubmittedStore }) => {
+        const isSelected = selectedIds.has(item.id);
 
-            {item.style.length > 0 && (
-                <HStack flexWrap="wrap" gap="$xs" mb="$sm">
-                    {item.style.slice(0, 3).map((s, idx) => (
-                        <Box key={idx} bg="$gray100" px="$sm" py="$xs" rounded="$sm">
-                            <Text fontSize="$xs" color="$gray300">
-                                {s}
-                            </Text>
+        return (
+            <Pressable
+                bg="$white"
+                rounded="$lg"
+                p="$md"
+                mb="$md"
+                borderWidth={isBatchMode && isSelected ? 2 : 1}
+                borderColor={isBatchMode && isSelected ? "$black" : "$gray100"}
+                onPress={() => openDetailModal(item)}
+                sx={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 2,
+                }}
+            >
+                <HStack justifyContent="between" alignItems="start" mb="$sm">
+                    {isBatchMode && (
+                        <Box
+                            w={22}
+                            h={22}
+                            rounded="$xs"
+                            borderWidth={2}
+                            borderColor={isSelected ? "$black" : "$gray200"}
+                            bg={isSelected ? "$black" : "$white"}
+                            justifyContent="center"
+                            alignItems="center"
+                            mr="$sm"
+                            mt={2}
+                        >
+                            {isSelected && (
+                                <Ionicons name="checkmark" size={14} color="#fff" />
+                            )}
                         </Box>
-                    ))}
-                </HStack>
-            )}
-
-            <HStack justifyContent="between" alignItems="center" mt="$sm" pt="$sm" borderTopWidth={1} borderTopColor="$gray100">
-                <HStack alignItems="center">
-                    <Box
-                        w={24}
-                        h={24}
-                        rounded="$sm"
-                        bg="$gray100"
-                        justifyContent="center"
-                        alignItems="center"
-                        mr="$xs"
-                    >
-                        <Ionicons name="person" size={12} color={theme.colors.gray300} />
+                    )}
+                    <VStack flex={1}>
+                        <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+                            {item.name}
+                        </Text>
+                        <Text fontSize="$sm" color="$gray300" mt="$xs">
+                            {item.city}, {item.country}
+                        </Text>
+                    </VStack>
+                    <Box bg="#FFF3E0" px="$sm" py="$xs" rounded="$sm">
+                        <Text fontSize="$xs" fontWeight="$bold" color="#FF9800">
+                            待审核
+                        </Text>
                     </Box>
-                    <Text fontSize="$xs" color="$gray300">
-                        {item.username}
-                    </Text>
-                    <Text fontSize="$xs" color="$gray200" ml="$sm">
-                        {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+                </HStack>
+
+                <HStack alignItems="center" mb="$sm">
+                    <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
+                    <Text fontSize="$sm" color="$gray300" ml="$xs" flex={1} numberOfLines={1}>
+                        {item.address}
                     </Text>
                 </HStack>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
-            </HStack>
-        </Pressable>
-    );
+
+                {item.style.length > 0 && (
+                    <HStack flexWrap="wrap" gap="$xs" mb="$sm">
+                        {item.style.slice(0, 3).map((s, idx) => (
+                            <Box key={idx} bg="$gray100" px="$sm" py="$xs" rounded="$sm">
+                                <Text fontSize="$xs" color="$gray300">
+                                    {s}
+                                </Text>
+                            </Box>
+                        ))}
+                    </HStack>
+                )}
+
+                <HStack justifyContent="between" alignItems="center" mt="$sm" pt="$sm" borderTopWidth={1} borderTopColor="$gray100">
+                    <HStack alignItems="center">
+                        <Box
+                            w={24}
+                            h={24}
+                            rounded="$sm"
+                            bg="$gray100"
+                            justifyContent="center"
+                            alignItems="center"
+                            mr="$xs"
+                        >
+                            <Ionicons name="person" size={12} color={theme.colors.gray300} />
+                        </Box>
+                        <Text fontSize="$xs" color="$gray300">
+                            {item.username}
+                        </Text>
+                        <Text fontSize="$xs" color="$gray200" ml="$sm">
+                            {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+                        </Text>
+                    </HStack>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
+                </HStack>
+            </Pressable>
+        );
+    };
 
     const renderEmpty = () => {
         if (isLoading) return null;
@@ -304,6 +415,10 @@ const StoreReviewScreen = () => {
             </VStack>
         );
     };
+
+    const rejectModalTitle = isBatchReject
+        ? `拒绝选中的 ${selectedIds.size} 条提交`
+        : `拒绝「${selectedSubmission?.name}」`;
 
     if (isLoading) {
         return (
@@ -330,7 +445,75 @@ const StoreReviewScreen = () => {
                 subtitle={`${total} 条待审核`}
                 showBackButton
                 onBackPress={() => navigation.goBack()}
+                rightComponent={
+                    submissions.length > 0 ? (
+                        <Pressable onPress={toggleBatchMode} px="$sm" py="$xs">
+                            <Text fontSize="$sm" fontWeight="$semibold" color={isBatchMode ? "$error" : "$black"}>
+                                {isBatchMode ? "取消" : "批量"}
+                            </Text>
+                        </Pressable>
+                    ) : undefined
+                }
             />
+
+            {/* 批量操作栏 */}
+            {isBatchMode && (
+                <HStack px="$md" py="$sm" bg="$gray50" alignItems="center" justifyContent="between">
+                    <Pressable onPress={toggleSelectAll} flexDirection="row" alignItems="center">
+                        <Box
+                            w={20}
+                            h={20}
+                            rounded="$xs"
+                            borderWidth={2}
+                            borderColor={selectedIds.size === submissions.length ? "$black" : "$gray200"}
+                            bg={selectedIds.size === submissions.length ? "$black" : "$white"}
+                            justifyContent="center"
+                            alignItems="center"
+                            mr="$xs"
+                        >
+                            {selectedIds.size === submissions.length && (
+                                <Ionicons name="checkmark" size={12} color="#fff" />
+                            )}
+                        </Box>
+                        <Text fontSize="$sm" color="$gray300">
+                            全选 ({selectedIds.size}/{submissions.length})
+                        </Text>
+                    </Pressable>
+                    <HStack gap="$sm">
+                        <Pressable
+                            px="$md"
+                            py="$sm"
+                            rounded="$sm"
+                            borderWidth={1}
+                            borderColor={selectedIds.size > 0 ? "$error" : "$gray200"}
+                            opacity={selectedIds.size > 0 ? 1 : 0.4}
+                            onPress={handleBatchReject}
+                            disabled={selectedIds.size === 0 || isSubmitting}
+                        >
+                            <Text fontSize="$sm" fontWeight="$semibold" color={selectedIds.size > 0 ? "$error" : "$gray200"}>
+                                拒绝
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            px="$md"
+                            py="$sm"
+                            rounded="$sm"
+                            bg={selectedIds.size > 0 ? "$black" : "$gray200"}
+                            opacity={selectedIds.size > 0 ? 1 : 0.4}
+                            onPress={handleBatchApprove}
+                            disabled={selectedIds.size === 0 || isSubmitting}
+                        >
+                            {isSubmitting ? (
+                                <ActivityIndicator color="#fff" size="small" />
+                            ) : (
+                                <Text fontSize="$sm" fontWeight="$semibold" color="$white">
+                                    通过
+                                </Text>
+                            )}
+                        </Pressable>
+                    </HStack>
+                </HStack>
+            )}
 
             <FlatList
                 data={submissions}
@@ -362,10 +545,10 @@ const StoreReviewScreen = () => {
                 visible={showDetailModal}
                 transparent
                 animationType="none"
-                onRequestClose={closeDetailModal}
+                onRequestClose={() => closeDetailModal()}
             >
                 <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
-                    <TouchableWithoutFeedback onPress={closeDetailModal}>
+                    <TouchableWithoutFeedback onPress={() => closeDetailModal()}>
                         <Box flex={1} />
                     </TouchableWithoutFeedback>
                     <Animated.View
@@ -385,7 +568,7 @@ const StoreReviewScreen = () => {
                     >
                         <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
                         {selectedSubmission && (
-                            <>
+                            <ScrollView showsVerticalScrollIndicator={false}>
                                 <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
                                     {selectedSubmission.name}
                                 </Text>
@@ -393,7 +576,6 @@ const StoreReviewScreen = () => {
                                     {selectedSubmission.city}, {selectedSubmission.country}
                                 </Text>
 
-                                {/* 提交者信息 */}
                                 <Box bg="$gray50" rounded="$md" p="$md" mb="$md">
                                     <HStack alignItems="center">
                                         <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray300} />
@@ -406,7 +588,6 @@ const StoreReviewScreen = () => {
                                     </HStack>
                                 </Box>
 
-                                {/* 地址 */}
                                 <VStack mb="$md">
                                     <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                                         详细地址
@@ -416,7 +597,6 @@ const StoreReviewScreen = () => {
                                     </Text>
                                 </VStack>
 
-                                {/* 坐标 */}
                                 {selectedSubmission.latitude && selectedSubmission.longitude && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -428,7 +608,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 风格 */}
                                 {selectedSubmission.style.length > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -446,7 +625,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 品牌 */}
                                 {selectedSubmission.brands.length > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -464,7 +642,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 电话 */}
                                 {selectedSubmission.phone.length > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -476,7 +653,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 营业时间 */}
                                 {selectedSubmission.hours && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -488,7 +664,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 描述 */}
                                 {selectedSubmission.description && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -500,7 +675,6 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {/* 图片 */}
                                 {selectedSubmission.images.length > 0 && (
                                     <VStack mb="$lg">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
@@ -519,7 +693,7 @@ const StoreReviewScreen = () => {
                                 )}
 
                                 {/* 操作按钮 */}
-                                <HStack gap="$sm" mt="$md">
+                                <HStack gap="$sm" mt="$md" mb="$md">
                                     <Pressable
                                         flex={1}
                                         py="$md"
@@ -552,7 +726,7 @@ const StoreReviewScreen = () => {
                                         )}
                                     </Pressable>
                                 </HStack>
-                            </>
+                            </ScrollView>
                         )}
                     </Animated.View>
                 </Box>
@@ -565,72 +739,77 @@ const StoreReviewScreen = () => {
                 animationType="none"
                 onRequestClose={closeRejectModal}
             >
-                <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="center" px="$lg">
-                    <Animated.View
-                        style={[
-                            styles.rejectModalContent,
-                            {
-                                opacity: rejectModalAnim,
-                                transform: [
+                <TouchableWithoutFeedback onPress={closeRejectModal}>
+                    <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="center" px="$lg">
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                            <Animated.View
+                                style={[
+                                    styles.rejectModalContent,
                                     {
-                                        scale: rejectModalAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [0.9, 1],
-                                        }),
+                                        opacity: rejectModalAnim,
+                                        transform: [
+                                            {
+                                                scale: rejectModalAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [0.9, 1],
+                                                }),
+                                            },
+                                        ],
                                     },
-                                ],
-                            },
-                        ]}
-                    >
-                        <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
-                            拒绝原因
-                        </Text>
-                        <Text fontSize="$sm" color="$gray300" mb="$md">
-                            请填写拒绝「{selectedSubmission?.name}」的原因，以便用户了解并修正：
-                        </Text>
-                        <TextInput
-                            style={styles.rejectInput}
-                            placeholder="请输入拒绝原因..."
-                            placeholderTextColor={theme.colors.gray200}
-                            value={rejectReason}
-                            onChangeText={setRejectReason}
-                            multiline
-                            maxLength={200}
-                        />
-                        <HStack gap="$sm" mt="$lg">
-                            <Pressable
-                                flex={1}
-                                py="$md"
-                                rounded="$sm"
-                                borderWidth={1}
-                                borderColor="$gray200"
-                                alignItems="center"
-                                onPress={closeRejectModal}
+                                ]}
                             >
-                                <Text fontSize="$md" fontWeight="$semibold" color="$black">
-                                    取消
+                                <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
+                                    拒绝原因
                                 </Text>
-                            </Pressable>
-                            <Pressable
-                                flex={1}
-                                py="$md"
-                                rounded="$sm"
-                                bg="$error"
-                                alignItems="center"
-                                onPress={handleConfirmReject}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? (
-                                    <ActivityIndicator color={theme.colors.white} />
-                                ) : (
-                                    <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                                        确认拒绝
-                                    </Text>
-                                )}
-                            </Pressable>
-                        </HStack>
-                    </Animated.View>
-                </Box>
+                                <Text fontSize="$sm" color="$gray300" mb="$md">
+                                    请填写{rejectModalTitle}的原因，以便用户了解并修正：
+                                </Text>
+                                <TextInput
+                                    style={styles.rejectInput}
+                                    placeholder="请输入拒绝原因..."
+                                    placeholderTextColor={theme.colors.gray200}
+                                    value={rejectReason}
+                                    onChangeText={setRejectReason}
+                                    multiline
+                                    maxLength={200}
+                                    autoFocus
+                                />
+                                <HStack gap="$sm" mt="$lg">
+                                    <Pressable
+                                        flex={1}
+                                        py="$md"
+                                        rounded="$sm"
+                                        borderWidth={1}
+                                        borderColor="$gray200"
+                                        alignItems="center"
+                                        onPress={closeRejectModal}
+                                    >
+                                        <Text fontSize="$md" fontWeight="$semibold" color="$black">
+                                            取消
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        flex={1}
+                                        py="$md"
+                                        rounded="$sm"
+                                        bg={rejectReason.trim() ? "$error" : "$gray200"}
+                                        alignItems="center"
+                                        onPress={handleConfirmReject}
+                                        disabled={isSubmitting || !rejectReason.trim()}
+                                    >
+                                        {isSubmitting ? (
+                                            <ActivityIndicator color={theme.colors.white} />
+                                        ) : (
+                                            <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                                                确认拒绝
+                                            </Text>
+                                        )}
+                                    </Pressable>
+                                </HStack>
+                            </Animated.View>
+                        </TouchableWithoutFeedback>
+                    </Box>
+                </TouchableWithoutFeedback>
             </Modal>
         </SafeAreaView>
     );

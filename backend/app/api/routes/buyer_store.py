@@ -18,6 +18,7 @@ from app.schemas.buyer_store import (
     BuyerStoreCommentCreate,
     BuyerStoreRatingCreate,
     ReviewSubmissionRequest,
+    BatchReviewRequest,
     COMMENT_SUGGESTIONS,
 )
 from app.api.deps import get_current_admin_user, get_current_user
@@ -295,6 +296,21 @@ async def get_pending_submissions(
         "page": page,
         "pageSize": pageSize,
     })
+
+
+@router.put("/submissions/batch-review")
+async def batch_review_submissions(
+    data: BatchReviewRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """批量审核用户提交的买手店（管理员）"""
+    try:
+        results = buyer_store_community_service.batch_review_submissions(
+            data.submissionIds, current_user_id, data
+        )
+        return success(results, message=f"批量审核完成，成功 {results['success']} 条")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.put("/submissions/{submission_id}/review")

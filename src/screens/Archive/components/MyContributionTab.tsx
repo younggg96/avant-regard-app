@@ -149,6 +149,7 @@ const MyContributionTab: React.FC = () => {
           imageUri={b.coverImage}
           placeholderIcon="pricetag-outline"
           status={b.status}
+          rejectReason={b.rejectReason}
           date={b.createdAt}
           onPress={() => handleBrandPress(b)}
         />
@@ -162,6 +163,7 @@ const MyContributionTab: React.FC = () => {
         imageUri={s.images?.[0]}
         placeholderIcon="storefront-outline"
         status={s.status}
+        rejectReason={s.rejectReason}
         date={s.createdAt}
         onPress={() => handleStorePress(s)}
       />

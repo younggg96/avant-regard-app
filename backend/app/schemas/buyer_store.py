@@ -163,6 +163,13 @@ class ReviewSubmissionRequest(BaseModel):
     storeId: Optional[str] = Field(None, description="通过时分配的店铺ID")
 
 
+class BatchReviewRequest(BaseModel):
+    """批量审核请求"""
+    submissionIds: List[int] = Field(..., description="要审核的提交ID列表")
+    status: str = Field(..., description="审核状态: APPROVED 或 REJECTED")
+    rejectReason: Optional[str] = Field(None, description="拒绝原因（拒绝时必填）")
+
+
 # ==================== 买手店评论相关 ====================
 
 
