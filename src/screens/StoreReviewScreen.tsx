@@ -447,10 +447,12 @@ const StoreReviewScreen = () => {
                 onBackPress={() => navigation.goBack()}
                 rightComponent={
                     submissions.length > 0 ? (
-                        <Pressable onPress={toggleBatchMode} px="$sm" py="$xs">
-                            <Text fontSize="$sm" fontWeight="$semibold" color={isBatchMode ? "$error" : "$black"}>
-                                {isBatchMode ? "取消" : "批量"}
-                            </Text>
+                        <Pressable onPress={toggleBatchMode} p="$xs">
+                            <Ionicons
+                                name={isBatchMode ? "close" : "checkbox-outline"}
+                                size={22}
+                                color={isBatchMode ? theme.colors.error : theme.colors.black}
+                            />
                         </Pressable>
                     ) : undefined
                 }

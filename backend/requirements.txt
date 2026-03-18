@@ -3,8 +3,8 @@ fastapi==0.109.2
 uvicorn[standard]==0.27.1
 python-multipart==0.0.9
 
-# Supabase (使用最新稳定版)
-supabase>=2.4.0
+# Supabase (>=2.16.0 required for custom httpx_client support)
+supabase>=2.16.0
 
 # Password Hashing
 passlib[bcrypt]==1.7.4
