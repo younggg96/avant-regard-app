@@ -437,7 +437,20 @@ class AdminService:
             "cover_image": submission.get("cover_image"),
         }
 
-        self._insert_brand(brand_data)
+        new_brand = self._insert_brand(brand_data)
+
+        cover_image = submission.get("cover_image")
+        if cover_image and new_brand:
+            try:
+                self.db.table("brand_images").insert({
+                    "brand_id": new_brand["id"],
+                    "image_url": cover_image,
+                    "status": "APPROVED",
+                    "is_selected": True,
+                    "uploaded_by": submission.get("user_id"),
+                }).execute()
+            except Exception:
+                pass
 
         self.db.table("brand_submissions").update({
             "status": "APPROVED",
@@ -612,7 +625,10 @@ class AdminService:
         return self._format_brand_image(result.data[0])
 
     def get_brand_images(self, brand_id: int, approved_only: bool = False) -> list:
-        """获取品牌图片（管理员视角默认返回所有状态，包括 PENDING）"""
+        """获取品牌图片（管理员视角默认返回所有状态，包括 PENDING）
+        
+        Lazy-migrates brands.cover_image into brand_images if not already present.
+        """
         query = (
             self.db.table("brand_images")
             .select("*")
@@ -623,7 +639,33 @@ class AdminService:
         else:
             query = query.in_("status", ["APPROVED", "PENDING"])
         result = query.order("sort_order").order("created_at").execute()
-        return [self._format_brand_image(r) for r in result.data]
+        images = result.data or []
+
+        brand_result = (
+            self.db.table("brands")
+            .select("cover_image")
+            .eq("id", brand_id)
+            .execute()
+        )
+        cover_image = (brand_result.data[0].get("cover_image") if brand_result.data else None)
+
+        if cover_image:
+            existing_urls = {img["image_url"] for img in images}
+            if cover_image not in existing_urls:
+                try:
+                    insert_result = self.db.table("brand_images").insert({
+                        "brand_id": brand_id,
+                        "image_url": cover_image,
+                        "sort_order": 0,
+                        "status": "APPROVED",
+                        "is_selected": True,
+                    }).execute()
+                    if insert_result.data:
+                        images = insert_result.data + images
+                except Exception:
+                    pass
+
+        return [self._format_brand_image(r) for r in images]
 
     def toggle_brand_image_selected(self, image_id: int, selected: bool) -> dict:
         """切换品牌图片的选中状态"""
