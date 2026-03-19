@@ -611,17 +611,18 @@ class AdminService:
             raise Exception("上传图片失败")
         return self._format_brand_image(result.data[0])
 
-    def get_brand_images(self, brand_id: int) -> list:
-        """获取品牌的所有已审核图片"""
-        result = (
+    def get_brand_images(self, brand_id: int, approved_only: bool = False) -> list:
+        """获取品牌图片（管理员视角默认返回所有状态，包括 PENDING）"""
+        query = (
             self.db.table("brand_images")
             .select("*")
             .eq("brand_id", brand_id)
-            .eq("status", "APPROVED")
-            .order("sort_order")
-            .order("created_at")
-            .execute()
         )
+        if approved_only:
+            query = query.eq("status", "APPROVED")
+        else:
+            query = query.in_("status", ["APPROVED", "PENDING"])
+        result = query.order("sort_order").order("created_at").execute()
         return [self._format_brand_image(r) for r in result.data]
 
     def toggle_brand_image_selected(self, image_id: int, selected: bool) -> dict:

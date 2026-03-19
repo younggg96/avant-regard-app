@@ -124,6 +124,25 @@ const BrandManagementTab = () => {
   };
 
   const handleToggleImageSelected = async (img: AdminBrandImage) => {
+    if (img.status === "PENDING") {
+      Alert.alert("待审核", "该图片尚未审核，是否直接通过审核？", [
+        { text: "取消", style: "cancel" },
+        {
+          text: "通过审核",
+          onPress: async () => {
+            try {
+              await adminService.approveBrandImage(img.id);
+              setBrandImages((prev) =>
+                prev.map((i) => (i.id === img.id ? { ...i, status: "APPROVED", isSelected: true } : i))
+              );
+            } catch (error) {
+              Alert.alert("错误", error instanceof Error ? error.message : "审核失败");
+            }
+          },
+        },
+      ]);
+      return;
+    }
     const newSelected = !img.isSelected;
     try {
       await adminService.toggleBrandImageSelected(img.id, newSelected);
@@ -173,7 +192,8 @@ const BrandManagementTab = () => {
   };
 
   const totalPages = Math.ceil(total / 50);
-  const selectedCount = brandImages.filter((i) => i.isSelected).length;
+  const selectedCount = brandImages.filter((i) => i.status === "APPROVED" && i.isSelected).length;
+  const pendingCount = brandImages.filter((i) => i.status === "PENDING").length;
 
   return (
     <View style={{ flex: 1 }}>
@@ -282,36 +302,49 @@ const BrandManagementTab = () => {
 
               {/* Brand Images - selectable grid */}
               <Text style={sharedStyles.formLabel}>
-                品牌展示图片（已选 {selectedCount} 张）
+                品牌展示图片（已选 {selectedCount} 张{pendingCount > 0 ? `，待审核 ${pendingCount} 张` : ""}）
               </Text>
-              <Text style={styles.imageHint}>点击图片勾选/取消，勾选的图片将展示在品牌详情页轮播中</Text>
+              <Text style={styles.imageHint}>点击图片勾选/取消，勾选的图片将展示在品牌详情页轮播中；黄色边框为待审核图片</Text>
               {brandImagesLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.black} style={{ marginVertical: 12 }} />
               ) : brandImages.length === 0 ? (
                 <View style={styles.noImagesHint}>
                   <Ionicons name="images-outline" size={24} color={theme.colors.gray200} />
-                  <Text style={styles.noImagesText}>暂无已审核图片，请先在「图片审核」中通过图片</Text>
+                  <Text style={styles.noImagesText}>暂无图片，可点击下方「+」直接上传</Text>
                 </View>
               ) : (
                 <View style={styles.brandImagesGrid}>
-                  {brandImages.map((img) => (
-                    <TouchableOpacity
-                      key={img.id}
-                      style={[styles.brandImageItem, img.isSelected && styles.brandImageItemSelected]}
-                      onPress={() => handleToggleImageSelected(img)}
-                      onLongPress={() => handleDeleteBrandImage(img.id)}
-                      activeOpacity={0.7}
-                    >
-                      <Image source={{ uri: img.imageUrl }} style={styles.brandImageThumb} resizeMode="cover" />
-                      <View style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
-                        <Ionicons
-                          name={img.isSelected ? "checkmark-circle" : "ellipse-outline"}
-                          size={22}
-                          color={img.isSelected ? "#3B82F6" : "rgba(255,255,255,0.7)"}
-                        />
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                  {brandImages.map((img) => {
+                    const isPending = img.status === "PENDING";
+                    return (
+                      <TouchableOpacity
+                        key={img.id}
+                        style={[
+                          styles.brandImageItem,
+                          isPending && styles.brandImageItemPending,
+                          !isPending && img.isSelected && styles.brandImageItemSelected,
+                        ]}
+                        onPress={() => handleToggleImageSelected(img)}
+                        onLongPress={() => handleDeleteBrandImage(img.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Image source={{ uri: img.imageUrl }} style={styles.brandImageThumb} resizeMode="cover" />
+                        {isPending ? (
+                          <View style={styles.pendingBadge}>
+                            <Text style={styles.pendingBadgeText}>待审核</Text>
+                          </View>
+                        ) : (
+                          <View style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
+                            <Ionicons
+                              name={img.isSelected ? "checkmark-circle" : "ellipse-outline"}
+                              size={22}
+                              color={img.isSelected ? "#3B82F6" : "rgba(255,255,255,0.7)"}
+                            />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
                   <TouchableOpacity
                     style={styles.brandImageAddBtn}
                     onPress={handleAdminUploadBrandImage}
@@ -502,6 +535,23 @@ const styles = StyleSheet.create({
   },
   brandImageItemSelected: {
     borderColor: "#3B82F6",
+  },
+  brandImageItemPending: {
+    borderColor: "#F59E0B",
+  },
+  pendingBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(245,158,11,0.85)",
+    paddingVertical: 2,
+    alignItems: "center",
+  },
+  pendingBadgeText: {
+    fontSize: 9,
+    color: "#fff",
+    fontWeight: "600" as const,
   },
   brandImageThumb: {
     width: "100%",

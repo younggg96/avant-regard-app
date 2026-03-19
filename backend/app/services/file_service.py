@@ -1,24 +1,40 @@
 """
 文件上传服务
+
+NOTE: Storage operations use a dedicated Supabase client (without the
+custom httpx transport shared by the REST/PostgREST client).  The shared
+httpx client has its ``base_url`` mutated to ``/rest/v1`` by PostgREST,
+which causes Storage requests to hit the wrong endpoint (404).
 """
 
 import uuid
 from typing import Optional
 from datetime import datetime
-from app.db.supabase import get_supabase_admin
+
+
+def _get_storage_client():
+    """Return a Supabase admin client dedicated to Storage.
+
+    A plain ``create_client`` call (no custom httpx_client) avoids the
+    base_url conflict between PostgREST and the Storage sub-client.
+    """
+    from supabase import create_client
+    from app.core.config import settings
+
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
 
 
 class FileService:
     def __init__(self):
-        # 使用 service role 客户端绕过 RLS
-        self.db = get_supabase_admin()
+        self.db = _get_storage_client()
         self.bucket_name = "images"
         self._bucket_checked = False
+        self._bucket_ok = False
 
     def _ensure_bucket_exists(self):
         """确保存储桶存在且为公开状态"""
         if self._bucket_checked:
-            return
+            return self._bucket_ok
 
         try:
             buckets = self.db.storage.list_buckets()
@@ -44,16 +60,23 @@ class FileService:
                     print(f"[FileService] Bucket '{self.bucket_name}' updated to public")
 
             self._bucket_checked = True
+            self._bucket_ok = True
         except Exception as e:
             print(f"[FileService] Error checking/creating bucket: {e}")
+            import traceback
+            print(f"[FileService] Bucket check traceback: {traceback.format_exc()}")
             self._bucket_checked = True
+            self._bucket_ok = False
+
+        return self._bucket_ok
 
     def upload_image(
         self, file_content: bytes, filename: str, content_type: str
     ) -> Optional[str]:
         """上传图片到 Supabase Storage"""
-        # 确保 bucket 存在
-        self._ensure_bucket_exists()
+        if not self._ensure_bucket_exists():
+            print("[FileService] Bucket check failed, cannot upload")
+            return None
 
         # 生成唯一文件名
         ext = filename.split(".")[-1] if "." in filename else "jpg"
