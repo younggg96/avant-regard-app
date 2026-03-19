@@ -1,8 +1,8 @@
 """
 Supabase 客户端配置
 
-Uses custom httpx transport with retries and tuned keepalive to prevent
-HTTP/2 GOAWAY (ConnectionTerminated) errors on long-lived connections.
+Uses HTTP/1.1 with retries to avoid HTTP/2 GOAWAY (ConnectionTerminated)
+errors that occur when the remote server closes long-lived HTTP/2 connections.
 See: https://github.com/supabase/supabase-py/issues/1064
 """
 
@@ -18,10 +18,10 @@ def _create_client(url: str, key: str) -> Client:
 
         transport = HTTPTransport(
             retries=3,
-            http2=True,
+            http2=False,
             limits=Limits(
                 max_connections=100,
-                max_keepalive_connections=1,
+                max_keepalive_connections=20,
                 keepalive_expiry=30,
             ),
         )
