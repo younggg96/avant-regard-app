@@ -255,6 +255,25 @@ class BrandService:
         )
         return [self._format_submission(s) for s in result.data or []]
 
+    def delete_user_submission(self, submission_id: int, user_id: int) -> bool:
+        """删除用户自己的品牌提交（仅限 PENDING/REJECTED 状态）"""
+        result = (
+            self.db.table("brand_submissions")
+            .select("id, user_id, status")
+            .eq("id", submission_id)
+            .single()
+            .execute()
+        )
+        row = result.data
+        if not row or row["user_id"] != user_id:
+            return False
+        if row["status"] not in ("PENDING", "REJECTED"):
+            return False
+        self.db.table("brand_submissions").delete().eq(
+            "id", submission_id
+        ).execute()
+        return True
+
     def get_approved_user_submissions(self, user_id: int) -> List[BrandSubmission]:
         """获取用户已通过审核的品牌提交记录（公开可见）"""
         result = (

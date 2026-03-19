@@ -95,6 +95,23 @@ class ShowService:
         )
         return [self._format_show(s) for s in result.data]
 
+    def delete_user_show(self, show_id: int, user_id: int) -> bool:
+        """删除用户自己的秀场提交（仅限 PENDING/REJECTED 状态）"""
+        result = (
+            self.db.table("shows")
+            .select("id, created_by, status")
+            .eq("id", show_id)
+            .single()
+            .execute()
+        )
+        row = result.data
+        if not row or row["created_by"] != user_id:
+            return False
+        if row["status"] not in ("PENDING", "REJECTED"):
+            return False
+        self.db.table("shows").delete().eq("id", show_id).execute()
+        return True
+
     def get_approved_shows_by_user(self, user_id: int) -> List[Show]:
         """获取用户已通过审核的秀场（公开可见）"""
         result = (

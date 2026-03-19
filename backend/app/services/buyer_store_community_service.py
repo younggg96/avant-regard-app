@@ -150,6 +150,25 @@ class BuyerStoreCommunityService:
         stores = [self._format_submitted_store(s) for s in result.data]
         return stores, total
 
+    def delete_user_submission(self, submission_id: int, user_id: int) -> bool:
+        """删除用户自己的提交（仅限 PENDING/REJECTED 状态）"""
+        result = (
+            self.supabase.table("user_submitted_stores")
+            .select("id, user_id, status")
+            .eq("id", submission_id)
+            .single()
+            .execute()
+        )
+        row = result.data
+        if not row or row["user_id"] != user_id:
+            return False
+        if row["status"] not in ("PENDING", "REJECTED"):
+            return False
+        self.supabase.table("user_submitted_stores").delete().eq(
+            "id", submission_id
+        ).execute()
+        return True
+
     def _generate_store_id(self, city: str, submission_id: int) -> str:
         """为用户提交的买手店生成唯一ID，格式: u-{city}-{submission_id}"""
         import re

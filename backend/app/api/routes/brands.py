@@ -99,6 +99,18 @@ async def get_my_submissions(
     return success([s.model_dump() for s in submissions])
 
 
+@router.delete("/my-submissions/{submission_id}")
+async def delete_my_brand_submission(
+    submission_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """删除自己的品牌提交（仅限 PENDING/REJECTED 状态）"""
+    ok = brand_service.delete_user_submission(submission_id, current_user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="提交记录不存在或无权删除")
+    return success(message="已删除")
+
+
 @router.get("/user/{target_user_id}/submissions")
 async def get_user_submissions_public(target_user_id: int):
     """获取指定用户已通过审核的品牌提交（公开接口）"""

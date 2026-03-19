@@ -2,7 +2,7 @@
 秀场相关 API 路由
 """
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, HTTPException
 from typing import Optional
 
 from app.core.response import success
@@ -243,6 +243,18 @@ async def get_my_shows(
         "shows": [s.model_dump() for s in shows],
         "total": len(shows),
     })
+
+
+@router.delete("/my-shows/{show_id}")
+async def delete_my_show(
+    show_id: int,
+    user_id: int = Depends(get_current_user_id),
+):
+    """删除自己的秀场提交（仅限 PENDING/REJECTED 状态）"""
+    ok = show_service.delete_user_show(show_id, user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="秀场记录不存在或无权删除")
+    return success(message="已删除")
 
 
 @router.get("/user/{target_user_id}")

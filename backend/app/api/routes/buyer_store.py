@@ -264,6 +264,20 @@ async def get_my_submissions(
     })
 
 
+@router.delete("/submissions/{submission_id}")
+async def delete_my_submission(
+    submission_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """删除自己的买手店提交（仅限 REJECTED/PENDING 状态）"""
+    ok = buyer_store_community_service.delete_user_submission(
+        submission_id, current_user_id
+    )
+    if not ok:
+        raise HTTPException(status_code=404, detail="提交记录不存在或无权删除")
+    return success(message="已删除")
+
+
 @router.get("/submissions/user/{target_user_id}")
 async def get_user_submissions_public(
     target_user_id: int,
