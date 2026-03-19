@@ -31,6 +31,8 @@ class BuyerStoreService:
 
     def _format_store(self, store: dict) -> BuyerStore:
         """格式化买手店数据"""
+        lat = store.get("latitude")
+        lng = store.get("longitude")
         return BuyerStore(
             id=store["id"],
             name=store["name"],
@@ -38,8 +40,8 @@ class BuyerStoreService:
             city=store["city"],
             country=store["country"],
             coordinates={
-                "latitude": float(store["latitude"]),
-                "longitude": float(store["longitude"]),
+                "latitude": float(lat) if lat is not None else 0.0,
+                "longitude": float(lng) if lng is not None else 0.0,
             },
             brands=store.get("brands") or [],
             style=store.get("style") or [],
