@@ -434,7 +434,6 @@ class AdminService:
             "founder": submission.get("founder"),
             "country": submission.get("country"),
             "website": submission.get("website"),
-            "cover_image": submission.get("cover_image"),
         }
 
         new_brand = self._insert_brand(brand_data)
@@ -476,8 +475,32 @@ class AdminService:
 
     # ==================== 品牌管理 ====================
 
-    def _format_admin_brand(self, data: dict) -> dict:
-        """格式化品牌数据（管理员视角）"""
+    def _get_first_brand_images(self, brand_ids: list) -> dict:
+        """批量获取每个品牌的第一张已选中展示图片 URL"""
+        if not brand_ids:
+            return {}
+        try:
+            result = (
+                self.db.table("brand_images")
+                .select("brand_id, image_url")
+                .in_("brand_id", brand_ids)
+                .eq("status", "APPROVED")
+                .eq("is_selected", True)
+                .order("sort_order")
+                .order("created_at")
+                .execute()
+            )
+            mapping = {}
+            for r in result.data or []:
+                bid = r["brand_id"]
+                if bid not in mapping and r.get("image_url"):
+                    mapping[bid] = r["image_url"]
+            return mapping
+        except Exception:
+            return {}
+
+    def _format_admin_brand(self, data: dict, cover_image_url: str = None) -> dict:
+        """格式化品牌数据（管理员视角），coverImage 由 brand_images 派生"""
         return {
             "id": data["id"],
             "name": data["name"],
@@ -486,7 +509,7 @@ class AdminService:
             "founder": data.get("founder"),
             "country": data.get("country"),
             "website": data.get("website"),
-            "coverImage": data.get("cover_image"),
+            "coverImage": cover_image_url,
             "createdAt": data.get("created_at"),
             "updatedAt": data.get("updated_at"),
         }
@@ -509,7 +532,13 @@ class AdminService:
 
         result = query.execute()
         total = result.count or 0
-        brands = [self._format_admin_brand(b) for b in result.data or []]
+
+        brand_ids = [b["id"] for b in result.data or []]
+        image_map = self._get_first_brand_images(brand_ids)
+        brands = [
+            self._format_admin_brand(b, cover_image_url=image_map.get(b["id"]))
+            for b in result.data or []
+        ]
 
         return {
             "brands": brands,
@@ -528,7 +557,6 @@ class AdminService:
             "founder": "founder",
             "country": "country",
             "website": "website",
-            "cover_image": "cover_image",
         }
         for key, db_field in field_mapping.items():
             if key in kwargs and kwargs[key] is not None:
@@ -538,13 +566,15 @@ class AdminService:
             result = self.db.table("brands").select("*").eq("id", brand_id).execute()
             if not result.data:
                 return None
-            return self._format_admin_brand(result.data[0])
+            image_map = self._get_first_brand_images([brand_id])
+            return self._format_admin_brand(result.data[0], cover_image_url=image_map.get(brand_id))
 
         self.db.table("brands").update(update_data).eq("id", brand_id).execute()
         result = self.db.table("brands").select("*").eq("id", brand_id).execute()
         if not result.data:
             return None
-        return self._format_admin_brand(result.data[0])
+        image_map = self._get_first_brand_images([brand_id])
+        return self._format_admin_brand(result.data[0], cover_image_url=image_map.get(brand_id))
 
     def delete_brand(self, brand_id: int) -> bool:
         """删除品牌"""
@@ -625,10 +655,7 @@ class AdminService:
         return self._format_brand_image(result.data[0])
 
     def get_brand_images(self, brand_id: int, approved_only: bool = False) -> list:
-        """获取品牌图片（管理员视角默认返回所有状态，包括 PENDING）
-        
-        Lazy-migrates brands.cover_image into brand_images if not already present.
-        """
+        """获取品牌图片（管理员视角默认返回所有状态，包括 PENDING）"""
         query = (
             self.db.table("brand_images")
             .select("*")
@@ -639,33 +666,7 @@ class AdminService:
         else:
             query = query.in_("status", ["APPROVED", "PENDING"])
         result = query.order("sort_order").order("created_at").execute()
-        images = result.data or []
-
-        brand_result = (
-            self.db.table("brands")
-            .select("cover_image")
-            .eq("id", brand_id)
-            .execute()
-        )
-        cover_image = (brand_result.data[0].get("cover_image") if brand_result.data else None)
-
-        if cover_image:
-            existing_urls = {img["image_url"] for img in images}
-            if cover_image not in existing_urls:
-                try:
-                    insert_result = self.db.table("brand_images").insert({
-                        "brand_id": brand_id,
-                        "image_url": cover_image,
-                        "sort_order": 0,
-                        "status": "APPROVED",
-                        "is_selected": True,
-                    }).execute()
-                    if insert_result.data:
-                        images = insert_result.data + images
-                except Exception:
-                    pass
-
-        return [self._format_brand_image(r) for r in images]
+        return [self._format_brand_image(r) for r in result.data]
 
     def toggle_brand_image_selected(self, image_id: int, selected: bool) -> dict:
         """切换品牌图片的选中状态"""

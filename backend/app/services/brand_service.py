@@ -73,11 +73,45 @@ class BrandService:
             pass
         return None
 
-    def _format_brand(self, brand: dict, include_images: bool = False, include_contributor: bool = False) -> Brand:
+    def _get_first_brand_images(self, brand_ids: List[int]) -> dict:
+        """批量获取每个品牌的第一张已选中展示图片 URL，返回 {brand_id: image_url}"""
+        if not brand_ids:
+            return {}
+        try:
+            result = (
+                self.db.table("brand_images")
+                .select("brand_id, image_url")
+                .in_("brand_id", brand_ids)
+                .eq("status", "APPROVED")
+                .eq("is_selected", True)
+                .order("sort_order")
+                .order("created_at")
+                .execute()
+            )
+            mapping: dict = {}
+            for r in result.data or []:
+                bid = r["brand_id"]
+                if bid not in mapping and r.get("image_url"):
+                    mapping[bid] = r["image_url"]
+            return mapping
+        except Exception:
+            return {}
+
+    def _format_brand(
+        self,
+        brand: dict,
+        include_images: bool = False,
+        include_contributor: bool = False,
+        cover_image_url: Optional[str] = None,
+    ) -> Brand:
         """格式化品牌数据"""
         cover_images = None
         if include_images:
             cover_images = self._get_brand_cover_images(brand["id"])
+
+        first_image = cover_image_url
+        if first_image is None and cover_images:
+            first_image = cover_images[0]
 
         contributor_name = None
         if include_contributor:
@@ -91,7 +125,7 @@ class BrandService:
             founder=brand.get("founder"),
             country=brand.get("country"),
             website=brand.get("website"),
-            coverImage=brand.get("cover_image"),
+            coverImage=first_image,
             coverImages=cover_images,
             latestSeason=brand.get("latest_season"),
             vogueSlug=brand.get("vogue_slug"),
@@ -132,7 +166,13 @@ class BrandService:
 
         result = query.execute()
         total = result.count or 0
-        brands = [self._format_brand(b) for b in result.data]
+
+        brand_ids = [b["id"] for b in result.data]
+        image_map = self._get_first_brand_images(brand_ids)
+        brands = [
+            self._format_brand(b, cover_image_url=image_map.get(b["id"]))
+            for b in result.data
+        ]
 
         return brands, total
 
@@ -173,7 +213,12 @@ class BrandService:
                 .limit(limit)
                 .execute()
             )
-            return [self._format_brand(b) for b in result.data]
+            brand_ids = [b["id"] for b in result.data]
+            image_map = self._get_first_brand_images(brand_ids)
+            return [
+                self._format_brand(b, cover_image_url=image_map.get(b["id"]))
+                for b in result.data
+            ]
         except Exception as e:
             print(f"Search brands error: {e}")
             return []

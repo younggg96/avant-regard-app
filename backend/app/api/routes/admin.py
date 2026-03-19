@@ -52,7 +52,6 @@ class UpdateBrandRequest(BaseModel):
     founder: Optional[str] = None
     country: Optional[str] = None
     website: Optional[str] = None
-    coverImage: Optional[str] = None
 
 
 class BroadcastNotificationRequest(BaseModel):
@@ -382,7 +381,6 @@ async def update_brand(
         founder=request.founder,
         country=request.country,
         website=request.website,
-        cover_image=request.coverImage,
     )
     if not result:
         raise HTTPException(status_code=404, detail="品牌不存在")
