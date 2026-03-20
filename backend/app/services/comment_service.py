@@ -21,7 +21,7 @@ class CommentService:
         
         return {"username": username, "avatar_url": avatar_url}
 
-    def _format_reply(self, reply_data: dict, user_info_cache: Dict[int, Dict]) -> CommentReply:
+    def _format_reply(self, reply_data: dict, user_info_cache: Dict[int, Dict], liked_comment_ids: set = None) -> CommentReply:
         """格式化回复数据"""
         user_id = reply_data["user_id"]
         
@@ -50,11 +50,12 @@ class CommentService:
             replyToUsername=reply_to_username,
             content=reply_data["content"],
             likeCount=reply_data.get("like_count", 0),
+            isLiked=reply_data["id"] in liked_comment_ids if liked_comment_ids else False,
             createdAt=reply_data["created_at"],
             updatedAt=reply_data["updated_at"]
         )
 
-    def _format_comment(self, comment_data: dict, replies: List[dict] = None, user_info_cache: Dict[int, Dict] = None) -> PostComment:
+    def _format_comment(self, comment_data: dict, replies: List[dict] = None, user_info_cache: Dict[int, Dict] = None, liked_comment_ids: set = None) -> PostComment:
         """格式化评论数据"""
         if user_info_cache is None:
             user_info_cache = {}
@@ -70,7 +71,7 @@ class CommentService:
         # 格式化回复
         formatted_replies = []
         if replies:
-            formatted_replies = [self._format_reply(r, user_info_cache) for r in replies]
+            formatted_replies = [self._format_reply(r, user_info_cache, liked_comment_ids) for r in replies]
         
         return PostComment(
             id=comment_data["id"],
@@ -80,31 +81,47 @@ class CommentService:
             userAvatar=user_info["avatar_url"],
             content=comment_data["content"],
             likeCount=comment_data.get("like_count", 0),
+            isLiked=comment_data["id"] in liked_comment_ids if liked_comment_ids else False,
             replyCount=comment_data.get("reply_count", 0),
             replies=formatted_replies,
             createdAt=comment_data["created_at"],
             updatedAt=comment_data["updated_at"]
         )
 
-    def get_post_comments(self, post_id: int, include_replies: bool = True) -> List[PostComment]:
+    def _get_user_liked_comment_ids(self, user_id: int, comment_ids: List[int]) -> set:
+        """批量查询用户对指定评论的点赞状态"""
+        if not comment_ids:
+            return set()
+        result = self.db.table("comment_likes").select("comment_id").eq("user_id", user_id).in_("comment_id", comment_ids).execute()
+        return {item["comment_id"] for item in (result.data or [])}
+
+    def get_post_comments(self, post_id: int, include_replies: bool = True, current_user_id: int = None) -> List[PostComment]:
         """获取帖子评论（包含回复）"""
-        # 获取顶级评论（parent_id 为空）
         result = self.db.table("post_comments").select("*").eq("post_id", post_id).is_("parent_id", "null").order("created_at", desc=True).execute()
         
         if not result.data:
             return []
         
-        user_info_cache = {}
-        comments = []
-        
-        for comment_data in result.data:
-            replies = []
-            if include_replies:
-                # 获取该评论的回复
+        # 收集所有评论和回复的 ID，批量查询点赞状态
+        all_comment_ids = [c["id"] for c in result.data]
+        all_replies_map: Dict[int, List[dict]] = {}
+
+        if include_replies:
+            for comment_data in result.data:
                 replies_result = self.db.table("post_comments").select("*").eq("parent_id", comment_data["id"]).order("created_at", desc=False).execute()
                 replies = replies_result.data or []
-            
-            comments.append(self._format_comment(comment_data, replies, user_info_cache))
+                all_replies_map[comment_data["id"]] = replies
+                all_comment_ids.extend([r["id"] for r in replies])
+
+        liked_comment_ids = set()
+        if current_user_id:
+            liked_comment_ids = self._get_user_liked_comment_ids(current_user_id, all_comment_ids)
+
+        user_info_cache = {}
+        comments = []
+        for comment_data in result.data:
+            replies = all_replies_map.get(comment_data["id"], []) if include_replies else []
+            comments.append(self._format_comment(comment_data, replies, user_info_cache, liked_comment_ids))
         
         return comments
 

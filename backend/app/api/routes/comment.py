@@ -13,9 +13,9 @@ router = APIRouter(tags=["评论"])
 # ==================== 帖子评论 ====================
 
 @router.get("/posts/{post_id}/comments")
-async def get_post_comments(post_id: int, include_replies: bool = True):
-    """获取帖子评论（包含回复）"""
-    result = comment_service.get_post_comments(post_id, include_replies)
+async def get_post_comments(post_id: int, include_replies: bool = True, userId: int = None):
+    """获取帖子评论（包含回复），传入 userId 时返回当前用户的点赞状态"""
+    result = comment_service.get_post_comments(post_id, include_replies, current_user_id=userId)
     return success([c.model_dump() for c in result])
 
 

@@ -17,6 +17,7 @@ class CommentReply(BaseModel):
     replyToUsername: Optional[str] = None
     content: str
     likeCount: int = 0
+    isLiked: bool = False
     createdAt: str
     updatedAt: str
 
@@ -30,6 +31,7 @@ class PostComment(BaseModel):
     userAvatar: Optional[str] = None
     content: str
     likeCount: int = 0
+    isLiked: bool = False
     replyCount: int = 0
     replies: List[CommentReply] = []
     createdAt: str
