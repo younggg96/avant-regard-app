@@ -268,6 +268,16 @@ export const getMyShows = async (): Promise<Show[]> => {
 };
 
 /**
+ * 删除自己的秀场提交（仅限 PENDING/REJECTED）
+ * DELETE /api/shows/my-shows/{showId}
+ */
+export const deleteMyShow = async (showId: number | string): Promise<void> => {
+  await request<null>(`/api/shows/my-shows/${showId}`, {
+    method: "DELETE",
+  });
+};
+
+/**
  * 获取待审核秀场列表（管理员）
  * GET /api/shows/admin/pending
  */
@@ -377,6 +387,7 @@ export const showService = {
   getShowCategories,
   createShow,
   getMyShows,
+  deleteMyShow,
   getShowsByUser,
   getPendingShows,
   approveShow,

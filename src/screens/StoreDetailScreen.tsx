@@ -18,7 +18,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  Image,
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,6 +32,8 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { useAuthStore } from "../store/authStore";
 import {
   BuyerStoreDetail,
@@ -314,6 +315,9 @@ const StoreDetailScreen = () => {
 
   // 选择营业执照图片
   const pickBusinessLicense = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") { Alert.alert("权限不足", "需要相册权限才能选择图片"); return; }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -575,9 +579,12 @@ const StoreDetailScreen = () => {
           mr="$sm"
         >
           {item.userAvatar ? (
-            <Image
-              source={{ uri: item.userAvatar }}
+            <OptimizedImage
+              uri={item.userAvatar}
+              size={ImageSize.THUMBNAIL}
               style={{ width: 40, height: 40, borderRadius: 20 }}
+              contentFit="cover"
+              lazy={true}
             />
           ) : (
             <Ionicons name="person" size={20} color={theme.colors.gray300} />
@@ -912,6 +919,31 @@ const StoreDetailScreen = () => {
                   </HStack>
                 </VStack>
               )}
+              {/* 店铺图片 */}
+              {(store.images?.length ?? 0) > 0 && (
+                <VStack mb="$md">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
+                    店铺图片
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    {store.images!.map((uri, idx) => (
+                      <Box key={idx} mr="$sm" rounded="$md" overflow="hidden">
+                        <OptimizedImage
+                          uri={uri}
+                          size={ImageSize.MEDIUM}
+                          style={styles.storeImage}
+                          contentFit="cover"
+                          lazy={true}
+                        />
+                      </Box>
+                    ))}
+                  </ScrollView>
+                </VStack>
+              )}
+
               {/* 商家入驻入口 - 如果还没有认证商家 */}
               <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" style={styles.textBold}>
                 商家信息
@@ -974,10 +1006,12 @@ const StoreDetailScreen = () => {
                           onPress={() => handleBannerClick(banner)}
                           style={styles.bannerItem}
                         >
-                          <Image
-                            source={{ uri: banner.imageUrl }}
+                          <OptimizedImage
+                            uri={banner.imageUrl}
+                            size={ImageSize.LARGE}
                             style={styles.bannerImage}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            lazy={true}
                           />
                           {banner.title && (
                             <Box
@@ -1078,10 +1112,12 @@ const StoreDetailScreen = () => {
                           }}
                         >
                           {activity.coverImage && (
-                            <Image
-                              source={{ uri: activity.coverImage }}
+                            <OptimizedImage
+                              uri={activity.coverImage}
+                              size={ImageSize.MEDIUM}
                               style={styles.activityImage}
-                              resizeMode="cover"
+                              contentFit="cover"
+                              lazy={true}
                             />
                           )}
                           <VStack p="$sm">
@@ -1603,10 +1639,12 @@ const StoreDetailScreen = () => {
                     onPress={pickBusinessLicense}
                   >
                     {applyFormData.businessLicense ? (
-                      <Image
-                        source={{ uri: applyFormData.businessLicense }}
+                      <OptimizedImage
+                        uri={applyFormData.businessLicense}
+                        size={ImageSize.MEDIUM}
                         style={styles.licenseImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        lazy={true}
                       />
                     ) : (
                       <VStack alignItems="center">
@@ -1697,6 +1735,11 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
     minHeight: 80,
     fontFamily: FONT_REGULAR,
+  },
+  storeImage: {
+    width: 160,
+    height: 160,
+    borderRadius: theme.borderRadius.md,
   },
   // 商家内容样式
   bannerItem: {

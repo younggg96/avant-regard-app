@@ -21,6 +21,7 @@ import BrandManagementTab from "./BrandManagementTab";
 import ShowReviewTab from "./ShowReviewTab";
 import ShowManagementTab from "./ShowManagementTab";
 import BrandImageReviewTab from "./BrandImageReviewTab";
+import StoreManagementTab from "./StoreManagementTab";
 
 type TabType =
   | "pending"
@@ -28,6 +29,7 @@ type TabType =
   | "users"
   | "stores"
   | "merchants"
+  | "storeManagement"
   | "banners"
   | "communities"
   | "broadcast"
@@ -49,6 +51,7 @@ const TABS: TabConfig[] = [
   { key: "users", label: "用户管理" },
   { key: "stores", label: "店铺审核", navigateTo: "StoreReview" },
   { key: "merchants", label: "商家入驻", navigateTo: "MerchantReview" },
+  { key: "storeManagement", label: "买手店管理" },
   { key: "banners", label: "Banner" },
   { key: "communities", label: "社区管理" },
   { key: "broadcast", label: "广播通知" },
@@ -95,6 +98,8 @@ const AdminScreen = () => {
         return <ShowManagementTab />;
       case "brandImageReview":
         return <BrandImageReviewTab />;
+      case "storeManagement":
+        return <StoreManagementTab />;
       default:
         return <UsersTab />;
     }

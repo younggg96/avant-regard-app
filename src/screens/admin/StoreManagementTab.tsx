@@ -1,0 +1,1298 @@
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  StyleSheet,
+  RefreshControl,
+  Alert,
+  Modal,
+  ActivityIndicator,
+  Switch,
+  ScrollView as RNScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { theme } from "../../theme";
+import {
+  BuyerStore,
+  BuyerStoreCreateParams,
+  BuyerStoreUpdateParams,
+  getStoresPaginated,
+  createStore,
+  updateStore,
+  deleteStore,
+  getAllCountries,
+  getAllCities,
+} from "../../services/buyerStoreService";
+import { sharedStyles } from "./adminStyles";
+import { pickAndUploadImage } from "./adminUtils";
+import {
+  Box,
+  HStack,
+  VStack,
+  Text,
+  Input,
+  Button,
+  ButtonText,
+  Pressable,
+  ScrollView,
+  OptimizedImage,
+} from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
+
+const PAGE_SIZE = 20;
+
+const EMPTY_CREATE_FORM: BuyerStoreCreateParams = {
+  id: "",
+  name: "",
+  address: "",
+  city: "",
+  country: "",
+  coordinates: { latitude: 0, longitude: 0 },
+  brands: [],
+  style: [],
+  isOpen: true,
+  phone: [],
+  hours: "",
+  description: "",
+  images: [],
+  rest: "",
+};
+
+const StoreManagementTab = () => {
+  const [stores, setStores] = useState<BuyerStore[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [filterCountry, setFilterCountry] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [countries, setCountries] = useState<string[]>([]);
+  const [cities, setCities] = useState<string[]>([]);
+  const [showFilter, setShowFilter] = useState(false);
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingStore, setEditingStore] = useState<BuyerStore | null>(null);
+  const [editForm, setEditForm] = useState<BuyerStoreUpdateParams>({});
+
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [createForm, setCreateForm] = useState<BuyerStoreCreateParams>({
+    ...EMPTY_CREATE_FORM,
+  });
+  const [imageUploading, setImageUploading] = useState(false);
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    loadCountries();
+  }, []);
+
+  useEffect(() => {
+    if (filterCountry) {
+      loadCities(filterCountry);
+    } else {
+      setCities([]);
+      setFilterCity("");
+    }
+  }, [filterCountry]);
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchStores(1);
+    }, 400);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [keyword, filterCountry, filterCity]);
+
+  const loadCountries = async () => {
+    try {
+      const result = await getAllCountries();
+      setCountries(result);
+    } catch {
+      setCountries([]);
+    }
+  };
+
+  const loadCities = async (country: string) => {
+    try {
+      const result = await getAllCities(country);
+      setCities(result);
+    } catch {
+      setCities([]);
+    }
+  };
+
+  const fetchStores = useCallback(
+    async (p: number = 1) => {
+      try {
+        setLoading(true);
+        const result = await getStoresPaginated({
+          searchQuery: keyword || undefined,
+          country: filterCountry || undefined,
+          city: filterCity || undefined,
+          page: p,
+          pageSize: PAGE_SIZE,
+        });
+        setStores(result.stores);
+        setTotal(result.total);
+        setPage(result.page);
+      } catch (error) {
+        console.error("获取店铺列表失败:", error);
+        Alert.alert(
+          "错误",
+          error instanceof Error ? error.message : "获取店铺列表失败"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keyword, filterCountry, filterCity]
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchStores(1);
+    setRefreshing(false);
+  }, [fetchStores]);
+
+  const handleSearch = () => {
+    fetchStores(1);
+  };
+
+  // ==================== Create ====================
+
+  const handleOpenCreate = () => {
+    setCreateForm({ ...EMPTY_CREATE_FORM });
+    setCreateModalVisible(true);
+  };
+
+  const handleCreate = async () => {
+    if (!createForm.id.trim() || !createForm.name.trim()) {
+      Alert.alert("提示", "店铺 ID 和名称为必填项");
+      return;
+    }
+    if (
+      !createForm.address.trim() ||
+      !createForm.city.trim() ||
+      !createForm.country.trim()
+    ) {
+      Alert.alert("提示", "地址、城市、国家为必填项");
+      return;
+    }
+    try {
+      setActionLoading(true);
+      const payload: BuyerStoreCreateParams = {
+        ...createForm,
+        brands: parseCommaSeparated(createForm.brands as unknown as string),
+        style: parseCommaSeparated(createForm.style as unknown as string),
+        phone: parseCommaSeparated(createForm.phone as unknown as string),
+        images: Array.isArray(createForm.images) ? createForm.images : [],
+      };
+      await createStore(payload);
+      Alert.alert("成功", "买手店创建成功");
+      setCreateModalVisible(false);
+      fetchStores(1);
+    } catch (error) {
+      Alert.alert(
+        "错误",
+        error instanceof Error ? error.message : "创建失败"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ==================== Edit ====================
+
+  const handleOpenEdit = (store: BuyerStore) => {
+    setEditingStore(store);
+    setEditForm({
+      name: store.name,
+      address: store.address,
+      city: store.city,
+      country: store.country,
+      coordinates: store.coordinates,
+      brands: store.brands || [],
+      style: store.style || [],
+      isOpen: store.isOpen,
+      phone: store.phone || [],
+      hours: store.hours || "",
+      description: store.description || "",
+      images: store.images || [],
+      rest: store.rest || "",
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleSave = async () => {
+    if (!editingStore) return;
+    try {
+      setActionLoading(true);
+      const payload: BuyerStoreUpdateParams = {
+        ...editForm,
+        brands:
+          typeof editForm.brands === "string"
+            ? parseCommaSeparated(editForm.brands)
+            : editForm.brands,
+        style:
+          typeof editForm.style === "string"
+            ? parseCommaSeparated(editForm.style)
+            : editForm.style,
+        phone:
+          typeof editForm.phone === "string"
+            ? parseCommaSeparated(editForm.phone)
+            : editForm.phone,
+        images: Array.isArray(editForm.images) ? editForm.images : [],
+      };
+      await updateStore(editingStore.id, payload);
+      Alert.alert("成功", "买手店信息已更新");
+      setEditModalVisible(false);
+      fetchStores(page);
+    } catch (error) {
+      Alert.alert(
+        "错误",
+        error instanceof Error ? error.message : "更新失败"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ==================== Delete ====================
+
+  const handleDelete = (store: BuyerStore) => {
+    Alert.alert(
+      "确认删除",
+      `确定要删除买手店「${store.name}」吗？此操作不可撤销。`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              await deleteStore(store.id);
+              Alert.alert("已删除", `买手店「${store.name}」已删除`);
+              fetchStores(page);
+            } catch (error) {
+              Alert.alert(
+                "错误",
+                error instanceof Error ? error.message : "删除失败"
+              );
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ==================== Image Handlers ====================
+
+  const handleUploadCreateImage = async () => {
+    try {
+      setImageUploading(true);
+      const url = await pickAndUploadImage([4, 3]);
+      if (url) {
+        setCreateForm((f) => ({ ...f, images: [...(f.images || []), url] }));
+      }
+    } catch (error) {
+      Alert.alert(
+        "错误",
+        error instanceof Error ? error.message : "上传失败"
+      );
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleDeleteCreateImage = (index: number) => {
+    setCreateForm((f) => ({
+      ...f,
+      images: (f.images || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleUploadEditImage = async () => {
+    try {
+      setImageUploading(true);
+      const url = await pickAndUploadImage([4, 3]);
+      if (url) {
+        const currentImages = Array.isArray(editForm.images)
+          ? editForm.images
+          : [];
+        setEditForm((f) => ({ ...f, images: [...currentImages, url] }));
+      }
+    } catch (error) {
+      Alert.alert(
+        "错误",
+        error instanceof Error ? error.message : "上传失败"
+      );
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const handleDeleteEditImage = (index: number) => {
+    const currentImages = Array.isArray(editForm.images)
+      ? editForm.images
+      : [];
+    setEditForm((f) => ({
+      ...f,
+      images: currentImages.filter((_, i) => i !== index),
+    }));
+  };
+
+  // ==================== Helpers ====================
+
+  const parseCommaSeparated = (val: unknown): string[] => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === "string") {
+      return val
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
+  };
+
+  const toEditableString = (val: string[] | undefined): string => {
+    return val?.join(", ") || "";
+  };
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const activeFilterCount = (filterCountry ? 1 : 0) + (filterCity ? 1 : 0);
+
+  // ==================== Sub-renderers ====================
+
+  const renderImageGrid = (
+    images: string[],
+    onDelete: (idx: number) => void,
+    onUpload: () => void
+  ) => (
+    <HStack style={styles.imagesGrid}>
+      {images.map((url, idx) => (
+        <Box key={idx} style={styles.imageItem}>
+          <OptimizedImage
+            uri={url}
+            size={ImageSize.THUMBNAIL}
+            style={styles.imageThumb}
+            contentFit="cover"
+          />
+          <Pressable style={styles.imageDeleteBtn} onPress={() => onDelete(idx)}>
+            <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+          </Pressable>
+        </Box>
+      ))}
+      <Pressable
+        style={styles.imageAddBtn}
+        onPress={onUpload}
+        disabled={imageUploading}
+      >
+        {imageUploading ? (
+          <ActivityIndicator size="small" color={theme.colors.gray300} />
+        ) : (
+          <Ionicons name="add" size={28} color={theme.colors.gray300} />
+        )}
+      </Pressable>
+    </HStack>
+  );
+
+  const renderFormField = (
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    options?: {
+      placeholder?: string;
+      required?: boolean;
+      multiline?: boolean;
+      keyboardType?: "default" | "numeric" | "url" | "number-pad";
+      autoCapitalize?: "none" | "sentences" | "words" | "characters";
+      maxLength?: number;
+    }
+  ) => (
+    <VStack space="xs" style={{ marginTop: theme.spacing.sm }}>
+      <Text style={sharedStyles.formLabel}>
+        {label}
+        {options?.required ? " *" : ""}
+      </Text>
+      <Input
+        value={value}
+        onChangeText={onChange}
+        placeholder={options?.placeholder || label}
+        placeholderTextColor={theme.colors.gray300}
+        variant="outline"
+        size="md"
+        multiline={options?.multiline}
+        style={options?.multiline ? { minHeight: 60, textAlignVertical: "top" as any } : undefined}
+        keyboardType={options?.keyboardType}
+        autoCapitalize={options?.autoCapitalize}
+        maxLength={options?.maxLength}
+      />
+    </VStack>
+  );
+
+  // ==================== Render ====================
+
+  return (
+    <Box style={{ flex: 1 }}>
+      <ScrollView
+        style={sharedStyles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Search & Actions */}
+        <HStack space="sm" style={styles.topRow}>
+          <Input
+            style={styles.searchInput}
+            placeholder="搜索店铺名称..."
+            placeholderTextColor={theme.colors.gray300}
+            value={keyword}
+            onChangeText={setKeyword}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+            variant="outline"
+            size="sm"
+          />
+          <Pressable style={styles.searchButton} onPress={handleSearch}>
+            <Ionicons name="search" size={18} color={theme.colors.white} />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.filterButton,
+              activeFilterCount > 0 && styles.filterButtonActive,
+            ]}
+            onPress={() => setShowFilter(!showFilter)}
+          >
+            <Ionicons
+              name="filter"
+              size={18}
+              color={activeFilterCount > 0 ? theme.colors.white : theme.colors.black}
+            />
+            {activeFilterCount > 0 && (
+              <Text style={styles.filterBadge}>{activeFilterCount}</Text>
+            )}
+          </Pressable>
+          <Button size="sm" onPress={handleOpenCreate} style={styles.createButton}>
+            <Ionicons name="add" size={18} color={theme.colors.white} />
+            <ButtonText style={styles.createButtonText}>新增</ButtonText>
+          </Button>
+        </HStack>
+
+        {/* Filter Panel */}
+        {showFilter && (
+          <VStack style={styles.filterPanel}>
+            <Box style={styles.filterRow}>
+              <Text style={styles.filterLabel}>国家</Text>
+              <RNScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterChips}
+              >
+                <Pressable
+                  style={[styles.filterChip, !filterCountry && styles.filterChipActive]}
+                  onPress={() => setFilterCountry("")}
+                >
+                  <Text style={[styles.filterChipText, !filterCountry && styles.filterChipTextActive]}>
+                    全部
+                  </Text>
+                </Pressable>
+                {countries.map((c) => (
+                  <Pressable
+                    key={c}
+                    style={[styles.filterChip, filterCountry === c && styles.filterChipActive]}
+                    onPress={() => setFilterCountry(filterCountry === c ? "" : c)}
+                  >
+                    <Text style={[styles.filterChipText, filterCountry === c && styles.filterChipTextActive]}>
+                      {c}
+                    </Text>
+                  </Pressable>
+                ))}
+              </RNScrollView>
+            </Box>
+            {filterCountry && cities.length > 0 && (
+              <Box style={styles.filterRow}>
+                <Text style={styles.filterLabel}>城市</Text>
+                <RNScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filterChips}
+                >
+                  <Pressable
+                    style={[styles.filterChip, !filterCity && styles.filterChipActive]}
+                    onPress={() => setFilterCity("")}
+                  >
+                    <Text style={[styles.filterChipText, !filterCity && styles.filterChipTextActive]}>
+                      全部
+                    </Text>
+                  </Pressable>
+                  {cities.map((c) => (
+                    <Pressable
+                      key={c}
+                      style={[styles.filterChip, filterCity === c && styles.filterChipActive]}
+                      onPress={() => setFilterCity(filterCity === c ? "" : c)}
+                    >
+                      <Text style={[styles.filterChipText, filterCity === c && styles.filterChipTextActive]}>
+                        {c}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </RNScrollView>
+              </Box>
+            )}
+          </VStack>
+        )}
+
+        <Text style={styles.totalText}>共 {total} 家买手店</Text>
+
+        {/* Store List */}
+        {loading ? (
+          <VStack style={sharedStyles.loadingContainer}>
+            <ActivityIndicator size="small" color={theme.colors.black} />
+            <Text style={sharedStyles.loadingText}>加载中...</Text>
+          </VStack>
+        ) : stores.length === 0 ? (
+          <VStack style={sharedStyles.emptyContainer}>
+            <Ionicons name="storefront-outline" size={48} color={theme.colors.gray200} />
+            <Text style={sharedStyles.emptyText}>暂无买手店数据</Text>
+          </VStack>
+        ) : (
+          stores.map((store) => (
+            <Box key={store.id} style={sharedStyles.postCard}>
+              <HStack justifyContent="between" style={{ marginBottom: theme.spacing.sm }}>
+                <Box style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={sharedStyles.postTitle} numberOfLines={1}>
+                    {store.name}
+                  </Text>
+                </Box>
+                <HStack space="xs">
+                  <Box
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor: store.isOpen
+                          ? theme.colors.success
+                          : theme.colors.gray300,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color: store.isOpen
+                          ? theme.colors.success
+                          : theme.colors.gray300,
+                      },
+                    ]}
+                  >
+                    {store.isOpen ? "营业中" : "休息中"}
+                  </Text>
+                </HStack>
+              </HStack>
+
+              {store.images && store.images.length > 0 && (
+                <RNScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.listImagesRow}
+                >
+                  {store.images.slice(0, 5).map((url, idx) => (
+                    <OptimizedImage
+                      key={idx}
+                      uri={url}
+                      size={ImageSize.THUMBNAIL}
+                      style={styles.listImageThumb}
+                      contentFit="cover"
+                      lazy={true}
+                    />
+                  ))}
+                  {store.images.length > 5 && (
+                    <Box style={styles.listImageMore}>
+                      <Text style={styles.listImageMoreText}>
+                        +{store.images.length - 5}
+                      </Text>
+                    </Box>
+                  )}
+                </RNScrollView>
+              )}
+
+              <Text style={sharedStyles.postContent} numberOfLines={1}>
+                <Ionicons name="location-outline" size={12} /> {store.address}
+              </Text>
+
+              <HStack style={styles.storeMeta}>
+                <Text style={styles.metaChip}>{store.country}</Text>
+                <Text style={styles.metaChip}>{store.city}</Text>
+                {store.rating !== undefined && store.rating > 0 && (
+                  <Text style={[styles.metaChip, styles.ratingChip]}>
+                    <Ionicons name="star" size={10} color="#F59E0B" />{" "}
+                    {store.rating.toFixed(1)}
+                  </Text>
+                )}
+              </HStack>
+
+              {store.brands && store.brands.length > 0 && (
+                <Text style={styles.brandsText} numberOfLines={2}>
+                  品牌: {store.brands.join(", ")}
+                </Text>
+              )}
+
+              <Text style={styles.storeId}>ID: {store.id}</Text>
+
+              <HStack style={sharedStyles.actionButtons}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onPress={() => handleOpenEdit(store)}
+                  leftIcon={
+                    <Ionicons name="create-outline" size={16} color={theme.colors.white} />
+                  }
+                  style={styles.editButton}
+                >
+                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
+                    编辑
+                  </ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="error"
+                  onPress={() => handleDelete(store)}
+                  disabled={actionLoading}
+                  leftIcon={
+                    <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
+                  }
+                >
+                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                </Button>
+              </HStack>
+            </Box>
+          ))
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <HStack justifyContent="center" space="md" style={styles.pagination}>
+            <Pressable
+              disabled={page <= 1}
+              onPress={() => fetchStores(page - 1)}
+              style={{ opacity: page <= 1 ? 0.3 : 1 }}
+            >
+              <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+            </Pressable>
+            <Text style={styles.paginationText}>
+              第 {page} 页 / 共 {totalPages} 页
+            </Text>
+            <Pressable
+              disabled={page >= totalPages}
+              onPress={() => fetchStores(page + 1)}
+              style={{ opacity: page >= totalPages ? 0.3 : 1 }}
+            >
+              <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+            </Pressable>
+          </HStack>
+        )}
+
+        <Box style={{ height: 40 }} />
+      </ScrollView>
+
+      {/* Create Store Modal */}
+      <Modal
+        visible={createModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCreateModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.formModalContent]}>
+            <RNScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={sharedStyles.modalTitle}>新增买手店</Text>
+
+              {renderFormField("店铺 ID", createForm.id, (v) =>
+                setCreateForm((f) => ({ ...f, id: v })),
+                { placeholder: "唯一标识，如 bj-001", required: true, autoCapitalize: "none" }
+              )}
+
+              {renderFormField("店铺名称", createForm.name, (v) =>
+                setCreateForm((f) => ({ ...f, name: v })),
+                { required: true }
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>国家 *</Text>
+                  <Input
+                    value={createForm.country}
+                    onChangeText={(v) => setCreateForm((f) => ({ ...f, country: v }))}
+                    placeholder="如: 中国"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>城市 *</Text>
+                  <Input
+                    value={createForm.city}
+                    onChangeText={(v) => setCreateForm((f) => ({ ...f, city: v }))}
+                    placeholder="如: 北京"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField("详细地址", createForm.address, (v) =>
+                setCreateForm((f) => ({ ...f, address: v })),
+                { required: true, multiline: true }
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>纬度</Text>
+                  <Input
+                    value={String(createForm.coordinates.latitude || "")}
+                    onChangeText={(v) =>
+                      setCreateForm((f) => ({
+                        ...f,
+                        coordinates: { ...f.coordinates, latitude: parseFloat(v) || 0 },
+                      }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                    keyboardType="numeric"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>经度</Text>
+                  <Input
+                    value={String(createForm.coordinates.longitude || "")}
+                    onChangeText={(v) =>
+                      setCreateForm((f) => ({
+                        ...f,
+                        coordinates: { ...f.coordinates, longitude: parseFloat(v) || 0 },
+                      }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                    keyboardType="numeric"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField(
+                "品牌",
+                toEditableString(createForm.brands),
+                (v) => setCreateForm((f) => ({ ...f, brands: v as any })),
+                { placeholder: "用逗号分隔，如: Rick Owens, Maison Margiela" }
+              )}
+
+              {renderFormField(
+                "风格标签",
+                toEditableString(createForm.style),
+                (v) => setCreateForm((f) => ({ ...f, style: v as any })),
+                { placeholder: "用逗号分隔，如: 先锋, 暗黑" }
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>电话</Text>
+                  <Input
+                    value={toEditableString(createForm.phone)}
+                    onChangeText={(v) => setCreateForm((f) => ({ ...f, phone: v as any }))}
+                    placeholder="逗号分隔"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>营业时间</Text>
+                  <Input
+                    value={createForm.hours || ""}
+                    onChangeText={(v) => setCreateForm((f) => ({ ...f, hours: v }))}
+                    placeholder="如: 10:00-21:00"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField(
+                "描述",
+                createForm.description || "",
+                (v) => setCreateForm((f) => ({ ...f, description: v })),
+                { multiline: true }
+              )}
+
+              <VStack space="xs" style={{ marginTop: theme.spacing.sm }}>
+                <Text style={sharedStyles.formLabel}>
+                  店铺图片（{(createForm.images || []).length} 张）
+                </Text>
+                {renderImageGrid(
+                  createForm.images || [],
+                  handleDeleteCreateImage,
+                  handleUploadCreateImage
+                )}
+              </VStack>
+
+              <HStack justifyContent="between" style={styles.switchRow}>
+                <Text style={sharedStyles.formLabel}>营业状态</Text>
+                <Switch
+                  value={createForm.isOpen}
+                  onValueChange={(v) => setCreateForm((f) => ({ ...f, isOpen: v }))}
+                  trackColor={{ false: theme.colors.gray200, true: theme.colors.success }}
+                />
+              </HStack>
+
+              <HStack justifyContent="end" space="sm" style={{ marginTop: theme.spacing.lg }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setCreateModalVisible(false)}
+                >
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  onPress={handleCreate}
+                  disabled={actionLoading}
+                  isLoading={actionLoading}
+                >
+                  <ButtonText>创建</ButtonText>
+                </Button>
+              </HStack>
+            </RNScrollView>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Edit Store Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.formModalContent]}>
+            <RNScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={sharedStyles.modalTitle}>编辑买手店</Text>
+
+              {renderFormField("店铺名称", editForm.name || "", (v) =>
+                setEditForm((f) => ({ ...f, name: v }))
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>国家</Text>
+                  <Input
+                    value={editForm.country || ""}
+                    onChangeText={(v) => setEditForm((f) => ({ ...f, country: v }))}
+                    placeholder="国家"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>城市</Text>
+                  <Input
+                    value={editForm.city || ""}
+                    onChangeText={(v) => setEditForm((f) => ({ ...f, city: v }))}
+                    placeholder="城市"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField("详细地址", editForm.address || "", (v) =>
+                setEditForm((f) => ({ ...f, address: v })),
+                { multiline: true }
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>纬度</Text>
+                  <Input
+                    value={String(editForm.coordinates?.latitude || "")}
+                    onChangeText={(v) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        coordinates: {
+                          latitude: parseFloat(v) || 0,
+                          longitude: f.coordinates?.longitude || 0,
+                        },
+                      }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                    keyboardType="numeric"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>经度</Text>
+                  <Input
+                    value={String(editForm.coordinates?.longitude || "")}
+                    onChangeText={(v) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        coordinates: {
+                          latitude: f.coordinates?.latitude || 0,
+                          longitude: parseFloat(v) || 0,
+                        },
+                      }))
+                    }
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                    keyboardType="numeric"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField(
+                "品牌",
+                typeof editForm.brands === "string"
+                  ? editForm.brands
+                  : toEditableString(editForm.brands),
+                (v) => setEditForm((f) => ({ ...f, brands: v as any })),
+                { placeholder: "用逗号分隔" }
+              )}
+
+              {renderFormField(
+                "风格标签",
+                typeof editForm.style === "string"
+                  ? editForm.style
+                  : toEditableString(editForm.style),
+                (v) => setEditForm((f) => ({ ...f, style: v as any })),
+                { placeholder: "用逗号分隔" }
+              )}
+
+              <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>电话</Text>
+                  <Input
+                    value={
+                      typeof editForm.phone === "string"
+                        ? editForm.phone
+                        : toEditableString(editForm.phone)
+                    }
+                    onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v as any }))}
+                    placeholder="逗号分隔"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+                <VStack space="xs" style={{ flex: 1 }}>
+                  <Text style={sharedStyles.formLabel}>营业时间</Text>
+                  <Input
+                    value={editForm.hours || ""}
+                    onChangeText={(v) => setEditForm((f) => ({ ...f, hours: v }))}
+                    placeholder="如: 10:00-21:00"
+                    placeholderTextColor={theme.colors.gray300}
+                    variant="outline"
+                    size="md"
+                  />
+                </VStack>
+              </HStack>
+
+              {renderFormField("休息日", editForm.rest || "", (v) =>
+                setEditForm((f) => ({ ...f, rest: v })),
+                { placeholder: "如: 周一" }
+              )}
+
+              {renderFormField("描述", editForm.description || "", (v) =>
+                setEditForm((f) => ({ ...f, description: v })),
+                { multiline: true }
+              )}
+
+              <VStack space="xs" style={{ marginTop: theme.spacing.sm }}>
+                <Text style={sharedStyles.formLabel}>
+                  店铺图片（
+                  {(Array.isArray(editForm.images) ? editForm.images : []).length}{" "}
+                  张）
+                </Text>
+                {renderImageGrid(
+                  Array.isArray(editForm.images) ? editForm.images : [],
+                  handleDeleteEditImage,
+                  handleUploadEditImage
+                )}
+              </VStack>
+
+              <HStack justifyContent="between" style={styles.switchRow}>
+                <Text style={sharedStyles.formLabel}>营业状态</Text>
+                <Switch
+                  value={editForm.isOpen ?? true}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, isOpen: v }))}
+                  trackColor={{ false: theme.colors.gray200, true: theme.colors.success }}
+                />
+              </HStack>
+
+              <HStack justifyContent="end" space="sm" style={{ marginTop: theme.spacing.lg }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  onPress={handleSave}
+                  disabled={actionLoading}
+                  isLoading={actionLoading}
+                >
+                  <ButtonText>保存修改</ButtonText>
+                </Button>
+              </HStack>
+            </RNScrollView>
+          </Box>
+        </Box>
+      </Modal>
+    </Box>
+  );
+};
+
+const styles = StyleSheet.create({
+  topRow: {
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+  },
+  searchButton: {
+    backgroundColor: theme.colors.black,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterButton: {
+    backgroundColor: theme.colors.gray100,
+    borderRadius: 8,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterButtonActive: {
+    backgroundColor: theme.colors.black,
+  },
+  filterBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: theme.colors.error,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    textAlign: "center",
+    fontSize: 10,
+    color: theme.colors.white,
+    fontWeight: "600",
+    lineHeight: 16,
+    overflow: "hidden",
+  },
+  createButton: {
+    height: 40,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    gap: 4,
+  },
+  createButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  filterPanel: {
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  filterRow: {
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+    marginBottom: 6,
+  },
+  filterChips: {
+    flexDirection: "row",
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: theme.colors.white,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.black,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+  },
+  filterChipTextActive: {
+    color: theme.colors.white,
+  },
+  totalText: {
+    paddingBottom: 8,
+    fontSize: 12,
+    color: theme.colors.gray400,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  storeMeta: {
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  metaChip: {
+    fontSize: 11,
+    color: theme.colors.gray400,
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  ratingChip: {
+    backgroundColor: "#FEF3C7",
+    color: "#92400E",
+  },
+  brandsText: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  storeId: {
+    fontSize: 11,
+    color: theme.colors.gray300,
+    marginTop: 4,
+  },
+  editButton: {
+    borderColor: theme.colors.gray200,
+    gap: 4,
+  },
+  pagination: {
+    paddingVertical: 16,
+  },
+  paginationText: {
+    fontSize: 14,
+    color: theme.colors.gray500,
+  },
+  formModalContent: {
+    height: "85%",
+    width: "92%",
+    padding: theme.spacing.lg,
+  },
+  switchRow: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  imagesGrid: {
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  imageItem: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  imageThumb: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: theme.colors.gray100,
+  },
+  imageDeleteBtn: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 10,
+  },
+  imageAddBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.gray50,
+  },
+  listImagesRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+    flexGrow: 0,
+  },
+  listImageThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 6,
+    marginRight: 6,
+    backgroundColor: theme.colors.gray100,
+  },
+  listImageMore: {
+    width: 60,
+    height: 60,
+    borderRadius: 6,
+    backgroundColor: theme.colors.gray100,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listImageMoreText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+  },
+});
+
+export default StoreManagementTab;

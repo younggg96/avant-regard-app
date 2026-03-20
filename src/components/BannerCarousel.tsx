@@ -8,12 +8,12 @@ import {
   Dimensions,
   Animated,
   TouchableOpacity,
-  Image,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Text, HStack } from "./ui";
+import { Text, HStack, OptimizedImage } from "./ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Banner } from "../services/bannerService";
 
@@ -138,10 +138,12 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
             onPress={() => handleBannerPress(item)}
             style={styles.bannerTouchable}
           >
-            <Image
-              source={{ uri: item.imageUrl }}
+            <OptimizedImage
+              uri={item.imageUrl}
+              size={ImageSize.LARGE}
               style={styles.bannerImage}
-              resizeMode="cover"
+              contentFit="cover"
+              lazy={index > 0}
             />
             {/* 渐变遮罩 */}
             <LinearGradient

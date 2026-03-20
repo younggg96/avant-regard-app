@@ -1,7 +1,8 @@
 import React from "react";
 import { StyleSheet, TouchableOpacity, View, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Image, HStack, VStack } from "./ui";
+import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Post } from "./PostCard";
 
@@ -69,10 +70,12 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
             overflow="hidden"
             rounded="$sm"
           >
-            <Image
-              source={{ uri: imageUri }}
+            <OptimizedImage
+              uri={imageUri}
+              size={ImageSize.THUMBNAIL}
               style={styles.previewImage}
-              resizeMode="cover"
+              contentFit="cover"
+              lazy={true}
             />
             {/* 显示剩余图片数量 */}
             {index === 2 && remainingCount > 0 && (
@@ -110,7 +113,13 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
             onPress={() => onAuthorPress?.(post.author.id)}
             activeOpacity={0.8}
           >
-            <Image source={{ uri: post.author.avatar }} style={styles.avatar} />
+            <OptimizedImage
+              uri={post.author.avatar}
+              size={ImageSize.THUMBNAIL}
+              style={styles.avatar}
+              contentFit="cover"
+              lazy={true}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity

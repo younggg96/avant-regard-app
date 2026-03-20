@@ -12,7 +12,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   GestureResponderEvent,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +19,8 @@ import * as ImagePicker from "expo-image-picker";
 import { theme } from "../theme";
 import { brandService, SubmitBrandParams } from "../services/brandService";
 import { uploadImage } from "../services/postService";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 interface SubmitBrandModalProps {
   visible: boolean;
@@ -215,9 +216,12 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                   >
                     {coverImageUri ? (
                       <View style={styles.imagePreviewWrapper}>
-                        <Image
-                          source={{ uri: coverImageUri }}
+                        <OptimizedImage
+                          uri={coverImageUri}
+                          size={ImageSize.MEDIUM}
                           style={styles.imagePreview}
+                          contentFit="cover"
+                          lazy={true}
                         />
                         <TouchableOpacity
                           style={styles.imageRemoveButton}

@@ -1,12 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -14,6 +9,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, AdminBrandImage } from "../../services/adminService";
 import { sharedStyles } from "./adminStyles";
+import { Box, HStack, Text, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const BrandImageReviewTab = () => {
   const [images, setImages] = useState<AdminBrandImage[]>([]);
@@ -116,59 +113,68 @@ const BrandImageReviewTab = () => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {loading ? (
-        <View style={sharedStyles.loadingContainer}>
+        <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} size="small" />
           <Text style={sharedStyles.loadingText}>加载中...</Text>
-        </View>
+        </Box>
       ) : images.length === 0 ? (
-        <View style={sharedStyles.emptyContainer}>
+        <Box style={sharedStyles.emptyContainer}>
           <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
           <Text style={sharedStyles.emptyText}>暂无待审核的品牌图片</Text>
-        </View>
+        </Box>
       ) : (
         images.map((img) => (
-          <View key={img.id} style={sharedStyles.postCard}>
-            <View style={sharedStyles.postHeader}>
+          <Box key={img.id} style={sharedStyles.postCard}>
+            <HStack style={sharedStyles.postHeader}>
               <Text style={sharedStyles.postTitle} numberOfLines={1}>
                 {img.brandName || `品牌 #${img.brandId}`}
               </Text>
               <Text style={sharedStyles.postDate}>
                 {img.createdAt ? new Date(img.createdAt).toLocaleDateString("zh-CN") : ""}
               </Text>
-            </View>
+            </HStack>
 
-            <Image source={{ uri: img.imageUrl }} style={styles.previewImage} resizeMode="cover" />
+            <OptimizedImage
+              uri={img.imageUrl}
+              size={ImageSize.MEDIUM}
+              style={styles.previewImage}
+              contentFit="cover"
+              lazy={true}
+            />
 
-            <View style={sharedStyles.actionButtons}>
-              <TouchableOpacity
-                style={[sharedStyles.actionButton, sharedStyles.approveButton]}
+            <HStack style={sharedStyles.actionButtons}>
+              <Button
+                size="sm"
+                colorScheme="success"
                 onPress={() => handleApprove(img.id)}
                 disabled={actionLoading}
+                leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
               >
-                <Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />
-                <Text style={sharedStyles.actionButtonText}>通过</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[sharedStyles.actionButton, sharedStyles.rejectButton]}
+                <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+              </Button>
+              <Button
+                size="sm"
+                colorScheme="error"
                 onPress={() => handleReject(img.id)}
                 disabled={actionLoading}
+                leftIcon={<Ionicons name="close-circle-outline" size={16} color={theme.colors.white} />}
               >
-                <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-                <Text style={sharedStyles.actionButtonText}>拒绝</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[sharedStyles.actionButton, sharedStyles.deletePostButton]}
+                <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+              </Button>
+              <Button
+                size="sm"
+                colorScheme="error"
                 onPress={() => handleDelete(img.id)}
                 disabled={actionLoading}
+                leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
               >
-                <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-                <Text style={sharedStyles.actionButtonText}>删除</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+              </Button>
+            </HStack>
+          </Box>
         ))
       )}
-      <View style={{ height: 40 }} />
+      <Box style={{ height: 40 }} />
     </ScrollView>
   );
 };

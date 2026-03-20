@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Image,
   ActivityIndicator,
   Modal,
   FlatList,
@@ -24,6 +23,8 @@ import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import { userInfoService, Gender } from "../services/userInfoService";
 import { brandService, Brand } from "../services/brandService";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 // Brand 选项类型
 interface BrandOption {
@@ -513,13 +514,15 @@ const EditProfileScreen = () => {
               onPress={handlePickImage}
               disabled={uploadingAvatar}
             >
-              <Image
-                source={{
-                  uri:
-                    avatar ||
-                    "https://api.dicebear.com/7.x/avataaars/png?seed=default",
-                }}
+              <OptimizedImage
+                uri={
+                  avatar ||
+                  "https://api.dicebear.com/7.x/avataaars/png?seed=default"
+                }
+                size={ImageSize.THUMBNAIL}
                 style={styles.avatar}
+                contentFit="cover"
+                lazy={false}
               />
               {uploadingAvatar ? (
                 <View style={styles.avatarLoadingOverlay}>
@@ -547,10 +550,12 @@ const EditProfileScreen = () => {
               disabled={uploadingCover}
             >
               {cover ? (
-                <Image
-                  source={{ uri: cover }}
+                <OptimizedImage
+                  uri={cover}
+                  size={ImageSize.LARGE}
                   style={styles.coverImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  lazy={false}
                 />
               ) : (
                 <View style={styles.coverPlaceholder}>

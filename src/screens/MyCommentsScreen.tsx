@@ -19,8 +19,9 @@ import {
     Pressable,
     VStack,
     HStack,
-    Image,
+    OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -135,12 +136,12 @@ const MyCommentsScreen = () => {
             >
                 {/* 用户头像 */}
                 {item.userAvatar ? (
-                    <Image
-                        source={{ uri: item.userAvatar }}
-                        width={40}
-                        height={40}
-                        borderRadius={20}
-                        alt="avatar"
+                    <OptimizedImage
+                        uri={item.userAvatar}
+                        size={ImageSize.THUMBNAIL}
+                        style={{ width: 40, height: 40, borderRadius: 20 }}
+                        contentFit="cover"
+                        lazy={true}
                     />
                 ) : (
                     <Box

@@ -548,6 +548,19 @@ export const getSubmissionsByUser = async (
 };
 
 /**
+ * 删除自己的买手店提交（仅限 PENDING/REJECTED）
+ * DELETE /api/buyer-stores/submissions/{submissionId}
+ */
+export const deleteMyStoreSubmission = async (
+  submissionId: number
+): Promise<void> => {
+  await request<null>(
+    `/api/buyer-stores/submissions/${submissionId}`,
+    { method: "DELETE" }
+  );
+};
+
+/**
  * 获取待审核的买手店列表（管理员）
  * GET /api/buyer-stores/submissions/pending
  */
@@ -914,6 +927,7 @@ export const buyerStoreService = {
   // 用户提交
   submitStore,
   getMySubmissions,
+  deleteMyStoreSubmission,
   getSubmissionsByUser,
   getPendingSubmissions,
   reviewSubmission,

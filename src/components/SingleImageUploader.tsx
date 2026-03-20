@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Box, Text, Pressable, Image } from "./ui";
+import { Box, Text, Pressable } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import ImagePickerModal from "./ImagePickerModal";
 import { Alert } from "../utils/Alert";
@@ -37,22 +39,32 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: allowEditing,
-          aspect: aspectRatio,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.show("需要相机权限才能拍照");
+          return;
+        }
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: allowEditing,
-          aspect: aspectRatio,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.show("需要相册权限才能选择图片");
+          return;
+        }
       }
+
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: allowEditing,
+            aspect: aspectRatio,
+            quality: 1.0,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: allowEditing,
+            aspect: aspectRatio,
+            quality: 1.0,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         onImageSelected(result.assets[0].uri);
@@ -110,9 +122,12 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     <>
       <Box mx="$md" mb="$md" position="relative">
         <Box h={height} rounded="$md" overflow="hidden">
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: "100%", height: "100%", resizeMode: "cover" }}
+          <OptimizedImage
+            uri={imageUri}
+            size={ImageSize.MEDIUM}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+            lazy={true}
           />
         </Box>
 

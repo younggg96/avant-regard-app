@@ -1,7 +1,8 @@
 import React from "react";
-import { Dimensions, StyleSheet, View, TouchableOpacity, Image } from "react-native";
+import { Dimensions, StyleSheet, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, HStack, Pressable } from "./ui";
+import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -58,10 +59,12 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               activeOpacity={0.8}
             >
               {brand.coverImage ? (
-                <Image
-                  source={{ uri: brand.coverImage }}
+                <OptimizedImage
+                  uri={brand.coverImage}
+                  size={ImageSize.THUMBNAIL}
                   style={styles.brandImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  lazy={true}
                 />
               ) : (
                 <View style={styles.brandPlaceholder}>

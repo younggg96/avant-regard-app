@@ -2,11 +2,12 @@ import React from "react";
 import {
   View,
   ScrollView as RNScrollView,
-  Image as RNImage,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
 import { Text } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { Brand } from "@/services/brandService";
 import { theme } from "../../theme";
 
@@ -45,10 +46,12 @@ export const RelatedBrands: React.FC<RelatedBrandsProps> = ({
             activeOpacity={0.9}
           >
             {brand.coverImage ? (
-              <RNImage
-                source={{ uri: brand.coverImage }}
+              <OptimizedImage
+                uri={brand.coverImage}
+                size={ImageSize.MEDIUM}
                 style={styles.brandImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             ) : (
               <View style={styles.brandPlaceholder}>

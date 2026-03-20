@@ -34,7 +34,9 @@ import {
   Pressable,
   VStack,
   HStack,
+  OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -697,7 +699,13 @@ const UserProfileScreen = () => {
         <Pressable key={key} style={contribStyles.card} onPress={onPress}>
           <View style={contribStyles.cardImageContainer}>
             {image ? (
-              <RNImage source={{ uri: image }} style={contribStyles.cardImage} resizeMode="cover" />
+              <OptimizedImage
+                uri={image}
+                size={ImageSize.MEDIUM}
+                style={contribStyles.cardImage}
+                contentFit="cover"
+                lazy={true}
+              />
             ) : (
               <View style={contribStyles.cardImagePlaceholder}>
                 <Ionicons name={icon as any} size={32} color={theme.colors.gray300} />
@@ -859,7 +867,13 @@ const UserProfileScreen = () => {
           </Pressable>
           <View style={styles.collapsedAvatarContainer}>
             {avatarUri ? (
-              <RNImage source={{ uri: avatarUri }} style={styles.collapsedAvatar} />
+              <OptimizedImage
+                uri={avatarUri}
+                size={ImageSize.THUMBNAIL}
+                style={styles.collapsedAvatar}
+                contentFit="cover"
+                lazy={false}
+              />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <RNText style={styles.collapsedUsername} numberOfLines={1}>
@@ -945,7 +959,13 @@ const UserProfileScreen = () => {
         {/* 封面 */}
         <Animated.View style={[styles.coverContainer, coverAnimatedStyle]}>
           {coverImage ? (
-            <RNImage source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
+            <OptimizedImage
+              uri={coverImage}
+              size={ImageSize.LARGE}
+              style={styles.coverImage}
+              contentFit="cover"
+              lazy={false}
+            />
           ) : (
             <View style={styles.defaultCover} />
           )}
@@ -967,7 +987,13 @@ const UserProfileScreen = () => {
           <View style={styles.avatarRow}>
             <View style={styles.avatarWrapper}>
               {avatarUri ? (
-                <RNImage source={{ uri: avatarUri }} style={styles.avatar} />
+                <OptimizedImage
+                  uri={avatarUri}
+                  size={ImageSize.MEDIUM}
+                  style={styles.avatar}
+                  contentFit="cover"
+                  lazy={false}
+                />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                   <RNText style={styles.avatarText}>

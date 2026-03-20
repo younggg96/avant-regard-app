@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -6,7 +6,6 @@ import {
   FlatList,
   Keyboard,
   ScrollView,
-  Image,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -19,6 +18,8 @@ import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 // 搜索类型
 type SearchType = "posts" | "users";
@@ -39,13 +40,29 @@ const SearchScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 加载搜索历史
   useEffect(() => {
-    // 这里应该从 AsyncStorage 加载历史记录
-    // 暂时使用空数组
     setSearchHistory([]);
   }, []);
+
+  // 输入防抖：自动搜索
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setPostResults([]);
+      setUserResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      handleSearch();
+    }, 400);
+
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchQuery]);
 
   // 执行搜索
   const handleSearch = useCallback(async () => {
@@ -342,13 +359,15 @@ const SearchScreen = () => {
           overflow="hidden"
           bg="$gray100"
         >
-          <Image
-            source={{
-              uri:
-                item.avatarUrl ||
-                `https://api.dicebear.com/7.x/avataaars/png?seed=${item.userId}`,
-            }}
+          <OptimizedImage
+            uri={
+              item.avatarUrl ||
+              `https://api.dicebear.com/7.x/avataaars/png?seed=${item.userId}`
+            }
+            size={ImageSize.THUMBNAIL}
             style={{ width: 56, height: 56 }}
+            contentFit="cover"
+            lazy={true}
           />
         </Box>
 

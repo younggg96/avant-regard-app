@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +22,8 @@ import {
   isFollowingUser,
 } from "../services/followService";
 import { userInfoService } from "../services/userInfoService";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 type RouteParams = {
   Followers: {
@@ -196,9 +197,12 @@ const FollowersScreen = () => {
                 >
                   {/* 头像 */}
                   {follower.avatar ? (
-                    <Image
-                      source={{ uri: follower.avatar }}
+                    <OptimizedImage
+                      uri={follower.avatar}
+                      size={ImageSize.THUMBNAIL}
                       style={styles.avatar}
+                      contentFit="cover"
+                      lazy={true}
                     />
                   ) : (
                     <View style={[styles.avatar, styles.avatarPlaceholder]}>

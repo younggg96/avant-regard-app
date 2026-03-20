@@ -3,13 +3,13 @@ import {
   Modal,
   View,
   FlatList,
-  Image as RNImage,
   TouchableOpacity,
   StatusBar,
-  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { styles, SCREEN_WIDTH } from "./styles";
 
 interface FullscreenImageViewerProps {
@@ -72,10 +72,12 @@ export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
           }}
           renderItem={({ item }) => (
             <View style={styles.fullscreenImageWrapper}>
-              <RNImage
-                source={{ uri: item }}
+              <OptimizedImage
+                uri={item}
+                size={ImageSize.ORIGINAL}
                 style={styles.fullscreenImage}
-                resizeMode="contain"
+                contentFit="contain"
+                lazy={true}
               />
             </View>
           )}

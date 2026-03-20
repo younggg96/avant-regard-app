@@ -5,16 +5,26 @@ import {
   RefreshControl,
   Dimensions,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, ScrollView } from "../../../components/ui";
 import { theme } from "../../../theme";
-import { showService, Show } from "../../../services/showService";
-import { brandService, BrandSubmission } from "../../../services/brandService";
+import {
+  showService,
+  Show,
+  deleteMyShow,
+} from "../../../services/showService";
+import {
+  brandService,
+  BrandSubmission,
+  deleteMyBrandSubmission,
+} from "../../../services/brandService";
 import {
   buyerStoreService,
   UserSubmittedStore,
+  deleteMyStoreSubmission,
 } from "../../../services/buyerStoreService";
 import { useAuthStore } from "../../../store/authStore";
 import ContributionCard, { CARD_PADDING } from "./ContributionCard";
@@ -109,6 +119,33 @@ const MyContributionTab: React.FC = () => {
     }
   };
 
+  const handleDeleteShow = async (show: Show) => {
+    try {
+      await deleteMyShow(Number(show.id));
+      setMyShows((prev) => prev.filter((s) => s.id !== show.id));
+    } catch (e: any) {
+      Alert.alert("删除失败", e.message || "请稍后重试");
+    }
+  };
+
+  const handleDeleteBrand = async (brand: BrandSubmission) => {
+    try {
+      await deleteMyBrandSubmission(brand.id);
+      setMyBrands((prev) => prev.filter((b) => b.id !== brand.id));
+    } catch (e: any) {
+      Alert.alert("删除失败", e.message || "请稍后重试");
+    }
+  };
+
+  const handleDeleteStore = async (store: UserSubmittedStore) => {
+    try {
+      await deleteMyStoreSubmission(store.id);
+      setMyStores((prev) => prev.filter((s) => s.id !== store.id));
+    } catch (e: any) {
+      Alert.alert("删除失败", e.message || "请稍后重试");
+    }
+  };
+
   const dataMap: Record<ContributionSubTab, any[]> = {
     show: myShows,
     brand: myBrands,
@@ -127,47 +164,59 @@ const MyContributionTab: React.FC = () => {
 
   const renderCards = () => {
     if (subTab === "show") {
-      return (myShows as Show[]).map((s) => (
-        <ContributionCard
-          key={`show-${s.id}`}
-          title={`${s.brand} ${s.season}`}
-          subtitle={s.category || s.year?.toString()}
-          imageUri={s.coverImage}
-          placeholderIcon="film-outline"
-          status={s.status || "APPROVED"}
-          date={s.createdAt}
-          onPress={() => handleShowPress(s)}
-        />
-      ));
+      return (myShows as Show[]).map((s) => {
+        const canDelete = s.status === "REJECTED" || s.status === "PENDING";
+        return (
+          <ContributionCard
+            key={`show-${s.id}`}
+            title={`${s.brand} ${s.season}`}
+            subtitle={s.category || s.year?.toString()}
+            imageUri={s.coverImage}
+            placeholderIcon="film-outline"
+            status={s.status || "APPROVED"}
+            date={s.createdAt}
+            onPress={() => handleShowPress(s)}
+            onDelete={canDelete ? () => handleDeleteShow(s) : undefined}
+          />
+        );
+      });
     }
     if (subTab === "brand") {
-      return (myBrands as BrandSubmission[]).map((b) => (
-        <ContributionCard
-          key={`brand-${b.id}`}
-          title={b.name}
-          subtitle={b.category}
-          imageUri={b.coverImage}
-          placeholderIcon="pricetag-outline"
-          status={b.status}
-          rejectReason={b.rejectReason}
-          date={b.createdAt}
-          onPress={() => handleBrandPress(b)}
-        />
-      ));
+      return (myBrands as BrandSubmission[]).map((b) => {
+        const canDelete = b.status === "REJECTED" || b.status === "PENDING";
+        return (
+          <ContributionCard
+            key={`brand-${b.id}`}
+            title={b.name}
+            subtitle={b.category}
+            imageUri={b.coverImage}
+            placeholderIcon="pricetag-outline"
+            status={b.status}
+            rejectReason={b.rejectReason}
+            date={b.createdAt}
+            onPress={() => handleBrandPress(b)}
+            onDelete={canDelete ? () => handleDeleteBrand(b) : undefined}
+          />
+        );
+      });
     }
-    return (myStores as UserSubmittedStore[]).map((s) => (
-      <ContributionCard
-        key={`store-${s.id}`}
-        title={s.name}
-        subtitle={`${s.city}, ${s.country}`}
-        imageUri={s.images?.[0]}
-        placeholderIcon="storefront-outline"
-        status={s.status}
-        rejectReason={s.rejectReason}
-        date={s.createdAt}
-        onPress={() => handleStorePress(s)}
-      />
-    ));
+    return (myStores as UserSubmittedStore[]).map((s) => {
+      const canDelete = s.status === "REJECTED" || s.status === "PENDING";
+      return (
+        <ContributionCard
+          key={`store-${s.id}`}
+          title={s.name}
+          subtitle={`${s.city}, ${s.country}`}
+          imageUri={s.images?.[0]}
+          placeholderIcon="storefront-outline"
+          status={s.status}
+          rejectReason={s.rejectReason}
+          date={s.createdAt}
+          onPress={() => handleStorePress(s)}
+          onDelete={canDelete ? () => handleDeleteStore(s) : undefined}
+        />
+      );
+    });
   };
 
   return (

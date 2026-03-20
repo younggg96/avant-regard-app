@@ -15,7 +15,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, HStack, VStack, Image } from "./ui";
+import { Text, HStack, VStack } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Post } from "./PostCard";
 import {
@@ -199,9 +201,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           <HStack space="md" alignItems="center">
             {/* 预览图片 */}
             {shareContent.imageUrl && (
-              <Image
-                source={{ uri: shareContent.imageUrl }}
+              <OptimizedImage
+                uri={shareContent.imageUrl}
+                size={ImageSize.THUMBNAIL}
                 style={styles.previewImage}
+                contentFit="cover"
+                lazy={true}
               />
             )}
             {/* 预览文字 */}

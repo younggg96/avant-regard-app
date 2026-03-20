@@ -19,7 +19,7 @@ import {
   Pressable,
   HStack,
   Input,
-  Image,
+  OptimizedImage,
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -39,6 +39,7 @@ import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
+import { ImageSize } from "../utils/imageUtils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PAGE_SIZE = 30;
@@ -622,20 +623,24 @@ const PublishOutfitScreen = () => {
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
       }
+
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            quality: 1.0,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 1.0,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
@@ -854,13 +859,15 @@ const PublishOutfitScreen = () => {
                   backgroundColor: "transparent",
                 }}
               >
-                <Image
-                  source={{ uri: item }}
+                <OptimizedImage
+                  uri={item}
+                  size={ImageSize.LARGE}
                   style={{
                     width: "100%",
                     height: "100%",
-                    resizeMode: "cover",
                   }}
+                  contentFit="cover"
+                  lazy={true}
                 />
               </View>
             );
@@ -914,7 +921,13 @@ const PublishOutfitScreen = () => {
             onPress={() => handleImagePress(index)}
             onLongPress={() => handleDragStart(index)}
           >
-            <Image source={{ uri: image }} style={styles.thumbnail} />
+            <OptimizedImage
+              uri={image}
+              size={ImageSize.MEDIUM}
+              style={styles.thumbnail}
+              contentFit="cover"
+              lazy={true}
+            />
             {coverImage === image && (
               <Box
                 position="absolute"
@@ -1157,7 +1170,6 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
 });
 

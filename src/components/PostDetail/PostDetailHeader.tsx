@@ -1,7 +1,9 @@
 import React from "react";
 import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, Pressable, HStack, VStack, Image } from "../ui";
+import { Text, Pressable, HStack, VStack } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import { PostStatus, formatTimestamp } from "./types";
@@ -51,9 +53,12 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
         </Pressable>
 
         <Pressable onPress={onAuthorPress}>
-          <Image
-            source={{ uri: post.author.avatar }}
+          <OptimizedImage
+            uri={post.author.avatar}
+            size={ImageSize.THUMBNAIL}
             style={styles.headerAvatar}
+            contentFit="cover"
+            lazy={true}
           />
         </Pressable>
 

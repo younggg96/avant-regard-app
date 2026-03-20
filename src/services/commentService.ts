@@ -26,6 +26,7 @@ export interface CommentReply {
   replyToUsername?: string;
   content: string;
   likeCount: number;
+  isLiked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +40,7 @@ export interface PostComment {
   userAvatar?: string;
   content: string;
   likeCount: number;
+  isLiked: boolean;
   replyCount: number;
   replies: CommentReply[];
   createdAt: string;
@@ -127,10 +129,11 @@ async function request<T>(
 
 /**
  * 获取帖子评论
- * GET /api/posts/{postId}/comments
+ * GET /api/posts/{postId}/comments?userId={userId}
  */
-export async function getPostComments(postId: number): Promise<PostComment[]> {
-  return request<PostComment[]>(`/api/posts/${postId}/comments`, {
+export async function getPostComments(postId: number, userId?: number): Promise<PostComment[]> {
+  const params = userId ? `?userId=${userId}` : "";
+  return request<PostComment[]>(`/api/posts/${postId}/comments${params}`, {
     method: "GET",
   });
 }

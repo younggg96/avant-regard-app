@@ -33,7 +33,8 @@ $$ language 'plpgsql';
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     supabase_uid UUID UNIQUE,
-    phone VARCHAR(20) UNIQUE NOT NULL,
+    phone VARCHAR(20) UNIQUE,
+    email VARCHAR(200),
     username VARCHAR(100) NOT NULL,
     is_admin BOOLEAN DEFAULT FALSE,
     user_type VARCHAR(50) DEFAULT 'USER',

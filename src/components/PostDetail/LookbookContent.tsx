@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { View, FlatList, Image as RNImage } from "react-native";
+import { View, FlatList } from "react-native";
 import { Text, Pressable } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { Post } from "../PostCard";
 import { styles, SCREEN_WIDTH } from "./styles";
 
@@ -39,10 +41,12 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
               onPress={() => onOpenFullscreen(index)}
               style={styles.lookbookImageWrapper}
             >
-              <RNImage
-                source={{ uri: item }}
+              <OptimizedImage
+                uri={item}
+                size={ImageSize.LARGE}
                 style={styles.lookbookImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={index > 0}
               />
             </Pressable>
           )}

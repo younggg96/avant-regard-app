@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   TextInput,
   FlatList,
   RefreshControl,
@@ -14,6 +13,8 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 interface Comment {
   id: string;
@@ -193,9 +194,12 @@ const AllCommentsScreen = () => {
       <View style={styles.commentHeader}>
         <View style={styles.userInfo}>
           {comment.userAvatar ? (
-            <Image
-              source={{ uri: comment.userAvatar }}
+            <OptimizedImage
+              uri={comment.userAvatar}
+              size={ImageSize.THUMBNAIL}
               style={styles.userAvatar}
+              contentFit="cover"
+              lazy={true}
             />
           ) : (
             <View style={[styles.userAvatar, styles.placeholderAvatar]}>
@@ -294,10 +298,12 @@ const AllCommentsScreen = () => {
       </View>
 
       <View style={styles.collectionInfo}>
-        <Image
-          source={{ uri: collection.coverImage }}
+        <OptimizedImage
+          uri={collection.coverImage}
+          size={ImageSize.LARGE}
           style={styles.collectionThumbnail}
-          resizeMode="cover"
+          contentFit="cover"
+          lazy={false}
         />
         <View style={styles.collectionTextInfo}>
           <Text style={styles.collectionTitle}>

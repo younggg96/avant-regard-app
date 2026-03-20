@@ -10,8 +10,9 @@ import {
   Pressable,
   VStack,
   HStack,
-  Image,
+  OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -166,13 +167,17 @@ const FollowingUsersScreen = () => {
                   <HStack alignItems="center">
                     {/* 头像 */}
                     {followingUser.avatar ? (
-                      <Image
-                        source={{ uri: followingUser.avatar }}
-                        width={50}
-                        height={50}
-                        borderRadius={25}
-                        mr="$md"
-                        alt={followingUser.username}
+                      <OptimizedImage
+                        uri={followingUser.avatar}
+                        size={ImageSize.THUMBNAIL}
+                        style={{
+                          width: 50,
+                          height: 50,
+                          borderRadius: 25,
+                          marginRight: theme.spacing.md,
+                        }}
+                        contentFit="cover"
+                        lazy={true}
                       />
                     ) : (
                       <Box

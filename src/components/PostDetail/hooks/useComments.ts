@@ -71,7 +71,7 @@ export const useComments = ({
       const numericPostId = parseInt(postId, 10);
       if (isNaN(numericPostId)) return;
 
-      const apiComments = await commentService.getPostComments(numericPostId);
+      const apiComments = await commentService.getPostComments(numericPostId, userId);
 
       // 收集所有用户ID（包括回复中的用户）
       const userIds = new Set<number>();
@@ -114,7 +114,7 @@ export const useComments = ({
               content: apiReply.content,
               timestamp: formatTimestamp(apiReply.createdAt),
               likes: apiReply.likeCount || 0,
-              isLiked: false,
+              isLiked: apiReply.isLiked ?? false,
             };
           }
         );
@@ -130,7 +130,7 @@ export const useComments = ({
           content: apiComment.content,
           timestamp: formatTimestamp(apiComment.createdAt),
           likes: apiComment.likeCount || 0,
-          isLiked: false,
+          isLiked: apiComment.isLiked ?? false,
           replyCount: apiComment.replyCount || 0,
           replies: formattedReplies,
           showReplies: false,
@@ -143,7 +143,7 @@ export const useComments = ({
     } finally {
       setIsLoadingComments(false);
     }
-  }, [postId, postStatus]);
+  }, [postId, postStatus, userId]);
 
   // 初始化加载评论
   useEffect(() => {

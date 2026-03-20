@@ -1,7 +1,8 @@
 import React from "react";
 import { ActivityIndicator, Image as RNImage } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack, Image } from "../ui";
+import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
+import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { styles } from "./styles";
@@ -33,9 +34,12 @@ const ReplyItem: React.FC<{
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
     >
-      <Image
-        source={{ uri: reply.userAvatar }}
+      <OptimizedImage
+        uri={reply.userAvatar}
+        size={ImageSize.THUMBNAIL}
         style={styles.headerAvatar}
+        contentFit="cover"
+        lazy={true}
       />
     </Pressable>
     <VStack flex={1} space="xs">
@@ -128,9 +132,12 @@ const CommentItem: React.FC<{
             onUserPress(comment.userId, comment.userName, comment.userAvatar)
           }
         >
-          <Image
-            source={{ uri: comment.userAvatar }}
+          <OptimizedImage
+            uri={comment.userAvatar}
+            size={ImageSize.THUMBNAIL}
             style={styles.commentAvatar}
+            contentFit="cover"
+            lazy={true}
           />
         </Pressable>
         <VStack flex={1} space="xs">

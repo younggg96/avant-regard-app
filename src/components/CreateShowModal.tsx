@@ -8,7 +8,6 @@ import {
   TextInput,
   Modal,
   Alert,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +15,8 @@ import { theme } from "../theme";
 import { showService, CreateShowParams } from "../services/showService";
 import { sharedStyles } from "../screens/admin/adminStyles";
 import { pickAndUploadImage } from "../screens/admin/adminUtils";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 const SEASONS = [
   "Spring/Summer", "Fall/Winter", "Autumn/Winter",
@@ -131,7 +132,13 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             {/* Cover Image */}
             <Text style={sharedStyles.formLabel}>封面图</Text>
             {coverImage ? (
-              <Image source={{ uri: coverImage }} style={styles.coverPreview} resizeMode="cover" />
+              <OptimizedImage
+                uri={coverImage}
+                size={ImageSize.MEDIUM}
+                style={styles.coverPreview}
+                contentFit="cover"
+                lazy={true}
+              />
             ) : (
               <View style={[styles.coverPreview, styles.coverPlaceholder]}>
                 <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />

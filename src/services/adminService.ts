@@ -528,7 +528,6 @@ export interface UpdateBrandParams {
   founder?: string;
   country?: string;
   website?: string;
-  coverImage?: string;
 }
 
 /**

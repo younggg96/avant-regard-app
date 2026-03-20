@@ -186,6 +186,8 @@ const BuyerMapScreen = () => {
   const navigation = useNavigation();
   const mapRef = useRef<MapView>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showStoreDetail, setShowStoreDetail] = useState(false);
   const [selectedStore, setSelectedStore] = useState<BuyerStore | null>(null);
@@ -200,6 +202,9 @@ const BuyerMapScreen = () => {
   const [visibleStores, setVisibleStores] = useState<BuyerStore[]>([]);
   const [currentMapRegion, setCurrentMapRegion] = useState<MapRegion | null>(null);
   const viewportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bottomScrollRef = useRef<RNScrollView>(null);
+  const markerRefs = useRef<{ [key: string]: any }>({});
+  const shouldScrollToSelected = useRef(false);
   const [initialRegion, setInitialRegion] = useState({
     latitude: 39.9042,
     longitude: 116.4074,
@@ -228,6 +233,7 @@ const BuyerMapScreen = () => {
 
   const initUserLocation = async () => {
     try {
+      setIsLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const location = await Location.getCurrentPositionAsync({
@@ -238,23 +244,31 @@ const BuyerMapScreen = () => {
           longitude: location.coords.longitude,
         };
         setUserLocation(loc);
-        setInitialRegion({
+
+        const nearbyRegion = {
           latitude: loc.latitude,
           longitude: loc.longitude,
-          latitudeDelta: 0.8,
-          longitudeDelta: 0.8,
-        });
+          latitudeDelta: 2,
+          longitudeDelta: 2,
+        };
+        setInitialRegion(nearbyRegion);
         if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            latitudeDelta: 0.8,
-            longitudeDelta: 0.8,
-          }, 600);
+          mapRef.current.animateToRegion(nearbyRegion, 600);
+        }
+
+        // 默认开启附近模式
+        setNearbyMode(true);
+        try {
+          const nearbyStores = await getNearbyStores(loc, 100);
+          setFilteredStores(nearbyStores);
+        } catch {
+          // API 不支持时使用本地筛选（stores 可能还在加载，后续 effect 会刷新）
         }
       }
     } catch (error) {
       console.log("无法获取用户位置，使用默认位置");
+    } finally {
+      setIsLoadingLocation(false);
     }
   };
 
@@ -267,13 +281,13 @@ const BuyerMapScreen = () => {
     }
   }, [filters.country]);
 
+  const storesLoadedRef = useRef(false);
   const loadStores = async () => {
     try {
       setIsLoading(true);
       const data = await getAllStores();
       setStores(data);
-      setFilteredStores(data);
-      // 如果 map 已有 region（比如定位先于数据完成），立刻刷新可见店铺
+      storesLoadedRef.current = true;
       if (currentMapRegion) {
         fetchVisibleStores(currentMapRegion);
       }
@@ -429,7 +443,7 @@ const BuyerMapScreen = () => {
           styles: filters.styles.length > 1 ? filters.styles : undefined,
           openOnly: filters.openOnly || undefined,
           hasPhone: filters.hasPhone || undefined,
-          searchQuery: searchQuery || undefined,
+          searchQuery: debouncedSearchQuery || undefined,
         });
         setVisibleStores(stores);
       } catch (error) {
@@ -448,7 +462,7 @@ const BuyerMapScreen = () => {
         setVisibleStores(localVisible);
       }
     },
-    [filters, searchQuery, filteredStores, getViewportBounds]
+    [filters, debouncedSearchQuery, filteredStores, getViewportBounds]
   );
 
   // 地图区域变化回调（带防抖）
@@ -484,7 +498,7 @@ const BuyerMapScreen = () => {
     if (currentMapRegion) {
       fetchVisibleStores(currentMapRegion);
     }
-  }, [filters, searchQuery, nearbyMode]);
+  }, [filters, debouncedSearchQuery, nearbyMode]);
 
   // 清理防抖定时器
   useEffect(() => {
@@ -495,12 +509,33 @@ const BuyerMapScreen = () => {
     };
   }, []);
 
-  // 应用筛选（当不在附近模式时）
+  // 搜索防抖
   useEffect(() => {
-    if (!nearbyMode) {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchQuery]);
+
+  // 应用筛选
+  useEffect(() => {
+    if (nearbyMode && userLocation && stores.length > 0) {
+      // 附近模式：用本地数据刷新附近店铺
+      const nearby = stores.filter((store) => {
+        const distance = getDistanceFromLatLonInKm(
+          userLocation.latitude,
+          userLocation.longitude,
+          store.coordinates.latitude,
+          store.coordinates.longitude
+        );
+        return distance <= 100;
+      });
+      setFilteredStores(nearby);
+    } else if (!nearbyMode) {
       applyFilters();
     }
-  }, [searchQuery, filters, stores, nearbyMode]);
+  }, [debouncedSearchQuery, filters, stores, nearbyMode]);
 
   const applyFilters = async () => {
     try {
@@ -510,7 +545,7 @@ const BuyerMapScreen = () => {
         brand: filters.brand,
         style: filters.styles.length === 1 ? filters.styles[0] : "",
         openOnly: filters.openOnly,
-        searchQuery: searchQuery,
+        searchQuery: debouncedSearchQuery,
       });
 
       // 多风格筛选
@@ -599,17 +634,45 @@ const BuyerMapScreen = () => {
     return count;
   }, [filters]);
 
-  const handleStorePress = (store: BuyerStore) => {
+  const displayStores = useMemo(() => {
+    if (!selectedStore) return visibleStores;
+    if (visibleStores.some(s => s.id === selectedStore.id)) return visibleStores;
+    return [selectedStore, ...visibleStores];
+  }, [visibleStores, selectedStore]);
+
+  useEffect(() => {
+    if (!shouldScrollToSelected.current || !selectedStore || !bottomScrollRef.current) return;
+    const idx = displayStores.findIndex(s => s.id === selectedStore.id);
+    if (idx >= 0) {
+      const cardInterval = 280 + theme.spacing.sm;
+      bottomScrollRef.current.scrollTo({ x: idx * cardInterval, animated: true });
+      shouldScrollToSelected.current = false;
+    }
+  }, [displayStores, selectedStore]);
+
+  const handleMarkerPress = useCallback((store: BuyerStore) => {
     setSelectedStore(store);
+    shouldScrollToSelected.current = true;
+  }, []);
+
+  const handleCardPress = useCallback((store: BuyerStore) => {
+    setSelectedStore(store);
+    shouldScrollToSelected.current = false;
     if (mapRef.current) {
+      const delta = currentMapRegion
+        ? Math.min(currentMapRegion.latitudeDelta, 0.05)
+        : 0.02;
       mapRef.current.animateToRegion({
         latitude: store.coordinates.latitude,
         longitude: store.coordinates.longitude,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      });
+        latitudeDelta: delta,
+        longitudeDelta: delta,
+      }, 300);
     }
-  };
+    setTimeout(() => {
+      markerRefs.current[store.id]?.showCallout();
+    }, 350);
+  }, [currentMapRegion]);
 
   const handleStoreDetailPress = (store: BuyerStore) => {
     setSelectedStore(store);
@@ -705,19 +768,27 @@ const BuyerMapScreen = () => {
     });
   };
 
+  const filteredStoreIds = useMemo(() => {
+    return new Set(filteredStores.map((s) => s.id));
+  }, [filteredStores]);
+
   const renderMarker = (store: BuyerStore) => {
     const isSelected = selectedStore?.id === store.id;
+    const isFiltered = filteredStoreIds.has(store.id);
+    const isDimmed = filteredStores.length > 0 && !isFiltered && !isSelected;
     const size = isSelected ? 32 : 24;
     const innerSize = isSelected ? 10 : 8;
     return (
       <Marker
         key={store.id}
+        ref={(ref: any) => { if (ref) markerRefs.current[store.id] = ref; }}
         coordinate={store.coordinates}
         title={store.name}
         description={store.address}
-        onPress={() => handleStorePress(store)}
-        zIndex={isSelected ? 999 : 1}
+        onPress={() => handleMarkerPress(store)}
+        zIndex={isSelected ? 999 : isDimmed ? 0 : 1}
         tracksViewChanges={false}
+        opacity={isDimmed ? 0.3 : 1}
       >
         <View
           style={[
@@ -727,9 +798,11 @@ const BuyerMapScreen = () => {
               height: size,
               backgroundColor: isSelected
                 ? "#FFFFFF"
-                : store.isOpen
-                  ? "#000000"
-                  : "#AAAAAA",
+                : isDimmed
+                  ? "#CCCCCC"
+                  : store.isOpen
+                    ? "#000000"
+                    : "#AAAAAA",
               borderWidth: isSelected ? 3 : 2,
               borderColor: isSelected ? "#000000" : "#FFFFFF",
             },
@@ -867,7 +940,7 @@ const BuyerMapScreen = () => {
             rotateEnabled={false}
             onRegionChangeComplete={handleRegionChangeComplete}
           >
-            {filteredStores.map(renderMarker)}
+            {stores.map(renderMarker)}
           </MapView>
         )}
       </Box>
@@ -1121,13 +1194,14 @@ const BuyerMapScreen = () => {
         </HStack>
 
         <RNScrollView
+          ref={bottomScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: theme.spacing.md }}
           snapToInterval={280 + theme.spacing.sm}
           decelerationRate="fast"
         >
-          {visibleStores.map((store) => (
+          {displayStores.map((store) => (
             <Pressable
               key={store.id}
               w={280}
@@ -1138,7 +1212,7 @@ const BuyerMapScreen = () => {
               borderWidth={selectedStore?.id === store.id ? 2 : 0}
               borderColor="$black"
               sx={styles.cardShadow}
-              onPress={() => handleStorePress(store)}
+              onPress={() => handleCardPress(store)}
               onLongPress={() => handleStoreDetailPress(store)}
             >
               {/* 店铺头部 */}

@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   View,
   Dimensions,
-  Image,
+  Image as RNImage,
   TouchableOpacity,
   Modal,
   ScrollView as RNScrollView,
@@ -24,7 +24,9 @@ import {
   Pressable,
   VStack,
   HStack,
+  OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
@@ -398,7 +400,7 @@ const CommunityDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <Image
+          <RNImage
             source={require("../../assets/gif/profile-loading.gif")}
             style={styles.loadingGif}
             resizeMode="contain"
@@ -436,9 +438,12 @@ const CommunityDetailScreen = () => {
             <HStack alignItems="center" gap="$md">
               <View style={styles.communityIcon}>
                 {community.iconUrl ? (
-                  <Image
-                    source={{ uri: community.iconUrl }}
+                  <OptimizedImage
+                    uri={community.iconUrl}
+                    size={ImageSize.THUMBNAIL}
                     style={styles.communityImage}
+                    contentFit="cover"
+                    lazy={false}
                   />
                 ) : (
                   <View style={styles.communityPlaceholder}>

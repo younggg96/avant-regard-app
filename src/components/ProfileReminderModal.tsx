@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -119,13 +119,21 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
     loadBrands(brandPage + 1, brandSearchKeyword);
   }, [loadingMoreBrands, hasMoreBrands, brandPage, brandSearchKeyword, loadBrands]);
 
-  // 搜索品牌
+  // 搜索品牌（防抖处理）
+  const brandSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleBrandSearch = useCallback(
     (keyword: string) => {
       setBrandSearchKeyword(keyword);
-      setBrandPage(1);
-      setHasMoreBrands(true);
-      loadBrands(1, keyword, true);
+
+      if (brandSearchTimerRef.current) {
+        clearTimeout(brandSearchTimerRef.current);
+      }
+
+      brandSearchTimerRef.current = setTimeout(() => {
+        setBrandPage(1);
+        setHasMoreBrands(true);
+        loadBrands(1, keyword, true);
+      }, 400);
     },
     [loadBrands]
   );

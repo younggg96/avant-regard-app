@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  Image,
   Modal,
   TouchableWithoutFeedback,
   Platform,
@@ -28,6 +27,8 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { useAuthStore } from "../store/authStore";
 import {
   StoreMerchant,
@@ -360,6 +361,9 @@ const MerchantManageScreen = () => {
 
   // 选择图片
   const pickImage = async (fieldName: string = "imageUrl") => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") { Alert.alert("权限不足", "需要相册权限才能选择图片"); return; }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -527,10 +531,12 @@ const MerchantManageScreen = () => {
             borderColor="$gray100"
           >
             {banner.imageUrl && (
-              <Image
-                source={{ uri: banner.imageUrl }}
+              <OptimizedImage
+                uri={banner.imageUrl}
+                size={ImageSize.LARGE}
                 style={styles.bannerImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             )}
             <HStack p="$md" justifyContent="between" alignItems="center">
@@ -682,10 +688,12 @@ const MerchantManageScreen = () => {
             borderColor="$gray100"
           >
             {activity.coverImage && (
-              <Image
-                source={{ uri: activity.coverImage }}
+              <OptimizedImage
+                uri={activity.coverImage}
+                size={ImageSize.MEDIUM}
                 style={styles.activityImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             )}
             <VStack p="$md">
@@ -773,10 +781,12 @@ const MerchantManageScreen = () => {
             borderColor="$gray100"
           >
             {discount.coverImage && (
-              <Image
-                source={{ uri: discount.coverImage }}
+              <OptimizedImage
+                uri={discount.coverImage}
+                size={ImageSize.MEDIUM}
                 style={styles.discountImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             )}
             <VStack p="$md">
@@ -1592,10 +1602,12 @@ const MerchantManageScreen = () => {
                 onPress={() => pickImage("imageUrl")}
               >
                 {formData.imageUrl ? (
-                  <Image
-                    source={{ uri: formData.imageUrl }}
+                  <OptimizedImage
+                    uri={formData.imageUrl}
+                    size={ImageSize.MEDIUM}
                     style={styles.formImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    lazy={true}
                   />
                 ) : (
                   <VStack alignItems="center">
@@ -1712,10 +1724,12 @@ const MerchantManageScreen = () => {
                 onPress={() => pickImage("coverImage")}
               >
                 {formData.coverImage ? (
-                  <Image
-                    source={{ uri: formData.coverImage }}
+                  <OptimizedImage
+                    uri={formData.coverImage}
+                    size={ImageSize.MEDIUM}
                     style={styles.formImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    lazy={true}
                   />
                 ) : (
                   <VStack alignItems="center">
@@ -1863,10 +1877,12 @@ const MerchantManageScreen = () => {
                 onPress={() => pickImage("coverImage")}
               >
                 {formData.coverImage ? (
-                  <Image
-                    source={{ uri: formData.coverImage }}
+                  <OptimizedImage
+                    uri={formData.coverImage}
+                    size={ImageSize.MEDIUM}
                     style={styles.formImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    lazy={true}
                   />
                 ) : (
                   <VStack alignItems="center">

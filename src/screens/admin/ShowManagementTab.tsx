@@ -1,14 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
+  ScrollView as RNScrollView,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
@@ -22,6 +17,8 @@ import {
 } from "../../services/showService";
 import { sharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
+import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const SEASONS = [
   "Spring/Summer", "Fall/Winter", "Autumn/Winter",
@@ -69,6 +66,15 @@ const ShowManagementTab = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchShows(1, keyword, statusFilter);
+    }, 400);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [keyword]);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [editingShow, setEditingShow] = useState<Show | null>(null);
@@ -101,10 +107,6 @@ const ShowManagementTab = () => {
     },
     []
   );
-
-  useEffect(() => {
-    fetchShows(1, keyword, statusFilter);
-  }, [fetchShows]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -235,27 +237,30 @@ const ShowManagementTab = () => {
   ) => (
     <>
       <Text style={sharedStyles.formLabel}>品牌名称 *</Text>
-      <TextInput
-        style={sharedStyles.modalInput}
+      <Input
+        variant="outline"
+        size="md"
         placeholder="例如: Yohji Yamamoto"
         placeholderTextColor={theme.colors.gray300}
         value={form.brand || ""}
-        onChangeText={(v) => setForm((f: any) => ({ ...f, brand: v }))}
+        onChangeText={(v: string) => setForm((f: any) => ({ ...f, brand: v }))}
       />
 
       <Text style={sharedStyles.formLabel}>封面图</Text>
       {form.coverImage ? (
-        <Image
-          source={{ uri: form.coverImage }}
+        <OptimizedImage
+          uri={form.coverImage}
+          size={ImageSize.MEDIUM}
           style={styles.coverPreview}
-          resizeMode="cover"
+          contentFit="cover"
+          lazy={true}
         />
       ) : (
-        <View style={[styles.coverPreview, styles.coverPlaceholder]}>
+        <Box style={[styles.coverPreview, styles.coverPlaceholder]}>
           <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-        </View>
+        </Box>
       )}
-      <TouchableOpacity
+      <Pressable
         style={sharedStyles.uploadImageButton}
         onPress={() => handleUploadCover(setForm)}
         disabled={imageUploading}
@@ -270,24 +275,26 @@ const ShowManagementTab = () => {
             </Text>
           </>
         )}
-      </TouchableOpacity>
+      </Pressable>
 
       <Text style={sharedStyles.formLabel}>秀场标题 *</Text>
-      <TextInput
-        style={sharedStyles.modalInput}
+      <Input
+        variant="outline"
+        size="md"
         placeholder="例如: Spring 2025 Ready-to-Wear"
         placeholderTextColor={theme.colors.gray300}
         value={form.title || ""}
-        onChangeText={(v) => setForm((f: any) => ({ ...f, title: v }))}
+        onChangeText={(v: string) => setForm((f: any) => ({ ...f, title: v }))}
       />
 
       <Text style={sharedStyles.formLabel}>年份 *</Text>
-      <TextInput
-        style={sharedStyles.modalInput}
+      <Input
+        variant="outline"
+        size="md"
         placeholder="例如: 2025"
         placeholderTextColor={theme.colors.gray300}
         value={String(form.year || "")}
-        onChangeText={(v) =>
+        onChangeText={(v: string) =>
           setForm((f: any) => ({
             ...f,
             year: v ? parseInt(v, 10) || "" : "",
@@ -298,9 +305,9 @@ const ShowManagementTab = () => {
       />
 
       <Text style={sharedStyles.formLabel}>季度 *</Text>
-      <View style={sharedStyles.linkTypeContainer}>
+      <Box style={sharedStyles.linkTypeContainer}>
         {SEASONS.map((s) => (
-          <TouchableOpacity
+          <Pressable
             key={s}
             style={[
               sharedStyles.linkTypeButton,
@@ -316,14 +323,14 @@ const ShowManagementTab = () => {
             >
               {s}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
-      </View>
+      </Box>
 
       <Text style={sharedStyles.formLabel}>类别</Text>
-      <View style={sharedStyles.linkTypeContainer}>
+      <Box style={sharedStyles.linkTypeContainer}>
         {CATEGORIES.map((c) => (
-          <TouchableOpacity
+          <Pressable
             key={c}
             style={[
               sharedStyles.linkTypeButton,
@@ -344,26 +351,29 @@ const ShowManagementTab = () => {
             >
               {c}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
-      </View>
+      </Box>
 
       <Text style={sharedStyles.formLabel}>主设计师</Text>
-      <TextInput
-        style={sharedStyles.modalInput}
+      <Input
+        variant="outline"
+        size="md"
         placeholder="选填"
         placeholderTextColor={theme.colors.gray300}
         value={form.designer || ""}
-        onChangeText={(v) => setForm((f: any) => ({ ...f, designer: v }))}
+        onChangeText={(v: string) => setForm((f: any) => ({ ...f, designer: v }))}
       />
 
       <Text style={sharedStyles.formLabel}>秀场介绍</Text>
-      <TextInput
-        style={[sharedStyles.modalInput, { minHeight: 80 }]}
+      <Input
+        variant="outline"
+        size="md"
+        style={{ minHeight: 80 }}
         placeholder="选填，介绍秀场的亮点、主题等"
         placeholderTextColor={theme.colors.gray300}
         value={form.description || ""}
-        onChangeText={(v) => setForm((f: any) => ({ ...f, description: v }))}
+        onChangeText={(v: string) => setForm((f: any) => ({ ...f, description: v }))}
         multiline
         numberOfLines={4}
         textAlignVertical="top"
@@ -372,9 +382,9 @@ const ShowManagementTab = () => {
       {isEdit && (
         <>
           <Text style={sharedStyles.formLabel}>状态</Text>
-          <View style={styles.statusChips}>
+          <HStack style={styles.statusChips}>
             {["APPROVED", "PENDING", "REJECTED"].map((s) => (
-              <TouchableOpacity
+              <Pressable
                 key={s}
                 style={[
                   styles.statusChip,
@@ -397,16 +407,16 @@ const ShowManagementTab = () => {
                       ? "待审核"
                       : "已拒绝"}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
-          </View>
+          </HStack>
         </>
       )}
     </>
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       <ScrollView
         style={sharedStyles.content}
         showsVerticalScrollIndicator={false}
@@ -415,30 +425,32 @@ const ShowManagementTab = () => {
         }
       >
         {/* Search */}
-        <View style={styles.searchRow}>
-          <TextInput
-            style={[sharedStyles.modalInput, styles.searchInput]}
+        <HStack space="sm" style={styles.searchRow}>
+          <Input
+            style={styles.searchInput}
             placeholder="搜索品牌/标题/设计师..."
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
+            variant="outline"
+            size="sm"
           />
-          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+          <Pressable style={styles.searchButton} onPress={handleSearch}>
             <Ionicons name="search" size={18} color={theme.colors.white} />
-          </TouchableOpacity>
-        </View>
+          </Pressable>
+        </HStack>
 
         {/* Status filter + Create button */}
-        <View style={styles.filterRow}>
-          <ScrollView
+        <HStack style={styles.filterRow}>
+          <RNScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.statusFilterContainer}
           >
             {STATUS_OPTIONS.map((opt) => (
-              <TouchableOpacity
+              <Pressable
                 key={opt.key}
                 style={[
                   styles.filterChip,
@@ -454,38 +466,38 @@ const ShowManagementTab = () => {
                 >
                   {opt.label}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
-          </ScrollView>
-          <TouchableOpacity style={styles.createButton} onPress={handleOpenCreate}>
+          </RNScrollView>
+          <Pressable style={styles.createButton} onPress={handleOpenCreate}>
             <Ionicons name="add" size={20} color={theme.colors.white} />
-          </TouchableOpacity>
-        </View>
+          </Pressable>
+        </HStack>
 
         <Text style={styles.totalText}>共 {total} 个秀场</Text>
 
         {loading ? (
-          <View style={sharedStyles.loadingContainer}>
+          <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.black} />
             <Text style={sharedStyles.loadingText}>加载中...</Text>
-          </View>
+          </Box>
         ) : shows.length === 0 ? (
-          <View style={sharedStyles.emptyContainer}>
+          <Box style={sharedStyles.emptyContainer}>
             <Ionicons
               name="film-outline"
               size={48}
               color={theme.colors.gray200}
             />
             <Text style={sharedStyles.emptyText}>暂无秀场数据</Text>
-          </View>
+          </Box>
         ) : (
           shows.map((show) => (
-            <View key={show.id} style={sharedStyles.postCard}>
-              <View style={sharedStyles.postHeader}>
+            <Box key={show.id} style={sharedStyles.postCard}>
+              <HStack style={sharedStyles.postHeader}>
                 <Text style={sharedStyles.postTitle} numberOfLines={1}>
                   {show.title || show.season}
                 </Text>
-                <View
+                <Box
                   style={[
                     styles.statusBadge,
                     {
@@ -510,51 +522,53 @@ const ShowManagementTab = () => {
                           ? "已拒绝"
                           : "已通过"}
                   </Text>
-                </View>
-              </View>
+                </Box>
+              </HStack>
 
               {show.coverImage && (
-                <Image
-                  source={{ uri: show.coverImage }}
+                <OptimizedImage
+                  uri={show.coverImage}
+                  size={ImageSize.MEDIUM}
                   style={styles.coverImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  lazy={true}
                 />
               )}
 
-              <View style={styles.metaSection}>
-                <View style={styles.metaRow}>
+              <VStack style={styles.metaSection}>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>品牌</Text>
                   <Text style={styles.metaValue}>{show.brand}</Text>
-                </View>
-                <View style={styles.metaRow}>
+                </HStack>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>年份</Text>
                   <Text style={styles.metaValue}>{show.year}</Text>
-                </View>
-                <View style={styles.metaRow}>
+                </HStack>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>季度</Text>
                   <Text style={styles.metaValue}>{show.season}</Text>
-                </View>
+                </HStack>
                 {show.category && (
-                  <View style={styles.metaRow}>
+                  <HStack style={styles.metaRow}>
                     <Text style={styles.metaLabel}>类别</Text>
                     <Text style={styles.metaValue}>{show.category}</Text>
-                  </View>
+                  </HStack>
                 )}
                 {show.designer && (
-                  <View style={styles.metaRow}>
+                  <HStack style={styles.metaRow}>
                     <Text style={styles.metaLabel}>设计师</Text>
                     <Text style={styles.metaValue}>{show.designer}</Text>
-                  </View>
+                  </HStack>
                 )}
                 {show.contributorName && (
-                  <View style={styles.metaRow}>
+                  <HStack style={styles.metaRow}>
                     <Text style={styles.metaLabel}>贡献者</Text>
                     <Text style={styles.metaValue}>
                       {show.contributorName}
                     </Text>
-                  </View>
+                  </HStack>
                 )}
-              </View>
+              </VStack>
 
               {show.description && (
                 <Text style={styles.description} numberOfLines={3}>
@@ -562,49 +576,34 @@ const ShowManagementTab = () => {
                 </Text>
               )}
 
-              <View style={sharedStyles.actionButtons}>
-                <TouchableOpacity
-                  style={[sharedStyles.actionButton, sharedStyles.viewButton]}
+              <HStack style={sharedStyles.actionButtons}>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onPress={() => handleOpenEdit(show)}
+                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.black} />}
+                  style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <Ionicons
-                    name="create-outline"
-                    size={18}
-                    color={theme.colors.black}
-                  />
-                  <Text
-                    style={[
-                      sharedStyles.actionButtonText,
-                      { color: theme.colors.black },
-                    ]}
-                  >
-                    编辑
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    sharedStyles.actionButton,
-                    sharedStyles.deletePostButton,
-                  ]}
+                  <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>编辑</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="error"
                   onPress={() => handleDelete(show)}
                   disabled={actionLoading}
+                  leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={theme.colors.white}
-                  />
-                  <Text style={sharedStyles.actionButtonText}>删除</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                </Button>
+              </HStack>
+            </Box>
           ))
         )}
 
         {/* Pagination */}
         {total > 50 && (
-          <View style={styles.pagination}>
-            <TouchableOpacity
+          <HStack justifyContent="center" space="md" style={styles.pagination}>
+            <Pressable
               disabled={page <= 1}
               onPress={() => fetchShows(page - 1, keyword, statusFilter)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
@@ -614,11 +613,11 @@ const ShowManagementTab = () => {
                 size={24}
                 color={theme.colors.black}
               />
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.paginationText}>
               第 {page} 页 / 共 {totalPages} 页
             </Text>
-            <TouchableOpacity
+            <Pressable
               disabled={page >= totalPages}
               onPress={() => fetchShows(page + 1, keyword, statusFilter)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
@@ -628,11 +627,11 @@ const ShowManagementTab = () => {
                 size={24}
                 color={theme.colors.black}
               />
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          </HStack>
         )}
 
-        <View style={{ height: 40 }} />
+        <Box style={{ height: 40 }} />
       </ScrollView>
 
       {/* Create Modal */}
@@ -642,46 +641,25 @@ const ShowManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setCreateModalVisible(false)}
       >
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.editModalContent]}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
               <Text style={sharedStyles.modalTitle}>新建秀场</Text>
               {renderShowFormFields(createForm, setCreateForm, false)}
-              <View style={sharedStyles.modalButtons}>
-                <TouchableOpacity
-                  style={[
-                    sharedStyles.modalButton,
-                    sharedStyles.modalCancelButton,
-                  ]}
-                  onPress={() => setCreateModalVisible(false)}
-                >
-                  <Text style={sharedStyles.modalCancelText}>取消</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    sharedStyles.modalButton,
-                    sharedStyles.modalConfirmButton,
-                    { backgroundColor: theme.colors.black },
-                  ]}
-                  onPress={handleCreate}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator
-                      color={theme.colors.white}
-                      size="small"
-                    />
-                  ) : (
-                    <Text style={sharedStyles.modalConfirmText}>创建</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <HStack style={sharedStyles.modalButtons}>
+                <Button variant="outline" size="sm" onPress={() => setCreateModalVisible(false)}>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button size="sm" onPress={handleCreate} disabled={actionLoading} isLoading={actionLoading}>
+                  <ButtonText>创建</ButtonText>
+                </Button>
+              </HStack>
             </ScrollView>
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
 
       {/* Edit Modal */}
@@ -691,48 +669,27 @@ const ShowManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.editModalContent]}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
               <Text style={sharedStyles.modalTitle}>编辑秀场</Text>
               {renderShowFormFields(editForm, setEditForm, true)}
-              <View style={sharedStyles.modalButtons}>
-                <TouchableOpacity
-                  style={[
-                    sharedStyles.modalButton,
-                    sharedStyles.modalCancelButton,
-                  ]}
-                  onPress={() => setEditModalVisible(false)}
-                >
-                  <Text style={sharedStyles.modalCancelText}>取消</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    sharedStyles.modalButton,
-                    sharedStyles.modalConfirmButton,
-                    { backgroundColor: theme.colors.black },
-                  ]}
-                  onPress={handleSave}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator
-                      color={theme.colors.white}
-                      size="small"
-                    />
-                  ) : (
-                    <Text style={sharedStyles.modalConfirmText}>保存修改</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <HStack style={sharedStyles.modalButtons}>
+                <Button variant="outline" size="sm" onPress={() => setEditModalVisible(false)}>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button size="sm" onPress={handleSave} disabled={actionLoading} isLoading={actionLoading}>
+                  <ButtonText>保存修改</ButtonText>
+                </Button>
+              </HStack>
             </ScrollView>
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
-    </View>
+    </Box>
   );
 };
 
@@ -745,13 +702,14 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 40,
-    marginBottom: 0,
   },
   searchButton: {
     backgroundColor: theme.colors.black,
     borderRadius: 8,
     paddingHorizontal: 16,
+    height: 40,
     justifyContent: "center",
+    alignItems: "center",
   },
   filterRow: {
     flexDirection: "row",

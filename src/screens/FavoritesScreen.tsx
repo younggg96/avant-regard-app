@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,6 +18,8 @@ import { postService, Post as ApiPost } from "../services/postService";
 import SimplePostCard from "../components/SimplePostCard";
 import { Post as DisplayPost } from "../components/PostCard";
 import { Alert } from "../utils/Alert";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 interface FavoriteItem {
   id: string;
@@ -217,7 +218,13 @@ const FavoritesScreen = () => {
       style={styles.favoriteItem}
       onPress={() => handleItemPress(item)}
     >
-      <Image source={{ uri: item.image }} style={styles.itemImage} />
+      <OptimizedImage
+        uri={item.image}
+        size={ImageSize.MEDIUM}
+        style={styles.itemImage}
+        contentFit="cover"
+        lazy={true}
+      />
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>
           <View style={styles.itemTitleRow}>

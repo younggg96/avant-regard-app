@@ -2,12 +2,13 @@ import React from "react";
 import {
   View,
   ScrollView as RNScrollView,
-  Image as RNImage,
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text, VStack, HStack } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { Show } from "@/services/showService";
 import { theme } from "../../theme";
 
@@ -45,10 +46,12 @@ export const RelatedLooks: React.FC<RelatedShowsProps> = ({
             onPress={() => onShowPress(show)}
             activeOpacity={0.9}
           >
-            <RNImage
-              source={{ uri: show.coverImage }}
+            <OptimizedImage
+              uri={show.coverImage}
+              size={ImageSize.MEDIUM}
               style={styles.showImage}
-              resizeMode="cover"
+              contentFit="cover"
+              lazy={true}
             />
             <LinearGradient
               colors={["transparent", "rgba(0,0,0,0.75)"]}

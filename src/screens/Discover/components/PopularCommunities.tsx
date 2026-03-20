@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View, TouchableOpacity, Image } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
   Box,
@@ -8,6 +8,8 @@ import {
   Pressable,
   HStack,
 } from "../../../components/ui";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import { Community, CommunityListResponse } from "../../../services/communityService";
 import { styles } from "../styles";
 
@@ -63,9 +65,12 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
             >
               <View style={styles.communityIcon}>
                 {community.iconUrl ? (
-                  <Image
-                    source={{ uri: community.iconUrl }}
+                  <OptimizedImage
+                    uri={community.iconUrl}
+                    size={ImageSize.THUMBNAIL}
                     style={styles.communityImage}
+                    contentFit="cover"
+                    lazy={true}
                   />
                 ) : (
                   <View style={styles.communityPlaceholder}>

@@ -1,12 +1,11 @@
 /**
  * 所有社区页面
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   RefreshControl,
   View,
-  Image,
   TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,7 +18,9 @@ import {
   Pressable,
   VStack,
   HStack,
+  OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
@@ -42,6 +43,8 @@ const AllCommunitiesScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("all");
 
   // 获取社区列表
@@ -64,21 +67,30 @@ const AllCommunitiesScreen = () => {
     init();
   }, [fetchCommunities]);
 
+  // 搜索防抖
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchQuery]);
+
   // 根据 Tab 和搜索过滤社区
   useEffect(() => {
     const sourceCommunities = activeTab === "following" ? followingCommunities : allCommunities;
 
-    if (searchQuery.trim()) {
+    if (debouncedSearchQuery.trim()) {
       const filtered = sourceCommunities.filter(
         (c) =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.description.toLowerCase().includes(searchQuery.toLowerCase())
+          c.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          c.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
       );
       setFilteredCommunities(filtered);
     } else {
       setFilteredCommunities(sourceCommunities);
     }
-  }, [searchQuery, activeTab, allCommunities, followingCommunities]);
+  }, [debouncedSearchQuery, activeTab, allCommunities, followingCommunities]);
 
   // 刷新
   const handleRefresh = useCallback(async () => {
@@ -158,9 +170,12 @@ const AllCommunitiesScreen = () => {
       <HStack alignItems="center" gap="$md">
         <View style={styles.communityIcon}>
           {community.iconUrl ? (
-            <Image
-              source={{ uri: community.iconUrl }}
+            <OptimizedImage
+              uri={community.iconUrl}
+              size={ImageSize.THUMBNAIL}
               style={styles.communityImage}
+              contentFit="cover"
+              lazy={true}
             />
           ) : (
             <View style={styles.communityPlaceholder}>

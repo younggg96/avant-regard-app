@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
@@ -25,6 +19,8 @@ import {
 import { Post } from "../../services/postService";
 import { sharedStyles } from "./adminStyles";
 import { formatDate, pickAndUploadImage } from "./adminUtils";
+import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const CATEGORY_NAMES: Record<CommunityCategory, string> = {
   GENERAL: "综合",
@@ -279,145 +275,169 @@ const CommunitiesTab = () => {
   };
 
   const renderCommunityCard = (community: AdminCommunity) => (
-    <View key={community.id} style={styles.communityCard}>
+    <Box key={community.id} style={styles.communityCard}>
       {community.coverUrl ? (
-        <Image source={{ uri: community.coverUrl }} style={styles.communityCoverImage} resizeMode="cover" />
+        <OptimizedImage
+          uri={community.coverUrl}
+          size={ImageSize.MEDIUM}
+          style={styles.communityCoverImage}
+          contentFit="cover"
+          lazy={true}
+        />
       ) : (
-        <View style={[styles.communityCoverImage, styles.communityCoverPlaceholder]}>
+        <Box style={[styles.communityCoverImage, styles.communityCoverPlaceholder]}>
           <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-        </View>
+        </Box>
       )}
 
-      <View style={[styles.communityStatusBadge, community.isActive ? styles.communityStatusActive : styles.communityStatusInactive]}>
+      <Box style={[styles.communityStatusBadge, community.isActive ? styles.communityStatusActive : styles.communityStatusInactive]}>
         <Text style={styles.communityStatusText}>{community.isActive ? "启用" : "禁用"}</Text>
-      </View>
+      </Box>
 
       {community.isOfficial && (
-        <View style={styles.communityOfficialBadge}>
+        <Box style={styles.communityOfficialBadge}>
           <Text style={styles.communityOfficialText}>官方</Text>
-        </View>
+        </Box>
       )}
 
-      <View style={styles.communityInfo}>
-        <View style={styles.communityHeader}>
+      <Box style={styles.communityInfo}>
+        <HStack style={styles.communityHeader}>
           {community.iconUrl ? (
-            <Image source={{ uri: community.iconUrl }} style={styles.communityIcon} />
+            <OptimizedImage
+              uri={community.iconUrl}
+              size={ImageSize.THUMBNAIL}
+              style={styles.communityIcon}
+              contentFit="cover"
+              lazy={true}
+            />
           ) : (
-            <View style={[styles.communityIcon, styles.communityIconPlaceholder]}>
+            <Box style={[styles.communityIcon, styles.communityIconPlaceholder]}>
               <Text style={styles.communityIconText}>{community.name[0]}</Text>
-            </View>
+            </Box>
           )}
-          <View style={styles.communityTitleContainer}>
+          <Box style={styles.communityTitleContainer}>
             <Text style={styles.communityTitle} numberOfLines={1}>{community.name}</Text>
             <Text style={styles.communitySlug}>/{community.slug}</Text>
-          </View>
-        </View>
+          </Box>
+        </HStack>
 
         {community.description && (
           <Text style={styles.communityDescription} numberOfLines={2}>{community.description}</Text>
         )}
 
-        <View style={styles.communityMeta}>
-          <View style={styles.communityMetaItem}>
+        <HStack style={styles.communityMeta}>
+          <HStack style={styles.communityMetaItem}>
             <Ionicons name="people-outline" size={14} color={theme.colors.gray400} />
             <Text style={styles.communityMetaText}>{community.memberCount} 成员</Text>
-          </View>
-          <View style={styles.communityMetaItem}>
+          </HStack>
+          <HStack style={styles.communityMetaItem}>
             <Ionicons name="document-text-outline" size={14} color={theme.colors.gray400} />
             <Text style={styles.communityMetaText}>{community.postCount} 帖子</Text>
-          </View>
-          <View style={styles.communityMetaItem}>
+          </HStack>
+          <HStack style={styles.communityMetaItem}>
             <Text style={styles.communityCategory}>{CATEGORY_NAMES[community.category]}</Text>
-          </View>
-        </View>
-      </View>
+          </HStack>
+        </HStack>
+      </Box>
 
-      <View style={styles.communityActions}>
-        <TouchableOpacity style={[styles.communityActionBtn, styles.communityPostsBtn]} onPress={() => handleOpenCommunityPosts(community)} disabled={actionLoading}>
+      <HStack style={styles.communityActions}>
+        <Pressable style={[styles.communityActionBtn, styles.communityPostsBtn]} onPress={() => handleOpenCommunityPosts(community)} disabled={actionLoading}>
           <Ionicons name="list-outline" size={18} color={theme.colors.white} />
           <Text style={styles.communityActionText}>帖子</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.communityActionBtn, styles.communityEditBtn]} onPress={() => handleOpenEditModal(community)} disabled={actionLoading}>
+        </Pressable>
+        <Pressable style={[styles.communityActionBtn, styles.communityEditBtn]} onPress={() => handleOpenEditModal(community)} disabled={actionLoading}>
           <Ionicons name="create-outline" size={18} color={theme.colors.white} />
           <Text style={styles.communityActionText}>编辑</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.communityActionBtn, community.isActive ? styles.communityDisableBtn : styles.communityEnableBtn]} onPress={() => handleToggleStatus(community)} disabled={actionLoading}>
+        </Pressable>
+        <Pressable style={[styles.communityActionBtn, community.isActive ? styles.communityDisableBtn : styles.communityEnableBtn]} onPress={() => handleToggleStatus(community)} disabled={actionLoading}>
           <Ionicons name={community.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.communityActionBtn, styles.communityDeleteBtn]} onPress={() => handleDelete(community.id, community.name)} disabled={actionLoading}>
+        </Pressable>
+        <Pressable style={[styles.communityActionBtn, styles.communityDeleteBtn]} onPress={() => handleDelete(community.id, community.name)} disabled={actionLoading}>
           <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-        </TouchableOpacity>
-      </View>
-    </View>
+        </Pressable>
+      </HStack>
+    </Box>
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       <ScrollView
         style={styles.communitiesList}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <TouchableOpacity style={styles.addCommunityButton} onPress={handleOpenCreateModal}>
+        <Pressable style={styles.addCommunityButton} onPress={handleOpenCreateModal}>
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
           <Text style={styles.addCommunityButtonText}>创建社区</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         {loading && communities.length === 0 ? (
-          <View style={sharedStyles.loadingContainer}>
+          <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} />
             <Text style={sharedStyles.loadingText}>加载中...</Text>
-          </View>
+          </Box>
         ) : communities.length === 0 ? (
-          <View style={sharedStyles.emptyContainer}>
+          <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="people-outline" size={48} color={theme.colors.gray300} />
             <Text style={sharedStyles.emptyText}>暂无社区</Text>
             <Text style={sharedStyles.emptySubtext}>点击上方按钮创建社区</Text>
-          </View>
+          </Box>
         ) : (
           <>
-            <View style={styles.communitiesHeader}>
+            <Box style={styles.communitiesHeader}>
               <Text style={styles.communitiesHeaderText}>共 {communities.length} 个社区</Text>
-            </View>
+            </Box>
             {communities.map(renderCommunityCard)}
           </>
         )}
-        <View style={{ height: 40 }} />
+        <Box style={{ height: 40 }} />
       </ScrollView>
 
       {/* Community Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.communityModalContent]}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.communityModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={sharedStyles.modalTitle}>{editingCommunity ? "编辑社区" : "创建社区"}</Text>
 
               <Text style={sharedStyles.formLabel}>社区图标</Text>
-              <View style={styles.communityFormImageRow}>
+              <HStack style={styles.communityFormImageRow}>
                 {form.iconUrl ? (
-                  <Image source={{ uri: form.iconUrl }} style={styles.communityFormIcon} resizeMode="cover" />
+                  <OptimizedImage
+                    uri={form.iconUrl}
+                    size={ImageSize.THUMBNAIL}
+                    style={styles.communityFormIcon}
+                    contentFit="cover"
+                    lazy={true}
+                  />
                 ) : (
-                  <View style={[styles.communityFormIcon, styles.communityFormIconPlaceholder]}>
+                  <Box style={[styles.communityFormIcon, styles.communityFormIconPlaceholder]}>
                     <Ionicons name="image-outline" size={24} color={theme.colors.gray300} />
-                  </View>
+                  </Box>
                 )}
-                <TouchableOpacity style={sharedStyles.uploadSmallButton} onPress={handleUploadIcon} disabled={iconUploading}>
+                <Pressable style={sharedStyles.uploadSmallButton} onPress={handleUploadIcon} disabled={iconUploading}>
                   {iconUploading ? (
                     <ActivityIndicator color={theme.colors.white} size="small" />
                   ) : (
                     <Text style={sharedStyles.uploadSmallButtonText}>{form.iconUrl ? "更换图标" : "上传图标"}</Text>
                   )}
-                </TouchableOpacity>
-              </View>
+                </Pressable>
+              </HStack>
 
               <Text style={sharedStyles.formLabel}>社区封面</Text>
               {form.coverUrl ? (
-                <Image source={{ uri: form.coverUrl }} style={styles.communityFormCover} resizeMode="cover" />
+                <OptimizedImage
+                  uri={form.coverUrl}
+                  size={ImageSize.MEDIUM}
+                  style={styles.communityFormCover}
+                  contentFit="cover"
+                  lazy={true}
+                />
               ) : (
-                <View style={[styles.communityFormCover, styles.communityFormCoverPlaceholder]}>
+                <Box style={[styles.communityFormCover, styles.communityFormCoverPlaceholder]}>
                   <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-                </View>
+                </Box>
               )}
-              <TouchableOpacity style={sharedStyles.uploadImageButton} onPress={handleUploadCover} disabled={coverUploading}>
+              <Pressable style={sharedStyles.uploadImageButton} onPress={handleUploadCover} disabled={coverUploading}>
                 {coverUploading ? (
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
@@ -426,44 +446,50 @@ const CommunitiesTab = () => {
                     <Text style={sharedStyles.uploadImageButtonText}>{form.coverUrl ? "更换封面" : "上传封面"}</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </Pressable>
 
               <Text style={sharedStyles.formLabel}>社区名称 *</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入社区名称"
                 placeholderTextColor={theme.colors.gray300}
                 value={form.name}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, name: text }))}
+                variant="outline"
+                size="md"
               />
 
               <Text style={sharedStyles.formLabel}>社区标识（slug）*</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入社区标识（小写字母、数字、连字符）"
                 placeholderTextColor={theme.colors.gray300}
                 value={form.slug}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, slug: text.toLowerCase() }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, slug: text.toLowerCase() }))}
                 autoCapitalize="none"
                 editable={!editingCommunity}
+                variant="outline"
+                size="md"
               />
               {editingCommunity && <Text style={sharedStyles.formHint}>创建后不可修改</Text>}
 
               <Text style={sharedStyles.formLabel}>社区描述</Text>
-              <TextInput
+              <Input
                 style={[sharedStyles.modalInput, { minHeight: 80 }]}
                 placeholder="输入社区描述（可选）"
                 placeholderTextColor={theme.colors.gray300}
                 value={form.description}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, description: text }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, description: text }))}
                 multiline
                 numberOfLines={3}
+                variant="outline"
+                size="md"
               />
 
               <Text style={sharedStyles.formLabel}>社区分类</Text>
-              <View style={sharedStyles.linkTypeContainer}>
+              <Box style={sharedStyles.linkTypeContainer}>
                 {(Object.keys(CATEGORY_NAMES) as CommunityCategory[]).map((category) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={category}
                     style={[sharedStyles.linkTypeButton, form.category === category && sharedStyles.linkTypeButtonActive]}
                     onPress={() => setForm((prev) => ({ ...prev, category }))}
@@ -471,93 +497,92 @@ const CommunitiesTab = () => {
                     <Text style={[sharedStyles.linkTypeButtonText, form.category === category && sharedStyles.linkTypeButtonTextActive]}>
                       {CATEGORY_NAMES[category]}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
-              </View>
+              </Box>
 
               <Text style={sharedStyles.formLabel}>排序（数字越大越靠前）</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入排序数字"
                 placeholderTextColor={theme.colors.gray300}
                 value={String(form.sortOrder || 0)}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, sortOrder: parseInt(text) || 0 }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, sortOrder: parseInt(text) || 0 }))}
                 keyboardType="numeric"
+                variant="outline"
+                size="md"
               />
 
-              <TouchableOpacity style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isOfficial: !prev.isOfficial }))}>
+              <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isOfficial: !prev.isOfficial }))}>
                 <Text style={sharedStyles.formLabel}>官方社区</Text>
-                <View style={[sharedStyles.statusToggleSwitch, form.isOfficial && sharedStyles.statusToggleSwitchActive]}>
-                  <View style={[sharedStyles.statusToggleThumb, form.isOfficial && sharedStyles.statusToggleThumbActive]} />
-                </View>
-              </TouchableOpacity>
+                <Box style={[sharedStyles.statusToggleSwitch, form.isOfficial && sharedStyles.statusToggleSwitchActive]}>
+                  <Box style={[sharedStyles.statusToggleThumb, form.isOfficial && sharedStyles.statusToggleThumbActive]} />
+                </Box>
+              </Pressable>
 
               {editingCommunity && (
-                <TouchableOpacity style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isActive: !prev.isActive }))}>
+                <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isActive: !prev.isActive }))}>
                   <Text style={sharedStyles.formLabel}>启用状态</Text>
-                  <View style={[sharedStyles.statusToggleSwitch, form.isActive && sharedStyles.statusToggleSwitchActive]}>
-                    <View style={[sharedStyles.statusToggleThumb, form.isActive && sharedStyles.statusToggleThumbActive]} />
-                  </View>
-                </TouchableOpacity>
+                  <Box style={[sharedStyles.statusToggleSwitch, form.isActive && sharedStyles.statusToggleSwitchActive]}>
+                    <Box style={[sharedStyles.statusToggleThumb, form.isActive && sharedStyles.statusToggleThumbActive]} />
+                  </Box>
+                </Pressable>
               )}
 
-              <View style={sharedStyles.modalButtons}>
-                <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={() => setModalVisible(false)}>
-                  <Text style={sharedStyles.modalCancelText}>取消</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
+              <Box style={sharedStyles.modalButtons}>
+                <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
                   onPress={handleSave}
                   disabled={actionLoading}
+                  isLoading={actionLoading}
                 >
-                  {actionLoading ? (
-                    <ActivityIndicator color={theme.colors.white} size="small" />
-                  ) : (
-                    <Text style={sharedStyles.modalConfirmText}>{editingCommunity ? "保存修改" : "创建社区"}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  <ButtonText>{editingCommunity ? "保存修改" : "创建社区"}</ButtonText>
+                </Button>
+              </Box>
             </ScrollView>
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
 
       {/* Community Posts Modal */}
       <Modal visible={postsModalVisible} transparent animationType="fade" onRequestClose={() => setPostsModalVisible(false)}>
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.communityPostsModalContent]}>
-            <View style={styles.communityPostsHeader}>
-              <TouchableOpacity style={styles.communityPostsCloseBtn} onPress={() => setPostsModalVisible(false)}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.communityPostsModalContent]}>
+            <HStack style={styles.communityPostsHeader}>
+              <Pressable style={styles.communityPostsCloseBtn} onPress={() => setPostsModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.black} />
-              </TouchableOpacity>
+              </Pressable>
               <Text style={styles.communityPostsTitle}>{selectedCommunityName} 的帖子</Text>
               <Text style={styles.communityPostsCount}>共 {postsTotal} 篇</Text>
-            </View>
+            </HStack>
 
             {postsLoading && communityPosts.length === 0 ? (
-              <View style={sharedStyles.loadingContainer}>
+              <Box style={sharedStyles.loadingContainer}>
                 <ActivityIndicator color={theme.colors.black} size="small" />
                 <Text style={sharedStyles.loadingText}>加载中...</Text>
-              </View>
+              </Box>
             ) : communityPosts.length === 0 ? (
-              <View style={sharedStyles.emptyContainer}>
+              <Box style={sharedStyles.emptyContainer}>
                 <Ionicons name="document-text-outline" size={48} color={theme.colors.gray300} />
                 <Text style={sharedStyles.emptyText}>该社区暂无帖子</Text>
-              </View>
+              </Box>
             ) : (
               <ScrollView style={styles.communityPostsList}>
                 {communityPosts.map((post) => (
-                  <View key={post.id} style={styles.communityPostCard}>
-                    <View style={styles.communityPostInfo}>
+                  <HStack key={post.id} style={styles.communityPostCard}>
+                    <Box style={styles.communityPostInfo}>
                       <Text style={styles.communityPostId}>#{post.id}</Text>
                       <Text style={styles.communityPostTitle} numberOfLines={2}>{post.title}</Text>
-                      <View style={styles.communityPostMeta}>
+                      <HStack style={styles.communityPostMeta}>
                         <Text style={styles.communityPostAuthor}>{post.username}</Text>
                         <Text style={styles.communityPostDate}>{formatDate(post.createdAt)}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.communityPostActions}>
-                      <TouchableOpacity
+                      </HStack>
+                    </Box>
+                    <HStack style={styles.communityPostActions}>
+                      <Pressable
                         style={styles.communityPostViewBtn}
                         onPress={() => {
                           setPostsModalVisible(false);
@@ -565,39 +590,39 @@ const CommunitiesTab = () => {
                         }}
                       >
                         <Ionicons name="eye-outline" size={18} color={theme.colors.black} />
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.communityPostDeleteBtn} onPress={() => handleDeleteCommunityPost(post.id)} disabled={actionLoading}>
+                      </Pressable>
+                      <Pressable style={styles.communityPostDeleteBtn} onPress={() => handleDeleteCommunityPost(post.id)} disabled={actionLoading}>
                         <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
+                      </Pressable>
+                    </HStack>
+                  </HStack>
                 ))}
 
                 {postsTotalPages > 1 && (
-                  <View style={sharedStyles.paginationContainer}>
-                    <TouchableOpacity
-                      style={[sharedStyles.pageButton, postsPage <= 1 && sharedStyles.pageButtonDisabled]}
-                      onPress={() => selectedCommunityId && postsPage > 1 && fetchCommunityPosts(selectedCommunityId, postsPage - 1)}
+                  <HStack justifyContent="center" space="md" style={sharedStyles.paginationContainer}>
+                    <Pressable
                       disabled={postsPage <= 1}
+                      onPress={() => selectedCommunityId && postsPage > 1 && fetchCommunityPosts(selectedCommunityId, postsPage - 1)}
+                      style={{ opacity: postsPage <= 1 ? 0.3 : 1 }}
                     >
-                      <Text style={sharedStyles.pageButtonText}>上一页</Text>
-                    </TouchableOpacity>
-                    <Text style={sharedStyles.pageInfo}>{postsPage} / {postsTotalPages}</Text>
-                    <TouchableOpacity
-                      style={[sharedStyles.pageButton, postsPage >= postsTotalPages && sharedStyles.pageButtonDisabled]}
-                      onPress={() => selectedCommunityId && postsPage < postsTotalPages && fetchCommunityPosts(selectedCommunityId, postsPage + 1)}
+                      <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+                    </Pressable>
+                    <Text style={sharedStyles.pageInfo}>第 {postsPage} 页 / 共 {postsTotalPages} 页</Text>
+                    <Pressable
                       disabled={postsPage >= postsTotalPages}
+                      onPress={() => selectedCommunityId && postsPage < postsTotalPages && fetchCommunityPosts(selectedCommunityId, postsPage + 1)}
+                      style={{ opacity: postsPage >= postsTotalPages ? 0.3 : 1 }}
                     >
-                      <Text style={sharedStyles.pageButtonText}>下一页</Text>
-                    </TouchableOpacity>
-                  </View>
+                      <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+                    </Pressable>
+                  </HStack>
                 )}
               </ScrollView>
             )}
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
-    </View>
+    </Box>
   );
 };
 
@@ -680,7 +705,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   communityHeader: {
-    flexDirection: "row",
     alignItems: "center",
     marginBottom: theme.spacing.sm,
   },
@@ -716,12 +740,10 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   communityMeta: {
-    flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.md,
   },
   communityMetaItem: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
@@ -739,7 +761,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   communityActions: {
-    flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray100,
   },
@@ -771,14 +792,12 @@ const styles = StyleSheet.create({
   communityDeleteBtn: {
     backgroundColor: theme.colors.error,
   },
-  // Edit modal
   communityModalContent: {
     height: "85%",
     width: "92%",
     padding: theme.spacing.lg,
   },
   communityFormImageRow: {
-    flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
@@ -804,14 +823,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // Posts modal
   communityPostsModalContent: {
     height: "80%",
     width: "92%",
     padding: 0,
   },
   communityPostsHeader: {
-    flexDirection: "row",
     alignItems: "center",
     padding: theme.spacing.md,
     borderBottomWidth: 1,
@@ -835,7 +852,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
   },
   communityPostCard: {
-    flexDirection: "row",
     alignItems: "center",
     backgroundColor: theme.colors.gray50,
     borderRadius: theme.borderRadius.md,
@@ -857,7 +873,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   communityPostMeta: {
-    flexDirection: "row",
     gap: theme.spacing.sm,
   },
   communityPostAuthor: {
@@ -869,7 +884,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray300,
   },
   communityPostActions: {
-    flexDirection: "row",
     gap: theme.spacing.xs,
   },
   communityPostViewBtn: {

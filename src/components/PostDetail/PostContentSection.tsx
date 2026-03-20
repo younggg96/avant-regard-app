@@ -1,7 +1,9 @@
 import React, { useMemo } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, HStack, VStack, Image, Pressable, Box } from "../ui";
+import { Text, HStack, VStack, Pressable, Box } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import { styles } from "./styles";
@@ -53,10 +55,12 @@ const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
   if (block.type === "image") {
     return (
       <View style={contentStyles.blockImageContainer}>
-        <Image
-          source={{ uri: block.content }}
+        <OptimizedImage
+          uri={block.content}
+          size={ImageSize.LARGE}
           style={contentStyles.blockImage}
-          resizeMode="cover"
+          contentFit="cover"
+          lazy={true}
         />
       </View>
     );
@@ -295,7 +299,13 @@ export const OutfitItemsSection: React.FC<OutfitItemsSectionProps> = ({
 
       {items.map((item, index) => (
         <Pressable key={item.id} style={outfitStyles.itemCard}>
-          <Image source={{ uri: item.imageUrl }} style={outfitStyles.itemImage} />
+          <OptimizedImage
+            uri={item.imageUrl}
+            size={ImageSize.MEDIUM}
+            style={outfitStyles.itemImage}
+            contentFit="cover"
+            lazy={true}
+          />
           <View style={outfitStyles.itemInfo}>
             <Text style={outfitStyles.itemBrand}>
               {item.brand}

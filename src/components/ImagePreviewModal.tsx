@@ -5,12 +5,13 @@ import {
   FlatList,
   Dimensions,
   StatusBar,
-  Image as RNImage,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -95,10 +96,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           }}
           renderItem={({ item }) => (
             <View style={styles.fullscreenImageWrapper}>
-              <RNImage
-                source={{ uri: item }}
+              <OptimizedImage
+                uri={item}
+                size={ImageSize.ORIGINAL}
                 style={styles.fullscreenImage}
-                resizeMode="contain"
+                contentFit="contain"
+                lazy={true}
               />
             </View>
           )}

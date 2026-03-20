@@ -1,7 +1,8 @@
 import React from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Image, Pressable, HStack } from "./ui";
+import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Show } from "../services/showService";
 import { Brand } from "../services/brandService";
@@ -108,10 +109,12 @@ const PostCard: React.FC<PostCardProps> = ({
       {/* 图片 */}
       <Pressable onPress={() => onPress?.(post)}>
         <Box position="relative">
-          <Image
-            source={{ uri: displayImage }}
+          <OptimizedImage
+            uri={displayImage}
+            size={ImageSize.MEDIUM}
             style={[styles.image, isPending && styles.pendingImage]}
-            resizeMode="cover"
+            contentFit="cover"
+            lazy={true}
           />
           {/* 待审核标签 */}
           {isPending && (
@@ -169,7 +172,13 @@ const PostCard: React.FC<PostCardProps> = ({
           mr="$sm"
         >
           <HStack space="xs" alignItems="center">
-            <Image source={{ uri: post.author.avatar }} style={styles.avatar} />
+            <OptimizedImage
+              uri={post.author.avatar}
+              size={ImageSize.THUMBNAIL}
+              style={styles.avatar}
+              contentFit="cover"
+              lazy={true}
+            />
             <Text
               color="$gray600"
               fontWeight="$medium"

@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import {
   View,
   FlatList,
-  Image,
   TouchableOpacity,
   Dimensions,
   StyleSheet,
@@ -12,6 +11,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -79,10 +80,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               onPress={() => handleImagePress(index)}
               activeOpacity={0.9}
             >
-              <Image
-                source={{ uri: item }}
+              <OptimizedImage
+                uri={item}
+                size={ImageSize.LARGE}
                 style={[styles.mainImage, { height: imageHeight }]}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={index > 0}
               />
             </TouchableOpacity>
           )}
@@ -118,10 +121,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
             ]}
             onPress={() => handleThumbnailPress(index)}
           >
-            <Image
-              source={{ uri: image }}
+            <OptimizedImage
+              uri={image}
+              size={ImageSize.THUMBNAIL}
               style={styles.thumbnailImage}
-              resizeMode="cover"
+              contentFit="cover"
+              lazy={true}
             />
           </TouchableOpacity>
         ))}
@@ -169,10 +174,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
             }}
             renderItem={({ item }) => (
               <View style={styles.fullscreenImageContainer}>
-                <Image
-                  source={{ uri: item }}
+                <OptimizedImage
+                  uri={item}
+                  size={ImageSize.ORIGINAL}
                   style={styles.fullscreenImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  lazy={false}
                 />
               </View>
             )}

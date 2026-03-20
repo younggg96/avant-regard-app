@@ -245,6 +245,18 @@ export const getMySubmissions = async (): Promise<BrandSubmission[]> => {
 };
 
 /**
+ * 删除自己的品牌提交（仅限 PENDING/REJECTED）
+ * DELETE /api/brands/my-submissions/{submissionId}
+ */
+export const deleteMyBrandSubmission = async (
+  submissionId: number
+): Promise<void> => {
+  await request<null>(`/api/brands/my-submissions/${submissionId}`, {
+    method: "DELETE",
+  });
+};
+
+/**
  * 用户上传品牌图片（需登录，等待审核）
  * POST /api/brands/{brandId}/images
  */
@@ -280,6 +292,7 @@ export const brandService = {
   getBrandCategories,
   submitBrand,
   getMySubmissions,
+  deleteMyBrandSubmission,
   getSubmissionsByUser,
   uploadBrandImage,
 };

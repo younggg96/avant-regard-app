@@ -1,8 +1,9 @@
 import React from "react";
-import { Dimensions, StyleSheet, View, TouchableOpacity, Image } from "react-native";
+import { Dimensions, StyleSheet, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Box, Text, HStack, Pressable } from "./ui";
+import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -59,10 +60,12 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               onPress={() => onShowPress(show, index)}
               activeOpacity={0.8}
             >
-              <Image
-                source={{ uri: show.imageUrl }}
+              <OptimizedImage
+                uri={show.imageUrl}
+                size={ImageSize.THUMBNAIL}
                 style={styles.showImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
               <LinearGradient
                 colors={["transparent", "rgba(0,0,0,0.6)"]}

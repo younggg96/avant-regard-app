@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
-  Image as RNImage,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -9,6 +8,8 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, VStack, ScrollView } from "../../../components/ui";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
 import {
   ContributionUser,
@@ -44,7 +45,13 @@ const LeaderboardItem: React.FC<{
     <RankBadge rank={user.rank} />
     <View style={styles.avatarWrapper}>
       {user.avatarUrl ? (
-        <RNImage source={{ uri: user.avatarUrl }} style={styles.avatar} />
+        <OptimizedImage
+          uri={user.avatarUrl}
+          size={ImageSize.THUMBNAIL}
+          style={styles.avatar}
+          contentFit="cover"
+          lazy={true}
+        />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Ionicons name="person" size={16} color={theme.colors.white} />

@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Image as RNImage, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
 import { Pressable } from "../ui";
+import { OptimizedImage } from "../ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -28,10 +30,12 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
           style={gridStyles.singleImageWrapper}
           onPress={() => onOpenFullscreen(0)}
         >
-          <RNImage
-            source={{ uri: images[0] }}
+          <OptimizedImage
+            uri={images[0]}
+            size={ImageSize.LARGE}
             style={gridStyles.singleImage}
-            resizeMode="cover"
+            contentFit="cover"
+            lazy={true}
           />
         </Pressable>
       ) : isTwoImages ? (
@@ -43,10 +47,12 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
               style={gridStyles.twoImageWrapper}
               onPress={() => onOpenFullscreen(index)}
             >
-              <RNImage
-                source={{ uri: image }}
+              <OptimizedImage
+                uri={image}
+                size={ImageSize.MEDIUM}
                 style={gridStyles.twoImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             </Pressable>
           ))}
@@ -60,10 +66,12 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
               style={gridStyles.gridImageWrapper}
               onPress={() => onOpenFullscreen(index)}
             >
-              <RNImage
-                source={{ uri: image }}
+              <OptimizedImage
+                uri={image}
+                size={ImageSize.THUMBNAIL}
                 style={gridStyles.gridImage}
-                resizeMode="cover"
+                contentFit="cover"
+                lazy={true}
               />
             </Pressable>
           ))}

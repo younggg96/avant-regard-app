@@ -8,7 +8,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, Input, Image, VStack } from "./ui";
+import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Brand } from "../services/brandService";
 
@@ -114,9 +116,12 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                     overflow="hidden"
                   >
                     {item.coverImage ? (
-                      <Image
-                        source={{ uri: item.coverImage }}
+                      <OptimizedImage
+                        uri={item.coverImage}
+                        size={ImageSize.MEDIUM}
                         style={styles.brandImage}
+                        contentFit="cover"
+                        lazy={true}
                       />
                     ) : (
                       <Box

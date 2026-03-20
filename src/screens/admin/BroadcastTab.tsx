@@ -1,17 +1,13 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
-  TextInput,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, BroadcastNotificationResult } from "../../services/adminService";
+import { Box, HStack, VStack, Text, Input, Pressable, ScrollView } from "../../components/ui";
 
 const PAGE_OPTIONS = [
   { value: "", label: "请选择页面" },
@@ -124,30 +120,32 @@ const BroadcastTab = () => {
 
   return (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-      <View style={styles.broadcastContainer}>
-        <View style={styles.broadcastHeader}>
+      <Box style={styles.broadcastContainer}>
+        <VStack style={styles.broadcastHeader}>
           <Ionicons name="megaphone" size={32} color={theme.colors.black} />
           <Text style={styles.broadcastHeaderTitle}>发送广播通知</Text>
           <Text style={styles.broadcastHeaderSubtitle}>向所有用户发送系统通知和推送消息</Text>
-        </View>
+        </VStack>
 
-        <View style={styles.broadcastForm}>
-          <View style={styles.broadcastInputGroup}>
+        <VStack style={styles.broadcastForm}>
+          <VStack style={styles.broadcastInputGroup}>
             <Text style={styles.broadcastLabel}>通知标题 *</Text>
-            <TextInput
+            <Input
               style={styles.broadcastInput}
               placeholder="请输入通知标题（最多100字）"
               placeholderTextColor={theme.colors.gray300}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
+              variant="outline"
+              size="md"
             />
             <Text style={styles.broadcastCharCount}>{title.length}/100</Text>
-          </View>
+          </VStack>
 
-          <View style={styles.broadcastInputGroup}>
+          <VStack style={styles.broadcastInputGroup}>
             <Text style={styles.broadcastLabel}>通知内容 *</Text>
-            <TextInput
+            <Input
               style={[styles.broadcastInput, styles.broadcastTextarea]}
               placeholder="请输入通知内容（最多500字）"
               placeholderTextColor={theme.colors.gray300}
@@ -157,18 +155,20 @@ const BroadcastTab = () => {
               multiline
               numberOfLines={6}
               textAlignVertical="top"
+              variant="outline"
+              size="md"
             />
             <Text style={styles.broadcastCharCount}>{message.length}/500</Text>
-          </View>
+          </VStack>
 
-          <View style={styles.broadcastInputGroup}>
+          <VStack style={styles.broadcastInputGroup}>
             <Text style={styles.broadcastLabel}>点击跳转（可选）</Text>
-            <View style={styles.broadcastLinkTypeRow}>
+            <HStack style={styles.broadcastLinkTypeRow}>
               {(["NONE", "PAGE", "URL"] as const).map((type) => {
                 const iconMap = { NONE: "close-circle-outline", PAGE: "phone-portrait-outline", URL: "link-outline" } as const;
                 const labelMap = { NONE: "无跳转", PAGE: "应用内页面", URL: "外部链接" };
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={type}
                     style={[styles.broadcastLinkTypeBtn, linkType === type && styles.broadcastLinkTypeBtnActive]}
                     onPress={() => setLinkType(type)}
@@ -177,17 +177,17 @@ const BroadcastTab = () => {
                     <Text style={[styles.broadcastLinkTypeBtnText, linkType === type && styles.broadcastLinkTypeBtnTextActive]}>
                       {labelMap[type]}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
-            </View>
+            </HStack>
 
             {linkType === "PAGE" && (
-              <View style={styles.broadcastLinkPageContainer}>
+              <Box style={styles.broadcastLinkPageContainer}>
                 <Text style={styles.broadcastLinkSubLabel}>选择页面</Text>
-                <View style={styles.broadcastPageOptions}>
+                <Box style={styles.broadcastPageOptions}>
                   {PAGE_OPTIONS.filter((p) => p.value).map((page) => (
-                    <TouchableOpacity
+                    <Pressable
                       key={page.value}
                       style={[styles.broadcastPageOption, navigateTo === page.value && styles.broadcastPageOptionActive]}
                       onPress={() => {
@@ -198,37 +198,39 @@ const BroadcastTab = () => {
                       <Text style={[styles.broadcastPageOptionText, navigateTo === page.value && styles.broadcastPageOptionTextActive]}>
                         {page.label}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
-                </View>
+                </Box>
 
                 {navigateTo && (
-                  <View style={styles.broadcastLinkParamContainer}>
+                  <Box style={styles.broadcastLinkParamContainer}>
                     {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel ? (
                       <>
                         <Text style={styles.broadcastLinkSubLabel}>
                           {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel}
                         </Text>
-                        <TextInput
+                        <Input
                           style={styles.broadcastInput}
                           placeholder="请输入参数值"
                           placeholderTextColor={theme.colors.gray300}
                           value={navigateParam}
                           onChangeText={setNavigateParam}
+                          variant="outline"
+                          size="md"
                         />
                       </>
                     ) : (
                       <Text style={styles.broadcastLinkHint}>此页面无需参数</Text>
                     )}
-                  </View>
+                  </Box>
                 )}
-              </View>
+              </Box>
             )}
 
             {linkType === "URL" && (
-              <View style={styles.broadcastLinkUrlContainer}>
+              <Box style={styles.broadcastLinkUrlContainer}>
                 <Text style={styles.broadcastLinkSubLabel}>链接地址</Text>
-                <TextInput
+                <Input
                   style={styles.broadcastInput}
                   placeholder="https://example.com"
                   placeholderTextColor={theme.colors.gray300}
@@ -237,34 +239,36 @@ const BroadcastTab = () => {
                   keyboardType="url"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  variant="outline"
+                  size="md"
                 />
                 <Text style={styles.broadcastLinkHint}>用户点击通知后将在浏览器中打开此链接</Text>
-              </View>
+              </Box>
             )}
-          </View>
+          </VStack>
 
           {(title || message) && (
-            <View style={styles.broadcastPreview}>
+            <Box style={styles.broadcastPreview}>
               <Text style={styles.broadcastPreviewLabel}>预览</Text>
-              <View style={styles.broadcastPreviewCard}>
-                <View style={styles.broadcastPreviewIcon}>
+              <HStack style={styles.broadcastPreviewCard}>
+                <Box style={styles.broadcastPreviewIcon}>
                   <Ionicons name="notifications" size={20} color={theme.colors.white} />
-                </View>
-                <View style={styles.broadcastPreviewContent}>
+                </Box>
+                <Box style={styles.broadcastPreviewContent}>
                   <Text style={styles.broadcastPreviewTitle} numberOfLines={1}>{title || "通知标题"}</Text>
                   <Text style={styles.broadcastPreviewMessage} numberOfLines={2}>{message || "通知内容"}</Text>
                   {linkType !== "NONE" && (
-                    <View style={styles.broadcastPreviewLink}>
+                    <HStack style={styles.broadcastPreviewLink}>
                       <Ionicons name={linkType === "URL" ? "open-outline" : "chevron-forward"} size={14} color={theme.colors.accent} />
                       <Text style={styles.broadcastPreviewLinkText} numberOfLines={1}>{getLinkDescription()}</Text>
-                    </View>
+                    </HStack>
                   )}
-                </View>
-              </View>
-            </View>
+                </Box>
+              </HStack>
+            </Box>
           )}
 
-          <TouchableOpacity
+          <Pressable
             style={[styles.broadcastSendButton, (!title.trim() || !message.trim() || loading) && styles.broadcastSendButtonDisabled]}
             onPress={handleSend}
             disabled={!title.trim() || !message.trim() || loading}
@@ -277,37 +281,37 @@ const BroadcastTab = () => {
                 <Text style={styles.broadcastSendButtonText}>发送给所有用户</Text>
               </>
             )}
-          </TouchableOpacity>
+          </Pressable>
 
           {result && (
-            <View style={styles.broadcastResultCard}>
+            <Box style={styles.broadcastResultCard}>
               <Text style={styles.broadcastResultTitle}>上次发送结果</Text>
-              <View style={styles.broadcastResultRow}>
-                <View style={styles.broadcastResultItem}>
+              <HStack style={styles.broadcastResultRow}>
+                <Box style={styles.broadcastResultItem}>
                   <Text style={styles.broadcastResultNumber}>{result.successCount}</Text>
                   <Text style={styles.broadcastResultLabel}>成功</Text>
-                </View>
-                <View style={styles.broadcastResultItem}>
+                </Box>
+                <Box style={styles.broadcastResultItem}>
                   <Text style={[styles.broadcastResultNumber, { color: theme.colors.error }]}>{result.failCount}</Text>
                   <Text style={styles.broadcastResultLabel}>失败</Text>
-                </View>
-                <View style={styles.broadcastResultItem}>
+                </Box>
+                <Box style={styles.broadcastResultItem}>
                   <Text style={styles.broadcastResultNumber}>{result.totalUsers}</Text>
                   <Text style={styles.broadcastResultLabel}>总用户</Text>
-                </View>
-              </View>
-            </View>
+                </Box>
+              </HStack>
+            </Box>
           )}
 
-          <View style={styles.broadcastTips}>
+          <HStack style={styles.broadcastTips}>
             <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
             <Text style={styles.broadcastTipsText}>
               广播通知将同时保存到用户的通知列表并发送推送消息。请谨慎使用，避免打扰用户。
             </Text>
-          </View>
-        </View>
-      </View>
-      <View style={{ height: 40 }} />
+          </HStack>
+        </VStack>
+      </Box>
+      <Box style={{ height: 40 }} />
     </ScrollView>
   );
 };
@@ -369,7 +373,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   broadcastLinkTypeRow: {
-    flexDirection: "row",
     gap: theme.spacing.sm,
     marginTop: theme.spacing.sm,
   },
@@ -460,7 +463,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   broadcastPreviewCard: {
-    flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: theme.colors.gray50,
     borderRadius: theme.borderRadius.md,
@@ -491,7 +493,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   broadcastPreviewLink: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 4,
@@ -533,7 +534,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   broadcastResultRow: {
-    flexDirection: "row",
     justifyContent: "space-around",
   },
   broadcastResultItem: {
@@ -548,7 +548,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray400,
   },
   broadcastTips: {
-    flexDirection: "row",
     alignItems: "flex-start",
     gap: theme.spacing.sm,
     backgroundColor: theme.colors.gray50,

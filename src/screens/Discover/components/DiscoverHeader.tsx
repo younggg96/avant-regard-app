@@ -1,8 +1,10 @@
 import React from "react";
-import { StyleSheet, Image as RNImage, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ResizeMode, Video } from "expo-av";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
 
 interface DiscoverHeaderProps {
@@ -48,7 +50,13 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
                             {avatar ? (
-                                <RNImage source={{ uri: avatar }} style={styles.avatar} />
+                                <OptimizedImage
+                                    uri={avatar}
+                                    size={ImageSize.THUMBNAIL}
+                                    style={styles.avatar}
+                                    contentFit="cover"
+                                    lazy={true}
+                                />
                             ) : (
                                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                                     <Ionicons name="person" size={18} color={theme.colors.white} />

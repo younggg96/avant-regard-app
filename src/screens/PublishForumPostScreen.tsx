@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   TextInput,
   TouchableOpacity,
-  Image,
   Dimensions,
   Animated,
   View,
@@ -37,6 +36,8 @@ import { postService } from "../services/postService";
 import { getCommunities, Community } from "../services/communityService";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -242,22 +243,26 @@ const PublishForumPostScreen = () => {
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [16, 9],
-          quality: 0.8,
-        });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [16, 9],
-          quality: 0.8,
-        });
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
       }
+
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [16, 9],
+            quality: 0.8,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
@@ -602,10 +607,12 @@ const PublishForumPostScreen = () => {
     return (
       <Box key={block.id} mx="$md" mb="$sm">
         <Box borderRadius="$md" overflow="hidden" bg="$gray100">
-          <Image
-            source={{ uri: block.content }}
+          <OptimizedImage
+            uri={block.content}
+            size={ImageSize.MEDIUM}
             style={styles.imageBlock}
-            resizeMode="cover"
+            contentFit="cover"
+            lazy={true}
           />
 
           {/* 图片块操作栏 */}
@@ -763,9 +770,12 @@ const PublishForumPostScreen = () => {
                   <HStack alignItems="center" gap="$sm">
                     <View style={styles.communityIconSmall}>
                       {community.iconUrl ? (
-                        <Image
-                          source={{ uri: community.iconUrl }}
+                        <OptimizedImage
+                          uri={community.iconUrl}
+                          size={ImageSize.THUMBNAIL}
                           style={styles.communityIconImage}
+                          contentFit="cover"
+                          lazy={true}
                         />
                       ) : (
                         <View style={styles.communityIconPlaceholder}>
@@ -849,9 +859,12 @@ const PublishForumPostScreen = () => {
                   <>
                     <View style={styles.communityIconSmall}>
                       {selectedCommunity.iconUrl ? (
-                        <Image
-                          source={{ uri: selectedCommunity.iconUrl }}
+                        <OptimizedImage
+                          uri={selectedCommunity.iconUrl}
+                          size={ImageSize.THUMBNAIL}
                           style={styles.communityIconImage}
+                          contentFit="cover"
+                          lazy={true}
                         />
                       ) : (
                         <View style={styles.communityIconPlaceholder}>

@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
   Alert,
@@ -15,6 +11,7 @@ import { theme } from "../../theme";
 import { adminService, AdminComment } from "../../services/adminService";
 import { sharedStyles } from "./adminStyles";
 import { formatDate } from "./adminUtils";
+import { Box, HStack, Text, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 
 const CommentsTab = () => {
   const navigation = useNavigation();
@@ -76,55 +73,57 @@ const CommentsTab = () => {
   };
 
   const renderCommentCard = (comment: AdminComment) => (
-    <View key={comment.id} style={styles.commentCard}>
-      <View style={styles.commentHeader}>
-        <View style={styles.commentMeta}>
+    <Box key={comment.id} style={styles.commentCard}>
+      <HStack style={styles.commentHeader}>
+        <HStack style={styles.commentMeta}>
           <Ionicons name="chatbubble-outline" size={16} color={theme.colors.gray400} />
           <Text style={styles.commentId}>ID: {comment.id}</Text>
-        </View>
+        </HStack>
         <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
-      </View>
+      </HStack>
 
-      <View style={styles.commentUserInfo}>
+      <HStack style={styles.commentUserInfo}>
         <Ionicons name="person-circle-outline" size={18} color={theme.colors.gray400} />
         <Text style={styles.commentUsername}>{comment.username}</Text>
         <Text style={styles.commentUserId}>(ID: {comment.userId})</Text>
-      </View>
+      </HStack>
 
-      <View style={styles.commentPostInfo}>
+      <HStack style={styles.commentPostInfo}>
         <Ionicons name="document-text-outline" size={16} color={theme.colors.gray300} />
         <Text style={styles.commentPostTitle} numberOfLines={1}>
           帖子: {comment.postTitle || `#${comment.postId}`}
         </Text>
-      </View>
+      </HStack>
 
       <Text style={styles.commentContent} numberOfLines={4}>
         {comment.content}
       </Text>
 
-      <View style={styles.commentStats}>
+      <HStack style={styles.commentStats}>
         <Ionicons name="heart" size={14} color={theme.colors.gray300} />
         <Text style={styles.commentLikes}>{comment.likeCount}</Text>
-      </View>
+      </HStack>
 
-      <View style={styles.commentActions}>
-        <TouchableOpacity
-          style={[sharedStyles.actionButton, styles.deleteCommentButton]}
+      <HStack style={styles.commentActions}>
+        <Button
+          size="sm"
+          colorScheme="error"
           onPress={() => handleDeleteComment(comment.id)}
           disabled={actionLoading}
+          leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
         >
-          <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
-          <Text style={sharedStyles.actionButtonText}>删除</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[sharedStyles.actionButton, sharedStyles.viewButton]}
+          <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           onPress={() => (navigation as any).navigate("PostDetail", { postId: comment.postId })}
+          leftIcon={<Ionicons name="eye-outline" size={16} color={theme.colors.black} />}
         >
-          <Ionicons name="eye-outline" size={16} color={theme.colors.black} />
-          <Text style={[sharedStyles.actionButtonText, { color: theme.colors.black }]}>查看帖子</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>查看帖子</ButtonText>
+        </Button>
+      </HStack>
+    </Box>
   );
 
   return (
@@ -133,42 +132,40 @@ const CommentsTab = () => {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {loading && comments.length === 0 ? (
-        <View style={sharedStyles.loadingContainer}>
+        <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
           <Text style={sharedStyles.loadingText}>加载中...</Text>
-        </View>
+        </Box>
       ) : comments.length === 0 ? (
-        <View style={sharedStyles.emptyContainer}>
+        <Box style={sharedStyles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.gray300} />
           <Text style={sharedStyles.emptyText}>暂无评论</Text>
-        </View>
+        </Box>
       ) : (
         <>
-          <View style={styles.commentsHeader}>
+          <Box style={styles.commentsHeader}>
             <Text style={styles.commentsHeaderText}>共 {total} 条评论</Text>
-          </View>
+          </Box>
           {comments.map(renderCommentCard)}
 
           {totalPages > 1 && (
-            <View style={sharedStyles.paginationContainer}>
-              <TouchableOpacity
-                style={[sharedStyles.pageButton, page <= 1 && sharedStyles.pageButtonDisabled]}
-                onPress={() => page > 1 && fetchComments(page - 1)}
+            <HStack justifyContent="center" space="md" style={styles.pagination}>
+              <Pressable
                 disabled={page <= 1}
+                onPress={() => page > 1 && fetchComments(page - 1)}
+                style={{ opacity: page <= 1 ? 0.3 : 1 }}
               >
-                <Text style={sharedStyles.pageButtonText}>上一页</Text>
-              </TouchableOpacity>
-              <Text style={sharedStyles.pageInfo}>
-                {page} / {totalPages}
-              </Text>
-              <TouchableOpacity
-                style={[sharedStyles.pageButton, page >= totalPages && sharedStyles.pageButtonDisabled]}
-                onPress={() => page < totalPages && fetchComments(page + 1)}
+                <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+              </Pressable>
+              <Text style={styles.paginationText}>第 {page} 页 / 共 {totalPages} 页</Text>
+              <Pressable
                 disabled={page >= totalPages}
+                onPress={() => page < totalPages && fetchComments(page + 1)}
+                style={{ opacity: page >= totalPages ? 0.3 : 1 }}
               >
-                <Text style={sharedStyles.pageButtonText}>下一页</Text>
-              </TouchableOpacity>
-            </View>
+                <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+              </Pressable>
+            </HStack>
           )}
         </>
       )}
@@ -196,13 +193,11 @@ const styles = StyleSheet.create({
     ...theme.shadows.sm,
   },
   commentHeader: {
-    flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: theme.spacing.sm,
   },
   commentMeta: {
-    flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
   },
@@ -215,7 +210,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray300,
   },
   commentUserInfo: {
-    flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
     marginBottom: theme.spacing.sm,
@@ -230,7 +224,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray300,
   },
   commentPostInfo: {
-    flexDirection: "row",
     alignItems: "center",
     gap: theme.spacing.xs,
     marginBottom: theme.spacing.sm,
@@ -251,7 +244,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   commentStats: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginBottom: theme.spacing.md,
@@ -261,11 +253,14 @@ const styles = StyleSheet.create({
     color: theme.colors.gray300,
   },
   commentActions: {
-    flexDirection: "row",
     gap: theme.spacing.sm,
   },
-  deleteCommentButton: {
-    backgroundColor: theme.colors.error,
+  pagination: {
+    paddingVertical: theme.spacing.lg,
+  },
+  paginationText: {
+    ...theme.typography.body,
+    color: theme.colors.gray400,
   },
 });
 

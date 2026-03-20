@@ -13,8 +13,8 @@ import {
     TextInput,
     Animated,
     TouchableWithoutFeedback,
-    Image,
     Dimensions,
+    ScrollView as RNScrollView,
 } from "react-native";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -31,6 +31,8 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import {
     UserSubmittedStore,
     getPendingSubmissions,
@@ -163,12 +165,8 @@ const StoreReviewScreen = () => {
         if (selectedIds.size === 0) return;
         setIsBatchReject(true);
         setRejectReason("");
+        rejectModalAnim.setValue(0);
         setShowRejectModal(true);
-        Animated.timing(rejectModalAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-        }).start();
     };
 
     // ==================== 详情弹窗 ====================
@@ -179,7 +177,11 @@ const StoreReviewScreen = () => {
             return;
         }
         setSelectedSubmission(submission);
+        detailModalAnim.setValue(0);
         setShowDetailModal(true);
+    };
+
+    const onDetailModalShow = () => {
         Animated.timing(detailModalAnim, {
             toValue: 1,
             duration: 300,
@@ -240,12 +242,8 @@ const StoreReviewScreen = () => {
         setRejectReason("");
         closeDetailModal(false);
         setTimeout(() => {
+            rejectModalAnim.setValue(0);
             setShowRejectModal(true);
-            Animated.timing(rejectModalAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
         }, 300);
     };
 
@@ -363,7 +361,7 @@ const StoreReviewScreen = () => {
                     </Text>
                 </HStack>
 
-                {item.style.length > 0 && (
+                {(item.style?.length ?? 0) > 0 && (
                     <HStack flexWrap="wrap" gap="$xs" mb="$sm">
                         {item.style.slice(0, 3).map((s, idx) => (
                             <Box key={idx} bg="$gray100" px="$sm" py="$xs" rounded="$sm">
@@ -548,6 +546,7 @@ const StoreReviewScreen = () => {
                 transparent
                 animationType="none"
                 onRequestClose={() => closeDetailModal()}
+                onShow={onDetailModalShow}
             >
                 <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
                     <TouchableWithoutFeedback onPress={() => closeDetailModal()}>
@@ -570,7 +569,7 @@ const StoreReviewScreen = () => {
                     >
                         <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
                         {selectedSubmission && (
-                            <ScrollView showsVerticalScrollIndicator={false}>
+                            <RNScrollView showsVerticalScrollIndicator={false}>
                                 <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
                                     {selectedSubmission.name}
                                 </Text>
@@ -610,7 +609,7 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {selectedSubmission.style.length > 0 && (
+                                {(selectedSubmission.style?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                                             风格标签
@@ -627,7 +626,7 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {selectedSubmission.brands.length > 0 && (
+                                {(selectedSubmission.brands?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                                             销售品牌
@@ -644,7 +643,7 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {selectedSubmission.phone.length > 0 && (
+                                {(selectedSubmission.phone?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                                             联系电话
@@ -677,17 +676,20 @@ const StoreReviewScreen = () => {
                                     </VStack>
                                 )}
 
-                                {selectedSubmission.images.length > 0 && (
+                                {(selectedSubmission.images?.length ?? 0) > 0 && (
                                     <VStack mb="$lg">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
                                             店铺图片
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$sm">
                                             {selectedSubmission.images.map((uri, idx) => (
-                                                <Image
+                                                <OptimizedImage
                                                     key={idx}
-                                                    source={{ uri }}
+                                                    uri={uri}
+                                                    size={ImageSize.MEDIUM}
                                                     style={styles.imagePreview}
+                                                    contentFit="cover"
+                                                    lazy={true}
                                                 />
                                             ))}
                                         </HStack>
@@ -728,7 +730,7 @@ const StoreReviewScreen = () => {
                                         )}
                                     </Pressable>
                                 </HStack>
-                            </ScrollView>
+                            </RNScrollView>
                         )}
                     </Animated.View>
                 </Box>
@@ -740,10 +742,17 @@ const StoreReviewScreen = () => {
                 transparent
                 animationType="none"
                 onRequestClose={closeRejectModal}
+                onShow={() => {
+                    Animated.timing(rejectModalAnim, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }).start();
+                }}
             >
                 <TouchableWithoutFeedback onPress={closeRejectModal}>
                     <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="center" px="$lg">
-                        <TouchableWithoutFeedback onPress={() => {}}>
+                        <TouchableWithoutFeedback onPress={() => { }}>
                             <Animated.View
                                 style={[
                                     styles.rejectModalContent,

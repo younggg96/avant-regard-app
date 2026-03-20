@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
@@ -26,6 +20,8 @@ import { searchPosts, Post } from "../../services/postService";
 import { searchShows, Show } from "../../services/showService";
 import { sharedStyles } from "./adminStyles";
 import { getLinkTypeName, pickAndUploadImage } from "./adminUtils";
+import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const BannersTab = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -215,88 +211,100 @@ const BannersTab = () => {
   };
 
   const renderBannerCard = (banner: Banner) => (
-    <View key={banner.id} style={styles.bannerCard}>
-      <Image source={{ uri: banner.imageUrl }} style={styles.bannerPreviewImage} resizeMode="cover" />
-      <View style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
+    <Box key={banner.id} style={styles.bannerCard}>
+      <OptimizedImage
+        uri={banner.imageUrl}
+        size={ImageSize.LARGE}
+        style={styles.bannerPreviewImage}
+        contentFit="cover"
+        lazy={true}
+      />
+      <Box style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
         <Text style={styles.bannerStatusText}>{banner.isActive ? "启用" : "禁用"}</Text>
-      </View>
-      <View style={styles.bannerInfo}>
+      </Box>
+      <Box style={styles.bannerInfo}>
         <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
         {banner.subtitle && <Text style={styles.bannerSubtitle} numberOfLines={1}>{banner.subtitle}</Text>}
-        <View style={styles.bannerMeta}>
+        <HStack style={styles.bannerMeta}>
           <Text style={styles.bannerMetaText}>
             链接: {getLinkTypeName(banner.linkType)}
             {banner.linkValue && ` → ${banner.linkValue}`}
           </Text>
           <Text style={styles.bannerMetaText}>排序: {banner.sortOrder}</Text>
-        </View>
-      </View>
-      <View style={styles.bannerActions}>
-        <TouchableOpacity style={[styles.bannerActionBtn, styles.bannerEditBtn]} onPress={() => handleOpenEditModal(banner)} disabled={actionLoading}>
+        </HStack>
+      </Box>
+      <HStack style={styles.bannerActions}>
+        <Pressable style={[styles.bannerActionBtn, styles.bannerEditBtn]} onPress={() => handleOpenEditModal(banner)} disabled={actionLoading}>
           <Ionicons name="create-outline" size={18} color={theme.colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.bannerActionBtn, banner.isActive ? styles.bannerDisableBtn : styles.bannerEnableBtn]} onPress={() => handleToggleStatus(banner)} disabled={actionLoading}>
+        </Pressable>
+        <Pressable style={[styles.bannerActionBtn, banner.isActive ? styles.bannerDisableBtn : styles.bannerEnableBtn]} onPress={() => handleToggleStatus(banner)} disabled={actionLoading}>
           <Ionicons name={banner.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.bannerActionBtn, styles.bannerDeleteBtn]} onPress={() => handleDelete(banner.id)} disabled={actionLoading}>
+        </Pressable>
+        <Pressable style={[styles.bannerActionBtn, styles.bannerDeleteBtn]} onPress={() => handleDelete(banner.id)} disabled={actionLoading}>
           <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-        </TouchableOpacity>
-      </View>
-    </View>
+        </Pressable>
+      </HStack>
+    </Box>
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       <ScrollView
         style={styles.bannersList}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <TouchableOpacity style={styles.addBannerButton} onPress={handleOpenCreateModal}>
+        <Pressable style={styles.addBannerButton} onPress={handleOpenCreateModal}>
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
           <Text style={styles.addBannerButtonText}>添加 Banner</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         {loading && banners.length === 0 ? (
-          <View style={sharedStyles.loadingContainer}>
+          <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} />
             <Text style={sharedStyles.loadingText}>加载中...</Text>
-          </View>
+          </Box>
         ) : banners.length === 0 ? (
-          <View style={sharedStyles.emptyContainer}>
+          <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="images-outline" size={48} color={theme.colors.gray300} />
             <Text style={sharedStyles.emptyText}>暂无 Banner</Text>
             <Text style={sharedStyles.emptySubtext}>点击上方按钮添加轮播图</Text>
-          </View>
+          </Box>
         ) : (
           <>
-            <View style={styles.bannersHeader}>
+            <Box style={styles.bannersHeader}>
               <Text style={styles.bannersHeaderText}>共 {banners.length} 个 Banner</Text>
-            </View>
+            </Box>
             {banners.map(renderBannerCard)}
           </>
         )}
-        <View style={{ height: 40 }} />
+        <Box style={{ height: 40 }} />
       </ScrollView>
 
       {/* Banner Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.bannerModalContent]}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.bannerModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={sharedStyles.modalTitle}>
                 {editingBanner ? "编辑 Banner" : "创建 Banner"}
               </Text>
 
               {form.image_url ? (
-                <Image source={{ uri: form.image_url }} style={styles.bannerFormPreview} resizeMode="cover" />
+                <OptimizedImage
+                  uri={form.image_url}
+                  size={ImageSize.MEDIUM}
+                  style={styles.bannerFormPreview}
+                  contentFit="cover"
+                  lazy={true}
+                />
               ) : (
-                <View style={styles.bannerFormPlaceholder}>
+                <Box style={styles.bannerFormPlaceholder}>
                   <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
                   <Text style={styles.bannerFormPlaceholderText}>点击下方按钮上传图片</Text>
-                </View>
+                </Box>
               )}
 
-              <TouchableOpacity style={sharedStyles.uploadImageButton} onPress={handleUploadImage} disabled={imageUploading}>
+              <Pressable style={sharedStyles.uploadImageButton} onPress={handleUploadImage} disabled={imageUploading}>
                 {imageUploading ? (
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
@@ -307,30 +315,34 @@ const BannersTab = () => {
                     </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </Pressable>
 
               <Text style={sharedStyles.formLabel}>标题 *</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入 Banner 标题"
                 placeholderTextColor={theme.colors.gray300}
                 value={form.title}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, title: text }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, title: text }))}
+                variant="outline"
+                size="md"
               />
 
               <Text style={sharedStyles.formLabel}>副标题</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入副标题（可选）"
                 placeholderTextColor={theme.colors.gray300}
                 value={form.subtitle}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, subtitle: text }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, subtitle: text }))}
+                variant="outline"
+                size="md"
               />
 
               <Text style={sharedStyles.formLabel}>链接类型</Text>
-              <View style={sharedStyles.linkTypeContainer}>
+              <Box style={sharedStyles.linkTypeContainer}>
                 {["NONE", "POST", "BRAND", "SHOW", "EXTERNAL"].map((type) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={type}
                     style={[sharedStyles.linkTypeButton, form.link_type === type && sharedStyles.linkTypeButtonActive]}
                     onPress={() => { setForm((prev) => ({ ...prev, link_type: type })); setSearchKeyword(""); setSearchResults([]); }}
@@ -338,9 +350,9 @@ const BannersTab = () => {
                     <Text style={[sharedStyles.linkTypeButtonText, form.link_type === type && sharedStyles.linkTypeButtonTextActive]}>
                       {getLinkTypeName(type)}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
-              </View>
+              </Box>
 
               {form.link_type !== "NONE" && (
                 <>
@@ -352,25 +364,27 @@ const BannersTab = () => {
                   </Text>
 
                   {(form.link_type === "POST" || form.link_type === "SHOW") && (
-                    <View style={styles.searchSection}>
-                      <View style={styles.searchInputRow}>
+                    <Box style={styles.searchSection}>
+                      <HStack style={styles.searchInputRow}>
                         <Ionicons name="search-outline" size={18} color={theme.colors.gray300} style={styles.searchIcon} />
-                        <TextInput
+                        <Input
                           style={styles.searchInput}
                           placeholder={form.link_type === "POST" ? "搜索帖子标题 / 内容 / 作者..." : "搜索品牌 / 季节 / 类别..."}
                           placeholderTextColor={theme.colors.gray300}
                           value={searchKeyword}
-                          onChangeText={(text) => handleSearchInputChange(text, form.link_type)}
+                          onChangeText={(text: string) => handleSearchInputChange(text, form.link_type)}
+                          variant="outline"
+                          size="sm"
                         />
                         {searchLoading && <ActivityIndicator size="small" color={theme.colors.gray400} />}
                         {searchKeyword.length > 0 && !searchLoading && (
-                          <TouchableOpacity onPress={() => { setSearchKeyword(""); setSearchResults([]); }}>
+                          <Pressable onPress={() => { setSearchKeyword(""); setSearchResults([]); }}>
                             <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
-                          </TouchableOpacity>
+                          </Pressable>
                         )}
-                      </View>
+                      </HStack>
                       {searchResults.length > 0 && (
-                        <ScrollView 
+                        <ScrollView
                           style={styles.searchResultsList}
                           nestedScrollEnabled={true}
                           showsVerticalScrollIndicator={true}
@@ -380,7 +394,7 @@ const BannersTab = () => {
                             const post = isPost ? (item as Post) : null;
                             const show = !isPost ? (item as Show) : null;
                             return (
-                              <TouchableOpacity
+                              <Pressable
                                 key={String(item.id)}
                                 style={[
                                   styles.searchResultItem,
@@ -388,7 +402,7 @@ const BannersTab = () => {
                                 ]}
                                 onPress={() => handleSelectSearchResult(item)}
                               >
-                                <View style={{ flex: 1 }}>
+                                <Box style={{ flex: 1 }}>
                                   <Text style={styles.searchResultTitle} numberOfLines={1}>
                                     {post ? post.title || post.contentText : `${show!.brand} ${show!.season}`}
                                   </Text>
@@ -398,11 +412,11 @@ const BannersTab = () => {
                                       : `ID: ${show!.id}${show!.year ? ` · ${show!.year}` : ""}${show!.category ? ` · ${show!.category}` : ""}`
                                     }
                                   </Text>
-                                </View>
+                                </Box>
                                 {String(item.id) === form.link_value && (
                                   <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
                                 )}
-                              </TouchableOpacity>
+                              </Pressable>
                             );
                           })}
                         </ScrollView>
@@ -410,10 +424,10 @@ const BannersTab = () => {
                       {searchKeyword.length > 0 && !searchLoading && searchResults.length === 0 && (
                         <Text style={styles.searchNoResult}>无搜索结果</Text>
                       )}
-                    </View>
+                    </Box>
                   )}
 
-                  <TextInput
+                  <Input
                     style={sharedStyles.modalInput}
                     placeholder={
                       form.link_type === "POST" ? "输入帖子 ID" :
@@ -423,50 +437,51 @@ const BannersTab = () => {
                     }
                     placeholderTextColor={theme.colors.gray300}
                     value={form.link_value}
-                    onChangeText={(text) => setForm((prev) => ({ ...prev, link_value: text }))}
+                    onChangeText={(text: string) => setForm((prev) => ({ ...prev, link_value: text }))}
                     autoCapitalize={form.link_type === "EXTERNAL" ? "none" : "characters"}
+                    variant="outline"
+                    size="md"
                   />
                 </>
               )}
 
               <Text style={sharedStyles.formLabel}>排序（数字越小越靠前）</Text>
-              <TextInput
+              <Input
                 style={sharedStyles.modalInput}
                 placeholder="输入排序数字"
                 placeholderTextColor={theme.colors.gray300}
                 value={String(form.sort_order)}
-                onChangeText={(text) => setForm((prev) => ({ ...prev, sort_order: parseInt(text) || 0 }))}
+                onChangeText={(text: string) => setForm((prev) => ({ ...prev, sort_order: parseInt(text) || 0 }))}
                 keyboardType="numeric"
+                variant="outline"
+                size="md"
               />
 
-              <TouchableOpacity style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>
+              <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>
                 <Text style={sharedStyles.formLabel}>启用状态</Text>
-                <View style={[sharedStyles.statusToggleSwitch, form.is_active && sharedStyles.statusToggleSwitchActive]}>
-                  <View style={[sharedStyles.statusToggleThumb, form.is_active && sharedStyles.statusToggleThumbActive]} />
-                </View>
-              </TouchableOpacity>
+                <Box style={[sharedStyles.statusToggleSwitch, form.is_active && sharedStyles.statusToggleSwitchActive]}>
+                  <Box style={[sharedStyles.statusToggleThumb, form.is_active && sharedStyles.statusToggleThumbActive]} />
+                </Box>
+              </Pressable>
 
-              <View style={sharedStyles.modalButtons}>
-                <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={() => setModalVisible(false)}>
-                  <Text style={sharedStyles.modalCancelText}>取消</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
+              <Box style={sharedStyles.modalButtons}>
+                <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
                   onPress={handleSave}
                   disabled={actionLoading}
+                  isLoading={actionLoading}
                 >
-                  {actionLoading ? (
-                    <ActivityIndicator color={theme.colors.white} size="small" />
-                  ) : (
-                    <Text style={sharedStyles.modalConfirmText}>{editingBanner ? "保存修改" : "创建 Banner"}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                  <ButtonText>{editingBanner ? "保存修改" : "创建 Banner"}</ButtonText>
+                </Button>
+              </Box>
             </ScrollView>
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
-    </View>
+    </Box>
   );
 };
 
@@ -541,7 +556,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   bannerMeta: {
-    flexDirection: "row",
     justifyContent: "space-between",
   },
   bannerMetaText: {
@@ -549,7 +563,6 @@ const styles = StyleSheet.create({
     color: theme.colors.gray300,
   },
   bannerActions: {
-    flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: theme.colors.gray100,
   },
@@ -601,7 +614,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   searchInputRow: {
-    flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
     borderColor: theme.colors.gray200,

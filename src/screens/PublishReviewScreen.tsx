@@ -612,20 +612,24 @@ const PublishReviewScreen = () => {
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
       }
+
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            quality: 1.0,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 1.0,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;

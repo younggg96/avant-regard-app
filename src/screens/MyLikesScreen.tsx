@@ -19,8 +19,9 @@ import {
     Pressable,
     VStack,
     HStack,
-    Image,
+    OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -264,12 +265,12 @@ const MyLikesScreen = () => {
                 >
                     {/* 用户头像 */}
                     {comment.userAvatar ? (
-                        <Image
-                            source={{ uri: comment.userAvatar }}
-                            width={40}
-                            height={40}
-                            borderRadius={20}
-                            alt="avatar"
+                        <OptimizedImage
+                            uri={comment.userAvatar}
+                            size={ImageSize.THUMBNAIL}
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                            contentFit="cover"
+                            lazy={true}
                         />
                     ) : (
                         <Box

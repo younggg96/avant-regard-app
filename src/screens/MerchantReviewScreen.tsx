@@ -13,7 +13,6 @@ import {
   TextInput,
   Animated,
   TouchableWithoutFeedback,
-  Image,
   Linking,
   View,
   ScrollView as RNScrollView,
@@ -33,6 +32,8 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import {
   MerchantApplicationDetail,
   MerchantAdminUpdateParams,
@@ -649,10 +650,12 @@ const MerchantReviewScreen = () => {
                     <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
                       证明材料
                     </Text>
-                    <Image
-                      source={{ uri: selectedMerchant.businessLicense }}
+                    <OptimizedImage
+                      uri={selectedMerchant.businessLicense}
+                      size={ImageSize.MEDIUM}
                       style={styles.licenseImage}
-                      resizeMode="contain"
+                      contentFit="contain"
+                      lazy={true}
                     />
                   </VStack>
                 )}

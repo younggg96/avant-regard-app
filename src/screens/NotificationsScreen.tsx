@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   RefreshControl,
   Linking,
 } from "react-native";
@@ -20,6 +19,8 @@ import {
   markAsRead as markNotificationAsRead,
   markAllAsRead as markAllNotificationsAsRead,
 } from "../services/notificationService";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
@@ -209,9 +210,12 @@ const NotificationsScreen = () => {
                   <View style={styles.notificationIcon}>
                     {notification.avatar ? (
                       <View style={styles.avatarContainer}>
-                        <Image
-                          source={{ uri: notification.avatar }}
+                        <OptimizedImage
+                          uri={notification.avatar}
+                          size={ImageSize.THUMBNAIL}
                           style={styles.avatar}
+                          contentFit="cover"
+                          lazy={true}
                         />
                         <View
                           style={[
@@ -255,10 +259,12 @@ const NotificationsScreen = () => {
                   </View>
 
                   {notification.image && (
-                    <Image
-                      source={{ uri: notification.image }}
+                    <OptimizedImage
+                      uri={notification.image}
+                      size={ImageSize.MEDIUM}
                       style={styles.notificationImage}
-                      resizeMode="cover"
+                      contentFit="cover"
+                      lazy={true}
                     />
                   )}
 

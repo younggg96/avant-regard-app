@@ -1,14 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
@@ -17,6 +11,8 @@ import { theme } from "../../theme";
 import { adminService, AdminBrand, AdminBrandImage, UpdateBrandParams } from "../../services/adminService";
 import { sharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
+import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const BrandManagementTab = () => {
   const [brands, setBrands] = useState<AdminBrand[]>([]);
@@ -26,6 +22,15 @@ const BrandManagementTab = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      fetchBrands(1, keyword);
+    }, 400);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [keyword]);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingBrand, setEditingBrand] = useState<AdminBrand | null>(null);
@@ -48,10 +53,6 @@ const BrandManagementTab = () => {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchBrands(1, keyword);
-  }, [fetchBrands]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -196,128 +197,131 @@ const BrandManagementTab = () => {
   const pendingCount = brandImages.filter((i) => i.status === "PENDING").length;
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       <ScrollView
         style={sharedStyles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Search */}
-        <View style={styles.searchRow}>
-          <TextInput
-            style={[sharedStyles.modalInput, styles.searchInput]}
+        <HStack space="sm" style={styles.searchRow}>
+          <Input
+            style={styles.searchInput}
             placeholder="搜索品牌名称..."
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
+            variant="outline"
+            size="sm"
           />
-          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+          <Pressable style={styles.searchButton} onPress={handleSearch}>
             <Ionicons name="search" size={18} color={theme.colors.white} />
-          </TouchableOpacity>
-        </View>
+          </Pressable>
+        </HStack>
 
         <Text style={styles.totalText}>共 {total} 个品牌</Text>
 
         {loading ? (
-          <View style={sharedStyles.loadingContainer}>
+          <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.black} />
             <Text style={sharedStyles.loadingText}>加载中...</Text>
-          </View>
+          </Box>
         ) : brands.length === 0 ? (
-          <View style={sharedStyles.emptyContainer}>
+          <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="pricetag-outline" size={48} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>暂无品牌数据</Text>
-          </View>
+          </Box>
         ) : (
           brands.map((brand) => (
-            <View key={brand.id} style={sharedStyles.postCard}>
-              <View style={sharedStyles.postHeader}>
+            <Box key={brand.id} style={sharedStyles.postCard}>
+              <HStack style={sharedStyles.postHeader}>
                 <Text style={sharedStyles.postTitle} numberOfLines={1}>{brand.name}</Text>
                 <Text style={sharedStyles.postDate}>ID: {brand.id}</Text>
-              </View>
+              </HStack>
 
               {brand.coverImage && (
-                <Image source={{ uri: brand.coverImage }} style={styles.brandImage} resizeMode="cover" />
+                <OptimizedImage
+                  uri={brand.coverImage}
+                  size={ImageSize.MEDIUM}
+                  style={styles.brandImage}
+                  contentFit="cover"
+                  lazy={true}
+                />
               )}
 
-              <View style={styles.brandMeta}>
+              <VStack style={styles.brandMeta}>
                 {brand.category && <Text style={sharedStyles.postContent} numberOfLines={1}>分类: {brand.category}</Text>}
                 {brand.founder && <Text style={sharedStyles.postContent} numberOfLines={1}>创始人: {brand.founder}</Text>}
                 {brand.country && <Text style={sharedStyles.postContent} numberOfLines={1}>国家: {brand.country}</Text>}
                 {brand.foundedYear && <Text style={sharedStyles.postContent} numberOfLines={1}>创立年份: {brand.foundedYear}</Text>}
-              </View>
+              </VStack>
 
-              <View style={sharedStyles.actionButtons}>
-                <TouchableOpacity
-                  style={[sharedStyles.actionButton, sharedStyles.viewButton]}
+              <HStack style={sharedStyles.actionButtons}>
+                <Button
+                  size="sm"
+                  variant="outline"
                   onPress={() => handleOpenEdit(brand)}
+                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.black} />}
+                  style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <Ionicons name="create-outline" size={18} color={theme.colors.black} />
-                  <Text style={[sharedStyles.actionButtonText, { color: theme.colors.black }]}>编辑</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[sharedStyles.actionButton, sharedStyles.deletePostButton]}
+                  <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>编辑</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="error"
                   onPress={() => handleDelete(brand)}
                   disabled={actionLoading}
+                  leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
                 >
-                  <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
-                  <Text style={sharedStyles.actionButtonText}>删除</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                </Button>
+              </HStack>
+            </Box>
           ))
         )}
 
         {total > 50 && (
-          <View style={styles.pagination}>
-            <TouchableOpacity
+          <HStack justifyContent="center" space="md" style={styles.pagination}>
+            <Pressable
               disabled={page <= 1}
               onPress={() => fetchBrands(page - 1, keyword)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
             >
               <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
-            </TouchableOpacity>
+            </Pressable>
             <Text style={styles.paginationText}>第 {page} 页 / 共 {totalPages} 页</Text>
-            <TouchableOpacity
+            <Pressable
               disabled={page >= totalPages}
               onPress={() => fetchBrands(page + 1, keyword)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
             >
               <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          </HStack>
         )}
 
-        <View style={{ height: 40 }} />
+        <Box style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Edit Brand Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
-        <View style={sharedStyles.modalOverlay}>
-          <View style={[sharedStyles.modalContent, styles.editModalContent]}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={sharedStyles.modalTitle}>编辑品牌</Text>
 
-              {/* Brand Images - selectable grid */}
               <Text style={sharedStyles.formLabel}>
                 品牌展示图片（已选 {selectedCount} 张{pendingCount > 0 ? `，待审核 ${pendingCount} 张` : ""}）
               </Text>
               <Text style={styles.imageHint}>点击图片勾选/取消，勾选的图片将展示在品牌详情页轮播中；黄色边框为待审核图片</Text>
               {brandImagesLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.black} style={{ marginVertical: 12 }} />
-              ) : brandImages.length === 0 ? (
-                <View style={styles.noImagesHint}>
-                  <Ionicons name="images-outline" size={24} color={theme.colors.gray200} />
-                  <Text style={styles.noImagesText}>暂无图片，可点击下方「+」直接上传</Text>
-                </View>
               ) : (
-                <View style={styles.brandImagesGrid}>
+                <Box style={styles.brandImagesGrid}>
                   {brandImages.map((img) => {
                     const isPending = img.status === "PENDING";
                     return (
-                      <TouchableOpacity
+                      <Pressable
                         key={img.id}
                         style={[
                           styles.brandImageItem,
@@ -326,26 +330,31 @@ const BrandManagementTab = () => {
                         ]}
                         onPress={() => handleToggleImageSelected(img)}
                         onLongPress={() => handleDeleteBrandImage(img.id)}
-                        activeOpacity={0.7}
                       >
-                        <Image source={{ uri: img.imageUrl }} style={styles.brandImageThumb} resizeMode="cover" />
+                        <OptimizedImage
+                          uri={img.imageUrl}
+                          size={ImageSize.MEDIUM}
+                          style={styles.brandImageThumb}
+                          contentFit="cover"
+                          lazy={true}
+                        />
                         {isPending ? (
-                          <View style={styles.pendingBadge}>
+                          <Box style={styles.pendingBadge}>
                             <Text style={styles.pendingBadgeText}>待审核</Text>
-                          </View>
+                          </Box>
                         ) : (
-                          <View style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
+                          <Box style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
                             <Ionicons
                               name={img.isSelected ? "checkmark-circle" : "ellipse-outline"}
                               size={22}
                               color={img.isSelected ? "#3B82F6" : "rgba(255,255,255,0.7)"}
                             />
-                          </View>
+                          </Box>
                         )}
-                      </TouchableOpacity>
+                      </Pressable>
                     );
                   })}
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.brandImageAddBtn}
                     onPress={handleAdminUploadBrandImage}
                     disabled={brandImageUploading}
@@ -355,57 +364,62 @@ const BrandManagementTab = () => {
                     ) : (
                       <Ionicons name="add" size={28} color={theme.colors.gray300} />
                     )}
-                  </TouchableOpacity>
-                </View>
+                  </Pressable>
+                </Box>
               )}
 
               <Text style={sharedStyles.formLabel}>品牌名称</Text>
-              <TextInput
-                style={sharedStyles.modalInput}
+              <Input
+                variant="outline"
+                size="md"
                 placeholder="品牌名称"
                 placeholderTextColor={theme.colors.gray300}
                 value={editForm.name || ""}
                 onChangeText={(v) => setEditForm((f) => ({ ...f, name: v }))}
               />
 
-              <View style={styles.fieldRow}>
-                <View style={{ flex: 1 }}>
+              <HStack style={styles.fieldRow}>
+                <Box style={{ flex: 1 }}>
                   <Text style={sharedStyles.formLabel}>分类</Text>
-                  <TextInput
-                    style={sharedStyles.modalInput}
+                  <Input
+                    variant="outline"
+                    size="md"
                     placeholder="高定/成衣/配饰"
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.category || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, category: v }))}
                   />
-                </View>
-                <View style={{ flex: 1 }}>
+                </Box>
+                <Box style={{ flex: 1 }}>
                   <Text style={sharedStyles.formLabel}>国家</Text>
-                  <TextInput
-                    style={sharedStyles.modalInput}
+                  <Input
+                    variant="outline"
+                    size="md"
                     placeholder="例如: 法国"
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.country || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, country: v }))}
                   />
-                </View>
-              </View>
+                </Box>
+              </HStack>
 
-              <View style={styles.fieldRow}>
-                <View style={{ flex: 1 }}>
+              <HStack style={styles.fieldRow}>
+                <Box style={{ flex: 1 }}>
                   <Text style={sharedStyles.formLabel}>创始人</Text>
-                  <TextInput
-                    style={sharedStyles.modalInput}
+                  <Input
+                    variant="outline"
+                    size="md"
                     placeholder="创始人"
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.founder || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, founder: v }))}
                   />
-                </View>
-                <View style={{ flex: 1 }}>
+                </Box>
+                <Box style={{ flex: 1 }}>
                   <Text style={sharedStyles.formLabel}>创立年份</Text>
-                  <TextInput
-                    style={sharedStyles.modalInput}
+                  <Input
+                    variant="outline"
+                    size="md"
                     placeholder="例如: 1988"
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.foundedYear || ""}
@@ -413,12 +427,13 @@ const BrandManagementTab = () => {
                     keyboardType="number-pad"
                     maxLength={4}
                   />
-                </View>
-              </View>
+                </Box>
+              </HStack>
 
               <Text style={sharedStyles.formLabel}>官方网站</Text>
-              <TextInput
-                style={sharedStyles.modalInput}
+              <Input
+                variant="outline"
+                size="md"
                 placeholder="https://..."
                 placeholderTextColor={theme.colors.gray300}
                 value={editForm.website || ""}
@@ -427,27 +442,19 @@ const BrandManagementTab = () => {
                 keyboardType="url"
               />
 
-              <View style={sharedStyles.modalButtons}>
-                <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={() => setEditModalVisible(false)}>
-                  <Text style={sharedStyles.modalCancelText}>取消</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
-                  onPress={handleSave}
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <ActivityIndicator color={theme.colors.white} size="small" />
-                  ) : (
-                    <Text style={sharedStyles.modalConfirmText}>保存修改</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <HStack style={sharedStyles.modalButtons}>
+                <Button variant="outline" size="sm" onPress={() => setEditModalVisible(false)}>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                </Button>
+                <Button size="sm" onPress={handleSave} disabled={actionLoading} isLoading={actionLoading}>
+                  <ButtonText>保存修改</ButtonText>
+                </Button>
+              </HStack>
             </ScrollView>
-          </View>
-        </View>
+          </Box>
+        </Box>
       </Modal>
-    </View>
+    </Box>
   );
 };
 
@@ -460,13 +467,14 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     height: 40,
-    marginBottom: 0,
   },
   searchButton: {
     backgroundColor: theme.colors.black,
     borderRadius: 8,
     paddingHorizontal: 16,
+    height: 40,
     justifyContent: "center",
+    alignItems: "center",
   },
   totalText: {
     paddingBottom: 8,
@@ -508,16 +516,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.gray300,
     marginBottom: 8,
-  },
-  noImagesHint: {
-    alignItems: "center",
-    paddingVertical: 20,
-    gap: 6,
-  },
-  noImagesText: {
-    fontSize: 12,
-    color: theme.colors.gray300,
-    textAlign: "center",
   },
   brandImagesGrid: {
     flexDirection: "row",

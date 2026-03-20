@@ -6,7 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Image,
+  Image as RNImage,
   ActivityIndicator,
 } from "react-native";
 import { Alert } from "../utils/Alert";
@@ -17,6 +17,8 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 interface DraftItem {
   id: string;
@@ -255,9 +257,12 @@ const DraftsScreen = () => {
 
         {item.images.length > 0 && (
           <View style={styles.imagePreview}>
-            <Image
-              source={{ uri: item.images[0] }}
+            <OptimizedImage
+              uri={item.images[0]}
+              size={ImageSize.MEDIUM}
               style={styles.previewImage}
+              contentFit="cover"
+              lazy={true}
             />
             {item.images.length > 1 && (
               <View style={styles.imageCount}>
@@ -340,7 +345,7 @@ const DraftsScreen = () => {
       >
         {loading ? (
           <View style={styles.loadingState}>
-            <Image
+            <RNImage
               source={require("../../assets/gif/profile-loading.gif")}
               style={styles.loadingGif}
               resizeMode="contain"

@@ -14,7 +14,7 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Image,
+  OptimizedImage,
   Input,
   HStack,
 } from "../components/ui";
@@ -33,6 +33,7 @@ import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
+import { ImageSize } from "../utils/imageUtils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -375,20 +376,24 @@ const PublishLookbookScreen = () => {
     setShowImagePicker(false);
 
     try {
-      let result;
-
       if (source === "camera") {
-        result = await ImagePicker.launchCameraAsync({
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: false,
-          quality: 1.0,
-        });
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
       }
+
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            allowsEditing: false,
+            quality: 1.0,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 1.0,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
@@ -662,7 +667,13 @@ const PublishLookbookScreen = () => {
                 }}
                 onLongPress={() => handleEnterReorderMode(index)}
               >
-                <Image source={{ uri: image }} style={styles.thumbnail} />
+                <OptimizedImage
+                  uri={image}
+                  size={ImageSize.MEDIUM}
+                  style={styles.thumbnail}
+                  contentFit="cover"
+                  lazy={true}
+                />
 
                 {/* 选中状态指示器 */}
                 {isSelected && (
@@ -916,7 +927,6 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
 });
 

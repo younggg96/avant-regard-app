@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
-  Image,
   Alert,
-  TextInput,
   Modal,
   ActivityIndicator,
 } from "react-native";
@@ -16,6 +10,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { showService, Show } from "../../services/showService";
 import { sharedStyles } from "./adminStyles";
+import { Box, HStack, VStack, Text, Input, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
+import { ImageSize } from "../../utils/imageUtils";
 
 const ShowReviewTab = () => {
   const [shows, setShows] = useState<Show[]>([]);
@@ -92,102 +88,106 @@ const ShowReviewTab = () => {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <Box style={{ flex: 1 }}>
       <ScrollView
         style={sharedStyles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {loading ? (
-          <View style={sharedStyles.loadingContainer}>
+          <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
             <Text style={sharedStyles.loadingText}>加载中...</Text>
-          </View>
+          </Box>
         ) : shows.length === 0 ? (
-          <View style={sharedStyles.emptyContainer}>
+          <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>暂无待审核的秀场</Text>
-          </View>
+          </Box>
         ) : (
           shows.map((show) => (
-            <View key={show.id} style={sharedStyles.postCard}>
-              <View style={sharedStyles.postHeader}>
+            <Box key={show.id} style={sharedStyles.postCard}>
+              <HStack style={sharedStyles.postHeader}>
                 <Text style={sharedStyles.postTitle} numberOfLines={1}>{show.title || show.season}</Text>
                 <Text style={sharedStyles.postDate}>
                   {show.createdAt ? new Date(show.createdAt).toLocaleDateString("zh-CN") : ""}
                 </Text>
-              </View>
+              </HStack>
 
               {show.coverImage && (
-                <Image
-                  source={{ uri: show.coverImage }}
+                <OptimizedImage
+                  uri={show.coverImage}
+                  size={ImageSize.MEDIUM}
                   style={styles.coverImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  lazy={true}
                 />
               )}
 
-              <View style={styles.metaSection}>
-                <View style={styles.metaRow}>
+              <VStack style={styles.metaSection}>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>品牌</Text>
                   <Text style={styles.metaValue}>{show.brand}</Text>
-                </View>
-                <View style={styles.metaRow}>
+                </HStack>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>年份</Text>
                   <Text style={styles.metaValue}>{show.year}</Text>
-                </View>
-                <View style={styles.metaRow}>
+                </HStack>
+                <HStack style={styles.metaRow}>
                   <Text style={styles.metaLabel}>季度</Text>
                   <Text style={styles.metaValue}>{show.season}</Text>
-                </View>
+                </HStack>
                 {show.category && (
-                  <View style={styles.metaRow}>
+                  <HStack style={styles.metaRow}>
                     <Text style={styles.metaLabel}>类别</Text>
                     <Text style={styles.metaValue}>{show.category}</Text>
-                  </View>
+                  </HStack>
                 )}
                 {show.designer && (
-                  <View style={styles.metaRow}>
+                  <HStack style={styles.metaRow}>
                     <Text style={styles.metaLabel}>设计师</Text>
                     <Text style={styles.metaValue}>{show.designer}</Text>
-                  </View>
+                  </HStack>
                 )}
-              </View>
+              </VStack>
 
               {show.description && (
                 <Text style={styles.description} numberOfLines={4}>{show.description}</Text>
               )}
 
-              <View style={sharedStyles.actionButtons}>
-                <TouchableOpacity
-                  style={[sharedStyles.actionButton, sharedStyles.approveButton]}
+              <HStack style={sharedStyles.actionButtons}>
+                <Button
+                  size="sm"
+                  colorScheme="success"
                   onPress={() => handleApprove(String(show.id))}
                   disabled={actionLoading}
+                  leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
                 >
-                  <Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />
-                  <Text style={sharedStyles.actionButtonText}>通过</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[sharedStyles.actionButton, sharedStyles.rejectButton]}
+                  <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="error"
                   onPress={() => handleOpenRejectModal(String(show.id))}
                   disabled={actionLoading}
+                  leftIcon={<Ionicons name="close-circle-outline" size={16} color={theme.colors.white} />}
                 >
-                  <Ionicons name="close-circle" size={18} color={theme.colors.white} />
-                  <Text style={sharedStyles.actionButtonText}>拒绝</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+                </Button>
+              </HStack>
+            </Box>
           ))
         )}
-        <View style={{ height: 40 }} />
+        <Box style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Reject Modal */}
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
-        <View style={sharedStyles.modalOverlay}>
-          <View style={sharedStyles.modalContent}>
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={sharedStyles.modalContent}>
             <Text style={sharedStyles.modalTitle}>拒绝原因</Text>
-            <TextInput
-              style={sharedStyles.modalInput}
+            <Input
+              variant="outline"
+              size="md"
               placeholder="请输入拒绝原因（可选）"
               placeholderTextColor={theme.colors.gray300}
               value={rejectReason}
@@ -195,22 +195,18 @@ const ShowReviewTab = () => {
               multiline
               numberOfLines={3}
             />
-            <View style={sharedStyles.modalButtons}>
-              <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={() => setRejectModalVisible(false)}>
-                <Text style={sharedStyles.modalCancelText}>取消</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton]} onPress={handleConfirmReject} disabled={actionLoading}>
-                {actionLoading ? (
-                  <ActivityIndicator color={theme.colors.white} size="small" />
-                ) : (
-                  <Text style={sharedStyles.modalConfirmText}>确认拒绝</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+            <HStack style={sharedStyles.modalButtons}>
+              <Button variant="outline" size="sm" onPress={() => setRejectModalVisible(false)}>
+                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+              </Button>
+              <Button size="sm" onPress={handleConfirmReject} disabled={actionLoading} isLoading={actionLoading}>
+                <ButtonText>确认拒绝</ButtonText>
+              </Button>
+            </HStack>
+          </Box>
+        </Box>
       </Modal>
-    </View>
+    </Box>
   );
 };
 

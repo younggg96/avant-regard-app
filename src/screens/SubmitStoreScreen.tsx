@@ -103,6 +103,9 @@ const SubmitStoreScreen = () => {
 
   const pickImages = async () => {
     try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
@@ -185,14 +188,16 @@ const SubmitStoreScreen = () => {
 
       await submitStore(data);
 
-      Alert.alert("提交成功", "您的买手店信息已提交，等待平台审核", [
-        {
-          text: "好的",
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      Alert.show("提交成功", "您的买手店信息已提交，等待平台审核", 2000);
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (error: any) {
-      Alert.show("提交失败: " + (error.message || "请稍后重试"));
+      Alert.show(
+        "提交失败",
+        error.message || "请稍后重试",
+        3000
+      );
     } finally {
       setIsSubmitting(false);
     }

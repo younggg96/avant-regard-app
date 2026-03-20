@@ -8,7 +8,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, Input, Image, VStack } from "./ui";
+import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -117,9 +119,12 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                   onPress={() => onSelectShow(item)}
                   style={[styles.showItem, { width: showWidth }]}
                 >
-                  <Image
-                    source={{ uri: item.cover_image }}
+                  <OptimizedImage
+                    uri={item.cover_image}
+                    size={ImageSize.MEDIUM}
                     style={[styles.showImage, { height: showWidth * 1.4 }]}
+                    contentFit="cover"
+                    lazy={true}
                   />
                   <VStack mt="$xs" px="$xs">
                     <Text

@@ -1,7 +1,9 @@
 import React from "react";
 import { Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, HStack, Pressable, Image } from "./ui";
+import { Box, Text, HStack, Pressable } from "./ui";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -48,13 +50,16 @@ const ImageGridSelector: React.FC<ImageGridSelectorProps> = ({
             position="relative"
           >
             <Pressable onPress={() => onImagePress(index)}>
-              <Image
-                source={{ uri: image }}
+              <OptimizedImage
+                uri={image}
+                size={ImageSize.MEDIUM}
                 style={{
                   width: "100%",
                   height: "100%",
                   borderRadius: 8,
                 }}
+                contentFit="cover"
+                lazy={true}
               />
             </Pressable>
             <Pressable

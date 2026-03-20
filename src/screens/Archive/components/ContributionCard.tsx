@@ -1,7 +1,9 @@
 import React from "react";
-import { StyleSheet, Dimensions, TouchableOpacity } from "react-native";
+import { StyleSheet, Dimensions, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Image, VStack, HStack } from "../../../components/ui";
+import { Box, Text, VStack, HStack, Pressable } from "../../../components/ui";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
 import { STATUS_STYLES } from "../types";
 
@@ -21,6 +23,7 @@ interface ContributionCardProps {
   rejectReason?: string;
   date?: string;
   onPress?: () => void;
+  onDelete?: () => void;
 }
 
 const formatDate = (dateStr?: string) => {
@@ -38,22 +41,43 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   rejectReason,
   date,
   onPress,
+  onDelete,
 }) => {
   const ss = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
   const hasValidImage = imageUri && imageUri.trim().length > 0;
+  const isRejected = status === "REJECTED";
+
+  const handlePress = () => {
+    if (isRejected) {
+      Alert.alert(
+        "审核未通过",
+        rejectReason ? `拒绝原因：${rejectReason}` : "未提供拒绝原因",
+        [
+          ...(onDelete
+            ? [{ text: "删除", style: "destructive" as const, onPress: onDelete }]
+            : []),
+          { text: "关闭", style: "cancel" as const },
+        ]
+      );
+      return;
+    }
+    onPress?.();
+  };
 
   return (
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.7}
-      onPress={onPress}
+      onPress={handlePress}
     >
       <Box style={styles.imageContainer}>
         {hasValidImage ? (
-          <Image
-            source={{ uri: imageUri }}
+          <OptimizedImage
+            uri={imageUri!}
+            size={ImageSize.MEDIUM}
             style={styles.image}
-            resizeMode="cover"
+            contentFit="cover"
+            lazy={true}
           />
         ) : (
           <Box style={styles.imagePlaceholder}>
@@ -64,6 +88,28 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
             />
             <Text style={styles.placeholderText}>暂无图片</Text>
           </Box>
+        )}
+        {isRejected && onDelete && (
+          <Pressable
+            position="absolute"
+            top={6}
+            right={6}
+            w={28}
+            h={28}
+            rounded="$sm"
+            bg="rgba(0,0,0,0.55)"
+            justifyContent="center"
+            alignItems="center"
+            onPress={(e: any) => {
+              e.stopPropagation?.();
+              Alert.alert("确认删除", `确定要删除「${title}」吗？`, [
+                { text: "取消", style: "cancel" },
+                { text: "删除", style: "destructive", onPress: onDelete },
+              ]);
+            }}
+          >
+            <Ionicons name="trash-outline" size={14} color="#fff" />
+          </Pressable>
         )}
       </Box>
 
@@ -77,7 +123,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
           </Text>
         ) : null}
 
-        {status === "REJECTED" && rejectReason ? (
+        {isRejected && rejectReason ? (
           <Box style={styles.rejectReasonBox}>
             <Text style={styles.rejectReasonText} numberOfLines={2}>
               {rejectReason}

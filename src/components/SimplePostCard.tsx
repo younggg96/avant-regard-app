@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { OptimizedImage } from "./ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Post } from "./PostCard";
 
@@ -32,10 +34,12 @@ const PostCard: React.FC<PostCardProps> = ({
     <View style={styles.container}>
       {/* 图片 */}
       <TouchableOpacity onPress={() => onPress?.(post)} activeOpacity={0.95}>
-        <Image
-          source={{ uri: displayImage }}
+        <OptimizedImage
+          uri={displayImage}
+          size={ImageSize.MEDIUM}
           style={styles.image}
-          resizeMode="cover"
+          contentFit="cover"
+          lazy={true}
         />
       </TouchableOpacity>
 
@@ -57,7 +61,13 @@ const PostCard: React.FC<PostCardProps> = ({
           onPress={() => onAuthorPress?.(post.author.id)}
           activeOpacity={0.8}
         >
-          <Image source={{ uri: post.author.avatar }} style={styles.avatar} />
+          <OptimizedImage
+            uri={post.author.avatar}
+            size={ImageSize.THUMBNAIL}
+            style={styles.avatar}
+            contentFit="cover"
+            lazy={true}
+          />
           <Text style={styles.authorName} numberOfLines={1}>
             {post.author.name}
           </Text>

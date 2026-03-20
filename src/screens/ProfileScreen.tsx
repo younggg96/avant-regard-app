@@ -9,7 +9,6 @@ import {
   View,
   Text as RNText,
   StyleSheet,
-  Image as RNImage,
   StatusBar,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +30,9 @@ import {
   VStack,
   HStack,
   Image,
+  OptimizedImage,
 } from "../components/ui";
+import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
@@ -737,7 +738,7 @@ const ProfileScreen = () => {
         <Pressable key={key} style={contribStyles.card} onPress={onPress}>
           <View style={contribStyles.cardImageContainer}>
             {image ? (
-              <RNImage source={{ uri: image }} style={contribStyles.cardImage} resizeMode="cover" />
+              <OptimizedImage uri={image} size={ImageSize.MEDIUM} style={contribStyles.cardImage} contentFit="cover" lazy={true} />
             ) : (
               <View style={contribStyles.cardImagePlaceholder}>
                 <Ionicons name={icon as any} size={32} color={theme.colors.gray300} />
@@ -916,7 +917,7 @@ const ProfileScreen = () => {
           </Pressable>
           <View style={styles.collapsedAvatarContainer}>
             {avatarUri ? (
-              <RNImage source={{ uri: avatarUri }} style={styles.collapsedAvatar} />
+              <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.collapsedAvatar} contentFit="cover" lazy={false} />
             ) : (
               <View style={[styles.collapsedAvatar, styles.avatarPlaceholder]}>
                 <RNText style={styles.avatarTextSmall}>
@@ -980,7 +981,7 @@ const ProfileScreen = () => {
         {/* 封面 */}
         <Animated.View style={[styles.coverContainer, coverAnimatedStyle]}>
           {coverImage ? (
-            <RNImage source={{ uri: coverImage }} style={styles.coverImage} resizeMode="cover" />
+            <OptimizedImage uri={coverImage} size={ImageSize.LARGE} style={styles.coverImage} contentFit="cover" lazy={false} />
           ) : (
             <View style={styles.defaultCover} />
           )}
@@ -1024,7 +1025,7 @@ const ProfileScreen = () => {
           <View style={styles.avatarRow}>
             <View style={styles.avatarWrapper}>
               {avatarUri ? (
-                <RNImage source={{ uri: avatarUri }} style={styles.avatar} />
+                <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.avatar} contentFit="cover" lazy={false} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                   <RNText style={styles.avatarText}>

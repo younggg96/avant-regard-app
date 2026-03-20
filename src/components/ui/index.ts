@@ -2,6 +2,7 @@ export { Box } from "./box";
 export { Text, Heading } from "./text";
 export { Button, ButtonText } from "./button";
 export { Image } from "./image";
+export { OptimizedImage } from "./OptimizedImage";
 export { Input } from "./input";
 export { Pressable } from "./pressable";
 export { ScrollView } from "./scrollview";

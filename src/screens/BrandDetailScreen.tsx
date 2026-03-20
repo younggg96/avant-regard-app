@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   FlatList,
-  Image,
   TouchableOpacity,
   Dimensions,
   Linking,
@@ -25,6 +24,8 @@ import { postService, Post } from "../services/postService";
 import CreateShowModal from "../components/CreateShowModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import { pickAndUploadImage } from "./admin/adminUtils";
+import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { ImageSize } from "../utils/imageUtils";
 
 type TabType = "shows" | "posts";
 
@@ -275,7 +276,13 @@ const BrandDetailScreen = () => {
               keyExtractor={(_, i) => String(i)}
               renderItem={({ item, index }) => (
                 <TouchableOpacity activeOpacity={0.9} onPress={() => handleImagePress(index)}>
-                  <Image source={{ uri: item }} style={{ width: screenWidth, height: 320 }} resizeMode="cover" />
+                  <OptimizedImage
+                    uri={item}
+                    size={ImageSize.LARGE}
+                    style={{ width: screenWidth, height: 320 }}
+                    contentFit="cover"
+                    lazy={true}
+                  />
                 </TouchableOpacity>
               )}
             />
@@ -480,10 +487,12 @@ const BrandDetailScreen = () => {
                       onPress={() => handlePostPress(post)}
                       activeOpacity={0.9}
                     >
-                      <Image
-                        source={{ uri: post.imageUrls[0] }}
+                      <OptimizedImage
+                        uri={post.imageUrls[0]}
+                        size={ImageSize.MEDIUM}
                         style={styles.postImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        lazy={true}
                       />
                       <View style={styles.postContent}>
                         <Text style={styles.postTitle} numberOfLines={2}>
@@ -495,9 +504,12 @@ const BrandDetailScreen = () => {
                             onPress={() => handleAuthorPress(post.userId)}
                           >
                             {post.avatarUrl ? (
-                              <Image
-                                source={{ uri: post.avatarUrl }}
+                              <OptimizedImage
+                                uri={post.avatarUrl}
+                                size={ImageSize.THUMBNAIL}
                                 style={styles.postAvatar}
+                                contentFit="cover"
+                                lazy={true}
                               />
                             ) : (
                               <View style={styles.postAvatarPlaceholder}>
@@ -561,10 +573,12 @@ const BrandDetailScreen = () => {
                       onPress={() => handleShowPress(show)}
                       activeOpacity={0.8}
                     >
-                      <Image
-                        source={{ uri: show.coverImage }}
+                      <OptimizedImage
+                        uri={show.coverImage}
+                        size={ImageSize.MEDIUM}
                         style={styles.showImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        lazy={true}
                       />
                       <LinearGradient
                         colors={["transparent", "rgba(0,0,0,0.6)"]}
