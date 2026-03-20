@@ -218,31 +218,33 @@ class CommentService:
             print(f"Failed to send comment notification: {e}")
 
     def like_comment(self, comment_id: int, user_id: int) -> bool:
-        """点赞评论"""
+        """点赞评论（幂等：已点赞时直接返回成功）"""
         try:
+            existing = self.db.table("comment_likes").select("id").eq("comment_id", comment_id).eq("user_id", user_id).execute()
+            if existing.data:
+                return True
+
             self.db.table("comment_likes").insert({
                 "comment_id": comment_id,
                 "user_id": user_id
             }).execute()
-            # 更新点赞数
+            current = self.db.table("post_comments").select("like_count").eq("id", comment_id).execute().data[0]["like_count"]
             self.db.table("post_comments").update({
-                "like_count": self.db.table("post_comments").select("like_count").eq("id", comment_id).execute().data[0]["like_count"] + 1
+                "like_count": current + 1
             }).eq("id", comment_id).execute()
             return True
         except:
             return False
 
     def unlike_comment(self, comment_id: int, user_id: int) -> bool:
-        """取消点赞评论"""
+        """取消点赞评论（幂等：未点赞时直接返回成功）"""
         result = self.db.table("comment_likes").delete().eq("comment_id", comment_id).eq("user_id", user_id).execute()
         if result.data:
-            # 更新点赞数
             current = self.db.table("post_comments").select("like_count").eq("id", comment_id).execute().data[0]["like_count"]
             self.db.table("post_comments").update({
                 "like_count": max(0, current - 1)
             }).eq("id", comment_id).execute()
-            return True
-        return False
+        return True
 
     def delete_comment(self, comment_id: int, user_id: int) -> bool:
         """删除评论或回复"""
