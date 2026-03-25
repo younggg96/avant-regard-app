@@ -207,3 +207,18 @@ async def update_privacy_settings(
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(result.model_dump())
+
+
+@router.delete("/{user_id}/account")
+async def delete_account(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Self-service account deletion (Apple Guideline 5.1.1(v))"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权删除其他用户账户")
+
+    ok = user_service.delete_account(user_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(message="账户已永久删除")

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.services.admin_service import admin_service
 from app.services.cache_service import cache_service
 from app.services.notification_service import notification_service
+from app.services.moderation_service import moderation_service
 from app.api.deps import get_current_admin_user
 from app.core.response import success
 
@@ -512,3 +513,67 @@ async def broadcast_notification(
         "failCount": result["fail_count"],
         "totalUsers": result["total_users"],
     })
+
+
+# ==================== 用户列表 ====================
+
+@router.get("/users")
+async def get_users(
+    keyword: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取用户列表（支持搜索、分页）"""
+    result = admin_service.get_users(
+        keyword=keyword, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+# ==================== 举报管理 ====================
+
+@router.get("/reports")
+async def get_reports(
+    status: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取举报记录列表"""
+    result = admin_service.get_reports(
+        status=status, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+class UpdateReportStatusRequest(BaseModel):
+    status: str = Field(..., description="REVIEWED / RESOLVED / DISMISSED")
+
+
+@router.put("/reports/{report_id}")
+async def update_report_status(
+    report_id: int,
+    request: UpdateReportStatusRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新举报状态"""
+    if request.status not in ("REVIEWED", "RESOLVED", "DISMISSED"):
+        raise HTTPException(status_code=400, detail="无效的状态值")
+    ok = admin_service.update_report_status(report_id, request.status)
+    if not ok:
+        raise HTTPException(status_code=404, detail="举报记录不存在")
+    return success(message="状态已更新")
+
+
+# ==================== 屏蔽关系 ====================
+
+@router.get("/blocks")
+async def get_all_blocks(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取所有屏蔽关系"""
+    result = admin_service.get_all_blocks(page=page, page_size=pageSize)
+    return success(result)

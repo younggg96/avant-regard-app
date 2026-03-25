@@ -24,6 +24,7 @@ from app.api.routes.store_merchant import router as store_merchant_router
 from app.api.routes.notification import router as notification_router
 from app.api.routes.banner import router as banner_router
 from app.api.routes.community import router as community_router
+from app.api.routes.moderation import router as moderation_router
 
 # 导入缓存服务
 from app.services.cache_service import cache_service
@@ -91,6 +92,7 @@ app.include_router(store_merchant_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")
 app.include_router(banner_router, prefix="/api")
 app.include_router(community_router, prefix="/api")
+app.include_router(moderation_router, prefix="/api")
 
 
 # 健康检查

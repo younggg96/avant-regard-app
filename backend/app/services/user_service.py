@@ -1,14 +1,18 @@
 """
 用户服务
 """
+import logging
 from typing import Optional, List
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.user import UserInfo, UserProfileInfo, UserPrivacySettings
+
+logger = logging.getLogger(__name__)
 
 
 class UserService:
     def __init__(self):
         self.db = get_supabase()
+        self.db_admin = get_supabase_admin()
 
     def get_user_info(self, user_id: int) -> Optional[UserInfo]:
         """获取用户信息"""
@@ -375,6 +379,33 @@ class UserService:
             self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()
         
         return self.get_privacy_settings(user_id)
+
+    def delete_account(self, user_id: int) -> bool:
+        """
+        Self-service account deletion.
+        Deletes the app user record (cascade handles related data)
+        and removes the Supabase Auth user.
+        """
+        user_result = (
+            self.db.table("users")
+            .select("id, supabase_uid")
+            .eq("id", user_id)
+            .execute()
+        )
+        if not user_result.data:
+            return False
+
+        supabase_uid = user_result.data[0].get("supabase_uid")
+
+        self.db_admin.table("users").delete().eq("id", user_id).execute()
+
+        if supabase_uid:
+            try:
+                self.db_admin.auth.admin.delete_user(supabase_uid)
+            except Exception as e:
+                logger.warning(f"Failed to delete Supabase Auth user {supabase_uid}: {e}")
+
+        return True
 
 
 # 单例

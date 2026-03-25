@@ -1,0 +1,141 @@
+"""
+Content moderation service: report content + block users.
+Required by Apple Guideline 1.2 (User-Generated Content).
+"""
+import logging
+from typing import List, Optional
+from app.db.supabase import get_supabase, get_supabase_admin
+
+logger = logging.getLogger(__name__)
+
+
+class ModerationService:
+    def __init__(self):
+        self.db = get_supabase()
+        self.db_admin = get_supabase_admin()
+
+    def report_content(
+        self,
+        reporter_id: int,
+        target_type: str,
+        target_id: int,
+        reason: str,
+        description: str = "",
+    ) -> dict:
+        """
+        Submit a content report. target_type is 'POST' or 'COMMENT'.
+        """
+        data = {
+            "reporter_id": reporter_id,
+            "target_type": target_type,
+            "target_id": target_id,
+            "reason": reason,
+            "description": description or "",
+            "status": "PENDING",
+        }
+        result = self.db.table("content_reports").insert(data).execute()
+        if not result.data:
+            raise Exception("Failed to submit report")
+        return self._format_report(result.data[0])
+
+    def block_user(self, blocker_id: int, blocked_id: int) -> bool:
+        """Block a user. Also reports the user to the platform."""
+        if blocker_id == blocked_id:
+            return False
+
+        existing = (
+            self.db.table("user_blocks")
+            .select("id")
+            .eq("blocker_id", blocker_id)
+            .eq("blocked_id", blocked_id)
+            .execute()
+        )
+        if existing.data:
+            return True
+
+        self.db.table("user_blocks").insert({
+            "blocker_id": blocker_id,
+            "blocked_id": blocked_id,
+        }).execute()
+        return True
+
+    def unblock_user(self, blocker_id: int, blocked_id: int) -> bool:
+        """Unblock a previously blocked user."""
+        result = (
+            self.db.table("user_blocks")
+            .delete()
+            .eq("blocker_id", blocker_id)
+            .eq("blocked_id", blocked_id)
+            .execute()
+        )
+        return True
+
+    def get_blocked_user_ids(self, user_id: int) -> List[int]:
+        """Get all user IDs blocked by a given user."""
+        result = (
+            self.db.table("user_blocks")
+            .select("blocked_id")
+            .eq("blocker_id", user_id)
+            .execute()
+        )
+        return [row["blocked_id"] for row in result.data or []]
+
+    def get_blocked_users(self, user_id: int) -> List[dict]:
+        """Get blocked users with basic profile info."""
+        blocked_ids = self.get_blocked_user_ids(user_id)
+        if not blocked_ids:
+            return []
+
+        users_result = (
+            self.db.table("users")
+            .select("id, username")
+            .in_("id", blocked_ids)
+            .execute()
+        )
+        user_map = {u["id"]: u for u in users_result.data or []}
+
+        info_result = (
+            self.db.table("user_info")
+            .select("user_id, avatar_url")
+            .in_("user_id", blocked_ids)
+            .execute()
+        )
+        info_map = {i["user_id"]: i for i in info_result.data or []}
+
+        result = []
+        for uid in blocked_ids:
+            u = user_map.get(uid, {})
+            i = info_map.get(uid, {})
+            result.append({
+                "userId": uid,
+                "username": u.get("username", ""),
+                "avatarUrl": i.get("avatar_url", ""),
+            })
+        return result
+
+    def is_blocked(self, user_id: int, target_id: int) -> bool:
+        """Check whether user_id has blocked target_id."""
+        result = (
+            self.db.table("user_blocks")
+            .select("id")
+            .eq("blocker_id", user_id)
+            .eq("blocked_id", target_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    @staticmethod
+    def _format_report(data: dict) -> dict:
+        return {
+            "id": data["id"],
+            "reporterId": data["reporter_id"],
+            "targetType": data["target_type"],
+            "targetId": data["target_id"],
+            "reason": data["reason"],
+            "description": data.get("description", ""),
+            "status": data.get("status", "PENDING"),
+            "createdAt": data.get("created_at"),
+        }
+
+
+moderation_service = ModerationService()

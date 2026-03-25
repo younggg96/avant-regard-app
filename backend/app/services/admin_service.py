@@ -681,5 +681,165 @@ class AdminService:
         return self._format_brand_image(result.data[0])
 
 
+    # ==================== 用户列表 ====================
+
+    def get_users(
+        self, keyword: str = None, page: int = 1, page_size: int = 20
+    ) -> dict:
+        """Get paginated user list with optional search."""
+        offset = (page - 1) * page_size
+
+        query = self.db.table("users").select("*", count="exact")
+        if keyword and keyword.strip():
+            safe = keyword.strip()
+            if safe.isdigit():
+                query = query.or_(f"id.eq.{safe},username.ilike.*{safe}*")
+            else:
+                query = query.ilike("username", f"*{safe}*")
+
+        query = query.order("id", desc=True).range(offset, offset + page_size - 1)
+        result = query.execute()
+        total = result.count or 0
+
+        user_ids = [u["id"] for u in result.data or []]
+        info_map = {}
+        if user_ids:
+            info_result = (
+                self.db.table("user_info")
+                .select("user_id, avatar_url")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            info_map = {i["user_id"]: i for i in info_result.data or []}
+
+        users = []
+        for u in result.data or []:
+            info = info_map.get(u["id"], {})
+            users.append({
+                "id": u["id"],
+                "username": u.get("username", ""),
+                "email": u.get("email", ""),
+                "phone": u.get("phone", ""),
+                "status": u.get("status", "ACTIVE"),
+                "userType": u.get("user_type", "USER"),
+                "isAdmin": u.get("is_admin", False),
+                "avatarUrl": info.get("avatar_url", ""),
+                "createdAt": u.get("created_at"),
+            })
+
+        return {
+            "users": users,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+    # ==================== 举报管理 ====================
+
+    def get_reports(
+        self, status: str = None, page: int = 1, page_size: int = 20
+    ) -> dict:
+        """Get paginated content reports."""
+        offset = (page - 1) * page_size
+
+        query = self.db.table("content_reports").select("*", count="exact")
+        if status:
+            query = query.eq("status", status)
+
+        query = query.order("created_at", desc=True).range(offset, offset + page_size - 1)
+        result = query.execute()
+        total = result.count or 0
+
+        reporter_ids = list({r["reporter_id"] for r in result.data or []})
+        user_map = {}
+        if reporter_ids:
+            u_result = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", reporter_ids)
+                .execute()
+            )
+            user_map = {u["id"]: u["username"] for u in u_result.data or []}
+
+        reports = []
+        for r in result.data or []:
+            reports.append({
+                "id": r["id"],
+                "reporterId": r["reporter_id"],
+                "reporterName": user_map.get(r["reporter_id"], ""),
+                "targetType": r["target_type"],
+                "targetId": r["target_id"],
+                "reason": r["reason"],
+                "description": r.get("description", ""),
+                "status": r.get("status", "PENDING"),
+                "createdAt": r.get("created_at"),
+            })
+
+        return {
+            "reports": reports,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+    def update_report_status(self, report_id: int, status: str) -> bool:
+        """Update a report's status (REVIEWED / RESOLVED / DISMISSED)."""
+        result = (
+            self.db.table("content_reports")
+            .update({"status": status})
+            .eq("id", report_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    # ==================== 屏蔽关系 ====================
+
+    def get_all_blocks(self, page: int = 1, page_size: int = 20) -> dict:
+        """Get all block relationships with user info."""
+        offset = (page - 1) * page_size
+
+        query = (
+            self.db.table("user_blocks")
+            .select("*", count="exact")
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+        )
+        result = query.execute()
+        total = result.count or 0
+
+        all_ids = list({
+            uid
+            for r in result.data or []
+            for uid in (r["blocker_id"], r["blocked_id"])
+        })
+        user_map = {}
+        if all_ids:
+            u_result = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", all_ids)
+                .execute()
+            )
+            user_map = {u["id"]: u["username"] for u in u_result.data or []}
+
+        blocks = []
+        for r in result.data or []:
+            blocks.append({
+                "id": r["id"],
+                "blockerId": r["blocker_id"],
+                "blockerName": user_map.get(r["blocker_id"], ""),
+                "blockedId": r["blocked_id"],
+                "blockedName": user_map.get(r["blocked_id"], ""),
+                "createdAt": r.get("created_at"),
+            })
+
+        return {
+            "blocks": blocks,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+
 # 单例
 admin_service = AdminService()
