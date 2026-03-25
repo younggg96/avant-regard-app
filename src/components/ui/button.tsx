@@ -6,6 +6,7 @@ const StyledPressable = styled(Pressable, {
   flexDirection: 'row',
   alignItems: 'center',
   justifyContent: 'center',
+  gap: '$xs',
   paddingHorizontal: '$lg',
   paddingVertical: '$md',
   borderRadius: '$md',

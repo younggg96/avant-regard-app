@@ -63,6 +63,7 @@ import SearchScreen from "./src/screens/SearchScreen";
 // User Management Screens
 import MyCommentsScreen from "./src/screens/MyCommentsScreen";
 import MyLikesScreen from "./src/screens/MyLikesScreen";
+import BlockedUsersScreen from "./src/screens/BlockedUsersScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -410,6 +411,11 @@ function AppNavigator() {
         <Stack.Screen
           name="MyLikes"
           component={MyLikesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="BlockedUsers"
+          component={BlockedUsersScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

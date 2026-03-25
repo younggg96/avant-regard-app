@@ -12,10 +12,11 @@ import { styles } from "./styles";
 
 interface OptionsMenuModalProps {
   visible: boolean;
-  showEditOption?: boolean; // 是否显示编辑选项
+  showEditOption?: boolean;
   onClose: () => void;
-  onEdit?: () => void; // 编辑回调
+  onEdit?: () => void;
   onDelete: () => void;
+  onShare?: () => void;
 }
 
 export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
@@ -24,6 +25,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onShare,
 }) => {
   return (
     <Modal
@@ -51,6 +53,27 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
               </View>
 
               <View style={styles.optionsMenuContent}>
+                {/* 分享选项 */}
+                {onShare && (
+                  <TouchableOpacity
+                    style={styles.optionsMenuItem}
+                    onPress={() => {
+                      onClose();
+                      setTimeout(() => {
+                        onShare();
+                      }, 300);
+                    }}
+                  >
+                    <Ionicons
+                      name="share-outline"
+                      size={22}
+                      color={theme.colors.black}
+                      style={styles.optionsMenuIcon}
+                    />
+                    <Text style={styles.optionsMenuItemText}>分享帖子</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* 编辑选项 - 仅在已发布或审核中帖子显示 */}
                 {showEditOption && onEdit && (
                   <TouchableOpacity

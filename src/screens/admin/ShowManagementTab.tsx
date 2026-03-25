@@ -428,7 +428,7 @@ const ShowManagementTab = () => {
         <HStack space="sm" style={styles.searchRow}>
           <Input
             style={styles.searchInput}
-            placeholder="搜索品牌/标题/设计师..."
+            placeholder="搜索品牌、标题、设计师..."
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
@@ -581,10 +581,10 @@ const ShowManagementTab = () => {
                   size="sm"
                   variant="outline"
                   onPress={() => handleOpenEdit(show)}
-                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.black} />}
+                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.white} />}
                   style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>编辑</ButtonText>
+                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>编辑</ButtonText>
                 </Button>
                 <Button
                   size="sm"

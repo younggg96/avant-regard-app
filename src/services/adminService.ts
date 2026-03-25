@@ -189,6 +189,71 @@ async function request<T>(
   }
 }
 
+// ==================== 帖子管理（全量） ====================
+
+export interface AllPostsParams {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+  status?: string;
+  auditStatus?: string;
+  postType?: string;
+}
+
+export interface AllPostsResponse {
+  posts: Post[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ReportedPostItem {
+  report: {
+    id: number;
+    reporterId: number;
+    reporterName: string;
+    reason: string;
+    description: string;
+    status: string;
+    createdAt: string;
+  };
+  post: Post | null;
+}
+
+export interface ReportedPostsResponse {
+  items: ReportedPostItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function getAllPosts(
+  params: AllPostsParams = {}
+): Promise<AllPostsResponse> {
+  const qs = new URLSearchParams();
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 20));
+  if (params.keyword) qs.append("keyword", params.keyword);
+  if (params.status) qs.append("status", params.status);
+  if (params.auditStatus) qs.append("auditStatus", params.auditStatus);
+  if (params.postType) qs.append("postType", params.postType);
+  return request<AllPostsResponse>(`/api/admin/posts/all?${qs.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function getReportedPosts(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<ReportedPostsResponse> {
+  return request<ReportedPostsResponse>(
+    `/api/admin/posts/reported?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+}
+
 // ==================== 帖子审核 ====================
 
 /**
@@ -630,6 +695,131 @@ export async function toggleBrandImageSelected(imageId: number, selected: boolea
   });
 }
 
+// ==================== 用户列表 ====================
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string;
+  phone: string;
+  status: string;
+  userType: string;
+  isAdmin: boolean;
+  avatarUrl: string;
+  createdAt: string;
+}
+
+export interface AdminUserListResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/users
+ */
+export async function getAdminUsers(
+  keyword?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<AdminUserListResponse> {
+  const params = new URLSearchParams();
+  if (keyword) params.append("keyword", keyword);
+  params.append("page", page.toString());
+  params.append("pageSize", pageSize.toString());
+  return request<AdminUserListResponse>(
+    `/api/admin/users?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+// ==================== 举报管理 ====================
+
+export interface AdminReport {
+  id: number;
+  reporterId: number;
+  reporterName: string;
+  targetType: "POST" | "COMMENT";
+  targetId: number;
+  reason: string;
+  description: string;
+  status: "PENDING" | "REVIEWED" | "RESOLVED" | "DISMISSED";
+  createdAt: string;
+}
+
+export interface AdminReportListResponse {
+  reports: AdminReport[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/reports
+ */
+export async function getAdminReports(
+  status?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<AdminReportListResponse> {
+  const params = new URLSearchParams();
+  if (status) params.append("status", status);
+  params.append("page", page.toString());
+  params.append("pageSize", pageSize.toString());
+  return request<AdminReportListResponse>(
+    `/api/admin/reports?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+/**
+ * PUT /api/admin/reports/{id}
+ */
+export async function updateReportStatus(
+  reportId: number,
+  status: string
+): Promise<void> {
+  return request<void>(`/api/admin/reports/${reportId}`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+}
+
+// ==================== 屏蔽关系 ====================
+
+export interface AdminBlock {
+  id: number;
+  blockerId: number;
+  blockerName: string;
+  blockedId: number;
+  blockedName: string;
+  createdAt: string;
+}
+
+export interface AdminBlockListResponse {
+  blocks: AdminBlock[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/blocks
+ */
+export async function getAdminBlocks(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<AdminBlockListResponse> {
+  const params = new URLSearchParams();
+  params.append("page", page.toString());
+  params.append("pageSize", pageSize.toString());
+  return request<AdminBlockListResponse>(
+    `/api/admin/blocks?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
 // ==================== 广播通知 ====================
 
 /**
@@ -651,13 +841,22 @@ export async function broadcastNotification(
 
 // 导出 adminService 对象
 export const adminService = {
+  // 帖子管理
+  getAllPosts,
+  getReportedPosts,
   // 帖子审核
   getPendingPosts,
   approvePost,
   rejectPost,
   deletePost,
   // 用户管理
+  getAdminUsers,
   deleteUser,
+  // 举报管理
+  getAdminReports,
+  updateReportStatus,
+  // 屏蔽关系
+  getAdminBlocks,
   // 评论管理
   getAllComments,
   getCommentsByPost,

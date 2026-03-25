@@ -156,9 +156,7 @@ const CollectionDetailScreen = () => {
       >
         <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-        <Ionicons name="share-outline" size={24} color={theme.colors.black} />
-      </TouchableOpacity>
+      <View style={styles.shareButton} />
     </View>
   );
 
@@ -389,11 +387,7 @@ const CollectionDetailScreen = () => {
         {renderRelatedPosts()}
       </ScrollView>
 
-      <ShareModal
-        visible={shareModalVisible}
-        post={sharePost}
-        onClose={() => setShareModalVisible(false)}
-      />
+      {/* ShareModal - temporarily hidden */}
     </SafeAreaView>
   );
 };

@@ -111,11 +111,37 @@ const SettingsScreen = () => {
     }
   };
 
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   const handleLogout = () => {
     Alert.show("正在退出...");
     setTimeout(() => {
       logout();
     }, 500);
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteAccountModal(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!user?.userId || deletingAccount) return;
+    setDeletingAccount(true);
+    try {
+      await userInfoService.deleteAccount(user.userId);
+      setShowDeleteAccountModal(false);
+      Alert.show("账户已永久删除");
+      setTimeout(() => {
+        logout();
+      }, 1000);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "删除账户失败，请稍后重试";
+      Alert.show(message);
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   // 基础设置项
@@ -170,6 +196,12 @@ const SettingsScreen = () => {
           value: privacySettings?.hideLikes ?? true,
           onToggle: (value) => handlePrivacyToggle("hideLikes", value),
         },
+        {
+          id: "blockedUsers",
+          label: "屏蔽用户管理",
+          icon: "ban-outline",
+          onPress: () => (navigation as any).navigate("BlockedUsers"),
+        },
       ],
     },
     {
@@ -199,6 +231,19 @@ const SettingsScreen = () => {
           label: "隐私政策",
           icon: "shield-outline",
           onPress: () => showAgreement("privacy"),
+        },
+      ],
+    },
+    {
+      title: "账户管理",
+      items: [
+        {
+          id: "deleteAccount",
+          label: "注销账户",
+          icon: "trash-outline",
+          onPress: handleDeleteAccount,
+          rightText: "永久删除",
+          rightColor: theme.colors.error,
         },
       ],
     },
@@ -289,6 +334,49 @@ const SettingsScreen = () => {
           <Text style={styles.footerText}>© 2024 时装档案</Text>
         </View>
       </ScrollView>
+
+      {/* 注销账户确认 Modal */}
+      <Modal
+        visible={showDeleteAccountModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDeleteAccountModal(false)}
+      >
+        <View style={styles.deleteOverlay}>
+          <View style={styles.deleteDialog}>
+            <Ionicons
+              name="warning-outline"
+              size={48}
+              color={theme.colors.error}
+              style={{ alignSelf: "center", marginBottom: 12 }}
+            />
+            <Text style={styles.deleteTitle}>确认注销账户</Text>
+            <Text style={styles.deleteMessage}>
+              此操作不可撤销。您的所有数据（包括发布的内容、评论、关注关系等）将被永久删除，且无法恢复。
+            </Text>
+            <View style={styles.deleteActions}>
+              <TouchableOpacity
+                style={styles.deleteCancelButton}
+                onPress={() => setShowDeleteAccountModal(false)}
+                disabled={deletingAccount}
+              >
+                <Text style={styles.deleteCancelText}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteConfirmButton, deletingAccount && { opacity: 0.6 }]}
+                onPress={confirmDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? (
+                  <ActivityIndicator size="small" color={theme.colors.white} />
+                ) : (
+                  <Text style={styles.deleteConfirmText}>确认注销</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* 用户协议和隐私政策 Modal */}
       <Modal
@@ -421,6 +509,62 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  deleteDialog: {
+    backgroundColor: theme.colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+  },
+  deleteTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: theme.colors.black,
+    textAlign: "center" as const,
+    marginBottom: 12,
+  },
+  deleteMessage: {
+    fontSize: 14,
+    color: theme.colors.gray600,
+    textAlign: "center" as const,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  deleteActions: {
+    flexDirection: "row" as const,
+    gap: 12,
+  },
+  deleteCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    alignItems: "center" as const,
+  },
+  deleteCancelText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: theme.colors.black,
+  },
+  deleteConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: theme.colors.error,
+    alignItems: "center" as const,
+  },
+  deleteConfirmText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: theme.colors.white,
   },
 });
 

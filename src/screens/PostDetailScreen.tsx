@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   ScrollView as RNScrollView,
   KeyboardAvoidingView,
@@ -43,6 +43,7 @@ import {
   useNavigationHandlers,
 } from "../components/PostDetail";
 import { ShareModal } from "../components/ShareModal";
+import { ReportBlockModal } from "../components/ReportBlockModal";
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -139,6 +140,9 @@ const PostDetailScreen = () => {
       post,
       navigation,
     });
+
+  // 举报/屏蔽 Modal
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // 骨架屏动画
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -262,9 +266,9 @@ const PostDetailScreen = () => {
             onGoBack={() => navigation.goBack()}
             onAuthorPress={handleAuthorPress}
             onFollow={handleFollow}
-            onShare={handleShare}
             onContinueEdit={handleContinueEdit}
             onShowOptionsMenu={() => setShowOptionsMenu(true)}
+            onShowReportMenu={() => setShowReportModal(true)}
           />
 
           {/* Content */}
@@ -398,13 +402,18 @@ const PostDetailScreen = () => {
           onConfirm={handleConfirmEdit}
         />
 
-        {/* Share Modal */}
-        <ShareModal
-          visible={showShareModal}
-          post={post}
-          onClose={handleCloseShareModal}
-          onShareComplete={handleShareComplete}
+        {/* Report / Block Modal */}
+        <ReportBlockModal
+          visible={showReportModal}
+          targetType="POST"
+          targetId={post.id}
+          targetAuthorId={post.author.id}
+          targetAuthorName={post.author.name}
+          onClose={() => setShowReportModal(false)}
+          onBlockComplete={() => navigation.goBack()}
         />
+
+        {/* Share Modal - temporarily hidden */}
       </SafeAreaView>
     </View>
   );

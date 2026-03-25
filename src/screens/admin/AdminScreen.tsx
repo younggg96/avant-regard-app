@@ -22,9 +22,11 @@ import ShowReviewTab from "./ShowReviewTab";
 import ShowManagementTab from "./ShowManagementTab";
 import BrandImageReviewTab from "./BrandImageReviewTab";
 import StoreManagementTab from "./StoreManagementTab";
+import PostsManagementTab from "./PostsManagementTab";
 
 type TabType =
   | "pending"
+  | "postsManagement"
   | "comments"
   | "users"
   | "stores"
@@ -47,6 +49,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { key: "pending", label: "待审核帖子" },
+  { key: "postsManagement", label: "帖子管理" },
   { key: "comments", label: "评论管理" },
   { key: "users", label: "用户管理" },
   { key: "stores", label: "店铺审核", navigateTo: "StoreReview" },
@@ -78,6 +81,8 @@ const AdminScreen = () => {
     switch (activeTab) {
       case "pending":
         return <PendingTab />;
+      case "postsManagement":
+        return <PostsManagementTab />;
       case "comments":
         return <CommentsTab />;
       case "users":

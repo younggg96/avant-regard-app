@@ -396,6 +396,16 @@ export async function getContributionLeaderboard(
   );
 }
 
+/**
+ * Self-service account deletion (Apple Guideline 5.1.1(v))
+ * DELETE /api/user-info/{userId}/account
+ */
+export async function deleteAccount(userId: number): Promise<void> {
+  return request<void>(`/api/user-info/${userId}/account`, {
+    method: "DELETE",
+  });
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
@@ -408,6 +418,7 @@ export const userInfoService = {
   getPrivacySettings,
   updatePrivacySettings,
   getContributionLeaderboard,
+  deleteAccount,
 };
 
 export default userInfoService;

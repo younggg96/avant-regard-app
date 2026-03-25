@@ -118,9 +118,9 @@ const CommentsTab = () => {
           size="sm"
           variant="outline"
           onPress={() => (navigation as any).navigate("PostDetail", { postId: comment.postId })}
-          leftIcon={<Ionicons name="eye-outline" size={16} color={theme.colors.black} />}
+          leftIcon={<Ionicons name="eye-outline" size={16} color={theme.colors.white} />}
         >
-          <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>查看帖子</ButtonText>
+          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>查看帖子</ButtonText>
         </Button>
       </HStack>
     </Box>

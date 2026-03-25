@@ -17,10 +17,10 @@
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Avant Regard 需要访问您的相册来选择图片",
-        "NSCameraUsageDescription": "Avant Regard 需要访问相机来拍摄照片",
-        "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要保存编辑后的图片到相册",
-        "NSLocationWhenInUseUsageDescription": "Avant Regard 需要访问您的位置来显示附近的买手店",
+        "NSPhotoLibraryUsageDescription": "Avant Regard 需要访问您的相册，以便您选择照片用于发布穿搭分享、单品测评等帖子内容，或更换个人头像和封面图片。",
+        "NSCameraUsageDescription": "Avant Regard 需要使用您的相机，以便您拍摄穿搭照片用于发布帖子内容，例如拍摄今日穿搭并分享到社区。",
+        "NSPhotoLibraryAddUsageDescription": "Avant Regard 需要将您编辑后的图片或分享的内容海报保存到您的相册中。",
+        "NSLocationWhenInUseUsageDescription": "Avant Regard 需要获取您的位置信息，以便在地图上为您展示附近的买手店，例如查找您周边的设计师品牌集合店。",
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,

@@ -40,10 +40,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   isAppleLoginAvailable,
   onAppleLogin,
 }) => {
-  const showAppleLogin =
-    Platform.OS === "ios" &&
-    isAppleLoginAvailable &&
-    (mode === "login" || mode === "verification");
+  const showAppleLogin = false;
 
   return (
     <View style={styles.actionsContainer}>

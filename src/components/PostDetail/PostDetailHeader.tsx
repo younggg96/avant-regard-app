@@ -18,9 +18,10 @@ interface PostDetailHeaderProps {
   onGoBack: () => void;
   onAuthorPress: () => void;
   onFollow: () => void;
-  onShare: () => void;
+  onShare?: () => void;
   onContinueEdit: () => void;
   onShowOptionsMenu: () => void;
+  onShowReportMenu?: () => void;
 }
 
 export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
@@ -35,6 +36,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   onShare,
   onContinueEdit,
   onShowOptionsMenu,
+  onShowReportMenu,
 }) => {
   return (
     <HStack
@@ -182,19 +184,13 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               </Pressable>
             )}
 
-            {isOwnPost && (
-              <Pressable onPress={onShowOptionsMenu} p="$xs">
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={20}
-                  color={theme.colors.black}
-                />
-              </Pressable>
-            )}
-
-            <Pressable onPress={onShare} pl={isOwnPost ? "$none" : "$sm"}>
+            <Pressable
+              onPress={isOwnPost ? onShowOptionsMenu : onShowReportMenu}
+              p="$xs"
+              ml={isOwnPost ? "$none" : "$sm"}
+            >
               <Ionicons
-                name="share-outline"
+                name="ellipsis-horizontal"
                 size={20}
                 color={theme.colors.black}
               />
