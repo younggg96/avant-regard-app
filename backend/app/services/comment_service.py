@@ -95,21 +95,36 @@ class CommentService:
         result = self.db.table("comment_likes").select("comment_id").eq("user_id", user_id).in_("comment_id", comment_ids).execute()
         return {item["comment_id"] for item in (result.data or [])}
 
+    def _get_blocked_user_ids(self, user_id: Optional[int]) -> set:
+        """获取当前用户屏蔽的用户 ID 集合"""
+        if not user_id:
+            return set()
+        from app.services.moderation_service import moderation_service
+        return set(moderation_service.get_blocked_user_ids(user_id))
+
     def get_post_comments(self, post_id: int, include_replies: bool = True, current_user_id: int = None) -> List[PostComment]:
-        """获取帖子评论（包含回复）"""
+        """获取帖子评论（包含回复），自动过滤被屏蔽用户的内容"""
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+
         result = self.db.table("post_comments").select("*").eq("post_id", post_id).is_("parent_id", "null").order("created_at", desc=True).execute()
         
         if not result.data:
             return []
         
-        # 收集所有评论和回复的 ID，批量查询点赞状态
-        all_comment_ids = [c["id"] for c in result.data]
+        top_comments = [
+            c for c in result.data if c["user_id"] not in blocked_ids
+        ] if blocked_ids else result.data
+
+        all_comment_ids = [c["id"] for c in top_comments]
         all_replies_map: Dict[int, List[dict]] = {}
 
         if include_replies:
-            for comment_data in result.data:
+            for comment_data in top_comments:
                 replies_result = self.db.table("post_comments").select("*").eq("parent_id", comment_data["id"]).order("created_at", desc=False).execute()
-                replies = replies_result.data or []
+                replies = [
+                    r for r in (replies_result.data or [])
+                    if r["user_id"] not in blocked_ids
+                ] if blocked_ids else (replies_result.data or [])
                 all_replies_map[comment_data["id"]] = replies
                 all_comment_ids.extend([r["id"] for r in replies])
 
@@ -119,7 +134,7 @@ class CommentService:
 
         user_info_cache = {}
         comments = []
-        for comment_data in result.data:
+        for comment_data in top_comments:
             replies = all_replies_map.get(comment_data["id"], []) if include_replies else []
             comments.append(self._format_comment(comment_data, replies, user_info_cache, liked_comment_ids))
         

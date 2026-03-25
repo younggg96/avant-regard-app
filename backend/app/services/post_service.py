@@ -136,19 +136,33 @@ class PostService:
         )
         return bool(result.data)
 
+    def _get_blocked_user_ids(self, user_id: Optional[int]) -> List[int]:
+        """获取当前用户屏蔽的用户 ID 列表"""
+        if not user_id:
+            return []
+        from app.services.moderation_service import moderation_service
+        return moderation_service.get_blocked_user_ids(user_id)
+
+    def _apply_block_filter(self, query, blocked_ids: List[int]):
+        """在 PostgREST 查询中排除被屏蔽用户的内容"""
+        if not blocked_ids:
+            return query
+        blocked_str = ",".join(str(uid) for uid in blocked_ids)
+        return query.filter("user_id", "not.in", f"({blocked_str})")
+
     def get_posts(
         self, current_user_id: Optional[int] = None, limit: int = 50
     ) -> List[Post]:
         """获取帖子列表（仅已发布且审核通过的）"""
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_post_by_id(
@@ -438,36 +452,34 @@ class PostService:
         self, show_id: int, current_user_id: Optional[int] = None
     ) -> List[Post]:
         """获取某个秀场关联的帖子（通过 show_ids 数组查询）"""
-        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
-        # 注意：show_ids 在数据库中存储为字符串数组，所以需要将 show_id 转为字符串
         show_id_str = str(show_id)
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .contains("show_ids", [show_id_str])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_posts_by_show_id_str(
         self, show_id: str, current_user_id: Optional[int] = None
     ) -> List[Post]:
         """获取某个秀场关联的帖子（通过 show_ids 数组查询，支持字符串ID）"""
-        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 show_id 的帖子
-        # show_ids 在数据库中存储为字符串数组
         print(f"Searching for posts with show_id: {show_id}")
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .contains("show_ids", [show_id])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).execute()
         print(f"Found {len(result.data or [])} posts for show_id: {show_id}")
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
@@ -478,18 +490,16 @@ class PostService:
         获取某个品牌关联的所有帖子（通过 brand_ids 数组查询）
         直接查询 brand_ids 数组中包含该品牌 ID 的帖子
         """
-        # 使用 PostgreSQL 数组操作符 @> 查询包含指定 brand_id 的帖子
-        # Supabase SDK 的 contains 方法需要字符串类型的数组元素
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .contains("brand_ids", [str(brand_id)])
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_posts_by_brand_name(
@@ -507,21 +517,18 @@ class PostService:
             return []
         
         show_ids = [str(show.id) for show in shows]
-        
-        # 查询包含这些秀场 ID 的帖子
-        # 使用 PostgreSQL 数组 overlap 操作符 && 来检查数组是否有交集
-        # 需要将 show_ids 格式化为 PostgreSQL 数组字符串格式
         show_ids_array = "{" + ",".join(f'"{sid}"' for sid in show_ids) + "}"
-        result = (
+
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .filter("show_ids", "ov", show_ids_array)
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def _sanitize_search_keyword(self, keyword: str) -> str:
@@ -546,14 +553,14 @@ class PostService:
         搜索帖子（支持标题、内容、作者名搜索）
         仅返回已发布且审核通过的帖子
         """
-        # 清理关键词
         safe_keyword = self._sanitize_search_keyword(keyword)
         if not safe_keyword:
             return []
 
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        blocked_set = set(blocked_ids) if blocked_ids else set()
+
         try:
-            # 搜索帖子标题和内容
-            # 使用 or 条件搜索标题和内容
             result = (
                 self.db.table("posts")
                 .select("*")
@@ -568,11 +575,12 @@ class PostService:
             )
 
             posts_from_content = [
-                self._format_post(p, current_user_id) for p in result.data or []
+                self._format_post(p, current_user_id)
+                for p in result.data or []
+                if p["user_id"] not in blocked_set
             ]
             post_ids = {p.id for p in posts_from_content}
 
-            # 搜索作者名匹配的帖子
             user_result = (
                 self.db.table("users")
                 .select("id")
@@ -581,7 +589,10 @@ class PostService:
             )
 
             if user_result.data:
-                user_ids = [u["id"] for u in user_result.data]
+                user_ids = [
+                    u["id"] for u in user_result.data
+                    if u["id"] not in blocked_set
+                ]
                 for user_id in user_ids:
                     user_posts_result = (
                         self.db.table("posts")
@@ -600,7 +611,6 @@ class PostService:
                             )
                             post_ids.add(p["id"])
 
-            # 按创建时间排序
             posts_from_content.sort(key=lambda x: x.createdAt, reverse=True)
             return posts_from_content[:limit]
         except Exception as e:
@@ -611,47 +621,48 @@ class PostService:
         self, community_id: int, current_user_id: Optional[int] = None
     ) -> List[Post]:
         """获取某个社区的帖子"""
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .eq("community_id", community_id)
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_forum_posts(
         self, current_user_id: Optional[int] = None, limit: int = 50
     ) -> List[Post]:
         """获取所有论坛帖子（有 community_id 的帖子，仅已发布且审核通过的）"""
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
-            .not_.is_("community_id", "null")  # 有社区 ID 的帖子都算论坛帖子
+            .not_.is_("community_id", "null")
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_recommend_posts(
         self, current_user_id: Optional[int] = None, limit: int = 50
     ) -> List[Post]:
         """获取推荐帖子（无 community_id 的非论坛帖子，仅已发布且审核通过的）"""
-        result = (
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
             self.db.table("posts")
             .select("*")
             .is_("community_id", "null")
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
-            .order("created_at", desc=True)
-            .limit(limit)
-            .execute()
         )
+        query = self._apply_block_filter(query, blocked_ids)
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
     def get_following_posts(
@@ -667,6 +678,13 @@ class PostService:
         following_ids = [f["following_id"] for f in follow_result.data or []]
         if not following_ids:
             return []
+
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        if blocked_ids:
+            blocked_set = set(blocked_ids)
+            following_ids = [fid for fid in following_ids if fid not in blocked_set]
+            if not following_ids:
+                return []
 
         result = (
             self.db.table("posts")
