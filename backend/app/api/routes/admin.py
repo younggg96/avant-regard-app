@@ -64,6 +64,39 @@ class BroadcastNotificationRequest(BaseModel):
 
 # ==================== 帖子审核 ====================
 
+@router.get("/posts/all")
+async def get_all_posts(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    keyword: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    auditStatus: Optional[str] = Query(None),
+    postType: Optional[str] = Query(None),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取所有帖子（支持搜索、筛选、分页）"""
+    result = admin_service.get_all_posts(
+        page=page,
+        page_size=pageSize,
+        keyword=keyword,
+        status=status,
+        audit_status=auditStatus,
+        post_type=postType,
+    )
+    return success(result)
+
+
+@router.get("/posts/reported")
+async def get_reported_posts(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取被投诉的帖子列表"""
+    result = admin_service.get_reported_posts(page=page, page_size=pageSize)
+    return success(result)
+
+
 @router.get("/posts/pending")
 async def get_pending_posts(
     current_user_id: int = Depends(get_current_admin_user)

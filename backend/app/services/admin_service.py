@@ -67,8 +67,109 @@ class AdminService:
 
     def admin_delete_post(self, post_id: int) -> bool:
         """管理员删除帖子（不需要验证用户）"""
-        # 直接删除帖子，关联数据（点赞、收藏、评论）通过数据库级联删除
         result = self.db.table("posts").delete().eq("id", post_id).execute()
+        return bool(result.data)
+
+    def get_all_posts(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        keyword: str = None,
+        status: str = None,
+        audit_status: str = None,
+        post_type: str = None,
+    ) -> dict:
+        """获取所有帖子（分页、搜索、筛选）"""
+        query = self.db.table("posts").select("*", count="exact")
+
+        if status:
+            query = query.eq("status", status)
+        if audit_status:
+            query = query.eq("audit_status", audit_status)
+        if post_type:
+            query = query.eq("post_type", post_type)
+        if keyword:
+            query = query.or_(f"title.ilike.*{keyword}*,content_text.ilike.*{keyword}*")
+
+        result = (
+            query.order("created_at", desc=True)
+            .range((page - 1) * page_size, page * page_size - 1)
+            .execute()
+        )
+
+        total = result.count if result.count is not None else 0
+        posts = [post_service._format_post(p) for p in result.data or []]
+
+        return {
+            "posts": [p.model_dump() for p in posts],
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": (total + page_size - 1) // page_size if total > 0 else 0,
+        }
+
+    def get_reported_posts(self, page: int = 1, page_size: int = 20) -> dict:
+        """获取被投诉的帖子列表（含投诉详情）"""
+        reports_result = (
+            self.db.table("content_reports")
+            .select("*", count="exact")
+            .eq("target_type", "POST")
+            .order("created_at", desc=True)
+            .range((page - 1) * page_size, page * page_size - 1)
+            .execute()
+        )
+
+        total = reports_result.count if reports_result.count is not None else 0
+        items = []
+
+        for report in reports_result.data or []:
+            post_result = (
+                self.db.table("posts")
+                .select("*")
+                .eq("id", report["target_id"])
+                .execute()
+            )
+            post_data = None
+            if post_result.data:
+                post_data = post_service._format_post(post_result.data[0]).model_dump()
+
+            reporter_result = (
+                self.db.table("users")
+                .select("username")
+                .eq("id", report["reporter_id"])
+                .execute()
+            )
+            reporter_name = reporter_result.data[0]["username"] if reporter_result.data else "未知"
+
+            items.append({
+                "report": {
+                    "id": report["id"],
+                    "reporterId": report["reporter_id"],
+                    "reporterName": reporter_name,
+                    "reason": report["reason"],
+                    "description": report.get("description", ""),
+                    "status": report.get("status", "PENDING"),
+                    "createdAt": report.get("created_at"),
+                },
+                "post": post_data,
+            })
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": (total + page_size - 1) // page_size if total > 0 else 0,
+        }
+
+    def update_post_audit_status(self, post_id: int, audit_status: str) -> bool:
+        """更新帖子审核状态"""
+        result = (
+            self.db.table("posts")
+            .update({"audit_status": audit_status})
+            .eq("id", post_id)
+            .execute()
+        )
         return bool(result.data)
 
     # ==================== 用户管理 ====================
