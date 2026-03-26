@@ -33,6 +33,7 @@ class BuyerStoreService:
         """格式化买手店数据"""
         lat = store.get("latitude")
         lng = store.get("longitude")
+        has_coords = lat is not None and lng is not None
         return BuyerStore(
             id=store["id"],
             name=store["name"],
@@ -40,9 +41,9 @@ class BuyerStoreService:
             city=store["city"],
             country=store["country"],
             coordinates={
-                "latitude": float(lat) if lat is not None else 0.0,
-                "longitude": float(lng) if lng is not None else 0.0,
-            },
+                "latitude": float(lat),
+                "longitude": float(lng),
+            } if has_coords else None,
             brands=store.get("brands") or [],
             style=store.get("style") or [],
             isOpen=store.get("is_open", True),
@@ -341,6 +342,8 @@ class BuyerStoreService:
 
         stores_with_distance = []
         for s in result.data:
+            if s.get("latitude") is None or s.get("longitude") is None:
+                continue
             distance = self._calculate_distance(
                 latitude, longitude, float(s["latitude"]), float(s["longitude"])
             )

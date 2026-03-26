@@ -57,6 +57,7 @@ class BuyerStoreUpdate(BaseModel):
 class BuyerStore(BuyerStoreBase):
     """买手店响应"""
     id: str
+    coordinates: Optional[Coordinates] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
