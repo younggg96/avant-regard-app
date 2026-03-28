@@ -88,6 +88,13 @@ class AppleLoginRequest(BaseModel):
     email: Optional[str] = Field(None, description="用户邮箱（仅首次授权时可用）")
 
 
+class ChangePasswordRequest(BaseModel):
+    """修改密码请求"""
+    userId: int = Field(..., description="用户ID")
+    oldPassword: str = Field(..., min_length=6, description="当前密码")
+    newPassword: str = Field(..., min_length=6, description="新密码")
+
+
 class RefreshTokenRequest(BaseModel):
     """刷新令牌请求"""
     refreshToken: str = Field(..., description="刷新令牌")
@@ -237,6 +244,22 @@ async def forget_password(request: ResetPasswordRequest):
         request.phone,
         request.password,
         request.code
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail=message)
+    return success(message=message)
+
+
+@router.post("/change-password")
+async def change_password(request: ChangePasswordRequest):
+    """
+    修改密码
+    需要验证当前密码
+    """
+    ok, message = auth_service.change_password(
+        request.userId,
+        request.oldPassword,
+        request.newPassword
     )
     if not ok:
         raise HTTPException(status_code=400, detail=message)

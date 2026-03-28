@@ -188,7 +188,7 @@ class PostService:
         image_urls: List[str] = None,
         product_name: str = None,
         brand_name: str = None,
-        rating: int = None,
+        rating: float = None,
         show_ids: List[Union[int, str]] = None,
         brand_ids: List[int] = None,
         community_id: int = None,

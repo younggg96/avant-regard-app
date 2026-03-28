@@ -1,7 +1,7 @@
 """
 评论相关的数据模型
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 
 
@@ -52,7 +52,7 @@ class ImageReview(BaseModel):
     userId: int
     username: str
     imageId: int
-    rating: int
+    rating: float
     content: str
     createdAt: str
     updatedAt: str
@@ -61,5 +61,12 @@ class ImageReview(BaseModel):
 class CreateImageReviewRequest(BaseModel):
     """创建秀场图片评论请求"""
     userId: int
-    rating: int = Field(..., ge=1, le=5)
+    rating: float = Field(..., ge=0.5, le=5)
     content: str = Field(..., min_length=1, max_length=1000)
+
+    @field_validator("rating")
+    @classmethod
+    def validate_rating(cls, v: float) -> float:
+        if (v * 2) % 1 != 0:
+            raise ValueError("Rating must be in 0.5 increments (e.g. 0.5, 1, 1.5, ..., 5)")
+        return v

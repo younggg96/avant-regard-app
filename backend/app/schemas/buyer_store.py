@@ -2,7 +2,7 @@
 买手店相关的数据模型
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -219,7 +219,14 @@ class BuyerStoreComment(BaseModel):
 class BuyerStoreRatingCreate(BaseModel):
     """创建/更新买手店评分请求"""
     userId: int
-    rating: int = Field(..., ge=1, le=5, description="评分 1-5 星")
+    rating: float = Field(..., ge=0.5, le=5, description="评分 0.5-5 星，支持半星")
+
+    @field_validator("rating")
+    @classmethod
+    def validate_rating(cls, v: float) -> float:
+        if (v * 2) % 1 != 0:
+            raise ValueError("Rating must be in 0.5 increments (e.g. 0.5, 1, 1.5, ..., 5)")
+        return v
 
 
 class BuyerStoreRating(BaseModel):
@@ -229,7 +236,7 @@ class BuyerStoreRating(BaseModel):
     userId: int
     username: str
     userAvatar: Optional[str] = None
-    rating: int
+    rating: float
     createdAt: str
     updatedAt: str
 
@@ -256,7 +263,7 @@ class BuyerStoreDetail(BuyerStore):
     commentCount: int = 0
     favoriteCount: int = 0
     isFavorited: bool = False
-    userRating: Optional[int] = None
+    userRating: Optional[float] = None
 
 
 # ==================== 评论提示建议 ====================

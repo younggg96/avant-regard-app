@@ -25,113 +25,113 @@ def _get_storage_client():
 
 
 class FileService:
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/heic"}
+    ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/x-m4v", "video/webm"}
+
     def __init__(self):
         self.db = _get_storage_client()
         self.bucket_name = "images"
-        self._bucket_checked = False
-        self._bucket_ok = False
+        self._bucket_checked: dict[str, bool] = {}
 
-    def _ensure_bucket_exists(self):
+    def _ensure_bucket_exists(self, bucket: str = None):
         """确保存储桶存在且为公开状态"""
-        if self._bucket_checked:
-            return self._bucket_ok
+        bucket = bucket or self.bucket_name
+        if bucket in self._bucket_checked:
+            return self._bucket_checked[bucket]
 
         try:
             buckets = self.db.storage.list_buckets()
             bucket_names = [b.name for b in buckets] if buckets else []
             print(f"[FileService] Existing buckets: {bucket_names}")
 
-            if self.bucket_name not in bucket_names:
-                print(f"[FileService] Creating bucket: {self.bucket_name}")
+            if bucket not in bucket_names:
+                print(f"[FileService] Creating bucket: {bucket}")
                 self.db.storage.create_bucket(
-                    self.bucket_name, options={"public": True}
+                    bucket, options={"public": True}
                 )
-                print(f"[FileService] Bucket '{self.bucket_name}' created successfully")
+                print(f"[FileService] Bucket '{bucket}' created successfully")
             else:
                 existing = next(
-                    (b for b in buckets if b.name == self.bucket_name), None
+                    (b for b in buckets if b.name == bucket), None
                 )
                 is_public = getattr(existing, "public", None)
                 if is_public is False:
-                    print(f"[FileService] Bucket '{self.bucket_name}' exists but is not public, updating...")
+                    print(f"[FileService] Bucket '{bucket}' exists but is not public, updating...")
                     self.db.storage.update_bucket(
-                        self.bucket_name, options={"public": True}
+                        bucket, options={"public": True}
                     )
-                    print(f"[FileService] Bucket '{self.bucket_name}' updated to public")
+                    print(f"[FileService] Bucket '{bucket}' updated to public")
 
-            self._bucket_checked = True
-            self._bucket_ok = True
+            self._bucket_checked[bucket] = True
         except Exception as e:
             print(f"[FileService] Error checking/creating bucket: {e}")
             import traceback
             print(f"[FileService] Bucket check traceback: {traceback.format_exc()}")
-            self._bucket_checked = True
-            self._bucket_ok = False
+            self._bucket_checked[bucket] = False
 
-        return self._bucket_ok
+        return self._bucket_checked.get(bucket, False)
 
-    def upload_image(
-        self, file_content: bytes, filename: str, content_type: str
+    def _upload_to_bucket(
+        self, bucket: str, file_content: bytes, filename: str, content_type: str
     ) -> Optional[str]:
-        """上传图片到 Supabase Storage"""
-        if not self._ensure_bucket_exists():
-            print("[FileService] Bucket check failed, cannot upload")
+        """通用上传方法：将文件上传到指定 bucket"""
+        if not self._ensure_bucket_exists(bucket):
+            print(f"[FileService] Bucket '{bucket}' check failed, cannot upload")
             return None
 
-        # 生成唯一文件名
-        ext = filename.split(".")[-1] if "." in filename else "jpg"
+        ext = filename.split(".")[-1] if "." in filename else "bin"
         unique_filename = f"{datetime.utcnow().strftime('%Y%m%d')}/{uuid.uuid4()}.{ext}"
 
         try:
             print(
-                f"[FileService] Uploading image: {unique_filename}, content_type: {content_type}, size: {len(file_content)} bytes"
+                f"[FileService] Uploading to '{bucket}': {unique_filename}, "
+                f"content_type: {content_type}, size: {len(file_content)} bytes"
             )
 
-            # 上传到 Supabase Storage
-            result = self.db.storage.from_(self.bucket_name).upload(
+            result = self.db.storage.from_(bucket).upload(
                 unique_filename, file_content, {"content-type": content_type}
             )
 
             print(f"[FileService] Upload result type: {type(result)}")
             print(f"[FileService] Upload result: {result}")
 
-            # 检查上传结果 - 新版 supabase-py 返回的是字典
             if isinstance(result, dict):
                 if result.get("error"):
-                    print(
-                        f"[FileService] Upload failed with error: {result.get('error')}"
-                    )
+                    print(f"[FileService] Upload failed with error: {result.get('error')}")
                     return None
-                # 成功时 result 包含 path
                 if result.get("path"):
-                    public_url = self.db.storage.from_(self.bucket_name).get_public_url(
-                        result["path"]
-                    )
+                    public_url = self.db.storage.from_(bucket).get_public_url(result["path"])
                     print(f"[FileService] Public URL: {public_url}")
                     return public_url
 
-            # 检查是否有 error 属性（旧版本兼容）
             if hasattr(result, "error") and result.error:
                 print(f"[FileService] Upload failed with error: {result.error}")
                 return None
 
-            # 获取公开 URL
-            public_url = self.db.storage.from_(self.bucket_name).get_public_url(
-                unique_filename
-            )
+            public_url = self.db.storage.from_(bucket).get_public_url(unique_filename)
             print(f"[FileService] Public URL: {public_url}")
             return public_url
         except Exception as e:
             import traceback
-
             print(f"[FileService] Upload error: {e}")
             print(f"[FileService] Traceback: {traceback.format_exc()}")
             return None
 
+    def upload_image(
+        self, file_content: bytes, filename: str, content_type: str
+    ) -> Optional[str]:
+        """上传图片到 Supabase Storage"""
+        return self._upload_to_bucket(self.bucket_name, file_content, filename, content_type)
+
+    def upload_video(
+        self, file_content: bytes, filename: str, content_type: str
+    ) -> Optional[str]:
+        """上传视频到 Supabase Storage（videos 桶）"""
+        return self._upload_to_bucket("videos", file_content, filename, content_type)
+
     def delete_image(self, file_path: str) -> bool:
         """删除图片"""
         try:
-            # 从 URL 中提取文件路径
             if self.bucket_name in file_path:
                 path_parts = file_path.split(f"{self.bucket_name}/")
                 if len(path_parts) > 1:

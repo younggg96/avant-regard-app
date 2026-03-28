@@ -321,7 +321,7 @@ class CommentService:
         result = self.db.table("show_image_reviews").select("*").eq("image_id", image_id).order("created_at", desc=True).execute()
         return [self._format_image_review(r) for r in result.data or []]
 
-    def create_image_review(self, image_id: int, user_id: int, rating: int, content: str) -> Optional[ImageReview]:
+    def create_image_review(self, image_id: int, user_id: int, rating: float, content: str) -> Optional[ImageReview]:
         """创建秀场图片评论"""
         result = self.db.table("show_image_reviews").insert({
             "image_id": image_id,

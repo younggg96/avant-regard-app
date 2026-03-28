@@ -629,6 +629,51 @@ class AuthService:
         except Exception as e:
             return False, f"重置失败: {str(e)}"
 
+    def change_password(
+        self, user_id: int, old_password: str, new_password: str
+    ) -> Tuple[bool, str]:
+        """Change password for an authenticated user by verifying old password first."""
+        try:
+            result = (
+                self.db.table("users")
+                .select("*")
+                .eq("id", user_id)
+                .execute()
+            )
+
+            if not result.data:
+                return False, "用户不存在"
+
+            app_user = result.data[0]
+            phone = app_user.get("phone")
+            email = app_user.get("email")
+
+            if phone:
+                formatted_phone = self._format_phone(phone)
+                response = self.db.auth.sign_in_with_password(
+                    {"phone": formatted_phone, "password": old_password}
+                )
+            elif email:
+                response = self.db.auth.sign_in_with_password(
+                    {"email": email, "password": old_password}
+                )
+            else:
+                return False, "未找到账号登录信息，无法修改密码"
+
+            if not response.user:
+                return False, "当前密码错误"
+
+            self.db.auth.update_user({"password": new_password})
+            return True, "密码修改成功"
+
+        except AuthApiError as e:
+            error_msg = str(e)
+            if "invalid" in error_msg.lower():
+                return False, "当前密码错误"
+            return False, f"修改失败: {error_msg}"
+        except Exception as e:
+            return False, f"修改失败: {str(e)}"
+
     def sign_out(self) -> bool:
         """登出"""
         try:
