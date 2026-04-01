@@ -359,9 +359,9 @@ class UserService:
         
         return UserPrivacySettings(
             userId=user_id,
-            hideFollowing=info.get("hide_following", True),
-            hideFollowers=info.get("hide_followers", True),
-            hideLikes=info.get("hide_likes", True)
+            hideFollowing=info.get("hide_following", False),
+            hideFollowers=info.get("hide_followers", False),
+            hideLikes=info.get("hide_likes", False)
         )
 
     def update_privacy_settings(self, user_id: int, **kwargs) -> Optional[UserPrivacySettings]:
