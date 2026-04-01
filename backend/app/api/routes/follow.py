@@ -141,6 +141,17 @@ async def get_following_brands(user_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/brand/{brand_id}/followers")
+async def get_brand_followers(brand_id: int):
+    """获取品牌的关注者列表"""
+    try:
+        result = follow_service.get_brand_followers(brand_id)
+        return success([u.model_dump() for u in result])
+    except Exception as e:
+        print(f"Error in get_brand_followers route: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/brand/{brand_id}/followers/count")
 async def get_brand_followers_count(brand_id: int):
     """获取品牌的关注者数量"""

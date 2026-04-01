@@ -277,6 +277,38 @@ class FollowService:
             print(f"Error in get_following_brands for user {user_id}: {e}")
             raise
 
+    def get_brand_followers(self, brand_id: int) -> List[FollowingUser]:
+        """获取品牌的关注者列表"""
+        try:
+            result = (
+                self.db.table("brand_follows")
+                .select(
+                    "user_id, users!brand_follows_user_id_fkey(id, username, user_info(bio, location, avatar_url))"
+                )
+                .eq("brand_id", brand_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+
+            users = []
+            for item in result.data or []:
+                user = item.get("users")
+                if user:
+                    info = self._extract_user_info(user.get("user_info"))
+                    users.append(
+                        FollowingUser(
+                            userId=user["id"],
+                            username=user["username"],
+                            avatar=info.get("avatar_url", ""),
+                            bio=info.get("bio", ""),
+                            location=info.get("location", ""),
+                        )
+                    )
+            return users
+        except Exception as e:
+            print(f"Error in get_brand_followers for brand {brand_id}: {e}")
+            raise
+
     def get_brand_followers_count(self, brand_id: int) -> int:
         """获取品牌的关注者数量"""
         result = (
