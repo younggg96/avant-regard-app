@@ -208,7 +208,12 @@ class BrandService:
             result = (
                 self.db.table("brands")
                 .select("*")
-                .or_(f"name.ilike.*{safe_keyword}*,founder.ilike.*{safe_keyword}*")
+                .or_(
+                    f"name.ilike.*{safe_keyword}*,"
+                    f"founder.ilike.*{safe_keyword}*,"
+                    f"category.ilike.*{safe_keyword}*,"
+                    f"country.ilike.*{safe_keyword}*"
+                )
                 .order("name")
                 .limit(limit)
                 .execute()
