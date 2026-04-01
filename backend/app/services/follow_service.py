@@ -214,25 +214,62 @@ class FollowService:
         try:
             result = (
                 self.db.table("brand_follows")
-                .select("brand_id, brands(id, name, category, cover_image, country)")
+                .select("brand_id, brands(id, name, category, country)")
                 .eq("user_id", user_id)
                 .order("created_at", desc=True)
                 .execute()
             )
 
-            brands = []
+            brand_ids = []
+            brand_map = {}
             for item in result.data or []:
                 brand = item.get("brands")
                 if brand:
-                    followers_count = self.get_brand_followers_count(brand["id"])
+                    brand_ids.append(brand["id"])
+                    brand_map[brand["id"]] = brand
+
+            # 批量获取品牌图片（优先 is_selected，否则取第一张 APPROVED）
+            image_map: dict[int, str] = {}
+            if brand_ids:
+                img_result = (
+                    self.db.table("brand_images")
+                    .select("brand_id, image_url, is_selected")
+                    .in_("brand_id", brand_ids)
+                    .eq("status", "APPROVED")
+                    .order("is_selected", desc=True)
+                    .order("sort_order")
+                    .execute()
+                )
+                for img in img_result.data or []:
+                    bid = img["brand_id"]
+                    if bid not in image_map:
+                        image_map[bid] = img["image_url"]
+
+            # 批量获取关注者数量
+            count_result = (
+                self.db.table("brand_follows")
+                .select("brand_id", count="exact")
+                .in_("brand_id", brand_ids)
+                .execute()
+            )
+            count_map: dict[int, int] = {}
+            if count_result.data:
+                for row in count_result.data:
+                    bid = row["brand_id"]
+                    count_map[bid] = count_map.get(bid, 0) + 1
+
+            brands = []
+            for bid in brand_ids:
+                brand = brand_map.get(bid)
+                if brand:
                     brands.append(
                         FollowingBrand(
                             brandId=brand["id"],
                             name=brand["name"],
                             category=brand.get("category") or "",
-                            coverImage=brand.get("cover_image") or "",
+                            coverImage=image_map.get(bid, ""),
                             country=brand.get("country") or "",
-                            followersCount=followers_count,
+                            followersCount=count_map.get(bid, 0),
                         )
                     )
             return brands
