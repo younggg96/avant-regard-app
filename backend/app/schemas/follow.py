@@ -2,13 +2,25 @@
 关注相关的数据模型
 """
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class FollowUserRequest(BaseModel):
     """关注用户请求"""
     followerId: int
     targetUserId: int
+
+
+class FollowBrandRequest(BaseModel):
+    """关注品牌请求"""
+    userId: int
+    brandId: int
+
+
+class BatchFollowBrandsRequest(BaseModel):
+    """批量关注品牌请求"""
+    userId: int
+    brandIds: List[int]
 
 
 class FollowingUser(BaseModel):
@@ -18,3 +30,13 @@ class FollowingUser(BaseModel):
     avatar: str = ""
     bio: str = ""
     location: str = ""
+
+
+class FollowingBrand(BaseModel):
+    """关注的品牌信息"""
+    brandId: int
+    name: str
+    category: str = ""
+    coverImage: str = ""
+    country: str = ""
+    followersCount: int = 0

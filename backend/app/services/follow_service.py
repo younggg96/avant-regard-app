@@ -4,7 +4,7 @@
 
 from typing import List
 from app.db.supabase import get_supabase
-from app.schemas.follow import FollowingUser
+from app.schemas.follow import FollowingUser, FollowingBrand
 from app.services.notification_service import notification_service
 
 
@@ -171,6 +171,105 @@ class FollowService:
             .execute()
         )
         return bool(result.data)
+
+    # ==================== 品牌关注 ====================
+
+    def follow_brand(self, user_id: int, brand_id: int) -> bool:
+        """关注品牌"""
+        try:
+            self.db.table("brand_follows").insert(
+                {"user_id": user_id, "brand_id": brand_id}
+            ).execute()
+            return True
+        except:
+            return False
+
+    def unfollow_brand(self, user_id: int, brand_id: int) -> bool:
+        """取消关注品牌"""
+        result = (
+            self.db.table("brand_follows")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("brand_id", brand_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def batch_follow_brands(self, user_id: int, brand_ids: List[int]) -> int:
+        """批量关注品牌，返回成功关注的数量"""
+        count = 0
+        for brand_id in brand_ids:
+            try:
+                self.db.table("brand_follows").upsert(
+                    {"user_id": user_id, "brand_id": brand_id},
+                    on_conflict="user_id,brand_id"
+                ).execute()
+                count += 1
+            except Exception as e:
+                print(f"Failed to follow brand {brand_id}: {e}")
+        return count
+
+    def get_following_brands(self, user_id: int) -> List[FollowingBrand]:
+        """获取用户关注的品牌列表"""
+        try:
+            result = (
+                self.db.table("brand_follows")
+                .select("brand_id, brands(id, name, category, cover_image, country)")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+
+            brands = []
+            for item in result.data or []:
+                brand = item.get("brands")
+                if brand:
+                    followers_count = self.get_brand_followers_count(brand["id"])
+                    brands.append(
+                        FollowingBrand(
+                            brandId=brand["id"],
+                            name=brand["name"],
+                            category=brand.get("category") or "",
+                            coverImage=brand.get("cover_image") or "",
+                            country=brand.get("country") or "",
+                            followersCount=followers_count,
+                        )
+                    )
+            return brands
+        except Exception as e:
+            print(f"Error in get_following_brands for user {user_id}: {e}")
+            raise
+
+    def get_brand_followers_count(self, brand_id: int) -> int:
+        """获取品牌的关注者数量"""
+        result = (
+            self.db.table("brand_follows")
+            .select("id", count="exact")
+            .eq("brand_id", brand_id)
+            .execute()
+        )
+        return result.count or 0
+
+    def is_following_brand(self, user_id: int, brand_id: int) -> bool:
+        """检查用户是否关注了某个品牌"""
+        result = (
+            self.db.table("brand_follows")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("brand_id", brand_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def get_following_brand_ids(self, user_id: int) -> List[int]:
+        """获取用户关注的品牌 ID 列表"""
+        result = (
+            self.db.table("brand_follows")
+            .select("brand_id")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return [item["brand_id"] for item in (result.data or [])]
 
 
 # 单例
