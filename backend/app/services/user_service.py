@@ -79,14 +79,14 @@ class UserService:
             return None
         info = info_result.data[0]
         
-        # 获取用户喜欢的品牌
-        favorite_brands_result = (
-            self.db.table("user_favorite_brands")
+        # 获取用户关注的品牌
+        followed_brands_result = (
+            self.db.table("brand_follows")
             .select("brand_id")
             .eq("user_id", user_id)
             .execute()
         )
-        favorite_brand_ids = [item["brand_id"] for item in favorite_brands_result.data] if favorite_brands_result.data else []
+        followed_brand_ids = [item["brand_id"] for item in followed_brands_result.data] if followed_brands_result.data else []
         
         return UserProfileInfo(
             userId=user["id"],
@@ -99,7 +99,7 @@ class UserService:
             gender=info.get("gender", "OTHER"),
             age=info.get("age", 0),
             preference=info.get("preference", ""),
-            favoriteBrandIds=favorite_brand_ids,
+            followedBrandIds=followed_brand_ids,
             profileCompleted=info.get("profile_completed", False)
         )
 
@@ -137,21 +137,21 @@ class UserService:
         if update_data:
             self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()
         
-        # 更新喜欢的品牌（如果提供）
-        if "favoriteBrandIds" in kwargs and kwargs["favoriteBrandIds"] is not None:
-            favorite_brand_ids = kwargs["favoriteBrandIds"]
+        # 更新关注的品牌（如果提供）
+        if "followedBrandIds" in kwargs and kwargs["followedBrandIds"] is not None:
+            followed_brand_ids = kwargs["followedBrandIds"]
             
-            # 先删除现有的品牌偏好
-            self.db.table("user_favorite_brands").delete().eq("user_id", user_id).execute()
+            # 先删除现有的品牌关注
+            self.db.table("brand_follows").delete().eq("user_id", user_id).execute()
             
-            # 插入新的品牌偏好（最多5个）
-            if favorite_brand_ids:
-                brand_ids_to_insert = favorite_brand_ids[:5]  # 限制最多5个
+            # 插入新的品牌关注（最多5个）
+            if followed_brand_ids:
+                brand_ids_to_insert = followed_brand_ids[:5]
                 for brand_id in brand_ids_to_insert:
-                    self.db.table("user_favorite_brands").insert({
-                        "user_id": user_id,
-                        "brand_id": brand_id
-                    }).execute()
+                    self.db.table("brand_follows").upsert(
+                        {"user_id": user_id, "brand_id": brand_id},
+                        on_conflict="user_id,brand_id"
+                    ).execute()
         
         return self.get_user_profile(user_id)
 

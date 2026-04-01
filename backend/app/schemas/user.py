@@ -35,8 +35,8 @@ class UserProfileInfo(BaseModel):
     gender: Gender = Gender.OTHER
     age: int = 0
     preference: str = ""
-    favoriteBrandIds: List[int] = []
-    profileCompleted: bool = False  # 是否已完善资料
+    followedBrandIds: List[int] = []
+    profileCompleted: bool = False
 
 
 class UpdateUserInfoRequest(BaseModel):
@@ -58,8 +58,8 @@ class UpdateUserProfileRequest(BaseModel):
     gender: Optional[Gender] = None
     age: Optional[int] = None
     preference: Optional[str] = None
-    favoriteBrandIds: Optional[List[int]] = None
-    profileCompleted: Optional[bool] = None  # 是否已完善资料
+    followedBrandIds: Optional[List[int]] = None
+    profileCompleted: Optional[bool] = None
 
 
 class UserPrivacySettings(BaseModel):

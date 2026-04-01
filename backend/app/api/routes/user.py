@@ -171,7 +171,7 @@ async def update_user_profile(
         gender=request.gender.value if request.gender else None,
         age=request.age,
         preference=request.preference,
-        favoriteBrandIds=request.favoriteBrandIds,
+        followedBrandIds=request.followedBrandIds,
         profileCompleted=request.profileCompleted,
     )
     if not result:
