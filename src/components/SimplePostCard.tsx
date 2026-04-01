@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { isVideoUrl } from "../services/postService";
 import { theme } from "../theme";
 import { Post } from "./PostCard";
 
@@ -32,15 +33,22 @@ const PostCard: React.FC<PostCardProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* 图片 */}
+      {/* 封面媒体 */}
       <TouchableOpacity onPress={() => onPress?.(post)} activeOpacity={0.95}>
-        <OptimizedImage
-          uri={displayImage}
-          size={ImageSize.MEDIUM}
-          style={styles.image}
-          contentFit="cover"
-          lazy={true}
-        />
+        <View style={{ position: "relative" }}>
+          <OptimizedImage
+            uri={displayImage}
+            size={ImageSize.MEDIUM}
+            style={styles.image}
+            contentFit="cover"
+            lazy={true}
+          />
+          {isVideoUrl(displayImage) && (
+            <View style={styles.videoIndicator}>
+              <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.85)" />
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
 
       {/* 标题 */}
@@ -152,6 +160,12 @@ const styles = StyleSheet.create({
     color: theme.colors.gray400,
     marginLeft: theme.spacing.xs / 2,
     fontWeight: "600",
+  },
+  videoIndicator: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.15)",
   },
 });
 

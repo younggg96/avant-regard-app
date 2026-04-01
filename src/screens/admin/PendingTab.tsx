@@ -17,6 +17,7 @@ import { formatDate, getPostTypeName } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
+import HalfStarRating from "../../components/HalfStarRating";
 
 const PendingTab = () => {
   const navigation = useNavigation();
@@ -291,14 +292,12 @@ const PendingTab = () => {
             {post.rating !== undefined && (
               <HStack style={styles.ratingContainer}>
                 <Text style={styles.reviewText}>评分: </Text>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons
-                    key={star}
-                    name={star <= (post.rating || 0) ? "star" : "star-outline"}
-                    size={14}
-                    color="#FFD700"
-                  />
-                ))}
+                <HalfStarRating
+                  rating={post.rating || 0}
+                  size={14}
+                  color="#FFD700"
+                  inactiveColor="#D1D5DB"
+                />
               </HStack>
             )}
           </Box>

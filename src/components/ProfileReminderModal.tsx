@@ -55,7 +55,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   const [gender, setGender] = useState<Gender | "">("");
   const [age, setAge] = useState("");
   const [preference, setPreference] = useState("");
-  const [favoriteBrandIds, setFavoriteBrandIds] = useState<number[]>([]);
+  const [followedBrandIds, setFollowedBrandIds] = useState<number[]>([]);
 
   // UI 状态
   const [loading, setLoading] = useState(false);
@@ -147,21 +147,21 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
   // 切换品牌选择
   const handleToggleBrand = (brandId: number) => {
-    if (favoriteBrandIds.includes(brandId)) {
-      setFavoriteBrandIds(favoriteBrandIds.filter((id) => id !== brandId));
+    if (followedBrandIds.includes(brandId)) {
+      setFollowedBrandIds(followedBrandIds.filter((id) => id !== brandId));
     } else {
-      if (favoriteBrandIds.length >= 5) {
+      if (followedBrandIds.length >= 5) {
         Alert.show("提示: 最多选择 5 个品牌");
         return;
       }
-      setFavoriteBrandIds([...favoriteBrandIds, brandId]);
+      setFollowedBrandIds([...followedBrandIds, brandId]);
     }
   };
 
   // 获取已选品牌名称
   const getSelectedBrandNames = () => {
     return brandOptions
-      .filter((b) => favoriteBrandIds.includes(b.id))
+      .filter((b) => followedBrandIds.includes(b.id))
       .map((b) => b.name)
       .join(", ");
   };
@@ -201,7 +201,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         age?: number;
         preference?: string;
         bio?: string;
-        favoriteBrandIds?: number[];
+        followedBrandIds?: number[];
         profileCompleted?: boolean;
       } = {
         // 标记资料已完善（保存到数据库）
@@ -213,9 +213,9 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
       if (ageValue > 0) updateData.age = ageValue;
       if (preference) updateData.preference = preference;
       if (bio) updateData.bio = bio;
-      if (favoriteBrandIds.length > 0) updateData.favoriteBrandIds = favoriteBrandIds;
+      if (followedBrandIds.length > 0) updateData.followedBrandIds = followedBrandIds;
 
-      // 调用更新接口（包含 profileCompleted: true）
+      // 调用更新接口（包含 profileCompleted: true，同时会写入 brand_follows）
       await userInfoService.updateUserProfile(user.userId, updateData);
 
       // 同步更新本地状态
@@ -412,25 +412,25 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
               />
             </View>
 
-            {/* 喜欢的品牌 */}
+            {/* 关注的品牌 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>喜欢的品牌（最多5个）</Text>
+              <Text style={styles.inputLabel}>关注的品牌（最多5个）</Text>
               <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowBrandPicker(true)}
               >
                 <Text
                   style={
-                    favoriteBrandIds.length > 0 ? styles.pickerText : styles.pickerPlaceholder
+                    followedBrandIds.length > 0 ? styles.pickerText : styles.pickerPlaceholder
                   }
                   numberOfLines={2}
                 >
-                  {favoriteBrandIds.length > 0 ? getSelectedBrandNames() : "选择您喜欢的品牌"}
+                  {followedBrandIds.length > 0 ? getSelectedBrandNames() : "选择您想关注的品牌"}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
               </TouchableOpacity>
-              {favoriteBrandIds.length > 0 && (
-                <Text style={styles.selectedCount}>已选择 {favoriteBrandIds.length}/5</Text>
+              {followedBrandIds.length > 0 && (
+                <Text style={styles.selectedCount}>已选择 {followedBrandIds.length}/5</Text>
               )}
             </View>
 
@@ -466,7 +466,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         <View style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
-              选择喜欢的品牌（{favoriteBrandIds.length}/5）
+              选择关注的品牌（{followedBrandIds.length}/5）
             </Text>
             <TouchableOpacity
               onPress={() => setShowBrandPicker(false)}
@@ -505,7 +505,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
               data={brandOptions}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => {
-                const isSelected = favoriteBrandIds.includes(item.id);
+                const isSelected = followedBrandIds.includes(item.id);
                 return (
                   <TouchableOpacity
                     style={[styles.brandItem, isSelected && styles.brandItemSelected]}

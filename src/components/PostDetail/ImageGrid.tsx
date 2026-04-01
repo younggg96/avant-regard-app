@@ -1,79 +1,134 @@
-import React from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
+import { isVideoUrl } from "../../services/postService";
 import { theme } from "../../theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-interface ImageGridProps {
+interface MediaGridProps {
   images: string[];
   onOpenFullscreen: (index: number) => void;
 }
 
-export const ImageGrid: React.FC<ImageGridProps> = ({
+const VideoItem: React.FC<{
+  uri: string;
+  style: any;
+  onPress: () => void;
+}> = ({ uri, style, onPress }) => {
+  const videoRef = useRef<Video>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePress = useCallback(() => {
+    if (isPlaying) {
+      videoRef.current?.pauseAsync();
+    } else {
+      videoRef.current?.playAsync();
+    }
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      setIsPlaying(status.isPlaying);
+    }
+  }, []);
+
+  return (
+    <Pressable style={style} onPress={handlePress}>
+      <Video
+        ref={videoRef}
+        source={{ uri }}
+        style={{ width: "100%", height: "100%" }}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={false}
+        isLooping
+        isMuted={false}
+        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+      />
+      {!isPlaying && (
+        <View style={gridStyles.videoOverlay}>
+          <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
+        </View>
+      )}
+    </Pressable>
+  );
+};
+
+const MediaItem: React.FC<{
+  uri: string;
+  wrapperStyle: any;
+  imageStyle: any;
+  imageSize: ImageSize;
+  index: number;
+  onOpenFullscreen: (index: number) => void;
+}> = ({ uri, wrapperStyle, imageStyle, imageSize, index, onOpenFullscreen }) => {
+  if (isVideoUrl(uri)) {
+    return <VideoItem uri={uri} style={wrapperStyle} onPress={() => {}} />;
+  }
+  return (
+    <Pressable style={wrapperStyle} onPress={() => onOpenFullscreen(index)}>
+      <OptimizedImage
+        uri={uri}
+        size={imageSize}
+        style={imageStyle}
+        contentFit="cover"
+        lazy={true}
+      />
+    </Pressable>
+  );
+};
+
+export const ImageGrid: React.FC<MediaGridProps> = ({
   images,
   onOpenFullscreen,
 }) => {
   if (images.length === 0) return null;
 
-  // 根据图片数量选择不同的布局
-  const isSingleImage = images.length === 1;
-  const isTwoImages = images.length === 2;
+  const isSingleItem = images.length === 1;
+  const isTwoItems = images.length === 2;
 
   return (
     <View style={gridStyles.container}>
-      {isSingleImage ? (
-        // 单张图片 - 大图展示
-        <Pressable
-          style={gridStyles.singleImageWrapper}
-          onPress={() => onOpenFullscreen(0)}
-        >
-          <OptimizedImage
-            uri={images[0]}
-            size={ImageSize.LARGE}
-            style={gridStyles.singleImage}
-            contentFit="cover"
-            lazy={true}
-          />
-        </Pressable>
-      ) : isTwoImages ? (
-        // 两张图片 - 并排展示
+      {isSingleItem ? (
+        <MediaItem
+          uri={images[0]}
+          wrapperStyle={gridStyles.singleImageWrapper}
+          imageStyle={gridStyles.singleImage}
+          imageSize={ImageSize.LARGE}
+          index={0}
+          onOpenFullscreen={onOpenFullscreen}
+        />
+      ) : isTwoItems ? (
         <View style={gridStyles.twoImageRow}>
           {images.map((image, index) => (
-            <Pressable
+            <MediaItem
               key={index}
-              style={gridStyles.twoImageWrapper}
-              onPress={() => onOpenFullscreen(index)}
-            >
-              <OptimizedImage
-                uri={image}
-                size={ImageSize.MEDIUM}
-                style={gridStyles.twoImage}
-                contentFit="cover"
-                lazy={true}
-              />
-            </Pressable>
+              uri={image}
+              wrapperStyle={gridStyles.twoImageWrapper}
+              imageStyle={gridStyles.twoImage}
+              imageSize={ImageSize.MEDIUM}
+              index={index}
+              onOpenFullscreen={onOpenFullscreen}
+            />
           ))}
         </View>
       ) : (
-        // 多张图片 - 网格布局
         <View style={gridStyles.gridContainer}>
           {images.map((image, index) => (
-            <Pressable
+            <MediaItem
               key={index}
-              style={gridStyles.gridImageWrapper}
-              onPress={() => onOpenFullscreen(index)}
-            >
-              <OptimizedImage
-                uri={image}
-                size={ImageSize.THUMBNAIL}
-                style={gridStyles.gridImage}
-                contentFit="cover"
-                lazy={true}
-              />
-            </Pressable>
+              uri={image}
+              wrapperStyle={gridStyles.gridImageWrapper}
+              imageStyle={gridStyles.gridImage}
+              imageSize={ImageSize.THUMBNAIL}
+              index={index}
+              onOpenFullscreen={onOpenFullscreen}
+            />
           ))}
         </View>
       )}
@@ -90,7 +145,6 @@ const gridStyles = StyleSheet.create({
     paddingHorizontal: GRID_PADDING,
     paddingVertical: 12,
   },
-  // 单张图片样式
   singleImageWrapper: {
     width: "100%",
     aspectRatio: 4 / 5,
@@ -102,7 +156,6 @@ const gridStyles = StyleSheet.create({
     height: "100%",
     backgroundColor: theme.colors.gray100,
   },
-  // 两张图片样式
   twoImageRow: {
     flexDirection: "row",
     gap: IMAGE_GAP,
@@ -118,7 +171,6 @@ const gridStyles = StyleSheet.create({
     height: "100%",
     backgroundColor: theme.colors.gray100,
   },
-  // 网格样式
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -134,5 +186,11 @@ const gridStyles = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: theme.colors.gray100,
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.15)",
   },
 });

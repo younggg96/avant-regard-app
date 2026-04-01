@@ -1,7 +1,7 @@
 import React from "react";
-import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, HStack, Pressable } from "./ui";
+import { Box, Text, HStack } from "./ui";
 import { theme } from "../theme";
+import HalfStarRating from "./HalfStarRating";
 
 interface RatingSelectorProps {
   rating: number;
@@ -28,16 +28,21 @@ const RatingSelector: React.FC<RatingSelectorProps> = ({
           </Text>
         )}
       </HStack>
-      <HStack gap="$sm" pl="$md">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Pressable key={star} onPress={() => onRatingChange(star)}>
-            <Ionicons
-              name={star <= rating ? "star" : "star-outline"}
-              size={32}
-              color={star <= rating ? "#FFD700" : theme.colors.gray300}
-            />
-          </Pressable>
-        ))}
+      <HStack gap="$sm" pl="$md" alignItems="center">
+        <HalfStarRating
+          rating={rating}
+          size={32}
+          interactive
+          onRatingChange={onRatingChange}
+          color="#FFD700"
+          inactiveColor={theme.colors.gray300}
+          gap={8}
+        />
+        {rating > 0 && (
+          <Text color="$gray400" fontSize="$sm" ml="$sm">
+            {rating % 1 === 0 ? `${rating}.0` : rating.toFixed(1)}
+          </Text>
+        )}
       </HStack>
     </Box>
   );

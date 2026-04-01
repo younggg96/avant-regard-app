@@ -56,11 +56,11 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 }) => {
   // 切换品牌选择
   const handleToggleBrand = (brandId: number) => {
-    const currentIds = formData.favoriteBrandIds || [];
+    const currentIds = formData.followedBrandIds || [];
     if (currentIds.includes(brandId)) {
       setFormData({
         ...formData,
-        favoriteBrandIds: currentIds.filter((id) => id !== brandId),
+        followedBrandIds: currentIds.filter((id) => id !== brandId),
       });
     } else {
       if (currentIds.length >= 5) {
@@ -69,14 +69,14 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
       }
       setFormData({
         ...formData,
-        favoriteBrandIds: [...currentIds, brandId],
+        followedBrandIds: [...currentIds, brandId],
       });
     }
   };
 
   // 获取已选品牌名称
   const getSelectedBrandNames = () => {
-    const selectedIds = formData.favoriteBrandIds || [];
+    const selectedIds = formData.followedBrandIds || [];
     return brandOptions
       .filter((b) => selectedIds.includes(b.id))
       .map((b) => b.name)
@@ -263,30 +263,30 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         />
       </View>
 
-      {/* 喜欢的品牌 */}
+      {/* 关注的品牌 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>喜欢的品牌（最多5个）</Text>
+        <Text style={styles.inputLabel}>关注的品牌（最多5个）</Text>
         <TouchableOpacity
           style={styles.pickerButton}
           onPress={() => setShowBrandPicker(true)}
         >
           <Text
             style={
-              formData.favoriteBrandIds?.length > 0
+              formData.followedBrandIds?.length > 0
                 ? styles.pickerText
                 : styles.pickerPlaceholder
             }
             numberOfLines={2}
           >
-            {formData.favoriteBrandIds?.length > 0
+            {formData.followedBrandIds?.length > 0
               ? getSelectedBrandNames()
-              : "选择您喜欢的品牌"}
+              : "选择您想关注的品牌"}
           </Text>
           <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
         </TouchableOpacity>
-        {formData.favoriteBrandIds?.length > 0 && (
+        {formData.followedBrandIds?.length > 0 && (
           <Text style={styles.brandSelectedCount}>
-            已选择 {formData.favoriteBrandIds.length}/5
+            已选择 {formData.followedBrandIds.length}/5
           </Text>
         )}
       </View>
@@ -301,7 +301,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         <View style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
-              选择喜欢的品牌（{formData.favoriteBrandIds?.length || 0}/5）
+              选择关注的品牌（{formData.followedBrandIds?.length || 0}/5）
             </Text>
             <TouchableOpacity
               onPress={() => setShowBrandPicker(false)}
@@ -343,7 +343,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               data={brandOptions}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => {
-                const isSelected = formData.favoriteBrandIds?.includes(item.id);
+                const isSelected = formData.followedBrandIds?.includes(item.id);
                 return (
                   <TouchableOpacity
                     style={[

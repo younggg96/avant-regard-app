@@ -213,7 +213,7 @@ const StoreManagementTab = () => {
       address: store.address,
       city: store.city,
       country: store.country,
-      coordinates: store.coordinates,
+      coordinates: store.coordinates || { latitude: 0, longitude: 0 },
       brands: store.brands || [],
       style: store.style || [],
       isOpen: store.isOpen,

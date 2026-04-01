@@ -6,6 +6,7 @@ export { ImageGrid } from "./ImageGrid";
 export { RelatedLooks } from "./RelatedLooks";
 export { RelatedBrands } from "./RelatedBrands";
 export { CommentsSection } from "./CommentsSection";
+export type { ReportTarget } from "./CommentsSection";
 export { CommentInputBar } from "./CommentInputBar";
 export type { CommentInputBarRef } from "./CommentInputBar";
 export { FullscreenImageViewer } from "./FullscreenImageViewer";

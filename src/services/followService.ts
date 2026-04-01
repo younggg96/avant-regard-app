@@ -199,6 +199,115 @@ export async function isFollowingUser(
   return response.data;
 }
 
+// ==================== 品牌关注 ====================
+
+// 关注的品牌信息
+export interface FollowingBrand {
+  brandId: number;
+  name: string;
+  category: string;
+  coverImage: string;
+  country: string;
+  followersCount: number;
+}
+
+// 关注品牌请求参数
+export interface FollowBrandParams {
+  userId: number;
+  brandId: number;
+}
+
+/**
+ * 关注品牌
+ * POST /api/follow/brand
+ */
+export async function followBrand(params: FollowBrandParams): Promise<void> {
+  return request<void>("/api/follow/brand", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 取消关注品牌
+ * DELETE /api/follow/brand
+ */
+export async function unfollowBrand(params: FollowBrandParams): Promise<void> {
+  return request<void>("/api/follow/brand", {
+    method: "DELETE",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
+ * 批量关注品牌（选完喜欢的品牌后自动关注）
+ * POST /api/follow/brand/batch
+ */
+export async function batchFollowBrands(
+  userId: number,
+  brandIds: number[]
+): Promise<void> {
+  return request<void>("/api/follow/brand/batch", {
+    method: "POST",
+    body: JSON.stringify({ userId, brandIds }),
+  });
+}
+
+/**
+ * 获取用户关注的品牌列表
+ * GET /api/follow/users/{userId}/following-brands
+ */
+export async function getFollowingBrands(
+  userId: number
+): Promise<FollowingBrand[]> {
+  const response = await request<ApiResponse<FollowingBrand[]>>(
+    `/api/follow/users/${userId}/following-brands`,
+    { method: "GET" }
+  );
+  return response.data || [];
+}
+
+/**
+ * 获取品牌的关注者数量
+ * GET /api/follow/brand/{brandId}/followers/count
+ */
+export async function getBrandFollowersCount(brandId: number): Promise<number> {
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/brand/${brandId}/followers/count`,
+    { method: "GET" }
+  );
+  return response.data;
+}
+
+/**
+ * 检查用户是否关注了某个品牌
+ * GET /api/follow/user/{userId}/is-following-brand/{brandId}
+ */
+export async function isFollowingBrand(
+  userId: number,
+  brandId: number
+): Promise<boolean> {
+  const response = await request<ApiResponse<boolean>>(
+    `/api/follow/user/${userId}/is-following-brand/${brandId}`,
+    { method: "GET" }
+  );
+  return response.data;
+}
+
+/**
+ * 获取用户关注的品牌 ID 列表
+ * GET /api/follow/user/{userId}/following-brand-ids
+ */
+export async function getFollowingBrandIds(
+  userId: number
+): Promise<number[]> {
+  const response = await request<ApiResponse<number[]>>(
+    `/api/follow/user/${userId}/following-brand-ids`,
+    { method: "GET" }
+  );
+  return response.data || [];
+}
+
 // 导出 followService 对象
 export const followService = {
   // 用户关注
@@ -211,6 +320,14 @@ export const followService = {
   getFollowersCount,
   // 状态查询
   isFollowingUser,
+  // 品牌关注
+  followBrand,
+  unfollowBrand,
+  batchFollowBrands,
+  getFollowingBrands,
+  getBrandFollowersCount,
+  isFollowingBrand,
+  getFollowingBrandIds,
 };
 
 export default followService;

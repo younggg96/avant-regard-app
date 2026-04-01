@@ -1,8 +1,10 @@
 import React from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode } from "expo-av";
 import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
+import { isVideoUrl } from "../services/postService";
 import { theme } from "../theme";
 import { Show } from "../services/showService";
 import { Brand } from "../services/brandService";
@@ -106,16 +108,31 @@ const PostCard: React.FC<PostCardProps> = ({
         elevation: 2,
       }}
     >
-      {/* 图片 */}
+      {/* 封面媒体 */}
       <Pressable onPress={() => onPress?.(post)}>
         <Box position="relative">
-          <OptimizedImage
-            uri={displayImage}
-            size={ImageSize.MEDIUM}
-            style={[styles.image, isPending && styles.pendingImage]}
-            contentFit="cover"
-            lazy={true}
-          />
+          {isVideoUrl(displayImage) ? (
+            <View style={[styles.image, isPending && styles.pendingImage]}>
+              <Video
+                source={{ uri: displayImage }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={false}
+                isMuted
+              />
+              <View style={styles.videoIndicator}>
+                <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.85)" />
+              </View>
+            </View>
+          ) : (
+            <OptimizedImage
+              uri={displayImage}
+              size={ImageSize.MEDIUM}
+              style={[styles.image, isPending && styles.pendingImage]}
+              contentFit="cover"
+              lazy={true}
+            />
+          )}
           {/* 待审核标签 */}
           {isPending && (
             <Box
@@ -215,17 +232,23 @@ const PostCard: React.FC<PostCardProps> = ({
 const styles = StyleSheet.create({
   image: {
     width: "100%",
-    aspectRatio: 3 / 4, // 3:4比例，类似小红书
+    aspectRatio: 3 / 4,
     backgroundColor: theme.colors.gray100,
   },
   pendingImage: {
-    opacity: 0.85, // 待审核图片轻微降低透明度
+    opacity: 0.85,
   },
   avatar: {
     width: 20,
     height: 20,
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.gray100,
+  },
+  videoIndicator: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.15)",
   },
 });
 

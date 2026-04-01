@@ -21,6 +21,13 @@ import { theme } from "../theme";
 import { brandService, Brand } from "../services/brandService";
 import { showService, Show } from "../services/showService";
 import { postService, Post } from "../services/postService";
+import {
+  followBrand,
+  unfollowBrand,
+  isFollowingBrand,
+  getBrandFollowersCount,
+} from "../services/followService";
+import { useAuthStore } from "../store/authStore";
 import CreateShowModal from "../components/CreateShowModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import { pickAndUploadImage } from "./admin/adminUtils";
@@ -44,6 +51,7 @@ interface RouteParams {
 const BrandDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { user } = useAuthStore();
   const params = route.params as RouteParams;
 
   // Handle different param formats
@@ -62,6 +70,9 @@ const BrandDetailScreen = () => {
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
   const [imagePreviewIndex, setImagePreviewIndex] = useState(0);
   const [uploadingBrandImage, setUploadingBrandImage] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
 
   // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
   const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
@@ -104,6 +115,19 @@ const BrandDetailScreen = () => {
       }
 
       setBrand(loadedBrand);
+
+      // 获取关注状态和关注人数
+      if (user?.userId) {
+        const [following, count] = await Promise.all([
+          isFollowingBrand(user.userId, loadedBrand.id).catch(() => false),
+          getBrandFollowersCount(loadedBrand.id).catch(() => 0),
+        ]);
+        setIsFollowing(following);
+        setFollowersCount(count);
+      } else {
+        const count = await getBrandFollowersCount(loadedBrand.id).catch(() => 0);
+        setFollowersCount(count);
+      }
 
       // 获取该品牌的秀场
       const shows = await showService.getShowsByBrand(loadedBrand.name);
@@ -215,6 +239,33 @@ const BrandDetailScreen = () => {
       setUploadingBrandImage(false);
     }
   }, [brand]);
+
+  const handleToggleFollow = useCallback(async () => {
+    if (!user?.userId || !brand) return;
+    setFollowLoading(true);
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+    setFollowersCount((prev) => prev + (wasFollowing ? -1 : 1));
+    try {
+      if (wasFollowing) {
+        await unfollowBrand({ userId: user.userId, brandId: brand.id });
+      } else {
+        await followBrand({ userId: user.userId, brandId: brand.id });
+      }
+    } catch (error) {
+      console.error("Toggle follow failed:", error);
+      setIsFollowing(wasFollowing);
+      setFollowersCount((prev) => prev + (wasFollowing ? 1 : -1));
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [user?.userId, brand, isFollowing]);
+
+  const formatFollowerCount = (count: number): string => {
+    if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+    return String(count);
+  };
 
   if (isLoading) {
     return (
@@ -369,6 +420,48 @@ const BrandDetailScreen = () => {
                 <Text style={styles.infoText}>{brand.category}</Text>
               </View>
             )}
+          </View>
+
+          {/* Follow Section */}
+          <View style={styles.followSection}>
+            <View style={styles.followInfo}>
+              <Text style={styles.followersCount}>
+                {formatFollowerCount(followersCount)}
+              </Text>
+              <Text style={styles.followersLabel}>关注者</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.followButton,
+                isFollowing && styles.followButtonFollowing,
+              ]}
+              onPress={handleToggleFollow}
+              disabled={followLoading}
+              activeOpacity={0.7}
+            >
+              {followLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isFollowing ? theme.colors.gray500 : theme.colors.white}
+                />
+              ) : (
+                <>
+                  <Ionicons
+                    name={isFollowing ? "checkmark" : "add"}
+                    size={16}
+                    color={isFollowing ? theme.colors.gray500 : theme.colors.white}
+                  />
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      isFollowing && styles.followButtonTextFollowing,
+                    ]}
+                  >
+                    {isFollowing ? "已关注" : "关注"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Founder */}
@@ -795,6 +888,54 @@ const styles = StyleSheet.create({
   },
   founderSection: {
     marginBottom: 20,
+  },
+  // Follow Section
+  followSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: theme.borderRadius.lg,
+  },
+  followInfo: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+  },
+  followersCount: {
+    fontFamily: "Inter-Bold",
+    fontSize: 20,
+    color: theme.colors.black,
+  },
+  followersLabel: {
+    fontFamily: "Inter-Regular",
+    fontSize: 13,
+    color: theme.colors.gray400,
+  },
+  followButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.black,
+    borderRadius: theme.borderRadius.md,
+    minWidth: 90,
+  },
+  followButtonFollowing: {
+    backgroundColor: "#F0F0F0",
+  },
+  followButtonText: {
+    fontFamily: "Inter-Medium",
+    fontSize: 14,
+    color: theme.colors.white,
+  },
+  followButtonTextFollowing: {
+    color: theme.colors.gray500,
   },
   sectionLabel: {
     fontFamily: "Inter-Regular",

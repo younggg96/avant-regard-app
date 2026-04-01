@@ -21,10 +21,10 @@ export interface BuyerStore {
   address: string;
   city: string;
   country: string;
-  coordinates: {
+  coordinates?: {
     latitude: number;
     longitude: number;
-  };
+  } | null;
   brands: string[];
   style: string[];
   isOpen: boolean;
@@ -34,7 +34,19 @@ export interface BuyerStore {
   description?: string;
   images?: string[];
   rest?: string;
-  distance?: number; // 距离（附近店铺查询时返回）
+  distance?: number;
+}
+
+export function hasValidCoordinates(
+  store: BuyerStore
+): store is BuyerStore & { coordinates: { latitude: number; longitude: number } } {
+  return (
+    store.coordinates != null &&
+    store.coordinates.latitude !== 0 &&
+    store.coordinates.longitude !== 0 &&
+    !isNaN(store.coordinates.latitude) &&
+    !isNaN(store.coordinates.longitude)
+  );
 }
 
 // 买手店列表响应

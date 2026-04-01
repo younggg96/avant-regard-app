@@ -9,7 +9,11 @@ interface ImagePickerModalProps {
   onClose: () => void;
   onSelectCamera: () => void;
   onSelectGallery: () => void;
+  onSelectMultipleGallery?: () => void;
+  onSelectVideo?: () => void;
   title?: string;
+  showVideoOption?: boolean;
+  showMultiSelectOption?: boolean;
 }
 
 const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
@@ -17,7 +21,11 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
   onClose,
   onSelectCamera,
   onSelectGallery,
+  onSelectMultipleGallery,
+  onSelectVideo,
   title = "选择图片",
+  showVideoOption = false,
+  showMultiSelectOption = false,
 }) => {
   return (
     <Modal
@@ -63,10 +71,36 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             <HStack alignItems="center">
               <Ionicons name="images" size={24} color={theme.colors.accent} />
               <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择
+                从相册选择图片
               </Text>
             </HStack>
           </Pressable>
+
+          {showMultiSelectOption && onSelectMultipleGallery && (
+            <Pressable px="$lg" py="$lg" onPress={onSelectMultipleGallery}>
+              <HStack alignItems="center">
+                <Ionicons
+                  name="copy"
+                  size={24}
+                  color={theme.colors.accent}
+                />
+                <Text color="$black" fontSize="$md" ml="$md">
+                  从相册多选图片
+                </Text>
+              </HStack>
+            </Pressable>
+          )}
+
+          {showVideoOption && onSelectVideo && (
+            <Pressable px="$lg" py="$lg" onPress={onSelectVideo}>
+              <HStack alignItems="center">
+                <Ionicons name="videocam" size={24} color={theme.colors.accent} />
+                <Text color="$black" fontSize="$md" ml="$md">
+                  从相册选择视频
+                </Text>
+              </HStack>
+            </Pressable>
+          )}
         </Box>
       </Box>
     </Modal>

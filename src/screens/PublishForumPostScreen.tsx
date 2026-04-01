@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Video, ResizeMode } from "expo-av";
 import {
   Box,
   Text,
@@ -32,7 +33,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
 import ImagePickerModal from "../components/ImagePickerModal";
-import { postService } from "../services/postService";
+import { postService, isVideoUrl } from "../services/postService";
 import { getCommunities, Community } from "../services/communityService";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
@@ -288,6 +289,40 @@ const PublishForumPostScreen = () => {
     }
   };
 
+  const handleVideoSelection = async () => {
+    setShowImagePicker(false);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1.0,
+        videoMaxDuration: 60,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const videoUri = result.assets[0].uri;
+        if (insertAfterBlockId) {
+          insertBlockAfter(insertAfterBlockId, "image", videoUri);
+          setTimeout(() => {
+            setContentBlocks((prev) => {
+              const lastBlock = prev[prev.length - 1];
+              if (lastBlock.type === "image") {
+                return [...prev, { id: generateId(), type: "text" as ContentBlockType, content: "" }];
+              }
+              return prev;
+            });
+          }, 100);
+        }
+        setInsertAfterBlockId(null);
+        Alert.show("视频已添加", "", 1500);
+      }
+    } catch (error) {
+      console.error("Video selection error:", error);
+      Alert.show("错误: 视频选择失败，请重试");
+    }
+  };
+
   // 序列化内容块为 JSON
   const serializeContent = (): string => {
     return JSON.stringify(contentBlocks);
@@ -328,7 +363,7 @@ const PublishForumPostScreen = () => {
           uploadedUrls.push(imageUri);
           imageMapping[imageUri] = imageUri;
         } else {
-          setUploadProgress(`上传图片 ${i + 1}/${allImages.length}...`);
+          setUploadProgress(`上传媒体 ${i + 1}/${allImages.length}...`);
           const uploadedUrl = await postService.uploadImage(imageUri);
           uploadedUrls.push(uploadedUrl);
           imageMapping[imageUri] = uploadedUrl;
@@ -421,7 +456,7 @@ const PublishForumPostScreen = () => {
           uploadedUrls.push(imageUri);
           imageMapping[imageUri] = imageUri;
         } else {
-          setUploadProgress(`上传图片 ${i + 1}/${allImages.length}...`);
+          setUploadProgress(`上传媒体 ${i + 1}/${allImages.length}...`);
           const uploadedUrl = await postService.uploadImage(imageUri);
           uploadedUrls.push(uploadedUrl);
           imageMapping[imageUri] = uploadedUrl;
@@ -604,16 +639,33 @@ const PublishForumPostScreen = () => {
 
   // 渲染图片块
   const renderImageBlock = (block: ContentBlock, index: number) => {
+    const isVideo = isVideoUrl(block.content);
+
     return (
       <Box key={block.id} mx="$md" mb="$sm">
         <Box borderRadius="$md" overflow="hidden" bg="$gray100">
-          <OptimizedImage
-            uri={block.content}
-            size={ImageSize.MEDIUM}
-            style={styles.imageBlock}
-            contentFit="cover"
-            lazy={true}
-          />
+          {isVideo ? (
+            <Box style={styles.imageBlock}>
+              <Video
+                source={{ uri: block.content }}
+                style={StyleSheet.absoluteFill}
+                resizeMode={ResizeMode.COVER}
+                shouldPlay={false}
+                isLooping={false}
+              />
+              <Box style={styles.videoOverlay}>
+                <Ionicons name="play-circle" size={48} color="white" />
+              </Box>
+            </Box>
+          ) : (
+            <OptimizedImage
+              uri={block.content}
+              size={ImageSize.MEDIUM}
+              style={styles.imageBlock}
+              contentFit="cover"
+              lazy={true}
+            />
+          )}
 
           {/* 图片块操作栏 */}
           <HStack
@@ -974,7 +1026,9 @@ const PublishForumPostScreen = () => {
         }}
         onSelectCamera={() => handleImageSelection("camera")}
         onSelectGallery={() => handleImageSelection("gallery")}
-        title="添加图片"
+        onSelectVideo={handleVideoSelection}
+        showVideoOption={true}
+        title="添加媒体"
       />
 
       {/* Community Picker */}
@@ -1088,6 +1142,18 @@ const styles = StyleSheet.create({
   communityItemSelected: {
     backgroundColor: theme.colors.gray50,
   },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.2)",
+  } as any,
+  videoThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+  } as any,
 });
 
 export default PublishForumPostScreen;

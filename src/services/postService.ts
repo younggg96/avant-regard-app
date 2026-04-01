@@ -320,48 +320,63 @@ async function uploadRequest<T>(
   }
 }
 
-// ==================== 图片上传 ====================
+// ==================== 媒体类型工具 ====================
+
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "m4v", "webm", "avi"]);
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic", "bmp"]);
+
+const IMAGE_MIME_MAP: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+  gif: "image/gif", webp: "image/webp", heic: "image/heic",
+};
+
+const VIDEO_MIME_MAP: Record<string, string> = {
+  mp4: "video/mp4", mov: "video/quicktime",
+  m4v: "video/x-m4v", webm: "video/webm", avi: "video/x-msvideo",
+};
+
+/**
+ * 根据 URL 或本地 URI 判断是否为视频
+ */
+export function isVideoUrl(uri: string): boolean {
+  if (!uri) return false;
+  const clean = uri.split("?")[0].split("#")[0];
+  const ext = clean.split(".").pop()?.toLowerCase() || "";
+  return VIDEO_EXTENSIONS.has(ext);
+}
+
+/**
+ * 从 URI 推断 MIME 类型
+ */
+function inferMimeType(uri: string): string {
+  const filename = uri.split("/").pop() || "";
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return IMAGE_MIME_MAP[ext] || VIDEO_MIME_MAP[ext] || "application/octet-stream";
+}
+
+// ==================== 文件上传 ====================
 
 /**
  * 上传单张图片
  * POST /api/files/upload-image
- * @param imageUri 本地图片 URI
- * @returns 上传后的图片 URL
  */
 export async function uploadImage(imageUri: string): Promise<string> {
   console.log("uploadImage called with URI:", imageUri);
   const formData = new FormData();
 
-  // Extract filename from URI
   let filename = imageUri.split("/").pop() || "image.jpg";
-
-  // Check for file extension
   const match = /\.(\w+)$/.exec(filename);
   let type: string;
 
   if (match) {
     const ext = match[1].toLowerCase();
-    // Map common extensions to MIME types
-    const mimeTypes: Record<string, string> = {
-      jpg: "image/jpeg",
-      jpeg: "image/jpeg",
-      png: "image/png",
-      gif: "image/gif",
-      webp: "image/webp",
-      heic: "image/heic",
-    };
-    type = mimeTypes[ext] || "image/jpeg";
+    type = IMAGE_MIME_MAP[ext] || "image/jpeg";
   } else {
-    // No extension found - assume JPEG (ImageManipulator default)
     type = "image/jpeg";
     filename = `${filename}.jpg`;
   }
 
-  console.log("Upload file info:", {
-    filename,
-    type,
-    uri: imageUri.substring(0, 100),
-  });
+  console.log("Upload file info:", { filename, type, uri: imageUri.substring(0, 100) });
 
   formData.append("file", {
     uri: imageUri,
@@ -369,8 +384,6 @@ export async function uploadImage(imageUri: string): Promise<string> {
     type,
   } as any);
 
-  // 返回上传后的图片 URL
-  // API 响应格式: { code: 0, message: "string", data: { url: "string" } }
   const result = await uploadRequest<{ url: string }>(
     "/api/files/upload-image",
     formData
@@ -380,6 +393,55 @@ export async function uploadImage(imageUri: string): Promise<string> {
     return result.url;
   }
   throw new Error("图片上传返回格式错误");
+}
+
+/**
+ * 上传视频
+ * POST /api/files/upload-video
+ */
+export async function uploadVideo(videoUri: string): Promise<string> {
+  console.log("uploadVideo called with URI:", videoUri);
+  const formData = new FormData();
+
+  let filename = videoUri.split("/").pop() || "video.mp4";
+  const match = /\.(\w+)$/.exec(filename);
+  let type: string;
+
+  if (match) {
+    const ext = match[1].toLowerCase();
+    type = VIDEO_MIME_MAP[ext] || "video/mp4";
+  } else {
+    type = "video/mp4";
+    filename = `${filename}.mp4`;
+  }
+
+  console.log("Upload video info:", { filename, type, uri: videoUri.substring(0, 100) });
+
+  formData.append("file", {
+    uri: videoUri,
+    name: filename,
+    type,
+  } as any);
+
+  const result = await uploadRequest<{ url: string; mediaType: string }>(
+    "/api/files/upload-video",
+    formData
+  );
+
+  if (result && typeof result === "object" && "url" in result) {
+    return result.url;
+  }
+  throw new Error("视频上传返回格式错误");
+}
+
+/**
+ * 上传单个媒体文件（自动区分图片/视频）
+ */
+export async function uploadMedia(uri: string): Promise<string> {
+  if (isVideoUrl(uri)) {
+    return uploadVideo(uri);
+  }
+  return uploadImage(uri);
 }
 
 /**
@@ -397,6 +459,27 @@ export async function uploadImages(
 
   for (let i = 0; i < total; i++) {
     const url = await uploadImage(imageUris[i]);
+    urls.push(url);
+    onProgress?.(i + 1, total);
+  }
+
+  return urls;
+}
+
+/**
+ * 批量上传媒体文件（图片+视频混合）
+ * @param mediaUris 本地媒体 URI 数组
+ * @param onProgress 进度回调 (已完成数量, 总数)
+ */
+export async function uploadMediaFiles(
+  mediaUris: string[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<string[]> {
+  const urls: string[] = [];
+  const total = mediaUris.length;
+
+  for (let i = 0; i < total; i++) {
+    const url = await uploadMedia(mediaUris[i]);
     urls.push(url);
     onProgress?.(i + 1, total);
   }
@@ -683,9 +766,13 @@ export async function getFollowingPosts(limit: number = 50): Promise<Post[]> {
 
 // 导出 postService 对象
 export const postService = {
-  // 图片上传
+  // 媒体上传
   uploadImage,
   uploadImages,
+  uploadVideo,
+  uploadMedia,
+  uploadMediaFiles,
+  isVideoUrl,
   // CRUD
   getPosts,
   getPostById,

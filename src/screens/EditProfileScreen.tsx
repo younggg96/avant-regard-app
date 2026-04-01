@@ -222,7 +222,7 @@ const EditProfileScreen = () => {
         setGender(userProfile.gender || "OTHER");
         setAge(userProfile.age ? String(userProfile.age) : "");
         setPreference(userProfile.preference || "");
-        setSelectedBrandIds(userProfile.favoriteBrandIds || []);
+        setSelectedBrandIds(userProfile.followedBrandIds || []);
       } catch (error) {
         console.warn("加载完整用户资料失败，尝试加载基本信息:", error);
 
@@ -282,7 +282,7 @@ const EditProfileScreen = () => {
         gender: gender,
         age: ageNum,
         preference: preference.trim(),
-        favoriteBrandIds: selectedBrandIds,
+        followedBrandIds: selectedBrandIds,
       });
 
       // 更新本地状态
@@ -712,9 +712,9 @@ const EditProfileScreen = () => {
               <Text style={styles.charCount}>{preference.length}/200</Text>
             </View>
 
-            {/* 喜欢的品牌 */}
+            {/* 关注的品牌 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>喜欢的品牌（最多5个）</Text>
+              <Text style={styles.label}>关注的品牌（最多5个）</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setShowBrandModal(true)}
@@ -729,7 +729,7 @@ const EditProfileScreen = () => {
                 >
                   {selectedBrandIds.length > 0
                     ? getSelectedBrandNames()
-                    : "请选择喜欢的品牌"}
+                    : "选择您想关注的品牌"}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -885,7 +885,7 @@ const EditProfileScreen = () => {
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                选择喜欢的品牌（{selectedBrandIds.length}/5）
+                选择关注的品牌（{selectedBrandIds.length}/5）
               </Text>
               <TouchableOpacity
                 onPress={() => setShowBrandModal(false)}

@@ -19,6 +19,7 @@ import { CommunityListResponse } from "../../../services/communityService";
 import { DisplayPost, TabType } from "../types";
 import { SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
+import { BrandSection } from "./BrandSection";
 
 
 interface TabContentProps {
@@ -192,6 +193,10 @@ export const TabContent: React.FC<TabContentProps> = ({
         {/* 热门社区 - 只在论坛 tab 显示 */}
         {tab === "forum" && <PopularCommunities communities={communities} />}
 
+        {/* 关注的品牌 - 只在关注 tab 显示 */}
+        {tab === "following" && <BrandSection />}
+
+
         {error ? (
           // 错误状态
           <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
@@ -262,26 +267,38 @@ export const TabContent: React.FC<TabContentProps> = ({
           </VStack>
         ) : (
           // 发现/关注帖子列表（两列瀑布流布局）
-          <HStack px="$sm" pt="$sm" alignItems="start">
-            <VStack flex={1} pr="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 0)
-                .map((post, index) => (
-                  <Box key={post.id || `left-${index}`} mb="$sm">
-                    {renderPost(post)}
-                  </Box>
-                ))}
-            </VStack>
-            <VStack flex={1} pl="$xs">
-              {currentPosts
-                .filter((_, index) => index % 2 === 1)
-                .map((post, index) => (
-                  <Box key={post.id || `right-${index}`} mb="$sm">
-                    {renderPost(post)}
-                  </Box>
-                ))}
-            </VStack>
-          </HStack>
+          <VStack>
+            {tab === "following" && currentPosts.length > 0 && (
+              <HStack px="$md" pt={14} pb={10} gap={6} alignItems="center">
+                <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
+                  关注的帖子
+                </Text>
+                <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
+                  {currentPosts.length}
+                </Text>
+              </HStack>
+            )}
+            <HStack px="$sm" pt={tab === "following" ? 0 : undefined} alignItems="start">
+              <VStack flex={1} pr="$xs">
+                {currentPosts
+                  .filter((_, index) => index % 2 === 0)
+                  .map((post, index) => (
+                    <Box key={post.id || `left-${index}`} mb="$sm">
+                      {renderPost(post)}
+                    </Box>
+                  ))}
+              </VStack>
+              <VStack flex={1} pl="$xs">
+                {currentPosts
+                  .filter((_, index) => index % 2 === 1)
+                  .map((post, index) => (
+                    <Box key={post.id || `right-${index}`} mb="$sm">
+                      {renderPost(post)}
+                    </Box>
+                  ))}
+              </VStack>
+            </HStack>
+          </VStack>
         )}
 
         {/* 加载更多指示器 */}

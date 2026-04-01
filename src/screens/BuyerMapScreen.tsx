@@ -36,6 +36,7 @@ import {
   filterStores,
   getNearbyStores,
   getStoresInViewport,
+  hasValidCoordinates,
 } from "../services/buyerStoreService";
 
 interface FilterState {
@@ -383,6 +384,7 @@ const BuyerMapScreen = () => {
           console.error("Error loading nearby stores:", error);
           // 如果 API 不支持，使用本地筛选
           const nearby = stores.filter((store) => {
+            if (!hasValidCoordinates(store)) return false;
             const distance = getDistanceFromLatLonInKm(
               loc!.latitude,
               loc!.longitude,
@@ -451,6 +453,7 @@ const BuyerMapScreen = () => {
         // 降级方案：从已加载的 filteredStores 中本地筛选
         const bounds = getViewportBounds(region);
         const localVisible = filteredStores.filter((store) => {
+          if (!hasValidCoordinates(store)) return false;
           const { latitude, longitude } = store.coordinates;
           return (
             latitude >= bounds.sw_lat &&
@@ -523,6 +526,7 @@ const BuyerMapScreen = () => {
     if (nearbyMode && userLocation && stores.length > 0) {
       // 附近模式：用本地数据刷新附近店铺
       const nearby = stores.filter((store) => {
+        if (!hasValidCoordinates(store)) return false;
         const distance = getDistanceFromLatLonInKm(
           userLocation.latitude,
           userLocation.longitude,
@@ -658,7 +662,7 @@ const BuyerMapScreen = () => {
   const handleCardPress = useCallback((store: BuyerStore) => {
     setSelectedStore(store);
     shouldScrollToSelected.current = false;
-    if (mapRef.current) {
+    if (mapRef.current && hasValidCoordinates(store)) {
       const delta = currentMapRegion
         ? Math.min(currentMapRegion.latitudeDelta, 0.05)
         : 0.02;
@@ -772,7 +776,7 @@ const BuyerMapScreen = () => {
     return new Set(filteredStores.map((s) => s.id));
   }, [filteredStores]);
 
-  const renderMarker = (store: BuyerStore) => {
+  const renderMarker = (store: BuyerStore & { coordinates: NonNullable<BuyerStore["coordinates"]> }) => {
     const isSelected = selectedStore?.id === store.id;
     const isFiltered = filteredStoreIds.has(store.id);
     const isDimmed = filteredStores.length > 0 && !isFiltered && !isSelected;
@@ -940,7 +944,7 @@ const BuyerMapScreen = () => {
             rotateEnabled={false}
             onRegionChangeComplete={handleRegionChangeComplete}
           >
-            {stores.map(renderMarker)}
+            {stores.filter(hasValidCoordinates).map(renderMarker)}
           </MapView>
         )}
       </Box>

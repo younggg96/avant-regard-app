@@ -7,6 +7,7 @@ import {
   FlatList,
   View,
 } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -25,6 +26,7 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
+import BatchImageCropper from "../components/BatchImageCropper";
 import ShowGridSelector, { SelectedShow } from "../components/ShowGridSelector";
 import ShowSelectorModal, { Show } from "../components/ShowSelectorModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
@@ -33,7 +35,7 @@ import PublishButtons from "../components/PublishButtons";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
 import { saveDraft } from "../services/draftService";
-import { postService } from "../services/postService";
+import { postService, isVideoUrl } from "../services/postService";
 import { showService, Show as ShowFromApi } from "../services/showService";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
@@ -93,6 +95,8 @@ const PublishOutfitScreen = () => {
 
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
+  const [showBatchCropper, setShowBatchCropper] = useState(false);
+  const [batchCropperUris, setBatchCropperUris] = useState<string[]>([]);
 
   const [showSelector, setShowSelector] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -408,40 +412,33 @@ const PublishOutfitScreen = () => {
     return uri.startsWith("http://") || uri.startsWith("https://");
   };
 
-  // 处理图片上传（区分新图片和已上传的图片）
+  // 处理媒体上传（区分新文件和已上传的文件，支持图片+视频）
   const processImages = async (imageList: string[]): Promise<string[]> => {
-    const remoteUrls: string[] = [];
     const localUris: string[] = [];
 
-    // 分离远程 URL 和本地 URI
     imageList.forEach((uri) => {
-      if (isRemoteUrl(uri)) {
-        remoteUrls.push(uri);
-      } else {
+      if (!isRemoteUrl(uri)) {
         localUris.push(uri);
       }
     });
 
-    // 只上传本地图片
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress(`上传图片 0/${localUris.length}`);
-      uploadedUrls = await postService.uploadImages(
+      setUploadProgress(`上传媒体 0/${localUris.length}`);
+      uploadedUrls = await postService.uploadMediaFiles(
         localUris,
         (completed, total) => {
-          setUploadProgress(`上传图片 ${completed}/${total}`);
+          setUploadProgress(`上传媒体 ${completed}/${total}`);
         }
       );
     }
 
-    // 合并远程 URL 和新上传的 URL（保持原有顺序）
     const finalUrls: string[] = [];
-    let remoteIndex = 0;
     let uploadedIndex = 0;
 
     imageList.forEach((uri) => {
       if (isRemoteUrl(uri)) {
-        finalUrls.push(remoteUrls[remoteIndex++]);
+        finalUrls.push(uri);
       } else {
         finalUrls.push(uploadedUrls[uploadedIndex++]);
       }
@@ -613,7 +610,7 @@ const PublishOutfitScreen = () => {
 
   const handleAddImage = () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "张图片");
+      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "个媒体文件");
       return;
     }
     setShowImagePicker(true);
@@ -650,6 +647,83 @@ const PublishOutfitScreen = () => {
     } catch (error) {
       console.error("Image selection error:", error);
       Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleMultiImageSelection = async () => {
+    setShowImagePicker(false);
+
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.show("需要相册权限才能选择图片");
+        return;
+      }
+
+      const remaining = MAX_IMAGES - images.length;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: remaining,
+        quality: 1.0,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUris = result.assets.map((asset) => asset.uri);
+        setBatchCropperUris(selectedUris);
+        setShowBatchCropper(true);
+      }
+    } catch (error) {
+      console.error("Multi image selection error:", error);
+      Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleBatchCropDone = (croppedUris: string[]) => {
+    setShowBatchCropper(false);
+    setBatchCropperUris([]);
+
+    const newImages = [...images, ...croppedUris];
+    setImages(newImages);
+
+    if (!coverImage && newImages.length > 0) {
+      setCoverImage(newImages[0]);
+    }
+
+    Alert.show(`已添加 ${croppedUris.length} 张图片`, "", 1500);
+  };
+
+  const handleBatchCropCancel = () => {
+    setShowBatchCropper(false);
+    setBatchCropperUris([]);
+  };
+
+  const handleVideoSelection = async () => {
+    setShowImagePicker(false);
+
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1.0,
+        videoMaxDuration: 60,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const videoUri = result.assets[0].uri;
+        const newImages = [...images, videoUri];
+        setImages(newImages);
+        if (!coverImage) {
+          setCoverImage(videoUri);
+        }
+        Alert.show("视频已添加", "", 1500);
+      }
+    } catch (error) {
+      console.error("Video selection error:", error);
+      Alert.show("错误: 视频选择失败，请重试");
     }
   };
 
@@ -849,6 +923,7 @@ const PublishOutfitScreen = () => {
             setCurrentImageIndex(index);
           }}
           renderItem={({ item }) => {
+            const isVideo = isVideoUrl(item);
             return (
               <View
                 style={{
@@ -859,16 +934,28 @@ const PublishOutfitScreen = () => {
                   backgroundColor: "transparent",
                 }}
               >
-                <OptimizedImage
-                  uri={item}
-                  size={ImageSize.LARGE}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                  }}
-                  contentFit="cover"
-                  lazy={true}
-                />
+                {isVideo ? (
+                  <View style={{ width: "100%", height: "100%", backgroundColor: "#000" }}>
+                    <Video
+                      source={{ uri: item }}
+                      style={{ width: "100%", height: "100%" }}
+                      resizeMode={ResizeMode.COVER}
+                      shouldPlay={false}
+                      isMuted
+                    />
+                    <View style={styles.videoOverlay}>
+                      <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" />
+                    </View>
+                  </View>
+                ) : (
+                  <OptimizedImage
+                    uri={item}
+                    size={ImageSize.LARGE}
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="cover"
+                    lazy={true}
+                  />
+                )}
               </View>
             );
           }}
@@ -907,45 +994,63 @@ const PublishOutfitScreen = () => {
   const renderImageGallery = () => (
     <Box mx="$md" mb="$md">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {images.map((image, index) => (
-          <Pressable
-            key={`${image}-${index}`}
-            w={60}
-            h={60}
-            rounded="$sm"
-            mr="$sm"
-            overflow="hidden"
-            borderWidth={coverImage === image ? 2 : 0}
-            borderColor="$black"
-            opacity={draggedIndex === index ? 0.5 : 1}
-            onPress={() => handleImagePress(index)}
-            onLongPress={() => handleDragStart(index)}
-          >
-            <OptimizedImage
-              uri={image}
-              size={ImageSize.MEDIUM}
-              style={styles.thumbnail}
-              contentFit="cover"
-              lazy={true}
-            />
-            {coverImage === image && (
-              <Box
-                position="absolute"
-                bottom={2}
-                left={2}
-                right={2}
-                bg="rgba(0,0,0,0.7)"
-                rounded="$sm"
-                py={2}
-                alignItems="center"
-              >
-                <Text color="$white" fontSize={10} fontWeight="$medium">
-                  封面
-                </Text>
-              </Box>
-            )}
-          </Pressable>
-        ))}
+        {images.map((image, index) => {
+          const isVideo = isVideoUrl(image);
+          return (
+            <Pressable
+              key={`${image}-${index}`}
+              w={60}
+              h={60}
+              rounded="$sm"
+              mr="$sm"
+              overflow="hidden"
+              borderWidth={coverImage === image ? 2 : 0}
+              borderColor="$black"
+              opacity={draggedIndex === index ? 0.5 : 1}
+              onPress={() => handleImagePress(index)}
+              onLongPress={() => handleDragStart(index)}
+            >
+              {isVideo ? (
+                <View style={{ width: "100%", height: "100%", backgroundColor: "#000" }}>
+                  <Video
+                    source={{ uri: image }}
+                    style={styles.thumbnail}
+                    resizeMode={ResizeMode.COVER}
+                    shouldPlay={false}
+                    isMuted
+                  />
+                  <View style={styles.videoThumbOverlay}>
+                    <Ionicons name="videocam" size={16} color="#fff" />
+                  </View>
+                </View>
+              ) : (
+                <OptimizedImage
+                  uri={image}
+                  size={ImageSize.MEDIUM}
+                  style={styles.thumbnail}
+                  contentFit="cover"
+                  lazy={true}
+                />
+              )}
+              {coverImage === image && (
+                <Box
+                  position="absolute"
+                  bottom={2}
+                  left={2}
+                  right={2}
+                  bg="rgba(0,0,0,0.7)"
+                  rounded="$sm"
+                  py={2}
+                  alignItems="center"
+                >
+                  <Text color="$white" fontSize={10} fontWeight="$medium">
+                    封面
+                  </Text>
+                </Box>
+              )}
+            </Pressable>
+          );
+        })}
         {images.length < MAX_IMAGES && (
           <Pressable
             w={60}
@@ -968,6 +1073,17 @@ const PublishOutfitScreen = () => {
       )}
     </Box>
   );
+
+  if (showBatchCropper && batchCropperUris.length > 0) {
+    return (
+      <BatchImageCropper
+        sourceUris={batchCropperUris}
+        aspect="free"
+        onCancel={handleBatchCropCancel}
+        onDone={handleBatchCropDone}
+      />
+    );
+  }
 
   if (showImageCropper && cropperImageUri) {
     return (
@@ -1107,6 +1223,11 @@ const PublishOutfitScreen = () => {
         onClose={() => setShowImagePicker(false)}
         onSelectCamera={() => handleImageSelection("camera")}
         onSelectGallery={() => handleImageSelection("gallery")}
+        onSelectMultipleGallery={handleMultiImageSelection}
+        onSelectVideo={handleVideoSelection}
+        showMultiSelectOption={images.length < MAX_IMAGES}
+        showVideoOption={true}
+        title="添加媒体"
       />
 
       <ImagePreviewModal
@@ -1170,6 +1291,18 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: "100%",
     height: "100%",
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  videoThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
 });
 

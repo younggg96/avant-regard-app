@@ -466,7 +466,7 @@ const BannersTab = () => {
 
               <Box style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.white }}>取消</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -585,9 +585,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
   bannerModalContent: {
-    maxHeight: "90%",
-    width: "95%",
-    maxWidth: 500,
+    height: "85%",
+    width: "92%",
+    padding: theme.spacing.lg,
   },
   bannerFormPreview: {
     width: "100%",

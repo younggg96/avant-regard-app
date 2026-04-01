@@ -15,6 +15,7 @@ import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import HalfStarRating from "../components/HalfStarRating";
 
 interface Comment {
   id: string;
@@ -129,36 +130,27 @@ const AllCommentsScreen = () => {
     setComments(mockComments);
   }, []);
 
-  const renderStars = (rating: number, size: number = 14) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Ionicons
-          key={i}
-          name={i <= rating ? "star" : "star-outline"}
-          size={size}
-          color={i <= rating ? theme.colors.black : theme.colors.gray400}
-        />
-      );
-    }
-    return stars;
-  };
+  const renderStars = (rating: number, size: number = 14) => (
+    <HalfStarRating
+      rating={rating}
+      size={size}
+      color={theme.colors.black}
+      inactiveColor={theme.colors.gray400}
+      gap={0}
+    />
+  );
 
-  const renderWritingStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <TouchableOpacity key={i} onPress={() => setNewCommentRating(i)}>
-          <Ionicons
-            name={i <= rating ? "star" : "star-outline"}
-            size={24}
-            color={i <= rating ? theme.colors.black : theme.colors.gray400}
-          />
-        </TouchableOpacity>
-      );
-    }
-    return stars;
-  };
+  const renderWritingStars = (rating: number) => (
+    <HalfStarRating
+      rating={rating}
+      size={24}
+      interactive
+      onRatingChange={setNewCommentRating}
+      color={theme.colors.black}
+      inactiveColor={theme.colors.gray400}
+      gap={8}
+    />
+  );
 
   const handleSubmitComment = () => {
     if (newCommentText.trim().length < 10) {

@@ -94,6 +94,12 @@ export interface AppleLoginParams {
   email?: string;
 }
 
+export interface ChangePasswordParams {
+  userId: number;
+  oldPassword: string;
+  newPassword: string;
+}
+
 export interface RefreshTokenParams {
   refreshToken: string;
 }
@@ -311,6 +317,19 @@ export async function forgetPassword(
 }
 
 /**
+ * 修改密码
+ * POST /api/auth/change-password
+ */
+export async function changePassword(
+  params: ChangePasswordParams
+): Promise<string> {
+  return request<string>("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/**
  * 刷新 Token
  * POST /api/auth/refresh
  * 使用 Supabase refresh token
@@ -347,6 +366,7 @@ export const authService = {
   register,
   sendSms,
   forgetPassword,
+  changePassword,
   refreshToken,
   logout,
 };

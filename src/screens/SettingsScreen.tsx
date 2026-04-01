@@ -238,6 +238,12 @@ const SettingsScreen = () => {
       title: "账户管理",
       items: [
         {
+          id: "changePassword",
+          label: "修改密码",
+          icon: "lock-closed-outline",
+          onPress: () => (navigation as any).navigate("ChangePassword"),
+        },
+        {
           id: "deleteAccount",
           label: "注销账户",
           icon: "trash-outline",

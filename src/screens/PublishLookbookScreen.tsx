@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Video, ResizeMode } from "expo-av";
 import {
   Box,
   Text,
@@ -22,13 +23,14 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
+import BatchImageCropper from "../components/BatchImageCropper";
 import ImageGallery from "../components/ImageGallery";
 import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
-import { postService } from "../services/postService";
+import { postService, isVideoUrl } from "../services/postService";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
@@ -155,6 +157,8 @@ const PublishLookbookScreen = () => {
 
   const [showImageCropper, setShowImageCropper] = useState(false);
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
+  const [showBatchCropper, setShowBatchCropper] = useState(false);
+  const [batchCropperUris, setBatchCropperUris] = useState<string[]>([]);
 
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
@@ -206,11 +210,11 @@ const PublishLookbookScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress(`上传图片 0/${localUris.length}`);
-      uploadedUrls = await postService.uploadImages(
+      setUploadProgress(`上传媒体 0/${localUris.length}`);
+      uploadedUrls = await postService.uploadMediaFiles(
         localUris,
         (completed, total) => {
-          setUploadProgress(`上传图片 ${completed}/${total}`);
+          setUploadProgress(`上传媒体 ${completed}/${total}`);
         }
       );
     }
@@ -366,7 +370,7 @@ const PublishLookbookScreen = () => {
 
   const handleAddImage = () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "张图片");
+      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "个媒体文件");
       return;
     }
     setShowImagePicker(true);
@@ -403,6 +407,78 @@ const PublishLookbookScreen = () => {
     } catch (error) {
       console.error("Image selection error:", error);
       Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleMultiImageSelection = async () => {
+    setShowImagePicker(false);
+
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.show("需要相册权限才能选择图片");
+        return;
+      }
+
+      const remaining = MAX_IMAGES - images.length;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: remaining,
+        quality: 1.0,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUris = result.assets.map((asset) => asset.uri);
+        setBatchCropperUris(selectedUris);
+        setShowBatchCropper(true);
+      }
+    } catch (error) {
+      console.error("Multi image selection error:", error);
+      Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleBatchCropDone = (croppedUris: string[]) => {
+    setShowBatchCropper(false);
+    setBatchCropperUris([]);
+
+    const newImages = [...images, ...croppedUris];
+    setImages(newImages);
+
+    if (!coverImage && newImages.length > 0) {
+      setCoverImage(newImages[0]);
+    }
+
+    Alert.show(`已添加 ${croppedUris.length} 张图片`, "", 1500);
+  };
+
+  const handleBatchCropCancel = () => {
+    setShowBatchCropper(false);
+    setBatchCropperUris([]);
+  };
+
+  const handleVideoSelection = async () => {
+    setShowImagePicker(false);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1.0,
+        videoMaxDuration: 60,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const videoUri = result.assets[0].uri;
+        const newImages = [...images, videoUri];
+        setImages(newImages);
+        if (!coverImage) setCoverImage(videoUri);
+        Alert.show("视频已添加", "", 1500);
+      }
+    } catch (error) {
+      console.error("Video selection error:", error);
+      Alert.show("错误: 视频选择失败，请重试");
     }
   };
 
@@ -675,6 +751,13 @@ const PublishLookbookScreen = () => {
                   lazy={true}
                 />
 
+                {/* 视频标识 */}
+                {isVideoUrl(image) && !isSelected && (
+                  <Box style={styles.videoThumbOverlay}>
+                    <Ionicons name="play-circle" size={24} color="white" />
+                  </Box>
+                )}
+
                 {/* 选中状态指示器 */}
                 {isSelected && (
                   <Box
@@ -751,6 +834,17 @@ const PublishLookbookScreen = () => {
       )}
     </Box>
   );
+
+  if (showBatchCropper && batchCropperUris.length > 0) {
+    return (
+      <BatchImageCropper
+        sourceUris={batchCropperUris}
+        aspect="free"
+        onCancel={handleBatchCropCancel}
+        onDone={handleBatchCropDone}
+      />
+    );
+  }
 
   if (showImageCropper && cropperImageUri) {
     return (
@@ -876,6 +970,11 @@ const PublishLookbookScreen = () => {
         onClose={() => setShowImagePicker(false)}
         onSelectCamera={() => handleImageSelection("camera")}
         onSelectGallery={() => handleImageSelection("gallery")}
+        onSelectMultipleGallery={handleMultiImageSelection}
+        onSelectVideo={handleVideoSelection}
+        showMultiSelectOption={images.length < MAX_IMAGES}
+        showVideoOption={true}
+        title="添加媒体"
       />
 
       {selectedImageUri && (
@@ -928,6 +1027,18 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.2)",
+  } as any,
+  videoThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+  } as any,
 });
 
 export default PublishLookbookScreen;

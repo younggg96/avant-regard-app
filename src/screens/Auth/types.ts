@@ -31,7 +31,7 @@ export interface FormData {
   age: string;
   preference: string;
   bio: string;
-  favoriteBrandIds: number[];
+  followedBrandIds: number[];
 }
 
 // 品牌选项类型

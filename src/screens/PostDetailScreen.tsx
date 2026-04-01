@@ -44,6 +44,7 @@ import {
 } from "../components/PostDetail";
 import { ShareModal } from "../components/ShareModal";
 import { ReportBlockModal } from "../components/ReportBlockModal";
+import type { ReportTarget } from "../components/PostDetail/CommentsSection";
 
 const PostDetailScreen = () => {
   const route = useRoute();
@@ -141,8 +142,11 @@ const PostDetailScreen = () => {
       navigation,
     });
 
-  // 举报/屏蔽 Modal
+  // 举报/屏蔽 Modal（帖子）
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // 举报/屏蔽 Modal（评论）
+  const [commentReportTarget, setCommentReportTarget] = useState<ReportTarget | null>(null);
 
   // 骨架屏动画
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -331,6 +335,7 @@ const PostDetailScreen = () => {
               onUserPress={handleUserPress}
               onReplyPress={handleReplyPress}
               onToggleReplies={handleToggleReplies}
+              onReportComment={setCommentReportTarget}
             />
 
             {/* Bottom spacing */}
@@ -402,7 +407,7 @@ const PostDetailScreen = () => {
           onConfirm={handleConfirmEdit}
         />
 
-        {/* Report / Block Modal */}
+        {/* Report / Block Modal (Post) */}
         <ReportBlockModal
           visible={showReportModal}
           targetType="POST"
@@ -412,6 +417,19 @@ const PostDetailScreen = () => {
           onClose={() => setShowReportModal(false)}
           onBlockComplete={() => navigation.goBack()}
         />
+
+        {/* Report / Block Modal (Comment) */}
+        {commentReportTarget && (
+          <ReportBlockModal
+            visible={true}
+            targetType="COMMENT"
+            targetId={commentReportTarget.commentId}
+            targetAuthorId={commentReportTarget.authorId}
+            targetAuthorName={commentReportTarget.authorName}
+            onClose={() => setCommentReportTarget(null)}
+            onBlockComplete={() => setCommentReportTarget(null)}
+          />
+        )}
 
         {/* Share Modal - temporarily hidden */}
       </SafeAreaView>

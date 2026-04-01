@@ -3,6 +3,7 @@ import { StyleSheet, TouchableOpacity, View, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
+import { isVideoUrl } from "../services/postService";
 import { theme } from "../theme";
 import { Post } from "./PostCard";
 
@@ -77,7 +78,20 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
               contentFit="cover"
               lazy={true}
             />
-            {/* 显示剩余图片数量 */}
+            {isVideoUrl(imageUri) && (
+              <Box
+                position="absolute"
+                top={0}
+                left={0}
+                right={0}
+                bottom={0}
+                justifyContent="center"
+                alignItems="center"
+                bg="rgba(0,0,0,0.2)"
+              >
+                <Ionicons name="play-circle" size={24} color="rgba(255,255,255,0.85)" />
+              </Box>
+            )}
             {index === 2 && remainingCount > 0 && (
               <Box
                 position="absolute"

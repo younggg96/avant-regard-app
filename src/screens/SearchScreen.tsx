@@ -17,12 +17,12 @@ import { theme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
+import { searchBrands, Brand } from "../services/brandService";
 import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 
-// 搜索类型
-type SearchType = "posts" | "users";
+type SearchType = "posts" | "users" | "brands";
 
 interface SearchHistory {
   id: string;
@@ -37,6 +37,7 @@ const SearchScreen = () => {
   const [searchType, setSearchType] = useState<SearchType>("posts");
   const [postResults, setPostResults] = useState<PostData[]>([]);
   const [userResults, setUserResults] = useState<UserInfo[]>([]);
+  const [brandResults, setBrandResults] = useState<Brand[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
@@ -52,6 +53,7 @@ const SearchScreen = () => {
     if (!searchQuery.trim()) {
       setPostResults([]);
       setUserResults([]);
+      setBrandResults([]);
       setIsSearching(false);
       return;
     }
@@ -69,6 +71,7 @@ const SearchScreen = () => {
     if (!searchQuery.trim()) {
       setPostResults([]);
       setUserResults([]);
+      setBrandResults([]);
       setIsSearching(false);
       return;
     }
@@ -80,13 +83,15 @@ const SearchScreen = () => {
     try {
       const query = searchQuery.trim();
 
-      // 根据当前搜索类型执行对应搜索
       if (searchType === "posts") {
         const posts = await searchPosts(query);
         setPostResults(posts);
-      } else {
+      } else if (searchType === "users") {
         const users = await searchUsers(query);
         setUserResults(users);
+      } else {
+        const brands = await searchBrands(query);
+        setBrandResults(brands);
       }
 
       // 保存搜索历史
@@ -112,11 +117,12 @@ const SearchScreen = () => {
       } else {
         Alert.alert("搜索失败", "网络连接异常，请检查网络后重试");
       }
-      // 搜索失败时清空结果
       if (searchType === "posts") {
         setPostResults([]);
-      } else {
+      } else if (searchType === "users") {
         setUserResults([]);
+      } else {
+        setBrandResults([]);
       }
     } finally {
       setIsLoading(false);
@@ -136,9 +142,12 @@ const SearchScreen = () => {
         if (type === "posts") {
           const posts = await searchPosts(query);
           setPostResults(posts);
-        } else {
+        } else if (type === "users") {
           const users = await searchUsers(query);
           setUserResults(users);
+        } else {
+          const brands = await searchBrands(query);
+          setBrandResults(brands);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -147,11 +156,12 @@ const SearchScreen = () => {
           errorMessage.includes("Worker threw exception")) {
           Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
         }
-        // 搜索失败时清空结果
         if (type === "posts") {
           setPostResults([]);
-        } else {
+        } else if (type === "users") {
           setUserResults([]);
+        } else {
+          setBrandResults([]);
         }
       } finally {
         setIsLoading(false);
@@ -165,6 +175,7 @@ const SearchScreen = () => {
     setSearchQuery("");
     setPostResults([]);
     setUserResults([]);
+    setBrandResults([]);
     setIsSearching(false);
   }, []);
 
@@ -179,9 +190,12 @@ const SearchScreen = () => {
         if (searchType === "posts") {
           const posts = await searchPosts(keyword);
           setPostResults(posts);
-        } else {
+        } else if (searchType === "users") {
           const users = await searchUsers(keyword);
           setUserResults(users);
+        } else {
+          const brands = await searchBrands(keyword);
+          setBrandResults(brands);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -190,11 +204,12 @@ const SearchScreen = () => {
           errorMessage.includes("Worker threw exception")) {
           Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
         }
-        // 搜索失败时清空结果
         if (searchType === "posts") {
           setPostResults([]);
-        } else {
+        } else if (searchType === "users") {
           setUserResults([]);
+        } else {
+          setBrandResults([]);
         }
       } finally {
         setIsLoading(false);
@@ -233,6 +248,13 @@ const SearchScreen = () => {
   const handleUserPress = useCallback(
     (user: UserInfo) => {
       (navigation.navigate as any)("UserProfile", { userId: user.userId });
+    },
+    [navigation]
+  );
+
+  const handleBrandPress = useCallback(
+    (brand: Brand) => {
+      (navigation.navigate as any)("BrandDetail", { name: brand.name });
     },
     [navigation]
   );
@@ -351,7 +373,6 @@ const SearchScreen = () => {
   const renderUserItem = ({ item }: { item: UserInfo }) => (
     <Pressable onPress={() => handleUserPress(item)} px="$md" py="$md">
       <HStack alignItems="center" space="md">
-        {/* 用户头像 */}
         <Box
           width={56}
           height={56}
@@ -371,7 +392,6 @@ const SearchScreen = () => {
           />
         </Box>
 
-        {/* 用户信息 */}
         <VStack flex={1} space="xs">
           <HStack alignItems="center" space="sm">
             <Text fontSize="$md" fontWeight="$semibold" color="$black">
@@ -400,7 +420,67 @@ const SearchScreen = () => {
           ) : null}
         </VStack>
 
-        {/* 箭头 */}
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={theme.colors.gray400}
+        />
+      </HStack>
+    </Pressable>
+  );
+
+  const renderBrandItem = ({ item }: { item: Brand }) => (
+    <Pressable onPress={() => handleBrandPress(item)} px="$md" py="$md">
+      <HStack alignItems="center" space="md">
+        <Box
+          width={56}
+          height={56}
+          rounded="$sm"
+          overflow="hidden"
+          bg="$gray100"
+          alignItems="center"
+          justifyContent="center"
+        >
+          {item.coverImage ? (
+            <OptimizedImage
+              uri={item.coverImage}
+              size={ImageSize.THUMBNAIL}
+              style={{ width: 56, height: 56 }}
+              contentFit="cover"
+              lazy={true}
+            />
+          ) : (
+            <Text fontSize="$xl" fontWeight="$bold" color="$gray400">
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          )}
+        </Box>
+
+        <VStack flex={1} space="xs">
+          <Text fontSize="$md" fontWeight="$semibold" color="$black">
+            {item.name}
+          </Text>
+          <HStack alignItems="center" space="sm">
+            {item.category ? (
+              <Text fontSize="$sm" color="$gray600">
+                {item.category}
+              </Text>
+            ) : null}
+            {item.country ? (
+              <HStack alignItems="center" space="xs">
+                <Ionicons
+                  name="globe-outline"
+                  size={14}
+                  color={theme.colors.gray400}
+                />
+                <Text fontSize="$xs" color="$gray400">
+                  {item.country}
+                </Text>
+              </HStack>
+            ) : null}
+          </HStack>
+        </VStack>
+
         <Ionicons
           name="chevron-forward"
           size={20}
@@ -447,6 +527,21 @@ const SearchScreen = () => {
           color={searchType === "users" ? "$white" : "$gray600"}
         >
           用户
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => handleSearchTypeChange("brands")}
+        px="$md"
+        py="$xs"
+        rounded="$sm"
+        bg={searchType === "brands" ? "$black" : "$gray100"}
+      >
+        <Text
+          fontSize="$sm"
+          fontWeight="$medium"
+          color={searchType === "brands" ? "$white" : "$gray600"}
+        >
+          品牌
         </Text>
       </Pressable>
     </HStack>
@@ -589,6 +684,58 @@ const SearchScreen = () => {
     </VStack>
   );
 
+  const renderBrandResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" color="$gray600">
+          找到{" "}
+          <Text fontWeight="$semibold" color="$black">
+            {brandResults.length}
+          </Text>{" "}
+          个品牌
+        </Text>
+      </HStack>
+
+      {brandResults.length > 0 ? (
+        <FlatList
+          data={brandResults}
+          renderItem={renderBrandItem}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => (
+            <Box height={1} bg="$gray100" mx="$md" />
+          )}
+        />
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons
+            name="pricetag-outline"
+            size={64}
+            color={theme.colors.gray300}
+          />
+          <Text
+            fontSize="$lg"
+            color="$gray600"
+            fontWeight="$medium"
+            mt="$md"
+            textAlign="center"
+          >
+            未找到相关品牌
+          </Text>
+          <Text
+            fontSize="$sm"
+            color="$gray400"
+            mt="$sm"
+            textAlign="center"
+            lineHeight="$lg"
+          >
+            试试其他品牌名称吧
+          </Text>
+        </VStack>
+      )}
+    </VStack>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
@@ -626,7 +773,9 @@ const SearchScreen = () => {
             placeholder={
               searchType === "posts"
                 ? "搜索帖子标题、内容、作者..."
-                : "搜索用户名或用户ID..."
+                : searchType === "users"
+                  ? "搜索用户名或用户ID..."
+                  : "搜索品牌名称..."
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
@@ -716,7 +865,7 @@ const SearchScreen = () => {
                 mt="$md"
                 textAlign="center"
               >
-                {searchType === "posts" ? "搜索帖子" : "搜索用户"}
+                {searchType === "posts" ? "搜索帖子" : searchType === "users" ? "搜索用户" : "搜索品牌"}
               </Text>
               <Text
                 fontSize="$sm"
@@ -727,7 +876,9 @@ const SearchScreen = () => {
               >
                 {searchType === "posts"
                   ? "输入关键词搜索帖子标题、内容或作者"
-                  : "输入用户名模糊搜索或用户ID精确搜索"}
+                  : searchType === "users"
+                    ? "输入用户名模糊搜索或用户ID精确搜索"
+                    : "输入品牌名称进行搜索"}
               </Text>
             </VStack>
           )}
@@ -742,7 +893,7 @@ const SearchScreen = () => {
         </VStack>
       ) : (
         // 显示搜索结果
-        searchType === "posts" ? renderPostResults() : renderUserResults()
+        searchType === "posts" ? renderPostResults() : searchType === "users" ? renderUserResults() : renderBrandResults()
       )}
     </SafeAreaView>
   );

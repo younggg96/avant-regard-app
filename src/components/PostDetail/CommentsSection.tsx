@@ -7,6 +7,12 @@ import { theme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { styles } from "./styles";
 
+export interface ReportTarget {
+  commentId: string;
+  authorId: number;
+  authorName: string;
+}
+
 interface CommentsSectionProps {
   comments: Comment[];
   isLoading: boolean;
@@ -19,6 +25,7 @@ interface CommentsSectionProps {
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReplyPress: (target: ReplyTarget) => void;
   onToggleReplies: (commentId: string) => void;
+  onReportComment?: (target: ReportTarget) => void;
 }
 
 // 单个回复项组件
@@ -29,7 +36,8 @@ const ReplyItem: React.FC<{
   onDelete: () => void;
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReply: () => void;
-}> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply }) => (
+  onReport: () => void;
+}> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply, onReport }) => (
   <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} borderLeftColor="$gray200">
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
@@ -89,11 +97,20 @@ const ReplyItem: React.FC<{
             回复
           </Text>
         </Pressable>
-        {isOwner && (
+        {isOwner ? (
           <Pressable onPress={onDelete}>
             <Text fontSize="$xs" color="$error">
               删除
             </Text>
+          </Pressable>
+        ) : (
+          <Pressable onPress={onReport}>
+            <HStack space="xs" alignItems="center">
+              <Ionicons name="flag-outline" size={12} color={theme.colors.gray400} />
+              <Text fontSize="$xs" color="$gray500">
+                举报
+              </Text>
+            </HStack>
           </Pressable>
         )}
       </HStack>
@@ -113,6 +130,8 @@ const CommentItem: React.FC<{
   onReply: () => void;
   onReplyToReply: (reply: CommentReply) => void;
   onToggleReplies: () => void;
+  onReport: () => void;
+  onReportReply: (reply: CommentReply) => void;
 }> = ({
   comment,
   currentUserId,
@@ -124,6 +143,8 @@ const CommentItem: React.FC<{
   onReply,
   onReplyToReply,
   onToggleReplies,
+  onReport,
+  onReportReply,
 }) => (
     <VStack mt="$md">
       <HStack space="sm">
@@ -179,11 +200,20 @@ const CommentItem: React.FC<{
                 回复
               </Text>
             </Pressable>
-            {currentUserId === comment.userId && (
+            {currentUserId === comment.userId ? (
               <Pressable onPress={onDelete}>
                 <Text fontSize="$xs" color="$error">
                   删除
                 </Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={onReport}>
+                <HStack space="xs" alignItems="center">
+                  <Ionicons name="flag-outline" size={13} color={theme.colors.gray400} />
+                  <Text fontSize="$xs" color="$gray600">
+                    举报
+                  </Text>
+                </HStack>
               </Pressable>
             )}
             {comment.replyCount > 0 && !comment.showReplies && (
@@ -209,6 +239,7 @@ const CommentItem: React.FC<{
               onDelete={() => onDeleteReply(reply.id)}
               onUserPress={onUserPress}
               onReply={() => onReplyToReply(reply)}
+              onReport={() => onReportReply(reply)}
             />
           ))}
           {comment.replies.length > 0 && (
@@ -235,6 +266,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   onUserPress,
   onReplyPress,
   onToggleReplies,
+  onReportComment,
 }) => {
   // 草稿和审核中的帖子不显示评论
   const showComments: boolean = postStatus === "PUBLISHED";
@@ -335,6 +367,20 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               })
             }
             onToggleReplies={() => onToggleReplies(comment.id)}
+            onReport={() =>
+              onReportComment?.({
+                commentId: comment.id,
+                authorId: comment.userId,
+                authorName: comment.userName,
+              })
+            }
+            onReportReply={(reply) =>
+              onReportComment?.({
+                commentId: reply.id,
+                authorId: reply.userId,
+                authorName: reply.userName,
+              })
+            }
           />
         ))}
     </VStack>

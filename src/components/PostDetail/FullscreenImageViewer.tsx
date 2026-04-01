@@ -1,16 +1,19 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
   Modal,
   View,
   FlatList,
   TouchableOpacity,
   StatusBar,
+  StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Text } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { styles, SCREEN_WIDTH } from "./styles";
+import { isVideoUrl } from "../../services/postService";
+import { styles, SCREEN_WIDTH, SCREEN_HEIGHT } from "./styles";
 
 interface FullscreenImageViewerProps {
   visible: boolean;
@@ -19,6 +22,50 @@ interface FullscreenImageViewerProps {
   onClose: () => void;
   onIndexChange: (index: number) => void;
 }
+
+const FullscreenVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
+  const videoRef = useRef<Video>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePress = useCallback(() => {
+    if (isPlaying) {
+      videoRef.current?.pauseAsync();
+    } else {
+      videoRef.current?.playAsync();
+    }
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      setIsPlaying(status.isPlaying);
+    }
+  }, []);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={handlePress}
+      style={styles.fullscreenImageWrapper}
+    >
+      <Video
+        ref={videoRef}
+        source={{ uri }}
+        style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+        resizeMode={ResizeMode.CONTAIN}
+        shouldPlay={false}
+        isLooping
+        isMuted={false}
+        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+      />
+      {!isPlaying && (
+        <View style={localStyles.playOverlay}>
+          <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.85)" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
   visible,
@@ -44,14 +91,14 @@ export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
           <Ionicons name="close" size={30} color="#fff" />
         </TouchableOpacity>
 
-        {/* Image Counter */}
+        {/* Counter */}
         <View style={styles.imageCounter}>
           <Text style={styles.imageCounterText}>
             {currentIndex + 1} / {images.length}
           </Text>
         </View>
 
-        {/* Image Carousel */}
+        {/* Media Carousel */}
         <FlatList
           ref={flatListRef}
           data={images}
@@ -70,20 +117,33 @@ export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
             );
             onIndexChange(newIndex);
           }}
-          renderItem={({ item }) => (
-            <View style={styles.fullscreenImageWrapper}>
-              <OptimizedImage
-                uri={item}
-                size={ImageSize.ORIGINAL}
-                style={styles.fullscreenImage}
-                contentFit="contain"
-                lazy={true}
-              />
-            </View>
-          )}
+          renderItem={({ item }) => {
+            if (isVideoUrl(item)) {
+              return <FullscreenVideoPlayer uri={item} />;
+            }
+            return (
+              <View style={styles.fullscreenImageWrapper}>
+                <OptimizedImage
+                  uri={item}
+                  size={ImageSize.ORIGINAL}
+                  style={styles.fullscreenImage}
+                  contentFit="contain"
+                  lazy={true}
+                />
+              </View>
+            );
+          }}
           keyExtractor={(item, index) => `fullscreen-${index}`}
         />
       </View>
     </Modal>
   );
 };
+
+const localStyles = StyleSheet.create({
+  playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});

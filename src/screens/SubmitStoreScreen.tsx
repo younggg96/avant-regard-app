@@ -154,6 +154,27 @@ const SubmitStoreScreen = () => {
     return true;
   };
 
+  const geocodeAddress = async (): Promise<{
+    lat: number;
+    lng: number;
+  } | null> => {
+    try {
+      const fullAddress = `${address.trim()}, ${city.trim()}, ${country.trim()}`;
+      const results = await Location.geocodeAsync(fullAddress);
+      if (results.length > 0) {
+        return { lat: results[0].latitude, lng: results[0].longitude };
+      }
+      const cityOnly = `${city.trim()}, ${country.trim()}`;
+      const cityResults = await Location.geocodeAsync(cityOnly);
+      if (cityResults.length > 0) {
+        return { lat: cityResults[0].latitude, lng: cityResults[0].longitude };
+      }
+    } catch (error) {
+      console.warn("Geocoding failed:", error);
+    }
+    return null;
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       Alert.show("提示: 请先登录");
@@ -165,13 +186,24 @@ const SubmitStoreScreen = () => {
     try {
       setIsSubmitting(true);
 
+      let finalLat = latitude;
+      let finalLng = longitude;
+
+      if (finalLat == null || finalLng == null) {
+        const geocoded = await geocodeAddress();
+        if (geocoded) {
+          finalLat = geocoded.lat;
+          finalLng = geocoded.lng;
+        }
+      }
+
       const data: UserSubmittedStoreCreate = {
         name: name.trim(),
         address: address.trim(),
         city: city.trim(),
         country: country.trim(),
-        latitude,
-        longitude,
+        latitude: finalLat,
+        longitude: finalLng,
         brands: brands
           .split(/[,，、]/)
           .map((b) => b.trim())

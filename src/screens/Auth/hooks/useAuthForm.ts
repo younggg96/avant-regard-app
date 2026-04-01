@@ -589,7 +589,7 @@ export const useAuthForm = () => {
         age?: number;
         preference?: string;
         bio?: string;
-        favoriteBrandIds?: number[];
+        followedBrandIds?: number[];
         profileCompleted?: boolean;
       } = {
         // 标记资料已完善（保存到数据库）
@@ -611,13 +611,13 @@ export const useAuthForm = () => {
       if (formData.bio) {
         updateData.bio = formData.bio;
       }
-      if (formData.favoriteBrandIds && formData.favoriteBrandIds.length > 0) {
-        updateData.favoriteBrandIds = formData.favoriteBrandIds;
+      if (formData.followedBrandIds && formData.followedBrandIds.length > 0) {
+        updateData.followedBrandIds = formData.followedBrandIds;
       }
 
-      // 调用更新接口（包含 profileCompleted: true）
+      // 调用更新接口（包含 profileCompleted: true，同时会写入 brand_follows）
       await userInfoService.updateUserProfile(registeredUserId, updateData);
-      
+
       // 同步更新本地状态
       setProfileCompleted(true);
 

@@ -64,6 +64,7 @@ import {
   applyMerchant,
   getMerchantByStore,
 } from "../services/storeMerchantService";
+import HalfStarRating from "../components/HalfStarRating";
 import * as ImagePicker from "expo-image-picker";
 
 type RouteParams = {
@@ -544,27 +545,6 @@ const StoreDetailScreen = () => {
     }
   };
 
-  // 渲染评分星星
-  const renderStars = (rating: number, size: number = 16, interactive: boolean = false) => {
-    return (
-      <HStack gap="$xs">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Pressable
-            key={star}
-            onPress={interactive ? () => setSelectedRating(star) : undefined}
-            disabled={!interactive}
-          >
-            <Ionicons
-              name={star <= rating ? "star" : "star-outline"}
-              size={size}
-              color={star <= rating ? "#FFB800" : theme.colors.gray200}
-            />
-          </Pressable>
-        ))}
-      </HStack>
-    );
-  };
-
   // 渲染评论项
   const renderCommentItem = ({ item }: { item: StoreComment }) => (
     <Box mb="$md" pb="$md" borderBottomWidth={1} borderBottomColor="$gray100">
@@ -792,7 +772,12 @@ const StoreDetailScreen = () => {
               >
                 <Pressable alignItems="center" onPress={openRatingModal}>
                   <HStack alignItems="center" justifyContent="center" mb="$xs">
-                    {renderStars(Math.round(store.averageRating || 0))}
+                    <HalfStarRating
+                      rating={store.averageRating || 0}
+                      size={16}
+                      color="#FFB800"
+                      inactiveColor={theme.colors.gray200}
+                    />
                     <Text fontSize="$lg" fontWeight="$bold" color="$gray300" style={styles.textBold}>
                       ｜ {store.averageRating?.toFixed(1) || "-"}
                     </Text>
@@ -1323,21 +1308,30 @@ const StoreDetailScreen = () => {
 
             {/* 评分星星 */}
             <HStack justifyContent="center" mb="$lg">
-              {renderStars(selectedRating, 40, true)}
+              <HalfStarRating
+                rating={selectedRating}
+                size={40}
+                interactive
+                onRatingChange={setSelectedRating}
+                color="#FFB800"
+                inactiveColor={theme.colors.gray200}
+                gap={8}
+              />
             </HStack>
 
             <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$xl" style={styles.textRegular}>
               {selectedRating === 0
                 ? "点击星星进行评分"
-                : selectedRating === 5
+                : selectedRating >= 4.5
                   ? "太棒了！"
-                  : selectedRating >= 4
+                  : selectedRating >= 3.5
                     ? "很不错"
-                    : selectedRating >= 3
+                    : selectedRating >= 2.5
                       ? "还可以"
-                      : selectedRating >= 2
+                      : selectedRating >= 1.5
                         ? "一般般"
                         : "不太满意"}
+              {selectedRating > 0 && ` (${selectedRating % 1 === 0 ? `${selectedRating}.0` : selectedRating.toFixed(1)})`}
             </Text>
 
             <Pressable
@@ -1509,7 +1503,7 @@ const StoreDetailScreen = () => {
           >
             <Ionicons name="star-outline" size={18} color={theme.colors.black} />
             <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm" style={styles.textBold}>
-              {store.userRating ? `已评 ${store.userRating} 星` : "评分"}
+              {store.userRating ? `已评 ${store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1)} 星` : "评分"}
             </Text>
           </Pressable>
 

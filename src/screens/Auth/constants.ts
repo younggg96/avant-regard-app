@@ -93,5 +93,5 @@ export const INITIAL_FORM_DATA = {
   age: "",
   preference: "",
   bio: "",
-  favoriteBrandIds: [] as number[],
+  followedBrandIds: [] as number[],
 };
