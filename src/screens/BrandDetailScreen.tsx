@@ -424,12 +424,23 @@ const BrandDetailScreen = () => {
 
           {/* Follow Section */}
           <View style={styles.followSection}>
-            <View style={styles.followInfo}>
+            <TouchableOpacity
+              style={styles.followInfo}
+              onPress={() => {
+                if (brand) {
+                  (navigation as any).navigate("BrandFollowers", {
+                    brandId: brand.id,
+                    brandName: brand.name,
+                  });
+                }
+              }}
+              activeOpacity={0.7}
+            >
               <Text style={styles.followersCount}>
                 {formatFollowerCount(followersCount)}
               </Text>
               <Text style={styles.followersLabel}>关注者</Text>
-            </View>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.followButton,

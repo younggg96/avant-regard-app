@@ -7,3 +7,5 @@ export { AgreementModal } from "./AgreementModal";
 export { ProfileModal } from "./ProfileModal";
 export { TermsContent } from "./TermsContent";
 export { PrivacyContent } from "./PrivacyContent";
+export { CommunityGuidelinesContent } from "./CommunityGuidelinesContent";
+export { MinorProtectionContent } from "./MinorProtectionContent";

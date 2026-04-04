@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Video, ResizeMode } from "expo-av";
 import {
   Box,
   Text,
@@ -400,7 +399,6 @@ const PublishReviewScreen = () => {
     return uri.startsWith("http://") || uri.startsWith("https://");
   };
 
-  // 处理图片上传（区分新图片和已上传的图片）
   const processImages = async (imageList: string[]): Promise<string[]> => {
     const remoteUrls: string[] = [];
     const localUris: string[] = [];
@@ -415,11 +413,12 @@ const PublishReviewScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress(`上传媒体 0/${localUris.length}`);
+      setUploadProgress("上传中 0%");
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
-        (completed, total) => {
-          setUploadProgress(`上传媒体 ${completed}/${total}`);
+        undefined,
+        (percent) => {
+          setUploadProgress(`上传中 ${percent}%`);
         }
       );
     }
@@ -690,29 +689,6 @@ const PublishReviewScreen = () => {
     setBatchCropperUris([]);
   };
 
-  const handleVideoSelection = async () => {
-    setShowImagePicker(false);
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: false,
-        quality: 1.0,
-        videoMaxDuration: 60,
-      });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const videoUri = result.assets[0].uri;
-        const newImages = [...images, videoUri];
-        setImages(newImages);
-        Alert.show("视频已添加", "", 1500);
-      }
-    } catch (error) {
-      console.error("Video selection error:", error);
-      Alert.show("错误: 视频选择失败，请重试");
-    }
-  };
-
   const handleRemoveImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
@@ -944,10 +920,9 @@ const PublishReviewScreen = () => {
         onSelectCamera={() => handleImageSelection("camera")}
         onSelectGallery={() => handleImageSelection("gallery")}
         onSelectMultipleGallery={handleMultiImageSelection}
-        onSelectVideo={handleVideoSelection}
         showMultiSelectOption={images.length < MAX_IMAGES}
-        showVideoOption={true}
-        title="添加媒体"
+        showVideoOption={false}
+        title="添加图片"
       />
 
       <ImagePreviewModal

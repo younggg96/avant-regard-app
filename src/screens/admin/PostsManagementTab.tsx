@@ -773,12 +773,12 @@ const ReportedPostsSubTab = () => {
                   <Ionicons
                     name="eye-outline"
                     size={16}
-                    color={theme.colors.black}
+                    color={theme.colors.white}
                   />
                 }
               >
                 <ButtonText
-                  style={{ color: theme.colors.black, fontSize: 12 }}
+                  style={{ color: theme.colors.white, fontSize: 12 }}
                 >
                   查看
                 </ButtonText>

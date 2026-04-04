@@ -7,7 +7,7 @@ import {
   FlatList,
   View,
 } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+import { VideoThumbnailView } from "../components/VideoThumbnailView";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -34,6 +34,7 @@ import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
+import VideoPreviewModal from "../components/VideoPreviewModal";
 import { saveDraft } from "../services/draftService";
 import { postService, isVideoUrl } from "../services/postService";
 import { showService, Show as ShowFromApi } from "../services/showService";
@@ -42,6 +43,7 @@ import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
+import { getVideoThumbnail } from "../utils/videoThumbnail";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PAGE_SIZE = 30;
@@ -84,6 +86,8 @@ const PublishOutfitScreen = () => {
     Record<string, { width: number; height: number }>
   >({});
 
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<string, string>>({});
+
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageEditMenu, setShowImageEditMenu] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
@@ -97,6 +101,7 @@ const PublishOutfitScreen = () => {
   const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
   const [showBatchCropper, setShowBatchCropper] = useState(false);
   const [batchCropperUris, setBatchCropperUris] = useState<string[]>([]);
+  const [videoPreviewUri, setVideoPreviewUri] = useState<string | null>(null);
 
   const [showSelector, setShowSelector] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -412,7 +417,6 @@ const PublishOutfitScreen = () => {
     return uri.startsWith("http://") || uri.startsWith("https://");
   };
 
-  // 处理媒体上传（区分新文件和已上传的文件，支持图片+视频）
   const processImages = async (imageList: string[]): Promise<string[]> => {
     const localUris: string[] = [];
 
@@ -424,11 +428,12 @@ const PublishOutfitScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress(`上传媒体 0/${localUris.length}`);
+      setUploadProgress("上传中 0%");
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
-        (completed, total) => {
-          setUploadProgress(`上传媒体 ${completed}/${total}`);
+        undefined,
+        (percent) => {
+          setUploadProgress(`上传中 ${percent}%`);
         }
       );
     }
@@ -630,14 +635,14 @@ const PublishOutfitScreen = () => {
 
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync({
-            allowsEditing: false,
-            quality: 1.0,
-          })
+          allowsEditing: false,
+          quality: 1.0,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: false,
-            quality: 1.0,
-          });
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 1.0,
+        });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
@@ -714,10 +719,14 @@ const PublishOutfitScreen = () => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoUri = result.assets[0].uri;
+        const thumbnail = await getVideoThumbnail(videoUri);
+        if (thumbnail) {
+          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail }));
+        }
         const newImages = [...images, videoUri];
         setImages(newImages);
         if (!coverImage) {
-          setCoverImage(videoUri);
+          setCoverImage(thumbnail || videoUri);
         }
         Alert.show("视频已添加", "", 1500);
       }
@@ -900,7 +909,7 @@ const PublishOutfitScreen = () => {
               color={theme.colors.gray400}
             />
             <Text color="$gray500" mt="$sm">
-              点击添加搭配图片
+              点击添加搭配图片 或 视频
             </Text>
           </Pressable>
         </Box>
@@ -935,18 +944,18 @@ const PublishOutfitScreen = () => {
                 }}
               >
                 {isVideo ? (
-                  <View style={{ width: "100%", height: "100%", backgroundColor: "#000" }}>
-                    <Video
-                      source={{ uri: item }}
+                  <Pressable
+                    style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
+                    onPress={() => setVideoPreviewUri(item)}
+                  >
+                    <VideoThumbnailView
+                      uri={item}
                       style={{ width: "100%", height: "100%" }}
-                      resizeMode={ResizeMode.COVER}
-                      shouldPlay={false}
-                      isMuted
                     />
                     <View style={styles.videoOverlay}>
                       <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" />
                     </View>
-                  </View>
+                  </Pressable>
                 ) : (
                   <OptimizedImage
                     uri={item}
@@ -1012,12 +1021,10 @@ const PublishOutfitScreen = () => {
             >
               {isVideo ? (
                 <View style={{ width: "100%", height: "100%", backgroundColor: "#000" }}>
-                  <Video
-                    source={{ uri: image }}
-                    style={styles.thumbnail}
-                    resizeMode={ResizeMode.COVER}
-                    shouldPlay={false}
-                    isMuted
+                  <VideoThumbnailView
+                    uri={image}
+                    style={{ width: "100%", height: "100%" }}
+                    imageStyle={styles.thumbnail}
                   />
                   <View style={styles.videoThumbOverlay}>
                     <Ionicons name="videocam" size={16} color="#fff" />
@@ -1229,6 +1236,14 @@ const PublishOutfitScreen = () => {
         showVideoOption={true}
         title="添加媒体"
       />
+
+      {videoPreviewUri && (
+        <VideoPreviewModal
+          visible={true}
+          uri={videoPreviewUri}
+          onClose={() => setVideoPreviewUri(null)}
+        />
+      )}
 
       <ImagePreviewModal
         visible={showPreview}

@@ -336,9 +336,9 @@ const PendingTab = () => {
               size="sm"
               variant="outline"
               onPress={() => (navigation as any).navigate("PostDetail", { postId: post.id })}
-              leftIcon={<Ionicons name="eye-outline" size={18} color={theme.colors.black} />}
+              leftIcon={<Ionicons name="eye-outline" size={18} color={theme.colors.white} />}
             >
-              <ButtonText style={{ color: theme.colors.black, fontSize: 12 }}>查看</ButtonText>
+              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>查看</ButtonText>
             </Button>
           </HStack>
         )}

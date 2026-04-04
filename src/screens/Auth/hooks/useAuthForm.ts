@@ -30,6 +30,9 @@ export const useAuthForm = () => {
   // 用户协议确认 Modal 状态
   const [showAgreementModal, setShowAgreementModal] = useState(false);
 
+  // 登录页面协议勾选状态
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
   // 品牌选择相关状态
   const [showBrandPicker, setShowBrandPicker] = useState(false);
   const [brandOptions, setBrandOptions] = useState<BrandOption[]>([]);
@@ -751,14 +754,18 @@ export const useAuthForm = () => {
   // 处理确认密码输入完成后的操作
   const handleConfirmPasswordSubmit = useCallback(() => {
     if (mode === "register") {
-      handleRegister();
+      showAgreementConfirmation();
     } else if (mode === "forgotPassword") {
       handleForgotPassword();
     }
-  }, [mode, handleRegister, handleForgotPassword]);
+  }, [mode, showAgreementConfirmation, handleForgotPassword]);
 
   // 处理主要操作
   const handleMainAction = useCallback(() => {
+    if (mode !== "forgotPassword" && mode !== "completeProfile" && !agreedToTerms) {
+      Alert.show("请先阅读并同意相关协议");
+      return;
+    }
     switch (mode) {
       case "login":
         return handleLogin();
@@ -773,6 +780,7 @@ export const useAuthForm = () => {
     }
   }, [
     mode,
+    agreedToTerms,
     handleLogin,
     showAgreementConfirmation,
     handleForgotPassword,
@@ -801,6 +809,9 @@ export const useAuthForm = () => {
     // 用户协议确认 Modal
     showAgreementModal,
     setShowAgreementModal,
+    // 登录页协议勾选
+    agreedToTerms,
+    setAgreedToTerms,
     // 品牌选择相关
     showBrandPicker,
     setShowBrandPicker,

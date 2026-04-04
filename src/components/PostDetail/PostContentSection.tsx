@@ -1,7 +1,6 @@
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, { useMemo } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Text, HStack, VStack, Pressable, Box } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -10,6 +9,7 @@ import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import HalfStarRating from "../HalfStarRating";
 import { styles } from "./styles";
+import { VideoPlayer } from "./VideoPlayer";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -38,45 +38,13 @@ const parseContent = (description: string | undefined): ContentBlock[] | null =>
   return null;
 };
 
-const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => {
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePress = useCallback(() => {
-    if (isPlaying) {
-      videoRef.current?.pauseAsync();
-    } else {
-      videoRef.current?.playAsync();
-    }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
-
-  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-    }
-  }, []);
-
-  return (
-    <Pressable style={contentStyles.blockImageContainer} onPress={handlePress}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={contentStyles.blockImage}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={false}
-        isLooping
-        isMuted={false}
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-      />
-      {!isPlaying && (
-        <View style={contentStyles.videoOverlay}>
-          <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
-        </View>
-      )}
-    </Pressable>
-  );
-};
+const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => (
+  <VideoPlayer
+    uri={uri}
+    style={contentStyles.blockImageContainer}
+    videoStyle={contentStyles.blockImage}
+  />
+);
 
 const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
   if (block.type === "text") {
@@ -248,12 +216,6 @@ const contentStyles = StyleSheet.create({
   blockImage: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 0.5625,
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.15)",
   },
   metaRow: {
     flexDirection: "row",

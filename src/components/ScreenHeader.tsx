@@ -8,7 +8,25 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Box, Text, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
+
+const headerVideoSource = require("../../assets/video/header1.mp4");
+
+const HeaderVideo: React.FC = () => {
+  const player = useVideoPlayer(headerVideoSource, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={{ flex: 1, height: 80 }}
+      contentFit="contain"
+      nativeControls={false}
+    />
+  );
+};
 
 export interface HeaderAction {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -170,7 +188,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
         {renderLeftButton()}
 
         {useHeaderVideo ?
-          <Video source={require("../../assets/video/header1.mp4")} style={{ flex: 1, height: 80 }} resizeMode={ResizeMode.CONTAIN} shouldPlay isLooping isMuted /> :
+          <HeaderVideo /> :
           <VStack flex={1} alignItems="center" px="$sm">
             <Text
               textAlign="center"

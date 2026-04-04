@@ -6,6 +6,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   ScrollView as RNScrollView,
+  FlatList,
   View,
   Text as RNText,
   StyleSheet,
@@ -48,6 +49,8 @@ import {
 import {
   getFollowingCount,
   getFollowersCount,
+  getFollowingBrands,
+  FollowingBrand,
 } from "../services/followService";
 import { getUnreadCount } from "../services/notificationService";
 import SimplePostCard from "../components/SimplePostCard";
@@ -123,6 +126,7 @@ const ProfileScreen = () => {
   const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
 
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
   const [myShows, setMyShows] = useState<Show[]>([]);
@@ -213,6 +217,7 @@ const ProfileScreen = () => {
     loadFollowingUsersCount();
     loadFollowersCount();
     loadUnreadNotificationCount();
+    loadFollowedBrands();
     setTabsData({
       published: { ...initialTabState },
       pending: { ...initialTabState },
@@ -285,6 +290,16 @@ const ProfileScreen = () => {
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
+    }
+  };
+
+  const loadFollowedBrands = async () => {
+    if (!user?.userId) return;
+    try {
+      const brands = await getFollowingBrands(user.userId);
+      setFollowedBrands(brands);
+    } catch (error) {
+      console.error("Error loading followed brands:", error);
     }
   };
 
@@ -448,6 +463,7 @@ const ProfileScreen = () => {
       loadFollowingUsersCount();
       loadFollowersCount();
       loadUnreadNotificationCount();
+      loadFollowedBrands();
       if (activeTab === "archive") {
         loadContributions();
       } else {
@@ -463,6 +479,7 @@ const ProfileScreen = () => {
       loadUserProfile(),
       loadFollowingUsersCount(),
       loadFollowersCount(),
+      loadFollowedBrands(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
@@ -596,7 +613,6 @@ const ProfileScreen = () => {
         throw new Error("无效的用户 ID");
       }
 
-      console.log(`正在删除帖子 ID: ${postId}, 用户 ID: ${user.userId}`);
 
       await postService.deletePost(postId, user.userId);
 
@@ -1085,6 +1101,48 @@ const ProfileScreen = () => {
           </View>
         </View>
 
+        {/* 关注的品牌 */}
+        {followedBrands.length > 0 && (
+          <View style={styles.followedBrandsSection}>
+            <View style={styles.followedBrandsHeader}>
+              <RNText style={styles.followedBrandsTitle}>关注的品牌</RNText>
+              <RNText style={styles.followedBrandsCount}>{followedBrands.length}</RNText>
+            </View>
+            <FlatList
+              data={followedBrands}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              keyExtractor={(item) => String(item.brandId)}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.brandChip}
+                  onPress={() => (navigation as any).navigate("BrandDetail", { name: item.name })}
+                >
+                  {item.coverImage ? (
+                    <OptimizedImage
+                      uri={item.coverImage}
+                      size={ImageSize.THUMBNAIL}
+                      style={styles.brandChipImage}
+                      contentFit="cover"
+                      lazy={true}
+                    />
+                  ) : (
+                    <View style={styles.brandChipImagePlaceholder}>
+                      <RNText style={styles.brandChipInitial}>
+                        {item.name?.charAt(0)?.toUpperCase() || "B"}
+                      </RNText>
+                    </View>
+                  )}
+                  <RNText style={styles.brandChipName} numberOfLines={1}>
+                    {item.name}
+                  </RNText>
+                </Pressable>
+              )}
+            />
+          </View>
+        )}
+
         {/* --- Inline Tab 栏 (随页面滚动) --- */}
         <Animated.View
           style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
@@ -1456,6 +1514,62 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: theme.colors.gray600,
+  },
+  // 关注的品牌
+  followedBrandsSection: {
+    paddingBottom: 14,
+    backgroundColor: "#FFF",
+  },
+  followedBrandsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    gap: 6,
+  },
+  followedBrandsTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+  },
+  followedBrandsCount: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.gray300,
+  },
+  brandChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingRight: 14,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    gap: 8,
+  },
+  brandChipImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  brandChipImagePlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  brandChipInitial: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  brandChipName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: theme.colors.black,
+    maxWidth: 100,
   },
   // Tab 栏
   tabBarContainer: {

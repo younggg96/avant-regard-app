@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS posts (
     -- 单品评价专用字段
     product_name VARCHAR(200),
     brand_name VARCHAR(200),
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)),
     -- 统计
     like_count INTEGER DEFAULT 0,
     favorite_count INTEGER DEFAULT 0,
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS show_image_reviews (
     id BIGSERIAL PRIMARY KEY,
     image_id BIGINT REFERENCES show_images(id) ON DELETE CASCADE,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)),
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -1,12 +1,15 @@
 import React, { useRef, useState, useEffect } from "react";
 import { StyleSheet, Dimensions, Animated } from "react-native";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
+import type { VideoPlayerStatus } from "expo-video";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// 存储key，用于判断是否是首次打开app
 const HAS_OPENED_APP_KEY = "has_opened_app_before";
+
+const startNew = require("../../assets/video/start_new.mp4");
+const startShort = require("../../assets/video/start-short.mp4");
 
 interface SplashVideoProps {
   onFinish: () => void;
@@ -14,10 +17,10 @@ interface SplashVideoProps {
 
 export default function SplashVideo({ onFinish }: SplashVideoProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const overlayFadeAnim = useRef(new Animated.Value(1)).current; // 黑色遮罩的透明度
+  const overlayFadeAnim = useRef(new Animated.Value(1)).current;
   const [hasFinished, setHasFinished] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState<boolean | null>(null);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false); // 追踪视频是否真正在播放
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
   useEffect(() => {
     checkFirstOpen();
@@ -27,37 +30,44 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
     try {
       const hasOpened = await AsyncStorage.getItem(HAS_OPENED_APP_KEY);
       if (hasOpened === null) {
-        // 第一次打开app
         setIsFirstOpen(true);
-        // 设置标记，表示已经打开过app
         await AsyncStorage.setItem(HAS_OPENED_APP_KEY, "true");
       } else {
-        // 不是第一次打开
         setIsFirstOpen(false);
       }
     } catch (error) {
       console.error("Error checking first open:", error);
-      // 出错时默认使用短视频
       setIsFirstOpen(false);
     }
   };
 
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      // 检测视频是否真正开始播放（有进度且正在播放）
-      if (status.isPlaying && status.positionMillis > 0 && !isVideoPlaying) {
-        setIsVideoPlaying(true);
-        // 视频真正开始播放后，快速淡出黑色遮罩
-        Animated.timing(overlayFadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
+  const videoSource = isFirstOpen ? startNew : startShort;
 
-      if (status.didJustFinish && !hasFinished) {
+  const player = useVideoPlayer(isFirstOpen !== null ? videoSource : null, (p) => {
+    p.loop = false;
+    p.muted = false;
+  });
+
+  useEffect(() => {
+    if (!player || isFirstOpen === null) return;
+
+    const playingSub = player.addListener(
+      "playingChange",
+      (newIsPlaying: boolean) => {
+        if (newIsPlaying && !isVideoPlaying) {
+          setIsVideoPlaying(true);
+          Animated.timing(overlayFadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      }
+    );
+
+    const endSub = player.addListener("playToEnd", () => {
+      if (!hasFinished) {
         setHasFinished(true);
-        // 视频播放完成，执行淡出动画
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 300,
@@ -66,36 +76,39 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
           onFinish();
         });
       }
-    }
-  };
+    });
 
-  const handleError = (error: string) => {
-    console.error("Video playback error:", error);
-    // 如果视频加载失败，直接进入应用
-    onFinish();
-  };
+    const statusSub = player.addListener(
+      "statusChange",
+      (newStatus: VideoPlayerStatus, _oldStatus: VideoPlayerStatus, error?: { message: string }) => {
+        if (newStatus === "error") {
+          console.error("Video playback error:", error?.message);
+          onFinish();
+        }
+        if (newStatus === "readyToPlay") {
+          player.play();
+        }
+      }
+    );
 
-  // 等待检查完成
+    return () => {
+      playingSub.remove();
+      endSub.remove();
+      statusSub.remove();
+    };
+  }, [player, isFirstOpen]);
+
   if (isFirstOpen === null) {
     return <Animated.View style={[styles.container, { opacity: fadeAnim }]} />;
   }
 
-  // 根据是否首次打开选择视频
-  const videoSource = isFirstOpen
-    ? require("../../assets/video/start_new.mp4")
-    : require("../../assets/video/start-short.mp4");
-
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <Video
-        source={videoSource}
+      <VideoView
+        player={player}
         style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={true}
-        isLooping={false}
-        isMuted={false}
-        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-        onError={handleError}
+        contentFit="cover"
+        nativeControls={false}
       />
       {/* 黑色遮罩，覆盖在视频上方，防止加载时显示黄色帧 */}
       <Animated.View

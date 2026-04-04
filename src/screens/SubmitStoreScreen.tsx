@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Platform,
   KeyboardAvoidingView,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { Alert } from "../utils/Alert";
@@ -26,11 +25,14 @@ import {
 } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
+import ImageGridSelector from "../components/ImageGridSelector";
+import ImagePreviewModal from "../components/ImagePreviewModal";
 import { useAuthStore } from "../store/authStore";
 import {
   submitStore,
   UserSubmittedStoreCreate,
 } from "../services/buyerStoreService";
+import { uploadImages } from "../services/postService";
 
 const STYLE_OPTIONS = [
   "先锋",
@@ -78,6 +80,8 @@ const SubmitStoreScreen = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const getCurrentLocation = async () => {
     try {
@@ -215,7 +219,7 @@ const SubmitStoreScreen = () => {
           .filter((p) => p),
         hours: hours.trim() || undefined,
         description: description.trim() || undefined,
-        images,
+        images: images.length > 0 ? await uploadImages(images) : [],
       };
 
       await submitStore(data);
@@ -520,57 +524,17 @@ const SubmitStoreScreen = () => {
           </Box>
 
           {/* 店铺图片 */}
-          <Box mx="$md" mb="$xl">
-            <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
-                店铺图片（最多6张）
-              </Text>
-            </HStack>
-            <HStack flexWrap="wrap" gap="$sm">
-              {images.map((uri, index) => (
-                <Box key={index} position="relative">
-                  <Image source={{ uri }} style={styles.imagePreview} />
-                  <Pressable
-                    position="absolute"
-                    top={-8}
-                    right={-8}
-                    w={24}
-                    h={24}
-                    rounded="$sm"
-                    bg="$black"
-                    justifyContent="center"
-                    alignItems="center"
-                    onPress={() => removeImage(index)}
-                  >
-                    <Ionicons name="close" size={14} color={theme.colors.white} />
-                  </Pressable>
-                </Box>
-              ))}
-              {images.length < 6 && (
-                <Pressable
-                  w={80}
-                  h={80}
-                  rounded="$md"
-                  bg="$gray100"
-                  justifyContent="center"
-                  alignItems="center"
-                  borderWidth={1}
-                  borderColor="$gray200"
-                  borderStyle="dashed"
-                  onPress={pickImages}
-                >
-                  <Ionicons
-                    name="camera-outline"
-                    size={24}
-                    color={theme.colors.gray400}
-                  />
-                  <Text fontSize="$xs" color="$gray400" mt="$xs">
-                    添加图片
-                  </Text>
-                </Pressable>
-              )}
-            </HStack>
-          </Box>
+          <ImageGridSelector
+            images={images}
+            onImagePress={(index) => {
+              setPreviewImageIndex(index);
+              setShowImagePreview(true);
+            }}
+            onRemoveImage={removeImage}
+            onAddImage={pickImages}
+            maxImages={6}
+            label="店铺图片"
+          />
 
           {/* 提交按钮 */}
           <Box mx="$md" mb="$xl">
@@ -595,6 +559,13 @@ const SubmitStoreScreen = () => {
           </Box>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ImagePreviewModal
+        visible={showImagePreview}
+        imageUrls={images}
+        initialIndex={previewImageIndex}
+        onClose={() => setShowImagePreview(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -612,11 +583,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingBottom: 100,
-  },
-  imagePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.borderRadius.md,
   },
 });
 

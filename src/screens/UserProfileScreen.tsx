@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Dimensions,
   ScrollView as RNScrollView,
+  FlatList,
   StyleSheet,
   View,
   Modal,
@@ -46,6 +47,8 @@ import {
   isFollowingUser,
   getFollowersCount,
   getFollowingCount,
+  getFollowingBrands,
+  FollowingBrand,
 } from "../services/followService";
 import {
   userInfoService,
@@ -138,6 +141,7 @@ const UserProfileScreen = () => {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
+  const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -182,7 +186,7 @@ const UserProfileScreen = () => {
     ? allTabs
     : allTabs.filter((tab) => {
         if (tab.id === "saved") return true;
-        if (tab.id === "liked") return !(privacySettings?.hideLikes ?? true);
+        if (tab.id === "liked") return !(privacySettings?.hideLikes ?? false);
         return true;
       });
 
@@ -266,6 +270,15 @@ const UserProfileScreen = () => {
       setFollowingCount(following);
     } catch (error) {
       console.error("Error loading follow counts:", error);
+    }
+  };
+
+  const loadFollowedBrands = async () => {
+    try {
+      const brands = await getFollowingBrands(userId);
+      setFollowedBrands(brands);
+    } catch (error) {
+      console.error("Error loading followed brands:", error);
     }
   };
 
@@ -396,6 +409,7 @@ const UserProfileScreen = () => {
     loadFollowCounts();
     checkFollowStatus();
     loadPrivacySettings();
+    loadFollowedBrands();
     setTabsData({
       posts: { ...initialTabState },
       forum: { ...initialTabState },
@@ -421,6 +435,7 @@ const UserProfileScreen = () => {
       loadFollowCounts();
       checkFollowStatus();
       loadPrivacySettings();
+      loadFollowedBrands();
       if (activeTab === "archive") {
         loadContributions();
       } else {
@@ -436,6 +451,7 @@ const UserProfileScreen = () => {
       loadUserProfile(),
       loadFollowCounts(),
       checkFollowStatus(),
+      loadFollowedBrands(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
@@ -1081,6 +1097,48 @@ const UserProfileScreen = () => {
           </View>
         </View>
 
+        {/* 关注的品牌 */}
+        {followedBrands.length > 0 && (
+          <View style={styles.followedBrandsSection}>
+            <View style={styles.followedBrandsHeader}>
+              <RNText style={styles.followedBrandsTitle}>关注的品牌</RNText>
+              <RNText style={styles.followedBrandsCount}>{followedBrands.length}</RNText>
+            </View>
+            <FlatList
+              data={followedBrands}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              keyExtractor={(item) => String(item.brandId)}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.brandChip}
+                  onPress={() => (navigation as any).navigate("BrandDetail", { name: item.name })}
+                >
+                  {item.coverImage ? (
+                    <OptimizedImage
+                      uri={item.coverImage}
+                      size={ImageSize.THUMBNAIL}
+                      style={styles.brandChipImage}
+                      contentFit="cover"
+                      lazy={true}
+                    />
+                  ) : (
+                    <View style={styles.brandChipImagePlaceholder}>
+                      <RNText style={styles.brandChipInitial}>
+                        {item.name?.charAt(0)?.toUpperCase() || "B"}
+                      </RNText>
+                    </View>
+                  )}
+                  <RNText style={styles.brandChipName} numberOfLines={1}>
+                    {item.name}
+                  </RNText>
+                </Pressable>
+              )}
+            />
+          </View>
+        )}
+
         {/* --- Inline Tab 栏 (随页面滚动) --- */}
         <Animated.View
           style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
@@ -1381,6 +1439,61 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: theme.colors.gray600,
+  },
+  followedBrandsSection: {
+    paddingBottom: 14,
+    backgroundColor: "#FFF",
+  },
+  followedBrandsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    gap: 6,
+  },
+  followedBrandsTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.gray400,
+  },
+  followedBrandsCount: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.gray300,
+  },
+  brandChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingRight: 14,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    gap: 8,
+  },
+  brandChipImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  brandChipImagePlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  brandChipInitial: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  brandChipName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: theme.colors.black,
+    maxWidth: 100,
   },
   tabBarContainer: {
     borderBottomWidth: 1,

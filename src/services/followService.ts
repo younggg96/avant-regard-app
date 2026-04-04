@@ -268,6 +268,18 @@ export async function getFollowingBrands(
 }
 
 /**
+ * 获取品牌的关注者列表
+ * GET /api/follow/brand/{brandId}/followers
+ */
+export async function getBrandFollowers(brandId: number): Promise<FollowingUser[]> {
+  const response = await request<ApiResponse<FollowingUser[]>>(
+    `/api/follow/brand/${brandId}/followers`,
+    { method: "GET" }
+  );
+  return response.data || [];
+}
+
+/**
  * 获取品牌的关注者数量
  * GET /api/follow/brand/{brandId}/followers/count
  */
@@ -325,6 +337,7 @@ export const followService = {
   unfollowBrand,
   batchFollowBrands,
   getFollowingBrands,
+  getBrandFollowers,
   getBrandFollowersCount,
   isFollowingBrand,
   getFollowingBrandIds,

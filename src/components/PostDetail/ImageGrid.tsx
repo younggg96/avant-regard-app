@@ -1,12 +1,11 @@
-import React, { useState, useCallback, useRef } from "react";
+import React from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { theme } from "../../theme";
+import { VideoPlayer } from "./VideoPlayer";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -14,50 +13,6 @@ interface MediaGridProps {
   images: string[];
   onOpenFullscreen: (index: number) => void;
 }
-
-const VideoItem: React.FC<{
-  uri: string;
-  style: any;
-  onPress: () => void;
-}> = ({ uri, style, onPress }) => {
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePress = useCallback(() => {
-    if (isPlaying) {
-      videoRef.current?.pauseAsync();
-    } else {
-      videoRef.current?.playAsync();
-    }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
-
-  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-    }
-  }, []);
-
-  return (
-    <Pressable style={style} onPress={handlePress}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={{ width: "100%", height: "100%" }}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={false}
-        isLooping
-        isMuted={false}
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-      />
-      {!isPlaying && (
-        <View style={gridStyles.videoOverlay}>
-          <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.85)" />
-        </View>
-      )}
-    </Pressable>
-  );
-};
 
 const MediaItem: React.FC<{
   uri: string;
@@ -68,7 +23,13 @@ const MediaItem: React.FC<{
   onOpenFullscreen: (index: number) => void;
 }> = ({ uri, wrapperStyle, imageStyle, imageSize, index, onOpenFullscreen }) => {
   if (isVideoUrl(uri)) {
-    return <VideoItem uri={uri} style={wrapperStyle} onPress={() => {}} />;
+    return (
+      <VideoPlayer
+        uri={uri}
+        style={wrapperStyle}
+        videoStyle={{ width: "100%", height: "100%" }}
+      />
+    );
   }
   return (
     <Pressable style={wrapperStyle} onPress={() => onOpenFullscreen(index)}>
@@ -186,11 +147,5 @@ const gridStyles = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: theme.colors.gray100,
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.15)",
   },
 });

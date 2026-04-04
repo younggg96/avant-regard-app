@@ -33,6 +33,9 @@ const AuthScreen = () => {
     // 用户协议确认 Modal
     showAgreementModal,
     setShowAgreementModal,
+    // 登录页协议勾选
+    agreedToTerms,
+    setAgreedToTerms,
     // 品牌选择相关
     showBrandPicker,
     setShowBrandPicker,
@@ -127,6 +130,8 @@ const AuthScreen = () => {
             handleMainAction={handleMainAction}
             isAppleLoginAvailable={isAppleLoginAvailable}
             onAppleLogin={handleAppleLogin}
+            agreedToTerms={agreedToTerms}
+            setAgreedToTerms={setAgreedToTerms}
           />
         </ScrollView>
       </KeyboardAvoidingView>

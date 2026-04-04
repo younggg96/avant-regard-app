@@ -1,19 +1,12 @@
-import React, { useRef, useState, useCallback } from "react";
-import {
-  Modal,
-  View,
-  FlatList,
-  TouchableOpacity,
-  StatusBar,
-  StyleSheet,
-} from "react-native";
+import React, { useRef } from "react";
+import { Modal, View, FlatList, TouchableOpacity, StatusBar } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { Text } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { styles, SCREEN_WIDTH, SCREEN_HEIGHT } from "./styles";
+import { VideoPlayer } from "./VideoPlayer";
 
 interface FullscreenImageViewerProps {
   visible: boolean;
@@ -23,49 +16,15 @@ interface FullscreenImageViewerProps {
   onIndexChange: (index: number) => void;
 }
 
-const FullscreenVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => {
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePress = useCallback(() => {
-    if (isPlaying) {
-      videoRef.current?.pauseAsync();
-    } else {
-      videoRef.current?.playAsync();
-    }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
-
-  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-    }
-  }, []);
-
-  return (
-    <TouchableOpacity
-      activeOpacity={1}
-      onPress={handlePress}
-      style={styles.fullscreenImageWrapper}
-    >
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={false}
-        isLooping
-        isMuted={false}
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-      />
-      {!isPlaying && (
-        <View style={localStyles.playOverlay}>
-          <Ionicons name="play-circle" size={64} color="rgba(255,255,255,0.85)" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-};
+const FullscreenVideoPlayer: React.FC<{ uri: string }> = ({ uri }) => (
+  <VideoPlayer
+    uri={uri}
+    style={styles.fullscreenImageWrapper}
+    videoStyle={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+    contentFit="contain"
+    playIconSize={64}
+  />
+);
 
 export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
   visible,
@@ -139,11 +98,3 @@ export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
     </Modal>
   );
 };
-
-const localStyles = StyleSheet.create({
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});

@@ -1,11 +1,29 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ResizeMode, Video } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
+
+const headerVideoSource = require("../../../../assets/video/header1.mp4");
+
+const DiscoverLogoVideo: React.FC = () => {
+  const player = useVideoPlayer(headerVideoSource, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+  return (
+    <VideoView
+      player={player}
+      style={styles.logoVideo}
+      contentFit="contain"
+      nativeControls={false}
+    />
+  );
+};
 
 interface DiscoverHeaderProps {
     avatar?: string;
@@ -33,14 +51,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                 {/* 第一行：Logo/视频 + 头像 + 通知 */}
                 <HStack alignItems="center" justifyContent="space-between">
                     {/* 左侧 Logo 视频 */}
-                    <Video
-                        source={require("../../../../assets/video/header1.mp4")}
-                        style={styles.logoVideo}
-                        resizeMode={ResizeMode.CONTAIN}
-                        shouldPlay
-                        isLooping
-                        isMuted
-                    />
+                    <DiscoverLogoVideo />
 
                     {/* 右侧：头像 + 通知图标 */}
                     <HStack alignItems="center" space="md">

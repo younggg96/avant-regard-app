@@ -14,11 +14,11 @@ import {
   ScrollView as RNScrollView,
 } from "react-native";
 import { Alert } from "../utils/Alert";
+import { VideoThumbnailView } from "../components/VideoThumbnailView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Video, ResizeMode } from "expo-av";
 import {
   Box,
   Text,
@@ -39,6 +39,7 @@ import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { getVideoThumbnail } from "../utils/videoThumbnail";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -315,6 +316,14 @@ const PublishForumPostScreen = () => {
           }, 100);
         }
         setInsertAfterBlockId(null);
+
+        if (!coverImage) {
+          const thumbnail = await getVideoThumbnail(videoUri);
+          if (thumbnail) {
+            setCoverImage(thumbnail);
+          }
+        }
+
         Alert.show("视频已添加", "", 1500);
       }
     } catch (error) {
@@ -355,22 +364,25 @@ const PublishForumPostScreen = () => {
       const allImages = getAllImageUrls();
       const uploadedUrls: string[] = [];
       const imageMapping: Record<string, string> = {};
+      const localUris = allImages.filter((uri) => !isRemoteUrl(uri));
+      const totalLocal = localUris.length;
 
-      // 上传所有本地图片
       for (let i = 0; i < allImages.length; i++) {
         const imageUri = allImages[i];
         if (isRemoteUrl(imageUri)) {
           uploadedUrls.push(imageUri);
           imageMapping[imageUri] = imageUri;
         } else {
-          setUploadProgress(`上传媒体 ${i + 1}/${allImages.length}...`);
-          const uploadedUrl = await postService.uploadImage(imageUri);
+          const localIndex = localUris.indexOf(imageUri);
+          const uploadedUrl = await postService.uploadMedia(imageUri, (filePercent) => {
+            const overall = Math.round(((localIndex * 100 + filePercent) / totalLocal));
+            setUploadProgress(`上传中 ${Math.min(overall, 99)}%`);
+          });
           uploadedUrls.push(uploadedUrl);
           imageMapping[imageUri] = uploadedUrl;
         }
       }
 
-      // 更新内容块中的图片 URL
       const updatedBlocks = contentBlocks.map((block) => {
         if (block.type === "image" && imageMapping[block.content]) {
           return { ...block, content: imageMapping[block.content] };
@@ -378,7 +390,6 @@ const PublishForumPostScreen = () => {
         return block;
       });
 
-      // 创建或更新帖子
       setUploadProgress("正在发布...");
 
       const contentText = JSON.stringify(updatedBlocks);
@@ -448,22 +459,25 @@ const PublishForumPostScreen = () => {
       const allImages = getAllImageUrls();
       const uploadedUrls: string[] = [];
       const imageMapping: Record<string, string> = {};
+      const localUris = allImages.filter((uri) => !isRemoteUrl(uri));
+      const totalLocal = localUris.length;
 
-      // 上传所有本地图片
       for (let i = 0; i < allImages.length; i++) {
         const imageUri = allImages[i];
         if (isRemoteUrl(imageUri)) {
           uploadedUrls.push(imageUri);
           imageMapping[imageUri] = imageUri;
         } else {
-          setUploadProgress(`上传媒体 ${i + 1}/${allImages.length}...`);
-          const uploadedUrl = await postService.uploadImage(imageUri);
+          const localIndex = localUris.indexOf(imageUri);
+          const uploadedUrl = await postService.uploadMedia(imageUri, (filePercent) => {
+            const overall = Math.round(((localIndex * 100 + filePercent) / totalLocal));
+            setUploadProgress(`上传中 ${Math.min(overall, 99)}%`);
+          });
           uploadedUrls.push(uploadedUrl);
           imageMapping[imageUri] = uploadedUrl;
         }
       }
 
-      // 更新内容块中的图片 URL
       const updatedBlocks = contentBlocks.map((block) => {
         if (block.type === "image" && imageMapping[block.content]) {
           return { ...block, content: imageMapping[block.content] };
@@ -646,12 +660,9 @@ const PublishForumPostScreen = () => {
         <Box borderRadius="$md" overflow="hidden" bg="$gray100">
           {isVideo ? (
             <Box style={styles.imageBlock}>
-              <Video
-                source={{ uri: block.content }}
+              <VideoThumbnailView
+                uri={block.content}
                 style={StyleSheet.absoluteFill}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay={false}
-                isLooping={false}
               />
               <Box style={styles.videoOverlay}>
                 <Ionicons name="play-circle" size={48} color="white" />

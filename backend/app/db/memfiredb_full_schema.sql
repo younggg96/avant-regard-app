@@ -55,9 +55,9 @@ CREATE TABLE IF NOT EXISTS user_info (
     age INTEGER DEFAULT 0,
     preference TEXT DEFAULT '',
     -- 隐私设置（016_user_privacy_settings）
-    hide_following BOOLEAN DEFAULT TRUE,
-    hide_followers BOOLEAN DEFAULT TRUE,
-    hide_likes BOOLEAN DEFAULT TRUE,
+    hide_following BOOLEAN DEFAULT FALSE,
+    hide_followers BOOLEAN DEFAULT FALSE,
+    hide_likes BOOLEAN DEFAULT FALSE,
     -- 资料完善标记（017_add_profile_completed）
     profile_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -125,14 +125,25 @@ CREATE TABLE IF NOT EXISTS brand_submissions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 用户喜欢的品牌关联表（015_user_favorite_brands）
-CREATE TABLE IF NOT EXISTS user_favorite_brands (
+-- [已废弃] user_favorite_brands 已被 brand_follows 替代，保留仅供历史迁移参考
+-- CREATE TABLE IF NOT EXISTS user_favorite_brands (
+--     id BIGSERIAL PRIMARY KEY,
+--     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+--     brand_id BIGINT REFERENCES brands(id) ON DELETE CASCADE,
+--     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+--     UNIQUE(user_id, brand_id)
+-- );
+
+CREATE TABLE IF NOT EXISTS brand_follows (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
     brand_id BIGINT REFERENCES brands(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, brand_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_brand_follows_user_id ON brand_follows(user_id);
+CREATE INDEX IF NOT EXISTS idx_brand_follows_brand_id ON brand_follows(brand_id);
 
 
 -- =====================================================
@@ -239,7 +250,7 @@ CREATE TABLE IF NOT EXISTS posts (
     -- 单品评价专用字段
     product_name VARCHAR(200),
     brand_name VARCHAR(200),
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)),
     -- 关联字段（来自迁移）
     show_ids TEXT[] DEFAULT '{}',
     community_id INTEGER REFERENCES communities(id) ON DELETE SET NULL,
@@ -334,7 +345,7 @@ CREATE TABLE IF NOT EXISTS show_image_reviews (
     id BIGSERIAL PRIMARY KEY,
     image_id BIGINT REFERENCES show_images(id) ON DELETE CASCADE,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)),
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -444,7 +455,7 @@ CREATE TABLE IF NOT EXISTS buyer_store_ratings (
     id BIGSERIAL PRIMARY KEY,
     store_id VARCHAR(100) NOT NULL,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+    rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(store_id, user_id)
@@ -461,15 +472,15 @@ CREATE TABLE IF NOT EXISTS buyer_store_favorites (
 
 -- 买手店评分统计视图
 CREATE OR REPLACE VIEW buyer_store_rating_stats AS
-SELECT 
+SELECT
     store_id,
     COUNT(*) as rating_count,
     ROUND(AVG(rating)::numeric, 1) as average_rating,
-    COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star_count,
-    COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star_count,
-    COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star_count,
-    COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star_count,
-    COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star_count
+    COUNT(CASE WHEN rating >= 4.5 THEN 1 END) as five_star_count,
+    COUNT(CASE WHEN rating >= 3.5 AND rating < 4.5 THEN 1 END) as four_star_count,
+    COUNT(CASE WHEN rating >= 2.5 AND rating < 3.5 THEN 1 END) as three_star_count,
+    COUNT(CASE WHEN rating >= 1.5 AND rating < 2.5 THEN 1 END) as two_star_count,
+    COUNT(CASE WHEN rating < 1.5 THEN 1 END) as one_star_count
 FROM buyer_store_ratings
 GROUP BY store_id;
 
@@ -629,8 +640,9 @@ CREATE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(push_t
 CREATE INDEX IF NOT EXISTS idx_brands_name ON brands(name);
 CREATE INDEX IF NOT EXISTS idx_brands_category ON brands(category);
 CREATE INDEX IF NOT EXISTS idx_brands_vogue_slug ON brands(vogue_slug);
-CREATE INDEX IF NOT EXISTS idx_user_favorite_brands_user_id ON user_favorite_brands(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_favorite_brands_brand_id ON user_favorite_brands(brand_id);
+-- [已废弃] user_favorite_brands 索引
+-- CREATE INDEX IF NOT EXISTS idx_user_favorite_brands_user_id ON user_favorite_brands(user_id);
+-- CREATE INDEX IF NOT EXISTS idx_user_favorite_brands_brand_id ON user_favorite_brands(brand_id);
 CREATE INDEX IF NOT EXISTS idx_brand_images_brand_id ON brand_images(brand_id);
 CREATE INDEX IF NOT EXISTS idx_brand_images_status ON brand_images(status);
 CREATE INDEX IF NOT EXISTS idx_brand_submissions_user_id ON brand_submissions(user_id);
@@ -1074,9 +1086,10 @@ COMMENT ON TABLE store_activities IS '商家活动表';
 COMMENT ON TABLE store_discounts IS '商家折扣表';
 COMMENT ON TABLE store_activity_registrations IS '活动报名表';
 
-COMMENT ON TABLE user_favorite_brands IS '用户喜欢的品牌关联表';
-COMMENT ON COLUMN user_favorite_brands.user_id IS '用户ID';
-COMMENT ON COLUMN user_favorite_brands.brand_id IS '品牌ID';
+-- [已废弃] user_favorite_brands 注释
+-- COMMENT ON TABLE user_favorite_brands IS '用户喜欢的品牌关联表';
+-- COMMENT ON COLUMN user_favorite_brands.user_id IS '用户ID';
+-- COMMENT ON COLUMN user_favorite_brands.brand_id IS '品牌ID';
 
 COMMENT ON COLUMN user_info.cover_url IS '用户封面图片URL';
 COMMENT ON COLUMN user_info.hide_following IS '是否隐藏关注列表';

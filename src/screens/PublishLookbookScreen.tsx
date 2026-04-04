@@ -9,7 +9,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { Video, ResizeMode } from "expo-av";
 import {
   Box,
   Text,
@@ -30,12 +29,14 @@ import PublishButtons from "../components/PublishButtons";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
+import VideoPreviewModal from "../components/VideoPreviewModal";
 import { postService, isVideoUrl } from "../services/postService";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
+import { getVideoThumbnail } from "../utils/videoThumbnail";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -73,6 +74,8 @@ const PublishLookbookScreen = () => {
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
   >({});
+
+  const [videoThumbnails, setVideoThumbnails] = useState<Record<string, string>>({});
 
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
@@ -162,6 +165,7 @@ const PublishLookbookScreen = () => {
 
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
+  const [videoPreviewUri, setVideoPreviewUri] = useState<string | null>(null);
 
   const MAX_IMAGES = 9;
 
@@ -195,7 +199,6 @@ const PublishLookbookScreen = () => {
     return uri.startsWith("http://") || uri.startsWith("https://");
   };
 
-  // 处理图片上传（区分新图片和已上传的图片）
   const processImages = async (imageList: string[]): Promise<string[]> => {
     const remoteUrls: string[] = [];
     const localUris: string[] = [];
@@ -210,11 +213,12 @@ const PublishLookbookScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress(`上传媒体 0/${localUris.length}`);
+      setUploadProgress("上传中 0%");
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
-        (completed, total) => {
-          setUploadProgress(`上传媒体 ${completed}/${total}`);
+        undefined,
+        (percent) => {
+          setUploadProgress(`上传中 ${percent}%`);
         }
       );
     }
@@ -390,14 +394,14 @@ const PublishLookbookScreen = () => {
 
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync({
-            allowsEditing: false,
-            quality: 1.0,
-          })
+          allowsEditing: false,
+          quality: 1.0,
+        })
         : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: false,
-            quality: 1.0,
-          });
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 1.0,
+        });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
@@ -471,9 +475,15 @@ const PublishLookbookScreen = () => {
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const videoUri = result.assets[0].uri;
+        const thumbnail = await getVideoThumbnail(videoUri);
+        if (thumbnail) {
+          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail }));
+        }
         const newImages = [...images, videoUri];
         setImages(newImages);
-        if (!coverImage) setCoverImage(videoUri);
+        if (!coverImage) {
+          setCoverImage(thumbnail || videoUri);
+        }
         Alert.show("视频已添加", "", 1500);
       }
     } catch (error) {
@@ -482,10 +492,15 @@ const PublishLookbookScreen = () => {
     }
   };
 
-  // 点击图片预览
+  // 点击图片/视频预览
   const handleImagePress = (index: number) => {
-    setPreviewInitialIndex(index);
-    setShowImagePreview(true);
+    const uri = images[index];
+    if (isVideoUrl(uri)) {
+      setVideoPreviewUri(uri);
+    } else {
+      setPreviewInitialIndex(index);
+      setShowImagePreview(true);
+    }
   };
 
   // 长按图片打开编辑菜单
@@ -498,7 +513,10 @@ const PublishLookbookScreen = () => {
   const handleEditImage = async () => {
     setShowImageEditMenu(false);
     if (selectedImageIndex !== null && selectedImageUri) {
-      setCropperImageUri(selectedImageUri);
+      const uriToCrop = isVideoUrl(selectedImageUri) && videoThumbnails[selectedImageUri]
+        ? videoThumbnails[selectedImageUri]
+        : selectedImageUri;
+      setCropperImageUri(uriToCrop);
       setShowImageCropper(true);
     }
   };
@@ -506,10 +524,12 @@ const PublishLookbookScreen = () => {
   const handleSetCover = () => {
     setShowImageEditMenu(false);
     if (selectedImageUri && selectedImageIndex !== null) {
-      // 设置为封面
-      setCoverImage(selectedImageUri);
+      if (isVideoUrl(selectedImageUri) && videoThumbnails[selectedImageUri]) {
+        setCoverImage(videoThumbnails[selectedImageUri]);
+      } else {
+        setCoverImage(selectedImageUri);
+      }
 
-      // 如果不是第一张，移动到第一位
       if (selectedImageIndex !== 0) {
         const newImages = [...images];
         const [movedImage] = newImages.splice(selectedImageIndex, 1);
@@ -517,7 +537,7 @@ const PublishLookbookScreen = () => {
         setImages(newImages);
       }
 
-      Alert.show("设置成功: 已将此图片设为封面");
+      Alert.show("设置成功: 已设为封面");
     }
   };
 
@@ -607,12 +627,21 @@ const PublishLookbookScreen = () => {
         }));
 
         if (selectedImageIndex !== null) {
-          const newImages = [...images];
-          newImages[selectedImageIndex] = croppedUri;
-          setImages(newImages);
+          const originalUri = images[selectedImageIndex];
 
-          if (coverImage === selectedImageUri) {
-            setCoverImage(croppedUri);
+          if (isVideoUrl(originalUri)) {
+            setVideoThumbnails(prev => ({ ...prev, [originalUri]: croppedUri }));
+            if (coverImage && (coverImage === videoThumbnails[originalUri] || coverImage === originalUri)) {
+              setCoverImage(croppedUri);
+            }
+          } else {
+            const newImages = [...images];
+            newImages[selectedImageIndex] = croppedUri;
+            setImages(newImages);
+
+            if (coverImage === selectedImageUri) {
+              setCoverImage(croppedUri);
+            }
           }
 
           Alert.show("编辑成功", "", 1500);
@@ -633,12 +662,22 @@ const PublishLookbookScreen = () => {
       (error) => {
         console.error("Failed to get image size:", error);
         if (selectedImageIndex !== null) {
-          const newImages = [...images];
-          newImages[selectedImageIndex] = croppedUri;
-          setImages(newImages);
-          if (coverImage === selectedImageUri) {
-            setCoverImage(croppedUri);
+          const originalUri = images[selectedImageIndex];
+
+          if (isVideoUrl(originalUri)) {
+            setVideoThumbnails(prev => ({ ...prev, [originalUri]: croppedUri }));
+            if (coverImage && (coverImage === videoThumbnails[originalUri] || coverImage === originalUri)) {
+              setCoverImage(croppedUri);
+            }
+          } else {
+            const newImages = [...images];
+            newImages[selectedImageIndex] = croppedUri;
+            setImages(newImages);
+            if (coverImage === selectedImageUri) {
+              setCoverImage(croppedUri);
+            }
           }
+
           setSelectedImageUri(null);
           setSelectedImageIndex(null);
         } else {
@@ -673,6 +712,12 @@ const PublishLookbookScreen = () => {
     return Math.min(Math.max(calculatedHeight, 200), 500);
   }, [coverImage, imageDimensions]);
 
+  const previewImages = useMemo(() => {
+    return images.map(img =>
+      isVideoUrl(img) && videoThumbnails[img] ? videoThumbnails[img] : img
+    );
+  }, [images, videoThumbnails]);
+
   const renderPreviewSection = () => {
     if (images.length === 0) {
       return (
@@ -692,7 +737,7 @@ const PublishLookbookScreen = () => {
               color={theme.colors.gray400}
             />
             <Text color="$gray500" mt="$sm">
-              点击添加图片
+              点击添加图片 或 视频
             </Text>
           </Pressable>
         </Box>
@@ -701,7 +746,7 @@ const PublishLookbookScreen = () => {
 
     return (
       <ImageGallery
-        images={images}
+        images={previewImages}
         imageHeight={previewHeight}
         showThumbnails={false}
         showFullscreenOnPress={false}
@@ -744,7 +789,7 @@ const PublishLookbookScreen = () => {
                 onLongPress={() => handleEnterReorderMode(index)}
               >
                 <OptimizedImage
-                  uri={image}
+                  uri={isVideoUrl(image) && videoThumbnails[image] ? videoThumbnails[image] : image}
                   size={ImageSize.MEDIUM}
                   style={styles.thumbnail}
                   contentFit="cover"
@@ -991,11 +1036,25 @@ const PublishLookbookScreen = () => {
 
       <ImagePreviewModal
         visible={showImagePreview}
-        imageUrls={images}
+        imageUrls={previewImages}
         initialIndex={previewInitialIndex}
         title={title || "Lookbook 预览"}
         onClose={() => setShowImagePreview(false)}
+        onImagePress={(index) => {
+          if (isVideoUrl(images[index])) {
+            setShowImagePreview(false);
+            setVideoPreviewUri(images[index]);
+          }
+        }}
       />
+
+      {videoPreviewUri && (
+        <VideoPreviewModal
+          visible={true}
+          uri={videoPreviewUri}
+          onClose={() => setVideoPreviewUri(null)}
+        />
+      )}
 
       <BrandSelectorModal
         visible={showBrandSelector}

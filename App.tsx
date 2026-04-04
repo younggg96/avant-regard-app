@@ -39,6 +39,7 @@ import UserProfileScreen from "./src/screens/UserProfileScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
 import FollowingUsersScreen from "./src/screens/FollowingUsersScreen";
 import FollowersScreen from "./src/screens/FollowersScreen";
+import BrandFollowersScreen from "./src/screens/BrandFollowersScreen";
 import AdminScreen from "./src/screens/admin/AdminScreen";
 import SubmitStoreScreen from "./src/screens/SubmitStoreScreen";
 import StoreDetailScreen from "./src/screens/StoreDetailScreen";
@@ -64,6 +65,7 @@ import SearchScreen from "./src/screens/SearchScreen";
 import MyCommentsScreen from "./src/screens/MyCommentsScreen";
 import MyLikesScreen from "./src/screens/MyLikesScreen";
 import BlockedUsersScreen from "./src/screens/BlockedUsersScreen";
+import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -80,7 +82,7 @@ import { ToastProvider } from "./src/components/ToastProvider";
 import ProfileReminderModal from "./src/components/ProfileReminderModal";
 
 // 防止原生 splash screen 自动隐藏
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -305,6 +307,11 @@ function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="BrandFollowers"
+          component={BrandFollowersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="Admin"
           component={AdminScreen}
           options={{ headerShown: false }}
@@ -418,6 +425,11 @@ function AppNavigator() {
           component={BlockedUsersScreen}
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
 
       {/* 资料填写提醒 Modal */}
@@ -452,7 +464,7 @@ export default function App() {
         setFontsLoaded(true);
       } finally {
         // 隐藏原生 splash screen，显示我们的视频
-        await SplashScreen.hideAsync();
+        await SplashScreen.hideAsync().catch(() => {});
         setAppIsReady(true);
       }
     }

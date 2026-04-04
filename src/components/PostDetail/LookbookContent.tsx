@@ -1,13 +1,12 @@
-import React, { useState, useCallback, useRef } from "react";
-import { View, FlatList, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import React from "react";
+import { View, FlatList } from "react-native";
 import { Text, Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { Post } from "../PostCard";
 import { styles, SCREEN_WIDTH } from "./styles";
+import { VideoPlayer } from "./VideoPlayer";
 
 interface LookbookContentProps {
   post: Post;
@@ -16,59 +15,6 @@ interface LookbookContentProps {
   onImageIndexChange: (index: number) => void;
   onOpenFullscreen: (index: number) => void;
 }
-
-const LookbookVideoItem: React.FC<{
-  uri: string;
-  wrapperStyle: any;
-  videoStyle: any;
-}> = ({ uri, wrapperStyle, videoStyle }) => {
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePress = useCallback(() => {
-    if (isPlaying) {
-      videoRef.current?.pauseAsync();
-    } else {
-      videoRef.current?.playAsync();
-    }
-    setIsPlaying(!isPlaying);
-  }, [isPlaying]);
-
-  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-    }
-  }, []);
-
-  return (
-    <Pressable onPress={handlePress} style={wrapperStyle}>
-      <Video
-        ref={videoRef}
-        source={{ uri }}
-        style={videoStyle}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={false}
-        isLooping
-        isMuted={false}
-        onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-      />
-      {!isPlaying && (
-        <View style={localStyles.videoOverlay}>
-          <Ionicons name="play-circle" size={56} color="rgba(255,255,255,0.85)" />
-        </View>
-      )}
-    </Pressable>
-  );
-};
-
-const localStyles = StyleSheet.create({
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
-});
 
 export const LookbookContent: React.FC<LookbookContentProps> = ({
   post,
@@ -94,11 +40,13 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
           }}
           renderItem={({ item, index }) => {
             if (isVideoUrl(item)) {
+              console.log("item", item);
               return (
-                <LookbookVideoItem
+                <VideoPlayer
                   uri={item}
-                  wrapperStyle={styles.lookbookImageWrapper}
+                  style={styles.lookbookImageWrapper}
                   videoStyle={styles.lookbookImage}
+                  playIconSize={56}
                 />
               );
             }

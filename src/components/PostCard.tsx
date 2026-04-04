@@ -1,8 +1,8 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Video, ResizeMode } from "expo-av";
 import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
+import { VideoThumbnailView } from "./VideoThumbnailView";
 import { ImageSize } from "../utils/imageUtils";
 import { isVideoUrl } from "../services/postService";
 import { theme } from "../theme";
@@ -113,12 +113,9 @@ const PostCard: React.FC<PostCardProps> = ({
         <Box position="relative">
           {isVideoUrl(displayImage) ? (
             <View style={[styles.image, isPending && styles.pendingImage]}>
-              <Video
-                source={{ uri: displayImage }}
+              <VideoThumbnailView
+                uri={displayImage}
                 style={{ width: "100%", height: "100%" }}
-                resizeMode={ResizeMode.COVER}
-                shouldPlay={false}
-                isMuted
               />
               <View style={styles.videoIndicator}>
                 <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.85)" />

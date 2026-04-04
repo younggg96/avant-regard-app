@@ -1,18 +1,24 @@
 import React from "react";
 import { View } from "react-native";
-import { Video, ResizeMode } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { styles } from "../styles";
 
+const logoSource = require("../../../../assets/video/logo-video.mp4");
+
 export const BrandLogo: React.FC = () => {
+  const player = useVideoPlayer(logoSource, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+
   return (
     <View style={styles.brandContainer}>
-      <Video
-        source={require("../../../../assets/video/logo-video.mp4")}
+      <VideoView
+        player={player}
         style={styles.logoImage}
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={true}
-        isLooping={true}
-        isMuted={true}
+        contentFit="contain"
+        nativeControls={false}
       />
     </View>
   );

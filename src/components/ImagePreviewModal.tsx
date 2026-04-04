@@ -18,12 +18,13 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface ImagePreviewModalProps {
   visible: boolean;
-  imageUrl?: string; // 单图模式（向后兼容）
-  imageUrls?: string[]; // 多图模式
-  initialIndex?: number; // 初始显示的图片索引
+  imageUrl?: string;
+  imageUrls?: string[];
+  initialIndex?: number;
   title?: string;
   subtitle?: string;
   onClose: () => void;
+  onImagePress?: (index: number) => void;
 }
 
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
@@ -34,6 +35,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   title,
   subtitle,
   onClose,
+  onImagePress,
 }) => {
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -94,8 +96,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
             );
             setCurrentIndex(newIndex);
           }}
-          renderItem={({ item }) => (
-            <View style={styles.fullscreenImageWrapper}>
+          renderItem={({ item, index }) => (
+            <Pressable
+              style={styles.fullscreenImageWrapper}
+              onPress={() => onImagePress?.(index)}
+              disabled={!onImagePress}
+            >
               <OptimizedImage
                 uri={item}
                 size={ImageSize.ORIGINAL}
@@ -103,7 +109,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                 contentFit="contain"
                 lazy={true}
               />
-            </View>
+            </Pressable>
           )}
           keyExtractor={(item, index) => `image-${index}`}
         />

@@ -1,17 +1,17 @@
 -- 用户隐私设置
 -- 添加隐私设置字段到 user_info 表
 
--- 添加隐私设置列（默认全部隐藏）
+-- 添加隐私设置列（默认全部不隐藏）
 ALTER TABLE user_info
-ADD COLUMN IF NOT EXISTS hide_following BOOLEAN DEFAULT TRUE,
-ADD COLUMN IF NOT EXISTS hide_followers BOOLEAN DEFAULT TRUE,
-ADD COLUMN IF NOT EXISTS hide_likes BOOLEAN DEFAULT TRUE;
+ADD COLUMN IF NOT EXISTS hide_following BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS hide_followers BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS hide_likes BOOLEAN DEFAULT FALSE;
 
 -- 为现有用户设置默认值
 UPDATE user_info
-SET hide_following = TRUE,
-    hide_followers = TRUE,
-    hide_likes = TRUE
+SET hide_following = FALSE,
+    hide_followers = FALSE,
+    hide_likes = FALSE
 WHERE hide_following IS NULL
    OR hide_followers IS NULL
    OR hide_likes IS NULL;

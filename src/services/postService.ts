@@ -27,7 +27,7 @@ export interface Post {
   id: number;
   userId: number;
   username: string;
-  avatarUrl?: string;  // 作者头像 URL
+  avatarUrl?: string; // 作者头像 URL
   postType: PostType;
   status: PostStatus;
   auditStatus?: AuditStatus;
@@ -100,7 +100,7 @@ export interface UpdatePostParams {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
-  isRetry: boolean = false
+  isRetry: boolean = false,
 ): Promise<T> {
   const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
   console.log("request", url, options);
@@ -174,7 +174,6 @@ async function request<T>(
 
     if (contentType?.includes("application/json")) {
       const jsonResponse = await response.json();
-      console.log("response: JSON", jsonResponse);
 
       // 处理包装的 API 响应格式 { code, message, data }
       if (
@@ -213,7 +212,7 @@ async function request<T>(
 async function uploadRequest<T>(
   endpoint: string,
   formData: FormData,
-  isRetry: boolean = false
+  isRetry: boolean = false,
 ): Promise<T> {
   const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
   console.log("Upload request URL:", url);
@@ -274,7 +273,7 @@ async function uploadRequest<T>(
         const errorData = await response.json();
         console.error(
           "Upload error (JSON):",
-          JSON.stringify(errorData, null, 2)
+          JSON.stringify(errorData, null, 2),
         );
         errorMessage =
           errorData.detail ||
@@ -323,16 +322,31 @@ async function uploadRequest<T>(
 // ==================== 媒体类型工具 ====================
 
 const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "m4v", "webm", "avi"]);
-const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "heic", "bmp"]);
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "heic",
+  "bmp",
+]);
 
 const IMAGE_MIME_MAP: Record<string, string> = {
-  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
-  gif: "image/gif", webp: "image/webp", heic: "image/heic",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
 };
 
 const VIDEO_MIME_MAP: Record<string, string> = {
-  mp4: "video/mp4", mov: "video/quicktime",
-  m4v: "video/x-m4v", webm: "video/webm", avi: "video/x-msvideo",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  m4v: "video/x-m4v",
+  webm: "video/webm",
+  avi: "video/x-msvideo",
 };
 
 /**
@@ -351,16 +365,106 @@ export function isVideoUrl(uri: string): boolean {
 function inferMimeType(uri: string): string {
   const filename = uri.split("/").pop() || "";
   const ext = filename.split(".").pop()?.toLowerCase() || "";
-  return IMAGE_MIME_MAP[ext] || VIDEO_MIME_MAP[ext] || "application/octet-stream";
+  return (
+    IMAGE_MIME_MAP[ext] || VIDEO_MIME_MAP[ext] || "application/octet-stream"
+  );
 }
 
 // ==================== 文件上传 ====================
+
+export type UploadProgressCallback = (percent: number) => void;
+
+/**
+ * XMLHttpRequest-based upload with byte-level progress tracking.
+ */
+async function uploadWithProgress<T>(
+  endpoint: string,
+  formData: FormData,
+  onProgress?: UploadProgressCallback,
+): Promise<T> {
+  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
+
+  const authStore = useAuthStore.getState();
+  let token = authStore.getAccessToken();
+  if (
+    token &&
+    authStore.isTokenExpiringSoon &&
+    authStore.isTokenExpiringSoon()
+  ) {
+    await authStore.refreshTokens();
+    token = authStore.getAccessToken();
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Accept", "*/*");
+    if (token) {
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    }
+
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const json = JSON.parse(xhr.responseText);
+          if (json && typeof json === "object" && "code" in json) {
+            if (json.code !== 0) {
+              reject(new Error(json.message || "上传失败"));
+              return;
+            }
+            resolve(json.data as T);
+            return;
+          }
+          resolve(json as T);
+        } catch {
+          resolve(xhr.responseText as unknown as T);
+        }
+      } else if (xhr.status === 401 && authStore.tokens?.refreshToken) {
+        authStore.refreshTokens().then((ok) => {
+          if (ok) {
+            uploadWithProgress<T>(endpoint, formData, onProgress).then(
+              resolve,
+              reject,
+            );
+          } else {
+            reject(new Error(`上传失败 (${xhr.status})`));
+          }
+        });
+      } else {
+        let msg = `上传失败 (${xhr.status})`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          msg = err.detail || err.message || err.error || msg;
+        } catch {}
+        reject(new Error(msg));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("上传失败，请检查网络连接"));
+    xhr.ontimeout = () => reject(new Error("上传超时，请重试"));
+    xhr.timeout = 300000;
+
+    xhr.send(formData);
+  });
+}
 
 /**
  * 上传单张图片
  * POST /api/files/upload-image
  */
-export async function uploadImage(imageUri: string): Promise<string> {
+export async function uploadImage(
+  imageUri: string,
+  onProgress?: UploadProgressCallback,
+): Promise<string> {
   console.log("uploadImage called with URI:", imageUri);
   const formData = new FormData();
 
@@ -376,7 +480,11 @@ export async function uploadImage(imageUri: string): Promise<string> {
     filename = `${filename}.jpg`;
   }
 
-  console.log("Upload file info:", { filename, type, uri: imageUri.substring(0, 100) });
+  console.log("Upload file info:", {
+    filename,
+    type,
+    uri: imageUri.substring(0, 100),
+  });
 
   formData.append("file", {
     uri: imageUri,
@@ -384,10 +492,13 @@ export async function uploadImage(imageUri: string): Promise<string> {
     type,
   } as any);
 
-  const result = await uploadRequest<{ url: string }>(
-    "/api/files/upload-image",
-    formData
-  );
+  const result = onProgress
+    ? await uploadWithProgress<{ url: string }>(
+        "/api/files/upload-image",
+        formData,
+        onProgress,
+      )
+    : await uploadRequest<{ url: string }>("/api/files/upload-image", formData);
 
   if (result && typeof result === "object" && "url" in result) {
     return result.url;
@@ -399,7 +510,10 @@ export async function uploadImage(imageUri: string): Promise<string> {
  * 上传视频
  * POST /api/files/upload-video
  */
-export async function uploadVideo(videoUri: string): Promise<string> {
+export async function uploadVideo(
+  videoUri: string,
+  onProgress?: UploadProgressCallback,
+): Promise<string> {
   console.log("uploadVideo called with URI:", videoUri);
   const formData = new FormData();
 
@@ -415,7 +529,11 @@ export async function uploadVideo(videoUri: string): Promise<string> {
     filename = `${filename}.mp4`;
   }
 
-  console.log("Upload video info:", { filename, type, uri: videoUri.substring(0, 100) });
+  console.log("Upload video info:", {
+    filename,
+    type,
+    uri: videoUri.substring(0, 100),
+  });
 
   formData.append("file", {
     uri: videoUri,
@@ -423,10 +541,16 @@ export async function uploadVideo(videoUri: string): Promise<string> {
     type,
   } as any);
 
-  const result = await uploadRequest<{ url: string; mediaType: string }>(
-    "/api/files/upload-video",
-    formData
-  );
+  const result = onProgress
+    ? await uploadWithProgress<{ url: string; mediaType: string }>(
+        "/api/files/upload-video",
+        formData,
+        onProgress,
+      )
+    : await uploadRequest<{ url: string; mediaType: string }>(
+        "/api/files/upload-video",
+        formData,
+      );
 
   if (result && typeof result === "object" && "url" in result) {
     return result.url;
@@ -437,11 +561,14 @@ export async function uploadVideo(videoUri: string): Promise<string> {
 /**
  * 上传单个媒体文件（自动区分图片/视频）
  */
-export async function uploadMedia(uri: string): Promise<string> {
+export async function uploadMedia(
+  uri: string,
+  onProgress?: UploadProgressCallback,
+): Promise<string> {
   if (isVideoUrl(uri)) {
-    return uploadVideo(uri);
+    return uploadVideo(uri, onProgress);
   }
-  return uploadImage(uri);
+  return uploadImage(uri, onProgress);
 }
 
 /**
@@ -452,7 +579,7 @@ export async function uploadMedia(uri: string): Promise<string> {
  */
 export async function uploadImages(
   imageUris: string[],
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
 ): Promise<string[]> {
   const urls: string[] = [];
   const total = imageUris.length;
@@ -467,23 +594,33 @@ export async function uploadImages(
 }
 
 /**
- * 批量上传媒体文件（图片+视频混合）
+ * 批量上传媒体文件（图片+视频混合），支持百分比进度
  * @param mediaUris 本地媒体 URI 数组
- * @param onProgress 进度回调 (已完成数量, 总数)
+ * @param onProgress 文件级别进度回调 (已完成数量, 总数)
+ * @param onPercentProgress 百分比进度回调 (0-100)
  */
 export async function uploadMediaFiles(
   mediaUris: string[],
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  onPercentProgress?: (percent: number) => void,
 ): Promise<string[]> {
   const urls: string[] = [];
   const total = mediaUris.length;
 
   for (let i = 0; i < total; i++) {
-    const url = await uploadMedia(mediaUris[i]);
+    const url = await uploadMedia(mediaUris[i], (filePercent) => {
+      if (onPercentProgress) {
+        const overall = Math.round((i * 100 + filePercent) / total);
+        onPercentProgress(Math.min(overall, 99));
+      }
+    });
     urls.push(url);
     onProgress?.(i + 1, total);
   }
 
+  if (onPercentProgress) {
+    onPercentProgress(100);
+  }
   return urls;
 }
 
@@ -527,7 +664,7 @@ export async function createPost(params: CreatePostParams): Promise<Post> {
  */
 export async function updatePost(
   postId: number,
-  params: UpdatePostParams
+  params: UpdatePostParams,
 ): Promise<Post> {
   return request<Post>(`/api/posts/${postId}`, {
     method: "PUT",
@@ -541,7 +678,7 @@ export async function updatePost(
  */
 export async function deletePost(
   postId: number,
-  userId: number
+  userId: number,
 ): Promise<void> {
   return request<void>(`/api/posts/${postId}?userId=${userId}`, {
     method: "DELETE",
@@ -566,7 +703,7 @@ export async function likePost(postId: number, userId: number): Promise<void> {
  */
 export async function unlikePost(
   postId: number,
-  userId: number
+  userId: number,
 ): Promise<void> {
   return request<void>(`/api/posts/${postId}/like?userId=${userId}`, {
     method: "DELETE",
@@ -581,7 +718,7 @@ export async function unlikePost(
  */
 export async function favoritePost(
   postId: number,
-  userId: number
+  userId: number,
 ): Promise<void> {
   return request<void>(`/api/posts/${postId}/favorite?userId=${userId}`, {
     method: "POST",
@@ -594,7 +731,7 @@ export async function favoritePost(
  */
 export async function unfavoritePost(
   postId: number,
-  userId: number
+  userId: number,
 ): Promise<void> {
   return request<void>(`/api/posts/${postId}/favorite?userId=${userId}`, {
     method: "DELETE",
@@ -611,7 +748,7 @@ export async function unfavoritePost(
  */
 export async function getPostsByUserId(
   userId: number,
-  status?: PostStatus
+  status?: PostStatus,
 ): Promise<Post[]> {
   const query = status ? `?status=${status}` : "";
   return request<Post[]>(`/api/posts/user/${userId}${query}`, {
@@ -636,7 +773,7 @@ export async function getLikedPostsByUserId(userId: number): Promise<Post[]> {
  * @param userId 用户ID
  */
 export async function getFavoritePostsByUserId(
-  userId: number
+  userId: number,
 ): Promise<Post[]> {
   return request<Post[]>(`/api/posts/user/${userId}/favorites`, {
     method: "GET",
@@ -651,7 +788,9 @@ export async function getFavoritePostsByUserId(
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
  * @param showId 秀场ID（支持整数或字符串类型）
  */
-export async function getPostsByShowId(showId: number | string): Promise<Post[]> {
+export async function getPostsByShowId(
+  showId: number | string,
+): Promise<Post[]> {
   // 直接使用传入的ID，不进行类型转换
   return request<Post[]>(`/api/posts/show/${encodeURIComponent(showId)}`, {
     method: "GET",
@@ -667,14 +806,11 @@ export async function getPostsByShowId(showId: number | string): Promise<Post[]>
  */
 export async function getPostsByBrandId(
   brandId: number,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Post[]> {
-  return request<Post[]>(
-    `/api/posts/brand/id/${brandId}?limit=${limit}`,
-    {
-      method: "GET",
-    }
-  );
+  return request<Post[]>(`/api/posts/brand/id/${brandId}?limit=${limit}`, {
+    method: "GET",
+  });
 }
 
 /**
@@ -686,13 +822,13 @@ export async function getPostsByBrandId(
  */
 export async function getPostsByBrandName(
   brandName: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Post[]> {
   return request<Post[]>(
     `/api/posts/brand/${encodeURIComponent(brandName)}?limit=${limit}`,
     {
       method: "GET",
-    }
+    },
   );
 }
 
@@ -704,13 +840,13 @@ export async function getPostsByBrandName(
  */
 export async function searchPosts(
   keyword: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<Post[]> {
   return request<Post[]>(
     `/api/posts/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
     {
       method: "GET",
-    }
+    },
   );
 }
 
@@ -722,7 +858,9 @@ export async function searchPosts(
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的帖子
  * @param communityId 社区ID
  */
-export async function getPostsByCommunityId(communityId: number): Promise<Post[]> {
+export async function getPostsByCommunityId(
+  communityId: number,
+): Promise<Post[]> {
   return request<Post[]>(`/api/posts/community/${communityId}`, {
     method: "GET",
   });

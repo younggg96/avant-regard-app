@@ -23,6 +23,8 @@ import {
 import {
   TermsContent,
   PrivacyContent,
+  CommunityGuidelinesContent,
+  MinorProtectionContent,
 } from "./Auth/components";
 
 interface SettingItem {
@@ -49,10 +51,9 @@ const SettingsScreen = () => {
 
   // 协议 Modal 状态
   const [showAgreementModal, setShowAgreementModal] = useState(false);
-  const [agreementType, setAgreementType] = useState<"terms" | "privacy">("terms");
+  const [agreementType, setAgreementType] = useState<"terms" | "privacy" | "guidelines" | "minor">("terms");
 
-  // 显示协议 Modal
-  const showAgreement = (type: "terms" | "privacy") => {
+  const showAgreement = (type: "terms" | "privacy" | "guidelines" | "minor") => {
     setAgreementType(type);
     setShowAgreementModal(true);
   };
@@ -177,7 +178,7 @@ const SettingsScreen = () => {
           label: "隐藏关注列表",
           icon: "eye-off-outline",
           toggle: true,
-          value: privacySettings?.hideFollowing ?? true,
+          value: privacySettings?.hideFollowing ?? false,
           onToggle: (value) => handlePrivacyToggle("hideFollowing", value),
         },
         {
@@ -185,7 +186,7 @@ const SettingsScreen = () => {
           label: "隐藏粉丝列表",
           icon: "eye-off-outline",
           toggle: true,
-          value: privacySettings?.hideFollowers ?? true,
+          value: privacySettings?.hideFollowers ?? false,
           onToggle: (value) => handlePrivacyToggle("hideFollowers", value),
         },
         {
@@ -193,7 +194,7 @@ const SettingsScreen = () => {
           label: "隐藏点赞列表",
           icon: "eye-off-outline",
           toggle: true,
-          value: privacySettings?.hideLikes ?? true,
+          value: privacySettings?.hideLikes ?? false,
           onToggle: (value) => handlePrivacyToggle("hideLikes", value),
         },
         {
@@ -222,7 +223,7 @@ const SettingsScreen = () => {
       items: [
         {
           id: "terms",
-          label: "服务条款",
+          label: "软件许可服务协议",
           icon: "document-text-outline",
           onPress: () => showAgreement("terms"),
         },
@@ -231,6 +232,18 @@ const SettingsScreen = () => {
           label: "隐私政策",
           icon: "shield-outline",
           onPress: () => showAgreement("privacy"),
+        },
+        {
+          id: "guidelines",
+          label: "平台自律公约",
+          icon: "megaphone-outline",
+          onPress: () => showAgreement("guidelines"),
+        },
+        {
+          id: "minor",
+          label: "未成年人个人信息保护规则",
+          icon: "people-outline",
+          onPress: () => showAgreement("minor"),
         },
       ],
     },
@@ -400,7 +413,13 @@ const SettingsScreen = () => {
               <Ionicons name="close" size={24} color={theme.colors.black} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {agreementType === "terms" ? "服务条款" : "隐私政策"}
+              {agreementType === "terms"
+                ? "软件许可服务协议"
+                : agreementType === "privacy"
+                ? "隐私政策"
+                : agreementType === "guidelines"
+                ? "平台自律公约"
+                : "未成年人个人信息保护规则"}
             </Text>
             <View style={styles.modalCloseButton} />
           </View>
@@ -408,7 +427,15 @@ const SettingsScreen = () => {
             style={styles.modalContent}
             showsVerticalScrollIndicator={false}
           >
-            {agreementType === "terms" ? <TermsContent /> : <PrivacyContent />}
+            {agreementType === "terms" ? (
+              <TermsContent />
+            ) : agreementType === "privacy" ? (
+              <PrivacyContent />
+            ) : agreementType === "guidelines" ? (
+              <CommunityGuidelinesContent />
+            ) : (
+              <MinorProtectionContent />
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
