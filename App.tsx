@@ -70,6 +70,8 @@ import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
 import PublishTabButton from "./src/components/PublishTabButton";
+import UploadProgressBanner from "./src/components/UploadProgressBanner";
+import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
 
 // Theme
 import { theme } from "./src/theme";
@@ -80,9 +82,10 @@ import { useAuthStore } from "./src/store/authStore";
 // Providers
 import { ToastProvider } from "./src/components/ToastProvider";
 import ProfileReminderModal from "./src/components/ProfileReminderModal";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // 防止原生 splash screen 自动隐藏
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -188,15 +191,53 @@ function TabNavigator() {
 }
 
 function AppNavigator() {
-  const { isAuthenticated, shouldShowProfileReminder, updateLastProfileReminderTime } = useAuthStore();
+  const { isAuthenticated, user, shouldShowProfileReminder, updateLastProfileReminderTime } = useAuthStore();
   const [showProfileReminder, setShowProfileReminder] = useState(false);
+  const [showOnboardingGuide, setShowOnboardingGuide] = useState(false);
+  const [guideChecked, setGuideChecked] = useState(false);
 
-  // 初始化推送通知
+  // Push notifications
   usePushNotifications();
 
-  // 检查是否需要显示资料填写提醒
+  // Check if onboarding guide needs to be shown
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user?.userId) {
+      setGuideChecked(true);
+      return;
+    }
+
+    const checkGuide = async () => {
+      try {
+        const key = `onboarding_guide_completed_${user.userId}`;
+        const completed = await AsyncStorage.getItem(key);
+        if (!completed) {
+          setShowOnboardingGuide(true);
+        }
+      } catch (error) {
+        console.log("Failed to check onboarding guide status:", error);
+      } finally {
+        setGuideChecked(true);
+      }
+    };
+
+    checkGuide();
+  }, [isAuthenticated, user?.userId]);
+
+  const handleGuideComplete = useCallback(async () => {
+    if (user?.userId) {
+      try {
+        const key = `onboarding_guide_completed_${user.userId}`;
+        await AsyncStorage.setItem(key, "true");
+      } catch (error) {
+        console.log("Failed to save onboarding guide status:", error);
+      }
+    }
+    setShowOnboardingGuide(false);
+  }, [user?.userId]);
+
+  // 检查是否需要显示资料填写提醒（仅在引导完成后）
+  useEffect(() => {
+    if (!isAuthenticated || !guideChecked || showOnboardingGuide) return;
 
     // 首次检查（延迟3秒，等待应用完全加载）
     const initialCheck = setTimeout(() => {
@@ -218,7 +259,7 @@ function AppNavigator() {
       clearTimeout(initialCheck);
       clearInterval(interval);
     };
-  }, [isAuthenticated, shouldShowProfileReminder, updateLastProfileReminderTime]);
+  }, [isAuthenticated, guideChecked, showOnboardingGuide, shouldShowProfileReminder, updateLastProfileReminderTime]);
 
   if (!isAuthenticated) {
     // Show only auth flow for unauthenticated users
@@ -432,11 +473,20 @@ function AppNavigator() {
         />
       </Stack.Navigator>
 
+      {/* 新用户引导 Modal */}
+      <OnboardingGuideModal
+        visible={showOnboardingGuide}
+        onComplete={handleGuideComplete}
+      />
+
       {/* 资料填写提醒 Modal */}
       <ProfileReminderModal
         visible={showProfileReminder}
         onClose={() => setShowProfileReminder(false)}
       />
+
+      {/* 后台上传进度条 */}
+      <UploadProgressBanner />
     </>
   );
 }
@@ -464,7 +514,7 @@ export default function App() {
         setFontsLoaded(true);
       } finally {
         // 隐藏原生 splash screen，显示我们的视频
-        await SplashScreen.hideAsync().catch(() => {});
+        await SplashScreen.hideAsync().catch(() => { });
         setAppIsReady(true);
       }
     }

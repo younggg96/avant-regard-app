@@ -15,7 +15,7 @@ export async function getVideoThumbnail(
     });
     return uri;
   } catch (error) {
-    console.warn("Failed to generate video thumbnail:", error);
+    console.log("Failed to generate video thumbnail:", error);
     return null;
   }
 }

@@ -117,9 +117,6 @@ const PostCard: React.FC<PostCardProps> = ({
                 uri={displayImage}
                 style={{ width: "100%", height: "100%" }}
               />
-              <View style={styles.videoIndicator}>
-                <Ionicons name="play-circle" size={32} color="rgba(255,255,255,0.85)" />
-              </View>
             </View>
           ) : (
             <OptimizedImage

@@ -35,8 +35,7 @@ import {
     postService,
     Post,
 } from "../services/postService";
-import SimplePostCard from "../components/SimplePostCard";
-import { Post as DisplayPost } from "../components/PostCard";
+import PostCard, { Post as DisplayPost } from "../components/PostCard";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -238,7 +237,7 @@ const MyLikesScreen = () => {
                                 onPress={() => handlePostPress(post)}
                                 onLongPress={() => handleUnlikePost(post)}
                             >
-                                <SimplePostCard
+                                <PostCard
                                     post={post}
                                     onPress={() => handlePostPress(post)}
                                 />

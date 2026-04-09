@@ -36,6 +36,7 @@ import ImagePickerModal from "../components/ImagePickerModal";
 import { postService, isVideoUrl } from "../services/postService";
 import { getCommunities, Community } from "../services/communityService";
 import { useAuthStore } from "../store/authStore";
+import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -359,83 +360,67 @@ const PublishForumPostScreen = () => {
       return;
     }
 
-    setIsPublishing(true);
-    try {
-      const allImages = getAllImageUrls();
-      const uploadedUrls: string[] = [];
-      const imageMapping: Record<string, string> = {};
-      const localUris = allImages.filter((uri) => !isRemoteUrl(uri));
-      const totalLocal = localUris.length;
+    const existingTask = useUploadStore.getState().currentTask;
+    if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
+      Alert.show("有内容正在上传中，请稍后再试");
+      return;
+    }
 
-      for (let i = 0; i < allImages.length; i++) {
-        const imageUri = allImages[i];
-        if (isRemoteUrl(imageUri)) {
-          uploadedUrls.push(imageUri);
-          imageMapping[imageUri] = imageUri;
-        } else {
-          const localIndex = localUris.indexOf(imageUri);
-          const uploadedUrl = await postService.uploadMedia(imageUri, (filePercent) => {
-            const overall = Math.round(((localIndex * 100 + filePercent) / totalLocal));
-            setUploadProgress(`上传中 ${Math.min(overall, 99)}%`);
-          });
-          uploadedUrls.push(uploadedUrl);
-          imageMapping[imageUri] = uploadedUrl;
-        }
-      }
+    const allImages = getAllImageUrls();
+    const imageMapping: Record<string, string> = {};
+    const localUris: string[] = [];
 
-      const updatedBlocks = contentBlocks.map((block) => {
-        if (block.type === "image" && imageMapping[block.content]) {
-          return { ...block, content: imageMapping[block.content] };
-        }
-        return block;
-      });
-
-      setUploadProgress("正在发布...");
-
-      const contentText = JSON.stringify(updatedBlocks);
-      const finalCoverImage = coverImage ? imageMapping[coverImage] || coverImage : null;
-
-      if (editMode && draftPostId) {
-        await postService.updatePost(draftPostId, {
-          userId: user.userId,
-          postType: "ARTICLES",
-          status: "PUBLISHED",
-          title: title.trim(),
-          contentText,
-          imageUrls: finalCoverImage ? [finalCoverImage] : [],
-          communityId: selectedCommunity?.id,
-        });
+    allImages.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        imageMapping[uri] = uri;
       } else {
-        await postService.createPost({
-          userId: user.userId,
-          postType: "ARTICLES",
-          postStatus: "PUBLISHED",
-          title: title.trim(),
-          contentText,
-          imageUrls: finalCoverImage ? [finalCoverImage] : [],
-          communityId: selectedCommunity?.id,
-        });
+        localUris.push(uri);
       }
+    });
 
-      setUploadProgress(null);
-      Alert.show("发布成功！", "", 1500);
-      setTimeout(() => {
-        resetForm();
-        if (editMode) {
-          navigation.goBack();
-        } else {
-          (navigation as any).reset({
-            index: 0,
-            routes: [{ name: "Main", params: { screen: "Home" } }],
-          });
-        }
-      }, 1500);
-    } catch (error) {
-      console.error("Publish error:", error);
-      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
-    } finally {
-      setIsPublishing(false);
-      setUploadProgress(null);
+    const thumbnailUri = coverImage || allImages[0] || null;
+
+    useUploadStore.getState().startUpload({
+      title: title.trim(),
+      thumbnailUri,
+      localMediaUris: localUris,
+      imageMapping,
+      allImages,
+      contentBlocks: [...contentBlocks],
+      coverImageKey: coverImage,
+      createParams: {
+        userId: user.userId,
+        postType: "ARTICLES",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: "",
+        imageUrls: [],
+        communityId: selectedCommunity?.id,
+      },
+      updateParams: editMode && draftPostId
+        ? {
+            postId: draftPostId,
+            params: {
+              userId: user.userId,
+              postType: "ARTICLES",
+              status: "PUBLISHED",
+              title: title.trim(),
+              contentText: "",
+              imageUrls: [],
+              communityId: selectedCommunity?.id,
+            },
+          }
+        : undefined,
+    });
+
+    resetForm();
+    if (editMode) {
+      navigation.goBack();
+    } else {
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: "Main", params: { screen: "Home" } }],
+      });
     }
   };
 

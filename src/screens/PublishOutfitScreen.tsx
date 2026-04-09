@@ -41,6 +41,7 @@ import { showService, Show as ShowFromApi } from "../services/showService";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
+import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
@@ -463,69 +464,70 @@ const PublishOutfitScreen = () => {
       return;
     }
 
-    setIsPublishing(true);
-    try {
-      // 1. 处理图片（上传新图片，保留已有图片）
-      const uploadedUrls = await processImages(images);
+    const existingTask = useUploadStore.getState().currentTask;
+    if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
+      Alert.show("有内容正在上传中，请稍后再试");
+      return;
+    }
 
-      // 2. 获取所有关联秀场的 showIds（支持整数和字符串 ID）
-      const showIds = selectedShows
-        .map((show) => show.showId)
-        .filter((id): id is number | string => id !== undefined && id !== null);
+    const imageMapping: Record<string, string> = {};
+    const localUris: string[] = [];
 
-      // 获取所有关联品牌的 brandIds
-      const brandIds = selectedBrands.map((brand) => brand.id);
-
-      // 3. 创建或更新帖子
-      setUploadProgress("正在发布...");
-
-      if (editMode && draftPostId) {
-        // 编辑模式：更新帖子
-        await postService.updatePost(draftPostId, {
-          userId: user.userId,
-          postType: "DAILY_SHARE",
-          status: "PUBLISHED",
-          title: title.trim(),
-          contentText: description.trim(),
-          imageUrls: uploadedUrls,
-          showIds: showIds,
-          brandIds: brandIds,
-        });
+    images.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        imageMapping[uri] = uri;
       } else {
-        // 新建模式：创建帖子
-        await postService.createPost({
-          userId: user.userId,
-          postType: "DAILY_SHARE",
-          postStatus: "PUBLISHED",
-          title: title.trim(),
-          contentText: description.trim(),
-          imageUrls: uploadedUrls,
-          showIds: showIds,
-          brandIds: brandIds,
-        });
+        localUris.push(uri);
       }
+    });
 
-      setUploadProgress(null);
-      Alert.show("发布成功！", "", 2000);
-      setTimeout(() => {
-        resetForm();
-        if (editMode) {
-          // 编辑模式：返回上一页（帖子详情页）
-          navigation.goBack();
-        } else {
-          // 新建模式：导航到主页
-          (navigation as any).reset({
-            index: 0,
-            routes: [{ name: "Main", params: { screen: "Home" } }],
-          });
-        }
-      }, 2000);
-    } catch (error) {
-      console.error("Publish error:", error);
-      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
-    } finally {
-      setIsPublishing(false);
-      setUploadProgress(null);
+    const showIds = selectedShows
+      .map((show) => show.showId)
+      .filter((id): id is number | string => id !== undefined && id !== null);
+    const brandIds = selectedBrands.map((brand) => brand.id);
+    const thumbnailUri = coverImage || images[0] || null;
+
+    useUploadStore.getState().startUpload({
+      title: title.trim(),
+      thumbnailUri,
+      localMediaUris: localUris,
+      imageMapping,
+      allImages: [...images],
+      createParams: {
+        userId: user.userId,
+        postType: "DAILY_SHARE",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: description.trim(),
+        imageUrls: [],
+        showIds,
+        brandIds,
+      },
+      updateParams: editMode && draftPostId
+        ? {
+            postId: draftPostId,
+            params: {
+              userId: user.userId,
+              postType: "DAILY_SHARE",
+              status: "PUBLISHED",
+              title: title.trim(),
+              contentText: description.trim(),
+              imageUrls: [],
+              showIds,
+              brandIds,
+            },
+          }
+        : undefined,
+    });
+
+    resetForm();
+    if (editMode) {
+      navigation.goBack();
+    } else {
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: "Main", params: { screen: "Home" } }],
+      });
     }
   };
 

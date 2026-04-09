@@ -7,10 +7,8 @@ import {
   ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { ImageCropper, AspectRatio } from "./ImageCropper";
-import { theme } from "../theme";
 
 interface BatchImageCropperProps {
   sourceUris: string[];
@@ -29,19 +27,21 @@ const BatchImageCropper: React.FC<BatchImageCropperProps> = ({
   const [croppedResults, setCroppedResults] = useState<(string | null)[]>(
     () => new Array(sourceUris.length).fill(null)
   );
-  const [isCropping, setIsCropping] = useState(true);
 
   const totalCount = sourceUris.length;
-  const allCropped = croppedResults.every((uri) => uri !== null);
 
-  const handleCropDone = useCallback(
-    (resultUri: string) => {
-      const newResults = [...croppedResults];
-      newResults[currentIndex] = resultUri;
-      setCroppedResults(newResults);
+  const finishIfAllDone = useCallback(
+    (results: (string | null)[]) => {
+      const finalUris = results.map((uri, idx) => uri ?? sourceUris[idx]);
+      onDone(finalUris);
+    },
+    [sourceUris, onDone]
+  );
 
+  const advanceOrFinish = useCallback(
+    (newResults: (string | null)[], fromIndex: number) => {
       const nextUncropped = newResults.findIndex(
-        (uri, idx) => uri === null && idx > currentIndex
+        (uri, idx) => uri === null && idx > fromIndex
       );
 
       if (nextUncropped !== -1) {
@@ -51,11 +51,21 @@ const BatchImageCropper: React.FC<BatchImageCropperProps> = ({
         if (anyUncropped !== -1) {
           setCurrentIndex(anyUncropped);
         } else {
-          setIsCropping(false);
+          finishIfAllDone(newResults);
         }
       }
     },
-    [croppedResults, currentIndex]
+    [finishIfAllDone]
+  );
+
+  const handleCropDone = useCallback(
+    (resultUri: string) => {
+      const newResults = [...croppedResults];
+      newResults[currentIndex] = resultUri;
+      setCroppedResults(newResults);
+      advanceOrFinish(newResults, currentIndex);
+    },
+    [croppedResults, currentIndex, advanceOrFinish]
   );
 
   const handleCropCancel = useCallback(() => {
@@ -64,173 +74,89 @@ const BatchImageCropper: React.FC<BatchImageCropperProps> = ({
 
   const handleThumbnailPress = useCallback(
     (index: number) => {
-      if (!isCropping) {
-        setCurrentIndex(index);
-        setIsCropping(true);
-      } else if (croppedResults[currentIndex] !== null || index !== currentIndex) {
+      if (croppedResults[currentIndex] !== null || index !== currentIndex) {
         setCurrentIndex(index);
       }
     },
-    [isCropping, croppedResults, currentIndex]
+    [croppedResults, currentIndex]
   );
-
-  const handleFinishAll = useCallback(() => {
-    const finalUris = croppedResults.map(
-      (uri, idx) => uri ?? sourceUris[idx]
-    );
-    onDone(finalUris);
-  }, [croppedResults, sourceUris, onDone]);
 
   const handleSkipCrop = useCallback(() => {
     const newResults = [...croppedResults];
     newResults[currentIndex] = sourceUris[currentIndex];
     setCroppedResults(newResults);
-
-    const nextUncropped = newResults.findIndex(
-      (uri, idx) => uri === null && idx > currentIndex
-    );
-
-    if (nextUncropped !== -1) {
-      setCurrentIndex(nextUncropped);
-    } else {
-      const anyUncropped = newResults.findIndex((uri) => uri === null);
-      if (anyUncropped !== -1) {
-        setCurrentIndex(anyUncropped);
-      } else {
-        setIsCropping(false);
-      }
-    }
-  }, [croppedResults, currentIndex, sourceUris]);
-
-  if (isCropping) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.cropperWrapper}>
-          <ImageCropper
-            key={`cropper-${currentIndex}`}
-            sourceUri={
-              croppedResults[currentIndex] ?? sourceUris[currentIndex]
-            }
-            aspect={aspect}
-            onCancel={handleCropCancel}
-            onDone={handleCropDone}
-          />
-        </View>
-
-        <View style={styles.bottomBar}>
-          <View style={styles.progressRow}>
-            <Text style={styles.progressText}>
-              {currentIndex + 1} / {totalCount}
-            </Text>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={handleSkipCrop}
-            >
-              <Text style={styles.skipButtonText}>跳过裁剪</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.thumbnailContainer}
-          >
-            {sourceUris.map((uri, index) => {
-              const isCurrent = index === currentIndex;
-              const isDone = croppedResults[index] !== null;
-              return (
-                <TouchableOpacity
-                  key={`thumb-${index}`}
-                  style={[
-                    styles.thumbnail,
-                    isCurrent && styles.thumbnailActive,
-                    isDone && !isCurrent && styles.thumbnailDone,
-                  ]}
-                  onPress={() => handleThumbnailPress(index)}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={{ uri: croppedResults[index] ?? uri }}
-                    style={styles.thumbnailImage}
-                    contentFit="cover"
-                  />
-                  {isDone && !isCurrent && (
-                    <View style={styles.checkOverlay}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#4CAF50"
-                      />
-                    </View>
-                  )}
-                  <View style={styles.indexBadge}>
-                    <Text style={styles.indexBadgeText}>{index + 1}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </View>
-    );
-  }
+    advanceOrFinish(newResults, currentIndex);
+  }, [croppedResults, currentIndex, sourceUris, advanceOrFinish]);
 
   return (
-    <SafeAreaView style={styles.resultContainer} edges={["top", "bottom"]}>
-      <View style={styles.resultHeader}>
-        <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
-          <Text style={styles.headerButtonText}>取消</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          裁剪完成 ({croppedResults.filter((u) => u !== null).length}/
-          {totalCount})
-        </Text>
-        <TouchableOpacity
-          style={[styles.headerButton, !allCropped && styles.headerButtonDisabled]}
-          onPress={handleFinishAll}
-          disabled={!allCropped}
-        >
-          <Text
-            style={[
-              styles.confirmText,
-              !allCropped && styles.confirmTextDisabled,
-            ]}
-          >
-            确认添加
-          </Text>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <View style={styles.cropperWrapper}>
+        <ImageCropper
+          key={`cropper-${currentIndex}`}
+          sourceUri={
+            croppedResults[currentIndex] ?? sourceUris[currentIndex]
+          }
+          aspect={aspect}
+          onCancel={handleCropCancel}
+          onDone={handleCropDone}
+        />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.resultGrid}
-        showsVerticalScrollIndicator={false}
-      >
-        {croppedResults.map((uri, index) => (
+      <View style={styles.bottomBar}>
+        <View style={styles.progressRow}>
+          <Text style={styles.progressText}>
+            {currentIndex + 1} / {totalCount}
+          </Text>
           <TouchableOpacity
-            key={`result-${index}`}
-            style={styles.resultItem}
-            onPress={() => {
-              setCurrentIndex(index);
-              setIsCropping(true);
-            }}
-            activeOpacity={0.7}
+            style={styles.skipButton}
+            onPress={handleSkipCrop}
           >
-            <Image
-              source={{ uri: uri ?? sourceUris[index] }}
-              style={styles.resultImage}
-              contentFit="cover"
-            />
-            <View style={styles.resultOverlay}>
-              <Ionicons name="crop" size={20} color="white" />
-              <Text style={styles.resultOverlayText}>重新裁剪</Text>
-            </View>
-            <View style={styles.resultIndexBadge}>
-              <Text style={styles.resultIndexText}>{index + 1}</Text>
-            </View>
+            <Text style={styles.skipButtonText}>跳过裁剪</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.thumbnailContainer}
+        >
+          {sourceUris.map((uri, index) => {
+            const isCurrent = index === currentIndex;
+            const isDone = croppedResults[index] !== null;
+            return (
+              <TouchableOpacity
+                key={`thumb-${index}`}
+                style={[
+                  styles.thumbnail,
+                  isCurrent && styles.thumbnailActive,
+                  isDone && !isCurrent && styles.thumbnailDone,
+                ]}
+                onPress={() => handleThumbnailPress(index)}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={{ uri: croppedResults[index] ?? uri }}
+                  style={styles.thumbnailImage}
+                  contentFit="cover"
+                />
+                {isDone && !isCurrent && (
+                  <View style={styles.checkOverlay}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#4CAF50"
+                    />
+                  </View>
+                )}
+                <View style={styles.indexBadge}>
+                  <Text style={styles.indexBadgeText}>{index + 1}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </View>
   );
 };
 
@@ -311,84 +237,6 @@ const styles = StyleSheet.create({
   indexBadgeText: {
     color: "white",
     fontSize: 10,
-    fontWeight: "600",
-  },
-  resultContainer: {
-    flex: 1,
-    backgroundColor: "black",
-  },
-  resultHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerButton: {
-    minWidth: 80,
-  },
-  headerButtonDisabled: {
-    opacity: 0.4,
-  },
-  headerButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  headerTitle: {
-    color: "white",
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  confirmText: {
-    color: theme.colors.accent,
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  confirmTextDisabled: {
-    color: "rgba(255,255,255,0.4)",
-  },
-  resultGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 8,
-    gap: 8,
-  },
-  resultItem: {
-    width: "31%",
-    aspectRatio: 1,
-    borderRadius: 8,
-    overflow: "hidden",
-  },
-  resultImage: {
-    width: "100%",
-    height: "100%",
-  },
-  resultOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-  resultOverlayText: {
-    color: "white",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  resultIndexBadge: {
-    position: "absolute",
-    top: 6,
-    left: 6,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resultIndexText: {
-    color: "white",
-    fontSize: 11,
     fontWeight: "600",
   },
 });

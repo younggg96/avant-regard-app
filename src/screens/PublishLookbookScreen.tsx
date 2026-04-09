@@ -34,6 +34,7 @@ import { postService, isVideoUrl } from "../services/postService";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
+import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
@@ -248,60 +249,65 @@ const PublishLookbookScreen = () => {
       return;
     }
 
-    setIsPublishing(true);
-    try {
-      // 1. 处理图片
-      const uploadedUrls = await processImages(images);
+    const existingTask = useUploadStore.getState().currentTask;
+    if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
+      Alert.show("有内容正在上传中，请稍后再试");
+      return;
+    }
 
-      // 2. 获取所有关联品牌的 brandIds
-      const brandIds = selectedBrands.map((brand) => brand.id);
+    const imageMapping: Record<string, string> = {};
+    const localUris: string[] = [];
 
-      // 3. 创建或更新帖子
-      setUploadProgress("正在发布...");
-
-      if (editMode && draftPostId) {
-        await postService.updatePost(draftPostId, {
-          userId: user.userId,
-          postType: "OUTFIT",
-          status: "PUBLISHED",
-          title: title.trim(),
-          contentText: description.trim(),
-          imageUrls: uploadedUrls,
-          brandIds: brandIds,
-        });
+    images.forEach((uri) => {
+      if (isRemoteUrl(uri)) {
+        imageMapping[uri] = uri;
       } else {
-        await postService.createPost({
-          userId: user.userId,
-          postType: "OUTFIT",
-          postStatus: "PUBLISHED",
-          title: title.trim(),
-          contentText: description.trim(),
-          imageUrls: uploadedUrls,
-          brandIds: brandIds,
-        });
+        localUris.push(uri);
       }
+    });
 
-      setUploadProgress(null);
-      Alert.show("发布成功！", "", 2000);
-      setTimeout(() => {
-        resetForm();
-        if (editMode) {
-          // 编辑模式：返回上一页（帖子详情页）
-          navigation.goBack();
-        } else {
-          // 新建模式：导航到主页
-          (navigation as any).reset({
-            index: 0,
-            routes: [{ name: "Main", params: { screen: "Home" } }],
-          });
-        }
-      }, 2000);
-    } catch (error) {
-      console.error("Publish error:", error);
-      Alert.show(error instanceof Error ? error.message : "发布失败，请重试");
-    } finally {
-      setIsPublishing(false);
-      setUploadProgress(null);
+    const brandIds = selectedBrands.map((brand) => brand.id);
+    const thumbnailUri = coverImage || images[0] || null;
+
+    useUploadStore.getState().startUpload({
+      title: title.trim(),
+      thumbnailUri,
+      localMediaUris: localUris,
+      imageMapping,
+      allImages: [...images],
+      createParams: {
+        userId: user.userId,
+        postType: "OUTFIT",
+        postStatus: "PUBLISHED",
+        title: title.trim(),
+        contentText: description.trim(),
+        imageUrls: [],
+        brandIds,
+      },
+      updateParams: editMode && draftPostId
+        ? {
+            postId: draftPostId,
+            params: {
+              userId: user.userId,
+              postType: "OUTFIT",
+              status: "PUBLISHED",
+              title: title.trim(),
+              contentText: description.trim(),
+              imageUrls: [],
+              brandIds,
+            },
+          }
+        : undefined,
+    });
+
+    resetForm();
+    if (editMode) {
+      navigation.goBack();
+    } else {
+      (navigation as any).reset({
+        index: 0,
+        routes: [{ name: "Main", params: { screen: "Home" } }],
+      });
     }
   };
 

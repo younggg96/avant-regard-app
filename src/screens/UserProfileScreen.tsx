@@ -56,9 +56,8 @@ import {
   UserProfileInfo,
   UserPrivacySettings,
 } from "../services/userInfoService";
-import SimplePostCard from "../components/SimplePostCard";
 import ForumPostCard from "../components/ForumPostCard";
-import { Post as DisplayPost } from "../components/PostCard";
+import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { ImageCropper } from "../components/ImageCropper";
 import { showService, Show } from "../services/showService";
 import { brandService, BrandSubmission } from "../services/brandService";
@@ -84,17 +83,8 @@ const initialTabState: TabData = {
 };
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const CONTRIB_CARD_GAP = 12;
-const CONTRIB_CARD_PADDING = 16;
-const CONTRIB_CARD_WIDTH = (SCREEN_WIDTH - CONTRIB_CARD_PADDING * 2 - CONTRIB_CARD_GAP) / 2;
 
 type ContribSubTab = "show" | "brand" | "store";
-
-const CONTRIB_STATUS: Record<string, { bg: string; color: string; label: string }> = {
-  APPROVED: { bg: "#E8F5E9", color: "#2E7D32", label: "已通过" },
-  REJECTED: { bg: "#FFEBEE", color: "#C62828", label: "已拒绝" },
-  PENDING: { bg: "#FFF3E0", color: "#E65100", label: "审核中" },
-};
 
 // --- 布局常量 ---
 const COVER_HEIGHT = 200;
@@ -626,12 +616,6 @@ const UserProfileScreen = () => {
 
   const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
-  const formatContribDate = (dateStr?: string) => {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
-
   const handleShowPress = (show: Show) => {
     (navigation as any).navigate("CollectionDetail", {
       collection: {
@@ -692,53 +676,37 @@ const UserProfileScreen = () => {
     };
 
     const renderCard = (item: any, type: ContribSubTab) => {
-      const status = item.status || "APPROVED";
-      const ss = CONTRIB_STATUS[status] || CONTRIB_STATUS.PENDING;
       const key = `${type}-${item.id}`;
       const image = type === "store"
         ? (item.images && item.images.length > 0 ? item.images[0] : null)
         : item.coverImage;
       const title = type === "show" ? `${item.brand} ${item.season}` : item.name;
-      const subtitle = type === "show"
-        ? (item.category || item.year?.toString() || "")
-        : type === "brand"
-          ? (item.category || "")
-          : `${item.city}, ${item.country}`;
-      const icon = type === "show" ? "film-outline" : type === "brand" ? "pricetag-outline" : "storefront-outline";
       const onPress = type === "show"
         ? () => handleShowPress(item)
         : type === "brand"
           ? () => handleBrandSubmissionPress(item)
           : () => handleStoreCardPress(item);
 
+      const post: DisplayPost = {
+        id: key,
+        title,
+        image: image || "",
+        author: {
+          id: String(userId),
+          name: userInfo?.username || username || "",
+          avatar: userInfo?.avatarUrl || avatar || "",
+        },
+        content: {
+          title,
+          images: image ? [image] : [],
+        },
+        engagement: { likes: 0 },
+      };
+
       return (
-        <Pressable key={key} style={contribStyles.card} onPress={onPress}>
-          <View style={contribStyles.cardImageContainer}>
-            {image ? (
-              <OptimizedImage
-                uri={image}
-                size={ImageSize.MEDIUM}
-                style={contribStyles.cardImage}
-                contentFit="cover"
-                lazy={true}
-              />
-            ) : (
-              <View style={contribStyles.cardImagePlaceholder}>
-                <Ionicons name={icon as any} size={32} color={theme.colors.gray300} />
-              </View>
-            )}
-          </View>
-          <View style={contribStyles.cardInfo}>
-            <RNText style={contribStyles.cardTitle} numberOfLines={2}>{title}</RNText>
-            {subtitle ? <RNText style={contribStyles.cardSubtitle} numberOfLines={1}>{subtitle}</RNText> : null}
-            <View style={contribStyles.cardBottom}>
-              <View style={[contribStyles.statusBadge, { backgroundColor: ss.bg }]}>
-                <RNText style={[contribStyles.statusText, { color: ss.color }]}>{ss.label}</RNText>
-              </View>
-              <RNText style={contribStyles.dateText}>{formatContribDate(item.createdAt)}</RNText>
-            </View>
-          </View>
-        </Pressable>
+        <Box key={key} width="48%" mb="$md">
+          <PostCard post={post} onPress={() => onPress()} />
+        </Box>
       );
     };
 
@@ -777,9 +745,9 @@ const UserProfileScreen = () => {
             <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
           </VStack>
         ) : (
-          <View style={contribStyles.cardGrid}>
+          <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
             {data.map((item) => renderCard(item, contribSubTab))}
-          </View>
+          </HStack>
         )}
       </VStack>
     );
@@ -824,7 +792,7 @@ const UserProfileScreen = () => {
           {currentTabData.posts.map((post) => (
             <Box key={post.id} width="48%" mb="$md">
               <Pressable onPress={() => handlePostPress(post)}>
-                <SimplePostCard post={post} onPress={() => handlePostPress(post)} />
+                <PostCard post={post} onPress={() => handlePostPress(post)} />
               </Pressable>
             </Box>
           ))}
@@ -1564,70 +1532,6 @@ const contribStyles = StyleSheet.create({
   },
   filterChipCountActive: {
     color: "rgba(255,255,255,0.7)",
-  },
-  cardGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: CONTRIB_CARD_PADDING,
-    paddingTop: 4,
-    justifyContent: "space-between",
-  },
-  card: {
-    width: CONTRIB_CARD_WIDTH,
-    marginBottom: CONTRIB_CARD_GAP,
-    borderRadius: 12,
-    backgroundColor: "#FFF",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  cardImageContainer: {
-    width: "100%",
-    aspectRatio: 3 / 4,
-  },
-  cardImage: {
-    width: "100%",
-    height: "100%",
-  },
-  cardImagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardInfo: {
-    padding: 10,
-  },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    lineHeight: 18,
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 2,
-  },
-  cardBottom: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 6,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  dateText: {
-    fontSize: 10,
-    color: theme.colors.gray300,
   },
 });
 

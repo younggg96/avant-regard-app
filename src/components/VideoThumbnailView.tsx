@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Image, StyleSheet, ViewStyle, ImageStyle, StyleProp } from "react-native";
+import { View, Image, StyleSheet, ViewStyle, ImageStyle, StyleProp, ActivityIndicator } from "react-native";
 import * as FileSystem from "expo-file-system";
 
 import { getVideoThumbnail } from "../utils/videoThumbnail";
@@ -25,30 +25,65 @@ export const VideoThumbnailView: React.FC<VideoThumbnailViewProps> = ({
 }) => {
   const cleanUri = cleanVideoUri(uri);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
-        const cacheDir = FileSystem.cacheDirectory + "video_cache/";
-        const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+        const thumbCacheDir = FileSystem.cacheDirectory + "video_thumbs/";
+        const dirInfo = await FileSystem.getInfoAsync(thumbCacheDir);
         if (!dirInfo.exists) {
-          await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+          await FileSystem.makeDirectoryAsync(thumbCacheDir, { intermediates: true });
         }
-        const dest = cacheDir + getCacheKey(cleanUri) + ".mp4";
-        let localPath = dest;
-        const fileInfo = await FileSystem.getInfoAsync(dest);
-        if (!fileInfo.exists) {
-          const result = await FileSystem.downloadAsync(cleanUri, dest);
-          if (result.status !== 200) return;
-          localPath = result.uri;
+
+        const thumbPath = thumbCacheDir + getCacheKey(cleanUri) + ".jpg";
+        const cachedThumb = await FileSystem.getInfoAsync(thumbPath);
+        if (cachedThumb.exists) {
+          if (!cancelled) {
+            setThumbnail(thumbPath);
+            setLoading(false);
+          }
+          return;
         }
-        const thumb = await getVideoThumbnail(localPath);
-        if (!cancelled && thumb) setThumbnail(thumb);
+
+        // Try generating thumbnail directly from the URL (works on iOS)
+        let thumb = await getVideoThumbnail(cleanUri);
+
+        // If direct URL fails, download the video first then try
+        if (!thumb) {
+          const cacheDir = FileSystem.cacheDirectory + "video_cache/";
+          const vDirInfo = await FileSystem.getInfoAsync(cacheDir);
+          if (!vDirInfo.exists) {
+            await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+          }
+          const dest = cacheDir + getCacheKey(cleanUri) + ".mp4";
+          const fileInfo = await FileSystem.getInfoAsync(dest);
+
+          let localPath = dest;
+          if (!fileInfo.exists) {
+            const result = await FileSystem.downloadAsync(cleanUri, dest);
+            if (result.status !== 200) {
+              if (!cancelled) setLoading(false);
+              return;
+            }
+            localPath = result.uri;
+          }
+          thumb = await getVideoThumbnail(localPath);
+        }
+
+        if (!cancelled && thumb) {
+          await FileSystem.copyAsync({ from: thumb, to: thumbPath }).catch(() => {});
+          setThumbnail(thumb);
+        }
       } catch {
-        // Thumbnail generation failed silently
+        // Thumbnail generation failed
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
+
     return () => { cancelled = true; };
   }, [cleanUri]);
 
@@ -60,7 +95,9 @@ export const VideoThumbnailView: React.FC<VideoThumbnailViewProps> = ({
           style={[styles.image, imageStyle]}
         />
       ) : (
-        <View style={[styles.image, styles.placeholder, imageStyle]} />
+        <View style={[styles.image, styles.placeholder, imageStyle]}>
+          {loading && <ActivityIndicator color="rgba(255,255,255,0.5)" />}
+        </View>
       )}
     </View>
   );
@@ -77,5 +114,7 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     backgroundColor: "#1a1a1a",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

@@ -1,10 +1,32 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Animated, StyleSheet, Dimensions, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { toastEmitter, ToastConfig } from "../utils/Alert";
 import { theme } from "../theme";
 
 const { width } = Dimensions.get("window");
+
+const ACTION_GIFS: { pattern: RegExp; source: any }[] = [
+  { pattern: /取消关注/, source: require("../../assets/action-gif/取消关注.gif") },
+  { pattern: /取消收藏/, source: require("../../assets/action-gif/取消收藏.gif") },
+  { pattern: /取消点赞/, source: require("../../assets/action-gif/取消点赞.gif") },
+  { pattern: /关注成功/, source: require("../../assets/action-gif/关注成功.gif") },
+  { pattern: /评论已发布|回复已发布|评论成功/, source: require("../../assets/action-gif/评论成功.gif") },
+  { pattern: /已屏蔽|屏蔽/, source: require("../../assets/action-gif/屏蔽.gif") },
+  { pattern: /删除/, source: require("../../assets/action-gif/删除.gif") },
+  { pattern: /上传.*成功/, source: require("../../assets/action-gif/上传秀场成功.gif") },
+  { pattern: /提交.*买手店|买手店.*提交/, source: require("../../assets/action-gif/提交买手店.gif") },
+  { pattern: /收藏/, source: require("../../assets/action-gif/收藏.gif") },
+  { pattern: /点赞/, source: require("../../assets/action-gif/点赞.gif") },
+  { pattern: /登.*成功|注册成功/, source: require("../../assets/action-gif/登陆成功.gif") },
+];
+
+function getActionGif(text: string) {
+  for (const entry of ACTION_GIFS) {
+    if (entry.pattern.test(text)) return entry.source;
+  }
+  return null;
+}
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -88,6 +110,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   const isSuccess = displayText.includes("成功") || displayText.includes("已");
   const isError = displayText.includes("失败") || displayText.includes("错误");
 
+  const gifSource = getActionGif(displayText);
+
   return (
     <>
       {children}
@@ -103,20 +127,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
         ]}
       >
         <View style={styles.toastContent}>
-          {isSuccess && (
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              color="#ffffff"
-              style={styles.toastIcon}
-            />
-          )}
-          {isError && (
-            <Ionicons
-              name="close-circle"
-              size={20}
-              color="#ffffff"
-              style={styles.toastIcon}
+          {gifSource && (
+            <Image
+              source={gifSource}
+              style={styles.toastGif}
+              contentFit="contain"
+              autoplay={true}
             />
           )}
           <Animated.Text style={styles.toastText}>{displayText}</Animated.Text>
@@ -149,18 +165,20 @@ const styles = StyleSheet.create({
     maxWidth: width - 32,
   },
   successToast: {
-    backgroundColor: "rgba(34, 197, 94, 0.95)", // 绿色背景
+    backgroundColor: theme.colors.black,
   },
   errorToast: {
-    backgroundColor: "rgba(239, 68, 68, 0.95)", // 红色背景
+    backgroundColor: theme.colors.error,
   },
   toastContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  toastIcon: {
-    marginRight: 8,
+  toastGif: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
   },
   toastText: {
     color: "#ffffff",

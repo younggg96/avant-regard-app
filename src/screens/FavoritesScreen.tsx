@@ -15,8 +15,7 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
-import SimplePostCard from "../components/SimplePostCard";
-import { Post as DisplayPost } from "../components/PostCard";
+import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { Alert } from "../utils/Alert";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -332,7 +331,7 @@ const FavoritesScreen = () => {
             <View style={styles.postsGrid}>
               {favoritePosts.map((post) => (
                 <View key={post.id} style={styles.postItem}>
-                  <SimplePostCard
+                  <PostCard
                     post={post}
                     onPress={() => handlePostPress(post)}
                   />
@@ -350,7 +349,7 @@ const FavoritesScreen = () => {
                 <View style={styles.postsGrid}>
                   {favoritePosts.map((post) => (
                     <View key={post.id} style={styles.postItem}>
-                      <SimplePostCard
+                      <PostCard
                         post={post}
                         onPress={() => handlePostPress(post)}
                       />
