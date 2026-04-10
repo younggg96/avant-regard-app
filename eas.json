@@ -21,7 +21,7 @@
     "production": {
       "autoIncrement": true,
       "ios": {
-        "image": "macos-sequoia-15.5-xcode-26.0"
+        "image": "macos-sonoma-14.6-xcode-16.1"
       }
     }
   },
