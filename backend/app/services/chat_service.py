@@ -18,24 +18,30 @@ class ChatService:
 
     def _get_user_brief(self, user_id: int) -> Dict[str, Any]:
         """Fetch username and avatar for a user."""
-        result = (
-            self.db.table("users")
-            .select("id, username")
-            .eq("id", user_id)
-            .single()
-            .execute()
-        )
-        user = result.data or {}
+        try:
+            result = (
+                self.db.table("users")
+                .select("id, username")
+                .eq("id", user_id)
+                .maybe_single()
+                .execute()
+            )
+            user = result.data or {}
+        except Exception:
+            user = {}
         avatar = None
-        info_result = (
-            self.db.table("user_info")
-            .select("avatar_url")
-            .eq("user_id", user_id)
-            .maybeSingle()
-            .execute()
-        )
-        if info_result.data:
-            avatar = info_result.data.get("avatar_url")
+        try:
+            info_result = (
+                self.db.table("user_info")
+                .select("avatar_url")
+                .eq("user_id", user_id)
+                .maybe_single()
+                .execute()
+            )
+            if info_result.data:
+                avatar = info_result.data.get("avatar_url")
+        except Exception:
+            pass
         return {
             "id": user.get("id", user_id),
             "username": user.get("username", ""),
@@ -282,7 +288,7 @@ class ChatService:
             .select("id")
             .eq("conversation_id", conversation_id)
             .eq("user_id", user_id)
-            .maybeSingle()
+            .maybe_single()
             .execute()
         )
         return result.data is not None

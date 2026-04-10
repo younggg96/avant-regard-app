@@ -2,10 +2,8 @@
 Chat routes - REST API + WebSocket for real-time messaging
 """
 
-import json
-import jwt
 from typing import Optional, Dict, Set
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, HTTPException, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from app.schemas.chat import (
     CreateConversationRequest,
     SendMessageRequest,
@@ -123,7 +121,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                     await websocket.send_json({"type": "error", "message": "Missing conversation_id or content"})
                     continue
 
-                msg = chat_service.send_message(conv_id, user_id, content, message_type)
+                try:
+                    msg = chat_service.send_message(conv_id, user_id, content, message_type)
+                except Exception as e:
+                    await websocket.send_json({"type": "error", "message": str(e)})
+                    continue
+
                 if not msg:
                     await websocket.send_json({"type": "error", "message": "Failed to send message"})
                     continue
@@ -131,44 +134,50 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                 msg_dict = msg.model_dump()
                 await websocket.send_json({"type": "message_sent", "data": msg_dict})
 
-                participants = (
-                    get_supabase()
-                    .table("conversation_participants")
-                    .select("user_id")
-                    .eq("conversation_id", conv_id)
-                    .execute()
-                )
-                for p in participants.data or []:
-                    pid = p["user_id"]
-                    if pid != user_id:
-                        outgoing = msg.model_dump()
-                        outgoing["isMine"] = False
-                        await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+                try:
+                    participants = (
+                        get_supabase()
+                        .table("conversation_participants")
+                        .select("user_id")
+                        .eq("conversation_id", conv_id)
+                        .execute()
+                    )
+                    for p in participants.data or []:
+                        pid = p["user_id"]
+                        if pid != user_id:
+                            outgoing = msg.model_dump()
+                            outgoing["isMine"] = False
+                            await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
 
-                        if not manager.is_online(pid):
-                            try:
-                                sender_brief = chat_service._get_user_brief(user_id)
-                                notification_service.create_notification(
-                                    user_id=pid,
-                                    notification_type=NotificationType.SYSTEM,
-                                    title=f"{sender_brief['username']} 发来了一条消息",
-                                    message=content[:100],
-                                    action_data={
-                                        "user_id": user_id,
-                                        "navigateTo": "Chat",
-                                        "navigateParams": {"conversationId": conv_id},
-                                        "actor_name": sender_brief["username"],
-                                        "actor_avatar": sender_brief.get("avatar_url"),
-                                    },
-                                    send_push=True,
-                                )
-                            except Exception as e:
-                                print(f"Failed to send chat push notification: {e}")
+                            if not manager.is_online(pid):
+                                try:
+                                    sender_brief = chat_service._get_user_brief(user_id)
+                                    notification_service.create_notification(
+                                        user_id=pid,
+                                        notification_type=NotificationType.SYSTEM,
+                                        title=f"{sender_brief['username']} 发来了一条消息",
+                                        message=content[:100],
+                                        action_data={
+                                            "user_id": user_id,
+                                            "navigateTo": "Chat",
+                                            "navigateParams": {"conversationId": conv_id},
+                                            "actor_name": sender_brief["username"],
+                                            "actor_avatar": sender_brief.get("avatar_url"),
+                                        },
+                                        send_push=True,
+                                    )
+                                except Exception as e:
+                                    print(f"Failed to send chat push notification: {e}")
+                except Exception as e:
+                    print(f"Failed to broadcast message to participants: {e}")
 
             elif msg_type == "mark_read":
                 conv_id = data.get("conversation_id")
                 if conv_id:
-                    chat_service.mark_conversation_read(conv_id, user_id)
+                    try:
+                        chat_service.mark_conversation_read(conv_id, user_id)
+                    except Exception:
+                        pass
                     await websocket.send_json({"type": "conversation_read", "conversation_id": conv_id})
 
     except WebSocketDisconnect:
@@ -183,8 +192,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 @router.get("/conversations")
 async def get_conversations(current_user_id: int = Depends(get_current_user_id)):
     """Get all conversations for the current user."""
-    conversations = chat_service.get_conversations(current_user_id)
-    return success([c.model_dump() for c in conversations])
+    try:
+        conversations = chat_service.get_conversations(current_user_id)
+        return success([c.model_dump() for c in conversations])
+    except Exception as e:
+        print(f"Chat get_conversations error: {e}")
+        return success([])
 
 
 @router.post("/conversations")
@@ -196,12 +209,16 @@ async def create_conversation(
     if req.target_user_id == current_user_id:
         return error(message="Cannot create conversation with yourself", code=400)
 
-    target = get_supabase().table("users").select("id").eq("id", req.target_user_id).maybeSingle().execute()
-    if not target.data:
-        return error(message="Target user not found", code=404)
+    try:
+        target = get_supabase().table("users").select("id").eq("id", req.target_user_id).maybe_single().execute()
+        if not target.data:
+            return error(message="Target user not found", code=404)
 
-    conv_id = chat_service.create_conversation(current_user_id, req.target_user_id)
-    return success({"conversationId": conv_id})
+        conv_id = chat_service.create_conversation(current_user_id, req.target_user_id)
+        return success({"conversationId": conv_id})
+    except Exception as e:
+        print(f"Chat create_conversation error: {e}")
+        return error(message="Chat service unavailable", code=500)
 
 
 @router.get("/conversations/{conversation_id}/messages")
@@ -212,38 +229,49 @@ async def get_messages(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Get messages for a conversation (paginated, newest first)."""
-    messages = chat_service.get_messages(conversation_id, current_user_id, limit, before_id)
-    return success([m.model_dump() for m in messages])
+    try:
+        messages = chat_service.get_messages(conversation_id, current_user_id, limit, before_id)
+        return success([m.model_dump() for m in messages])
+    except Exception as e:
+        print(f"Chat get_messages error: {e}")
+        return success([])
 
 
 @router.post("/conversations/{conversation_id}/messages")
-async def send_message(
+async def send_message_rest(
     conversation_id: int,
     req: SendMessageRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Send a message via REST (alternative to WebSocket)."""
-    msg = chat_service.send_message(conversation_id, current_user_id, req.content, req.message_type.value)
-    if not msg:
-        return error(message="Failed to send message or not a participant", code=403)
+    try:
+        msg = chat_service.send_message(conversation_id, current_user_id, req.content, req.message_type.value)
+        if not msg:
+            return error(message="Failed to send message or not a participant", code=403)
 
-    msg_dict = msg.model_dump()
+        msg_dict = msg.model_dump()
 
-    participants = (
-        get_supabase()
-        .table("conversation_participants")
-        .select("user_id")
-        .eq("conversation_id", conversation_id)
-        .execute()
-    )
-    for p in participants.data or []:
-        pid = p["user_id"]
-        if pid != current_user_id:
-            outgoing = msg.model_dump()
-            outgoing["isMine"] = False
-            await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+        try:
+            participants = (
+                get_supabase()
+                .table("conversation_participants")
+                .select("user_id")
+                .eq("conversation_id", conversation_id)
+                .execute()
+            )
+            for p in participants.data or []:
+                pid = p["user_id"]
+                if pid != current_user_id:
+                    outgoing = msg.model_dump()
+                    outgoing["isMine"] = False
+                    await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+        except Exception as e:
+            print(f"Failed to push message to WS clients: {e}")
 
-    return success(msg_dict)
+        return success(msg_dict)
+    except Exception as e:
+        print(f"Chat send_message error: {e}")
+        return error(message="Failed to send message", code=500)
 
 
 @router.post("/conversations/{conversation_id}/read")
@@ -252,12 +280,20 @@ async def mark_read(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Mark a conversation as read."""
-    chat_service.mark_conversation_read(conversation_id, current_user_id)
-    return success({"marked": True})
+    try:
+        chat_service.mark_conversation_read(conversation_id, current_user_id)
+        return success({"marked": True})
+    except Exception as e:
+        print(f"Chat mark_read error: {e}")
+        return success({"marked": False})
 
 
 @router.get("/unread-count")
 async def get_unread_count(current_user_id: int = Depends(get_current_user_id)):
     """Get total unread message count across all conversations."""
-    count = chat_service.get_total_unread_count(current_user_id)
-    return success({"count": count})
+    try:
+        count = chat_service.get_total_unread_count(current_user_id)
+        return success({"count": count})
+    except Exception as e:
+        print(f"Chat get_unread_count error: {e}")
+        return success({"count": 0})
