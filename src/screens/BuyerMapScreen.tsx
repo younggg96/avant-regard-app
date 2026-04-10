@@ -14,7 +14,7 @@ import {
   Image,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
@@ -183,8 +183,11 @@ const getCityDisplayName = (city: string): string => {
   return translation ? `${city} ${translation}` : city;
 };
 
-const BuyerMapScreen = () => {
+const SEARCH_BAR_HEIGHT = 52; // 44px input + 8px bottom padding
+
+const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -848,8 +851,13 @@ const BuyerMapScreen = () => {
     ],
   };
 
+  const Wrapper = embedded ? View : SafeAreaView;
+  const wrapperProps = embedded
+    ? { style: styles.container }
+    : { style: styles.container, edges: ["top"] as const };
+
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <Wrapper {...(wrapperProps as any)}>
       {/* 搜索栏 */}
       <Box px="$md" pb="$sm">
         <HStack alignItems="center" gap="$sm">
@@ -952,7 +960,7 @@ const BuyerMapScreen = () => {
       {/* 快速筛选标签 - 浮在地图上方，位于搜索栏下方 (渲染在 Map 之后以确保显示在上层) */}
       <Box
         position="absolute"
-        top={120}
+        top={(embedded ? 0 : insets.top) + SEARCH_BAR_HEIGHT}
         left={0}
         right={0}
         zIndex={100}
@@ -1796,7 +1804,7 @@ const BuyerMapScreen = () => {
           </Animated.View>
         </Box>
       </Modal>
-    </SafeAreaView>
+    </Wrapper>
   );
 };
 

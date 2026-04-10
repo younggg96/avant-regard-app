@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray300,
     textDecorationLine: "underline",
   },
@@ -224,12 +224,12 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
   stepCounter: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray200,
   },
 });

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
   },
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   completeButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
     letterSpacing: 0.5,
   },

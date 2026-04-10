@@ -6,6 +6,7 @@ import { theme } from "../theme";
 interface TabItem<T extends string> {
   id: T;
   label: string;
+  badge?: number;
 }
 
 interface CenteredTabBarProps<T extends string> {
@@ -15,11 +16,11 @@ interface CenteredTabBarProps<T extends string> {
 }
 
 function TabButton<T extends string>({
-  label,
+  tab,
   isActive,
   onPress,
 }: {
-  label: string;
+  tab: TabItem<T>;
   isActive: boolean;
   onPress: () => void;
 }) {
@@ -31,9 +32,16 @@ function TabButton<T extends string>({
           isActive ? styles.tabTextActive : styles.tabTextInactive,
         ]}
       >
-        {label}
+        {tab.label}
       </Text>
       {isActive && <View style={styles.tabIndicator} />}
+      {!!tab.badge && tab.badge > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {tab.badge > 99 ? "99+" : tab.badge}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -49,7 +57,7 @@ export function CenteredTabBar<T extends string>({
         {tabs.map((tab) => (
           <TabButton
             key={tab.id}
-            label={tab.label}
+            tab={tab}
             isActive={activeTab === tab.id}
             onPress={() => onTabChange(tab.id)}
           />
@@ -84,5 +92,22 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: theme.colors.black,
     borderRadius: 1,
+  },
+  badge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.error,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: theme.colors.white,
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

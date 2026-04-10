@@ -23,8 +23,7 @@ import SplashVideo from "./src/components/SplashVideo";
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/Archive/ArchiveScreen";
-import NotificationsScreen from "./src/screens/NotificationsScreen";
-import BuyerMapScreen from "./src/screens/BuyerMapScreen";
+import InteractionScreen from "./src/screens/InteractionScreen";
 import StoreListScreen from "./src/screens/StoreListScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import CollectionDetailScreen from "./src/screens/CollectionDetailScreen";
@@ -66,6 +65,14 @@ import MyCommentsScreen from "./src/screens/MyCommentsScreen";
 import MyLikesScreen from "./src/screens/MyLikesScreen";
 import BlockedUsersScreen from "./src/screens/BlockedUsersScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
+
+// Chat Screens
+import ChatScreen from "./src/screens/ChatScreen";
+import ActivityScreen from "./src/screens/ActivityScreen";
+
+// Stores & Services
+import { useChatStore } from "./src/store/chatStore";
+import { getUnreadCount as getNotifUnreadCount } from "./src/services/notificationService";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -112,6 +119,23 @@ function AuthNavigator() {
 }
 
 function TabNavigator() {
+  const { totalUnread } = useChatStore();
+  const [notifUnread, setNotifUnread] = useState(0);
+
+  const refreshNotifBadge = useCallback(() => {
+    getNotifUnreadCount()
+      .then((c) => setNotifUnread(c))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshNotifBadge();
+    const timer = setInterval(refreshNotifBadge, 30_000);
+    return () => clearInterval(timer);
+  }, [refreshNotifBadge]);
+
+  const interactionBadge = totalUnread + notifUnread;
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -127,7 +151,7 @@ function TabNavigator() {
         tabBarActiveTintColor: theme.colors.black,
         tabBarInactiveTintColor: theme.colors.gray400,
         tabBarLabelStyle: {
-          fontFamily: __DEV__ ? "System" : "Inter-Regular",
+          fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
           fontSize: 11,
         },
       }}
@@ -167,13 +191,23 @@ function TabNavigator() {
         })}
       />
       <Tab.Screen
-        name="Map"
-        component={BuyerMapScreen}
+        name="Interaction"
+        component={InteractionScreen}
         options={{
-          tabBarLabel: "地图",
+          tabBarLabel: "互动",
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="map" color={color} focused={focused} />
+            <TabBarIcon name="interaction" color={color} focused={focused} />
           ),
+          tabBarBadge: interactionBadge > 0 ? interactionBadge : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#FF3B30",
+            fontSize: 10,
+            fontWeight: "700",
+            minWidth: 18,
+            height: 18,
+            lineHeight: 18,
+            borderRadius: 9,
+          },
         }}
       />
       <Tab.Screen
@@ -333,11 +367,6 @@ function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="Notifications"
-          component={NotificationsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
           name="FollowingUsers"
           component={FollowingUsersScreen}
           options={{ headerShown: false }}
@@ -471,6 +500,16 @@ function AppNavigator() {
           component={ChangePasswordScreen}
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Activity"
+          component={ActivityScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
 
       {/* 新用户引导 Modal */}
@@ -503,10 +542,8 @@ export default function App() {
         // 加载字体
         await Font.loadAsync({
           "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),
+          "PlayfairDisplay-Medium": require("./assets/fonts/PlayfairDisplay-Medium.ttf"),
           "PlayfairDisplay-Bold": require("./assets/fonts/PlayfairDisplay-Bold.ttf"),
-          "Inter-Regular": require("./assets/fonts/Inter-Regular.ttf"),
-          "Inter-Medium": require("./assets/fonts/Inter-Medium.ttf"),
-          "Inter-Bold": require("./assets/fonts/Inter-Bold.ttf"),
         });
         setFontsLoaded(true);
       } catch (error) {

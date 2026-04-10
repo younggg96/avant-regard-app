@@ -69,7 +69,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               ) : (
                 <View style={styles.brandPlaceholder}>
                   <Text
-                    fontFamily="Inter-Bold"
+                    fontFamily="PlayfairDisplay-Bold"
                     fontSize={16}
                     color="$gray400"
                     textAlign="center"
@@ -80,7 +80,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               )}
               <View style={styles.brandInfo}>
                 <Text
-                  fontFamily="Inter-Bold"
+                  fontFamily="PlayfairDisplay-Bold"
                   fontSize={11}
                   color="$black"
                   numberOfLines={1}
@@ -90,7 +90,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
                 </Text>
                 {brand.category && (
                   <Text
-                    fontFamily="Inter-Regular"
+                    fontFamily="PlayfairDisplay-Regular"
                     fontSize={10}
                     style={{ color: theme.colors.gray500, marginTop: 2, textAlign: "center" }}
                     numberOfLines={1}

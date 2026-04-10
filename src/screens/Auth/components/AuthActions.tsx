@@ -256,14 +256,14 @@ const checkboxStyles = StyleSheet.create({
   },
   text: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     flex: 1,
     lineHeight: 20,
   },
   link: {
     color: theme.colors.black,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   modalContainer: {
     flex: 1,
@@ -286,7 +286,7 @@ const checkboxStyles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 17,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     flex: 1,
     textAlign: "center",
@@ -310,7 +310,7 @@ const checkboxStyles = StyleSheet.create({
   },
   modalConfirmText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
 });

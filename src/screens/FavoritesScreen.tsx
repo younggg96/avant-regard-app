@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     marginTop: 12,
   },
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
   },
   activeTabText: {
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   },
   tabBadgeText: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
   },
   content: {
@@ -495,14 +495,14 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
     flex: 1,
     marginRight: 8,
   },
   itemSubtitle: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginBottom: 8,
   },
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   itemTimestamp: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   likeButton: {
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     textAlign: "center",
     lineHeight: 24,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   exploreButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.white,
   },
 });

@@ -23,6 +23,7 @@ export const LINKING_CONFIG = {
         screens: {
           Home: "home",
           Discover: "discover",
+          Interaction: "interaction",
           Profile: "profile",
         },
       },
@@ -59,6 +60,12 @@ export const LINKING_CONFIG = {
         path: "store/:storeId",
         parse: {
           storeId: (storeId: string) => storeId,
+        },
+      },
+      Chat: {
+        path: "chat/:conversationId",
+        parse: {
+          conversationId: (conversationId: string) => Number(conversationId),
         },
       },
     },

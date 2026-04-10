@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 11,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray300,
     letterSpacing: 3,
     marginHorizontal: 16,
@@ -125,14 +125,14 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 13,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: "#FFFFFF",
     letterSpacing: 0.3,
     marginBottom: 3,
   },
   seasonText: {
     fontSize: 11,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: "rgba(255,255,255,0.75)",
     letterSpacing: 0.2,
   },

@@ -1,14 +1,6 @@
-// Helper to get font family with fallback for development
-const getFontFamily = (customFont: string, systemFallback: string) => {
-  // In development mode, use system fonts to avoid errors with placeholder font files
+const getFontFamily = (customFont: string) => {
   if (__DEV__) {
-    // Use known system fonts that work on both iOS and Android
-    if (systemFallback === "serif") {
-      return "Georgia"; // Available on both platforms
-    } else if (systemFallback === "sans-serif") {
-      return "System"; // iOS system font, fallback for Android
-    }
-    return systemFallback;
+    return "Georgia";
   }
   return customFont;
 };
@@ -31,48 +23,48 @@ export const theme = {
   },
   typography: {
     hero: {
-      fontFamily: getFontFamily("PlayfairDisplay-Bold", "serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Bold"),
       fontSize: 48,
       lineHeight: 52,
       letterSpacing: -0.5,
     },
     h1: {
-      fontFamily: getFontFamily("PlayfairDisplay-Bold", "serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Bold"),
       fontSize: 32,
       lineHeight: 38,
     },
     h2: {
-      fontFamily: getFontFamily("PlayfairDisplay-Regular", "serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
       fontSize: 24,
       lineHeight: 30,
     },
     h3: {
-      fontFamily: getFontFamily("Inter-Medium", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
       fontSize: 18,
       lineHeight: 24,
     },
     h4: {
-      fontFamily: getFontFamily("Inter-Medium", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
       fontSize: 16,
       lineHeight: 22,
     },
     body: {
-      fontFamily: getFontFamily("Inter-Regular", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
       fontSize: 16,
       lineHeight: 24,
     },
     bodySmall: {
-      fontFamily: getFontFamily("Inter-Regular", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
       fontSize: 14,
       lineHeight: 20,
     },
     caption: {
-      fontFamily: getFontFamily("Inter-Regular", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
       fontSize: 12,
       lineHeight: 16,
     },
     button: {
-      fontFamily: getFontFamily("Inter-Medium", "sans-serif"),
+      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
       fontSize: 16,
       lineHeight: 20,
       letterSpacing: 0.5,

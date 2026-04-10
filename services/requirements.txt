@@ -1,9 +1,0 @@
-# Vogue Show Info Scraper 依赖
-# Vogue 秀场信息爬虫依赖
-# 安装: pip install -r requirements.txt
-
-pandas>=2.0.0
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-lxml>=5.0.0
-openpyxl>=3.1.0

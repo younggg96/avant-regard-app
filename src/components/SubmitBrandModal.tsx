@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
     color: theme.colors.black,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
   closeButton: {
     padding: 4,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: theme.colors.gray500,
     marginBottom: 8,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
   required: {
     color: "#D32F2F",
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: theme.colors.gray50,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   imagePickerButton: {
     borderWidth: 1,
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   imagePlaceholderText: {
     fontSize: 13,
     color: theme.colors.gray300,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   imagePreviewWrapper: {
     position: "relative",
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: "#D32F2F",
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   submitButton: {
     backgroundColor: theme.colors.black,
@@ -499,14 +499,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: theme.colors.white,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
   hint: {
     fontSize: 12,
     color: theme.colors.gray400,
     textAlign: "center",
     lineHeight: 18,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   resultContainer: {
     alignItems: "center",
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.black,
     marginBottom: theme.spacing.sm,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
   resultText: {
     fontSize: 14,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     marginBottom: theme.spacing.xl,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   doneButton: {
     backgroundColor: theme.colors.black,
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: theme.colors.white,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
 });
 

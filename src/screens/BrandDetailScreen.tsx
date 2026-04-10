@@ -777,13 +777,13 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: 14,
     color: theme.colors.gray400,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
   },
   errorText: {
     marginTop: theme.spacing.md,
     fontSize: 14,
     color: theme.colors.gray500,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
   },
   retryButton: {
     marginTop: theme.spacing.md,
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: theme.colors.white,
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   // Hero Section
   heroSection: {
@@ -857,7 +857,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   latestSeason: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
     marginTop: 4,
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
   contributorText: {
     fontSize: 12,
     color: theme.colors.gray500,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
   },
   // Info Section
   infoSection: {
@@ -893,7 +893,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   infoText: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 14,
     color: theme.colors.gray500,
   },
@@ -917,12 +917,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   followersCount: {
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     fontSize: 20,
     color: theme.colors.black,
   },
   followersLabel: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 13,
     color: theme.colors.gray400,
   },
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F0F0",
   },
   followButtonText: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 14,
     color: theme.colors.white,
   },
@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
   },
   sectionLabel: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 12,
     color: theme.colors.gray400,
     textTransform: "uppercase",
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   founderName: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 16,
     color: theme.colors.black,
   },
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     flex: 1,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 15,
     color: theme.colors.black,
   },
@@ -1000,7 +1000,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.black,
   },
   tabText: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 15,
     color: theme.colors.gray400,
   },
@@ -1008,7 +1008,7 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
   },
   tabCount: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 13,
     color: theme.colors.gray400,
     marginLeft: 6,
@@ -1103,18 +1103,18 @@ const styles = StyleSheet.create({
     right: 12,
   },
   showSeason: {
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     fontSize: 13,
     color: theme.colors.white,
   },
   showCategory: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     marginTop: 2,
   },
   showDescription: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
     color: "rgba(255,255,255,0.8)",
     marginTop: 3,
@@ -1145,7 +1145,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   postTitle: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 13,
     color: theme.colors.black,
     lineHeight: 18,
@@ -1179,12 +1179,12 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   postAvatarText: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     fontSize: 10,
     color: theme.colors.gray500,
   },
   postUsername: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
     color: theme.colors.gray500,
     flex: 1,
@@ -1195,7 +1195,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   postLikes: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
     color: theme.colors.gray400,
   },
@@ -1210,7 +1210,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyText: {
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     fontSize: 15,
     color: theme.colors.gray400,
     marginTop: 12,

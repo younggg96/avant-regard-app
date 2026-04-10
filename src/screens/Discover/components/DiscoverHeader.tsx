@@ -27,35 +27,26 @@ const DiscoverLogoVideo: React.FC = () => {
 
 interface DiscoverHeaderProps {
     avatar?: string;
-    unreadCount?: number;
+    totalInteractionUnread?: number;
     onAvatarPress: () => void;
     onSearchPress: () => void;
-    onNotificationPress: () => void;
+    onInteractionPress: () => void;
 }
 
-/**
- * 发现页顶部栏组件 - FARFETCH 风格
- * 第一行：左侧 Logo/视频，右侧头像+通知
- * 第二行：搜索框独立一行
- */
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     avatar,
-    unreadCount = 0,
+    totalInteractionUnread = 0,
     onAvatarPress,
     onSearchPress,
-    onNotificationPress,
+    onInteractionPress,
 }) => {
     return (
         <Box bg="$white" px="$md" pt="$sm" pb="$md">
             <VStack space="sm">
-                {/* 第一行：Logo/视频 + 头像 + 通知 */}
                 <HStack alignItems="center" justifyContent="space-between">
-                    {/* 左侧 Logo 视频 */}
                     <DiscoverLogoVideo />
 
-                    {/* 右侧：头像 + 通知图标 */}
                     <HStack alignItems="center" space="md">
-                        {/* 头像 */}
                         <Pressable
                             onPress={onAvatarPress}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -75,21 +66,21 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             )}
                         </Pressable>
 
-                        {/* 通知图标 */}
+                        {/* Interaction icon (messages + notifications) */}
                         <Pressable
-                            onPress={onNotificationPress}
+                            onPress={onInteractionPress}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={styles.notificationButton}
+                            style={styles.interactionButton}
                         >
                             <Ionicons
-                                name="notifications-outline"
+                                name="chatbubbles-outline"
                                 size={24}
                                 color={theme.colors.black}
                             />
-                            {unreadCount > 0 && (
+                            {totalInteractionUnread > 0 && (
                                 <View style={styles.badge}>
                                     <Text style={styles.badgeText}>
-                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                        {totalInteractionUnread > 99 ? "99+" : totalInteractionUnread}
                                     </Text>
                                 </View>
                             )}
@@ -97,7 +88,6 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                     </HStack>
                 </HStack>
 
-                {/* 第二行：搜索框 */}
                 <Pressable onPress={onSearchPress} style={styles.searchContainer}>
                     <HStack alignItems="center" flex={1}>
                         <Ionicons
@@ -124,7 +114,7 @@ const styles = StyleSheet.create({
     avatar: {
         width: 32,
         height: 32,
-        borderRadius: 16, // 圆形
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: theme.colors.gray100,
     },
@@ -146,10 +136,10 @@ const styles = StyleSheet.create({
     searchText: {
         flex: 1,
         fontSize: 16,
-        fontFamily: __DEV__ ? "System" : "Inter-Regular",
+        fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
         color: theme.colors.gray400,
     },
-    notificationButton: {
+    interactionButton: {
         position: "relative",
         width: 32,
         height: 32,

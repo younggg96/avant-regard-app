@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
     marginBottom: 16,
   },
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   contributorText: {
     fontSize: 12,
     color: theme.colors.gray500,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
   },
   metaInfo: {
     marginBottom: 20,
@@ -456,13 +456,13 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     marginLeft: 8,
   },
   descriptionText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     lineHeight: 22,
     marginBottom: 16,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   urlButtonText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
     marginLeft: 8,
   },
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   },
   reviewText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     lineHeight: 24,
   },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   },
   expandButtonText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray700,
     marginRight: 4,
   },
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   },
   totalReviews: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
   },
   distributionContainer: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   starLabel: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
     width: 12,
     textAlign: "center",
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   },
   percentageLabel: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     width: 40,
     textAlign: "right",
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   },
   viewCommentsText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
   },
   // Related posts styles
@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     marginTop: 12,
   },
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   },
   postTitle: {
     fontSize: 13,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
     marginBottom: 6,
     lineHeight: 18,
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
   },
   postUsername: {
     fontSize: 11,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   postStats: {
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
   },
   postStatText: {
     fontSize: 11,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   loadingGif: {

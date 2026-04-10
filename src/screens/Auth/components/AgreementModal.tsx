@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
   },
   tabContainer: {
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray500,
   },
   tabTextActive: {
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   agreementHint: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     textAlign: "center",
     marginBottom: 12,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
 });

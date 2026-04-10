@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   imageCounterText: {
     color: theme.colors.white,
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
   thumbnailContainer: {
     marginTop: 16,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   fullscreenCounterText: {
     color: "white",
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
   },
 });
 

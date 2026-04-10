@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 11,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray300,
     letterSpacing: 3,
     marginHorizontal: 16,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   },
   brandInitials: {
     fontSize: 24,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.gray400,
   },
   brandInfo: {
@@ -134,14 +134,14 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontSize: 12,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     letterSpacing: 0.3,
     textAlign: "center",
   },
   categoryText: {
     fontSize: 10,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginTop: 2,
     textAlign: "center",

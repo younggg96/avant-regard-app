@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   },
   selectionText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
   },
   deleteButton: {
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: "#ff4757",
   },
   disabledText: {
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
     flex: 1,
     marginRight: 8,
@@ -461,13 +461,13 @@ const styles = StyleSheet.create({
   },
   typeLabel: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray500,
     marginBottom: 6,
   },
   itemDescription: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     lineHeight: 20,
   },
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   },
   lastModified: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   imagePreview: {
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   imageCountText: {
     fontSize: 10,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.white,
   },
   loadingState: {
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     marginTop: 12,
   },
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     textAlign: "center",
     lineHeight: 24,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.white,
   },
   loadingGif: {

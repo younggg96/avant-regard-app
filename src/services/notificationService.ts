@@ -32,6 +32,7 @@ export interface Notification {
   title: string;
   message: string;
   timestamp: string;
+  createdAt: string;
   isRead: boolean;
   avatar?: string;
   image?: string;
@@ -154,6 +155,7 @@ function transformNotification(data: NotificationResponse): Notification {
     title: data.title,
     message: data.message,
     timestamp: formatTimestamp(data.createdAt),
+    createdAt: data.createdAt,
     isRead: data.isRead,
     avatar: data.actionData?.actorAvatar,
     image: data.actionData?.postImage,

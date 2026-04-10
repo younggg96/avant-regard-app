@@ -51,7 +51,7 @@ const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
     if (!block.content.trim()) return null;
     return (
       <Text
-        fontFamily="Inter-Regular"
+        fontFamily="PlayfairDisplay-Regular"
         fontSize={15}
         color="$gray600"
         style={contentStyles.blockText}
@@ -118,7 +118,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
         // 纯文本格式：直接渲染
         post.content?.description && (
           <Text
-            fontFamily="Inter-Regular"
+            fontFamily="PlayfairDisplay-Regular"
             fontSize={15}
             color="$gray600"
             style={contentStyles.description}
@@ -224,7 +224,7 @@ const contentStyles = StyleSheet.create({
   },
   metaText: {
     fontSize: 13,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray300,
     letterSpacing: 0.3,
   },
@@ -246,7 +246,7 @@ const contentStyles = StyleSheet.create({
   },
   brandTagText: {
     fontSize: 12,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.white,
     letterSpacing: 1,
     textTransform: "uppercase",
@@ -261,7 +261,7 @@ const contentStyles = StyleSheet.create({
   },
   productTagText: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
   },
@@ -276,7 +276,7 @@ const contentStyles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
   },
@@ -351,7 +351,7 @@ const outfitStyles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 11,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray300,
     letterSpacing: 3,
     marginHorizontal: 16,
@@ -376,7 +376,7 @@ const outfitStyles = StyleSheet.create({
   },
   itemBrand: {
     fontSize: 10,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray300,
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -384,13 +384,13 @@ const outfitStyles = StyleSheet.create({
   },
   itemName: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.black,
     marginBottom: 6,
   },
   itemPrice: {
     fontSize: 13,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
   },
 });

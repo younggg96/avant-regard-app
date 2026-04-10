@@ -37,7 +37,7 @@ export const styles = StyleSheet.create({
   },
   brandTagline: {
     fontSize: 11,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -55,7 +55,7 @@ export const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
   },
@@ -86,7 +86,7 @@ export const styles = StyleSheet.create({
   },
   methodTabText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray200,
   },
   methodTabTextActive: {
@@ -97,7 +97,7 @@ export const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 13,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.black,
     marginBottom: 8,
     letterSpacing: 0.3,
@@ -123,19 +123,19 @@ export const styles = StyleSheet.create({
   },
   countryCode: {
     fontSize: 15,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.black,
   },
   phoneInput: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,
     color: theme.colors.black,
   },
   input: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,
     color: theme.colors.black,
@@ -167,7 +167,7 @@ export const styles = StyleSheet.create({
   },
   countryModalTitle: {
     fontSize: 17,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     letterSpacing: 0.3,
   },
@@ -193,12 +193,12 @@ export const styles = StyleSheet.create({
   countryName: {
     flex: 1,
     fontSize: 15,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
   },
   countryDialCode: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
     marginRight: 8,
   },
@@ -221,7 +221,7 @@ export const styles = StyleSheet.create({
   },
   sendCodeText: {
     fontSize: 13,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.white,
     letterSpacing: 0.3,
   },
@@ -237,7 +237,7 @@ export const styles = StyleSheet.create({
   },
   passwordInput: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,
     paddingLeft: 16,
@@ -258,14 +258,14 @@ export const styles = StyleSheet.create({
   },
   agreementText: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     flex: 1,
     lineHeight: 18,
   },
   agreementLink: {
     color: theme.colors.black,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   // 按钮和操作样式
   actionsContainer: {
@@ -283,7 +283,7 @@ export const styles = StyleSheet.create({
   },
   mainButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
     letterSpacing: 0.5,
   },
@@ -299,7 +299,7 @@ export const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 13,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray200,
     marginHorizontal: 16,
   },
@@ -318,7 +318,7 @@ export const styles = StyleSheet.create({
   },
   appleButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: "#FFFFFF",
     letterSpacing: 0.3,
   },
@@ -330,7 +330,7 @@ export const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 13,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
     letterSpacing: 0.2,
   },
@@ -346,13 +346,13 @@ export const styles = StyleSheet.create({
   },
   switchText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     marginRight: 6,
   },
   switchLink: {
     fontSize: 14,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
     letterSpacing: 0.3,
   },
@@ -363,7 +363,7 @@ export const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
     textDecorationLine: "underline",
   },
@@ -379,12 +379,12 @@ export const styles = StyleSheet.create({
   },
   pickerText: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
   },
   pickerPlaceholder: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   pickerOptionsContainer: {
@@ -410,12 +410,12 @@ export const styles = StyleSheet.create({
   },
   pickerOptionText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
   },
   pickerOptionTextSelected: {
     color: theme.colors.white,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   // 性别选择样式
   genderContainer: {
@@ -437,7 +437,7 @@ export const styles = StyleSheet.create({
   },
   genderOptionText: {
     fontSize: 15,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
   },
   genderOptionTextSelected: {
@@ -458,7 +458,7 @@ export const styles = StyleSheet.create({
   // 字符计数样式
   charCount: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     textAlign: "right",
     marginTop: 4,
@@ -475,7 +475,7 @@ export const styles = StyleSheet.create({
   },
   profileHintText: {
     fontSize: 13,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     flex: 1,
     lineHeight: 18,
@@ -499,14 +499,14 @@ export const styles = StyleSheet.create({
   },
   profileModalSubtitle: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     letterSpacing: 0.5,
   },
   // 品牌选择相关样式
   brandSelectedCount: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginTop: 6,
   },
@@ -525,7 +525,7 @@ export const styles = StyleSheet.create({
   },
   brandModalTitle: {
     fontSize: 17,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
   },
   brandModalCloseButton: {
@@ -545,7 +545,7 @@ export const styles = StyleSheet.create({
   brandSearchInput: {
     flex: 1,
     fontSize: 15,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
     paddingVertical: 0,
   },
@@ -561,7 +561,7 @@ export const styles = StyleSheet.create({
   brandLoadingText: {
     marginTop: 8,
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   brandItem: {
@@ -580,11 +580,11 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   brandNameSelected: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   brandCategory: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginTop: 2,
   },
@@ -607,7 +607,7 @@ export const styles = StyleSheet.create({
   },
   brandEmptyText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   brandLoadMoreContainer: {
@@ -619,12 +619,12 @@ export const styles = StyleSheet.create({
   },
   brandLoadMoreText: {
     fontSize: 13,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   brandLoadMoreHint: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   brandConfirmButton: {
@@ -636,7 +636,7 @@ export const styles = StyleSheet.create({
   },
   brandConfirmButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
 });

@@ -989,19 +989,38 @@ const UserProfileScreen = () => {
 
             <View style={styles.actionButtonsRow}>
               {!isCurrentUser ? (
-                <Pressable
-                  style={[styles.followButton, isFollowing && styles.followingButton]}
-                  onPress={handleFollowToggle}
-                  disabled={followLoading}
-                >
-                  {followLoading ? (
-                    <ActivityIndicator color={isFollowing ? theme.colors.gray600 : "white"} size="small" />
-                  ) : (
-                    <RNText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                      {isFollowing ? "已关注" : "关注"}
-                    </RNText>
-                  )}
-                </Pressable>
+                <>
+                  <Pressable
+                    style={[styles.followButton, isFollowing && styles.followingButton]}
+                    onPress={handleFollowToggle}
+                    disabled={followLoading}
+                  >
+                    {followLoading ? (
+                      <ActivityIndicator color={isFollowing ? theme.colors.gray600 : "white"} size="small" />
+                    ) : (
+                      <RNText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                        {isFollowing ? "已关注" : "关注"}
+                      </RNText>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    style={styles.chatButton}
+                    onPress={() => {
+                      const { createConversation } = require("../services/chatService");
+                      createConversation(userId).then((res: { conversationId: number }) => {
+                        (navigation as any).navigate("Chat", {
+                          conversationId: res.conversationId,
+                          otherUserName: userInfo?.username || username || "用户",
+                          otherUserAvatar: userInfo?.avatarUrl,
+                          otherUserId: userId,
+                        });
+                      }).catch((e: Error) => Alert.show("发起聊天失败"));
+                    }}
+                  >
+                    <Ionicons name="chatbubble-outline" size={16} color={theme.colors.black} />
+                    <RNText style={styles.chatButtonText}>发消息</RNText>
+                  </Pressable>
+                </>
               ) : (
                 <Pressable
                   style={styles.editProfileButton}
@@ -1342,6 +1361,21 @@ const styles = StyleSheet.create({
   },
   followingButtonText: {
     color: theme.colors.white,
+  },
+  chatButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    gap: 4,
+  },
+  chatButtonText: {
+    color: theme.colors.black,
+    fontSize: 14,
+    fontWeight: "500",
   },
   editProfileButton: {
     paddingHorizontal: 16,

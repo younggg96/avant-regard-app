@@ -891,7 +891,7 @@ const ProfileScreen = () => {
         <View style={[styles.collapsedHeaderContent, { height: HEADER_CONTENT_HEIGHT }]}>
           <Pressable
             style={styles.headerButton}
-            onPress={() => (navigation as any).navigate("Notifications")}
+            onPress={() => (navigation as any).navigate("Main", { screen: "Interaction", params: { subTab: "messages" } })}
           >
             <View style={{ position: "relative" }}>
               <Ionicons name="notifications-outline" size={20} color="#1A1A1A" />
@@ -986,7 +986,7 @@ const ProfileScreen = () => {
             <HStack gap="$sm">
               <Pressable
                 style={styles.actionButton}
-                onPress={() => (navigation as any).navigate("Notifications")}
+                onPress={() => (navigation as any).navigate("Main", { screen: "Interaction", params: { subTab: "messages" } })}
               >
                 <View style={{ position: "relative" }}>
                   <Ionicons name="notifications-outline" size={22} color="white" />

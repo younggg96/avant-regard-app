@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.black,
     paddingVertical: 8,
   },

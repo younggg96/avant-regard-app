@@ -73,7 +73,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               />
               <View style={styles.showInfo}>
                 <Text
-                  fontFamily="Inter-Bold"
+                  fontFamily="PlayfairDisplay-Bold"
                   fontSize={11}
                   color="$white"
                   numberOfLines={1}
@@ -81,7 +81,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
                   {show.brand}
                 </Text>
                 <Text
-                  fontFamily="Inter-Regular"
+                  fontFamily="PlayfairDisplay-Regular"
                   fontSize={10}
                   style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
                   numberOfLines={1}

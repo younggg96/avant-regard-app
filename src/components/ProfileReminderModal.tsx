@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
   },
   hintContainer: {
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   },
   hintText: {
     fontSize: 13,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     flex: 1,
   },
@@ -612,13 +612,13 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 13,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.black,
     marginBottom: 8,
   },
   input: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     textAlign: "right",
     marginTop: 4,
@@ -653,13 +653,13 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
     flex: 1,
   },
   pickerPlaceholder: {
     fontSize: 16,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     flex: 1,
   },
@@ -686,12 +686,12 @@ const styles = StyleSheet.create({
   },
   pickerOptionText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
   },
   pickerOptionTextSelected: {
     color: theme.colors.white,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   genderContainer: {
     flexDirection: "row",
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   },
   genderOptionText: {
     fontSize: 15,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
   },
   genderOptionTextSelected: {
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
   },
   selectedCount: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginTop: 6,
   },
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   },
   mainButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
   laterButton: {
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
   },
   laterButtonText: {
     fontSize: 14,
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
     color: theme.colors.gray400,
     textDecorationLine: "underline",
   },
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
   },
   brandModalTitle: {
     fontSize: 17,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.black,
   },
   brandModalCloseButton: {
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
   brandSearchInput: {
     flex: 1,
     fontSize: 15,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
     paddingVertical: 0,
   },
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
   brandLoadingText: {
     marginTop: 8,
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   brandItem: {
@@ -820,15 +820,15 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontSize: 15,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.black,
   },
   brandNameSelected: {
-    fontFamily: "Inter-Medium",
+    fontFamily: "PlayfairDisplay-Medium",
   },
   brandCategory: {
     fontSize: 12,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
     marginTop: 2,
   },
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
   },
   brandEmptyText: {
     fontSize: 14,
-    fontFamily: "Inter-Regular",
+    fontFamily: "PlayfairDisplay-Regular",
     color: theme.colors.gray500,
   },
   brandLoadMoreContainer: {
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
   },
   brandConfirmButtonText: {
     fontSize: 16,
-    fontFamily: "Inter-Bold",
+    fontFamily: "PlayfairDisplay-Bold",
     color: theme.colors.white,
   },
 });

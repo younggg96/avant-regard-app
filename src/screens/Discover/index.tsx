@@ -13,6 +13,7 @@ import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useAuthStore } from "../../store/authStore";
 import { getUnreadCount } from "../../services/notificationService";
+import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
 import { userInfoService, UserInfo } from "../../services/userInfoService";
 import { TabType } from "./types";
 import { SCREEN_WIDTH, TAB_INDEX_MAP } from "./constants";
@@ -127,6 +128,8 @@ const DiscoverScreen: React.FC = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>("recommend");
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const totalInteractionUnread = unreadNotificationCount + unreadChatCount;
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
 
   // 滑动视图引用
@@ -185,6 +188,12 @@ const DiscoverScreen: React.FC = () => {
     } catch (err) {
       console.warn("获取未读消息数量失败:", err);
     }
+    try {
+      const chatCount = await getChatUnreadCount();
+      setUnreadChatCount(chatCount);
+    } catch (err) {
+      console.warn("获取未读聊天数量失败:", err);
+    }
   }, []);
 
   // 页面聚焦时刷新未读消息数
@@ -217,9 +226,8 @@ const DiscoverScreen: React.FC = () => {
     (navigation.navigate as any)("Profile");
   }, [navigation]);
 
-  // 处理消息图标点击
-  const handleNotificationPress = useCallback(() => {
-    (navigation.navigate as any)("Notifications");
+  const handleInteractionPress = useCallback(() => {
+    (navigation.navigate as any)("Main", { screen: "Interaction" });
   }, [navigation]);
 
   // 处理标签切换 - 点击 tab 时也触发懒加载
@@ -371,10 +379,10 @@ const DiscoverScreen: React.FC = () => {
       >
         <DiscoverHeader
           avatar={userAvatarUrl}
-          unreadCount={unreadNotificationCount}
+          totalInteractionUnread={totalInteractionUnread}
           onAvatarPress={handleAvatarPress}
           onSearchPress={handleSearchPress}
-          onNotificationPress={handleNotificationPress}
+          onInteractionPress={handleInteractionPress}
         />
       </Animated.View>
 

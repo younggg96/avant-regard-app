@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
   },
   writeCommentContainer: {
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   writeCommentButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
     marginLeft: 8,
     flex: 1,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
     marginRight: 12,
   },
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.black,
     backgroundColor: theme.colors.white,
     textAlignVertical: "top",
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   cancelSubmitButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
   },
   submitButton: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.white,
   },
   commentsList: {
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 15,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.black,
   },
   metaRow: {
@@ -533,12 +533,12 @@ const styles = StyleSheet.create({
   },
   commentDate: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray600,
   },
   commentContent: {
     fontSize: 15,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.black,
     lineHeight: 21,
     marginTop: 8,
@@ -551,13 +551,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontFamily: __DEV__ ? "System" : "Inter-Medium",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
     color: theme.colors.gray600,
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "System" : "Inter-Regular",
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: theme.colors.gray400,
     marginTop: 8,
   },
