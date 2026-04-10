@@ -276,6 +276,46 @@ class ChatService:
         )
         return bool(result.data)
 
+    def mark_conversation_unread(self, conversation_id: int, user_id: int) -> bool:
+        """Reset last_read_at so the conversation appears unread."""
+        result = (
+            self.db.table("conversation_participants")
+            .update({"last_read_at": "2000-01-01T00:00:00"})
+            .eq("conversation_id", conversation_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def delete_conversation(self, conversation_id: int, user_id: int) -> bool:
+        """Delete a conversation: remove participant row; if no participants left, remove conv + messages."""
+        if not self._is_participant(conversation_id, user_id):
+            return False
+
+        self.db.table("conversation_participants") \
+            .delete() \
+            .eq("conversation_id", conversation_id) \
+            .eq("user_id", user_id) \
+            .execute()
+
+        remaining = (
+            self.db.table("conversation_participants")
+            .select("id", count="exact")
+            .eq("conversation_id", conversation_id)
+            .execute()
+        )
+        if (remaining.count or 0) == 0:
+            self.db.table("messages") \
+                .delete() \
+                .eq("conversation_id", conversation_id) \
+                .execute()
+            self.db.table("conversations") \
+                .delete() \
+                .eq("id", conversation_id) \
+                .execute()
+
+        return True
+
     def get_total_unread_count(self, user_id: int) -> int:
         """Get total unread message count across all conversations."""
         conversations = self.get_conversations(user_id)

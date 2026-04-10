@@ -288,6 +288,36 @@ async def mark_read(
         return success({"marked": False})
 
 
+@router.post("/conversations/{conversation_id}/unread")
+async def mark_unread(
+    conversation_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Mark a conversation as unread."""
+    try:
+        chat_service.mark_conversation_unread(conversation_id, current_user_id)
+        return success({"marked": True})
+    except Exception as e:
+        print(f"Chat mark_unread error: {e}")
+        return success({"marked": False})
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Delete a conversation for the current user."""
+    try:
+        deleted = chat_service.delete_conversation(conversation_id, current_user_id)
+        if not deleted:
+            return error(message="Not a participant", code=403)
+        return success({"deleted": True})
+    except Exception as e:
+        print(f"Chat delete_conversation error: {e}")
+        return error(message="Failed to delete conversation", code=500)
+
+
 @router.get("/unread-count")
 async def get_unread_count(current_user_id: int = Depends(get_current_user_id)):
     """Get total unread message count across all conversations."""
