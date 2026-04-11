@@ -124,6 +124,81 @@ class ModerationService:
         )
         return bool(result.data)
 
+    def get_my_reports(
+        self, user_id: int, page: int = 1, page_size: int = 20
+    ) -> dict:
+        """Get the current user's own report history with target details."""
+        offset = (page - 1) * page_size
+
+        query = (
+            self.db.table("content_reports")
+            .select("*", count="exact")
+            .eq("reporter_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+        )
+        result = query.execute()
+        total = result.count or 0
+
+        post_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "POST"]
+        comment_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "COMMENT"]
+
+        post_map: dict = {}
+        if post_ids:
+            p_result = (
+                self.db.table("posts")
+                .select("id, title, type, images")
+                .in_("id", post_ids)
+                .execute()
+            )
+            for p in p_result.data or []:
+                images = p.get("images") or []
+                post_map[p["id"]] = {
+                    "title": p.get("title", ""),
+                    "type": p.get("type", ""),
+                    "coverImage": images[0] if images else "",
+                }
+
+        comment_map: dict = {}
+        if comment_ids:
+            c_result = (
+                self.db.table("comments")
+                .select("id, content, post_id")
+                .in_("id", comment_ids)
+                .execute()
+            )
+            for c in c_result.data or []:
+                comment_map[c["id"]] = {
+                    "content": c.get("content", ""),
+                    "postId": c.get("post_id"),
+                }
+
+        reports = []
+        for r in result.data or []:
+            target_info = {}
+            if r["target_type"] == "POST":
+                target_info = post_map.get(r["target_id"], {})
+            elif r["target_type"] == "COMMENT":
+                target_info = comment_map.get(r["target_id"], {})
+
+            reports.append({
+                "id": r["id"],
+                "targetType": r["target_type"],
+                "targetId": r["target_id"],
+                "reason": r["reason"],
+                "description": r.get("description", ""),
+                "status": r.get("status", "PENDING"),
+                "createdAt": r.get("created_at"),
+                "targetInfo": target_info,
+            })
+
+        return {
+            "reports": reports,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
     @staticmethod
     def _format_report(data: dict) -> dict:
         return {

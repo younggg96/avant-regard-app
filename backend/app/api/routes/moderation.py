@@ -2,7 +2,7 @@
 Content moderation routes: report + block.
 Required by Apple Guideline 1.2 (User-Generated Content).
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.services.moderation_service import moderation_service
@@ -75,3 +75,16 @@ async def get_blocked_users(
     """Get list of blocked users"""
     users = moderation_service.get_blocked_users(current_user_id)
     return success(users)
+
+
+@router.get("/my-reports")
+async def get_my_reports(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Get the current user's own report history"""
+    result = moderation_service.get_my_reports(
+        user_id=current_user_id, page=page, page_size=pageSize
+    )
+    return success(result)
