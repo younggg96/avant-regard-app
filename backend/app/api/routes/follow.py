@@ -85,6 +85,31 @@ async def is_following_user(follower_id: int, target_user_id: int):
     return success(is_following)
 
 
+@router.get("/users/{user_id}/mutual-follows")
+async def get_mutual_follows(user_id: int):
+    """获取互相关注的用户列表"""
+    try:
+        result = follow_service.get_mutual_follows(user_id)
+        return success([u.model_dump() for u in result])
+    except Exception as e:
+        print(f"Error in get_mutual_follows route: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/user/{user_id}/mutual-follows/count")
+async def get_mutual_follows_count(user_id: int):
+    """获取互相关注的用户数量"""
+    count = follow_service.get_mutual_follows_count(user_id)
+    return success(count)
+
+
+@router.get("/user/{user_id}/is-mutual/{target_user_id}")
+async def is_mutual_follow(user_id: int, target_user_id: int):
+    """检查两个用户是否互相关注"""
+    result = follow_service.is_mutual_follow(user_id, target_user_id)
+    return success(result)
+
+
 # ==================== 品牌关注 ====================
 
 @router.post("/brand")

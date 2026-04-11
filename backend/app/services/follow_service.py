@@ -172,6 +172,86 @@ class FollowService:
         )
         return bool(result.data)
 
+    def get_mutual_follows(self, user_id: int) -> List[FollowingUser]:
+        """获取互相关注的用户列表 (A follows B AND B follows A)"""
+        try:
+            following_result = (
+                self.db.table("user_follows")
+                .select("following_id")
+                .eq("follower_id", user_id)
+                .execute()
+            )
+            following_ids = {item["following_id"] for item in (following_result.data or [])}
+            if not following_ids:
+                return []
+
+            followers_result = (
+                self.db.table("user_follows")
+                .select("follower_id")
+                .eq("following_id", user_id)
+                .in_("follower_id", list(following_ids))
+                .execute()
+            )
+            mutual_ids = [item["follower_id"] for item in (followers_result.data or [])]
+            if not mutual_ids:
+                return []
+
+            users_result = (
+                self.db.table("users")
+                .select("id, username, user_info(bio, location, avatar_url)")
+                .in_("id", mutual_ids)
+                .execute()
+            )
+
+            users = []
+            for user in users_result.data or []:
+                info = self._extract_user_info(user.get("user_info"))
+                users.append(
+                    FollowingUser(
+                        userId=user["id"],
+                        username=user["username"],
+                        avatar=info.get("avatar_url", ""),
+                        bio=info.get("bio", ""),
+                        location=info.get("location", ""),
+                    )
+                )
+            return users
+        except Exception as e:
+            print(f"Error in get_mutual_follows for user {user_id}: {e}")
+            raise
+
+    def get_mutual_follows_count(self, user_id: int) -> int:
+        """获取互相关注的用户数量"""
+        try:
+            following_result = (
+                self.db.table("user_follows")
+                .select("following_id")
+                .eq("follower_id", user_id)
+                .execute()
+            )
+            following_ids = {item["following_id"] for item in (following_result.data or [])}
+            if not following_ids:
+                return 0
+
+            followers_result = (
+                self.db.table("user_follows")
+                .select("follower_id")
+                .eq("following_id", user_id)
+                .in_("follower_id", list(following_ids))
+                .execute()
+            )
+            return len(followers_result.data or [])
+        except Exception as e:
+            print(f"Error in get_mutual_follows_count for user {user_id}: {e}")
+            return 0
+
+    def is_mutual_follow(self, user_id: int, target_user_id: int) -> bool:
+        """检查两个用户是否互相关注"""
+        a_follows_b = self.is_following_user(user_id, target_user_id)
+        if not a_follows_b:
+            return False
+        return self.is_following_user(target_user_id, user_id)
+
     # ==================== 品牌关注 ====================
 
     def follow_brand(self, user_id: int, brand_id: int) -> bool:
