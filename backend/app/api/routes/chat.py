@@ -8,7 +8,7 @@ from app.schemas.chat import (
     CreateConversationRequest,
     SendMessageRequest,
 )
-from app.services.chat_service import chat_service
+from app.services.chat_service import chat_service, BlockedUserError
 from app.services.notification_service import notification_service
 from app.schemas.notification import NotificationType
 from app.api.deps import get_current_user_id, decode_token_without_expiry
@@ -123,6 +123,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 
                 try:
                     msg = chat_service.send_message(conv_id, user_id, content, message_type)
+                except BlockedUserError:
+                    await websocket.send_json({"type": "error", "message": "无法发送消息", "blocked": True})
+                    continue
                 except Exception as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
                     continue
@@ -248,30 +251,32 @@ async def send_message_rest(
         msg = chat_service.send_message(conversation_id, current_user_id, req.content, req.message_type.value)
         if not msg:
             return error(message="Failed to send message or not a participant", code=403)
-
-        msg_dict = msg.model_dump()
-
-        try:
-            participants = (
-                get_supabase()
-                .table("conversation_participants")
-                .select("user_id")
-                .eq("conversation_id", conversation_id)
-                .execute()
-            )
-            for p in participants.data or []:
-                pid = p["user_id"]
-                if pid != current_user_id:
-                    outgoing = msg.model_dump()
-                    outgoing["isMine"] = False
-                    await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
-        except Exception as e:
-            print(f"Failed to push message to WS clients: {e}")
-
-        return success(msg_dict)
+    except BlockedUserError:
+        return error(message="无法发送消息", code=403)
     except Exception as e:
         print(f"Chat send_message error: {e}")
         return error(message="Failed to send message", code=500)
+
+    msg_dict = msg.model_dump()
+
+    try:
+        participants = (
+            get_supabase()
+            .table("conversation_participants")
+            .select("user_id")
+            .eq("conversation_id", conversation_id)
+            .execute()
+        )
+        for p in participants.data or []:
+            pid = p["user_id"]
+            if pid != current_user_id:
+                outgoing = msg.model_dump()
+                outgoing["isMine"] = False
+                await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+    except Exception as e:
+        print(f"Failed to push message to WS clients: {e}")
+
+    return success(msg_dict)
 
 
 @router.post("/conversations/{conversation_id}/read")

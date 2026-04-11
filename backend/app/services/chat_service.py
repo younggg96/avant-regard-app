@@ -5,11 +5,17 @@ Chat service - handles conversation and message business logic
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.db.supabase import get_supabase
+from app.services.moderation_service import moderation_service
 from app.schemas.chat import (
     MessageResponse,
     ConversationResponse,
     ConversationParticipant,
 )
+
+
+class BlockedUserError(Exception):
+    """Raised when a message is rejected due to a block relationship."""
+    pass
 
 
 class ChatService:
@@ -119,6 +125,10 @@ class ChatService:
         )
 
         results = []
+        blocked_ids = set(moderation_service.get_blocked_user_ids(user_id))
+        blocked_by_ids = self._get_users_who_blocked(user_id)
+        all_blocked = blocked_ids | blocked_by_ids
+
         for conv in conversations.data or []:
             conv_id = conv["id"]
             participants_data = (
@@ -129,6 +139,7 @@ class ChatService:
             )
             participants = []
             other_user = None
+            skip = False
             for p in participants_data.data or []:
                 uid = p["user_id"]
                 brief = self._get_user_brief(uid)
@@ -140,6 +151,11 @@ class ChatService:
                 participants.append(participant)
                 if uid != user_id:
                     other_user = participant
+                    if uid in all_blocked:
+                        skip = True
+
+            if skip:
+                continue
 
             last_read = conv_read_map.get(conv_id)
             unread = 0
@@ -234,6 +250,12 @@ class ChatService:
         """Send a message in a conversation."""
         if not self._is_participant(conversation_id, sender_id):
             return None
+
+        other_id = self._get_other_participant(conversation_id, sender_id)
+        if other_id:
+            if moderation_service.is_blocked(sender_id, other_id) or \
+               moderation_service.is_blocked(other_id, sender_id):
+                raise BlockedUserError("无法发送消息")
 
         result = (
             self.db.table("messages")
@@ -332,6 +354,29 @@ class ChatService:
             .execute()
         )
         return result.data is not None
+
+    def _get_other_participant(self, conversation_id: int, user_id: int) -> Optional[int]:
+        """Get the other participant's user_id in a 1-on-1 conversation."""
+        result = (
+            self.db.table("conversation_participants")
+            .select("user_id")
+            .eq("conversation_id", conversation_id)
+            .neq("user_id", user_id)
+            .execute()
+        )
+        if result.data and len(result.data) == 1:
+            return result.data[0]["user_id"]
+        return None
+
+    def _get_users_who_blocked(self, user_id: int) -> set:
+        """Get set of user IDs who have blocked the given user."""
+        result = (
+            self.db.table("user_blocks")
+            .select("blocker_id")
+            .eq("blocked_id", user_id)
+            .execute()
+        )
+        return {r["blocker_id"] for r in result.data or []}
 
 
 chat_service = ChatService()

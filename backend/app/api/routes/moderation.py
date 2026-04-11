@@ -5,7 +5,7 @@ Required by Apple Guideline 1.2 (User-Generated Content).
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.services.moderation_service import moderation_service
+from app.services.moderation_service import moderation_service, DuplicateReportError
 from app.api.deps import get_current_user_id
 from app.core.response import success
 
@@ -13,8 +13,8 @@ router = APIRouter(prefix="/moderation", tags=["内容审核"])
 
 
 class ReportContentRequest(BaseModel):
-    targetType: str = Field(..., description="POST or COMMENT")
-    targetId: int = Field(..., description="Target post or comment ID")
+    targetType: str = Field(..., description="POST, COMMENT, MESSAGE, or USER")
+    targetId: int = Field(..., description="Target ID")
     reason: str = Field(..., description="Report reason category")
     description: Optional[str] = Field("", description="Additional description")
 
@@ -23,14 +23,20 @@ class BlockUserRequest(BaseModel):
     blockedUserId: int = Field(..., description="User ID to block")
 
 
+VALID_REPORT_TYPES = {"POST", "COMMENT", "MESSAGE", "USER"}
+
+
 @router.post("/report")
 async def report_content(
     request: ReportContentRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
-    """Report objectionable content (post or comment)"""
-    if request.targetType not in ("POST", "COMMENT"):
-        raise HTTPException(status_code=400, detail="targetType must be POST or COMMENT")
+    """Report objectionable content (post, comment, message, or user)"""
+    if request.targetType not in VALID_REPORT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"targetType must be one of {', '.join(VALID_REPORT_TYPES)}",
+        )
 
     try:
         report = moderation_service.report_content(
@@ -41,6 +47,10 @@ async def report_content(
             description=request.description or "",
         )
         return success(report)
+    except DuplicateReportError as e:
+        raise HTTPException(status_code=429, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

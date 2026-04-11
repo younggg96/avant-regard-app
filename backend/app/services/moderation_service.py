@@ -3,16 +3,24 @@ Content moderation service: report content + block users.
 Required by Apple Guideline 1.2 (User-Generated Content).
 """
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from app.db.supabase import get_supabase, get_supabase_admin
 
 logger = logging.getLogger(__name__)
 
 
+class DuplicateReportError(Exception):
+    """Raised when a duplicate report is submitted within the rate-limit window."""
+    pass
+
+
 class ModerationService:
     def __init__(self):
         self.db = get_supabase()
         self.db_admin = get_supabase_admin()
+
+    VALID_TARGET_TYPES = {"POST", "COMMENT", "MESSAGE", "USER"}
 
     def report_content(
         self,
@@ -23,8 +31,28 @@ class ModerationService:
         description: str = "",
     ) -> dict:
         """
-        Submit a content report. target_type is 'POST' or 'COMMENT'.
+        Submit a content report.
+        target_type: POST | COMMENT | MESSAGE | USER
+        For USER reports, target_id is the reported user's id.
+        Rate-limited: same reporter can only report the same target once per 24h.
         """
+        if target_type not in self.VALID_TARGET_TYPES:
+            raise ValueError(f"Invalid target_type: {target_type}")
+
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        existing = (
+            self.db.table("content_reports")
+            .select("id")
+            .eq("reporter_id", reporter_id)
+            .eq("target_type", target_type)
+            .eq("target_id", target_id)
+            .gte("created_at", cutoff)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            raise DuplicateReportError("24小时内已举报过，请勿重复提交")
+
         data = {
             "reporter_id": reporter_id,
             "target_type": target_type,
@@ -142,6 +170,8 @@ class ModerationService:
 
         post_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "POST"]
         comment_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "COMMENT"]
+        message_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "MESSAGE"]
+        user_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "USER"]
 
         post_map: dict = {}
         if post_ids:
@@ -173,6 +203,31 @@ class ModerationService:
                     "postId": c.get("post_id"),
                 }
 
+        message_map: dict = {}
+        if message_ids:
+            m_result = (
+                self.db.table("messages")
+                .select("id, content, sender_id")
+                .in_("id", message_ids)
+                .execute()
+            )
+            for m in m_result.data or []:
+                message_map[m["id"]] = {
+                    "content": m.get("content", ""),
+                    "senderId": m.get("sender_id"),
+                }
+
+        user_map: dict = {}
+        if user_ids:
+            u_result = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", user_ids)
+                .execute()
+            )
+            for u in u_result.data or []:
+                user_map[u["id"]] = {"username": u.get("username", "")}
+
         reports = []
         for r in result.data or []:
             target_info = {}
@@ -180,6 +235,10 @@ class ModerationService:
                 target_info = post_map.get(r["target_id"], {})
             elif r["target_type"] == "COMMENT":
                 target_info = comment_map.get(r["target_id"], {})
+            elif r["target_type"] == "MESSAGE":
+                target_info = message_map.get(r["target_id"], {})
+            elif r["target_type"] == "USER":
+                target_info = user_map.get(r["target_id"], {})
 
             reports.append({
                 "id": r["id"],
