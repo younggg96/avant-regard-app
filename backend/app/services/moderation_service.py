@@ -158,15 +158,30 @@ class ModerationService:
         """Get the current user's own report history with target details."""
         offset = (page - 1) * page_size
 
+        count_query = (
+            self.db.table("content_reports")
+            .select("id", count="exact")
+            .eq("reporter_id", user_id)
+        )
+        count_result = count_query.execute()
+        total = count_result.count or 0
+
+        if offset >= total and total > 0:
+            return {
+                "reports": [],
+                "total": total,
+                "page": page,
+                "pageSize": page_size,
+            }
+
         query = (
             self.db.table("content_reports")
-            .select("*", count="exact")
+            .select("*")
             .eq("reporter_id", user_id)
             .order("created_at", desc=True)
             .range(offset, offset + page_size - 1)
         )
         result = query.execute()
-        total = result.count or 0
 
         post_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "POST"]
         comment_ids = [r["target_id"] for r in result.data or [] if r["target_type"] == "COMMENT"]
@@ -177,15 +192,15 @@ class ModerationService:
         if post_ids:
             p_result = (
                 self.db.table("posts")
-                .select("id, title, type, images")
+                .select("id, title, post_type, image_urls")
                 .in_("id", post_ids)
                 .execute()
             )
             for p in p_result.data or []:
-                images = p.get("images") or []
+                images = p.get("image_urls") or []
                 post_map[p["id"]] = {
                     "title": p.get("title", ""),
-                    "type": p.get("type", ""),
+                    "type": p.get("post_type", ""),
                     "coverImage": images[0] if images else "",
                 }
 
