@@ -151,6 +151,15 @@ async def get_user_profile(user_id: int):
     return success(result.model_dump())
 
 
+@router.get("/{user_id}/user-type")
+async def get_user_type(user_id: int):
+    """获取用户类型（轻量接口，仅查 users 表）"""
+    result = user_service.get_user_type(user_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result)
+
+
 @router.put("/{user_id}/profile")
 async def update_user_profile(
     user_id: int,

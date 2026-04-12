@@ -65,6 +65,18 @@ class UserService:
         
         return self.get_user_info(user_id)
 
+    def get_user_type(self, user_id: int) -> Optional[dict]:
+        """获取用户类型（轻量查询，仅查 users 表）"""
+        result = self.db.table("users").select("id, is_admin, user_type").eq("id", user_id).execute()
+        if not result.data:
+            return None
+        user = result.data[0]
+        return {
+            "userId": user["id"],
+            "isAdmin": user.get("is_admin", False),
+            "userType": user.get("user_type", "USER"),
+        }
+
     def get_user_profile(self, user_id: int) -> Optional[UserProfileInfo]:
         """获取用户完整资料"""
         # 获取用户基本信息
