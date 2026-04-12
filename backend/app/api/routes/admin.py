@@ -604,11 +604,11 @@ async def admin_delete_chat_message(
     message_id: int,
     current_user_id: int = Depends(get_current_admin_user),
 ):
-    """管理员删除聊天消息"""
-    ok = admin_service.admin_delete_chat_message(message_id)
-    if not ok:
+    """管理员删除聊天消息，返回消息发送者信息"""
+    result = admin_service.admin_delete_chat_message(message_id)
+    if not result:
         raise HTTPException(status_code=404, detail="消息不存在")
-    return success(message="消息已删除")
+    return success(result)
 
 
 # ==================== 屏蔽关系 ====================

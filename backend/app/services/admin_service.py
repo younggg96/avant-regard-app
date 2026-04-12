@@ -893,15 +893,27 @@ class AdminService:
         )
         return bool(result.data)
 
-    def admin_delete_chat_message(self, message_id: int) -> bool:
-        """管理员删除聊天消息（软删除：标记 is_deleted 并清空内容）"""
-        result = (
+    def admin_delete_chat_message(self, message_id: int) -> dict | None:
+        """管理员删除聊天消息（软删除：标记 is_deleted 并清空内容），返回消息信息"""
+        msg_result = (
             self.db.table("messages")
-            .update({"is_deleted": True, "content": ""})
+            .select("id, sender_id, conversation_id")
             .eq("id", message_id)
             .execute()
         )
-        return bool(result.data)
+        if not msg_result.data:
+            return None
+
+        self.db.table("messages").update(
+            {"is_deleted": True, "content": ""}
+        ).eq("id", message_id).execute()
+
+        row = msg_result.data[0]
+        return {
+            "messageId": row["id"],
+            "senderId": row["sender_id"],
+            "conversationId": row["conversation_id"],
+        }
 
     # ==================== 屏蔽关系 ====================
 
