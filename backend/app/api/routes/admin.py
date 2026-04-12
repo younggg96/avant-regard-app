@@ -599,6 +599,18 @@ async def update_report_status(
     return success(message="状态已更新")
 
 
+@router.delete("/chat/messages/{message_id}")
+async def admin_delete_chat_message(
+    message_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员删除聊天消息"""
+    ok = admin_service.admin_delete_chat_message(message_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="消息不存在")
+    return success(message="消息已删除")
+
+
 # ==================== 屏蔽关系 ====================
 
 @router.get("/blocks")

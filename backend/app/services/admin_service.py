@@ -893,6 +893,16 @@ class AdminService:
         )
         return bool(result.data)
 
+    def admin_delete_chat_message(self, message_id: int) -> bool:
+        """管理员删除聊天消息（软删除：标记 is_deleted 并清空内容）"""
+        result = (
+            self.db.table("messages")
+            .update({"is_deleted": True, "content": ""})
+            .eq("id", message_id)
+            .execute()
+        )
+        return bool(result.data)
+
     # ==================== 屏蔽关系 ====================
 
     def get_all_blocks(self, page: int = 1, page_size: int = 20) -> dict:
