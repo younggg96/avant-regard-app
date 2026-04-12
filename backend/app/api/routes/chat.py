@@ -9,6 +9,7 @@ from app.schemas.chat import (
     SendMessageRequest,
 )
 from app.services.chat_service import chat_service, BlockedUserError
+from app.services.moderation_service import moderation_service
 from app.services.notification_service import notification_service
 from app.schemas.notification import NotificationType
 from app.api.deps import get_current_user_id, decode_token_without_expiry
@@ -147,30 +148,35 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                     )
                     for p in participants.data or []:
                         pid = p["user_id"]
-                        if pid != user_id:
-                            outgoing = msg.model_dump()
-                            outgoing["isMine"] = False
-                            await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+                        if pid == user_id:
+                            continue
+                        if moderation_service.is_blocked(pid, user_id) or \
+                           moderation_service.is_blocked(user_id, pid):
+                            continue
 
-                            if not manager.is_online(pid):
-                                try:
-                                    sender_brief = chat_service._get_user_brief(user_id)
-                                    notification_service.create_notification(
-                                        user_id=pid,
-                                        notification_type=NotificationType.SYSTEM,
-                                        title=f"{sender_brief['username']} 发来了一条消息",
-                                        message=content[:100],
-                                        action_data={
-                                            "user_id": user_id,
-                                            "navigateTo": "Chat",
-                                            "navigateParams": {"conversationId": conv_id},
-                                            "actor_name": sender_brief["username"],
-                                            "actor_avatar": sender_brief.get("avatar_url"),
-                                        },
-                                        send_push=True,
-                                    )
-                                except Exception as e:
-                                    print(f"Failed to send chat push notification: {e}")
+                        outgoing = msg.model_dump()
+                        outgoing["isMine"] = False
+                        await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+
+                        if not manager.is_online(pid):
+                            try:
+                                sender_brief = chat_service._get_user_brief(user_id)
+                                notification_service.create_notification(
+                                    user_id=pid,
+                                    notification_type=NotificationType.SYSTEM,
+                                    title=f"{sender_brief['username']} 发来了一条消息",
+                                    message=content[:100],
+                                    action_data={
+                                        "user_id": user_id,
+                                        "navigateTo": "Chat",
+                                        "navigateParams": {"conversationId": conv_id},
+                                        "actor_name": sender_brief["username"],
+                                        "actor_avatar": sender_brief.get("avatar_url"),
+                                    },
+                                    send_push=True,
+                                )
+                            except Exception as e:
+                                print(f"Failed to send chat push notification: {e}")
                 except Exception as e:
                     print(f"Failed to broadcast message to participants: {e}")
 
@@ -269,10 +275,14 @@ async def send_message_rest(
         )
         for p in participants.data or []:
             pid = p["user_id"]
-            if pid != current_user_id:
-                outgoing = msg.model_dump()
-                outgoing["isMine"] = False
-                await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
+            if pid == current_user_id:
+                continue
+            if moderation_service.is_blocked(pid, current_user_id) or \
+               moderation_service.is_blocked(current_user_id, pid):
+                continue
+            outgoing = msg.model_dump()
+            outgoing["isMine"] = False
+            await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
     except Exception as e:
         print(f"Failed to push message to WS clients: {e}")
 
