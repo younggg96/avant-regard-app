@@ -180,6 +180,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                 except Exception as e:
                     print(f"Failed to broadcast message to participants: {e}")
 
+                # Auto-reply: if the recipient is admin and hasn't replied yet
+                try:
+                    auto_reply = chat_service.send_auto_reply_if_needed(conv_id, user_id)
+                    if auto_reply:
+                        auto_reply_dict = auto_reply.model_dump()
+                        auto_reply_dict["isMine"] = False
+                        await websocket.send_json({"type": "new_message", "data": auto_reply_dict})
+                except Exception as e:
+                    print(f"Auto-reply error: {e}")
+
             elif msg_type == "mark_read":
                 conv_id = data.get("conversation_id")
                 if conv_id:
@@ -285,6 +295,16 @@ async def send_message_rest(
             await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
     except Exception as e:
         print(f"Failed to push message to WS clients: {e}")
+
+    # Auto-reply: if the recipient is admin and hasn't replied yet
+    try:
+        auto_reply = chat_service.send_auto_reply_if_needed(conversation_id, current_user_id)
+        if auto_reply:
+            auto_reply_dict = auto_reply.model_dump()
+            auto_reply_dict["isMine"] = False
+            await manager.send_to_user(current_user_id, {"type": "new_message", "data": auto_reply_dict})
+    except Exception as e:
+        print(f"Auto-reply error: {e}")
 
     return success(msg_dict)
 

@@ -2,6 +2,7 @@
 Chat service - handles conversation and message business logic
 """
 
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from app.db.supabase import get_supabase
@@ -11,6 +12,8 @@ from app.schemas.chat import (
     ConversationResponse,
     ConversationParticipant,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BlockedUserError(Exception):
@@ -377,6 +380,110 @@ class ChatService:
             .execute()
         )
         return {r["blocker_id"] for r in result.data or []}
+
+    # ===================== Auto-Reply =====================
+
+    @staticmethod
+    def _default_auto_reply_config() -> dict:
+        return {
+            "enabled": True,
+            "message": (
+                "您好，感谢您联系 Avant Regard 客服！\n\n"
+                "我们已收到您的消息，会尽快回复。\n"
+                "如需紧急帮助，请发送邮件至：support@avantregard.com\n\n"
+                "工作时间：周一至周五 9:00-18:00（北京时间）"
+            ),
+            "email": "support@avantregard.com",
+        }
+
+    def get_auto_reply_config(self) -> dict:
+        """Get CS auto-reply configuration."""
+        try:
+            result = (
+                self.db.table("app_config")
+                .select("value")
+                .eq("key", "cs_auto_reply")
+                .maybe_single()
+                .execute()
+            )
+            if result.data and result.data.get("value"):
+                return result.data["value"]
+        except Exception as e:
+            logger.warning(f"Failed to load auto-reply config: {e}")
+        return self._default_auto_reply_config()
+
+    def set_auto_reply_config(self, config: dict) -> dict:
+        """Update CS auto-reply configuration."""
+        self.db.table("app_config").upsert(
+            {"key": "cs_auto_reply", "value": config},
+            on_conflict="key",
+        ).execute()
+        return config
+
+    def _is_admin_user(self, user_id: int) -> bool:
+        """Check if a user is an admin."""
+        try:
+            result = (
+                self.db.table("users")
+                .select("is_admin")
+                .eq("id", user_id)
+                .maybe_single()
+                .execute()
+            )
+            return bool(result.data and result.data.get("is_admin"))
+        except Exception:
+            return False
+
+    def _admin_has_messages(self, conversation_id: int, admin_id: int) -> bool:
+        """Check if admin has already sent any message in a conversation."""
+        try:
+            result = (
+                self.db.table("messages")
+                .select("id", count="exact")
+                .eq("conversation_id", conversation_id)
+                .eq("sender_id", admin_id)
+                .eq("is_deleted", False)
+                .limit(1)
+                .execute()
+            )
+            return (result.count or 0) > 0
+        except Exception:
+            return True
+
+    def send_auto_reply_if_needed(
+        self, conversation_id: int, sender_id: int
+    ) -> Optional[MessageResponse]:
+        """Send auto-reply if the recipient is admin and hasn't replied yet."""
+        other_id = self._get_other_participant(conversation_id, sender_id)
+        if not other_id:
+            return None
+
+        if not self._is_admin_user(other_id):
+            return None
+
+        config = self.get_auto_reply_config()
+        if not config.get("enabled"):
+            return None
+
+        if self._admin_has_messages(conversation_id, other_id):
+            return None
+
+        message_text = config.get("message", "").strip()
+        if not message_text:
+            return None
+
+        try:
+            return self.send_message(
+                conversation_id=conversation_id,
+                sender_id=other_id,
+                content=message_text,
+                message_type="text",
+            )
+        except BlockedUserError:
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to send auto-reply: {e}")
+            return None
 
 
 chat_service = ChatService()

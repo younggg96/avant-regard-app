@@ -68,7 +68,7 @@ class UserService:
     def get_user_profile(self, user_id: int) -> Optional[UserProfileInfo]:
         """获取用户完整资料"""
         # 获取用户基本信息
-        user_result = self.db.table("users").select("id, username").eq("id", user_id).execute()
+        user_result = self.db.table("users").select("id, username, user_type").eq("id", user_id).execute()
         if not user_result.data:
             return None
         user = user_result.data[0]
@@ -100,7 +100,8 @@ class UserService:
             age=info.get("age", 0),
             preference=info.get("preference", ""),
             followedBrandIds=followed_brand_ids,
-            profileCompleted=info.get("profile_completed", False)
+            profileCompleted=info.get("profile_completed", False),
+            userType=user.get("user_type", "USER"),
         )
 
     def update_user_profile(self, user_id: int, **kwargs) -> Optional[UserProfileInfo]:

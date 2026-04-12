@@ -37,6 +37,7 @@ class UserProfileInfo(BaseModel):
     preference: str = ""
     followedBrandIds: List[int] = []
     profileCompleted: bool = False
+    userType: str = "USER"
 
 
 class UpdateUserInfoRequest(BaseModel):

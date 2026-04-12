@@ -62,6 +62,13 @@ class BroadcastNotificationRequest(BaseModel):
     actionData: Optional[Dict[str, Any]] = Field(None, description="可选的操作数据")
 
 
+class UpdateAutoReplyRequest(BaseModel):
+    """客服自动回复配置"""
+    enabled: bool = Field(..., description="是否启用自动回复")
+    message: str = Field("", description="自动回复内容")
+    email: str = Field("", description="客服邮箱")
+
+
 # ==================== 帖子审核 ====================
 
 @router.get("/posts/all")
@@ -622,3 +629,30 @@ async def get_all_blocks(
     """获取所有屏蔽关系"""
     result = admin_service.get_all_blocks(page=page, page_size=pageSize)
     return success(result)
+
+
+# ==================== 客服自动回复 ====================
+
+@router.get("/cs-auto-reply")
+async def get_auto_reply_config(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取客服自动回复配置"""
+    from app.services.chat_service import chat_service
+    config = chat_service.get_auto_reply_config()
+    return success(config)
+
+
+@router.put("/cs-auto-reply")
+async def update_auto_reply_config(
+    request: UpdateAutoReplyRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新客服自动回复配置"""
+    from app.services.chat_service import chat_service
+    config = chat_service.set_auto_reply_config({
+        "enabled": request.enabled,
+        "message": request.message,
+        "email": request.email,
+    })
+    return success(config)
