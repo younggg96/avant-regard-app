@@ -34,6 +34,7 @@ import ImagePickerModal from "../components/ImagePickerModal";
 import PublishButtons from "../components/PublishButtons";
 import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
+import ProductInfoSection, { ProductInfo } from "../components/ProductInfoSection";
 import VideoPreviewModal from "../components/VideoPreviewModal";
 import { saveDraft } from "../services/draftService";
 import { postService, isVideoUrl } from "../services/postService";
@@ -123,6 +124,7 @@ const PublishOutfitScreen = () => {
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
   const [showBrandSelector, setShowBrandSelector] = useState(false);
+  const [productInfo, setProductInfo] = useState<ProductInfo>({});
   const {
     brands: displayedBrands,
     searchQuery: brandSearchQuery,
@@ -502,6 +504,11 @@ const PublishOutfitScreen = () => {
         imageUrls: [],
         showIds,
         brandIds,
+        ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+        ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+        ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+        ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+        ...productInfo.itemColors && { itemColors: productInfo.itemColors },
       },
       updateParams: editMode && draftPostId
         ? {
@@ -515,6 +522,11 @@ const PublishOutfitScreen = () => {
               imageUrls: [],
               showIds,
               brandIds,
+              ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+              ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+              ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+              ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+              ...productInfo.itemColors && { itemColors: productInfo.itemColors },
             },
           }
         : undefined,
@@ -578,6 +590,11 @@ const PublishOutfitScreen = () => {
           imageUrls: uploadedUrls,
           showIds: showIds,
           brandIds: brandIds,
+          ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+          ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+          ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+          ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+          ...productInfo.itemColors && { itemColors: productInfo.itemColors },
         });
       } else {
         // 新建模式：创建草稿
@@ -590,6 +607,11 @@ const PublishOutfitScreen = () => {
           imageUrls: uploadedUrls,
           showIds: showIds,
           brandIds: brandIds,
+          ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+          ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+          ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+          ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+          ...productInfo.itemColors && { itemColors: productInfo.itemColors },
         });
       }
 
@@ -612,6 +634,7 @@ const PublishOutfitScreen = () => {
     setSelectedTags([]);
     setSelectedShows([]);
     setSelectedBrands([]);
+    setProductInfo({});
     setCurrentImageIndex(0);
   };
 
@@ -1212,6 +1235,9 @@ const PublishOutfitScreen = () => {
           label="关联品牌"
           required={false}
         />
+
+        {/* 单品信息（可选） */}
+        <ProductInfoSection value={productInfo} onChange={setProductInfo} />
       </ScrollView>
 
       <PublishButtons

@@ -20,6 +20,7 @@ import {
   followUser,
   unfollowUser,
   isFollowingUser,
+  getMutualFollows,
 } from "../services/followService";
 import { userInfoService } from "../services/userInfoService";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
@@ -39,6 +40,7 @@ const FollowersScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followingStatus, setFollowingStatus] = useState<Record<number, boolean>>({});
+  const [mutualFollowIds, setMutualFollowIds] = useState<Set<number>>(new Set());
   const [isPrivate, setIsPrivate] = useState(false);
 
   // 从路由参数获取 userId，如果没有则使用当前用户的 userId
@@ -82,20 +84,25 @@ const FollowersScreen = () => {
       const users = await getFollowers(userId);
       setFollowers(users);
 
-      // 检查当前用户是否关注了这些粉丝
       if (user?.userId) {
+        const [statusResults, mutualUsers] = await Promise.all([
+          Promise.all(
+            users.map(async (follower) => {
+              try {
+                const isFollowing = await isFollowingUser(user.userId, follower.userId);
+                return { userId: follower.userId, isFollowing };
+              } catch {
+                return { userId: follower.userId, isFollowing: false };
+              }
+            })
+          ),
+          getMutualFollows(user.userId),
+        ]);
+
         const statusMap: Record<number, boolean> = {};
-        await Promise.all(
-          users.map(async (follower) => {
-            try {
-              const isFollowing = await isFollowingUser(user.userId, follower.userId);
-              statusMap[follower.userId] = isFollowing;
-            } catch {
-              statusMap[follower.userId] = false;
-            }
-          })
-        );
+        statusResults.forEach((r) => { statusMap[r.userId] = r.isFollowing; });
         setFollowingStatus(statusMap);
+        setMutualFollowIds(new Set(mutualUsers.map((u) => u.userId)));
       }
     } catch (error) {
       console.error("Error loading followers:", error);
@@ -251,7 +258,9 @@ const FollowersScreen = () => {
                         styles.followingButtonText,
                       ]}
                     >
-                      {followingStatus[follower.userId] ? "已关注" : "回关"}
+                      {followingStatus[follower.userId]
+                        ? (mutualFollowIds.has(follower.userId) ? "互相关注" : "已关注")
+                        : "回关"}
                     </Text>
                   </TouchableOpacity>
                 )}

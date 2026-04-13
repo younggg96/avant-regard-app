@@ -212,6 +212,7 @@ async def update_privacy_settings(
         hideFollowing=request.hideFollowing,
         hideFollowers=request.hideFollowers,
         hideLikes=request.hideLikes,
+        hideWishlist=request.hideWishlist,
     )
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")

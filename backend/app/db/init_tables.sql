@@ -111,10 +111,17 @@ CREATE TABLE IF NOT EXISTS posts (
     product_name VARCHAR(200),
     brand_name VARCHAR(200),
     rating NUMERIC(2, 1) CHECK (rating >= 0.5 AND rating <= 5 AND (rating * 2) = FLOOR(rating * 2)),
+    -- 单品信息（可选）
+    item_brand VARCHAR(200),
+    item_brand_id INTEGER,
+    item_category VARCHAR(50),
+    item_sizes TEXT[] DEFAULT '{}',
+    item_colors TEXT[] DEFAULT '{}',
     -- 统计
     like_count INTEGER DEFAULT 0,
     favorite_count INTEGER DEFAULT 0,
     comment_count INTEGER DEFAULT 0,
+    want_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -139,6 +146,15 @@ CREATE TABLE IF NOT EXISTS post_likes (
 
 -- 帖子收藏表
 CREATE TABLE IF NOT EXISTS post_favorites (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(post_id, user_id)
+);
+
+-- 帖子想要表（愿望单）
+CREATE TABLE IF NOT EXISTS post_wants (
     id BIGSERIAL PRIMARY KEY,
     post_id BIGINT REFERENCES posts(id) ON DELETE CASCADE,
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
@@ -257,6 +273,8 @@ CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON user_follows(follower_id
 CREATE INDEX IF NOT EXISTS idx_user_follows_following ON user_follows(following_id);
 CREATE INDEX IF NOT EXISTS idx_designer_follows_user ON designer_follows(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_post_wants_user_id ON post_wants(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_wants_post_id ON post_wants(post_id);
 CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(push_token);
 

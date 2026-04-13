@@ -26,6 +26,7 @@ import BrandSelectorModal from "../components/BrandSelectorModal";
 import BrandGridSelector, { SelectedBrand } from "../components/BrandGridSelector";
 import PublishButtons from "../components/PublishButtons";
 import ImagePickerModal from "../components/ImagePickerModal";
+import ProductInfoSection, { ProductInfo } from "../components/ProductInfoSection";
 import { postService, isVideoUrl } from "../services/postService";
 import { showService, Show as ShowFromApi } from "../services/showService";
 import { Brand } from "../services/brandService";
@@ -96,6 +97,7 @@ const PublishReviewScreen = () => {
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
   const [showBrandSelector, setShowBrandSelector] = useState(false);
+  const [productInfo, setProductInfo] = useState<ProductInfo>({});
   const {
     brands: displayedBrands,
     searchQuery: brandSearchQuery,
@@ -490,6 +492,11 @@ const PublishReviewScreen = () => {
         rating,
         showIds,
         brandIds,
+        ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+        ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+        ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+        ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+        ...productInfo.itemColors && { itemColors: productInfo.itemColors },
       },
       updateParams: editMode && draftPostId
         ? {
@@ -505,6 +512,11 @@ const PublishReviewScreen = () => {
               rating,
               showIds,
               brandIds,
+              ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+              ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+              ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+              ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+              ...productInfo.itemColors && { itemColors: productInfo.itemColors },
             },
           }
         : undefined,
@@ -569,6 +581,11 @@ const PublishReviewScreen = () => {
           rating: rating,
           showIds: showIds,
           brandIds: brandIds,
+          ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+          ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+          ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+          ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+          ...productInfo.itemColors && { itemColors: productInfo.itemColors },
         });
       } else {
         await postService.createPost({
@@ -582,6 +599,11 @@ const PublishReviewScreen = () => {
           rating: rating,
           showIds: showIds,
           brandIds: brandIds,
+          ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
+          ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
+          ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
+          ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
+          ...productInfo.itemColors && { itemColors: productInfo.itemColors },
         });
       }
 
@@ -605,6 +627,7 @@ const PublishReviewScreen = () => {
     setSelectedTags([]);
     setSelectedShows([]);
     setSelectedBrands([]);
+    setProductInfo({});
   };
 
   const handleAddImage = () => {
@@ -857,6 +880,9 @@ const PublishReviewScreen = () => {
             maxShows={MAX_SHOWS}
             label="关联秀场"
           />
+
+          {/* 单品信息（可选） */}
+          <ProductInfoSection value={productInfo} onChange={setProductInfo} />
 
           {/* 评价内容 */}
           <Box mx="$md" mb="$md">

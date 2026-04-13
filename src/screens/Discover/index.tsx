@@ -5,6 +5,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Linking,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -332,6 +333,7 @@ const DiscoverScreen: React.FC = () => {
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <StatusBar barStyle="dark-content" />
         <SkeletonHeader opacity={skeletonOpacity} />
         <SkeletonTabBar opacity={skeletonOpacity} />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
@@ -369,6 +371,7 @@ const DiscoverScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <StatusBar barStyle="dark-content" />
       {/* 顶部栏 - Logo视频 + 头像 + 通知 + 搜索框（滚动时可收起） */}
       <Animated.View
         style={{

@@ -45,6 +45,7 @@ import { postService, Post as ApiPost } from "../services/postService";
 import {
   followService,
   isFollowingUser,
+  isMutualFollow,
   getFollowersCount,
   getFollowingCount,
   getFollowingBrands,
@@ -66,7 +67,7 @@ import {
   UserSubmittedStore,
 } from "../services/buyerStoreService";
 
-type TabType = "posts" | "forum" | "saved" | "liked" | "archive";
+type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
 
 type TabData = {
   posts: DisplayPost[];
@@ -120,6 +121,7 @@ const UserProfileScreen = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isMutual, setIsMutual] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -152,6 +154,7 @@ const UserProfileScreen = () => {
     saved: { ...initialTabState },
     liked: { ...initialTabState },
     archive: { ...initialTabState },
+    wishlist: { ...initialTabState },
   });
 
   const updateTabState = useCallback(
@@ -169,6 +172,7 @@ const UserProfileScreen = () => {
     { id: "forum", label: "论坛" },
     { id: "saved", label: "收藏" },
     { id: "liked", label: "赞过" },
+    { id: "wishlist", label: "愿望单" },
     { id: "archive", label: "贡献" },
   ];
 
@@ -177,6 +181,7 @@ const UserProfileScreen = () => {
     : allTabs.filter((tab) => {
         if (tab.id === "saved") return true;
         if (tab.id === "liked") return !(privacySettings?.hideLikes ?? false);
+        if (tab.id === "wishlist") return !(privacySettings?.hideWishlist ?? false);
         return true;
       });
 
@@ -275,11 +280,12 @@ const UserProfileScreen = () => {
   const checkFollowStatus = async () => {
     if (!currentUser?.userId || isCurrentUser) return;
     try {
-      const isFollowingResult = await isFollowingUser(
-        currentUser.userId,
-        userId
-      );
+      const [isFollowingResult, isMutualResult] = await Promise.all([
+        isFollowingUser(currentUser.userId, userId),
+        isMutualFollow(currentUser.userId, userId),
+      ]);
       setIsFollowing(isFollowingResult);
+      setIsMutual(isMutualResult);
     } catch (error) {
       console.error("Error checking follow status:", error);
     }
@@ -348,6 +354,23 @@ const UserProfileScreen = () => {
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
+        } else if (targetTab === "wishlist") {
+          if (!isCurrentUser && privacySettings?.hideWishlist) {
+            updateTabState(targetTab, {
+              posts: [],
+              count: 0,
+              isLoading: false,
+              hasLoaded: true,
+            });
+            return;
+          }
+          const apiPosts = await postService.getWantedPostsByUserId(userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
+          );
         }
         updateTabState(targetTab, {
           posts: newPosts,
@@ -406,6 +429,7 @@ const UserProfileScreen = () => {
       saved: { ...initialTabState },
       liked: { ...initialTabState },
       archive: { ...initialTabState },
+      wishlist: { ...initialTabState },
     });
     setContribLoaded(false);
   }, [userId]);
@@ -469,6 +493,7 @@ const UserProfileScreen = () => {
           targetUserId: userId,
         });
         setIsFollowing(false);
+        setIsMutual(false);
         setFollowersCount((prev) => Math.max(0, prev - 1));
         Alert.show("已取消关注");
       } else {
@@ -477,6 +502,8 @@ const UserProfileScreen = () => {
           targetUserId: userId,
         });
         setIsFollowing(true);
+        const mutual = await isMutualFollow(currentUser.userId, userId);
+        setIsMutual(mutual);
         setFollowersCount((prev) => prev + 1);
         Alert.show("关注成功");
       }
@@ -807,7 +834,8 @@ const UserProfileScreen = () => {
             name={
               activeTab === "saved" ? "bookmark-outline" :
                 activeTab === "liked" ? "heart-outline" :
-                  activeTab === "forum" ? "chatbubbles-outline" : "camera-outline"
+                  activeTab === "wishlist" ? "bag-handle-outline" :
+                    activeTab === "forum" ? "chatbubbles-outline" : "camera-outline"
             }
             size={24}
             color={theme.colors.gray300}
@@ -817,6 +845,7 @@ const UserProfileScreen = () => {
             {activeTab === "forum" && "还没有论坛帖子"}
             {activeTab === "saved" && "还没有收藏帖子"}
             {activeTab === "liked" && "还没有点赞帖子"}
+            {activeTab === "wishlist" && "还没有想要的单品"}
           </Text>
         </VStack>
       );
@@ -999,7 +1028,7 @@ const UserProfileScreen = () => {
                       <ActivityIndicator color={isFollowing ? theme.colors.gray600 : "white"} size="small" />
                     ) : (
                       <RNText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                        {isFollowing ? "已关注" : "关注"}
+                        {isFollowing ? (isMutual ? "互相关注" : "已关注") : "关注"}
                       </RNText>
                     )}
                   </Pressable>

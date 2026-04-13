@@ -14,6 +14,10 @@ import {
   AdminReport,
   AdminBlock,
 } from "../../services/adminService";
+import {
+  createConversation,
+  sendMessageREST,
+} from "../../services/chatService";
 import { sharedStyles } from "./adminStyles";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
@@ -44,7 +48,17 @@ const REASON_LABELS: Record<string, string> = {
   VIOLENCE: "暴力",
   HATE_SPEECH: "仇恨言论",
   FALSE_INFO: "虚假信息",
+  PORNOGRAPHY: "色情低俗",
+  MISINFORMATION: "虚假信息",
+  COPYRIGHT: "侵权",
   OTHER: "其他",
+};
+
+const TARGET_TYPE_LABELS: Record<string, { label: string; icon: string }> = {
+  POST: { label: "帖子", icon: "document-text-outline" },
+  COMMENT: { label: "评论", icon: "chatbubble-outline" },
+  MESSAGE: { label: "聊天消息", icon: "mail-outline" },
+  USER: { label: "用户", icon: "person-outline" },
 };
 
 const UsersTab = () => {
@@ -417,81 +431,147 @@ const ReportsSubTab = () => {
     }
   };
 
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  const handleResolveMessageReport = (item: AdminReport) => {
+    Alert.alert(
+      "删除消息并通知",
+      `确认删除聊天消息 #${item.targetId} 并通知发送者？`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "确认",
+          style: "destructive",
+          onPress: () => executeResolveMessage(item),
+        },
+      ]
+    );
+  };
+
+  const executeResolveMessage = async (item: AdminReport) => {
+    setActionLoading(item.id);
+    try {
+      const { senderId } = await adminService.adminDeleteChatMessage(item.targetId);
+
+      const { conversationId } = await createConversation(senderId);
+      await sendMessageREST(
+        conversationId,
+        `您好，您发送的一条聊天消息因违反社区规范（${REASON_LABELS[item.reason] || item.reason}）已被删除。请遵守社区规则，共同维护良好的交流环境。`
+      );
+
+      await adminService.updateReportStatus(item.id, "RESOLVED");
+      Alert.alert("完成", "消息已删除，发送者已收到通知");
+      loadReports(page);
+    } catch (e) {
+      Alert.alert("操作失败", e instanceof Error ? e.message : "请稍后重试");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const totalPages = Math.ceil(total / pageSize);
 
-  const renderReportCard = (item: AdminReport) => (
-    <Box key={item.id} style={styles.card}>
-      <HStack style={styles.cardHeader}>
-        <Box style={{ flex: 1 }}>
-          <HStack style={{ alignItems: "center", gap: 8 }}>
-            <Text style={styles.reportTarget}>
-              {item.targetType === "POST" ? "帖子" : "评论"} #{item.targetId}
-            </Text>
-            <Box
-              style={[
-                styles.reportStatusBadge,
-                { backgroundColor: (REPORT_STATUS_COLORS[item.status] || theme.colors.gray300) + "20" },
-              ]}
-            >
-              <Text
+  const renderReportCard = (item: AdminReport) => {
+    const targetInfo = TARGET_TYPE_LABELS[item.targetType] || {
+      label: item.targetType,
+      icon: "help-circle-outline",
+    };
+
+    return (
+      <Box key={item.id} style={styles.card}>
+        <HStack style={styles.cardHeader}>
+          <Box style={{ flex: 1 }}>
+            <HStack style={{ alignItems: "center", gap: 8 }}>
+              <HStack style={{ alignItems: "center", gap: 4 }}>
+                <Ionicons
+                  name={targetInfo.icon as any}
+                  size={16}
+                  color={theme.colors.gray400}
+                />
+                <Text style={styles.reportTarget}>
+                  {targetInfo.label} #{item.targetId}
+                </Text>
+              </HStack>
+              <Box
                 style={[
-                  styles.reportStatusText,
-                  { color: REPORT_STATUS_COLORS[item.status] || theme.colors.gray300 },
+                  styles.reportStatusBadge,
+                  { backgroundColor: (REPORT_STATUS_COLORS[item.status] || theme.colors.gray300) + "20" },
                 ]}
               >
-                {REPORT_STATUS_LABELS[item.status] || item.status}
-              </Text>
-            </Box>
+                <Text
+                  style={[
+                    styles.reportStatusText,
+                    { color: REPORT_STATUS_COLORS[item.status] || theme.colors.gray300 },
+                  ]}
+                >
+                  {REPORT_STATUS_LABELS[item.status] || item.status}
+                </Text>
+              </Box>
+            </HStack>
+            <Text style={styles.detailText}>
+              举报人: {item.reporterName} (ID: {item.reporterId})
+            </Text>
+          </Box>
+        </HStack>
+
+        <Box style={styles.cardBody}>
+          <HStack style={{ alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Ionicons
+              name="alert-circle-outline"
+              size={14}
+              color={theme.colors.error}
+            />
+            <Text style={styles.reportReason}>
+              {REASON_LABELS[item.reason] || item.reason}
+            </Text>
           </HStack>
-          <Text style={styles.detailText}>
-            举报人: {item.reporterName} (ID: {item.reporterId})
+          {item.description ? (
+            <Text style={styles.reportDesc} numberOfLines={3}>
+              {item.description}
+            </Text>
+          ) : null}
+          <Text style={styles.reportDate}>
+            {new Date(item.createdAt).toLocaleString("zh-CN")}
           </Text>
         </Box>
-      </HStack>
 
-      <Box style={styles.cardBody}>
-        <HStack style={{ alignItems: "center", gap: 6, marginBottom: 4 }}>
-          <Ionicons
-            name="alert-circle-outline"
-            size={14}
-            color={theme.colors.error}
-          />
-          <Text style={styles.reportReason}>
-            {REASON_LABELS[item.reason] || item.reason}
-          </Text>
-        </HStack>
-        {item.description ? (
-          <Text style={styles.reportDesc} numberOfLines={3}>
-            {item.description}
-          </Text>
-        ) : null}
-        <Text style={styles.reportDate}>
-          {new Date(item.createdAt).toLocaleString("zh-CN")}
-        </Text>
+        {item.status === "PENDING" && (
+          <HStack style={styles.cardActions}>
+            {item.targetType === "MESSAGE" ? (
+              <Button
+                size="sm"
+                colorScheme="error"
+                onPress={() => handleResolveMessageReport(item)}
+                disabled={actionLoading === item.id}
+                isLoading={actionLoading === item.id}
+                leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
+              >
+                <ButtonText style={{ fontSize: 12 }}>删除消息并通知</ButtonText>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                colorScheme="success"
+                onPress={() => handleUpdateStatus(item.id, "RESOLVED")}
+                leftIcon={<Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />}
+              >
+                <ButtonText style={{ fontSize: 12 }}>处理</ButtonText>
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onPress={() => handleUpdateStatus(item.id, "DISMISSED")}
+              disabled={actionLoading === item.id}
+              leftIcon={<Ionicons name="close-circle-outline" size={14} color={theme.colors.white} />}
+            >
+              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>驳回</ButtonText>
+            </Button>
+          </HStack>
+        )}
       </Box>
-
-      {item.status === "PENDING" && (
-        <HStack style={styles.cardActions}>
-          <Button
-            size="sm"
-            colorScheme="success"
-            onPress={() => handleUpdateStatus(item.id, "RESOLVED")}
-            leftIcon={<Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />}
-          >
-            <ButtonText style={{ fontSize: 12 }}>处理</ButtonText>
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onPress={() => handleUpdateStatus(item.id, "DISMISSED")}
-            leftIcon={<Ionicons name="close-circle-outline" size={14} color={theme.colors.black} />}
-          >
-            <ButtonText style={{ color: theme.colors.gray400, fontSize: 12 }}>驳回</ButtonText>
-          </Button>
-        </HStack>
-      )}
-    </Box>
-  );
+    );
+  };
 
   return (
     <Box style={{ flex: 1 }}>

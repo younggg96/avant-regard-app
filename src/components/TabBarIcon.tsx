@@ -32,8 +32,8 @@ const TabBarIcon: React.FC<TabBarIconProps> = ({ name, color, focused }) => {
       unfocused: "map-outline",
     },
     interaction: {
-      focused: "chatbubbles",
-      unfocused: "chatbubbles-outline",
+      focused: "map",
+      unfocused: "map-outline",
     },
     notifications: {
       focused: "notifications",

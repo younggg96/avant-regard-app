@@ -736,11 +736,24 @@ export async function getAdminUsers(
 
 // ==================== 举报管理 ====================
 
+/**
+ * 管理员删除聊天消息
+ * DELETE /api/admin/chat/messages/{messageId}
+ */
+export async function adminDeleteChatMessage(
+  messageId: number
+): Promise<{ messageId: number; senderId: number; conversationId: number }> {
+  return request<{ messageId: number; senderId: number; conversationId: number }>(
+    `/api/admin/chat/messages/${messageId}`,
+    { method: "DELETE" }
+  );
+}
+
 export interface AdminReport {
   id: number;
   reporterId: number;
   reporterName: string;
-  targetType: "POST" | "COMMENT";
+  targetType: "POST" | "COMMENT" | "MESSAGE" | "USER";
   targetId: number;
   reason: string;
   description: string;
@@ -839,6 +852,29 @@ export async function broadcastNotification(
   );
 }
 
+// ==================== 客服自动回复 ====================
+
+export interface AutoReplyConfig {
+  enabled: boolean;
+  message: string;
+  email: string;
+}
+
+export async function getAutoReplyConfig(): Promise<AutoReplyConfig> {
+  return request<AutoReplyConfig>("/api/admin/cs-auto-reply", {
+    method: "GET",
+  });
+}
+
+export async function updateAutoReplyConfig(
+  config: AutoReplyConfig
+): Promise<AutoReplyConfig> {
+  return request<AutoReplyConfig>("/api/admin/cs-auto-reply", {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子管理
@@ -855,6 +891,7 @@ export const adminService = {
   // 举报管理
   getAdminReports,
   updateReportStatus,
+  adminDeleteChatMessage,
   // 屏蔽关系
   getAdminBlocks,
   // 评论管理
@@ -890,6 +927,9 @@ export const adminService = {
   toggleBrandImageSelected,
   // 广播通知
   broadcastNotification,
+  // 客服自动回复
+  getAutoReplyConfig,
+  updateAutoReplyConfig,
 };
 
 export default adminService;

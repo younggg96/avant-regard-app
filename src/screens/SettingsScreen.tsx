@@ -84,7 +84,7 @@ const SettingsScreen = () => {
 
   // 更新隐私设置
   const handlePrivacyToggle = async (
-    key: "hideFollowing" | "hideFollowers" | "hideLikes",
+    key: "hideFollowing" | "hideFollowers" | "hideLikes" | "hideWishlist",
     value: boolean
   ) => {
     if (!user?.userId || updatingPrivacy) return;
@@ -198,10 +198,24 @@ const SettingsScreen = () => {
           onToggle: (value) => handlePrivacyToggle("hideLikes", value),
         },
         {
+          id: "hideWishlist",
+          label: "隐藏愿望单",
+          icon: "eye-off-outline",
+          toggle: true,
+          value: privacySettings?.hideWishlist ?? false,
+          onToggle: (value) => handlePrivacyToggle("hideWishlist", value),
+        },
+        {
           id: "blockedUsers",
           label: "屏蔽用户管理",
           icon: "ban-outline",
           onPress: () => (navigation as any).navigate("BlockedUsers"),
+        },
+        {
+          id: "myReports",
+          label: "我的举报",
+          icon: "flag-outline",
+          onPress: () => (navigation as any).navigate("MyReports"),
         },
       ],
     },

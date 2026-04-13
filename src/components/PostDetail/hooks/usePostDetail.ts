@@ -66,6 +66,8 @@ export const convertApiPostToUiPost = async (
       comments: apiPost.commentCount || 0,
       isLiked: apiPost.likedByMe || false,
       isSaved: apiPost.favoritedByMe || false,
+      wants: apiPost.wantCount || 0,
+      isWanted: apiPost.wantedByMe || false,
     },
     timestamp: apiPost.createdAt,
     rating: apiPost.rating,

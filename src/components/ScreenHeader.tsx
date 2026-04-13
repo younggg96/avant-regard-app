@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   title: {
-    ...theme.typography.h3,
+    ...theme.typography.h4,
     color: theme.colors.black,
     textAlign: "center",
   },

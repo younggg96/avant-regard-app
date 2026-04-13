@@ -66,3 +66,19 @@ BEGIN
     UPDATE show_images SET like_count = GREATEST(0, like_count - 1) WHERE id = image_id_param;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 增加帖子想要数
+CREATE OR REPLACE FUNCTION increment_post_want_count(post_id_param BIGINT)
+RETURNS void AS $$
+BEGIN
+    UPDATE posts SET want_count = want_count + 1 WHERE id = post_id_param;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 减少帖子想要数
+CREATE OR REPLACE FUNCTION decrement_post_want_count(post_id_param BIGINT)
+RETURNS void AS $$
+BEGIN
+    UPDATE posts SET want_count = GREATEST(0, want_count - 1) WHERE id = post_id_param;
+END;
+$$ LANGUAGE plpgsql;

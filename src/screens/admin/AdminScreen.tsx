@@ -23,12 +23,14 @@ import ShowManagementTab from "./ShowManagementTab";
 import BrandImageReviewTab from "./BrandImageReviewTab";
 import StoreManagementTab from "./StoreManagementTab";
 import PostsManagementTab from "./PostsManagementTab";
+import CustomerServiceTab from "./CustomerServiceTab";
 
 type TabType =
   | "pending"
   | "postsManagement"
   | "comments"
   | "users"
+  | "customerService"
   | "stores"
   | "merchants"
   | "storeManagement"
@@ -52,6 +54,7 @@ const TABS: TabConfig[] = [
   { key: "postsManagement", label: "帖子管理" },
   { key: "comments", label: "评论管理" },
   { key: "users", label: "用户管理" },
+  { key: "customerService", label: "客服对话" },
   { key: "stores", label: "店铺审核", navigateTo: "StoreReview" },
   { key: "merchants", label: "商家入驻", navigateTo: "MerchantReview" },
   { key: "storeManagement", label: "买手店管理" },
@@ -87,6 +90,8 @@ const AdminScreen = () => {
         return <CommentsTab />;
       case "users":
         return <UsersTab />;
+      case "customerService":
+        return <CustomerServiceTab />;
       case "banners":
         return <BannersTab />;
       case "communities":

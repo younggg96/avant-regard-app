@@ -116,7 +116,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
             onShare();
           }}
         >
-          <Ionicons name="share-outline" size={22} color={theme.colors.white} />
+          <Ionicons name="share-outline" size={22} color={theme.colors.black} />
           <Text style={styles.menuItemText}>分享帖子</Text>
         </TouchableOpacity>
       )}

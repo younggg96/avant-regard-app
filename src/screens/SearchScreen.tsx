@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
 import { theme } from "../theme";
@@ -32,9 +32,18 @@ interface SearchHistory {
 
 const SearchScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const { user } = useAuthStore();
+
+  const allowedTypes = (route.params?.allowedTypes as SearchType[] | undefined) ?? [
+    "posts",
+    "users",
+    "brands",
+  ];
+  const isRestricted = allowedTypes.length < 3;
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchType>("posts");
+  const [searchType, setSearchType] = useState<SearchType>(allowedTypes[0]);
   const [postResults, setPostResults] = useState<PostData[]>([]);
   const [userResults, setUserResults] = useState<UserInfo[]>([]);
   const [brandResults, setBrandResults] = useState<Brand[]>([]);
@@ -491,61 +500,45 @@ const SearchScreen = () => {
   );
 
   // 渲染搜索类型选择 Tab
-  const renderSearchTypeTabs = () => (
-    <HStack
-      px="$md"
-      py="$sm"
-      space="md"
-      borderBottomWidth={1}
-      borderBottomColor="$gray100"
-    >
-      <Pressable
-        onPress={() => handleSearchTypeChange("posts")}
+  const TAB_CONFIG: { type: SearchType; label: string }[] = [
+    { type: "posts", label: "帖子" },
+    { type: "users", label: "用户" },
+    { type: "brands", label: "品牌" },
+  ];
+
+  const renderSearchTypeTabs = () => {
+    const visibleTabs = TAB_CONFIG.filter((t) => allowedTypes.includes(t.type));
+    if (visibleTabs.length <= 1) return null;
+
+    return (
+      <HStack
         px="$md"
-        py="$xs"
-        rounded="$sm"
-        bg={searchType === "posts" ? "$black" : "$gray100"}
+        py="$sm"
+        space="md"
+        borderBottomWidth={1}
+        borderBottomColor="$gray100"
       >
-        <Text
-          fontSize="$sm"
-          fontWeight="$medium"
-          color={searchType === "posts" ? "$white" : "$gray600"}
-        >
-          帖子
-        </Text>
-      </Pressable>
-      <Pressable
-        onPress={() => handleSearchTypeChange("users")}
-        px="$md"
-        py="$xs"
-        rounded="$sm"
-        bg={searchType === "users" ? "$black" : "$gray100"}
-      >
-        <Text
-          fontSize="$sm"
-          fontWeight="$medium"
-          color={searchType === "users" ? "$white" : "$gray600"}
-        >
-          用户
-        </Text>
-      </Pressable>
-      <Pressable
-        onPress={() => handleSearchTypeChange("brands")}
-        px="$md"
-        py="$xs"
-        rounded="$sm"
-        bg={searchType === "brands" ? "$black" : "$gray100"}
-      >
-        <Text
-          fontSize="$sm"
-          fontWeight="$medium"
-          color={searchType === "brands" ? "$white" : "$gray600"}
-        >
-          品牌
-        </Text>
-      </Pressable>
-    </HStack>
-  );
+        {visibleTabs.map((tab) => (
+          <Pressable
+            key={tab.type}
+            onPress={() => handleSearchTypeChange(tab.type)}
+            px="$md"
+            py="$xs"
+            rounded="$sm"
+            bg={searchType === tab.type ? "$black" : "$gray100"}
+          >
+            <Text
+              fontSize="$sm"
+              fontWeight="$medium"
+              color={searchType === tab.type ? "$white" : "$gray600"}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+      </HStack>
+    );
+  };
 
   // 渲染帖子搜索结果
   const renderPostResults = () => (

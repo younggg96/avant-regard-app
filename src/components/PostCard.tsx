@@ -41,6 +41,8 @@ export interface Post {
     comments?: number;
     isLiked?: boolean;
     isSaved?: boolean;
+    wants?: number;
+    isWanted?: boolean;
   };
   likes?: number;
   isLiked?: boolean;

@@ -13,6 +13,7 @@ export { FullscreenImageViewer } from "./FullscreenImageViewer";
 export { OptionsMenuModal } from "./OptionsMenuModal";
 export { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 export { EditConfirmDialog } from "./EditConfirmDialog";
+export { WantPopup } from "./WantPopup";
 
 // 导出 hooks
 export * from "./hooks";

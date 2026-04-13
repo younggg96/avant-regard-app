@@ -1,0 +1,326 @@
+import { useState, useCallback } from "react";
+import { useAuthStore } from "../../../store/authStore";
+import {
+  postService,
+  Post as ApiPost,
+} from "../../../services/postService";
+import {
+  userInfoService,
+  UserInfo,
+  UserProfileInfo,
+} from "../../../services/userInfoService";
+import {
+  getFollowingCount,
+  getFollowersCount,
+  getFollowingBrands,
+  FollowingBrand,
+} from "../../../services/followService";
+import { getUnreadCount } from "../../../services/notificationService";
+import { Post as DisplayPost } from "../../../components/PostCard";
+import { showService, Show } from "../../../services/showService";
+import { brandService, BrandSubmission } from "../../../services/brandService";
+import { buyerStoreService, UserSubmittedStore } from "../../../services/buyerStoreService";
+import { TabType, TabData, initialTabState, ContribSubTab } from "../types";
+import { Alert } from "../../../utils/Alert";
+
+function convertToDisplayPost(
+  apiPost: ApiPost,
+  authorInfo: { name: string; avatar: string }
+): DisplayPost {
+  return {
+    id: String(apiPost.id),
+    type: apiPost.postType,
+    auditStatus: apiPost.auditStatus,
+    title: apiPost.title || "无标题",
+    image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+    author: {
+      id: String(apiPost.userId),
+      name: authorInfo.name,
+      avatar: authorInfo.avatar,
+    },
+    content: {
+      title: apiPost.title || "无标题",
+      description: apiPost.contentText || "",
+      images: apiPost.imageUrls || [],
+    },
+    engagement: {
+      likes: apiPost.likeCount || 0,
+      saves: apiPost.favoriteCount || 0,
+      comments: apiPost.commentCount || 0,
+      isLiked: apiPost.likedByMe || false,
+      isSaved: apiPost.favoritedByMe || false,
+    },
+    likes: apiPost.likeCount || 0,
+    productName: apiPost.productName,
+    brandName: apiPost.brandName,
+    rating: apiPost.rating,
+  } as DisplayPost & { status?: string };
+}
+
+export function useProfileData() {
+  const { user, updateProfile } = useAuthStore();
+
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [followingUsersCount, setFollowingUsersCount] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
+
+  const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
+  const [myShows, setMyShows] = useState<Show[]>([]);
+  const [myBrands, setMyBrands] = useState<BrandSubmission[]>([]);
+  const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
+  const [contribLoading, setContribLoading] = useState(false);
+  const [contribLoaded, setContribLoaded] = useState(false);
+
+  const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
+    published: { ...initialTabState },
+    pending: { ...initialTabState },
+    draft: { ...initialTabState },
+    saved: { ...initialTabState },
+    liked: { ...initialTabState },
+    forum: { ...initialTabState },
+    archive: { ...initialTabState },
+    wishlist: { ...initialTabState },
+  });
+
+  const updateTabState = useCallback(
+    (tab: TabType, updates: Partial<TabData>) => {
+      setTabsData((prev) => ({
+        ...prev,
+        [tab]: { ...prev[tab], ...updates },
+      }));
+    },
+    []
+  );
+
+  const resetTabsData = useCallback(() => {
+    setTabsData({
+      published: { ...initialTabState },
+      pending: { ...initialTabState },
+      draft: { ...initialTabState },
+      saved: { ...initialTabState },
+      liked: { ...initialTabState },
+      forum: { ...initialTabState },
+      archive: { ...initialTabState },
+      wishlist: { ...initialTabState },
+    });
+    setContribLoaded(false);
+  }, []);
+
+  const loadUserInfo = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const info = await userInfoService.getUserInfo(user.userId);
+      setUserInfo(info);
+      if (info) {
+        updateProfile({
+          username: info.username,
+          bio: info.bio,
+          location: info.location,
+          avatar: info.avatarUrl,
+        });
+        if (info.coverUrl) {
+          setCoverImage(info.coverUrl);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading user info:", error);
+    }
+  }, [user?.userId, updateProfile]);
+
+  const loadFollowingUsersCount = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const count = await getFollowingCount(user.userId);
+      setFollowingUsersCount(count);
+    } catch (error) {
+      console.error("Error loading following users count:", error);
+    }
+  }, [user?.userId]);
+
+  const loadFollowersCount = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const count = await getFollowersCount(user.userId);
+      setFollowersCount(count);
+    } catch (error) {
+      console.error("Error loading followers count:", error);
+    }
+  }, [user?.userId]);
+
+  const loadUnreadNotificationCount = useCallback(async () => {
+    try {
+      const count = await getUnreadCount();
+      setUnreadNotificationCount(count);
+    } catch (error) {
+      console.error("Error loading unread notification count:", error);
+    }
+  }, []);
+
+  const loadUserProfile = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const profile = await userInfoService.getUserProfile(user.userId);
+      setUserProfile(profile);
+      if (profile?.coverUrl) {
+        setCoverImage(profile.coverUrl);
+      }
+    } catch (error) {
+      console.error("Error loading user profile:", error);
+    }
+  }, [user?.userId]);
+
+  const loadFollowedBrands = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const brands = await getFollowingBrands(user.userId);
+      setFollowedBrands(brands);
+    } catch (error) {
+      console.error("Error loading followed brands:", error);
+    }
+  }, [user?.userId]);
+
+  const loadContributions = useCallback(async () => {
+    if (!user?.userId) return;
+    setContribLoading(true);
+    try {
+      const [showsRes, brandsRes, storesRes] = await Promise.all([
+        showService.getMyShows(),
+        brandService.getMySubmissions(),
+        buyerStoreService.getMySubmissions(1, 100),
+      ]);
+      setMyShows(showsRes);
+      setMyBrands(brandsRes);
+      setMyStores(storesRes.stores);
+    } catch (err) {
+      console.error("Error loading contributions:", err);
+    } finally {
+      setContribLoading(false);
+      setContribLoaded(true);
+    }
+  }, [user?.userId]);
+
+  const fetchTabData = useCallback(
+    async (targetTab: TabType, isRefresh = false) => {
+      if (!user?.userId) return;
+      if (targetTab === "archive") return;
+      if (!isRefresh && tabsData[targetTab].hasLoaded) return;
+
+      updateTabState(targetTab, { isLoading: true });
+
+      try {
+        const authorName = userInfo?.username || user?.username || "用户";
+        const authorAvatar =
+          userInfo?.avatarUrl ||
+          user?.avatar ||
+          `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
+
+        let newPosts: DisplayPost[] = [];
+
+        if (targetTab === "published" || targetTab === "pending") {
+          const apiPosts = await postService.getPostsByUserId(user.userId, "PUBLISHED");
+
+          const pendingPosts = apiPosts
+            .filter((p: ApiPost) => p.auditStatus === "PENDING" && p.communityId == null)
+            .map((p) => convertToDisplayPost(p, { name: authorName, avatar: authorAvatar }));
+
+          const approvedPosts = apiPosts
+            .filter((p: ApiPost) => p.auditStatus === "APPROVED" && p.communityId == null)
+            .map((p) => convertToDisplayPost(p, { name: authorName, avatar: authorAvatar }));
+
+          setTabsData((prev) => ({
+            ...prev,
+            published: { posts: approvedPosts, count: approvedPosts.length, isLoading: false, hasLoaded: true },
+            pending: { posts: pendingPosts, count: pendingPosts.length, isLoading: false, hasLoaded: true },
+          }));
+          return;
+        }
+
+        if (targetTab === "saved") {
+          const apiPosts = await postService.getFavoritePostsByUserId(user.userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
+          );
+        } else if (targetTab === "liked") {
+          const apiPosts = await postService.getLikedPostsByUserId(user.userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
+          );
+        } else if (targetTab === "draft") {
+          const apiPosts = await postService.getPostsByUserId(user.userId, "DRAFT");
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, { name: authorName, avatar: authorAvatar })
+          );
+        } else if (targetTab === "forum") {
+          const apiPosts = await postService.getPostsByUserId(user.userId, "PUBLISHED");
+          newPosts = apiPosts
+            .filter((p: ApiPost) => p.communityId != null && p.auditStatus === "APPROVED")
+            .map((p) => convertToDisplayPost(p, { name: authorName, avatar: authorAvatar }));
+        } else if (targetTab === "wishlist") {
+          const apiPosts = await postService.getWantedPostsByUserId(user.userId);
+          newPosts = apiPosts.map((p) =>
+            convertToDisplayPost(p, {
+              name: p.username || "用户",
+              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+            })
+          );
+        }
+
+        updateTabState(targetTab, { posts: newPosts, count: newPosts.length, isLoading: false, hasLoaded: true });
+      } catch (error) {
+        console.error(`Error loading ${targetTab}:`, error);
+        updateTabState(targetTab, { isLoading: false });
+        Alert.show("加载失败，请重试");
+      }
+    },
+    [user?.userId, userInfo, tabsData, updateTabState]
+  );
+
+  const loadAllProfileData = useCallback(() => {
+    loadUserInfo();
+    loadUserProfile();
+    loadFollowingUsersCount();
+    loadFollowersCount();
+    loadUnreadNotificationCount();
+    loadFollowedBrands();
+  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadUnreadNotificationCount, loadFollowedBrands]);
+
+  return {
+    userInfo,
+    userProfile,
+    followingUsersCount,
+    followersCount,
+    unreadNotificationCount,
+    coverImage,
+    followedBrands,
+    contribSubTab,
+    setContribSubTab,
+    myShows,
+    myBrands,
+    myStores,
+    contribLoading,
+    contribLoaded,
+    tabsData,
+    setTabsData,
+    updateTabState,
+    resetTabsData,
+    loadUserInfo,
+    loadUserProfile,
+    loadFollowingUsersCount,
+    loadFollowersCount,
+    loadUnreadNotificationCount,
+    loadFollowedBrands,
+    loadContributions,
+    fetchTabData,
+    loadAllProfileData,
+  };
+}

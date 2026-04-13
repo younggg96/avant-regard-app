@@ -30,6 +30,8 @@ export interface Conversation {
   unreadCount: number;
   otherUser: ConversationParticipant | null;
   updatedAt: string;
+  /** Number of messages the current user has sent; 0 = stranger conversation. */
+  myMessageCount?: number;
 }
 
 export interface Message {

@@ -9,3 +9,7 @@ export { ScrollView } from "./scrollview";
 export { HStack } from "./hstack";
 export { VStack } from "./vstack";
 export { Toast, ToastText } from "./toast";
+export { UserAvatar } from "./UserAvatar";
+export { NotificationBadge } from "./NotificationBadge";
+export { ActionSheet } from "./ActionSheet";
+export type { ActionSheetAction } from "./ActionSheet";

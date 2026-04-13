@@ -63,12 +63,14 @@ import SearchScreen from "./src/screens/SearchScreen";
 // User Management Screens
 import MyCommentsScreen from "./src/screens/MyCommentsScreen";
 import MyLikesScreen from "./src/screens/MyLikesScreen";
+import MyReportsScreen from "./src/screens/MyReportsScreen";
 import BlockedUsersScreen from "./src/screens/BlockedUsersScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 
 // Chat Screens
 import ChatScreen from "./src/screens/ChatScreen";
 import ActivityScreen from "./src/screens/ActivityScreen";
+import StrangerMessagesScreen from "./src/screens/StrangerMessagesScreen";
 
 // Stores & Services
 import { useChatStore } from "./src/store/chatStore";
@@ -205,8 +207,10 @@ function TabNavigator() {
             fontWeight: "700",
             minWidth: 18,
             height: 18,
-            lineHeight: 18,
+            lineHeight: 17,
             borderRadius: 9,
+            textAlign: "center",
+            paddingHorizontal: 2,
           },
         }}
       />
@@ -232,6 +236,15 @@ function AppNavigator() {
 
   // Push notifications
   usePushNotifications();
+
+  // Connect chat WebSocket when authenticated
+  const { connectWebSocket, disconnectWebSocket } = useChatStore();
+  useEffect(() => {
+    if (isAuthenticated) {
+      connectWebSocket();
+    }
+    return () => disconnectWebSocket();
+  }, [isAuthenticated]);
 
   // Check if onboarding guide needs to be shown
   useEffect(() => {
@@ -491,6 +504,11 @@ function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="MyReports"
+          component={MyReportsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="BlockedUsers"
           component={BlockedUsersScreen}
           options={{ headerShown: false }}
@@ -508,6 +526,11 @@ function AppNavigator() {
         <Stack.Screen
           name="Activity"
           component={ActivityScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StrangerMessages"
+          component={StrangerMessagesScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

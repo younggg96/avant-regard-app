@@ -53,12 +53,14 @@ class PostService:
         if user_info_result.data:
             avatar_url = user_info_result.data[0].get("avatar_url")
 
-        # 检查当前用户是否点赞/收藏
+        # 检查当前用户是否点赞/收藏/想要
         liked_by_me = False
         favorited_by_me = False
+        wanted_by_me = False
         if current_user_id:
             liked_by_me = self._check_liked(post_data["id"], current_user_id)
             favorited_by_me = self._check_favorited(post_data["id"], current_user_id)
+            wanted_by_me = self._check_wanted(post_data["id"], current_user_id)
 
         # 获取 show_ids
         show_ids = post_data.get("show_ids") or []
@@ -100,6 +102,7 @@ class PostService:
             likeCount=post_data.get("like_count", 0),
             favoriteCount=post_data.get("favorite_count", 0),
             commentCount=post_data.get("comment_count", 0),
+            wantCount=post_data.get("want_count", 0),
             createdAt=post_data["created_at"],
             updatedAt=post_data["updated_at"],
             productName=post_data.get("product_name"),
@@ -107,11 +110,17 @@ class PostService:
             rating=post_data.get("rating"),
             showIds=show_ids,
             brandIds=brand_ids,
+            itemBrand=post_data.get("item_brand"),
+            itemBrandId=post_data.get("item_brand_id"),
+            itemCategory=post_data.get("item_category"),
+            itemSizes=post_data.get("item_sizes") or [],
+            itemColors=post_data.get("item_colors") or [],
             communityId=community_id,
             communityName=community_name,
             communitySlug=community_slug,
             likedByMe=liked_by_me,
             favoritedByMe=favorited_by_me,
+            wantedByMe=wanted_by_me,
         )
 
     def _check_liked(self, post_id: int, user_id: int) -> bool:
@@ -129,6 +138,17 @@ class PostService:
         """检查用户是否收藏了帖子"""
         result = (
             self.db.table("post_favorites")
+            .select("id")
+            .eq("post_id", post_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def _check_wanted(self, post_id: int, user_id: int) -> bool:
+        """检查用户是否想要该帖子"""
+        result = (
+            self.db.table("post_wants")
             .select("id")
             .eq("post_id", post_id)
             .eq("user_id", user_id)
@@ -192,6 +212,11 @@ class PostService:
         show_ids: List[Union[int, str]] = None,
         brand_ids: List[int] = None,
         community_id: int = None,
+        item_brand: str = None,
+        item_brand_id: int = None,
+        item_category: str = None,
+        item_sizes: List[str] = None,
+        item_colors: List[str] = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 验证 show_ids（确保是有效的整数列表）
@@ -212,6 +237,11 @@ class PostService:
             "show_ids": validated_show_ids,
             "brand_ids": brand_ids or [],
             "community_id": community_id,
+            "item_brand": item_brand,
+            "item_brand_id": item_brand_id,
+            "item_category": item_category,
+            "item_sizes": item_sizes or [],
+            "item_colors": item_colors or [],
         }
 
         result = self.db.table("posts").insert(insert_data).execute()
@@ -261,6 +291,17 @@ class PostService:
             update_data["show_ids"] = self._validate_show_ids(kwargs["show_ids"] or [])
         if "brand_ids" in kwargs:
             update_data["brand_ids"] = kwargs["brand_ids"]
+        # 单品信息字段
+        if "item_brand" in kwargs:
+            update_data["item_brand"] = kwargs["item_brand"]
+        if "item_brand_id" in kwargs:
+            update_data["item_brand_id"] = kwargs["item_brand_id"]
+        if "item_category" in kwargs:
+            update_data["item_category"] = kwargs["item_category"]
+        if "item_sizes" in kwargs:
+            update_data["item_sizes"] = kwargs["item_sizes"] or []
+        if "item_colors" in kwargs:
+            update_data["item_colors"] = kwargs["item_colors"] or []
         # 论坛帖子专用字段
         if "community_id" in kwargs:
             update_data["community_id"] = kwargs["community_id"]
@@ -403,6 +444,54 @@ class PostService:
             ).execute()
             return True
         return False
+
+    def want_post(self, post_id: int, user_id: int) -> bool:
+        """标记想要"""
+        try:
+            self.db.table("post_wants").insert(
+                {"post_id": post_id, "user_id": user_id}
+            ).execute()
+            self.db.rpc(
+                "increment_post_want_count", {"post_id_param": post_id}
+            ).execute()
+            return True
+        except:
+            return False
+
+    def unwant_post(self, post_id: int, user_id: int) -> bool:
+        """取消想要"""
+        result = (
+            self.db.table("post_wants")
+            .delete()
+            .eq("post_id", post_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if result.data:
+            self.db.rpc(
+                "decrement_post_want_count", {"post_id_param": post_id}
+            ).execute()
+            return True
+        return False
+
+    def get_wanted_posts_by_user_id(
+        self, user_id: int, current_user_id: Optional[int] = None
+    ) -> List[Post]:
+        """获取用户愿望单（标记想要的帖子列表）"""
+        result = (
+            self.db.table("post_wants")
+            .select("post_id, posts(*)")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        posts = []
+        for item in result.data or []:
+            p = item.get("posts")
+            if p:
+                posts.append(self._format_post(p, current_user_id))
+        return posts
 
     def get_posts_by_user_id(
         self, user_id: int, status: str = None, current_user_id: Optional[int] = None

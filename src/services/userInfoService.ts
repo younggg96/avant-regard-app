@@ -42,6 +42,7 @@ export interface UserProfileInfo {
   preference: string;
   followedBrandIds: number[];
     profileCompleted: boolean; // 是否已完善资料
+  userType: string;
 }
 
 // 更新用户信息请求参数
@@ -73,6 +74,7 @@ export interface UserPrivacySettings {
   hideFollowing: boolean;
   hideFollowers: boolean;
   hideLikes: boolean;
+  hideWishlist: boolean;
 }
 
 // 更新隐私设置请求参数
@@ -80,6 +82,7 @@ export interface UpdatePrivacySettingsParams {
   hideFollowing?: boolean;
   hideFollowers?: boolean;
   hideLikes?: boolean;
+  hideWishlist?: boolean;
 }
 
 // 通用请求方法
@@ -325,6 +328,19 @@ export async function getUserProfile(userId: number): Promise<UserProfileInfo> {
   return request<UserProfileInfo>(`/api/user-info/${userId}/profile`, {
     method: "GET",
   });
+}
+
+/**
+ * 获取用户类型（轻量接口，不依赖 user_info 表）
+ * GET /api/user-info/{userId}/user-type
+ */
+export async function getUserType(
+  userId: number
+): Promise<{ userId: number; isAdmin: boolean; userType: string }> {
+  return request<{ userId: number; isAdmin: boolean; userType: string }>(
+    `/api/user-info/${userId}/user-type`,
+    { method: "GET" }
+  );
 }
 
 /**

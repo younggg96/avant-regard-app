@@ -11,21 +11,25 @@ import {
   markConversationUnread as markConversationUnreadApi,
   WSIncomingMessage,
 } from "../services/chatService";
+import { getBlockedUsers } from "../services/moderationService";
 
 interface ChatState {
   conversations: Conversation[];
   currentConversationId: number | null;
   messages: Record<number, Message[]>;
+  hasMoreMessages: Record<number, boolean>;
   totalUnread: number;
   isLoadingConversations: boolean;
   isLoadingMessages: boolean;
   wsConnected: boolean;
+  blockedUserIds: Set<number>;
 }
 
 interface ChatActions {
   loadConversations: () => Promise<void>;
   loadMessages: (conversationId: number, beforeId?: number) => Promise<void>;
   refreshUnreadCount: () => Promise<void>;
+  refreshBlockedUsers: () => Promise<void>;
   setCurrentConversation: (id: number | null) => void;
   addMessage: (conversationId: number, message: Message) => void;
   connectWebSocket: () => void;
@@ -44,10 +48,12 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   conversations: [],
   currentConversationId: null,
   messages: {},
+  hasMoreMessages: {},
   totalUnread: 0,
   isLoadingConversations: false,
   isLoadingMessages: false,
   wsConnected: false,
+  blockedUserIds: new Set<number>(),
 
   loadConversations: async () => {
     set({ isLoadingConversations: true });
@@ -64,12 +70,17 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   loadMessages: async (conversationId: number, beforeId?: number) => {
     set({ isLoadingMessages: true });
     try {
-      const newMsgs = await getMessages(conversationId, 50, beforeId);
+      const PAGE_SIZE = 50;
+      const newMsgs = await getMessages(conversationId, PAGE_SIZE, beforeId);
       set((state) => {
         const existing = beforeId ? (state.messages[conversationId] || []) : [];
         const merged = beforeId ? [...newMsgs, ...existing] : newMsgs;
         return {
           messages: { ...state.messages, [conversationId]: merged },
+          hasMoreMessages: {
+            ...state.hasMoreMessages,
+            [conversationId]: newMsgs.length >= PAGE_SIZE,
+          },
         };
       });
     } catch (e) {
@@ -85,6 +96,15 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       set({ totalUnread: count });
     } catch (e) {
       console.error("Failed to refresh unread count:", e);
+    }
+  },
+
+  refreshBlockedUsers: async () => {
+    try {
+      const users = await getBlockedUsers();
+      set({ blockedUserIds: new Set(users.map((u) => u.userId)) });
+    } catch (e) {
+      console.error("Failed to refresh blocked users:", e);
     }
   },
 
@@ -105,6 +125,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
             lastMessageText: message.content,
             lastMessageAt: message.createdAt,
             unreadCount: message.isMine ? c.unreadCount : c.unreadCount + 1,
+            myMessageCount: message.isMine
+              ? (c.myMessageCount ?? 0) + 1
+              : c.myMessageCount,
           };
         }
         return c;
@@ -191,9 +214,12 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   handleWSMessage: (msg) => {
     const state = get();
     switch (msg.type) {
-      case "new_message":
+      case "new_message": {
+        const senderId = msg.data.senderId;
+        if (state.blockedUserIds.has(senderId)) return;
         state.addMessage(msg.data.conversationId, msg.data);
         break;
+      }
       case "message_sent":
         state.addMessage(msg.data.conversationId, msg.data);
         break;
@@ -216,6 +242,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       get().handleWSMessage(msg);
     });
     set({ wsConnected: true });
+    get().refreshBlockedUsers();
   },
 
   disconnectWebSocket: () => {

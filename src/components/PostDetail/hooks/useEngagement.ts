@@ -17,6 +17,7 @@ interface UseEngagementReturn {
   showShareModal: boolean;
   handleLike: () => Promise<void>;
   handleSave: () => Promise<void>;
+  handleWant: () => Promise<void>;
   handleShare: () => void;
   handleCloseShareModal: () => void;
   handleShareComplete: (platform: SharePlatform, success: boolean) => void;
@@ -158,6 +159,55 @@ export const useEngagement = ({
     }
   }, [post, userId, setPost]);
 
+  // 处理「我想要」
+  const handleWant = useCallback(async () => {
+    if (!post) return;
+    if (!userId) {
+      Alert.show("提示", "请先登录");
+      return;
+    }
+
+    const currentIsWanted = post.engagement?.isWanted || false;
+    const currentWants = post.engagement?.wants || 0;
+
+    setPost((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        engagement: {
+          ...prev.engagement,
+          wants: currentIsWanted ? currentWants - 1 : currentWants + 1,
+          isWanted: !currentIsWanted,
+        },
+      } as Post;
+    });
+
+    try {
+      const postId =
+        typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
+      if (isNaN(postId)) return;
+
+      if (currentIsWanted) {
+        await postService.unwantPost(postId, userId);
+      } else {
+        await postService.wantPost(postId, userId);
+      }
+    } catch (error) {
+      console.error("想要操作失败:", error);
+      setPost((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          engagement: {
+            ...prev.engagement,
+            wants: currentWants,
+            isWanted: currentIsWanted,
+          },
+        } as Post;
+      });
+    }
+  }, [post, userId, setPost]);
+
   // 处理分享 - 打开分享弹窗
   const handleShare = useCallback(() => {
     if (!post) return;
@@ -229,6 +279,7 @@ export const useEngagement = ({
     showShareModal,
     handleLike,
     handleSave,
+    handleWant,
     handleShare,
     handleCloseShareModal,
     handleShareComplete,

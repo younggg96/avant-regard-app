@@ -32,6 +32,7 @@ import {
   OptionsMenuModal,
   DeleteConfirmDialog,
   EditConfirmDialog,
+  WantPopup,
   PostDetailRouteParams,
   styles,
   // Hooks
@@ -43,6 +44,7 @@ import {
   useNavigationHandlers,
 } from "../components/PostDetail";
 import { ShareModal } from "../components/ShareModal";
+import { ShareToChatModal } from "../components/ShareToChatModal";
 import { ReportBlockModal } from "../components/ReportBlockModal";
 import type { ReportTarget } from "../components/PostDetail/CommentsSection";
 
@@ -96,6 +98,7 @@ const PostDetailScreen = () => {
     showShareModal,
     handleLike,
     handleSave,
+    handleWant,
     handleShare,
     handleCloseShareModal,
     handleShareComplete,
@@ -145,8 +148,25 @@ const PostDetailScreen = () => {
   // 举报/屏蔽 Modal（帖子）
   const [showReportModal, setShowReportModal] = useState(false);
 
+  // 分享到聊天 Modal
+  const [showShareToChat, setShowShareToChat] = useState(false);
+
   // 举报/屏蔽 Modal（评论）
   const [commentReportTarget, setCommentReportTarget] = useState<ReportTarget | null>(null);
+
+  // 「我想要」弹窗（仅 ITEM_REVIEW）
+  const [showWantPopup, setShowWantPopup] = useState(false);
+
+  useEffect(() => {
+    if (
+      post?.type === "ITEM_REVIEW" &&
+      postStatus === "PUBLISHED" &&
+      !post.engagement?.isWanted
+    ) {
+      const timer = setTimeout(() => setShowWantPopup(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [post?.id, post?.type, postStatus]);
 
   // 骨架屏动画
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -250,6 +270,9 @@ const PostDetailScreen = () => {
     comments.reduce((sum, c) => sum + 1 + (c.replyCount || 0), 0);
   const displayIsLiked = post.engagement?.isLiked || false;
   const displayIsSaved = post.engagement?.isSaved || false;
+  const displayWants = post.engagement?.wants || 0;
+  const displayIsWanted = post.engagement?.isWanted || false;
+  const isItemReview = post.type === "ITEM_REVIEW";
   const showComments = postStatus === "PUBLISHED";
 
   return (
@@ -361,6 +384,9 @@ const PostDetailScreen = () => {
               displayComments={displayComments}
               displayIsLiked={displayIsLiked}
               displayIsSaved={displayIsSaved}
+              displayWants={displayWants}
+              displayIsWanted={displayIsWanted}
+              isItemReview={isItemReview}
               replyTarget={replyTarget}
               onInputChange={setCommentInput}
               onInputFocus={handleInputFocus}
@@ -368,8 +394,22 @@ const PostDetailScreen = () => {
               onSubmit={handleSubmitComment}
               onLike={handleLike}
               onSave={handleSave}
+              onWant={handleWant}
               onOverlayPress={handleOverlayPress}
               onCancelReply={handleCancelReply}
+            />
+          )}
+
+          {/* 「我想要」弹窗 - 仅 ITEM_REVIEW 已发布帖子 */}
+          {isItemReview && showComments && (
+            <WantPopup
+              visible={showWantPopup}
+              isWanted={displayIsWanted}
+              productImage={post.content?.images?.[0]}
+              productName={post.productName}
+              brandName={post.brandName}
+              onWant={handleWant}
+              onDismiss={() => setShowWantPopup(false)}
             />
           )}
         </KeyboardAvoidingView>
@@ -416,6 +456,14 @@ const PostDetailScreen = () => {
           targetAuthorName={post.author.name}
           onClose={() => setShowReportModal(false)}
           onBlockComplete={() => navigation.goBack()}
+          onShare={() => setShowShareToChat(true)}
+        />
+
+        {/* Share to Chat Modal */}
+        <ShareToChatModal
+          visible={showShareToChat}
+          post={post}
+          onClose={() => setShowShareToChat(false)}
         />
 
         {/* Report / Block Modal (Comment) */}

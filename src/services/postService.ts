@@ -47,6 +47,12 @@ export interface Post {
   showIds?: (number | string)[];
   // 关联品牌 ID 列表（支持关联多个品牌）
   brandIds?: number[];
+  // 单品信息（可选）
+  itemBrand?: string;
+  itemBrandId?: number;
+  itemCategory?: string;
+  itemSizes?: string[];
+  itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
   communityName?: string;
@@ -54,6 +60,8 @@ export interface Post {
   // 当前用户交互状态
   likedByMe?: boolean;
   favoritedByMe?: boolean;
+  wantedByMe?: boolean;
+  wantCount?: number;
 }
 
 // 创建帖子请求参数
@@ -72,6 +80,12 @@ export interface CreatePostParams {
   showIds?: (number | string)[];
   // 关联品牌 ID 列表（支持关联多个品牌）
   brandIds?: number[];
+  // 单品信息（可选）
+  itemBrand?: string;
+  itemBrandId?: number;
+  itemCategory?: string;
+  itemSizes?: string[];
+  itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -92,6 +106,12 @@ export interface UpdatePostParams {
   showIds?: (number | string)[];
   // 关联品牌 ID 列表（支持关联多个品牌）
   brandIds?: number[];
+  // 单品信息（可选）
+  itemBrand?: string;
+  itemBrandId?: number;
+  itemCategory?: string;
+  itemSizes?: string[];
+  itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
 }
@@ -782,6 +802,41 @@ export async function getFavoritePostsByUserId(
 
 // ==================== 秀场关联帖子 ====================
 
+// ==================== 想要（愿望单） ====================
+
+/**
+ * 标记「我想要」
+ * POST /api/posts/{postId}/want?userId={userId}
+ */
+export async function wantPost(postId: number, userId: number): Promise<void> {
+  return request<void>(`/api/posts/${postId}/want?userId=${userId}`, {
+    method: "POST",
+  });
+}
+
+/**
+ * 取消「我想要」
+ * DELETE /api/posts/{postId}/want?userId={userId}
+ */
+export async function unwantPost(postId: number, userId: number): Promise<void> {
+  return request<void>(`/api/posts/${postId}/want?userId=${userId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * 获取用户愿望单（所有标记「我想要」的帖子）
+ * GET /api/posts/user/{userId}/wanted
+ * @param userId 用户ID
+ */
+export async function getWantedPostsByUserId(userId: number): Promise<Post[]> {
+  return request<Post[]>(`/api/posts/user/${userId}/wanted`, {
+    method: "GET",
+  });
+}
+
+// ==================== 秀场关联帖子（原有） ====================
+
 /**
  * 获取某个秀场关联的帖子
  * GET /api/posts/show/{showId}
@@ -923,10 +978,14 @@ export const postService = {
   // 收藏
   favoritePost,
   unfavoritePost,
+  // 想要（愿望单）
+  wantPost,
+  unwantPost,
   // 用户帖子
   getPostsByUserId,
   getLikedPostsByUserId,
   getFavoritePostsByUserId,
+  getWantedPostsByUserId,
   // 秀场关联帖子
   getPostsByShowId,
   // 品牌关联帖子

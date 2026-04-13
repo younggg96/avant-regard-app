@@ -20,10 +20,12 @@ export type ReportReason =
   | "MISINFORMATION"
   | "COPYRIGHT"
   | "HARASSMENT"
+  | "PORNOGRAPHY"
+  | "VIOLENCE"
   | "OTHER";
 
 export interface ReportContentParams {
-  targetType: "POST" | "COMMENT";
+  targetType: "POST" | "COMMENT" | "MESSAGE" | "USER";
   targetId: number;
   reason: ReportReason;
   description?: string;
@@ -107,11 +109,48 @@ export async function getBlockedUsers(): Promise<BlockedUser[]> {
   });
 }
 
+export interface ReportRecord {
+  id: number;
+  targetType: "POST" | "COMMENT" | "MESSAGE" | "USER";
+  targetId: number;
+  reason: string;
+  description: string;
+  status: "PENDING" | "REVIEWED" | "RESOLVED" | "DISMISSED";
+  createdAt: string;
+  targetInfo: {
+    title?: string;
+    type?: string;
+    coverImage?: string;
+    content?: string;
+    postId?: number;
+    senderId?: number;
+    username?: string;
+  };
+}
+
+export interface MyReportsResponse {
+  reports: ReportRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function getMyReports(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<MyReportsResponse> {
+  return request<MyReportsResponse>(
+    `/api/moderation/my-reports?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+}
+
 export const moderationService = {
   reportContent,
   blockUser,
   unblockUser,
   getBlockedUsers,
+  getMyReports,
 };
 
 export default moderationService;

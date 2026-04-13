@@ -43,6 +43,7 @@ class Post(BaseModel):
     likeCount: int = 0
     favoriteCount: int = 0
     commentCount: int = 0
+    wantCount: int = 0
     createdAt: str
     updatedAt: str
     # 单品评价专用字段
@@ -53,6 +54,12 @@ class Post(BaseModel):
     showIds: List[Union[int, str]] = []
     # 关联品牌 ID 列表（支持关联多个品牌）
     brandIds: List[int] = []
+    # 单品信息（可选）
+    itemBrand: Optional[str] = None
+    itemBrandId: Optional[int] = None
+    itemCategory: Optional[str] = None
+    itemSizes: List[str] = []
+    itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
     communityName: Optional[str] = None
@@ -60,6 +67,7 @@ class Post(BaseModel):
     # 当前用户交互状态
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
+    wantedByMe: Optional[bool] = None
 
 
 def _validate_half_star_rating(v: Optional[float]) -> Optional[float]:
@@ -90,6 +98,12 @@ class CreatePostRequest(BaseModel):
     showIds: List[Union[int, str]] = []
     # 关联品牌 ID 列表（支持关联多个品牌）
     brandIds: List[int] = []
+    # 单品信息（可选）
+    itemBrand: Optional[str] = None
+    itemBrandId: Optional[int] = None
+    itemCategory: Optional[str] = None
+    itemSizes: List[str] = []
+    itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
 
@@ -116,6 +130,12 @@ class UpdatePostRequest(BaseModel):
     showIds: List[Union[int, str]] = []
     # 关联品牌 ID 列表（支持关联多个品牌）
     brandIds: List[int] = []
+    # 单品信息（可选）
+    itemBrand: Optional[str] = None
+    itemBrandId: Optional[int] = None
+    itemCategory: Optional[str] = None
+    itemSizes: List[str] = []
+    itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
 

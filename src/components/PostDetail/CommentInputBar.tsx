@@ -25,6 +25,9 @@ interface CommentInputBarProps {
   displayComments: number;
   displayIsLiked: boolean;
   displayIsSaved: boolean;
+  displayWants?: number;
+  displayIsWanted?: boolean;
+  isItemReview?: boolean;
   replyTarget?: ReplyTarget | null;
   onInputChange: (text: string) => void;
   onInputFocus: () => void;
@@ -32,6 +35,7 @@ interface CommentInputBarProps {
   onSubmit: () => void;
   onLike: () => void;
   onSave: () => void;
+  onWant?: () => void;
   onOverlayPress: () => void;
   onCancelReply?: () => void;
 }
@@ -55,6 +59,9 @@ export const CommentInputBar = forwardRef<
       displayComments,
       displayIsLiked,
       displayIsSaved,
+      displayWants,
+      displayIsWanted,
+      isItemReview,
       replyTarget,
       onInputChange,
       onInputFocus,
@@ -62,6 +69,7 @@ export const CommentInputBar = forwardRef<
       onSubmit,
       onLike,
       onSave,
+      onWant,
       onOverlayPress,
       onCancelReply,
     },
@@ -215,6 +223,26 @@ export const CommentInputBar = forwardRef<
                   </Text>
                 </VStack>
               </Pressable>
+
+              {isItemReview && onWant && (
+                <Pressable onPress={onWant} style={styles.engagementButton}>
+                  <VStack alignItems="center" space="xs">
+                    <Ionicons
+                      name={displayIsWanted ? "bag-check" : "bag-handle-outline"}
+                      size={20}
+                      color={displayIsWanted ? "#D4AF37" : theme.colors.gray600}
+                    />
+                    <Text
+                      fontSize="$xs"
+                      color={displayIsWanted ? "$accent" : "$gray600"}
+                      fontWeight="$medium"
+                      style={displayIsWanted ? { color: "#D4AF37" } : undefined}
+                    >
+                      {displayWants || 0}
+                    </Text>
+                  </VStack>
+                </Pressable>
+              )}
             </View>
           )}
 

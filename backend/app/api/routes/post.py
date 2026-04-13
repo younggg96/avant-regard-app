@@ -101,6 +101,11 @@ async def create_post(
         show_ids=request.showIds,
         brand_ids=request.brandIds,
         community_id=request.communityId,
+        item_brand=request.itemBrand,
+        item_brand_id=request.itemBrandId,
+        item_category=request.itemCategory,
+        item_sizes=request.itemSizes,
+        item_colors=request.itemColors,
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")
@@ -135,6 +140,11 @@ async def update_post(
         show_ids=request.showIds,
         brand_ids=request.brandIds,
         community_id=request.communityId,
+        item_brand=request.itemBrand,
+        item_brand_id=request.itemBrandId,
+        item_category=request.itemCategory,
+        item_sizes=request.itemSizes,
+        item_colors=request.itemColors,
     )
     if not result:
         raise HTTPException(status_code=404, detail="帖子不存在或无权修改")
@@ -235,6 +245,41 @@ async def unfavorite_post(
     return success(message="取消收藏成功")
 
 
+# ==================== 想要（愿望单） ====================
+
+
+@router.post("/{post_id}/want")
+async def want_post(
+    post_id: int,
+    userId: int = Query(...),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """标记想要"""
+    if userId != current_user_id:
+        raise HTTPException(status_code=403, detail="无权为其他用户操作")
+
+    ok = post_service.want_post(post_id, userId)
+    if not ok:
+        raise HTTPException(status_code=400, detail="操作失败（可能已标记）")
+    return success(message="已添加到愿望单")
+
+
+@router.delete("/{post_id}/want")
+async def unwant_post(
+    post_id: int,
+    userId: int = Query(...),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """取消想要"""
+    if userId != current_user_id:
+        raise HTTPException(status_code=403, detail="无权为其他用户操作")
+
+    ok = post_service.unwant_post(post_id, userId)
+    if not ok:
+        raise HTTPException(status_code=400, detail="取消失败")
+    return success(message="已从愿望单移除")
+
+
 # ==================== 用户帖子 ====================
 
 
@@ -264,6 +309,15 @@ async def get_favorite_posts_by_user_id(
 ):
     """获取用户收藏的帖子列表"""
     result = post_service.get_favorite_posts_by_user_id(user_id, current_user_id)
+    return success([p.model_dump() for p in result])
+
+
+@router.get("/user/{user_id}/wanted")
+async def get_wanted_posts_by_user_id(
+    user_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
+):
+    """获取用户愿望单（标记想要的帖子列表）"""
+    result = post_service.get_wanted_posts_by_user_id(user_id, current_user_id)
     return success([p.model_dump() for p in result])
 
 

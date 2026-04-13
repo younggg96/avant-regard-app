@@ -255,10 +255,17 @@ CREATE TABLE IF NOT EXISTS posts (
     show_ids TEXT[] DEFAULT '{}',
     community_id INTEGER REFERENCES communities(id) ON DELETE SET NULL,
     brand_ids INTEGER[] DEFAULT '{}',
+    -- 单品信息（可选）
+    item_brand VARCHAR(200),
+    item_brand_id INTEGER,
+    item_category VARCHAR(50),
+    item_sizes TEXT[] DEFAULT '{}',
+    item_colors TEXT[] DEFAULT '{}',
     -- 统计
     like_count INTEGER DEFAULT 0,
     favorite_count INTEGER DEFAULT 0,
     comment_count INTEGER DEFAULT 0,
+    want_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -365,32 +365,35 @@ class UserService:
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
         """获取用户隐私设置"""
-        info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes").eq("user_id", user_id).execute()
+        info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes, hide_wishlist").eq("user_id", user_id).execute()
         if not info_result.data:
             return None
         info = info_result.data[0]
-        
+
         return UserPrivacySettings(
             userId=user_id,
             hideFollowing=info.get("hide_following", False),
             hideFollowers=info.get("hide_followers", False),
-            hideLikes=info.get("hide_likes", False)
+            hideLikes=info.get("hide_likes", False),
+            hideWishlist=info.get("hide_wishlist", False),
         )
 
     def update_privacy_settings(self, user_id: int, **kwargs) -> Optional[UserPrivacySettings]:
         """更新用户隐私设置"""
         update_data = {}
-        
+
         if "hideFollowing" in kwargs and kwargs["hideFollowing"] is not None:
             update_data["hide_following"] = kwargs["hideFollowing"]
         if "hideFollowers" in kwargs and kwargs["hideFollowers"] is not None:
             update_data["hide_followers"] = kwargs["hideFollowers"]
         if "hideLikes" in kwargs and kwargs["hideLikes"] is not None:
             update_data["hide_likes"] = kwargs["hideLikes"]
-        
+        if "hideWishlist" in kwargs and kwargs["hideWishlist"] is not None:
+            update_data["hide_wishlist"] = kwargs["hideWishlist"]
+
         if update_data:
             self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()
-        
+
         return self.get_privacy_settings(user_id)
 
     def delete_account(self, user_id: int) -> bool:

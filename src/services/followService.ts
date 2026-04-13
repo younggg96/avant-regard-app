@@ -199,6 +199,51 @@ export async function isFollowingUser(
   return response.data;
 }
 
+// ==================== 互相关注 ====================
+
+/**
+ * 获取互相关注的用户列表
+ * GET /api/follow/users/{userId}/mutual-follows
+ */
+export async function getMutualFollows(
+  userId: number
+): Promise<FollowingUser[]> {
+  const response = await request<ApiResponse<FollowingUser[]>>(
+    `/api/follow/users/${userId}/mutual-follows`,
+    { method: "GET" }
+  );
+  return response.data || [];
+}
+
+/**
+ * 获取互相关注的用户数量
+ * GET /api/follow/user/{userId}/mutual-follows/count
+ */
+export async function getMutualFollowsCount(
+  userId: number
+): Promise<number> {
+  const response = await request<ApiResponse<number>>(
+    `/api/follow/user/${userId}/mutual-follows/count`,
+    { method: "GET" }
+  );
+  return response.data;
+}
+
+/**
+ * 检查两个用户是否互相关注
+ * GET /api/follow/user/{userId}/is-mutual/{targetUserId}
+ */
+export async function isMutualFollow(
+  userId: number,
+  targetUserId: number
+): Promise<boolean> {
+  const response = await request<ApiResponse<boolean>>(
+    `/api/follow/user/${userId}/is-mutual/${targetUserId}`,
+    { method: "GET" }
+  );
+  return response.data;
+}
+
 // ==================== 品牌关注 ====================
 
 // 关注的品牌信息
@@ -332,6 +377,10 @@ export const followService = {
   getFollowersCount,
   // 状态查询
   isFollowingUser,
+  // 互相关注
+  getMutualFollows,
+  getMutualFollowsCount,
+  isMutualFollow,
   // 品牌关注
   followBrand,
   unfollowBrand,

@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
+import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
@@ -10,19 +10,19 @@ import { theme } from "../../../theme";
 const headerVideoSource = require("../../../../assets/video/header1.mp4");
 
 const DiscoverLogoVideo: React.FC = () => {
-  const player = useVideoPlayer(headerVideoSource, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-  return (
-    <VideoView
-      player={player}
-      style={styles.logoVideo}
-      contentFit="contain"
-      nativeControls={false}
-    />
-  );
+    const player = useVideoPlayer(headerVideoSource, (p) => {
+        p.loop = true;
+        p.muted = true;
+        p.play();
+    });
+    return (
+        <VideoView
+            player={player}
+            style={styles.logoVideo}
+            contentFit="contain"
+            nativeControls={false}
+        />
+    );
 };
 
 interface DiscoverHeaderProps {
@@ -35,10 +35,8 @@ interface DiscoverHeaderProps {
 
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     avatar,
-    totalInteractionUnread = 0,
     onAvatarPress,
     onSearchPress,
-    onInteractionPress,
 }) => {
     return (
         <Box bg="$white" px="$md" pt="$sm" pb="$md">
@@ -62,26 +60,6 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             ) : (
                                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
                                     <Ionicons name="person" size={18} color={theme.colors.white} />
-                                </View>
-                            )}
-                        </Pressable>
-
-                        {/* Interaction icon (messages + notifications) */}
-                        <Pressable
-                            onPress={onInteractionPress}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={styles.interactionButton}
-                        >
-                            <Ionicons
-                                name="chatbubbles-outline"
-                                size={24}
-                                color={theme.colors.black}
-                            />
-                            {totalInteractionUnread > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>
-                                        {totalInteractionUnread > 99 ? "99+" : totalInteractionUnread}
-                                    </Text>
                                 </View>
                             )}
                         </Pressable>
@@ -145,26 +123,6 @@ const styles = StyleSheet.create({
         height: 32,
         justifyContent: "center",
         alignItems: "center",
-    },
-    badge: {
-        position: "absolute",
-        top: -2,
-        right: -2,
-        minWidth: 16,
-        height: 16,
-        borderRadius: 8,
-        backgroundColor: theme.colors.error,
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 4,
-    },
-    badgeText: {
-        color: theme.colors.white,
-        fontSize: 12,
-        fontWeight: "600",
-        textAlign: "center",
-        lineHeight: 12,
-        includeFontPadding: false,
     },
 });
 
