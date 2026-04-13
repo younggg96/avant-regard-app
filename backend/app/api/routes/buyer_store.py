@@ -153,6 +153,18 @@ async def get_nearby_stores(params: NearbyStoreParams):
     })
 
 
+# ==================== 用户买手店动态 ====================
+
+
+@router.get("/user/activity")
+async def get_user_store_activity(
+    current_user_id: int = Depends(get_current_user),
+):
+    """获取当前用户的买手店动态（收藏、评论、评分）"""
+    activity = buyer_store_community_service.get_user_store_activity(current_user_id)
+    return success(activity.model_dump())
+
+
 @router.get("/{store_id}")
 async def get_store_by_id(store_id: str):
     """通过 ID 获取买手店详情"""

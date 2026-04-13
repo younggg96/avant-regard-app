@@ -266,6 +266,48 @@ class BuyerStoreDetail(BuyerStore):
     userRating: Optional[float] = None
 
 
+# ==================== 用户买手店动态 ====================
+
+
+class UserStoreActivityStore(BaseModel):
+    """用户买手店动态中的店铺摘要"""
+    storeId: str
+    storeName: str
+    storeCity: str
+    storeCountry: str
+    storeImage: Optional[str] = None
+
+
+class UserFavoritedStore(UserStoreActivityStore):
+    """用户收藏的买手店"""
+    createdAt: str
+
+
+class UserStoreComment(UserStoreActivityStore):
+    """用户的买手店评论"""
+    commentId: int
+    content: str
+    likeCount: int = 0
+    createdAt: str
+
+
+class UserStoreRatingItem(UserStoreActivityStore):
+    """用户的买手店评分"""
+    rating: float
+    createdAt: str
+    updatedAt: str
+
+
+class UserStoreActivity(BaseModel):
+    """用户买手店动态汇总"""
+    favorites: List[UserFavoritedStore] = []
+    favoritesTotal: int = 0
+    comments: List[UserStoreComment] = []
+    commentsTotal: int = 0
+    ratings: List[UserStoreRatingItem] = []
+    ratingsTotal: int = 0
+
+
 # ==================== 评论提示建议 ====================
 
 

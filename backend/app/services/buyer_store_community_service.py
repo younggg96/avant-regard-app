@@ -17,6 +17,10 @@ from app.schemas.buyer_store import (
     BuyerStoreRatingStats,
     ReviewSubmissionRequest,
     BatchReviewRequest,
+    UserFavoritedStore,
+    UserStoreComment,
+    UserStoreRatingItem,
+    UserStoreActivity,
 )
 
 
@@ -683,6 +687,168 @@ class BuyerStoreCommunityService:
             .execute()
         )
         return result.count or 0
+
+    # ==================== 用户买手店动态 ====================
+
+    def _get_store_lookup(self, store_ids: List[str]) -> dict:
+        """批量获取买手店基础信息，返回 {store_id: row} 字典"""
+        if not store_ids:
+            return {}
+        result = (
+            self.supabase.table("buyer_stores")
+            .select("id, name, city, country, images")
+            .in_("id", list(set(store_ids)))
+            .execute()
+        )
+        return {row["id"]: row for row in (result.data or [])}
+
+    def get_user_favorited_stores_with_details(
+        self, user_id: int, page: int = 1, page_size: int = 50
+    ) -> Tuple[List[UserFavoritedStore], int]:
+        """获取用户收藏的买手店（含店铺详情）"""
+        offset = (page - 1) * page_size
+
+        count_result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        total = count_result.count or 0
+
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("store_id, created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+
+        store_ids = [r["store_id"] for r in result.data]
+        store_map = self._get_store_lookup(store_ids)
+
+        items = []
+        for r in result.data:
+            store = store_map.get(r["store_id"])
+            if not store:
+                continue
+            images = store.get("images") or []
+            items.append(UserFavoritedStore(
+                storeId=r["store_id"],
+                storeName=store["name"],
+                storeCity=store["city"],
+                storeCountry=store["country"],
+                storeImage=images[0] if images else None,
+                createdAt=r["created_at"],
+            ))
+        return items, total
+
+    def get_user_comments_with_store_info(
+        self, user_id: int, page: int = 1, page_size: int = 50
+    ) -> Tuple[List[UserStoreComment], int]:
+        """获取用户发表的买手店评论（含店铺信息）"""
+        offset = (page - 1) * page_size
+
+        count_result = (
+            self.supabase.table("buyer_store_comments")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .is_("parent_id", "null")
+            .execute()
+        )
+        total = count_result.count or 0
+
+        result = (
+            self.supabase.table("buyer_store_comments")
+            .select("id, store_id, content, like_count, created_at")
+            .eq("user_id", user_id)
+            .is_("parent_id", "null")
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+
+        store_ids = [r["store_id"] for r in result.data]
+        store_map = self._get_store_lookup(store_ids)
+
+        items = []
+        for r in result.data:
+            store = store_map.get(r["store_id"])
+            if not store:
+                continue
+            images = store.get("images") or []
+            items.append(UserStoreComment(
+                storeId=r["store_id"],
+                storeName=store["name"],
+                storeCity=store["city"],
+                storeCountry=store["country"],
+                storeImage=images[0] if images else None,
+                commentId=r["id"],
+                content=r["content"],
+                likeCount=r.get("like_count", 0),
+                createdAt=r["created_at"],
+            ))
+        return items, total
+
+    def get_user_ratings_with_store_info(
+        self, user_id: int, page: int = 1, page_size: int = 50
+    ) -> Tuple[List[UserStoreRatingItem], int]:
+        """获取用户的买手店评分记录（含店铺信息）"""
+        offset = (page - 1) * page_size
+
+        count_result = (
+            self.supabase.table("buyer_store_ratings")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        total = count_result.count or 0
+
+        result = (
+            self.supabase.table("buyer_store_ratings")
+            .select("store_id, rating, created_at, updated_at")
+            .eq("user_id", user_id)
+            .order("updated_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+
+        store_ids = [r["store_id"] for r in result.data]
+        store_map = self._get_store_lookup(store_ids)
+
+        items = []
+        for r in result.data:
+            store = store_map.get(r["store_id"])
+            if not store:
+                continue
+            images = store.get("images") or []
+            items.append(UserStoreRatingItem(
+                storeId=r["store_id"],
+                storeName=store["name"],
+                storeCity=store["city"],
+                storeCountry=store["country"],
+                storeImage=images[0] if images else None,
+                rating=r["rating"],
+                createdAt=r["created_at"],
+                updatedAt=r["updated_at"],
+            ))
+        return items, total
+
+    def get_user_store_activity(self, user_id: int) -> UserStoreActivity:
+        """获取用户全部买手店动态汇总"""
+        favorites, fav_total = self.get_user_favorited_stores_with_details(user_id)
+        comments, cmt_total = self.get_user_comments_with_store_info(user_id)
+        ratings, rat_total = self.get_user_ratings_with_store_info(user_id)
+
+        return UserStoreActivity(
+            favorites=favorites,
+            favoritesTotal=fav_total,
+            comments=comments,
+            commentsTotal=cmt_total,
+            ratings=ratings,
+            ratingsTotal=rat_total,
+        )
 
 
 # 创建服务实例

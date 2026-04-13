@@ -803,11 +803,11 @@ class AdminService:
         total = result.count or 0
 
         user_ids = [u["id"] for u in result.data or []]
-        info_map = {}
+        info_map: dict = {}
         if user_ids:
             info_result = (
                 self.db.table("user_info")
-                .select("user_id, avatar_url")
+                .select("user_id, avatar_url, bio, location, gender, age")
                 .in_("user_id", user_ids)
                 .execute()
             )
@@ -832,6 +832,40 @@ class AdminService:
             except Exception:
                 pass
 
+        post_count_map: dict = {}
+        follower_count_map: dict = {}
+        following_count_map: dict = {}
+        merchant_map: dict = {}
+        if user_ids:
+            try:
+                for uid in user_ids:
+                    pc = self.db.table("posts").select("id", count="exact").eq("user_id", uid).eq("status", "PUBLISHED").execute()
+                    post_count_map[uid] = pc.count or 0
+            except Exception:
+                pass
+            try:
+                for uid in user_ids:
+                    fc = self.db.table("user_follows").select("id", count="exact").eq("following_id", uid).execute()
+                    follower_count_map[uid] = fc.count or 0
+                    fgc = self.db.table("user_follows").select("id", count="exact").eq("follower_id", uid).execute()
+                    following_count_map[uid] = fgc.count or 0
+            except Exception:
+                pass
+            try:
+                merchant_result = (
+                    self.db.table("store_merchants")
+                    .select("user_id, store_id, status")
+                    .in_("user_id", user_ids)
+                    .execute()
+                )
+                for m in merchant_result.data or []:
+                    merchant_map[m["user_id"]] = {
+                        "storeId": m["store_id"],
+                        "status": m["status"],
+                    }
+            except Exception:
+                pass
+
         users = []
         for u in result.data or []:
             info = info_map.get(u["id"], {})
@@ -844,8 +878,16 @@ class AdminService:
                 "userType": u.get("user_type", "USER"),
                 "isAdmin": u.get("is_admin", False),
                 "avatarUrl": info.get("avatar_url", ""),
+                "bio": info.get("bio", ""),
+                "location": info.get("location", ""),
+                "gender": info.get("gender", "OTHER"),
+                "age": info.get("age", 0),
                 "createdAt": u.get("created_at"),
                 "titles": title_map.get(u["id"], []),
+                "postCount": post_count_map.get(u["id"], 0),
+                "followerCount": follower_count_map.get(u["id"], 0),
+                "followingCount": following_count_map.get(u["id"], 0),
+                "merchant": merchant_map.get(u["id"]),
             })
 
         return {
