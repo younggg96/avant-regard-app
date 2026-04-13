@@ -184,12 +184,23 @@ class ChatService:
                 )
                 unread = unread_result.count or 0
 
+            my_msg_result = (
+                self.db.table("messages")
+                .select("id", count="exact")
+                .eq("conversation_id", conv_id)
+                .eq("sender_id", user_id)
+                .eq("is_deleted", False)
+                .execute()
+            )
+            my_message_count = my_msg_result.count or 0
+
             results.append(ConversationResponse(
                 id=conv_id,
                 participants=participants,
                 lastMessageText=conv.get("last_message_text"),
                 lastMessageAt=conv.get("last_message_at"),
                 unreadCount=unread,
+                myMessageCount=my_message_count,
                 otherUser=other_user,
                 updatedAt=conv.get("updated_at", conv.get("created_at", "")),
             ))

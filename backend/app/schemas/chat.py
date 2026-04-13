@@ -48,6 +48,7 @@ class ConversationResponse(BaseModel):
     lastMessageText: Optional[str] = None
     lastMessageAt: Optional[str] = None
     unreadCount: int = 0
+    myMessageCount: int = 0
     otherUser: Optional[ConversationParticipant] = None
     updatedAt: str
 
