@@ -21,6 +21,7 @@ class UserInfo(BaseModel):
     location: str = ""
     avatarUrl: str = ""
     coverUrl: str = ""
+    primaryTitle: Optional[str] = None
 
 
 class UserProfileInfo(BaseModel):

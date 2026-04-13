@@ -29,6 +29,7 @@ class MessageResponse(BaseModel):
     senderId: int
     senderName: str = ""
     senderAvatar: Optional[str] = None
+    senderTitle: Optional[str] = None
     content: str
     messageType: str = "text"
     createdAt: str

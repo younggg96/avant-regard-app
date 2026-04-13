@@ -15,6 +15,7 @@ from app.services.user_service import user_service
 from app.services.file_service import file_service
 from app.api.deps import get_current_user_id
 from app.core.response import success
+from app.db.supabase import get_supabase
 
 router = APIRouter(prefix="/user-info", tags=["用户信息"])
 
@@ -232,3 +233,80 @@ async def delete_account(
     if not ok:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(message="账户已永久删除")
+
+
+# ==================== 用户头衔 ====================
+
+@router.get("/{user_id}/titles")
+async def get_user_titles(user_id: int):
+    """获取用户的所有头衔（公开接口）"""
+    db = get_supabase()
+    result = (
+        db.table("user_titles")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("is_primary", desc=True)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    titles = [
+        {
+            "id": t["id"],
+            "userId": t["user_id"],
+            "title": t["title"],
+            "isPrimary": t.get("is_primary", False),
+            "createdAt": t.get("created_at"),
+        }
+        for t in result.data or []
+    ]
+    return success(titles)
+
+
+@router.put("/{user_id}/titles/{title_id}/set-primary")
+async def set_primary_title(
+    user_id: int,
+    title_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """设置主头衔"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户头衔")
+
+    db = get_supabase()
+
+    title_result = (
+        db.table("user_titles")
+        .select("id")
+        .eq("id", title_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not title_result.data:
+        raise HTTPException(status_code=404, detail="头衔不存在")
+
+    db.table("user_titles").update(
+        {"is_primary": False}
+    ).eq("user_id", user_id).eq("is_primary", True).execute()
+
+    db.table("user_titles").update(
+        {"is_primary": True}
+    ).eq("id", title_id).execute()
+
+    return success(message="主头衔已更新")
+
+
+@router.put("/{user_id}/titles/clear-primary")
+async def clear_primary_title(
+    user_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """取消主头衔展示"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户头衔")
+
+    db = get_supabase()
+    db.table("user_titles").update(
+        {"is_primary": False}
+    ).eq("user_id", user_id).eq("is_primary", True).execute()
+
+    return success(message="已取消主头衔展示")

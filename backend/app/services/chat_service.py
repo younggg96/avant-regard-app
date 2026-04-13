@@ -26,7 +26,7 @@ class ChatService:
         self.db = get_supabase()
 
     def _get_user_brief(self, user_id: int) -> Dict[str, Any]:
-        """Fetch username and avatar for a user."""
+        """Fetch username, avatar, and primary title for a user."""
         try:
             result = (
                 self.db.table("users")
@@ -51,10 +51,25 @@ class ChatService:
                 avatar = info_result.data.get("avatar_url")
         except Exception:
             pass
+        primary_title = None
+        try:
+            title_result = (
+                self.db.table("user_titles")
+                .select("title")
+                .eq("user_id", user_id)
+                .eq("is_primary", True)
+                .limit(1)
+                .execute()
+            )
+            if title_result.data:
+                primary_title = title_result.data[0]["title"]
+        except Exception:
+            pass
         return {
             "id": user.get("id", user_id),
             "username": user.get("username", ""),
             "avatar_url": avatar,
+            "primary_title": primary_title,
         }
 
     def find_existing_conversation(self, user_id: int, target_user_id: int) -> Optional[int]:
@@ -245,6 +260,7 @@ class ChatService:
                 senderId=sid,
                 senderName=sender["username"],
                 senderAvatar=sender.get("avatar_url"),
+                senderTitle=sender.get("primary_title"),
                 content=msg["content"],
                 messageType=msg.get("message_type", "text"),
                 createdAt=msg["created_at"],
@@ -294,6 +310,7 @@ class ChatService:
             senderId=sender_id,
             senderName=sender["username"],
             senderAvatar=sender.get("avatar_url"),
+            senderTitle=sender.get("primary_title"),
             content=msg["content"],
             messageType=msg.get("message_type", "text"),
             createdAt=msg["created_at"],

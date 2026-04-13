@@ -813,6 +813,25 @@ class AdminService:
             )
             info_map = {i["user_id"]: i for i in info_result.data or []}
 
+        title_map: dict = {}
+        if user_ids:
+            try:
+                titles_result = (
+                    self.db.table("user_titles")
+                    .select("*")
+                    .in_("user_id", user_ids)
+                    .order("is_primary", desc=True)
+                    .order("created_at", desc=True)
+                    .execute()
+                )
+                for t in titles_result.data or []:
+                    uid = t["user_id"]
+                    if uid not in title_map:
+                        title_map[uid] = []
+                    title_map[uid].append(self._format_title(t))
+            except Exception:
+                pass
+
         users = []
         for u in result.data or []:
             info = info_map.get(u["id"], {})
@@ -826,6 +845,7 @@ class AdminService:
                 "isAdmin": u.get("is_admin", False),
                 "avatarUrl": info.get("avatar_url", ""),
                 "createdAt": u.get("created_at"),
+                "titles": title_map.get(u["id"], []),
             })
 
         return {
@@ -913,6 +933,97 @@ class AdminService:
             "messageId": row["id"],
             "senderId": row["sender_id"],
             "conversationId": row["conversation_id"],
+        }
+
+    # ==================== 用户头衔管理 ====================
+
+    def get_user_titles(self, user_id: int) -> list:
+        """获取用户的所有头衔"""
+        result = (
+            self.db.table("user_titles")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("is_primary", desc=True)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return [self._format_title(t) for t in result.data or []]
+
+    def add_user_title(self, user_id: int, title: str, granted_by: int) -> dict:
+        """给用户添加头衔"""
+        existing = (
+            self.db.table("user_titles")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("title", title)
+            .execute()
+        )
+        if existing.data:
+            raise ValueError("该用户已拥有此头衔")
+
+        has_any = (
+            self.db.table("user_titles")
+            .select("id")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        is_first = not has_any.data
+
+        result = (
+            self.db.table("user_titles")
+            .insert({
+                "user_id": user_id,
+                "title": title,
+                "is_primary": is_first,
+                "granted_by": granted_by,
+            })
+            .execute()
+        )
+        if not result.data:
+            raise Exception("添加头衔失败")
+        return self._format_title(result.data[0])
+
+    def remove_user_title(self, title_id: int) -> bool:
+        """删除用户头衔"""
+        title_result = (
+            self.db.table("user_titles")
+            .select("user_id, is_primary")
+            .eq("id", title_id)
+            .execute()
+        )
+        if not title_result.data:
+            return False
+
+        was_primary = title_result.data[0]["is_primary"]
+        user_id = title_result.data[0]["user_id"]
+
+        self.db.table("user_titles").delete().eq("id", title_id).execute()
+
+        if was_primary:
+            remaining = (
+                self.db.table("user_titles")
+                .select("id")
+                .eq("user_id", user_id)
+                .order("created_at")
+                .limit(1)
+                .execute()
+            )
+            if remaining.data:
+                self.db.table("user_titles").update(
+                    {"is_primary": True}
+                ).eq("id", remaining.data[0]["id"]).execute()
+
+        return True
+
+    def _format_title(self, data: dict) -> dict:
+        return {
+            "id": data["id"],
+            "userId": data["user_id"],
+            "title": data["title"],
+            "isPrimary": data.get("is_primary", False),
+            "grantedBy": data.get("granted_by"),
+            "createdAt": data.get("created_at"),
         }
 
     # ==================== 屏蔽关系 ====================

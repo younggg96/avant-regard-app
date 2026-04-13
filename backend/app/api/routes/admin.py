@@ -618,6 +618,48 @@ async def admin_delete_chat_message(
     return success(result)
 
 
+# ==================== 用户头衔管理 ====================
+
+class AddUserTitleRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=100, description="头衔名称")
+
+
+@router.get("/users/{user_id}/titles")
+async def get_user_titles(
+    user_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取用户的所有头衔（管理员）"""
+    titles = admin_service.get_user_titles(user_id)
+    return success(titles)
+
+
+@router.post("/users/{user_id}/titles")
+async def add_user_title(
+    user_id: int,
+    request: AddUserTitleRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """给用户添加头衔（管理员）"""
+    try:
+        title = admin_service.add_user_title(user_id, request.title, current_user_id)
+        return success(title)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/titles/{title_id}")
+async def remove_user_title(
+    title_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """删除用户头衔（管理员）"""
+    ok = admin_service.remove_user_title(title_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="头衔不存在")
+    return success(message="头衔已删除")
+
+
 # ==================== 屏蔽关系 ====================
 
 @router.get("/blocks")

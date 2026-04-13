@@ -14,20 +14,37 @@ class UserService:
         self.db = get_supabase()
         self.db_admin = get_supabase_admin()
 
+    def _get_primary_title(self, user_id: int) -> Optional[str]:
+        """获取用户的主头衔"""
+        try:
+            result = (
+                self.db.table("user_titles")
+                .select("title")
+                .eq("user_id", user_id)
+                .eq("is_primary", True)
+                .limit(1)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]["title"]
+        except Exception:
+            pass
+        return None
+
     def get_user_info(self, user_id: int) -> Optional[UserInfo]:
         """获取用户信息"""
-        # 获取用户基本信息
         user_result = self.db.table("users").select("id, username").eq("id", user_id).execute()
         if not user_result.data:
             return None
         user = user_result.data[0]
-        
-        # 获取用户详细信息
+
         info_result = self.db.table("user_info").select("*").eq("user_id", user_id).execute()
         if not info_result.data:
             return None
         info = info_result.data[0]
-        
+
+        primary_title = self._get_primary_title(user_id)
+
         return UserInfo(
             userId=user["id"],
             infoId=info["id"],
@@ -35,7 +52,8 @@ class UserService:
             bio=info.get("bio", ""),
             location=info.get("location", ""),
             avatarUrl=info.get("avatar_url", ""),
-            coverUrl=info.get("cover_url", "")
+            coverUrl=info.get("cover_url", ""),
+            primaryTitle=primary_title,
         )
 
     def update_user_info(self, user_id: int, **kwargs) -> Optional[UserInfo]:
@@ -277,7 +295,8 @@ class UserService:
                 bio=info.get("bio", ""),
                 location=info.get("location", ""),
                 avatarUrl=info.get("avatar_url", ""),
-                coverUrl=info.get("cover_url", "")
+                coverUrl=info.get("cover_url", ""),
+                primaryTitle=self._get_primary_title(user_id),
             )
         else:
             # 没有 user_info 记录，返回基本信息
@@ -288,7 +307,8 @@ class UserService:
                 bio="",
                 location="",
                 avatarUrl="",
-                coverUrl=""
+                coverUrl="",
+                primaryTitle=self._get_primary_title(user_id),
             )
 
     def get_contribution_leaderboard(self, limit: int = 20) -> List[dict]:

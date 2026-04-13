@@ -115,6 +115,45 @@ async def review_merchant(
         merchant = store_merchant_service.review_merchant(
             merchant_id, current_user_id, data
         )
+
+        if data.status.value == "APPROVED" and merchant.userId and merchant.storeId:
+            try:
+                from app.db.supabase import get_supabase
+                db = get_supabase()
+                store_result = (
+                    db.table("buyer_stores")
+                    .select("name")
+                    .eq("id", merchant.storeId)
+                    .execute()
+                )
+                store_name = (
+                    store_result.data[0]["name"] if store_result.data else merchant.storeId
+                )
+                title_text = f"{store_name}买手店"
+                existing = (
+                    db.table("user_titles")
+                    .select("id")
+                    .eq("user_id", merchant.userId)
+                    .eq("title", title_text)
+                    .execute()
+                )
+                if not existing.data:
+                    has_any = (
+                        db.table("user_titles")
+                        .select("id")
+                        .eq("user_id", merchant.userId)
+                        .limit(1)
+                        .execute()
+                    )
+                    db.table("user_titles").insert({
+                        "user_id": merchant.userId,
+                        "title": title_text,
+                        "is_primary": not has_any.data,
+                        "granted_by": current_user_id,
+                    }).execute()
+            except Exception:
+                pass
+
         return success(merchant.model_dump(), message="审核完成")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
