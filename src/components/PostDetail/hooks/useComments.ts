@@ -109,6 +109,7 @@ export const useComments = ({
                 replyUserInfo?.avatarUrl ||
                 apiReply.userAvatar ||
                 `https://api.dicebear.com/7.x/avataaars/png?seed=${apiReply.userId}`,
+              userTitle: replyUserInfo?.primaryTitle || undefined,
               replyToUserId: apiReply.replyToUserId,
               replyToUsername: apiReply.replyToUsername,
               content: apiReply.content,
@@ -127,6 +128,7 @@ export const useComments = ({
             userInfo?.avatarUrl ||
             apiComment.userAvatar ||
             `https://api.dicebear.com/7.x/avataaars/png?seed=${apiComment.userId}`,
+          userTitle: userInfo?.primaryTitle || undefined,
           content: apiComment.content,
           timestamp: formatTimestamp(apiComment.createdAt),
           likes: apiComment.likeCount || 0,

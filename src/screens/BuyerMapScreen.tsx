@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   StyleSheet,
-  TextInput,
   Dimensions,
   Modal,
   Linking,
@@ -38,6 +37,7 @@ import {
   getStoresInViewport,
   hasValidCoordinates,
 } from "../services/buyerStoreService";
+import { useStoreFavorites } from "../hooks/useStoreFavorites";
 
 interface FilterState {
   country: string;
@@ -183,15 +183,14 @@ const getCityDisplayName = (city: string): string => {
   return translation ? `${city} ${translation}` : city;
 };
 
-const SEARCH_BAR_HEIGHT = 52; // 44px input + 8px bottom padding
+const SEARCH_BAR_HEIGHT = 48; // 40px input + 8px bottom padding
 
 const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { isFavorited, toggleFavorite } = useStoreFavorites();
   const mapRef = useRef<MapView>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showStoreDetail, setShowStoreDetail] = useState(false);
   const [selectedStore, setSelectedStore] = useState<BuyerStore | null>(null);
@@ -515,14 +514,9 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
     };
   }, []);
 
-  // 搜索防抖
-  useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 400);
-    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
-  }, [searchQuery]);
+  const handleSearchPress = useCallback(() => {
+    (navigation.navigate as any)("StoreSearch");
+  }, [navigation]);
 
   // 应用筛选
   useEffect(() => {
@@ -578,12 +572,14 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       // 如果选择了国家，自动移动地图到该国家的第一个店铺
       if (filters.country && filtered.length > 0 && mapRef.current) {
         const firstStore = filtered[0];
-        mapRef.current.animateToRegion({
-          latitude: firstStore.coordinates.latitude,
-          longitude: firstStore.coordinates.longitude,
-          latitudeDelta: 5,
-          longitudeDelta: 5,
-        });
+        if (firstStore.coordinates) {
+          mapRef.current.animateToRegion({
+            latitude: firstStore.coordinates.latitude,
+            longitude: firstStore.coordinates.longitude,
+            latitudeDelta: 5,
+            longitudeDelta: 5,
+          });
+        }
       }
     } catch (error) {
       console.error("Error filtering stores:", error);
@@ -741,7 +737,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       openOnly: false,
       hasPhone: false,
     });
-    setSearchQuery("");
+    setDebouncedSearchQuery("");
     setNearbyMode(false);
   };
 
@@ -861,42 +857,29 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       {/* 搜索栏 */}
       <Box px="$md" pb="$sm">
         <HStack alignItems="center" gap="$sm">
-          <Box
+          <Pressable
             flex={1}
             flexDirection="row"
             alignItems="center"
-            bg="$gray100"
+            bg="$gray50"
             rounded="$sm"
             px="$md"
-            h={44}
+            h={40}
+            onPress={handleSearchPress}
           >
             <Ionicons
               name="search"
               size={20}
-              color={theme.colors.gray200}
-              style={{ marginRight: 8 }}
+              color={theme.colors.gray400}
+              style={{ marginRight: 6 }}
             />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="搜索店铺或风格..."
-              placeholderTextColor={theme.colors.gray200}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-            />
-            {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery("")}>
-                <Ionicons
-                  name="close-circle"
-                  size={18}
-                  color={theme.colors.gray200}
-                />
-              </Pressable>
-            ) : null}
-          </Box>
+            <Text style={styles.searchPlaceholder} numberOfLines={1}>
+              搜索店铺名称、城市或品牌...
+            </Text>
+          </Pressable>
           <Pressable
-            w={44}
-            h={44}
+            w={40}
+            h={40}
             rounded="$sm"
             bg={activeFilterCount > 0 ? "$black" : "$white"}
             borderWidth={1}
@@ -1285,17 +1268,34 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
 
               {/* 操作按钮 */}
               <HStack justifyContent="between" alignItems="center">
-                <Pressable
-                  w={36}
-                  h={36}
-                  rounded="$sm"
-                  bg="$gray100"
-                  justifyContent="center"
-                  alignItems="center"
-                  onPress={() => (navigation.navigate as any)("StoreDetail", { storeId: store.id })}
-                >
-                  <Ionicons name="information-circle-outline" size={20} color={theme.colors.black} />
-                </Pressable>
+                <HStack gap="$sm">
+                  <Pressable
+                    w={36}
+                    h={36}
+                    rounded="$sm"
+                    bg={isFavorited(store.id) ? "#FFF0F0" : "$gray100"}
+                    justifyContent="center"
+                    alignItems="center"
+                    onPress={() => toggleFavorite(store.id)}
+                  >
+                    <Ionicons
+                      name={isFavorited(store.id) ? "heart" : "heart-outline"}
+                      size={18}
+                      color={isFavorited(store.id) ? theme.colors.error : theme.colors.black}
+                    />
+                  </Pressable>
+                  <Pressable
+                    w={36}
+                    h={36}
+                    rounded="$sm"
+                    bg="$gray100"
+                    justifyContent="center"
+                    alignItems="center"
+                    onPress={() => (navigation.navigate as any)("StoreDetail", { storeId: store.id })}
+                  >
+                    <Ionicons name="information-circle-outline" size={20} color={theme.colors.black} />
+                  </Pressable>
+                </HStack>
                 <HStack gap="$sm">
                   {store.phone && store.phone.length > 0 && (
                     <Pressable
@@ -1625,9 +1625,18 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                       {selectedStore.city} · {selectedStore.country}
                     </Text>
                   </VStack>
-                  <Pressable onPress={closeStoreDetail}>
-                    <Ionicons name="close" size={24} color={theme.colors.gray300} />
-                  </Pressable>
+                  <HStack alignItems="center" gap="$md">
+                    <Pressable onPress={() => toggleFavorite(selectedStore.id)} hitSlop={8}>
+                      <Ionicons
+                        name={isFavorited(selectedStore.id) ? "heart" : "heart-outline"}
+                        size={24}
+                        color={isFavorited(selectedStore.id) ? theme.colors.error : theme.colors.black}
+                      />
+                    </Pressable>
+                    <Pressable onPress={closeStoreDetail}>
+                      <Ionicons name="close" size={24} color={theme.colors.gray300} />
+                    </Pressable>
+                  </HStack>
                 </HStack>
 
                 <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
@@ -1813,11 +1822,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  searchInput: {
+  searchPlaceholder: {
     flex: 1,
-    fontSize: 15,
-    color: theme.colors.black,
-    paddingVertical: 0,
+    fontSize: 16,
+    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    color: theme.colors.gray400,
   },
   map: {
     flex: 1,

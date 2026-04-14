@@ -8,6 +8,7 @@ import {
   userInfoService,
   UserInfo,
   UserProfileInfo,
+  UserTitle,
 } from "../../../services/userInfoService";
 import {
   getFollowingCount,
@@ -19,8 +20,12 @@ import { getUnreadCount } from "../../../services/notificationService";
 import { Post as DisplayPost } from "../../../components/PostCard";
 import { showService, Show } from "../../../services/showService";
 import { brandService, BrandSubmission } from "../../../services/brandService";
-import { buyerStoreService, UserSubmittedStore } from "../../../services/buyerStoreService";
-import { TabType, TabData, initialTabState, ContribSubTab } from "../types";
+import {
+  buyerStoreService,
+  UserSubmittedStore,
+  UserStoreActivity,
+} from "../../../services/buyerStoreService";
+import { TabType, TabData, initialTabState, ContribSubTab, StoreActivitySubTab } from "../types";
 import { Alert } from "../../../utils/Alert";
 
 function convertToDisplayPost(
@@ -67,6 +72,7 @@ export function useProfileData() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
+  const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
 
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
   const [myShows, setMyShows] = useState<Show[]>([]);
@@ -74,6 +80,11 @@ export function useProfileData() {
   const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
   const [contribLoading, setContribLoading] = useState(false);
   const [contribLoaded, setContribLoaded] = useState(false);
+
+  const [storeActivitySubTab, setStoreActivitySubTab] = useState<StoreActivitySubTab>("favorites");
+  const [storeActivity, setStoreActivity] = useState<UserStoreActivity | null>(null);
+  const [storeActivityLoading, setStoreActivityLoading] = useState(false);
+  const [storeActivityLoaded, setStoreActivityLoaded] = useState(false);
 
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     published: { ...initialTabState },
@@ -84,6 +95,7 @@ export function useProfileData() {
     forum: { ...initialTabState },
     archive: { ...initialTabState },
     wishlist: { ...initialTabState },
+    storeActivity: { ...initialTabState },
   });
 
   const updateTabState = useCallback(
@@ -106,8 +118,10 @@ export function useProfileData() {
       forum: { ...initialTabState },
       archive: { ...initialTabState },
       wishlist: { ...initialTabState },
+      storeActivity: { ...initialTabState },
     });
     setContribLoaded(false);
+    setStoreActivityLoaded(false);
   }, []);
 
   const loadUserInfo = useCallback(async () => {
@@ -183,6 +197,16 @@ export function useProfileData() {
     }
   }, [user?.userId]);
 
+  const loadUserTitles = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const titles = await userInfoService.getUserTitles(user.userId);
+      setUserTitles(titles);
+    } catch (error) {
+      console.error("Error loading user titles:", error);
+    }
+  }, [user?.userId]);
+
   const loadContributions = useCallback(async () => {
     if (!user?.userId) return;
     setContribLoading(true);
@@ -203,10 +227,26 @@ export function useProfileData() {
     }
   }, [user?.userId]);
 
+  const loadStoreActivity = useCallback(async () => {
+    if (!user?.userId) return;
+    setStoreActivityLoading(true);
+    try {
+      const activity = await buyerStoreService.getUserStoreActivity();
+      setStoreActivity(activity);
+      const totalCount = activity.favoritesTotal + activity.commentsTotal + activity.ratingsTotal;
+      updateTabState("storeActivity", { count: totalCount, hasLoaded: true, isLoading: false });
+    } catch (err) {
+      console.error("Error loading store activity:", err);
+    } finally {
+      setStoreActivityLoading(false);
+      setStoreActivityLoaded(true);
+    }
+  }, [user?.userId, updateTabState]);
+
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
       if (!user?.userId) return;
-      if (targetTab === "archive") return;
+      if (targetTab === "archive" || targetTab === "storeActivity") return;
       if (!isRefresh && tabsData[targetTab].hasLoaded) return;
 
       updateTabState(targetTab, { isLoading: true });
@@ -292,7 +332,8 @@ export function useProfileData() {
     loadFollowersCount();
     loadUnreadNotificationCount();
     loadFollowedBrands();
-  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadUnreadNotificationCount, loadFollowedBrands]);
+    loadUserTitles();
+  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadUnreadNotificationCount, loadFollowedBrands, loadUserTitles]);
 
   return {
     userInfo,
@@ -302,6 +343,7 @@ export function useProfileData() {
     unreadNotificationCount,
     coverImage,
     followedBrands,
+    userTitles,
     contribSubTab,
     setContribSubTab,
     myShows,
@@ -309,6 +351,11 @@ export function useProfileData() {
     myStores,
     contribLoading,
     contribLoaded,
+    storeActivitySubTab,
+    setStoreActivitySubTab,
+    storeActivity,
+    storeActivityLoading,
+    storeActivityLoaded,
     tabsData,
     setTabsData,
     updateTabState,
@@ -319,7 +366,9 @@ export function useProfileData() {
     loadFollowersCount,
     loadUnreadNotificationCount,
     loadFollowedBrands,
+    loadUserTitles,
     loadContributions,
+    loadStoreActivity,
     fetchTabData,
     loadAllProfileData,
   };

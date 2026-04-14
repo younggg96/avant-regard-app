@@ -35,6 +35,7 @@ import { CoverSection } from "./components/CoverSection";
 import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
+import { UserTitlesSection } from "./components/UserTitlesSection";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
@@ -68,6 +69,7 @@ const ProfileScreen = () => {
     unreadNotificationCount,
     coverImage,
     followedBrands,
+    userTitles,
     contribSubTab,
     setContribSubTab,
     myShows,
@@ -75,6 +77,11 @@ const ProfileScreen = () => {
     myStores,
     contribLoading,
     contribLoaded,
+    storeActivitySubTab,
+    setStoreActivitySubTab,
+    storeActivity,
+    storeActivityLoading,
+    storeActivityLoaded,
     tabsData,
     resetTabsData,
     loadUserInfo,
@@ -82,7 +89,9 @@ const ProfileScreen = () => {
     loadFollowingUsersCount,
     loadFollowersCount,
     loadFollowedBrands,
+    loadUserTitles,
     loadContributions,
+    loadStoreActivity,
     fetchTabData,
     loadAllProfileData,
   } = useProfileData();
@@ -94,6 +103,7 @@ const ProfileScreen = () => {
     { id: "liked" as TabType, label: "我喜欢的", count: tabsData.liked.count },
     { id: "saved" as TabType, label: "我收藏的", count: tabsData.saved.count },
     { id: "wishlist" as TabType, label: "愿望单", count: tabsData.wishlist.count },
+    { id: "storeActivity" as TabType, label: "买手店" },
     { id: "draft" as TabType, label: "草稿", count: tabsData.draft.count },
     { id: "archive" as TabType, label: "贡献" },
   ];
@@ -106,6 +116,8 @@ const ProfileScreen = () => {
   useEffect(() => {
     if (activeTab === "archive") {
       if (!contribLoaded) loadContributions();
+    } else if (activeTab === "storeActivity") {
+      if (!storeActivityLoaded) loadStoreActivity();
     } else {
       fetchTabData(activeTab);
     }
@@ -116,6 +128,8 @@ const ProfileScreen = () => {
       loadAllProfileData();
       if (activeTab === "archive") {
         loadContributions();
+      } else if (activeTab === "storeActivity") {
+        loadStoreActivity();
       } else {
         fetchTabData(activeTab, true);
       }
@@ -130,9 +144,12 @@ const ProfileScreen = () => {
       loadFollowingUsersCount(),
       loadFollowersCount(),
       loadFollowedBrands(),
+      loadUserTitles(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
+    } else if (activeTab === "storeActivity") {
+      tasks.push(loadStoreActivity());
     } else {
       tasks.push(fetchTabData(activeTab, true));
     }
@@ -289,6 +306,10 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleStoreActivityPress = (storeId: string) => {
+    (navigation as any).navigate("StoreDetail", { storeId });
+  };
+
   const avatarUri = userInfo?.avatarUrl || user?.avatar;
   const statusBarStyle = isCollapsed ? "dark-content" : "light-content";
   const displayUsername = userInfo?.username || user?.username || "";
@@ -359,6 +380,8 @@ const ProfileScreen = () => {
           onBrandPress={(name) => (navigation as any).navigate("BrandDetail", { name })}
         />
 
+        <UserTitlesSection titles={userTitles} />
+
         <Animated.View
           style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
           onLayout={(event) => {
@@ -386,12 +409,17 @@ const ProfileScreen = () => {
             myShows={myShows}
             myBrands={myBrands}
             myStores={myStores}
+            storeActivitySubTab={storeActivitySubTab}
+            setStoreActivitySubTab={setStoreActivitySubTab}
+            storeActivity={storeActivity}
+            storeActivityLoading={storeActivityLoading}
             user={user}
             onPostPress={handlePostPress}
             onDeletePost={handleDeletePost}
             onShowPress={handleShowPress}
             onBrandSubmissionPress={handleBrandSubmissionPress}
             onStoreCardPress={handleStoreCardPress}
+            onStoreActivityPress={handleStoreActivityPress}
           />
         </View>
       </AnimatedScrollView>

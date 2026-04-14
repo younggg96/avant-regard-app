@@ -695,7 +695,47 @@ export async function toggleBrandImageSelected(imageId: number, selected: boolea
   });
 }
 
+// ==================== 用户头衔管理 ====================
+
+export interface UserTitle {
+  id: number;
+  userId: number;
+  title: string;
+  isPrimary: boolean;
+  grantedBy?: number;
+  createdAt?: string;
+}
+
+export async function getUserTitlesAdmin(
+  userId: number
+): Promise<UserTitle[]> {
+  return request<UserTitle[]>(`/api/admin/users/${userId}/titles`, {
+    method: "GET",
+  });
+}
+
+export async function addUserTitle(
+  userId: number,
+  title: string
+): Promise<UserTitle> {
+  return request<UserTitle>(`/api/admin/users/${userId}/titles`, {
+    method: "POST",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export async function removeUserTitle(titleId: number): Promise<void> {
+  return request<void>(`/api/admin/titles/${titleId}`, {
+    method: "DELETE",
+  });
+}
+
 // ==================== 用户列表 ====================
+
+export interface AdminUserMerchant {
+  storeId: string;
+  status: string;
+}
 
 export interface AdminUser {
   id: number;
@@ -706,7 +746,16 @@ export interface AdminUser {
   userType: string;
   isAdmin: boolean;
   avatarUrl: string;
+  bio?: string;
+  location?: string;
+  gender?: string;
+  age?: number;
   createdAt: string;
+  titles?: UserTitle[];
+  postCount?: number;
+  followerCount?: number;
+  followingCount?: number;
+  merchant?: AdminUserMerchant;
 }
 
 export interface AdminUserListResponse {
@@ -888,6 +937,10 @@ export const adminService = {
   // 用户管理
   getAdminUsers,
   deleteUser,
+  // 头衔管理
+  getUserTitlesAdmin,
+  addUserTitle,
+  removeUserTitle,
   // 举报管理
   getAdminReports,
   updateReportStatus,

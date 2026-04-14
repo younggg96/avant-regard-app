@@ -26,6 +26,7 @@ export interface UserInfo {
   location: string;
   avatarUrl: string;
   coverUrl?: string;
+  primaryTitle?: string;
 }
 
 // 用户完整资料类型（包含性别、年龄、偏好等）
@@ -422,6 +423,49 @@ export async function deleteAccount(userId: number): Promise<void> {
   });
 }
 
+// 用户头衔类型
+export interface UserTitle {
+  id: number;
+  userId: number;
+  title: string;
+  isPrimary: boolean;
+  createdAt?: string;
+}
+
+/**
+ * 获取用户头衔列表
+ * GET /api/user-info/{userId}/titles
+ */
+export async function getUserTitles(userId: number): Promise<UserTitle[]> {
+  return request<UserTitle[]>(`/api/user-info/${userId}/titles`, {
+    method: "GET",
+  });
+}
+
+/**
+ * 设置主头衔
+ * PUT /api/user-info/{userId}/titles/{titleId}/set-primary
+ */
+export async function setPrimaryTitle(
+  userId: number,
+  titleId: number
+): Promise<void> {
+  return request<void>(
+    `/api/user-info/${userId}/titles/${titleId}/set-primary`,
+    { method: "PUT" }
+  );
+}
+
+/**
+ * 取消主头衔展示
+ * PUT /api/user-info/{userId}/titles/clear-primary
+ */
+export async function clearPrimaryTitle(userId: number): Promise<void> {
+  return request<void>(`/api/user-info/${userId}/titles/clear-primary`, {
+    method: "PUT",
+  });
+}
+
 // 导出 userInfoService 对象
 export const userInfoService = {
   getUserInfo,
@@ -435,6 +479,9 @@ export const userInfoService = {
   updatePrivacySettings,
   getContributionLeaderboard,
   deleteAccount,
+  getUserTitles,
+  setPrimaryTitle,
+  clearPrimaryTitle,
 };
 
 export default userInfoService;

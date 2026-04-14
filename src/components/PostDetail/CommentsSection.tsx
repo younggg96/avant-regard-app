@@ -1,8 +1,7 @@
 import React from "react";
 import { ActivityIndicator, Image as RNImage } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
-import { ImageSize } from "../../utils/imageUtils";
+import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { styles } from "./styles";
@@ -60,6 +59,11 @@ const ReplyItem: React.FC<{
               {reply.userName}
             </Text>
           </Pressable>
+          {reply.userTitle ? (
+            <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+              <Text fontSize={9} fontWeight="$medium" color="$gray600">{reply.userTitle}</Text>
+            </Box>
+          ) : null}
           {reply.replyToUsername && (
             <>
               <Ionicons name="arrow-forward" size={10} color={theme.colors.gray400} />
@@ -172,6 +176,11 @@ const CommentItem: React.FC<{
                 {comment.userName}
               </Text>
             </Pressable>
+            {comment.userTitle ? (
+              <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                <Text fontSize={10} fontWeight="$medium" color="$gray600">{comment.userTitle}</Text>
+              </Box>
+            ) : null}
             <Text fontSize="$xs" color="$gray600">
               {comment.timestamp}
             </Text>

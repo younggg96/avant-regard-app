@@ -14,6 +14,7 @@ export interface CommentReply {
   userId: number;
   userName: string;
   userAvatar: string;
+  userTitle?: string;
   replyToUserId?: number;
   replyToUsername?: string;
   content: string;
@@ -28,20 +29,21 @@ export interface Comment {
   userId: number;
   userName: string;
   userAvatar: string;
+  userTitle?: string;
   content: string;
   timestamp: string;
   likes: number;
   isLiked?: boolean;
   replyCount: number;
   replies: CommentReply[];
-  showReplies?: boolean; // 是否展开显示回复
+  showReplies?: boolean;
 }
 
 // 回复目标信息
 export interface ReplyTarget {
-  commentId: string; // 父评论ID
-  userId: number; // 被回复用户ID
-  userName: string; // 被回复用户名
+  commentId: string;
+  userId: number;
+  userName: string;
 }
 
 // 帖子状态类型

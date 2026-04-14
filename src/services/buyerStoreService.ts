@@ -892,6 +892,52 @@ export const getUserFavoriteStores = async (
   );
 };
 
+// ==================== 用户买手店动态接口 ====================
+
+export interface UserStoreActivityStore {
+  storeId: string;
+  storeName: string;
+  storeCity: string;
+  storeCountry: string;
+  storeImage?: string;
+}
+
+export interface UserFavoritedStore extends UserStoreActivityStore {
+  createdAt: string;
+}
+
+export interface UserStoreCommentItem extends UserStoreActivityStore {
+  commentId: number;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+}
+
+export interface UserStoreRatingItem extends UserStoreActivityStore {
+  rating: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserStoreActivity {
+  favorites: UserFavoritedStore[];
+  favoritesTotal: number;
+  comments: UserStoreCommentItem[];
+  commentsTotal: number;
+  ratings: UserStoreRatingItem[];
+  ratingsTotal: number;
+}
+
+/**
+ * 获取当前用户的买手店动态（收藏、评论、评分）
+ * GET /api/buyer-stores/user/activity
+ */
+export const getUserStoreActivity = async (): Promise<UserStoreActivity> => {
+  return request<UserStoreActivity>(`/api/buyer-stores/user/activity`, {
+    method: "GET",
+  });
+};
+
 // ==================== 买手店详情扩展接口 ====================
 
 export interface BuyerStoreDetail extends BuyerStore {
@@ -963,4 +1009,6 @@ export const buyerStoreService = {
   getUserFavoriteStores,
   // 详情
   getStoreDetail,
+  // 用户动态
+  getUserStoreActivity,
 };

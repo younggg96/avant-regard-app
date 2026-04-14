@@ -28,6 +28,7 @@ export interface Post {
     id: string;
     name: string;
     avatar: string;
+    title?: string;
   };
   content?: {
     title: string;
@@ -201,6 +202,13 @@ const PostCard: React.FC<PostCardProps> = ({
             >
               {post.author.name}
             </Text>
+            {post.author.title ? (
+              <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+                  {post.author.title}
+                </Text>
+              </Box>
+            ) : null}
           </HStack>
         </Pressable>
 

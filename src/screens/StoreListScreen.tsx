@@ -30,6 +30,7 @@ import {
     BuyerStore,
     getStoresPaginated,
 } from "../services/buyerStoreService";
+import { useStoreFavorites } from "../hooks/useStoreFavorites";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 400;
@@ -37,6 +38,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
     const navigation = useNavigation();
+    const { isFavorited, toggleFavorite } = useStoreFavorites();
     const [stores, setStores] = useState<BuyerStore[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -240,20 +242,32 @@ const StoreListScreen = () => {
                         {store.city}, {store.country}
                     </Text>
                 </VStack>
-                <Box
-                    px="$sm"
-                    py="$xs"
-                    rounded="$sm"
-                    bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-                >
-                    <Text
-                        fontSize="$xs"
-                        fontWeight="$bold"
-                        color={store.isOpen ? "#27AE60" : "$gray300"}
+                <HStack alignItems="center" gap="$sm">
+                    <Pressable
+                        onPress={() => toggleFavorite(store.id)}
+                        hitSlop={8}
                     >
-                        {store.isOpen ? "营业中" : "休息"}
-                    </Text>
-                </Box>
+                        <Ionicons
+                            name={isFavorited(store.id) ? "heart" : "heart-outline"}
+                            size={20}
+                            color={isFavorited(store.id) ? theme.colors.error : theme.colors.gray300}
+                        />
+                    </Pressable>
+                    <Box
+                        px="$sm"
+                        py="$xs"
+                        rounded="$sm"
+                        bg={store.isOpen ? "#E8F5E9" : "$gray100"}
+                    >
+                        <Text
+                            fontSize="$xs"
+                            fontWeight="$bold"
+                            color={store.isOpen ? "#27AE60" : "$gray300"}
+                        >
+                            {store.isOpen ? "营业中" : "休息"}
+                        </Text>
+                    </Box>
+                </HStack>
             </HStack>
 
             {/* 地址 */}
@@ -293,7 +307,7 @@ const StoreListScreen = () => {
                 </Box>
             )}
         </Pressable>
-    ), []);
+    ), [isFavorited, toggleFavorite]);
 
     const renderFooter = () => {
         if (!isLoadingMore) return null;
@@ -472,9 +486,18 @@ const StoreListScreen = () => {
                                             {selectedStore.city} · {selectedStore.country}
                                         </Text>
                                     </VStack>
-                                    <Pressable onPress={closeStoreDetail}>
-                                        <Ionicons name="close" size={24} color={theme.colors.gray300} />
-                                    </Pressable>
+                                    <HStack alignItems="center" gap="$md">
+                                        <Pressable onPress={() => toggleFavorite(selectedStore.id)} hitSlop={8}>
+                                            <Ionicons
+                                                name={isFavorited(selectedStore.id) ? "heart" : "heart-outline"}
+                                                size={24}
+                                                color={isFavorited(selectedStore.id) ? theme.colors.error : theme.colors.black}
+                                            />
+                                        </Pressable>
+                                        <Pressable onPress={closeStoreDetail}>
+                                            <Ionicons name="close" size={24} color={theme.colors.gray300} />
+                                        </Pressable>
+                                    </HStack>
                                 </HStack>
 
                                 <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>

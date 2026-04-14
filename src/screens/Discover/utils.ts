@@ -48,6 +48,7 @@ export const mapApiPostToDisplayPost = (
       name: userInfo?.username || apiPost.username || "匿名用户",
       avatar: userInfo?.avatarUrl || defaultAvatar,
       isVerified: false,
+      title: userInfo?.primaryTitle || undefined,
     },
     content: {
       title: apiPost.title || "无标题",

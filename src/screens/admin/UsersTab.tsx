@@ -13,13 +13,14 @@ import {
   AdminUser,
   AdminReport,
   AdminBlock,
+  UserTitle,
 } from "../../services/adminService";
 import {
   createConversation,
   sendMessageREST,
 } from "../../services/chatService";
 import { sharedStyles } from "./adminStyles";
-import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
+import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VStack } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -125,6 +126,13 @@ const UsersSubTab = () => {
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [titleModalVisible, setTitleModalVisible] = useState(false);
+  const [titleTarget, setTitleTarget] = useState<AdminUser | null>(null);
+  const [titleList, setTitleList] = useState<UserTitle[]>([]);
+  const [titleLoading, setTitleLoading] = useState(false);
+  const [newTitleText, setNewTitleText] = useState("");
+  const [addingTitle, setAddingTitle] = useState(false);
+
   const loadUsers = useCallback(
     async (p = page, refresh = false) => {
       try {
@@ -176,8 +184,59 @@ const UsersSubTab = () => {
     }
   };
 
+  const openTitleModal = async (user: AdminUser) => {
+    setTitleTarget(user);
+    setTitleModalVisible(true);
+    setNewTitleText("");
+    if (user.titles && user.titles.length > 0) {
+      setTitleList(user.titles);
+    } else {
+      setTitleLoading(true);
+      try {
+        const titles = await adminService.getUserTitlesAdmin(user.id);
+        setTitleList(titles);
+      } catch (e) {
+        Alert.alert("错误", e instanceof Error ? e.message : "获取头衔失败");
+      } finally {
+        setTitleLoading(false);
+      }
+    }
+  };
+
+  const handleAddTitle = async () => {
+    if (!titleTarget || !newTitleText.trim()) return;
+    setAddingTitle(true);
+    try {
+      const newTitle = await adminService.addUserTitle(titleTarget.id, newTitleText.trim());
+      setTitleList((prev) => [...prev, newTitle]);
+      setNewTitleText("");
+      loadUsers(page);
+    } catch (e) {
+      Alert.alert("错误", e instanceof Error ? e.message : "添加头衔失败");
+    } finally {
+      setAddingTitle(false);
+    }
+  };
+
+  const handleRemoveTitle = async (titleId: number) => {
+    try {
+      await adminService.removeUserTitle(titleId);
+      setTitleList((prev) => prev.filter((t) => t.id !== titleId));
+      loadUsers(page);
+    } catch (e) {
+      Alert.alert("错误", e instanceof Error ? e.message : "删除头衔失败");
+    }
+  };
+
+  const GENDER_LABELS: Record<string, string> = {
+    MALE: "♂ 男",
+    FEMALE: "♀ 女",
+    OTHER: "",
+  };
+
   const renderUserCard = (item: AdminUser) => (
     <Box key={item.id} style={styles.card}>
+      {/* 顶部：头像 + 名称 + 状态 */}
       <HStack style={styles.cardHeader}>
         <HStack style={{ alignItems: "center", flex: 1 }}>
           {item.avatarUrl ? (
@@ -192,12 +251,25 @@ const UsersSubTab = () => {
             </Box>
           )}
           <Box style={{ marginLeft: theme.spacing.sm, flex: 1 }}>
-            <Text style={styles.userName} numberOfLines={1}>
-              {item.username}
-            </Text>
+            <HStack style={{ alignItems: "center", gap: 6 }}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {item.username}
+              </Text>
+              {item.isAdmin && (
+                <Box style={styles.adminBadge}>
+                  <Text style={styles.adminBadgeText}>Admin</Text>
+                </Box>
+              )}
+              {item.merchant && (
+                <Box style={[styles.adminBadge, { backgroundColor: "#F0FDF4" }]}>
+                  <Text style={[styles.adminBadgeText, { color: "#16A34A" }]}>
+                    {item.merchant.status === "APPROVED" ? "商家" : "商家审核中"}
+                  </Text>
+                </Box>
+              )}
+            </HStack>
             <Text style={styles.userMeta}>
               ID: {item.id}
-              {item.isAdmin ? " · 管理员" : ""}
               {item.userType !== "USER" ? ` · ${item.userType}` : ""}
             </Text>
           </Box>
@@ -223,21 +295,109 @@ const UsersSubTab = () => {
         </Box>
       </HStack>
 
+      {/* 头衔标签 */}
+      {item.titles && item.titles.length > 0 && (
+        <HStack style={styles.titleChipsRow}>
+          {item.titles.map((t) => (
+            <Box
+              key={t.id}
+              style={[
+                styles.titleChip,
+                t.isPrimary && styles.titleChipPrimary,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.titleChipText,
+                  t.isPrimary && styles.titleChipTextPrimary,
+                ]}
+              >
+                {t.title}
+              </Text>
+            </Box>
+          ))}
+        </HStack>
+      )}
+
+      {/* 数据统计 */}
+      <HStack style={styles.statsRow}>
+        <Box style={styles.statItem}>
+          <Text style={styles.statValue}>{item.postCount ?? 0}</Text>
+          <Text style={styles.statLabel}>帖子</Text>
+        </Box>
+        <Box style={styles.statDivider} />
+        <Box style={styles.statItem}>
+          <Text style={styles.statValue}>{item.followerCount ?? 0}</Text>
+          <Text style={styles.statLabel}>粉丝</Text>
+        </Box>
+        <Box style={styles.statDivider} />
+        <Box style={styles.statItem}>
+          <Text style={styles.statValue}>{item.followingCount ?? 0}</Text>
+          <Text style={styles.statLabel}>关注</Text>
+        </Box>
+      </HStack>
+
+      {/* 详细信息 */}
       <Box style={styles.cardBody}>
-        {item.email ? (
-          <Text style={styles.detailText}>邮箱: {item.email}</Text>
-        ) : null}
-        {item.phone ? (
-          <Text style={styles.detailText}>手机: {item.phone}</Text>
-        ) : null}
-        {item.createdAt ? (
-          <Text style={styles.detailText}>
-            注册: {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+        {item.bio ? (
+          <Text style={styles.bioText} numberOfLines={2}>
+            {item.bio}
           </Text>
         ) : null}
+        <HStack style={styles.infoGrid}>
+          {item.phone ? (
+            <HStack style={styles.infoItem}>
+              <Ionicons name="call-outline" size={12} color={theme.colors.gray300} />
+              <Text style={styles.detailText}>{item.phone}</Text>
+            </HStack>
+          ) : null}
+          {item.email ? (
+            <HStack style={styles.infoItem}>
+              <Ionicons name="mail-outline" size={12} color={theme.colors.gray300} />
+              <Text style={styles.detailText} numberOfLines={1}>{item.email}</Text>
+            </HStack>
+          ) : null}
+          {item.location ? (
+            <HStack style={styles.infoItem}>
+              <Ionicons name="location-outline" size={12} color={theme.colors.gray300} />
+              <Text style={styles.detailText}>{item.location}</Text>
+            </HStack>
+          ) : null}
+          {item.gender && GENDER_LABELS[item.gender] ? (
+            <HStack style={styles.infoItem}>
+              <Text style={styles.detailText}>{GENDER_LABELS[item.gender]}</Text>
+              {item.age && item.age > 0 ? (
+                <Text style={styles.detailText}> · {item.age}岁</Text>
+              ) : null}
+            </HStack>
+          ) : null}
+          {item.createdAt ? (
+            <HStack style={styles.infoItem}>
+              <Ionicons name="calendar-outline" size={12} color={theme.colors.gray300} />
+              <Text style={styles.detailText}>
+                {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+              </Text>
+            </HStack>
+          ) : null}
+          {item.merchant ? (
+            <HStack style={styles.infoItem}>
+              <Ionicons name="storefront-outline" size={12} color={theme.colors.gray300} />
+              <Text style={styles.detailText}>
+                店铺: {item.merchant.storeId}
+              </Text>
+            </HStack>
+          ) : null}
+        </HStack>
       </Box>
 
       <HStack style={styles.cardActions}>
+        <Button
+          size="sm"
+          onPress={() => openTitleModal(item)}
+          leftIcon={<Ionicons name="ribbon-outline" size={14} color={theme.colors.white} />}
+        >
+          <ButtonText style={{ fontSize: 12 }}>头衔</ButtonText>
+        </Button>
         <Button
           size="sm"
           colorScheme="error"
@@ -374,6 +534,105 @@ const UsersSubTab = () => {
                 isLoading={actionLoading}
               >
                 <ButtonText>确认删除</ButtonText>
+              </Button>
+            </HStack>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* 头衔管理 Modal */}
+      <Modal
+        visible={titleModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTitleModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, { maxHeight: "70%" }]}>
+            <HStack style={sharedStyles.modalTitleRow}>
+              <Ionicons name="ribbon" size={24} color={theme.colors.black} />
+              <Text style={[sharedStyles.modalTitle, { marginLeft: 8 }]}>
+                管理头衔 - {titleTarget?.username}
+              </Text>
+            </HStack>
+
+            {titleLoading ? (
+              <Box style={{ alignItems: "center", paddingVertical: 20 }}>
+                <ActivityIndicator color={theme.colors.black} />
+              </Box>
+            ) : (
+              <RNScrollView style={{ maxHeight: 200, marginVertical: 12 }}>
+                {titleList.length === 0 ? (
+                  <Text style={{ color: theme.colors.gray300, textAlign: "center", paddingVertical: 16 }}>
+                    暂无头衔
+                  </Text>
+                ) : (
+                  titleList.map((t) => (
+                    <HStack
+                      key={t.id}
+                      style={{
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        paddingVertical: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.colors.gray100,
+                      }}
+                    >
+                      <HStack style={{ alignItems: "center", gap: 8, flex: 1 }}>
+                        <Ionicons
+                          name={t.isPrimary ? "star" : "star-outline"}
+                          size={16}
+                          color={t.isPrimary ? "#F59E0B" : theme.colors.gray300}
+                        />
+                        <Text style={{ fontSize: 14, fontWeight: t.isPrimary ? "600" : "400", color: theme.colors.black }}>
+                          {t.title}
+                        </Text>
+                        {t.isPrimary && (
+                          <Text style={{ fontSize: 11, color: "#F59E0B", fontWeight: "500" }}>主头衔</Text>
+                        )}
+                      </HStack>
+                      <Pressable onPress={() => handleRemoveTitle(t.id)}>
+                        <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+                      </Pressable>
+                    </HStack>
+                  ))
+                )}
+              </RNScrollView>
+            )}
+
+            <HStack style={{ gap: 8, marginTop: 4 }}>
+              <Input
+                style={{ flex: 1, height: 36 }}
+                placeholder="输入头衔（如 Archivist）"
+                placeholderTextColor={theme.colors.gray300}
+                value={newTitleText}
+                onChangeText={setNewTitleText}
+                onSubmitEditing={handleAddTitle}
+                returnKeyType="done"
+                variant="outline"
+                size="sm"
+              />
+              <Button
+                size="sm"
+                onPress={handleAddTitle}
+                disabled={addingTitle || !newTitleText.trim()}
+                isLoading={addingTitle}
+              >
+                <ButtonText style={{ fontSize: 12 }}>添加</ButtonText>
+              </Button>
+            </HStack>
+
+            <HStack style={[sharedStyles.modalButtons, { marginTop: 12 }]}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() => {
+                  setTitleModalVisible(false);
+                  setTitleTarget(null);
+                  setTitleList([]);
+                }}
+              >
+                <ButtonText style={{ color: theme.colors.white }}>关闭</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -922,6 +1181,89 @@ const styles = StyleSheet.create({
   },
   statusTextInactive: {
     color: theme.colors.error,
+  },
+  adminBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: "#FEF3C7",
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#D97706",
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray100,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.gray100,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: theme.colors.black,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: theme.colors.gray300,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: theme.colors.gray100,
+  },
+  bioText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    fontStyle: "italic",
+    marginBottom: 6,
+  },
+  infoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    rowGap: 4,
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  titleChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+  },
+  titleChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: theme.colors.gray100,
+  },
+  titleChipPrimary: {
+    backgroundColor: "#FEF3C7",
+  },
+  titleChipText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: theme.colors.gray400,
+  },
+  titleChipTextPrimary: {
+    color: "#D97706",
+    fontWeight: "600",
   },
   // Report card
   reportTarget: {

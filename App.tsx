@@ -58,13 +58,15 @@ import AllCommunitiesScreen from "./src/screens/AllCommunitiesScreen";
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
 import MerchantReviewScreen from "./src/screens/MerchantReviewScreen";
-// Search Screen
+// Search Screens
 import SearchScreen from "./src/screens/SearchScreen";
+import StoreSearchScreen from "./src/screens/StoreSearchScreen";
 // User Management Screens
 import MyCommentsScreen from "./src/screens/MyCommentsScreen";
 import MyLikesScreen from "./src/screens/MyLikesScreen";
 import MyReportsScreen from "./src/screens/MyReportsScreen";
 import BlockedUsersScreen from "./src/screens/BlockedUsersScreen";
+import MyTitlesScreen from "./src/screens/MyTitlesScreen";
 import ChangePasswordScreen from "./src/screens/ChangePasswordScreen";
 
 // Chat Screens
@@ -418,6 +420,11 @@ function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="StoreSearch"
+          component={StoreSearchScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="StoreReview"
           component={StoreReviewScreen}
           options={{ headerShown: false }}
@@ -511,6 +518,11 @@ function AppNavigator() {
         <Stack.Screen
           name="BlockedUsers"
           component={BlockedUsersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyTitles"
+          component={MyTitlesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

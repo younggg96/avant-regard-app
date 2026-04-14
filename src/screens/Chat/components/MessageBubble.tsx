@@ -189,6 +189,11 @@ export const MessageBubble = ({
         )}
 
         <View style={isMine ? styles.bubbleGroupRight : styles.bubbleGroupLeft}>
+          {!isMine && message.senderTitle ? (
+            <View style={titleStyles.badge}>
+              <Text style={titleStyles.badgeText}>{message.senderTitle}</Text>
+            </View>
+          ) : null}
           {renderContent()}
         </View>
       </TouchableOpacity>
@@ -201,6 +206,22 @@ export const MessageBubble = ({
     </View>
   );
 };
+
+const titleStyles = StyleSheet.create({
+  badge: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+    marginBottom: 3,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: theme.colors.gray600,
+  },
+});
 
 const cardStyles = StyleSheet.create({
   container: {

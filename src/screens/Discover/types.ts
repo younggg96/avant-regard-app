@@ -10,6 +10,7 @@ export interface DisplayPost {
     name: string;
     avatar: string;
     isVerified?: boolean;
+    title?: string;
   };
   content: {
     title: string;

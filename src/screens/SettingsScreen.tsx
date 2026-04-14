@@ -157,6 +157,12 @@ const SettingsScreen = () => {
           onPress: () => (navigation as any).navigate("EditProfile"),
         },
         {
+          id: "myTitles",
+          label: "我的头衔",
+          icon: "ribbon-outline",
+          onPress: () => (navigation as any).navigate("MyTitles"),
+        },
+        {
           id: "myComments",
           label: "我的评论",
           icon: "chatbubble-ellipses-outline",

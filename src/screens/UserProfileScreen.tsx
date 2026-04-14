@@ -56,6 +56,8 @@ import {
   UserInfo,
   UserProfileInfo,
   UserPrivacySettings,
+  UserTitle,
+  getUserTitles,
 } from "../services/userInfoService";
 import ForumPostCard from "../components/ForumPostCard";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
@@ -134,6 +136,7 @@ const UserProfileScreen = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
+  const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -274,6 +277,15 @@ const UserProfileScreen = () => {
       setFollowedBrands(brands);
     } catch (error) {
       console.error("Error loading followed brands:", error);
+    }
+  };
+
+  const loadUserTitles = async () => {
+    try {
+      const titles = await getUserTitles(userId);
+      setUserTitles(titles);
+    } catch (error) {
+      console.error("Error loading user titles:", error);
     }
   };
 
@@ -423,6 +435,7 @@ const UserProfileScreen = () => {
     checkFollowStatus();
     loadPrivacySettings();
     loadFollowedBrands();
+    loadUserTitles();
     setTabsData({
       posts: { ...initialTabState },
       forum: { ...initialTabState },
@@ -450,6 +463,7 @@ const UserProfileScreen = () => {
       checkFollowStatus();
       loadPrivacySettings();
       loadFollowedBrands();
+      loadUserTitles();
       if (activeTab === "archive") {
         loadContributions();
       } else {
@@ -466,6 +480,7 @@ const UserProfileScreen = () => {
       loadFollowCounts(),
       checkFollowStatus(),
       loadFollowedBrands(),
+      loadUserTitles(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
@@ -1152,6 +1167,41 @@ const UserProfileScreen = () => {
                 </Pressable>
               )}
             />
+          </View>
+        )}
+
+        {/* 用户头衔 */}
+        {userTitles.length > 0 && (
+          <View style={styles.followedBrandsSection}>
+            <View style={styles.followedBrandsHeader}>
+              <RNText style={styles.followedBrandsTitle}>头衔</RNText>
+              <RNText style={styles.followedBrandsCount}>{userTitles.length}</RNText>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8 }}>
+              {userTitles.map((t) => (
+                <View
+                  key={t.id}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 14,
+                    backgroundColor: t.isPrimary ? "#FEF3C7" : "#F9FAFB",
+                    borderWidth: 1,
+                    borderColor: t.isPrimary ? "#FDE68A" : "#F3F4F6",
+                  }}
+                >
+                  <RNText
+                    style={{
+                      fontSize: 13,
+                      fontWeight: t.isPrimary ? "600" : "500",
+                      color: t.isPrimary ? "#92400E" : "#000",
+                    }}
+                  >
+                    {t.title}
+                  </RNText>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 

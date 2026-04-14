@@ -20,7 +20,7 @@ interface WantPopupProps {
   onDismiss: () => void;
 }
 
-const AUTO_DISMISS_MS = 3000;
+const AUTO_DISMISS_MS = 30000;
 
 export const WantPopup: React.FC<WantPopupProps> = ({
   visible,
@@ -177,9 +177,9 @@ const popupStyles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: theme.colors.black,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
   },
   wantButtonActive: {
     borderColor: "#D4AF37",

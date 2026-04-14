@@ -40,6 +40,7 @@ export interface Message {
   senderId: number;
   senderName: string;
   senderAvatar: string | null;
+  senderTitle?: string;
   content: string;
   messageType: string;
   createdAt: string;

@@ -351,3 +351,66 @@ export const contribStyles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
   },
 });
+
+export const storeActivityStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    padding: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray200,
+    gap: 12,
+    alignItems: "center",
+  },
+  storeImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray100,
+  },
+  storeImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cardBody: {
+    flex: 1,
+    gap: 4,
+  },
+  storeName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: theme.colors.black,
+  },
+  storeLocation: {
+    fontSize: 12,
+    color: theme.colors.gray400,
+  },
+  commentContent: {
+    fontSize: 13,
+    color: theme.colors.gray600,
+    lineHeight: 18,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
+  },
+  metaText: {
+    fontSize: 11,
+    color: theme.colors.gray400,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#F5A623",
+  },
+});

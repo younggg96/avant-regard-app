@@ -150,6 +150,13 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
               >
                 {post.author.name}
               </Text>
+              {post.author.title ? (
+                <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                  <Text color="$gray600" fontSize={10} fontWeight="$medium" numberOfLines={1}>
+                    {post.author.title}
+                  </Text>
+                </Box>
+              ) : null}
             </HStack>
           </TouchableOpacity>
         </HStack>
