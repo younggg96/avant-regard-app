@@ -1,6 +1,8 @@
 """
 Avant Regard API - FastAPI 应用入口
 """
+import sys
+print(f"[BOOT] Python {sys.version}, loading app...", flush=True)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

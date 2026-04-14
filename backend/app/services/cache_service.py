@@ -48,9 +48,9 @@ class CacheService:
             self._client = redis.from_url(
                 url,
                 decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True,
+                socket_connect_timeout=3,
+                socket_timeout=3,
+                retry_on_timeout=False,
             )
             self._client.ping()
             self._connected = True
