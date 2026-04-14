@@ -23,6 +23,10 @@ class CreateConversationRequest(BaseModel):
     target_user_id: int
 
 
+class BatchDeleteConversationsRequest(BaseModel):
+    conversation_ids: List[int] = Field(..., min_length=1, max_length=100)
+
+
 class MessageResponse(BaseModel):
     id: int
     conversationId: int

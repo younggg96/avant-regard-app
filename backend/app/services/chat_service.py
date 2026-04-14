@@ -369,6 +369,14 @@ class ChatService:
 
         return True
 
+    def delete_conversations_batch(self, conversation_ids: list[int], user_id: int) -> list[int]:
+        """Delete multiple conversations at once. Returns list of successfully deleted ids."""
+        deleted = []
+        for cid in conversation_ids:
+            if self.delete_conversation(cid, user_id):
+                deleted.append(cid)
+        return deleted
+
     def get_total_unread_count(self, user_id: int) -> int:
         """Get total unread message count across all conversations."""
         conversations = self.get_conversations(user_id)

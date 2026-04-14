@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from app.schemas.chat import (
     CreateConversationRequest,
     SendMessageRequest,
+    BatchDeleteConversationsRequest,
 )
 from app.services.chat_service import chat_service, BlockedUserError
 from app.services.moderation_service import moderation_service
@@ -351,6 +352,22 @@ async def delete_conversation(
     except Exception as e:
         print(f"Chat delete_conversation error: {e}")
         return error(message="Failed to delete conversation", code=500)
+
+
+@router.post("/conversations/batch-delete")
+async def batch_delete_conversations(
+    req: BatchDeleteConversationsRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Delete multiple conversations at once."""
+    try:
+        deleted_ids = chat_service.delete_conversations_batch(
+            req.conversation_ids, current_user_id
+        )
+        return success({"deletedIds": deleted_ids})
+    except Exception as e:
+        print(f"Chat batch_delete_conversations error: {e}")
+        return error(message="Failed to delete conversations", code=500)
 
 
 @router.get("/unread-count")
