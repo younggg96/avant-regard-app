@@ -11,7 +11,7 @@ import httpx
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.core.config import settings
 from app.core.security import hash_password, verify_password
-from gotrue.errors import AuthApiError
+from supabase_auth.errors import AuthApiError
 
 logger = logging.getLogger(__name__)
 
