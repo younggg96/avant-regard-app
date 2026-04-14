@@ -945,6 +945,37 @@ export async function updateAutoReplyConfig(
   });
 }
 
+// ==================== 推荐算法配置 ====================
+
+export interface PoolRatios {
+  core: number;
+  discovery: number;
+  random: number;
+}
+
+export interface RecommendConfig {
+  pool_ratios: PoolRatios;
+  core_pool: { grades: string[] };
+  discovery_pool: { enabled: boolean };
+  random_pool: { grades: string[] };
+  cold_start: { days: number; grades: string[] };
+}
+
+export async function getRecommendConfig(): Promise<RecommendConfig> {
+  return request<RecommendConfig>("/api/admin/recommend-config", {
+    method: "GET",
+  });
+}
+
+export async function updateRecommendConfig(
+  config: RecommendConfig
+): Promise<RecommendConfig> {
+  return request<RecommendConfig>("/api/admin/recommend-config", {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子管理
@@ -1007,6 +1038,9 @@ export const adminService = {
   // 客服自动回复
   getAutoReplyConfig,
   updateAutoReplyConfig,
+  // 推荐算法配置
+  getRecommendConfig,
+  updateRecommendConfig,
 };
 
 export default adminService;

@@ -2,10 +2,23 @@
 帖子服务
 """
 
+import random
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Union
+
 from app.db.supabase import get_supabase
 from app.schemas.post import Post, PostType, PostStatus, AuditStatus, GRADE_REWARD_MAP, PostGrade
 from app.services.notification_service import notification_service
+
+GRADE_PRIORITY = {"A": 0, "B": 1, "C": 2, "D": 3, "F": 4}
+
+DEFAULT_RECOMMEND_CONFIG = {
+    "pool_ratios": {"core": 0.5, "discovery": 0.3, "random": 0.2},
+    "core_pool": {"grades": ["A", "B", "C"]},
+    "discovery_pool": {"enabled": True},
+    "random_pool": {"grades": ["A", "B"]},
+    "cold_start": {"days": 7, "grades": ["A", "B"]},
+}
 
 
 class PostService:
@@ -769,23 +782,240 @@ class PostService:
         filtered = self._filter_blocked(result.data or [], blocked_ids)
         return [self._format_post(p, current_user_id) for p in filtered]
 
-    def get_recommend_posts(
-        self, current_user_id: Optional[int] = None, limit: int = 50
+    def _load_recommend_config(self) -> dict:
+        """从 app_config 加载推荐配置，缺失字段用默认值补全"""
+        try:
+            result = (
+                self.db.table("app_config")
+                .select("value")
+                .eq("key", "recommend_config")
+                .maybe_single()
+                .execute()
+            )
+            if result.data and result.data.get("value"):
+                saved = result.data["value"]
+                merged = {}
+                for section, defaults in DEFAULT_RECOMMEND_CONFIG.items():
+                    if isinstance(defaults, dict):
+                        merged[section] = {**defaults, **(saved.get(section) or {})}
+                    else:
+                        merged[section] = saved.get(section, defaults)
+                return merged
+        except Exception as e:
+            print(f"[RecommendConfig] Failed to load, using defaults: {e}")
+        return {**DEFAULT_RECOMMEND_CONFIG}
+
+    def _sort_by_grade_and_time(self, posts: list) -> list:
+        """按 grade 升序（A 优先）、同级按 created_at 倒序"""
+        result = list(posts)
+        result.sort(key=lambda p: p.get("created_at") or "", reverse=True)
+        result.sort(key=lambda p: GRADE_PRIORITY.get(p.get("grade"), 99))
+        return result
+
+    def _get_cold_start_posts(
+        self, current_user_id: Optional[int], blocked_ids: set, limit: int,
+        cfg: dict = None,
     ) -> List[Post]:
-        """获取推荐帖子（无 community_id 的非论坛帖子，仅已发布且审核通过的）"""
-        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        """冷启动：近 N 天指定级别帖子，按互动量（点赞+收藏+评论）排序"""
+        cs = (cfg or DEFAULT_RECOMMEND_CONFIG)["cold_start"]
+        seven_days_ago = (
+            datetime.now(timezone.utc) - timedelta(days=cs["days"])
+        ).isoformat()
+
         result = (
             self.db.table("posts")
             .select("*")
             .is_("community_id", "null")
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
+            .in_("grade", cs["grades"])
+            .gte("created_at", seven_days_ago)
             .order("created_at", desc=True)
-            .limit(limit)
+            .limit(limit * 2)
             .execute()
         )
         filtered = self._filter_blocked(result.data or [], blocked_ids)
-        return [self._format_post(p, current_user_id) for p in filtered]
+
+        filtered.sort(
+            key=lambda p: (
+                (p.get("like_count") or 0)
+                + (p.get("favorite_count") or 0)
+                + (p.get("comment_count") or 0)
+            ),
+            reverse=True,
+        )
+        return [self._format_post(p, current_user_id) for p in filtered[:limit]]
+
+    def _fetch_core_pool(
+        self, followed_brand_ids: List[int], blocked_ids: set, limit: int,
+        cfg: dict = None,
+    ) -> list:
+        """核心池：用户关注品牌的指定级别帖子"""
+        grades = (cfg or DEFAULT_RECOMMEND_CONFIG)["core_pool"]["grades"]
+        brand_ids_pg = "{" + ",".join(str(bid) for bid in followed_brand_ids) + "}"
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .filter("brand_ids", "ov", brand_ids_pg)
+            .is_("community_id", "null")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .in_("grade", grades)
+            .order("created_at", desc=True)
+            .limit(limit * 2)
+            .execute()
+        )
+        filtered = self._filter_blocked(result.data or [], blocked_ids)
+        return self._sort_by_grade_and_time(filtered)[:limit]
+
+    def _fetch_discovery_pool(
+        self,
+        followed_brand_ids: List[int],
+        blocked_ids: set,
+        limit: int,
+        seen_ids: set,
+        cfg: dict = None,
+    ) -> list:
+        """发现池：关注品牌所属品类下其他品牌的帖子（通过 shows.category 关联）"""
+        if not (cfg or DEFAULT_RECOMMEND_CONFIG)["discovery_pool"]["enabled"]:
+            return []
+
+        brands_result = (
+            self.db.table("brands")
+            .select("name")
+            .in_("id", followed_brand_ids)
+            .execute()
+        )
+        followed_names = {b["name"] for b in brands_result.data or []}
+        if not followed_names:
+            return []
+
+        shows_result = (
+            self.db.table("shows")
+            .select("category")
+            .in_("brand_name", list(followed_names))
+            .execute()
+        )
+        categories = {
+            s["category"] for s in shows_result.data or [] if s.get("category")
+        }
+        if not categories:
+            return []
+
+        cat_shows_result = (
+            self.db.table("shows")
+            .select("brand_name")
+            .in_("category", list(categories))
+            .execute()
+        )
+        other_names = {
+            s["brand_name"]
+            for s in cat_shows_result.data or []
+            if s.get("brand_name") and s["brand_name"] not in followed_names
+        }
+        if not other_names:
+            return []
+
+        other_brands_result = (
+            self.db.table("brands")
+            .select("id")
+            .in_("name", list(other_names))
+            .execute()
+        )
+        other_brand_ids = [b["id"] for b in other_brands_result.data or []]
+        if not other_brand_ids:
+            return []
+
+        brand_ids_pg = "{" + ",".join(str(bid) for bid in other_brand_ids) + "}"
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .filter("brand_ids", "ov", brand_ids_pg)
+            .is_("community_id", "null")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .order("created_at", desc=True)
+            .limit(limit * 3)
+            .execute()
+        )
+        filtered = self._filter_blocked(result.data or [], blocked_ids)
+        deduped = [p for p in filtered if p["id"] not in seen_ids]
+        return self._sort_by_grade_and_time(deduped)[:limit]
+
+    def _fetch_random_pool(
+        self, blocked_ids: set, limit: int, seen_ids: set,
+        cfg: dict = None,
+    ) -> list:
+        """随机池：全站其他品类的随机优质帖子"""
+        grades = (cfg or DEFAULT_RECOMMEND_CONFIG)["random_pool"]["grades"]
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .is_("community_id", "null")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .in_("grade", grades)
+            .order("created_at", desc=True)
+            .limit(limit * 5)
+            .execute()
+        )
+        filtered = self._filter_blocked(result.data or [], blocked_ids)
+        deduped = [p for p in filtered if p["id"] not in seen_ids]
+
+        if len(deduped) > limit:
+            deduped = random.sample(deduped, limit)
+
+        return self._sort_by_grade_and_time(deduped)
+
+    def get_recommend_posts(
+        self, current_user_id: Optional[int] = None, limit: int = 50
+    ) -> List[Post]:
+        """
+        基于规则引擎的推荐帖子（参数从 app_config 动态加载）
+
+        分发比例、评级筛选、冷启动天数均可通过管理后台调整
+        """
+        cfg = self._load_recommend_config()
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+
+        followed_brand_ids: List[int] = []
+        if current_user_id:
+            follow_result = (
+                self.db.table("brand_follows")
+                .select("brand_id")
+                .eq("user_id", current_user_id)
+                .execute()
+            )
+            followed_brand_ids = [f["brand_id"] for f in follow_result.data or []]
+
+        if not followed_brand_ids:
+            return self._get_cold_start_posts(
+                current_user_id, blocked_ids, limit, cfg
+            )
+
+        ratios = cfg["pool_ratios"]
+        core_limit = max(1, round(limit * ratios["core"]))
+        discover_limit = max(1, round(limit * ratios["discovery"]))
+        random_limit = limit - core_limit - discover_limit
+
+        seen_ids: set = set()
+
+        core_posts = self._fetch_core_pool(
+            followed_brand_ids, blocked_ids, core_limit, cfg
+        )
+        seen_ids.update(p["id"] for p in core_posts)
+
+        discover_posts = self._fetch_discovery_pool(
+            followed_brand_ids, blocked_ids, discover_limit, seen_ids, cfg
+        )
+        seen_ids.update(p["id"] for p in discover_posts)
+
+        random_posts = self._fetch_random_pool(
+            blocked_ids, random_limit, seen_ids, cfg
+        )
+
+        all_raw = core_posts + discover_posts + random_posts
+        return [self._format_post(p, current_user_id) for p in all_raw]
 
     def get_following_posts(
         self, current_user_id: int, limit: int = 50

@@ -54,7 +54,7 @@ async def get_recommend_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
-    """获取推荐帖子（非论坛帖子）"""
+    """获取推荐帖子（规则引擎：50%核心池/30%发现池/20%随机池，冷启动按互动量）"""
     result = post_service.get_recommend_posts(current_user_id, limit=limit)
     return success([p.model_dump() for p in result])
 

@@ -24,6 +24,7 @@ import BrandImageReviewTab from "./BrandImageReviewTab";
 import StoreManagementTab from "./StoreManagementTab";
 import PostsManagementTab from "./PostsManagementTab";
 import CustomerServiceTab from "./CustomerServiceTab";
+import RecommendConfigTab from "./RecommendConfigTab";
 
 type TabType =
   | "pending"
@@ -41,7 +42,8 @@ type TabType =
   | "brandManagement"
   | "showReview"
   | "showManagement"
-  | "brandImageReview";
+  | "brandImageReview"
+  | "recommendConfig";
 
 interface TabConfig {
   key: TabType;
@@ -66,6 +68,7 @@ const TABS: TabConfig[] = [
   { key: "showReview", label: "秀场审核" },
   { key: "showManagement", label: "秀场管理" },
   { key: "brandImageReview", label: "图片审核" },
+  { key: "recommendConfig", label: "推荐配置" },
 ];
 
 const AdminScreen = () => {
@@ -110,6 +113,8 @@ const AdminScreen = () => {
         return <BrandImageReviewTab />;
       case "storeManagement":
         return <StoreManagementTab />;
+      case "recommendConfig":
+        return <RecommendConfigTab />;
       default:
         return <UsersTab />;
     }

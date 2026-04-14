@@ -729,3 +729,63 @@ async def update_auto_reply_config(
         "email": request.email,
     })
     return success(config)
+
+
+# ==================== 推荐算法配置 ====================
+
+
+class PoolRatiosConfig(BaseModel):
+    core: float = Field(0.5, ge=0, le=1)
+    discovery: float = Field(0.3, ge=0, le=1)
+    random: float = Field(0.2, ge=0, le=1)
+
+
+class CorePoolConfig(BaseModel):
+    grades: List[str] = ["A", "B", "C"]
+
+
+class DiscoveryPoolConfig(BaseModel):
+    enabled: bool = True
+
+
+class RandomPoolConfig(BaseModel):
+    grades: List[str] = ["A", "B"]
+
+
+class ColdStartConfig(BaseModel):
+    days: int = Field(7, ge=1, le=90)
+    grades: List[str] = ["A", "B"]
+
+
+class RecommendConfigRequest(BaseModel):
+    pool_ratios: PoolRatiosConfig = PoolRatiosConfig()
+    core_pool: CorePoolConfig = CorePoolConfig()
+    discovery_pool: DiscoveryPoolConfig = DiscoveryPoolConfig()
+    random_pool: RandomPoolConfig = RandomPoolConfig()
+    cold_start: ColdStartConfig = ColdStartConfig()
+
+
+@router.get("/recommend-config")
+async def get_recommend_config(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取推荐算法配置"""
+    from app.services.post_service import post_service
+    config = post_service._load_recommend_config()
+    return success(config)
+
+
+@router.put("/recommend-config")
+async def update_recommend_config(
+    request: RecommendConfigRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新推荐算法配置"""
+    from app.db.supabase import get_supabase
+    db = get_supabase()
+    config = request.model_dump()
+    db.table("app_config").upsert(
+        {"key": "recommend_config", "value": config},
+        on_conflict="key",
+    ).execute()
+    return success(config)
