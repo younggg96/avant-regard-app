@@ -838,17 +838,40 @@ class AdminService:
         merchant_map: dict = {}
         if user_ids:
             try:
-                for uid in user_ids:
-                    pc = self.db.table("posts").select("id", count="exact").eq("user_id", uid).eq("status", "PUBLISHED").execute()
-                    post_count_map[uid] = pc.count or 0
+                posts_result = (
+                    self.db.table("posts")
+                    .select("user_id")
+                    .in_("user_id", user_ids)
+                    .eq("status", "PUBLISHED")
+                    .limit(10000)
+                    .execute()
+                )
+                for p in posts_result.data or []:
+                    uid = p["user_id"]
+                    post_count_map[uid] = post_count_map.get(uid, 0) + 1
             except Exception:
                 pass
             try:
-                for uid in user_ids:
-                    fc = self.db.table("user_follows").select("id", count="exact").eq("following_id", uid).execute()
-                    follower_count_map[uid] = fc.count or 0
-                    fgc = self.db.table("user_follows").select("id", count="exact").eq("follower_id", uid).execute()
-                    following_count_map[uid] = fgc.count or 0
+                followers_result = (
+                    self.db.table("user_follows")
+                    .select("following_id")
+                    .in_("following_id", user_ids)
+                    .limit(10000)
+                    .execute()
+                )
+                for f in followers_result.data or []:
+                    uid = f["following_id"]
+                    follower_count_map[uid] = follower_count_map.get(uid, 0) + 1
+                following_result = (
+                    self.db.table("user_follows")
+                    .select("follower_id")
+                    .in_("follower_id", user_ids)
+                    .limit(10000)
+                    .execute()
+                )
+                for f in following_result.data or []:
+                    uid = f["follower_id"]
+                    following_count_map[uid] = following_count_map.get(uid, 0) + 1
             except Exception:
                 pass
             try:
