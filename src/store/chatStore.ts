@@ -7,6 +7,7 @@ import {
   getMessages,
   getUnreadCount,
   deleteConversation as deleteConversationApi,
+  deleteConversationsBatch as deleteConversationsBatchApi,
   markConversationRead as markConversationReadApi,
   markConversationUnread as markConversationUnreadApi,
   WSIncomingMessage,
@@ -21,6 +22,7 @@ interface ChatState {
   totalUnread: number;
   isLoadingConversations: boolean;
   isLoadingMessages: boolean;
+  deletingConversationIds: Set<number>;
   wsConnected: boolean;
   blockedUserIds: Set<number>;
 }
@@ -37,6 +39,7 @@ interface ChatActions {
   handleWSMessage: (msg: WSIncomingMessage) => void;
   markConversationRead: (conversationId: number) => void;
   removeConversation: (conversationId: number) => Promise<void>;
+  removeConversationsBatch: (conversationIds: number[]) => Promise<void>;
   toggleConversationRead: (conversationId: number) => Promise<void>;
 }
 
@@ -52,6 +55,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   totalUnread: 0,
   isLoadingConversations: false,
   isLoadingMessages: false,
+  deletingConversationIds: new Set<number>(),
   wsConnected: false,
   blockedUserIds: new Set<number>(),
 
@@ -167,20 +171,68 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   },
 
   removeConversation: async (conversationId) => {
+    set((s) => ({
+      deletingConversationIds: new Set(s.deletingConversationIds).add(conversationId),
+    }));
     try {
       await deleteConversationApi(conversationId);
       set((state) => {
         const conv = state.conversations.find((c) => c.id === conversationId);
         const unreadDelta = conv?.unreadCount || 0;
         const { [conversationId]: _, ...restMessages } = state.messages;
+        const nextDeleting = new Set(state.deletingConversationIds);
+        nextDeleting.delete(conversationId);
         return {
           conversations: state.conversations.filter((c) => c.id !== conversationId),
           messages: restMessages,
           totalUnread: Math.max(0, state.totalUnread - unreadDelta),
+          deletingConversationIds: nextDeleting,
         };
       });
     } catch (e) {
+      set((s) => {
+        const nextDeleting = new Set(s.deletingConversationIds);
+        nextDeleting.delete(conversationId);
+        return { deletingConversationIds: nextDeleting };
+      });
       console.error("Failed to delete conversation:", e);
+      throw e;
+    }
+  },
+
+  removeConversationsBatch: async (conversationIds) => {
+    const idsSet = new Set(conversationIds);
+    set((s) => ({
+      deletingConversationIds: new Set([...s.deletingConversationIds, ...idsSet]),
+    }));
+    try {
+      const { deletedIds } = await deleteConversationsBatchApi(conversationIds);
+      const deletedSet = new Set(deletedIds);
+      set((state) => {
+        let unreadDelta = 0;
+        const restMessages = { ...state.messages };
+        for (const id of deletedIds) {
+          const conv = state.conversations.find((c) => c.id === id);
+          unreadDelta += conv?.unreadCount || 0;
+          delete restMessages[id];
+        }
+        const nextDeleting = new Set(state.deletingConversationIds);
+        for (const id of conversationIds) nextDeleting.delete(id);
+        return {
+          conversations: state.conversations.filter((c) => !deletedSet.has(c.id)),
+          messages: restMessages,
+          totalUnread: Math.max(0, state.totalUnread - unreadDelta),
+          deletingConversationIds: nextDeleting,
+        };
+      });
+    } catch (e) {
+      set((s) => {
+        const nextDeleting = new Set(s.deletingConversationIds);
+        for (const id of conversationIds) nextDeleting.delete(id);
+        return { deletingConversationIds: nextDeleting };
+      });
+      console.error("Failed to batch delete conversations:", e);
+      throw e;
     }
   },
 

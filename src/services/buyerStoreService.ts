@@ -35,6 +35,7 @@ export interface BuyerStore {
   images?: string[];
   rest?: string;
   distance?: number;
+  favoriteCount?: number;
 }
 
 export function hasValidCoordinates(

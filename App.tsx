@@ -20,6 +20,10 @@ import { LINKING_CONFIG, setNavigationRef, initDeepLinking } from "./src/utils/d
 // Splash Video
 import SplashVideo from "./src/components/SplashVideo";
 
+// Maintenance
+import "./src/store/maintenanceStore";
+import MaintenanceOverlay from "./src/components/MaintenanceOverlay";
+
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/Archive/ArchiveScreen";
@@ -129,7 +133,7 @@ function TabNavigator() {
   const refreshNotifBadge = useCallback(() => {
     getNotifUnreadCount()
       .then((c) => setNotifUnread(c))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -628,6 +632,7 @@ export default function App() {
               {showSplashVideo && (
                 <SplashVideo onFinish={handleSplashVideoFinish} />
               )}
+              <MaintenanceOverlay />
             </View>
           </ToastProvider>
         </SafeAreaProvider>

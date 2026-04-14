@@ -675,7 +675,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <StatusBar barStyle="light-content" backgroundColor="black" />
+        <StatusBar barStyle="dark-content" backgroundColor="black" />
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onCancel} style={styles.headerButton}>

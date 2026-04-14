@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { FlatList, RefreshControl, Alert } from "react-native";
+import { FlatList, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
@@ -26,6 +26,7 @@ export const MessagesContent = () => {
     connectWebSocket,
     removeConversation,
     toggleConversationRead,
+    deletingConversationIds,
   } = useChatStore();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -126,14 +127,30 @@ export const MessagesContent = () => {
   const regularConversations = sortedConversations.filter((c) => !isStrangerConversation(c));
 
   const renderItem = useCallback(
-    ({ item }: { item: Conversation }) => (
-      <ConversationRow
-        item={item}
-        onPress={() => handleConvPress(item)}
-        onLongPress={() => handleLongPress(item)}
-      />
-    ),
-    [handleConvPress, handleLongPress]
+    ({ item }: { item: Conversation }) => {
+      const itemDeleting = deletingConversationIds.has(item.id);
+      return (
+        <Box opacity={itemDeleting ? 0.5 : 1} position="relative">
+          <ConversationRow
+            item={item}
+            onPress={() => handleConvPress(item)}
+            onLongPress={() => handleLongPress(item)}
+          />
+          {itemDeleting && (
+            <Box
+              position="absolute"
+              right={16}
+              top={0}
+              bottom={0}
+              justifyContent="center"
+            >
+              <ActivityIndicator size="small" color={theme.colors.gray300} />
+            </Box>
+          )}
+        </Box>
+      );
+    },
+    [handleConvPress, handleLongPress, deletingConversationIds]
   );
 
   return (

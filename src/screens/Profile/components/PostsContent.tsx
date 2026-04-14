@@ -301,16 +301,19 @@ const StoreActivityContent = ({
 
       {storeActivityLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          <Image
+            source={require("../../../../assets/gif/profile-loading.gif")}
+            style={styles.profileLoadingGif}
+            resizeMode="contain"
+          />
         </VStack>
       ) : getDataLength() === 0 ? (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+        <VStack alignItems="center" justifyContent="center" py="$sm" style={{ minHeight: 200 }}>
           <Ionicons name={empty.icon as any} size={24} color={theme.colors.gray300} />
           <Text color="$gray400" mt="$md">{empty.text}</Text>
         </VStack>
       ) : (
-        <VStack>{renderList()}</VStack>
+        <VStack py="$sm">{renderList()}</VStack>
       )}
     </VStack>
   );

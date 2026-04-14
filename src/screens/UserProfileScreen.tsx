@@ -182,11 +182,11 @@ const UserProfileScreen = () => {
   const tabs = isCurrentUser
     ? allTabs
     : allTabs.filter((tab) => {
-        if (tab.id === "saved") return true;
-        if (tab.id === "liked") return !(privacySettings?.hideLikes ?? false);
-        if (tab.id === "wishlist") return !(privacySettings?.hideWishlist ?? false);
-        return true;
-      });
+      if (tab.id === "saved") return true;
+      if (tab.id === "liked") return !(privacySettings?.hideLikes ?? false);
+      if (tab.id === "wishlist") return !(privacySettings?.hideWishlist ?? false);
+      return true;
+    });
 
   const convertToDisplayPost = (
     apiPost: ApiPost,
@@ -869,11 +869,10 @@ const UserProfileScreen = () => {
   };
 
   const avatarUri = userInfo?.avatarUrl || avatar;
-  const statusBarStyle = isCollapsed ? "dark-content" : "light-content";
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFF' }]}>
-      <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
       {/* --- 吸顶头部 (Sticky Header - 白色背景) --- */}
       <Animated.View
@@ -1095,8 +1094,8 @@ const UserProfileScreen = () => {
           </View>
 
           <View style={styles.statsContainer}>
-            <Pressable 
-              style={styles.statItem} 
+            <Pressable
+              style={styles.statItem}
               onPress={() => {
                 if (!isCurrentUser && privacySettings?.hideFollowing) {
                   Alert.show("该用户已隐藏关注列表");
@@ -1108,8 +1107,8 @@ const UserProfileScreen = () => {
               <RNText style={styles.statNumber}>{followingCount}</RNText>
               <RNText style={styles.statLabel}>关注</RNText>
             </Pressable>
-            <Pressable 
-              style={styles.statItem} 
+            <Pressable
+              style={styles.statItem}
               onPress={() => {
                 if (!isCurrentUser && privacySettings?.hideFollowers) {
                   Alert.show("该用户已隐藏粉丝列表");

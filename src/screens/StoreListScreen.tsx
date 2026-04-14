@@ -38,7 +38,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
     const navigation = useNavigation();
-    const { isFavorited, toggleFavorite } = useStoreFavorites();
+    const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
     const [stores, setStores] = useState<BuyerStore[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -89,6 +89,7 @@ const StoreListScreen = () => {
                 searchQuery: query.trim() || undefined,
             });
             setStores(result.stores);
+            syncCountsFromStores(result.stores);
             setTotalStores(result.total);
             setCurrentPage(1);
             setHasMore(result.stores.length < result.total);
@@ -104,6 +105,7 @@ const StoreListScreen = () => {
             setIsLoading(true);
             const result = await getStoresPaginated({ page: 1, pageSize: PAGE_SIZE });
             setStores(result.stores);
+            syncCountsFromStores(result.stores);
             setTotalStores(result.total);
             setCurrentPage(1);
             setHasMore(result.stores.length < result.total);
@@ -130,6 +132,7 @@ const StoreListScreen = () => {
                 searchQuery: searchQuery.trim() || undefined,
             });
             setStores(result.stores);
+            syncCountsFromStores(result.stores);
             setTotalStores(result.total);
             setCurrentPage(1);
             setHasMore(result.stores.length < result.total);
@@ -155,6 +158,7 @@ const StoreListScreen = () => {
 
             if (result.stores.length > 0) {
                 setStores((prev) => [...prev, ...result.stores]);
+                syncCountsFromStores(result.stores);
                 setCurrentPage(nextPage);
                 setHasMore(stores.length + result.stores.length < result.total);
             } else {
@@ -243,15 +247,28 @@ const StoreListScreen = () => {
                     </Text>
                 </VStack>
                 <HStack alignItems="center" gap="$sm">
+                    {getFavoriteCount(store.id) > 0 && (
+                        <Text fontSize={11} color="$gray300">
+                            {getFavoriteCount(store.id)}人已关注
+                        </Text>
+                    )}
                     <Pressable
                         onPress={() => toggleFavorite(store.id)}
                         hitSlop={8}
+                        bg={isFavorited(store.id) ? "$black" : "$white"}
+                        borderWidth={1}
+                        borderColor="$black"
+                        rounded="$sm"
+                        px="$sm"
+                        py={3}
                     >
-                        <Ionicons
-                            name={isFavorited(store.id) ? "heart" : "heart-outline"}
-                            size={20}
-                            color={isFavorited(store.id) ? theme.colors.error : theme.colors.gray300}
-                        />
+                        <Text
+                            fontSize={11}
+                            fontWeight="$bold"
+                            color={isFavorited(store.id) ? "$white" : "$black"}
+                        >
+                            {isFavorited(store.id) ? "已关注" : "关注"}
+                        </Text>
                     </Pressable>
                     <Box
                         px="$sm"
@@ -307,13 +324,13 @@ const StoreListScreen = () => {
                 </Box>
             )}
         </Pressable>
-    ), [isFavorited, toggleFavorite]);
+    ), [isFavorited, toggleFavorite, getFavoriteCount]);
 
     const renderFooter = () => {
         if (!isLoadingMore) return null;
         return (
             <Box py="$lg" alignItems="center">
-                <ActivityIndicator  color={theme.colors.black} />
+                <ActivityIndicator color={theme.colors.black} />
                 <Text color="$gray300" fontSize="$sm" mt="$sm">
                     加载更多...
                 </Text>
@@ -365,7 +382,7 @@ const StoreListScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center" bg="$gray50">
-                    <ActivityIndicator  color={theme.colors.black} />
+                    <ActivityIndicator size="small" color={theme.colors.black} />
                     <Text color="$gray300" mt="$md">加载中...</Text>
                 </VStack>
             </SafeAreaView>
@@ -399,7 +416,7 @@ const StoreListScreen = () => {
                     autoCorrect={false}
                 />
                 {isSearching && (
-                    <ActivityIndicator  color={theme.colors.gray300} />
+                    <ActivityIndicator size="small" color={theme.colors.gray300} />
                 )}
                 {searchQuery.length > 0 && !isSearching && (
                     <Pressable onPress={clearSearch} hitSlop={8}>
@@ -487,12 +504,28 @@ const StoreListScreen = () => {
                                         </Text>
                                     </VStack>
                                     <HStack alignItems="center" gap="$md">
-                                        <Pressable onPress={() => toggleFavorite(selectedStore.id)} hitSlop={8}>
-                                            <Ionicons
-                                                name={isFavorited(selectedStore.id) ? "heart" : "heart-outline"}
-                                                size={24}
-                                                color={isFavorited(selectedStore.id) ? theme.colors.error : theme.colors.black}
-                                            />
+                                        {getFavoriteCount(selectedStore.id) > 0 && (
+                                            <Text fontSize="$xs" color="$gray300">
+                                                {getFavoriteCount(selectedStore.id)}人已关注
+                                            </Text>
+                                        )}
+                                        <Pressable
+                                            onPress={() => toggleFavorite(selectedStore.id)}
+                                            hitSlop={8}
+                                            bg={isFavorited(selectedStore.id) ? "$black" : "$white"}
+                                            borderWidth={1}
+                                            borderColor="$black"
+                                            rounded="$sm"
+                                            px="$md"
+                                            py="$xs"
+                                        >
+                                            <Text
+                                                fontSize="$xs"
+                                                fontWeight="$bold"
+                                                color={isFavorited(selectedStore.id) ? "$white" : "$black"}
+                                            >
+                                                {isFavorited(selectedStore.id) ? "已关注" : "关注"}
+                                            </Text>
                                         </Pressable>
                                         <Pressable onPress={closeStoreDetail}>
                                             <Ionicons name="close" size={24} color={theme.colors.gray300} />

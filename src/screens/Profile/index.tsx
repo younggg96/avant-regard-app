@@ -311,12 +311,11 @@ const ProfileScreen = () => {
   };
 
   const avatarUri = userInfo?.avatarUrl || user?.avatar;
-  const statusBarStyle = isCollapsed ? "dark-content" : "light-content";
   const displayUsername = userInfo?.username || user?.username || "";
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFF' }]}>
-      <StatusBar barStyle={statusBarStyle} translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
       <CollapsedHeader
         avatarUri={avatarUri}

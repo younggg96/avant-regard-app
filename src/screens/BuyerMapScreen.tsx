@@ -188,7 +188,7 @@ const SEARCH_BAR_HEIGHT = 48; // 40px input + 8px bottom padding
 const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { isFavorited, toggleFavorite } = useStoreFavorites();
+  const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
   const mapRef = useRef<MapView>(null);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -290,6 +290,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       setIsLoading(true);
       const data = await getAllStores();
       setStores(data);
+      syncCountsFromStores(data);
       storesLoadedRef.current = true;
       if (currentMapRegion) {
         fetchVisibleStores(currentMapRegion);
@@ -1269,20 +1270,29 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {/* 操作按钮 */}
               <HStack justifyContent="between" alignItems="center">
                 <HStack gap="$sm">
+                  {getFavoriteCount(store.id) > 0 && (
+                    <Text fontSize={11} color="$gray300" alignSelf="center">
+                      {getFavoriteCount(store.id)}人已关注
+                    </Text>
+                  )}
                   <Pressable
-                    w={36}
-                    h={36}
                     rounded="$sm"
-                    bg={isFavorited(store.id) ? "#FFF0F0" : "$gray100"}
+                    bg={isFavorited(store.id) ? "$black" : "$white"}
+                    borderWidth={1}
+                    borderColor="$black"
                     justifyContent="center"
                     alignItems="center"
+                    px="$sm"
+                    py={4}
                     onPress={() => toggleFavorite(store.id)}
                   >
-                    <Ionicons
-                      name={isFavorited(store.id) ? "heart" : "heart-outline"}
-                      size={18}
-                      color={isFavorited(store.id) ? theme.colors.error : theme.colors.black}
-                    />
+                    <Text
+                      fontSize={11}
+                      fontWeight="$bold"
+                      color={isFavorited(store.id) ? "$white" : "$black"}
+                    >
+                      {isFavorited(store.id) ? "已关注" : "关注"}
+                    </Text>
                   </Pressable>
                   <Pressable
                     w={36}
@@ -1626,12 +1636,28 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                     </Text>
                   </VStack>
                   <HStack alignItems="center" gap="$md">
-                    <Pressable onPress={() => toggleFavorite(selectedStore.id)} hitSlop={8}>
-                      <Ionicons
-                        name={isFavorited(selectedStore.id) ? "heart" : "heart-outline"}
-                        size={24}
-                        color={isFavorited(selectedStore.id) ? theme.colors.error : theme.colors.black}
-                      />
+                    {getFavoriteCount(selectedStore.id) > 0 && (
+                      <Text fontSize="$xs" color="$gray300">
+                        {getFavoriteCount(selectedStore.id)}人已关注
+                      </Text>
+                    )}
+                    <Pressable
+                      onPress={() => toggleFavorite(selectedStore.id)}
+                      hitSlop={8}
+                      bg={isFavorited(selectedStore.id) ? "$black" : "$white"}
+                      borderWidth={1}
+                      borderColor="$black"
+                      rounded="$sm"
+                      px="$md"
+                      py="$xs"
+                    >
+                      <Text
+                        fontSize="$xs"
+                        fontWeight="$bold"
+                        color={isFavorited(selectedStore.id) ? "$white" : "$black"}
+                      >
+                        {isFavorited(selectedStore.id) ? "已关注" : "关注"}
+                      </Text>
                     </Pressable>
                     <Pressable onPress={closeStoreDetail}>
                       <Ionicons name="close" size={24} color={theme.colors.gray300} />

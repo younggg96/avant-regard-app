@@ -161,6 +161,18 @@ export async function deleteConversation(
   });
 }
 
+export async function deleteConversationsBatch(
+  conversationIds: number[]
+): Promise<{ deletedIds: number[] }> {
+  return request<{ deletedIds: number[] }>(
+    "/api/chat/conversations/batch-delete",
+    {
+      method: "POST",
+      body: JSON.stringify({ conversation_ids: conversationIds }),
+    }
+  );
+}
+
 export async function getUnreadCount(): Promise<number> {
   const data = await request<{ count: number }>("/api/chat/unread-count");
   return data.count;
@@ -301,6 +313,7 @@ export const chatService = {
   markConversationRead,
   markConversationUnread,
   deleteConversation,
+  deleteConversationsBatch,
   getUnreadCount,
   chatWS,
 };

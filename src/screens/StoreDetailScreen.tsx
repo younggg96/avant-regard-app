@@ -35,6 +35,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { useAuthStore } from "../store/authStore";
+import { useStoreFavoritesStore } from "../store/storeFavoritesStore";
 import {
   BuyerStoreDetail,
   StoreComment,
@@ -87,6 +88,7 @@ const StoreDetailScreen = () => {
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
   const { user } = useAuthStore();
+  const syncFromDetail = useStoreFavoritesStore((s) => s.syncFromDetail);
 
   // 店铺详情状态
   const [store, setStore] = useState<BuyerStoreDetail | null>(null);
@@ -140,6 +142,7 @@ const StoreDetailScreen = () => {
       setIsLoading(true);
       const detail = await getStoreDetail(storeId, user?.id ? Number(user.id) : undefined);
       setStore(detail);
+      syncFromDetail(storeId, detail.isFavorited, detail.favoriteCount);
       if (detail.userRating) {
         setSelectedRating(detail.userRating);
       }
@@ -147,7 +150,7 @@ const StoreDetailScreen = () => {
       console.error("Store detail load error:", error);
       if (error.message?.includes("404") || error.message?.includes("不存在")) {
         Alert.alert(
-          "店铺不存在", 
+          "店铺不存在",
           "该店铺可能已被删除或暂时不可用",
           [
             {
@@ -377,18 +380,22 @@ const StoreDetailScreen = () => {
     try {
       if (store.isFavorited) {
         await unfavoriteStore(storeId, Number(user.id));
+        const newCount = store.favoriteCount - 1;
         setStore((prev) =>
           prev
-            ? { ...prev, isFavorited: false, favoriteCount: prev.favoriteCount - 1 }
+            ? { ...prev, isFavorited: false, favoriteCount: newCount }
             : null
         );
+        syncFromDetail(storeId, false, newCount);
       } else {
         await favoriteStore(storeId, Number(user.id));
+        const newCount = store.favoriteCount + 1;
         setStore((prev) =>
           prev
-            ? { ...prev, isFavorited: true, favoriteCount: prev.favoriteCount + 1 }
+            ? { ...prev, isFavorited: true, favoriteCount: newCount }
             : null
         );
+        syncFromDetail(storeId, true, newCount);
       }
     } catch (error: any) {
       Alert.alert("操作失败", error.message || "请稍后重试");
@@ -654,7 +661,7 @@ const StoreDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator  color={theme.colors.black} />
+          <ActivityIndicator color={theme.colors.black} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
             加载中...
           </Text>
@@ -687,17 +694,6 @@ const StoreDetailScreen = () => {
         title={store.name}
         showBackButton
         onBackPress={() => navigation.goBack()}
-        rightComponent={
-          <HStack gap="$md" alignItems="center">
-            <Pressable onPress={handleToggleFavorite}>
-              <Ionicons
-                name={store.isFavorited ? "heart" : "heart-outline"}
-                size={24}
-                color={store.isFavorited ? theme.colors.error : theme.colors.black}
-              />
-            </Pressable>
-          </HStack>
-        }
       />
 
       <FlatList
@@ -727,21 +723,45 @@ const StoreDetailScreen = () => {
                     {store.city}, {store.country}
                   </Text>
                 </VStack>
-                <Box
-                  px="$sm"
-                  py="$xs"
-                  rounded="$sm"
-                  bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-                >
-                  <Text
-                    fontSize="$xs"
-                    fontWeight="$bold"
-                    color={store.isOpen ? "#27AE60" : "$gray300"}
-                    style={styles.textBold}
+                <HStack alignItems="center" gap="$sm">
+                  {store.favoriteCount > 0 && (
+                    <Text fontSize={11} color="$gray300">
+                      {store.favoriteCount}人已关注
+                    </Text>
+                  )}
+                  <Pressable
+                    onPress={handleToggleFavorite}
+                    bg={store.isFavorited ? "$black" : "$white"}
+                    borderWidth={1}
+                    borderColor="$black"
+                    rounded="$sm"
+                    px="$md"
+                    py="$xs"
                   >
-                    {store.isOpen ? "营业中" : "休息"}
-                  </Text>
-                </Box>
+                    <Text
+                      fontSize="$xs"
+                      fontWeight="$bold"
+                      color={store.isFavorited ? "$white" : "$black"}
+                    >
+                      {store.isFavorited ? "已关注" : "关注"}
+                    </Text>
+                  </Pressable>
+                  <Box
+                    px="$sm"
+                    py="$xs"
+                    rounded="$sm"
+                    bg={store.isOpen ? "#E8F5E9" : "$gray100"}
+                  >
+                    <Text
+                      fontSize="$xs"
+                      fontWeight="$bold"
+                      color={store.isOpen ? "#27AE60" : "$gray300"}
+                      style={styles.textBold}
+                    >
+                      {store.isOpen ? "营业中" : "休息"}
+                    </Text>
+                  </Box>
+                </HStack>
               </HStack>
 
               {/* 贡献者信息 */}
@@ -804,12 +824,12 @@ const StoreDetailScreen = () => {
 
                 <Pressable alignItems="center" onPress={handleToggleFavorite}>
                   <Ionicons
-                    name={store.isFavorited ? "heart" : "heart-outline"}
+                    name="people-outline"
                     size={24}
-                    color={store.isFavorited ? theme.colors.error : theme.colors.black}
+                    color={theme.colors.black}
                   />
                   <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
-                    {store.favoriteCount}人点赞
+                    {store.favoriteCount}人关注
                   </Text>
                 </Pressable>
               </HStack>
@@ -1266,7 +1286,7 @@ const StoreDetailScreen = () => {
         ListFooterComponent={
           isLoadingComments ? (
             <Box py="$md" alignItems="center">
-              <ActivityIndicator  color={theme.colors.black} />
+              <ActivityIndicator color={theme.colors.black} />
             </Box>
           ) : null
         }
@@ -1344,7 +1364,7 @@ const StoreDetailScreen = () => {
               disabled={selectedRating === 0 || isSubmittingRating}
             >
               {isSubmittingRating ? (
-                <ActivityIndicator  color={theme.colors.white} />
+                <ActivityIndicator color={theme.colors.white} />
               ) : (
                 <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
                   提交评分
@@ -1468,7 +1488,7 @@ const StoreDetailScreen = () => {
                   disabled={!commentText.trim() || isSubmittingComment}
                 >
                   {isSubmittingComment ? (
-                    <ActivityIndicator  color={theme.colors.white} />
+                    <ActivityIndicator color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
                       发布
@@ -1678,7 +1698,7 @@ const StoreDetailScreen = () => {
                   mb="$lg"
                 >
                   {isSubmittingApply ? (
-                    <ActivityIndicator  color={theme.colors.white} />
+                    <ActivityIndicator color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
                       提交申请

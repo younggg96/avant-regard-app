@@ -24,7 +24,7 @@ const SEARCH_DEBOUNCE_MS = 600;
 
 const StoreSearchScreen = () => {
   const navigation = useNavigation();
-  const { isFavorited, toggleFavorite } = useStoreFavorites();
+  const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -74,6 +74,7 @@ const StoreSearchScreen = () => {
         searchQuery: query,
       });
       setStores(result.stores);
+      syncCountsFromStores(result.stores);
       setTotalStores(result.total);
       setCurrentPage(1);
       setHasMore(result.stores.length < result.total);
@@ -100,6 +101,7 @@ const StoreSearchScreen = () => {
 
       if (result.stores.length > 0) {
         setStores((prev) => [...prev, ...result.stores]);
+        syncCountsFromStores(result.stores);
         setCurrentPage(nextPage);
         setHasMore(stores.length + result.stores.length < result.total);
       } else {
@@ -163,15 +165,28 @@ const StoreSearchScreen = () => {
             </Text>
           </VStack>
           <HStack alignItems="center" gap="$sm">
+            {getFavoriteCount(store.id) > 0 && (
+              <Text fontSize={11} color="$gray300">
+                {getFavoriteCount(store.id)}人已关注
+              </Text>
+            )}
             <Pressable
               onPress={() => toggleFavorite(store.id)}
               hitSlop={8}
+              bg={isFavorited(store.id) ? "$black" : "$white"}
+              borderWidth={1}
+              borderColor="$black"
+              rounded="$sm"
+              px="$sm"
+              py={3}
             >
-              <Ionicons
-                name={isFavorited(store.id) ? "heart" : "heart-outline"}
-                size={20}
-                color={isFavorited(store.id) ? theme.colors.error : theme.colors.gray300}
-              />
+              <Text
+                fontSize={11}
+                fontWeight="$bold"
+                color={isFavorited(store.id) ? "$white" : "$black"}
+              >
+                {isFavorited(store.id) ? "已关注" : "关注"}
+              </Text>
             </Pressable>
             <Box
               px="$sm"
@@ -225,7 +240,7 @@ const StoreSearchScreen = () => {
         )}
       </Pressable>
     ),
-    [handleStorePress, isFavorited, toggleFavorite]
+    [handleStorePress, isFavorited, toggleFavorite, getFavoriteCount]
   );
 
   const renderFooter = () => {
