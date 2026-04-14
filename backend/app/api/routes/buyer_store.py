@@ -26,6 +26,18 @@ from app.api.deps import get_current_admin_user, get_current_user
 router = APIRouter(prefix="/buyer-stores", tags=["买手店"])
 
 
+def _enrich_stores_with_favorite_count(stores) -> list:
+    """给店铺列表附加 favoriteCount 字段"""
+    if not stores:
+        return []
+    store_dicts = [s.model_dump() if hasattr(s, "model_dump") else s for s in stores]
+    store_ids = [d.get("id") for d in store_dicts if d.get("id")]
+    counts = buyer_store_community_service.get_batch_favorite_counts(store_ids)
+    for d in store_dicts:
+        d["favoriteCount"] = counts.get(d.get("id"), 0)
+    return store_dicts
+
+
 @router.get("")
 async def get_stores(
     country: Optional[str] = Query(None, description="国家筛选"),
@@ -50,7 +62,7 @@ async def get_stores(
     )
 
     return success({
-        "stores": [s.model_dump() for s in stores],
+        "stores": _enrich_stores_with_favorite_count(stores),
         "total": total,
         "page": page,
         "pageSize": pageSize,
@@ -88,7 +100,7 @@ async def search_stores(
     """搜索买手店"""
     stores = buyer_store_service.search_stores(keyword=keyword, limit=limit)
     return success({
-        "stores": [s.model_dump() for s in stores],
+        "stores": _enrich_stores_with_favorite_count(stores),
         "total": len(stores),
     })
 
@@ -98,7 +110,7 @@ async def get_stores_by_brand(brand: str):
     """根据品牌获取买手店"""
     stores = buyer_store_service.get_stores_by_brand(brand)
     return success({
-        "stores": [s.model_dump() for s in stores],
+        "stores": _enrich_stores_with_favorite_count(stores),
         "total": len(stores),
     })
 
@@ -108,7 +120,7 @@ async def get_brand_recommendations(brand: str):
     """获取品牌推荐（包含相关品牌）"""
     recommendation = buyer_store_service.get_brand_recommendations(brand)
     return success({
-        "stores": [s.model_dump() for s in recommendation.stores],
+        "stores": _enrich_stores_with_favorite_count(recommendation.stores),
         "relatedBrands": recommendation.relatedBrands,
     })
 
@@ -131,7 +143,7 @@ async def get_stores_in_viewport(params: ViewportStoreParams):
         search_query=params.searchQuery,
     )
     return success({
-        "stores": [s.model_dump() for s in stores],
+        "stores": _enrich_stores_with_favorite_count(stores),
         "total": len(stores),
     })
 
@@ -144,11 +156,16 @@ async def get_nearby_stores(params: NearbyStoreParams):
         longitude=params.longitude,
         radius=params.radius,
     )
+    store_dicts = [
+        {**s["store"].model_dump(), "distance": s["distance"]}
+        for s in stores
+    ]
+    store_ids = [d["id"] for d in store_dicts if d.get("id")]
+    counts = buyer_store_community_service.get_batch_favorite_counts(store_ids)
+    for d in store_dicts:
+        d["favoriteCount"] = counts.get(d.get("id"), 0)
     return success({
-        "stores": [
-            {**s["store"].model_dump(), "distance": s["distance"]}
-            for s in stores
-        ],
+        "stores": store_dicts,
         "total": len(stores),
     })
 

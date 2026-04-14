@@ -678,6 +678,22 @@ class BuyerStoreCommunityService:
         )
         return result.count or 0
 
+    def get_batch_favorite_counts(self, store_ids: List[str]) -> dict:
+        """批量获取多个买手店的收藏数，返回 {store_id: count}"""
+        if not store_ids:
+            return {}
+        result = (
+            self.supabase.table("buyer_store_favorites")
+            .select("store_id")
+            .in_("store_id", store_ids)
+            .execute()
+        )
+        counts: dict = {}
+        for row in result.data:
+            sid = row["store_id"]
+            counts[sid] = counts.get(sid, 0) + 1
+        return counts
+
     def get_store_comment_count(self, store_id: str) -> int:
         """获取买手店评论数"""
         result = (
