@@ -533,7 +533,7 @@ async def check_favorite_status(
 async def get_user_favorites(
     userId: int = Query(...),
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=100),
+    pageSize: int = Query(20, ge=1, le=500),
     current_user_id: int = Depends(get_current_user),
 ):
     """获取用户收藏的买手店列表"""
