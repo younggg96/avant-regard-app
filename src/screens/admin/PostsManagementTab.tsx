@@ -298,6 +298,59 @@ const AllPostsSubTab = () => {
     ]);
   };
 
+  const handleGradeAll = () => {
+    Alert.alert(
+      "全站评级",
+      `确定要对系统中所有已发布帖子执行评级吗？\n（最多处理 500 篇/次）`,
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "仅未评级",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              const result = await adminService.batchRegradePosts(
+                undefined,
+                true
+              );
+              Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+              setTimeout(() => loadPosts(page), 3000);
+            } catch (e) {
+              Alert.alert(
+                "错误",
+                e instanceof Error ? e.message : "批量评级失败"
+              );
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+        {
+          text: "全部重评",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setActionLoading(true);
+              const result = await adminService.batchRegradePosts(
+                undefined,
+                false
+              );
+              Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+              setTimeout(() => loadPosts(page), 3000);
+            } catch (e) {
+              Alert.alert(
+                "错误",
+                e instanceof Error ? e.message : "批量评级失败"
+              );
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleChat = async (userId: number, username: string) => {
     try {
       const { createConversation } = require("../../services/chatService");
@@ -679,7 +732,7 @@ const AllPostsSubTab = () => {
                   size={13}
                   color={theme.colors.white}
                 />
-                <Text style={styles.batchBtnText}>评级未评级</Text>
+                <Text style={styles.batchBtnText}>本页未评级</Text>
               </Pressable>
               <Pressable
                 style={[styles.batchBtn, styles.batchBtnAll]}
@@ -691,7 +744,19 @@ const AllPostsSubTab = () => {
                   size={13}
                   color={theme.colors.white}
                 />
-                <Text style={styles.batchBtnText}>全部重新评级</Text>
+                <Text style={styles.batchBtnText}>本页重评</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.batchBtn, styles.batchBtnGlobal]}
+                onPress={handleGradeAll}
+                disabled={actionLoading}
+              >
+                <Ionicons
+                  name="globe-outline"
+                  size={13}
+                  color={theme.colors.white}
+                />
+                <Text style={styles.batchBtnText}>全站评级</Text>
               </Pressable>
             </HStack>
           </HStack>
@@ -1171,6 +1236,9 @@ const styles = StyleSheet.create({
   },
   batchBtnAll: {
     backgroundColor: theme.colors.gray400,
+  },
+  batchBtnGlobal: {
+    backgroundColor: "#DC2626",
   },
   batchBtnText: {
     ...theme.typography.caption,
