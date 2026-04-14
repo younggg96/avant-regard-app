@@ -34,6 +34,17 @@ import { ImageSize } from "../../utils/imageUtils";
 type SubTab = "all" | "reported";
 type StatusFilter = "ALL" | "PUBLISHED" | "DRAFT" | "HIDDEN";
 type AuditFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
+type GradeFilter = "ALL" | "A" | "B" | "C" | "D" | "F" | "NONE";
+
+const GRADE_FILTER_LABELS: Record<string, string> = {
+  ALL: "全部",
+  A: "A级",
+  B: "B级",
+  C: "C级",
+  D: "D级",
+  F: "F级",
+  NONE: "未评级",
+};
 
 const STATUS_LABELS: Record<string, string> = {
   ALL: "全部",
@@ -53,6 +64,30 @@ const AUDIT_COLORS: Record<string, string> = {
   PENDING: "#F59E0B",
   APPROVED: theme.colors.success,
   REJECTED: theme.colors.error,
+};
+
+const GRADE_LABELS: Record<string, string> = {
+  A: "A级·深度",
+  B: "B级·单品",
+  C: "C级·日常",
+  D: "D级·无关联",
+  F: "F级·违规",
+};
+
+const GRADE_COLORS: Record<string, string> = {
+  A: "#7C3AED",
+  B: "#2563EB",
+  C: "#059669",
+  D: "#9CA3AF",
+  F: "#DC2626",
+};
+
+const GRADE_REWARDS: Record<string, string> = {
+  A: "¥30",
+  B: "¥15",
+  C: "¥5",
+  D: "—",
+  F: "—",
 };
 
 const REPORT_REASON_LABELS: Record<string, string> = {
@@ -124,6 +159,7 @@ const AllPostsSubTab = () => {
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [auditFilter, setAuditFilter] = useState<AuditFilter>("ALL");
+  const [gradeFilter, setGradeFilter] = useState<GradeFilter>("ALL");
   const [page, setPage] = useState(1);
 
   const loadPosts = useCallback(
@@ -210,9 +246,42 @@ const AllPostsSubTab = () => {
     }
   };
 
-  const posts = data?.posts ?? [];
+  const rawPosts = data?.posts ?? [];
+  const posts =
+    gradeFilter === "ALL"
+      ? rawPosts
+      : gradeFilter === "NONE"
+        ? rawPosts.filter((p) => !p.grade)
+        : rawPosts.filter((p) => p.grade === gradeFilter);
   const totalPages = data?.totalPages ?? 0;
   const total = data?.total ?? 0;
+
+  const handleRegrade = async (postId: number) => {
+    try {
+      setActionLoading(true);
+      await adminService.regradePost(postId);
+      Alert.alert("成功", "评级已触发，请稍后刷新查看");
+      setTimeout(() => loadPosts(page), 2000);
+    } catch (e) {
+      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleChat = async (userId: number, username: string) => {
+    try {
+      const { createConversation } = require("../../services/chatService");
+      const res = await createConversation(userId);
+      (navigation as any).navigate("Chat", {
+        conversationId: res.conversationId,
+        otherUserName: username,
+        otherUserId: userId,
+      });
+    } catch (e) {
+      Alert.alert("错误", e instanceof Error ? e.message : "创建会话失败");
+    }
+  };
 
   const renderPostCard = (post: Post) => (
     <Box key={post.id} style={sharedStyles.postCard}>
@@ -289,6 +358,47 @@ const AllPostsSubTab = () => {
             </Box>
           )}
         </RNScrollView>
+      )}
+
+      {/* Grade Badge */}
+      {post.grade ? (
+        <HStack style={styles.gradeRow}>
+          <Box
+            style={[
+              styles.gradeBadge,
+              { backgroundColor: GRADE_COLORS[post.grade] || theme.colors.gray300 },
+            ]}
+          >
+            <Text style={styles.gradeBadgeText}>
+              {GRADE_LABELS[post.grade] || post.grade}
+            </Text>
+          </Box>
+          {post.grade !== "D" && post.grade !== "F" && (
+            <Text style={styles.gradeRewardText}>
+              奖励 {GRADE_REWARDS[post.grade]}
+            </Text>
+          )}
+          <Pressable
+            onPress={() => handleRegrade(post.id)}
+            disabled={actionLoading}
+            style={styles.regradeBtn}
+          >
+            <Ionicons name="refresh" size={12} color={theme.colors.gray400} />
+            <Text style={styles.regradeBtnText}>重新评级</Text>
+          </Pressable>
+        </HStack>
+      ) : (
+        <HStack style={styles.gradeRow}>
+          <Text style={styles.noGradeText}>未评级</Text>
+          <Pressable
+            onPress={() => handleRegrade(post.id)}
+            disabled={actionLoading}
+            style={styles.regradeBtn}
+          >
+            <Ionicons name="refresh" size={12} color={theme.colors.gray400} />
+            <Text style={styles.regradeBtnText}>触发评级</Text>
+          </Pressable>
+        </HStack>
       )}
 
       <HStack style={styles.statsRow}>
@@ -378,6 +488,22 @@ const AllPostsSubTab = () => {
             查看
           </ButtonText>
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onPress={() => handleChat(post.userId, post.username)}
+          leftIcon={
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={16}
+              color={theme.colors.white}
+            />
+          }
+        >
+          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
+            私聊
+          </ButtonText>
+        </Button>
       </HStack>
     </Box>
   );
@@ -461,6 +587,33 @@ const AllPostsSubTab = () => {
                 ]}
               >
                 {AUDIT_LABELS[key]}
+              </Text>
+            </Pressable>
+          ))}
+        </RNScrollView>
+
+        <Text style={styles.filterLabel}>评级</Text>
+        <RNScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+        >
+          {(Object.keys(GRADE_FILTER_LABELS) as GradeFilter[]).map((key) => (
+            <Pressable
+              key={key}
+              style={[
+                styles.filterChip,
+                gradeFilter === key && styles.filterChipActive,
+              ]}
+              onPress={() => setGradeFilter(key)}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  gradeFilter === key && styles.filterChipTextActive,
+                ]}
+              >
+                {GRADE_FILTER_LABELS[key]}
               </Text>
             </Pressable>
           ))}
@@ -958,6 +1111,48 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 10,
     fontWeight: "600",
+  },
+  gradeRow: {
+    alignItems: "center",
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    flexWrap: "wrap",
+  },
+  gradeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  gradeBadgeText: {
+    ...theme.typography.caption,
+    color: theme.colors.white,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  gradeRewardText: {
+    ...theme.typography.caption,
+    color: "#F59E0B",
+    fontWeight: "600",
+    fontSize: 11,
+  },
+  noGradeText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray300,
+    fontSize: 11,
+  },
+  regradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: theme.colors.gray100,
+  },
+  regradeBtnText: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    fontSize: 10,
   },
   statsRow: {
     gap: theme.spacing.md,

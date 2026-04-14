@@ -25,9 +25,10 @@ class AdminService:
 
     def approve_post(self, post_id: int, remark: str = None) -> bool:
         """审核通过帖子，并同步更新社区帖子计数"""
-        post_result = self.db.table("posts").select("community_id, audit_status").eq("id", post_id).execute()
+        post_result = self.db.table("posts").select("community_id, audit_status, grade").eq("id", post_id).execute()
         was_pending = post_result.data and post_result.data[0].get("audit_status") != "APPROVED"
         community_id = post_result.data[0].get("community_id") if post_result.data else None
+        has_grade = post_result.data[0].get("grade") if post_result.data else None
 
         result = self.db.table("posts").update({
             "audit_status": "APPROVED"
@@ -41,6 +42,10 @@ class AdminService:
                 ).execute()
             except Exception:
                 pass
+
+        if result.data and not has_grade:
+            from app.services.grading_service import grade_post_async
+            grade_post_async(post_id)
 
         return bool(result.data)
 

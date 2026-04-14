@@ -57,6 +57,9 @@ export interface Post {
   communityId?: number;
   communityName?: string;
   communitySlug?: string;
+  // 内容评级
+  grade?: string;
+  gradeReward?: number;
   // 当前用户交互状态
   likedByMe?: boolean;
   favoritedByMe?: boolean;

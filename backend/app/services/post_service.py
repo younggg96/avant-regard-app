@@ -4,7 +4,7 @@
 
 from typing import Optional, List, Union
 from app.db.supabase import get_supabase
-from app.schemas.post import Post, PostType, PostStatus, AuditStatus
+from app.schemas.post import Post, PostType, PostStatus, AuditStatus, GRADE_REWARD_MAP, PostGrade
 from app.services.notification_service import notification_service
 
 
@@ -88,6 +88,14 @@ class PostService:
             post_data["post_type"].strip() if post_data.get("post_type") else "ARTICLES"
         )
 
+        grade_value = post_data.get("grade")
+        grade_reward = None
+        if grade_value:
+            try:
+                grade_reward = GRADE_REWARD_MAP.get(PostGrade(grade_value), 0)
+            except ValueError:
+                pass
+
         return Post(
             id=post_data["id"],
             userId=post_data["user_id"],
@@ -118,6 +126,8 @@ class PostService:
             communityId=community_id,
             communityName=community_name,
             communitySlug=community_slug,
+            grade=grade_value,
+            gradeReward=grade_reward,
             likedByMe=liked_by_me,
             favoritedByMe=favorited_by_me,
             wantedByMe=wanted_by_me,
@@ -250,6 +260,11 @@ class PostService:
             return None
 
         post = result.data[0]
+
+        if post_status == "PUBLISHED":
+            from app.services.grading_service import grade_post_async
+            grade_post_async(post["id"])
+
         return self._format_post(post, user_id)
 
     def update_post(self, post_id: int, user_id: int, **kwargs) -> Optional[Post]:
@@ -307,6 +322,10 @@ class PostService:
             update_data["community_id"] = kwargs["community_id"]
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
+
+        if update_data.get("status") == "PUBLISHED":
+            from app.services.grading_service import grade_post_async
+            grade_post_async(post_id)
 
         return self.get_post_by_id(post_id, user_id)
 

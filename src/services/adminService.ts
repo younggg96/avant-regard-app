@@ -309,6 +309,14 @@ export async function deletePost(postId: number): Promise<void> {
   });
 }
 
+// ==================== 帖子评级 ====================
+
+export async function regradePost(postId: number): Promise<void> {
+  return request<void>(`/api/admin/posts/${postId}/regrade`, {
+    method: "POST",
+  });
+}
+
 // ==================== 用户管理 ====================
 
 /**
@@ -934,6 +942,8 @@ export const adminService = {
   approvePost,
   rejectPost,
   deletePost,
+  // 帖子评级
+  regradePost,
   // 用户管理
   getAdminUsers,
   deleteUser,

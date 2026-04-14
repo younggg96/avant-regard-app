@@ -151,6 +151,17 @@ async def admin_delete_post(
     return success(message="帖子删除成功")
 
 
+@router.post("/posts/{post_id}/regrade")
+async def regrade_post(
+    post_id: int,
+    current_user_id: int = Depends(get_current_admin_user)
+):
+    """管理员手动触发帖子重新评级"""
+    from app.services.grading_service import grade_post_async
+    grade_post_async(post_id)
+    return success(message="评级已触发")
+
+
 # ==================== 评论管理 ====================
 
 @router.get("/comments")

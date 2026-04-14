@@ -27,6 +27,23 @@ class AuditStatus(str, Enum):
     REJECTED = "REJECTED"
 
 
+class PostGrade(str, Enum):
+    A = "A"  # 300字+深度内容，奖励30元
+    B = "B"  # 50字+单品介绍，奖励15元
+    C = "C"  # 日常分享，奖励5元
+    D = "D"  # 无关联，最低优先级
+    F = "F"  # 违规自动驳回
+
+
+GRADE_REWARD_MAP = {
+    PostGrade.A: 30,
+    PostGrade.B: 15,
+    PostGrade.C: 5,
+    PostGrade.D: 0,
+    PostGrade.F: 0,
+}
+
+
 class Post(BaseModel):
     """帖子响应"""
 
@@ -64,6 +81,9 @@ class Post(BaseModel):
     communityId: Optional[int] = None
     communityName: Optional[str] = None
     communitySlug: Optional[str] = None
+    # 内容评级
+    grade: Optional[str] = None
+    gradeReward: Optional[int] = None
     # 当前用户交互状态
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
