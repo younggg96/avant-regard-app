@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # Server
     SERVER_HOST: str = "0.0.0.0"
-    SERVER_PORT: int = 8000
+    SERVER_PORT: int = 8080
     DEBUG: bool = True
     CORS_ORIGINS: str = '["*"]'
 
