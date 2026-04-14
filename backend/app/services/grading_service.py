@@ -11,7 +11,7 @@
 
 import re
 import threading
-from typing import Optional
+from typing import List, Optional
 
 from app.schemas.post import PostGrade, GRADE_REWARD_MAP
 
@@ -128,21 +128,64 @@ def _grade_and_persist(post_id: int):
         if not result.data:
             return
 
-        row = result.data[0]
-        grade = grade_post(
-            post_type=(row.get("post_type") or "").strip(),
-            content_text=row.get("content_text", ""),
-            title=row.get("title", ""),
-            brand_name=row.get("brand_name"),
-            item_brand=row.get("item_brand"),
-            brand_ids=row.get("brand_ids") or [],
-            show_ids=row.get("show_ids") or [],
-        )
-
-        update_data = {"grade": grade.value}
-        if grade == PostGrade.F:
-            update_data["audit_status"] = "REJECTED"
-
-        db.table("posts").update(update_data).eq("id", post_id).execute()
+        _grade_row(db, result.data[0])
     except Exception as e:
         print(f"[GradingEngine] Failed to grade post {post_id}: {e}")
+
+
+def _grade_row(db, row: dict):
+    """对单行帖子数据执行评级并写回数据库。"""
+    grade = grade_post(
+        post_type=(row.get("post_type") or "").strip(),
+        content_text=row.get("content_text", ""),
+        title=row.get("title", ""),
+        brand_name=row.get("brand_name"),
+        item_brand=row.get("item_brand"),
+        brand_ids=row.get("brand_ids") or [],
+        show_ids=row.get("show_ids") or [],
+    )
+
+    update_data = {"grade": grade.value}
+    if grade == PostGrade.F:
+        update_data["audit_status"] = "REJECTED"
+
+    db.table("posts").update(update_data).eq("id", row["id"]).execute()
+
+
+def batch_grade_posts(
+    post_ids: Optional[List[int]] = None,
+    ungraded_only: bool = False,
+) -> int:
+    """
+    批量评级帖子。在后台线程中执行，立即返回触发数量。
+    - post_ids: 指定帖子 ID 列表；为空则选取所有已发布帖子
+    - ungraded_only: 仅评级尚无 grade 的帖子
+    """
+    from app.db.supabase import get_supabase
+
+    db = get_supabase()
+
+    if post_ids:
+        query = db.table("posts").select("*").in_("id", post_ids)
+    else:
+        query = db.table("posts").select("*").eq("status", "PUBLISHED")
+
+    if ungraded_only:
+        query = query.is_("grade", "null")
+
+    result = query.order("created_at", desc=True).limit(500).execute()
+    rows = result.data or []
+
+    if not rows:
+        return 0
+
+    def _run():
+        for row in rows:
+            try:
+                _grade_row(db, row)
+            except Exception as e:
+                print(f"[BatchGrade] Failed post {row['id']}: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    return len(rows)

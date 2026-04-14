@@ -317,6 +317,19 @@ export async function regradePost(postId: number): Promise<void> {
   });
 }
 
+export async function batchRegradePosts(
+  postIds?: number[],
+  ungradedOnly?: boolean
+): Promise<{ triggered: number }> {
+  return request<{ triggered: number }>("/api/admin/posts/batch-regrade", {
+    method: "POST",
+    body: JSON.stringify({
+      postIds: postIds || null,
+      ungradedOnly: ungradedOnly ?? false,
+    }),
+  });
+}
+
 // ==================== 用户管理 ====================
 
 /**
@@ -944,6 +957,7 @@ export const adminService = {
   deletePost,
   // 帖子评级
   regradePost,
+  batchRegradePosts,
   // 用户管理
   getAdminUsers,
   deleteUser,

@@ -162,6 +162,26 @@ async def regrade_post(
     return success(message="评级已触发")
 
 
+class BatchRegradeRequest(BaseModel):
+    """批量评级请求"""
+    postIds: List[int] = Field(default=None, description="指定帖子ID列表（为空则评级当前页所有）")
+    ungradedOnly: bool = Field(False, description="仅评级未评级的帖子")
+
+
+@router.post("/posts/batch-regrade")
+async def batch_regrade_posts(
+    request: BatchRegradeRequest = Body(None),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """批量触发帖子评级"""
+    from app.services.grading_service import batch_grade_posts
+    count = batch_grade_posts(
+        post_ids=request.postIds if request else None,
+        ungraded_only=request.ungradedOnly if request else False,
+    )
+    return success({"triggered": count})
+
+
 # ==================== 评论管理 ====================
 
 @router.get("/comments")

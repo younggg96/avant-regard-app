@@ -269,6 +269,35 @@ const AllPostsSubTab = () => {
     }
   };
 
+  const handleBatchRegrade = (ungradedOnly: boolean) => {
+    const label = ungradedOnly ? "未评级帖子" : "当前页所有帖子";
+    Alert.alert("批量评级", `确定要对${label}执行评级吗？`, [
+      { text: "取消", style: "cancel" },
+      {
+        text: "确定",
+        onPress: async () => {
+          try {
+            setActionLoading(true);
+            const ids = posts.map((p) => p.id);
+            const result = await adminService.batchRegradePosts(
+              ids,
+              ungradedOnly
+            );
+            Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+            setTimeout(() => loadPosts(page), 3000);
+          } catch (e) {
+            Alert.alert(
+              "错误",
+              e instanceof Error ? e.message : "批量评级失败"
+            );
+          } finally {
+            setActionLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleChat = async (userId: number, username: string) => {
     try {
       const { createConversation } = require("../../services/chatService");
@@ -637,7 +666,35 @@ const AllPostsSubTab = () => {
         </Box>
       ) : (
         <>
-          <Text style={styles.totalText}>共 {total} 篇帖子</Text>
+          <HStack style={styles.batchRow}>
+            <Text style={styles.totalText}>共 {total} 篇帖子</Text>
+            <HStack style={{ gap: 6 }}>
+              <Pressable
+                style={styles.batchBtn}
+                onPress={() => handleBatchRegrade(true)}
+                disabled={actionLoading}
+              >
+                <Ionicons
+                  name="flash-outline"
+                  size={13}
+                  color={theme.colors.white}
+                />
+                <Text style={styles.batchBtnText}>评级未评级</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.batchBtn, styles.batchBtnAll]}
+                onPress={() => handleBatchRegrade(false)}
+                disabled={actionLoading}
+              >
+                <Ionicons
+                  name="sync-outline"
+                  size={13}
+                  color={theme.colors.white}
+                />
+                <Text style={styles.batchBtnText}>全部重新评级</Text>
+              </Pressable>
+            </HStack>
+          </HStack>
           {posts.map(renderPostCard)}
 
           {totalPages > 1 && (
@@ -1096,10 +1153,34 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: theme.colors.white,
   },
+  batchRow: {
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  batchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: "#7C3AED",
+  },
+  batchBtnAll: {
+    backgroundColor: theme.colors.gray400,
+  },
+  batchBtnText: {
+    ...theme.typography.caption,
+    color: theme.colors.white,
+    fontSize: 11,
+    fontWeight: "600",
+  },
   totalText: {
     ...theme.typography.bodySmall,
     color: theme.colors.gray400,
-    marginBottom: theme.spacing.md,
   },
   auditBadge: {
     paddingHorizontal: 8,
