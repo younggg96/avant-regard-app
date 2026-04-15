@@ -32,7 +32,7 @@ export interface HeaderAction {
   icon?: keyof typeof Ionicons.glyphMap;
   text?: string;
   onPress: () => void;
-  style?: "primary" | "secondary";
+  style?: "primary" | "secondary" | "ghost";
 }
 
 export interface ScreenHeaderProps {
@@ -127,7 +127,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             px="$sm"
             py="$xs"
             rounded="$sm"
-            bg={action.style === "primary" ? "$black" : "$gray100"}
+            bg={action.style === "primary" ? "$black" : action.style === "ghost" ? "transparent" : "$gray100"}
             ml="$xs"
             onPress={action.onPress}
           >

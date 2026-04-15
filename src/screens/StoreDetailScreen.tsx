@@ -66,6 +66,7 @@ import {
   getMerchantByStore,
 } from "../services/storeMerchantService";
 import HalfStarRating from "../components/HalfStarRating";
+import { ShareToChatModal } from "../components/ShareToChatModal";
 import * as ImagePicker from "expo-image-picker";
 
 type RouteParams = {
@@ -123,6 +124,9 @@ const StoreDetailScreen = () => {
   const [merchantContent, setMerchantContent] = useState<StoreMerchantContent | null>(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
+
+  // 分享状态
+  const [showShareToChat, setShowShareToChat] = useState(false);
 
   // 商家申请弹窗状态
   const [showMerchantApplyModal, setShowMerchantApplyModal] = useState(false);
@@ -694,6 +698,13 @@ const StoreDetailScreen = () => {
         title={store.name}
         showBackButton
         onBackPress={() => navigation.goBack()}
+        rightActions={[
+          {
+            icon: "share-outline",
+            onPress: () => setShowShareToChat(true),
+            style: "ghost",
+          },
+        ]}
       />
 
       <FlatList
@@ -1710,6 +1721,12 @@ const StoreDetailScreen = () => {
           </Box>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ShareToChatModal
+        visible={showShareToChat}
+        store={store}
+        onClose={() => setShowShareToChat(false)}
+      />
     </SafeAreaView>
   );
 };

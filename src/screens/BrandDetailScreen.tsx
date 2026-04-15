@@ -30,6 +30,7 @@ import {
 import { useAuthStore } from "../store/authStore";
 import CreateShowModal from "../components/CreateShowModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
+import { ShareToChatModal } from "../components/ShareToChatModal";
 import { pickAndUploadImage } from "./admin/adminUtils";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -73,6 +74,7 @@ const BrandDetailScreen = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showShareToChat, setShowShareToChat] = useState(false);
 
   // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
   const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
@@ -355,18 +357,32 @@ const BrandDetailScreen = () => {
           )}
 
           <SafeAreaView style={styles.heroContent} edges={["top"]}>
-            <TouchableOpacity
-              style={styles.backButtonHero}
-              onPress={handleBack}
-            >
-              <View style={styles.backButtonCircle}>
-                <Ionicons
-                  name="arrow-back"
-                  size={22}
-                  color={theme.colors.white}
-                />
-              </View>
-            </TouchableOpacity>
+            <View style={styles.heroTopBar}>
+              <TouchableOpacity
+                style={styles.backButtonHero}
+                onPress={handleBack}
+              >
+                <View style={styles.backButtonCircle}>
+                  <Ionicons
+                    name="arrow-back"
+                    size={22}
+                    color={theme.colors.white}
+                  />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.backButtonHero}
+                onPress={() => setShowShareToChat(true)}
+              >
+                <View style={styles.backButtonCircle}>
+                  <Ionicons
+                    name="share-outline"
+                    size={20}
+                    color={theme.colors.white}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
           <View style={styles.heroInfo}>
             <Text style={styles.brandName}>{brand.name}</Text>
@@ -744,6 +760,12 @@ const BrandDetailScreen = () => {
         title={brand.name}
         onClose={() => setImagePreviewVisible(false)}
       />
+
+      <ShareToChatModal
+        visible={showShareToChat}
+        brand={brand}
+        onClose={() => setShowShareToChat(false)}
+      />
     </View>
   );
 };
@@ -829,6 +851,11 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+  },
+  heroTopBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   backButtonHero: {
     margin: 16,

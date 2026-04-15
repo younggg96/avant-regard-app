@@ -26,6 +26,8 @@ import {
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { Post } from "./PostCard";
+import { BuyerStore, BuyerStoreDetail } from "../services/buyerStoreService";
+import { Brand } from "../services/brandService";
 
 export interface PostSharePayload {
   postId: string;
@@ -35,9 +37,33 @@ export interface PostSharePayload {
   authorAvatar?: string;
 }
 
+export interface StoreSharePayload {
+  storeId: string;
+  name: string;
+  imageUrl?: string;
+  city: string;
+  country: string;
+  rating?: number;
+  styles?: string[];
+}
+
+export interface BrandSharePayload {
+  brandId: number;
+  name: string;
+  imageUrl?: string;
+  country?: string;
+  category?: string;
+  foundedYear?: string;
+  founder?: string;
+}
+
+type ShareableStore = BuyerStore | BuyerStoreDetail;
+
 interface ShareToChatModalProps {
   visible: boolean;
-  post: Post | null;
+  post?: Post | null;
+  store?: ShareableStore | null;
+  brand?: Brand | null;
   onClose: () => void;
   onShareComplete?: () => void;
 }
@@ -54,9 +80,85 @@ export function buildPostSharePayload(post: Post): PostSharePayload {
   };
 }
 
+export function buildStoreSharePayload(store: ShareableStore): StoreSharePayload {
+  return {
+    storeId: store.id,
+    name: store.name,
+    imageUrl: store.images?.[0],
+    city: store.city,
+    country: store.country,
+    rating: "averageRating" in store ? store.averageRating : store.rating,
+    styles: store.style?.length ? store.style.slice(0, 3) : undefined,
+  };
+}
+
+export function buildBrandSharePayload(brand: Brand): BrandSharePayload {
+  return {
+    brandId: brand.id,
+    name: brand.name,
+    imageUrl: brand.coverImage || brand.coverImages?.[0],
+    country: brand.country,
+    category: brand.category,
+    foundedYear: brand.foundedYear,
+    founder: brand.founder,
+  };
+}
+
+interface SharePreview {
+  imageUrl?: string;
+  title: string;
+  subtitle: string;
+  messageType: "post_card" | "store_card" | "brand_card";
+  payload: string;
+  placeholderIcon?: keyof typeof Ionicons.glyphMap;
+}
+
+function resolvePreview(
+  post?: Post | null,
+  store?: ShareableStore | null,
+  brand?: Brand | null,
+): SharePreview | null {
+  if (post) {
+    const p = buildPostSharePayload(post);
+    return {
+      imageUrl: p.imageUrl,
+      title: p.title || "分享帖子",
+      subtitle: `@${p.authorName}`,
+      messageType: "post_card",
+      payload: JSON.stringify(p),
+    };
+  }
+  if (store) {
+    const p = buildStoreSharePayload(store);
+    return {
+      imageUrl: p.imageUrl,
+      title: p.name,
+      subtitle: `${p.city}, ${p.country}`,
+      messageType: "store_card",
+      payload: JSON.stringify(p),
+      placeholderIcon: "storefront-outline",
+    };
+  }
+  if (brand) {
+    const p = buildBrandSharePayload(brand);
+    const parts = [p.country, p.category].filter(Boolean);
+    return {
+      imageUrl: p.imageUrl,
+      title: p.name,
+      subtitle: parts.length ? parts.join(" · ") : "品牌",
+      messageType: "brand_card",
+      payload: JSON.stringify(p),
+      placeholderIcon: "pricetag-outline",
+    };
+  }
+  return null;
+}
+
 export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   visible,
   post,
+  store,
+  brand,
   onClose,
   onShareComplete,
 }) => {
@@ -113,22 +215,21 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
+  const preview = resolvePreview(post, store, brand);
+
   const handleSend = useCallback(
     async (conversation: Conversation) => {
-      if (!post || sending !== null) return;
+      if (!preview || sending !== null) return;
 
       const other = conversation.otherUser;
       if (!other) return;
 
       setSending(conversation.id);
       try {
-        const payload = buildPostSharePayload(post);
-        const content = JSON.stringify(payload);
-
         if (chatWS.isConnected) {
-          chatWS.sendMessage(conversation.id, content, "post_card");
+          chatWS.sendMessage(conversation.id, preview.payload, preview.messageType);
         } else {
-          await sendMessageREST(conversation.id, content, "post_card");
+          await sendMessageREST(conversation.id, preview.payload, preview.messageType);
         }
 
         setSentIds((prev) => new Set(prev).add(conversation.id));
@@ -139,7 +240,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         setSending(null);
       }
     },
-    [post, sending, onShareComplete]
+    [preview, sending, onShareComplete]
   );
 
   const renderItem = useCallback(
@@ -183,9 +284,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     [handleSend, sending, sentIds]
   );
 
-  if (!post) return null;
-
-  const payload = buildPostSharePayload(post);
+  if (!preview) return null;
 
   return (
     <Modal
@@ -208,23 +307,27 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
 
         <Text style={s.title}>分享给</Text>
 
-        {/* Post preview card */}
+        {/* Preview card */}
         <View style={s.previewCard}>
-          {payload.imageUrl && (
+          {preview.imageUrl ? (
             <OptimizedImage
-              uri={payload.imageUrl}
+              uri={preview.imageUrl}
               size={ImageSize.THUMBNAIL}
               style={s.previewImage}
               contentFit="cover"
               lazy
             />
-          )}
+          ) : preview.placeholderIcon ? (
+            <View style={[s.previewImage, s.previewPlaceholder]}>
+              <Ionicons name={preview.placeholderIcon} size={22} color={theme.colors.gray300} />
+            </View>
+          ) : null}
           <View style={s.previewInfo}>
             <Text style={s.previewTitle} numberOfLines={2}>
-              {payload.title || "分享帖子"}
+              {preview.title}
             </Text>
             <Text style={s.previewAuthor} numberOfLines={1}>
-              @{payload.authorName}
+              {preview.subtitle}
             </Text>
           </View>
         </View>
@@ -310,6 +413,10 @@ const s = StyleSheet.create({
     height: 48,
     borderRadius: 6,
     backgroundColor: theme.colors.gray100,
+  },
+  previewPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   previewInfo: {
     flex: 1,

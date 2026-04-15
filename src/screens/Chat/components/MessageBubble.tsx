@@ -14,10 +14,11 @@ import { ImageSize } from "../../../utils/imageUtils";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
 import type { ActionSheetAction } from "../../../components/ui/ActionSheet";
 import { Message } from "../../../services/chatService";
-import { PostSharePayload } from "../../../components/ShareToChatModal";
+import { PostSharePayload, StoreSharePayload, BrandSharePayload } from "../../../components/ShareToChatModal";
 import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
 import { styles } from "../styles";
+import HalfStarRating from "../../../components/HalfStarRating";
 
 interface MessageBubbleProps {
   message: Message;
@@ -31,6 +32,22 @@ function tryParsePostCard(content: string): PostSharePayload | null {
   try {
     const parsed = JSON.parse(content);
     if (parsed && typeof parsed.postId === "string") return parsed;
+  } catch { }
+  return null;
+}
+
+function tryParseStoreCard(content: string): StoreSharePayload | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed.storeId === "string") return parsed;
+  } catch { }
+  return null;
+}
+
+function tryParseBrandCard(content: string): BrandSharePayload | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed.brandId === "number") return parsed;
   } catch { }
   return null;
 }
@@ -50,6 +67,12 @@ export const MessageBubble = ({
 
   const isPostCard = message.messageType === "post_card";
   const postCard = isPostCard ? tryParsePostCard(message.content) : null;
+
+  const isStoreCard = message.messageType === "store_card";
+  const storeCard = isStoreCard ? tryParseStoreCard(message.content) : null;
+
+  const isBrandCard = message.messageType === "brand_card";
+  const brandCard = isBrandCard ? tryParseBrandCard(message.content) : null;
 
   const menuActions = useMemo<ActionSheetAction[]>(() => {
     const list: ActionSheetAction[] = [];
@@ -77,7 +100,229 @@ export const MessageBubble = ({
     (navigation.navigate as any)("PostDetail", { postId: postCard.postId });
   };
 
+  const handleStoreCardPress = () => {
+    if (!storeCard) return;
+    (navigation.navigate as any)("StoreDetail", { storeId: storeCard.storeId });
+  };
+
+  const handleBrandCardPress = () => {
+    if (!brandCard) return;
+    (navigation.navigate as any)("BrandDetail", { id: String(brandCard.brandId), name: brandCard.name });
+  };
+
   const renderContent = () => {
+    if (brandCard) {
+      const infoParts = [brandCard.country, brandCard.category].filter(Boolean);
+      return (
+        <TouchableOpacity
+          style={[
+            cardStyles.container,
+            isMine ? cardStyles.containerMine : cardStyles.containerOther,
+          ]}
+          onPress={handleBrandCardPress}
+          activeOpacity={0.7}
+        >
+          {brandCard.imageUrl ? (
+            <OptimizedImage
+              uri={brandCard.imageUrl}
+              size={ImageSize.MEDIUM}
+              style={cardStyles.image}
+              contentFit="cover"
+              lazy
+            />
+          ) : (
+            <View style={[cardStyles.image, brandCardStyles.placeholder]}>
+              <Text style={[brandCardStyles.initial, isMine && brandCardStyles.initialMine]}>
+                {brandCard.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={cardStyles.body}>
+            <Text
+              style={[
+                cardStyles.title,
+                isMine ? cardStyles.titleMine : cardStyles.titleOther,
+              ]}
+              numberOfLines={2}
+            >
+              {brandCard.name}
+            </Text>
+            {infoParts.length > 0 && (
+              <Text
+                style={[
+                  brandCardStyles.info,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                {infoParts.join(" · ")}
+              </Text>
+            )}
+            {brandCard.founder && (
+              <Text
+                style={[
+                  brandCardStyles.founder,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                {brandCard.founder}
+              </Text>
+            )}
+            <View style={cardStyles.footer}>
+              <View style={cardStyles.authorRow}>
+                <Ionicons
+                  name="pricetag-outline"
+                  size={14}
+                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                />
+                <Text
+                  style={[
+                    cardStyles.authorName,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                  numberOfLines={1}
+                >
+                  品牌
+                </Text>
+              </View>
+              <View style={cardStyles.tapHint}>
+                <Text
+                  style={[
+                    cardStyles.tapHintText,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                >
+                  查看
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={12}
+                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (storeCard) {
+      return (
+        <TouchableOpacity
+          style={[
+            cardStyles.container,
+            isMine ? cardStyles.containerMine : cardStyles.containerOther,
+          ]}
+          onPress={handleStoreCardPress}
+          activeOpacity={0.7}
+        >
+          {storeCard.imageUrl ? (
+            <OptimizedImage
+              uri={storeCard.imageUrl}
+              size={ImageSize.MEDIUM}
+              style={cardStyles.image}
+              contentFit="cover"
+              lazy
+            />
+          ) : (
+            <View style={[cardStyles.image, storeCardStyles.placeholder]}>
+              <Ionicons
+                name="storefront-outline"
+                size={36}
+                color={isMine ? "rgba(255,255,255,0.3)" : theme.colors.gray200}
+              />
+            </View>
+          )}
+          <View style={cardStyles.body}>
+            <Text
+              style={[
+                cardStyles.title,
+                isMine ? cardStyles.titleMine : cardStyles.titleOther,
+              ]}
+              numberOfLines={2}
+            >
+              {storeCard.name}
+            </Text>
+            <View style={storeCardStyles.meta}>
+              <Text
+                style={[
+                  storeCardStyles.location,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                {storeCard.city}, {storeCard.country}
+              </Text>
+              {(storeCard.rating ?? 0) > 0 && (
+                <HalfStarRating
+                  rating={storeCard.rating!}
+                  size={12}
+                  color="#FFB800"
+                  inactiveColor={isMine ? "rgba(255,255,255,0.2)" : theme.colors.gray100}
+                />
+              )}
+            </View>
+            {storeCard.styles && storeCard.styles.length > 0 && (
+              <View style={storeCardStyles.tagsRow}>
+                {storeCard.styles.map((tag) => (
+                  <View
+                    key={tag}
+                    style={[
+                      storeCardStyles.tag,
+                      isMine ? storeCardStyles.tagMine : storeCardStyles.tagOther,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        storeCardStyles.tagText,
+                        isMine ? storeCardStyles.tagTextMine : storeCardStyles.tagTextOther,
+                      ]}
+                    >
+                      {tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <View style={cardStyles.footer}>
+              <View style={cardStyles.authorRow}>
+                <Ionicons
+                  name="storefront-outline"
+                  size={14}
+                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                />
+                <Text
+                  style={[
+                    cardStyles.authorName,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                  numberOfLines={1}
+                >
+                  买手店
+                </Text>
+              </View>
+              <View style={cardStyles.tapHint}>
+                <Text
+                  style={[
+                    cardStyles.tapHintText,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                >
+                  查看
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={12}
+                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     if (postCard) {
       return (
         <TouchableOpacity
@@ -289,5 +534,72 @@ const cardStyles = StyleSheet.create({
   tapHintText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+});
+
+const storeCardStyles = StyleSheet.create({
+  placeholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  meta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  location: {
+    fontSize: 12,
+    flex: 1,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  tag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tagMine: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  tagOther: {
+    backgroundColor: theme.colors.gray50,
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  tagTextMine: {
+    color: "rgba(255,255,255,0.7)",
+  },
+  tagTextOther: {
+    color: theme.colors.gray400,
+  },
+});
+
+const brandCardStyles = StyleSheet.create({
+  placeholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.gray50,
+  },
+  initial: {
+    fontSize: 36,
+    fontWeight: "300",
+    color: theme.colors.gray300,
+    letterSpacing: 2,
+  },
+  initialMine: {
+    color: "rgba(255,255,255,0.3)",
+  },
+  info: {
+    fontSize: 12,
+  },
+  founder: {
+    fontSize: 11,
+    fontStyle: "italic",
   },
 });
