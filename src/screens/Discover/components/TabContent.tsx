@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   RefreshControl,
   ActivityIndicator,
@@ -7,7 +7,10 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
+  FlatList,
+  ListRenderItemInfo,
 } from "react-native";
+import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
 import { theme } from "../../../theme";
@@ -40,9 +43,6 @@ interface TabContentProps {
   onBannerPress: (banner: Banner) => void;
 }
 
-/**
- * GIF 加载组件 - 所有 tab 通用
- */
 const GifLoading: React.FC = () => (
   <View style={loadingStyles.container}>
     <Image
@@ -66,9 +66,6 @@ const loadingStyles = StyleSheet.create({
   },
 });
 
-/**
- * 将 DisplayPost 转换为 PostCard 需要的 Post 格式
- */
 const convertToPost = (post: DisplayPost): Post => ({
   id: post.id,
   title: post.content.title,
@@ -95,15 +92,14 @@ const convertToPost = (post: DisplayPost): Post => ({
   likes: post.engagement.likes,
   isLiked: post.engagement.isLiked,
   timestamp: post.timestamp,
-  // 论坛帖子所属社区
   communityId: post.communityId,
   communityName: post.communityName,
 });
 
+const ESTIMATED_ITEM_SIZE = 280;
+
 /**
- * Tab 内容组件
- * 渲染单个 Tab 页面的内容（帖子列表）
- * 支持懒加载：未加载时显示加载状态
+ * Tab 内容组件 — 使用 MasonryFlashList 实现高性能瀑布流
  */
 export const TabContent: React.FC<TabContentProps> = ({
   tab,
@@ -122,28 +118,54 @@ export const TabContent: React.FC<TabContentProps> = ({
   onLike,
   onBannerPress,
 }) => {
-  const renderPost = useCallback(
-    (post: Post) => {
-      if (!post || !post.id || !post.author) {
-        console.warn("Invalid post:", post);
-        return null;
-      }
+  const currentPosts = useMemo(
+    () => (Array.isArray(tabPosts) ? tabPosts.map(convertToPost) : []),
+    [tabPosts]
+  );
 
+  const keyExtractor = useCallback((item: Post) => item.id, []);
+
+  const renderMasonryItem = useCallback(
+    ({ item }: MasonryListRenderItemInfo<Post>) => {
+      if (!item || !item.id || !item.author) return null;
       return (
-        <PostCard
-          post={post}
-          onPress={onPostPress}
-          onAuthorPress={onAuthorPress}
-          onLike={onLike}
-        />
+        <Box px={4} mb="$sm">
+          <PostCard
+            post={item}
+            onPress={onPostPress}
+            onAuthorPress={onAuthorPress}
+            onLike={onLike}
+          />
+        </Box>
       );
     },
     [onPostPress, onAuthorPress, onLike]
   );
 
-  const currentPosts = Array.isArray(tabPosts) ? tabPosts.map(convertToPost) : [];
+  const renderForumItem = useCallback(
+    ({ item }: ListRenderItemInfo<Post>) => (
+      <ForumPostCard
+        post={item}
+        onPress={onPostPress}
+        onAuthorPress={onAuthorPress}
+        onLike={onLike}
+      />
+    ),
+    [onPostPress, onAuthorPress, onLike]
+  );
 
-  // 获取空状态提示文案
+  const refreshControl = useMemo(
+    () => (
+      <RefreshControl
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        colors={[theme.colors.accent]}
+        tintColor={theme.colors.accent}
+      />
+    ),
+    [refreshing, onRefresh]
+  );
+
   const getEmptyStateText = () => {
     switch (tab) {
       case "forum":
@@ -157,10 +179,6 @@ export const TabContent: React.FC<TabContentProps> = ({
     }
   };
 
-  const emptyState = getEmptyStateText();
-
-  // 懒加载：如果当前 tab 正在加载或尚未加载，显示加载状态
-  // 论坛和关注 tab 使用视频 loading，推荐 tab 使用默认 loading
   if (tabLoading || !tabLoaded) {
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
@@ -169,148 +187,126 @@ export const TabContent: React.FC<TabContentProps> = ({
     );
   }
 
-  return (
-    <View style={{ width: SCREEN_WIDTH }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.accent]}
-            tintColor={theme.colors.accent}
-          />
-        }
-      >
-        {/* Banner 轮播图 - 只在论坛 tab 显示 */}
-        {tab === "forum" && banners.length > 0 && (
-          <BannerCarousel banners={banners} onBannerPress={onBannerPress} />
-        )}
-
-        {/* 热门社区 - 只在论坛 tab 显示 */}
-        {tab === "forum" && <PopularCommunities communities={communities} />}
-
-        {/* 关注的品牌 - 只在关注 tab 显示 */}
-        {tab === "following" && <BrandSection />}
-
-
-        {error ? (
-          // 错误状态
+  if (error) {
+    return (
+      <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={refreshControl}
+        >
           <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
-            <Ionicons
-              name="cloud-offline-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
+            <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.gray400} />
+            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
               加载失败
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
               {error}
             </Text>
-            <Pressable
-              onPress={onRefresh}
-              px="$lg"
-              py="$sm"
-              bg="$black"
-              rounded="$md"
-            >
-              <Text color="$white" fontWeight="$medium">
-                点击重试
-              </Text>
+            <Pressable onPress={onRefresh} px="$lg" py="$sm" bg="$black" rounded="$md">
+              <Text color="$white" fontWeight="$medium">点击重试</Text>
             </Pressable>
           </VStack>
-        ) : currentPosts.length === 0 ? (
-          // 空状态
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (currentPosts.length === 0) {
+    const emptyState = getEmptyStateText();
+    return (
+      <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={refreshControl}
+        >
           <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
             <Ionicons
               name={tab === "forum" ? "chatbubbles-outline" : "newspaper-outline"}
               size={48}
               color={theme.colors.gray400}
             />
-            <Text
-              fontSize="$lg"
-              color="$black"
-              fontWeight="$medium"
-              mb="$sm"
-              mt="$md"
-              textAlign="center"
-            >
+            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
               {emptyState.title}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">
               {emptyState.subtitle}
             </Text>
           </VStack>
-        ) : tab === "forum" ? (
-          // 论坛帖子列表（横向排版）
-          <VStack>
-            {currentPosts.map((post, index) => (
-              <ForumPostCard
-                key={post.id || `forum-${index}`}
-                post={post}
-                onPress={onPostPress}
-                onAuthorPress={onAuthorPress}
-                onLike={onLike}
-              />
-            ))}
-          </VStack>
-        ) : (
-          // 发现/关注帖子列表（两列瀑布流布局）
-          <VStack>
-            {tab === "following" && currentPosts.length > 0 && (
-              <HStack px="$md" pt={14} pb={10} gap={6} alignItems="center">
-                <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
-                  关注的帖子
-                </Text>
-                <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
-                  {currentPosts.length}
-                </Text>
-              </HStack>
-            )}
-            <HStack px="$sm" pt={tab === "following" ? 0 : undefined} alignItems="start">
-              <VStack flex={1} pr="$xs">
-                {currentPosts
-                  .filter((_, index) => index % 2 === 0)
-                  .map((post, index) => (
-                    <Box key={post.id || `left-${index}`} mb="$sm">
-                      {renderPost(post)}
-                    </Box>
-                  ))}
-              </VStack>
-              <VStack flex={1} pl="$xs">
-                {currentPosts
-                  .filter((_, index) => index % 2 === 1)
-                  .map((post, index) => (
-                    <Box key={post.id || `right-${index}`} mb="$sm">
-                      {renderPost(post)}
-                    </Box>
-                  ))}
-              </VStack>
-            </HStack>
-          </VStack>
-        )}
+        </ScrollView>
+      </View>
+    );
+  }
 
-        {/* 加载更多指示器 */}
-        {loading && (
-          <HStack justifyContent="center" alignItems="center" py="$lg">
-            <ActivityIndicator color={theme.colors.accent} />
-            <Text color="$gray400" fontSize="$sm" ml="$sm">
-              加载更多...
-            </Text>
-          </HStack>
+  // Forum tab — FlatList (single-column)
+  if (tab === "forum") {
+    const forumHeader = (
+      <>
+        {banners.length > 0 && (
+          <BannerCarousel banners={banners} onBannerPress={onBannerPress} />
         )}
-      </ScrollView>
+        <PopularCommunities communities={communities} />
+      </>
+    );
+
+    return (
+      <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        <FlatList
+          data={currentPosts}
+          keyExtractor={keyExtractor}
+          renderItem={renderForumItem}
+          ListHeaderComponent={forumHeader}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          refreshControl={refreshControl}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          initialNumToRender={5}
+        />
+      </View>
+    );
+  }
+
+  // Recommend / Following tab — MasonryFlashList (2-column waterfall)
+  const masonryHeader = (
+    <>
+      {tab === "following" && <BrandSection />}
+      {tab === "following" && currentPosts.length > 0 && (
+        <HStack px="$md" pt={14} pb={10} gap={6} alignItems="center">
+          <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
+            关注的帖子
+          </Text>
+          <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
+            {currentPosts.length}
+          </Text>
+        </HStack>
+      )}
+    </>
+  );
+
+  const footer = loading ? (
+    <HStack justifyContent="center" alignItems="center" py="$lg">
+      <ActivityIndicator color={theme.colors.accent} />
+      <Text color="$gray400" fontSize="$sm" ml="$sm">加载更多...</Text>
+    </HStack>
+  ) : null;
+
+  return (
+    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+      <MasonryFlashList
+        data={currentPosts}
+        numColumns={2}
+        keyExtractor={keyExtractor}
+        renderItem={renderMasonryItem}
+        estimatedItemSize={ESTIMATED_ITEM_SIZE}
+        ListHeaderComponent={masonryHeader}
+        ListFooterComponent={footer}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={refreshControl}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };

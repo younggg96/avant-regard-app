@@ -78,12 +78,12 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({
+const PostCardInner = ({
   post,
   onPress,
   onAuthorPress,
   onLike,
-}) => {
+}: PostCardProps) => {
   // 安全检查
   if (!post || !post.id || !post.author) {
     return null;
@@ -232,6 +232,9 @@ const PostCard: React.FC<PostCardProps> = ({
     </Box>
   );
 };
+
+const PostCard = React.memo(PostCardInner);
+PostCard.displayName = "PostCard";
 
 const styles = StyleSheet.create({
   image: {

@@ -156,7 +156,7 @@ const DiscoverScreen: React.FC = () => {
     loadTabData,
   } = useDiscoverData();
 
-  // Header 动画 Hook
+  // Header 动画 Hook (single Animated.Value drives both height + opacity)
   const {
     headerOpacity,
     handleVerticalScroll,
@@ -273,13 +273,20 @@ const DiscoverScreen: React.FC = () => {
     [navigation]
   );
 
-  // 处理作者点击
+  // 处理作者点击 — use refs to avoid depending on entire post arrays
+  const recommendPostsRef = useRef(recommendPosts);
+  recommendPostsRef.current = recommendPosts;
+  const forumPostsRef = useRef(forumPosts);
+  forumPostsRef.current = forumPosts;
+  const followingPostsRef = useRef(followingPosts);
+  followingPostsRef.current = followingPosts;
+
   const handleAuthorPress = useCallback(
     (authorId: string) => {
       const post =
-        recommendPosts.find((p) => p.author.id === authorId) ||
-        forumPosts.find((p) => p.author.id === authorId) ||
-        followingPosts.find((p) => p.author.id === authorId);
+        recommendPostsRef.current.find((p) => p.author.id === authorId) ||
+        forumPostsRef.current.find((p) => p.author.id === authorId) ||
+        followingPostsRef.current.find((p) => p.author.id === authorId);
       const userId = parseInt(authorId, 10);
       const cachedUserInfo = userInfoCache.current.get(userId);
 
@@ -289,7 +296,7 @@ const DiscoverScreen: React.FC = () => {
         avatar: cachedUserInfo?.avatarUrl || post?.author.avatar,
       });
     },
-    [navigation, recommendPosts, forumPosts, followingPosts, userInfoCache]
+    [navigation, userInfoCache]
   );
 
   // 处理 Banner 点击

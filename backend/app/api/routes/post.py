@@ -2,10 +2,11 @@
 帖子路由
 """
 
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query
 from app.schemas.post import CreatePostRequest, UpdatePostRequest, PostStatus
 from app.services.post_service import post_service
+from app.services.feed_service import feed_service
 from app.services.cache_service import cache_service, CacheService
 from app.api.deps import get_current_user_id, get_current_user_optional
 from app.core.response import success
@@ -54,9 +55,54 @@ async def get_recommend_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
-    """获取推荐帖子（规则引擎：50%核心池/30%发现池/20%随机池，冷启动按互动量）"""
+    """获取推荐帖子（旧版，保持兼容）"""
     result = post_service.get_recommend_posts(current_user_id, limit=limit)
     return success([p.model_dump() for p in result])
+
+
+@router.get("/feed")
+async def get_feed(
+    limit: int = Query(30, ge=1, le=100, description="每页帖子数量"),
+    exclude_ids: Optional[str] = Query(None, description="已曝光帖子ID，逗号分隔（负数ID表示已看过的秀场卡）"),
+    boost_brand_id: Optional[int] = Query(None, description="会话级品牌提权ID"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """
+    Feed v2: HN-style scoring + show archive interleaving.
+    Pagination is cursor-free: dedup is handled entirely via exclude_ids.
+    """
+    parsed_exclude: Optional[List[int]] = None
+    if exclude_ids:
+        try:
+            parsed_exclude = [int(x.strip()) for x in exclude_ids.split(",") if x.strip()]
+        except ValueError:
+            parsed_exclude = None
+
+    raw = feed_service.get_feed(
+        current_user_id=current_user_id,
+        limit=limit,
+        exclude_ids=parsed_exclude,
+        boost_brand_id=boost_brand_id,
+    )
+
+    # Batch-enrich all posts (username, avatar, interaction states) in 5 queries total
+    all_posts = [e["data"] for e in raw["items"] if e["type"] == "post"]
+    feed_service.batch_enrich_posts(all_posts, current_user_id)
+
+    items = []
+    for entry in raw["items"]:
+        if entry["type"] == "post":
+            items.append({
+                "type": "post",
+                "data": feed_service.format_post(entry["data"], current_user_id),
+            })
+        else:
+            items.append({
+                "type": "show",
+                "data": feed_service.format_show_card(entry["data"]),
+            })
+
+    return success({"items": items})
 
 
 @router.get("/following")

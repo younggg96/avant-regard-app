@@ -948,6 +948,54 @@ export async function getRecommendPosts(limit: number = 50): Promise<Post[]> {
   });
 }
 
+// ==================== Feed v2 (推荐算法增强) ====================
+
+export interface FeedShowCard {
+  id: string | number;
+  brandName: string;
+  season: string;
+  year?: number;
+  coverImage?: string;
+  category?: string;
+  title?: string;
+}
+
+export interface FeedItem {
+  type: "post" | "show";
+  data: Post | FeedShowCard;
+}
+
+export interface FeedResponse {
+  items: FeedItem[];
+}
+
+export interface GetFeedParams {
+  limit?: number;
+  excludeIds?: number[];
+  boostBrandId?: number | null;
+}
+
+/**
+ * Feed v2: HN-style scored feed with show archive interleaving.
+ * Pagination is cursor-free — dedup is driven entirely by exclude_ids.
+ * Negative IDs in excludeIds encode already-seen show card IDs.
+ * GET /api/posts/feed
+ */
+export async function getFeed(params: GetFeedParams = {}): Promise<FeedResponse> {
+  const { limit = 30, excludeIds, boostBrandId } = params;
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (excludeIds && excludeIds.length > 0) {
+    query.set("exclude_ids", excludeIds.join(","));
+  }
+  if (boostBrandId != null) {
+    query.set("boost_brand_id", String(boostBrandId));
+  }
+  return request<FeedResponse>(`/api/posts/feed?${query.toString()}`, {
+    method: "GET",
+  });
+}
+
 /**
  * 获取关注用户的帖子
  * GET /api/posts/following
@@ -1002,6 +1050,8 @@ export const postService = {
   // 推荐与关注
   getRecommendPosts,
   getFollowingPosts,
+  // Feed v2
+  getFeed,
 };
 
 export default postService;

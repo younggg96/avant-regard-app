@@ -71,6 +71,19 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.container}
       >
+        <Pressable style={styles.item} onPress={handleCsPress}>
+          <Box style={styles.csRing}>
+            <ExpoImage
+              source={APP_LOGO}
+              style={styles.csAvatar}
+              contentFit="cover"
+            />
+          </Box>
+          <Text style={styles.name} numberOfLines={1}>
+            客服
+          </Text>
+        </Pressable>
+
         {recent.map((c) => {
           const other = c.otherUser;
           return (
@@ -92,19 +105,6 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
             </Pressable>
           );
         })}
-
-        <Pressable style={styles.item} onPress={handleCsPress}>
-          <Box style={styles.csRing}>
-            <ExpoImage
-              source={APP_LOGO}
-              style={styles.csAvatar}
-              contentFit="cover"
-            />
-          </Box>
-          <Text style={styles.name} numberOfLines={1}>
-            客服
-          </Text>
-        </Pressable>
 
         <Pressable style={styles.item} onPress={handleAddPress}>
           <Box style={styles.addRing}>

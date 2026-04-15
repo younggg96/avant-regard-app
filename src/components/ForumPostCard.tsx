@@ -18,12 +18,12 @@ interface ForumPostCardProps {
  * 论坛帖子卡片 - 横向排版
  * 类似于传统论坛的帖子列表样式
  */
-const ForumPostCard: React.FC<ForumPostCardProps> = ({
+const ForumPostCardInner = ({
   post,
   onPress,
   onAuthorPress,
   onLike,
-}) => {
+}: ForumPostCardProps) => {
   // 安全检查
   if (!post || !post.id || !post.author) {
     return null;
@@ -255,6 +255,9 @@ const ForumPostCard: React.FC<ForumPostCardProps> = ({
     </TouchableOpacity>
   );
 };
+
+const ForumPostCard = React.memo(ForumPostCardInner);
+ForumPostCard.displayName = "ForumPostCard";
 
 const styles = StyleSheet.create({
   container: {
