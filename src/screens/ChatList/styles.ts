@@ -70,4 +70,17 @@ export const styles = StyleSheet.create({
     color: theme.colors.black,
     fontWeight: "500",
   },
+  titleBadge: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 4,
+    flexShrink: 0,
+  },
+  titleBadgeText: {
+    color: theme.colors.gray600,
+    fontSize: 9,
+    fontWeight: "500",
+  },
 });

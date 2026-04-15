@@ -44,13 +44,22 @@ export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowP
 
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
-            <Text
-              fontSize="$sm" fontWeight="$semibold" color="$black"
-              flex={1} mr="$sm" numberOfLines={1}
-            >
-              {displayName}
-            </Text>
-            <Text fontSize="$xs" color="$gray200">
+            <HStack alignItems="center" flex={1} mr="$sm">
+              <Text
+                fontSize="$sm" fontWeight="$semibold" color="$black"
+                numberOfLines={1} flexShrink={1}
+              >
+                {displayName}
+              </Text>
+              {!isCs && other?.primaryTitle ? (
+                <Box bg="$gray100" px="$xs" py={1} rounded="$xs" ml={4} flexShrink={0}>
+                  <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+                    {other.primaryTitle}
+                  </Text>
+                </Box>
+              ) : null}
+            </HStack>
+            <Text fontSize="$xs" color="$gray200" flexShrink={0}>
               {formatTime(item.lastMessageAt)}
             </Text>
           </HStack>

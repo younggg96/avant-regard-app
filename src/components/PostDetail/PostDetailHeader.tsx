@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, Pressable, HStack, VStack } from "../ui";
+import { Text, Pressable, HStack, VStack, Box } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
@@ -75,6 +75,13 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               >
                 {post.author.name}
               </Text>
+              {post.author.title ? (
+                <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                  <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+                    {post.author.title}
+                  </Text>
+                </Box>
+              ) : null}
             </HStack>
             <HStack space="xs" alignItems="center">
               <Text fontSize="$xs" color="$gray600">

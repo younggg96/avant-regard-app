@@ -58,6 +58,8 @@ const AUDIT_LABELS: Record<string, string> = {
   PENDING: "待审核",
   APPROVED: "已通过",
   REJECTED: "已拒绝",
+  AUTO_APPROVED: "自动通过",
+  AUTO_REJECTED: "自动驳回",
 };
 
 const AUDIT_COLORS: Record<string, string> = {

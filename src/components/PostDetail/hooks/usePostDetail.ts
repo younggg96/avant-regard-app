@@ -11,7 +11,7 @@ import { PostDetailRouteParams, PostStatus } from "../types";
  */
 export const convertApiPostToUiPost = async (
   apiPost: ApiPost,
-  userInfo?: { username?: string; avatarUrl?: string }
+  userInfo?: { username?: string; avatarUrl?: string; primaryTitle?: string }
 ): Promise<Post> => {
   // 获取关联秀场的完整信息
   let shows: Show[] = [];
@@ -53,6 +53,7 @@ export const convertApiPostToUiPost = async (
       avatar:
         userInfo?.avatarUrl ||
         `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+      title: userInfo?.primaryTitle,
     },
     content: {
       title: apiPost.title,
@@ -140,13 +141,14 @@ export const usePostDetail = ({
       }
 
       // 获取作者信息
-      let userInfo: { username?: string; avatarUrl?: string } | undefined;
+      let userInfo: { username?: string; avatarUrl?: string; primaryTitle?: string } | undefined;
       try {
         const authorInfo = await userInfoService.getUserInfo(apiPost.userId);
         if (authorInfo) {
           userInfo = {
             username: authorInfo.username,
             avatarUrl: authorInfo.avatarUrl,
+            primaryTitle: authorInfo.primaryTitle,
           };
         }
       } catch {

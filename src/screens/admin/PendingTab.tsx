@@ -420,6 +420,9 @@ const PendingTab = () => {
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="checkmark-done-circle-outline" size={64} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>暂无待审核帖子</Text>
+            <Text style={{ ...theme.typography.caption, color: theme.colors.gray300, marginTop: 4, textAlign: "center" }}>
+              已启用自动审核：F级以上自动通过，F级自动驳回
+            </Text>
           </Box>
         ) : (
           <>

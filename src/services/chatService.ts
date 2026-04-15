@@ -20,6 +20,7 @@ export interface ConversationParticipant {
   userId: number;
   username: string;
   avatarUrl: string | null;
+  primaryTitle?: string | null;
 }
 
 export interface Conversation {

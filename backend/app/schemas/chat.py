@@ -45,6 +45,7 @@ class ConversationParticipant(BaseModel):
     userId: int
     username: str
     avatarUrl: Optional[str] = None
+    primaryTitle: Optional[str] = None
 
 
 class ConversationResponse(BaseModel):

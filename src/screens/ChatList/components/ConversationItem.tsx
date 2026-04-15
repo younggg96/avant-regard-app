@@ -33,9 +33,18 @@ export const ConversationItem = ({
 
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName} numberOfLines={1}>
-            {other?.username || "未知用户"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+            <Text style={[styles.conversationName, { flex: 0, flexShrink: 1 }]} numberOfLines={1}>
+              {other?.username || "未知用户"}
+            </Text>
+            {other?.primaryTitle ? (
+              <View style={styles.titleBadge}>
+                <Text style={styles.titleBadgeText} numberOfLines={1}>
+                  {other.primaryTitle}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.conversationTime}>
             {formatTime(conversation.lastMessageAt)}
           </Text>

@@ -1,12 +1,14 @@
 """
-帖子内容评级引擎
+帖子内容评级引擎（含自动审核）
 
 评级规则（字数统计 + 结构化标签 + 品牌关键词）：
-  A 级：300字+ 深度内容，奖励 30 元
-  B 级：50字+ 单品介绍，奖励 15 元
-  C 级：日常分享，奖励 5 元
-  D 级：无关联，最低优先级
-  F 级：违规自动驳回（与敏感内容过滤共用检测逻辑）
+  A 级：300字+ 深度内容，奖励 30 元  → 自动通过
+  B 级：50字+ 单品介绍，奖励 15 元  → 自动通过
+  C 级：日常分享，奖励 5 元          → 自动通过
+  D 级：无关联，最低优先级            → 自动通过
+  F 级：违规内容                      → 自动驳回
+
+帖子发布时自动评级，F 级以上（D/C/B/A）自动审核通过，无需人工干预。
 """
 
 import re
@@ -119,7 +121,7 @@ def grade_post_async(post_id: int):
 
 
 def _grade_and_persist(post_id: int):
-    """读取帖子、计算评级、写回 grade 字段；F 级自动驳回。"""
+    """读取帖子、计算评级、写回 grade 字段；F 级自动驳回，其余自动通过。"""
     try:
         from app.db.supabase import get_supabase
 
@@ -134,7 +136,7 @@ def _grade_and_persist(post_id: int):
 
 
 def _grade_row(db, row: dict):
-    """对单行帖子数据执行评级并写回数据库。"""
+    """对单行帖子数据执行评级、自动审核并写回数据库。"""
     grade = grade_post(
         post_type=(row.get("post_type") or "").strip(),
         content_text=row.get("content_text", ""),
@@ -146,8 +148,21 @@ def _grade_row(db, row: dict):
     )
 
     update_data = {"grade": grade.value}
+
     if grade == PostGrade.F:
         update_data["audit_status"] = "REJECTED"
+    else:
+        was_pending = row.get("audit_status") != "APPROVED"
+        update_data["audit_status"] = "APPROVED"
+
+        if was_pending and row.get("community_id"):
+            try:
+                db.rpc(
+                    "increment_community_post_count",
+                    {"community_id_param": row["community_id"]},
+                ).execute()
+            except Exception:
+                pass
 
     db.table("posts").update(update_data).eq("id", row["id"]).execute()
 

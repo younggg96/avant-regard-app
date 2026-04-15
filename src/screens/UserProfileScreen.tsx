@@ -1076,7 +1076,14 @@ const UserProfileScreen = () => {
           </View>
 
           <View style={styles.userNameSection}>
-            <RNText style={styles.userName}>{userInfo?.username || username || "用户"}</RNText>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <RNText style={styles.userName}>{userInfo?.username || username || "用户"}</RNText>
+              {userInfo?.primaryTitle ? (
+                <View style={styles.primaryTitleBadge}>
+                  <RNText style={styles.primaryTitleText}>{userInfo.primaryTitle}</RNText>
+                </View>
+              ) : null}
+            </View>
             <RNText style={styles.bio} numberOfLines={2}>{userInfo?.bio || "暂无简介"}</RNText>
           </View>
 
@@ -1610,6 +1617,17 @@ const styles = StyleSheet.create({
   },
   postsContainer: {
     paddingBottom: theme.spacing.xl,
+  },
+  primaryTitleBadge: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  primaryTitleText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: theme.colors.gray600,
   },
 });
 

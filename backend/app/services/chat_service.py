@@ -165,6 +165,7 @@ class ChatService:
                     userId=uid,
                     username=brief["username"],
                     avatarUrl=brief["avatar_url"],
+                    primaryTitle=brief.get("primary_title"),
                 )
                 participants.append(participant)
                 if uid != user_id:
