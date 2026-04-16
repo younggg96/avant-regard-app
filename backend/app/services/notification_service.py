@@ -145,9 +145,33 @@ class NotificationService:
 
         # 发送 Push Notification
         if send_push:
-            self._send_push_notification(user_id, title, message, action_data)
+            push_data = self._build_push_payload(notification_type, action_data)
+            self._send_push_notification(user_id, title, message, push_data)
 
         return notification
+
+    def _build_push_payload(
+        self,
+        notification_type: NotificationType,
+        action_data: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        构造推送通知的 data 负载。
+        客户端（pushNotificationService.NotificationData）期望 camelCase，
+        且需要 `type` 才能在点击时正确跳转。
+        """
+        ad = action_data or {}
+        return {
+            "type": notification_type.value.lower(),
+            "userId": ad.get("user_id"),
+            "postId": ad.get("post_id"),
+            "commentId": ad.get("comment_id"),
+            "collectionId": ad.get("collection_id"),
+            "actorName": ad.get("actor_name"),
+            "navigateTo": ad.get("navigateTo"),
+            "navigateParams": ad.get("navigateParams"),
+            "externalUrl": ad.get("externalUrl"),
+        }
 
     def _send_push_notification(
         self,
@@ -292,6 +316,38 @@ class NotificationService:
             action_data=action_data,
         )
 
+    def notify_comment_liked(
+        self,
+        comment_owner_id: int,
+        liker_id: int,
+        liker_name: str,
+        post_id: int,
+        comment_id: int,
+        comment_content: str,
+        liker_avatar: Optional[str] = None,
+        post_image: Optional[str] = None,
+    ):
+        """评论被点赞通知"""
+        if comment_owner_id == liker_id:
+            return  # 不给自己发通知
+
+        action_data = {
+            "user_id": liker_id,
+            "post_id": post_id,
+            "comment_id": comment_id,
+            "actor_name": liker_name,
+            "actor_avatar": liker_avatar,
+            "post_image": post_image,
+        }
+
+        self.create_notification(
+            user_id=comment_owner_id,
+            notification_type=NotificationType.LIKE,
+            title=f"{liker_name} 赞了你的评论",
+            message=comment_content[:50] + ("..." if len(comment_content) > 50 else ""),
+            action_data=action_data,
+        )
+
     def notify_comment_replied(
         self,
         comment_owner_id: int,
@@ -393,8 +449,11 @@ class NotificationService:
             print(f"Failed to batch insert notifications: {e}")
             fail_count = total_users
 
-        # 批量发送 Push 通知
-        self._send_broadcast_push_notification(title, message, action_data)
+        # 批量发送 Push 通知（payload 保持与单播一致，便于前端点击跳转）
+        broadcast_push_data = self._build_push_payload(
+            NotificationType.SYSTEM, action_data
+        )
+        self._send_broadcast_push_notification(title, message, broadcast_push_data)
 
         return {
             "success_count": success_count,

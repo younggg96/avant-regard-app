@@ -247,9 +247,58 @@ class CommentService:
             self.db.table("post_comments").update({
                 "like_count": current + 1
             }).eq("id", comment_id).execute()
+
+            # 新点赞时发送通知（重复点赞在上面的 existing 分支已提前返回，不会重复发）
+            self._send_comment_like_notification(comment_id, user_id)
+
             return True
         except:
             return False
+
+    def _send_comment_like_notification(self, comment_id: int, liker_id: int):
+        """发送评论点赞通知（给评论作者）"""
+        try:
+            comment_result = (
+                self.db.table("post_comments")
+                .select("user_id, post_id, content")
+                .eq("id", comment_id)
+                .execute()
+            )
+            if not comment_result.data:
+                return
+
+            comment = comment_result.data[0]
+            comment_owner_id = comment["user_id"]
+            post_id = comment["post_id"]
+
+            if comment_owner_id == liker_id:
+                return  # 不给自己发通知
+
+            liker_info = self._get_user_info(liker_id)
+
+            post_result = (
+                self.db.table("posts")
+                .select("image_urls")
+                .eq("id", post_id)
+                .execute()
+            )
+            post_image = None
+            if post_result.data:
+                image_urls = post_result.data[0].get("image_urls") or []
+                post_image = image_urls[0] if image_urls else None
+
+            notification_service.notify_comment_liked(
+                comment_owner_id=comment_owner_id,
+                liker_id=liker_id,
+                liker_name=liker_info["username"] or "用户",
+                post_id=post_id,
+                comment_id=comment_id,
+                comment_content=comment.get("content") or "",
+                liker_avatar=liker_info["avatar_url"],
+                post_image=post_image,
+            )
+        except Exception as e:
+            print(f"Failed to send comment like notification: {e}")
 
     def unlike_comment(self, comment_id: int, user_id: int) -> bool:
         """取消点赞评论（幂等：未点赞时直接返回成功）"""

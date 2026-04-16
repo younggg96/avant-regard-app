@@ -2,10 +2,14 @@
 认证路由 - 使用 Supabase Auth
 """
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 from app.services.auth_service import auth_service
+from app.services.auth_report_service import (
+    auth_report_service,
+    AuthReportRateLimitError,
+)
 from app.core.response import success
 
 logger = logging.getLogger(__name__)
@@ -283,3 +287,56 @@ async def logout():
     """登出"""
     auth_service.sign_out()
     return success(message="登出成功")
+
+
+# ==================== 登录注册问题反馈 ====================
+
+class AuthIssueReportRequest(BaseModel):
+    """登录/注册问题反馈请求（无需登录）"""
+    issueType: str = Field(
+        ...,
+        description="OTP_NOT_RECEIVED | REGISTER_FAILED | LOGIN_FAILED | OTHER",
+    )
+    contactType: str = Field(..., description="PHONE | EMAIL | OTHER")
+    contactValue: str = Field(
+        ..., min_length=1, max_length=200, description="可回访的手机号或邮箱"
+    )
+    description: Optional[str] = Field("", max_length=1000, description="问题描述")
+    appVersion: Optional[str] = Field("", max_length=32)
+    platform: Optional[str] = Field("", max_length=16, description="ios | android | web")
+    deviceInfo: Optional[str] = Field("", max_length=500)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:64]
+    client = request.client
+    return client.host if client else ""
+
+
+@router.post("/report-issue")
+async def report_auth_issue(payload: AuthIssueReportRequest, request: Request):
+    """
+    提交登录/注册问题反馈（公开端点，无需登录）。
+    工作人员会通过 contactValue 回访用户。
+    """
+    try:
+        report = auth_report_service.submit_report(
+            issue_type=payload.issueType,
+            contact_type=payload.contactType,
+            contact_value=payload.contactValue,
+            description=payload.description or "",
+            app_version=payload.appVersion or "",
+            platform=payload.platform or "",
+            device_info=payload.deviceInfo or "",
+            client_ip=_client_ip(request),
+        )
+        return success(report, message="反馈已提交，我们会尽快与您联系")
+    except AuthReportRateLimitError as e:
+        raise HTTPException(status_code=429, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("report_auth_issue failed")
+        raise HTTPException(status_code=500, detail="提交失败，请稍后重试")

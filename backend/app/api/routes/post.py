@@ -64,12 +64,17 @@ async def get_recommend_posts(
 async def get_feed(
     limit: int = Query(30, ge=1, le=100, description="每页帖子数量"),
     exclude_ids: Optional[str] = Query(None, description="已曝光帖子ID，逗号分隔（负数ID表示已看过的秀场卡）"),
-    boost_brand_id: Optional[int] = Query(None, description="会话级品牌提权ID"),
+    boost_brand_id: Optional[int] = Query(None, description="会话级品牌提权ID（发现惯性）"),
+    skip: int = Query(0, ge=0, description="已消耗的帖子数量（驱动三段式调度）"),
+    force_fresh: bool = Query(False, description="下拉刷新场景下绕过 Stage 1 缓存池"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """
-    Feed v2: HN-style scoring + show archive interleaving.
-    Pagination is cursor-free: dedup is handled entirely via exclude_ids.
+    Feed v2.1: three-stage slot dispatch.
+      skip == 0              → Stage 1 (fresh) + Stage 2 (scored, boosts, show interleave)
+      skip >= STAGE2_END     → Stage 3 (long-tail, cursor pagination)
+    Dedup is carried entirely by `exclude_ids`.
+    `force_fresh=true` (pull-to-refresh) bypasses Stage 1's 30s cache pool.
     """
     parsed_exclude: Optional[List[int]] = None
     if exclude_ids:
@@ -83,6 +88,8 @@ async def get_feed(
         limit=limit,
         exclude_ids=parsed_exclude,
         boost_brand_id=boost_brand_id,
+        skip=skip,
+        force_fresh=force_fresh,
     )
 
     # Batch-enrich all posts (username, avatar, interaction states) in 5 queries total

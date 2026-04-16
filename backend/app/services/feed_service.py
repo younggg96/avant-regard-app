@@ -1,21 +1,55 @@
 """
-Feed 推荐服务 — Mixer 层
+Feed 推荐服务 — 三段式槽位分发 (3-Stage Mixer)
 
-Responsibilities:
-  1. Call get_feed_scored RPC (scoring + dedup + brand boost in SQL)
-  2. Fetch show archive cards for interleaving
-  3. Mix: insert 1 show card every 8 regular posts (Rule 4)
-  4. Handle new-user curated feed (Rule 3)
-  5. Batch-fetch user info + interaction states (avoid N+1)
+Pipeline (driven by the client-supplied `skip` cursor):
+
+  Stage 1 — 首屏保鲜区 (slots 1..STAGE1_SIZE)
+    • Pure freshness: ORDER BY created_at DESC. No personalization.
+    • Lightly cached (shared across users, filtered client-side by block / exclude).
+
+  Stage 2 — 黄金推荐区 (slots STAGE1_SIZE+1 .. STAGE1_SIZE+STAGE2_SIZE)
+    • Hacker-News-style scoring via `get_feed_scored` RPC
+      Score = (likes + 2*saves + 3*wants) / (age_hours + 2)^1.2
+      × 2  if posted within 24 h
+      × 10 if post matches `boost_brand_id` (session-only brand affinity)
+    • Recall is hard-bounded to the last 30 days (no full-table scan).
+    • Show Archive card inserted every SHOW_INSERT_INTERVAL posts (Rule 4).
+    • New users: this slot is entirely replaced by PM-curated posts (Rule 3).
+
+  Stage 3 — 长尾兜底区 (slots STAGE1_SIZE+STAGE2_SIZE+1 ..)
+    • Cursor-paginated via `get_feed_longtail` RPC.
+    • Plain chronological ORDER BY created_at DESC, 90-day window.
+    • No show interleaving, no brand boost — releases compute.
+
+Global rules:
+  • Rule 1 (dedup)       : caller-supplied `exclude_ids` is passed to every RPC;
+                           stage-1 IDs are appended before calling stage-2 so the
+                           first-page response never repeats a post.
+  • Cache invalidation   : stage-1 cache is invalidated whenever a post is written
+                           (see `cache_service.invalidate_posts`, already wired in
+                           PostService).
 """
 
 from typing import Optional, List, Set
 
 from app.db.supabase import get_supabase
 from app.schemas.post import PostGrade, GRADE_REWARD_MAP
+from app.services.cache_service import cache_service, CacheService
 
+# -- Slot layout ---------------------------------------------------------------
+STAGE1_SIZE = 6           # Fresh (slots 1..6)
+STAGE2_SIZE = 20          # Scored (slots 7..27)
+STAGE2_END = STAGE1_SIZE + STAGE2_SIZE  # 26 — boundary at which we switch to stage 3
+
+# -- Mixer knobs ---------------------------------------------------------------
 SHOW_INSERT_INTERVAL = 8
 NEW_USER_POST_THRESHOLD = 20
+
+# -- Stage 1 cache -------------------------------------------------------------
+# We over-fetch so per-user dedup / block filtering still yields STAGE1_SIZE.
+STAGE1_FETCH_MULTIPLIER = 5
+STAGE1_CACHE_KEY = "feed:stage1:fresh"
+STAGE1_CACHE_TTL = 30  # seconds — short enough to feel fresh, long enough to deflect hot-spot load
 
 
 class FeedService:
@@ -32,52 +66,203 @@ class FeedService:
         limit: int = 30,
         exclude_ids: Optional[List[int]] = None,
         boost_brand_id: Optional[int] = None,
+        skip: int = 0,
+        force_fresh: bool = False,
     ) -> dict:
         """
-        Returns mixed feed: { items: [...] }
-        Each item is either { type: "post", data: dict }
-                        or  { type: "show", data: dict }
+        Return mixed feed items: { items: [{type, data}] }
+
+        `skip` is the number of *post* items the client has already consumed.
+        It is the sole signal we use to pick a stage:
+          skip == 0             → stage 1 + stage 2 (first page)
+          skip >= STAGE2_END    → stage 3 (long-tail loadMore)
+          0 < skip < STAGE2_END → treated as stage-2 continuation (rare; e.g. a
+                                  prior partial page). Same code path as stage 2.
+
+        `force_fresh` (set by pull-to-refresh) bypasses — and repopulates — the
+        Stage 1 cache pool so the client always sees the absolute latest posts.
         """
         blocked_ids = self._get_blocked_user_ids(current_user_id)
         seen_show_ids = self._extract_seen_show_ids(exclude_ids)
+        exclude_set = list(exclude_ids or [])
 
-        # Rule 3: new-user curated feed
-        if self._is_new_user(current_user_id, exclude_ids):
-            curated = self._get_curated_posts(
-                current_user_id, blocked_ids, limit, exclude_ids
+        if skip >= STAGE2_END:
+            return self._serve_stage3(
+                limit=limit,
+                exclude_ids=exclude_set,
+                blocked_ids=blocked_ids,
             )
-            if curated:
-                shows = self._fetch_show_cards(limit=3, exclude_show_ids=seen_show_ids)
-                mixed = self._mix_posts_and_shows(curated, shows)
-                return {"items": mixed}
 
-        # Main path: call scored RPC (no OFFSET — dedup via exclude_ids only)
-        posts = self._fetch_scored_posts(
-            current_user_id, limit, exclude_ids, boost_brand_id, blocked_ids
+        return self._serve_first_page(
+            current_user_id=current_user_id,
+            limit=limit,
+            exclude_ids=exclude_set,
+            boost_brand_id=boost_brand_id,
+            blocked_ids=blocked_ids,
+            seen_show_ids=seen_show_ids,
+            skip=skip,
+            force_fresh=force_fresh,
         )
 
-        show_count = max(1, len(posts) // SHOW_INSERT_INTERVAL)
-        shows = self._fetch_show_cards(limit=show_count, exclude_show_ids=seen_show_ids)
+    # ------------------------------------------------------------------
+    # Stage 1 + 2: first page
+    # ------------------------------------------------------------------
 
-        mixed = self._mix_posts_and_shows(posts, shows)
-        return {"items": mixed}
+    def _serve_first_page(
+        self,
+        current_user_id: Optional[int],
+        limit: int,
+        exclude_ids: List[int],
+        boost_brand_id: Optional[int],
+        blocked_ids: set,
+        seen_show_ids: Set[str],
+        skip: int,
+        force_fresh: bool = False,
+    ) -> dict:
+        # How many slots of stage 1 are still unfilled for this client?
+        stage1_needed = max(0, STAGE1_SIZE - skip)
+        stage2_needed = STAGE2_SIZE if skip <= STAGE1_SIZE else max(0, STAGE2_END - skip)
+        # Never exceed the caller's requested limit.
+        total_cap = min(limit, stage1_needed + stage2_needed)
+        if total_cap <= 0:
+            return {"items": []}
+
+        # ---- Stage 1: freshness -------------------------------------------------
+        stage1_posts: List[dict] = []
+        if stage1_needed > 0:
+            stage1_posts = self._fetch_fresh_posts(
+                needed=stage1_needed,
+                exclude_ids=exclude_ids,
+                blocked_ids=blocked_ids,
+                force_fresh=force_fresh,
+            )
+
+        # Rule 1 extension: stage-2 must not repeat stage-1.
+        exclude_for_stage2 = exclude_ids + [p["id"] for p in stage1_posts]
+
+        # ---- Stage 2: scored (or curated for new users) ------------------------
+        stage2_posts: List[dict] = []
+        remaining = total_cap - len(stage1_posts)
+        if remaining > 0 and stage2_needed > 0:
+            stage2_limit = min(remaining, stage2_needed)
+            if self._is_new_user(current_user_id, exclude_ids):
+                stage2_posts = self._get_curated_posts(
+                    current_user_id=current_user_id,
+                    blocked_ids=blocked_ids,
+                    limit=stage2_limit,
+                    exclude_ids=exclude_for_stage2,
+                )
+            if not stage2_posts:
+                stage2_posts = self._fetch_scored_posts(
+                    user_id=current_user_id,
+                    limit=stage2_limit,
+                    exclude_ids=exclude_for_stage2,
+                    boost_brand_id=boost_brand_id,
+                    blocked_ids=blocked_ids,
+                )
+
+        # ---- Mix ----------------------------------------------------------------
+        # Shows only interleave inside stage-2 (Rule 4 — stage-1 stays pristine).
+        show_count = max(0, len(stage2_posts) // SHOW_INSERT_INTERVAL)
+        shows = (
+            self._fetch_show_cards(limit=show_count, exclude_show_ids=seen_show_ids)
+            if show_count > 0
+            else []
+        )
+
+        items: List[dict] = [{"type": "post", "data": p} for p in stage1_posts]
+        items.extend(self._mix_posts_and_shows(stage2_posts, shows))
+        return {"items": items}
+
+    # ------------------------------------------------------------------
+    # Stage 3: long-tail
+    # ------------------------------------------------------------------
+
+    def _serve_stage3(
+        self,
+        limit: int,
+        exclude_ids: List[int],
+        blocked_ids: set,
+    ) -> dict:
+        params = {
+            "p_exclude_ids": exclude_ids,
+            "p_blocked_ids": list(blocked_ids),
+            "p_limit": limit,
+        }
+        result = self.db.rpc("get_feed_longtail", params).execute()
+        posts = result.data or []
+        return {"items": [{"type": "post", "data": p} for p in posts]}
 
     # ------------------------------------------------------------------
     # Data fetching
     # ------------------------------------------------------------------
 
+    def _fetch_fresh_posts(
+        self,
+        needed: int,
+        exclude_ids: List[int],
+        blocked_ids: set,
+        force_fresh: bool = False,
+    ) -> List[dict]:
+        """
+        Stage 1: the N freshest posts. Lightly cached across users.
+        The cache holds a pool of ~STAGE1_FETCH_MULTIPLIER × STAGE1_SIZE recent
+        posts so per-user exclusion still leaves enough rows.
+
+        When `force_fresh` is True (pull-to-refresh), the cache is bypassed and
+        the pool is re-populated from the DB so users always see the absolute
+        latest posts on refresh.
+        """
+        pool = self._load_fresh_pool(force_fresh=force_fresh)
+        exclude_set = set(exclude_ids)
+        blocked_set = set(blocked_ids) if blocked_ids else set()
+        out: List[dict] = []
+        for row in pool:
+            if row["id"] in exclude_set:
+                continue
+            if blocked_set and row["user_id"] in blocked_set:
+                continue
+            out.append(row)
+            if len(out) >= needed:
+                break
+        return out
+
+    def _load_fresh_pool(self, force_fresh: bool = False) -> List[dict]:
+        if not force_fresh:
+            cached = cache_service.get(STAGE1_CACHE_KEY)
+            if cached is not None:
+                return cached
+
+        fetch_limit = STAGE1_SIZE * STAGE1_FETCH_MULTIPLIER
+        result = (
+            self.db.table("posts")
+            .select("*")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .is_("community_id", "null")
+            .in_("grade", ["A", "B", "C"])
+            .order("created_at", desc=True)
+            .limit(fetch_limit)
+            .execute()
+        )
+        pool = result.data or []
+        # Always write back — this also refreshes TTL for subsequent concurrent
+        # readers when we were invoked via force_fresh.
+        cache_service.set(STAGE1_CACHE_KEY, pool, STAGE1_CACHE_TTL)
+        return pool
+
     def _fetch_scored_posts(
         self,
         user_id: Optional[int],
         limit: int,
-        exclude_ids: Optional[List[int]],
+        exclude_ids: List[int],
         boost_brand_id: Optional[int],
         blocked_ids: set,
     ) -> List[dict]:
-        """Call the get_feed_scored RPC. Blocked filtering is now in SQL."""
+        """Stage 2: call get_feed_scored RPC (HN decay + 24h + brand boost)."""
         params = {
             "p_user_id": user_id,
-            "p_exclude_ids": exclude_ids or [],
+            "p_exclude_ids": exclude_ids,
             "p_boost_brand_id": boost_brand_id,
             "p_blocked_ids": list(blocked_ids),
             "p_limit": limit,
@@ -89,6 +274,8 @@ class FeedService:
         self, limit: int = 5, exclude_show_ids: Optional[Set[str]] = None
     ) -> List[dict]:
         """Fetch recent approved shows, skipping already-seen ones."""
+        if limit <= 0:
+            return []
         fetch_limit = limit + len(exclude_show_ids or set())
         result = (
             self.db.table("shows")
@@ -114,19 +301,11 @@ class FeedService:
         """Insert 1 show card every SHOW_INSERT_INTERVAL posts."""
         mixed: List[dict] = []
         show_idx = 0
-        post_count = 0
-
-        for post in posts:
+        for i, post in enumerate(posts, start=1):
             mixed.append({"type": "post", "data": post})
-            post_count += 1
-
-            if (
-                post_count % SHOW_INSERT_INTERVAL == 0
-                and show_idx < len(shows)
-            ):
+            if i % SHOW_INSERT_INTERVAL == 0 and show_idx < len(shows):
                 mixed.append({"type": "show", "data": shows[show_idx]})
                 show_idx += 1
-
         return mixed
 
     # ------------------------------------------------------------------
@@ -149,8 +328,8 @@ class FeedService:
         exclude_ids: Optional[List[int]] = None,
     ) -> List[dict]:
         """
-        Rule 3: PM-curated posts for new users.
-        Falls back to top-engagement posts if curated list is empty.
+        Rule 3: PM-curated "入门必看" posts for new users.
+        Falls back to top-engagement posts if the curated list is empty.
         Respects exclude_ids to avoid repeats on refresh.
         """
         curated_ids = self._load_curated_post_ids()
@@ -380,10 +559,8 @@ class FeedService:
     @staticmethod
     def _extract_seen_show_ids(exclude_ids: Optional[List[int]]) -> Set[str]:
         """
-        Derive a set of show IDs that were likely already shown.
-        We encode show card IDs as negative numbers in exclude_ids
-        so the client can signal "I already saw show card X".
-        Negative IDs → show IDs (absolute value, as string).
+        Negative IDs in `exclude_ids` encode already-seen show card IDs
+        (the client flips sign so we can carry both in a single array).
         """
         if not exclude_ids:
             return set()
