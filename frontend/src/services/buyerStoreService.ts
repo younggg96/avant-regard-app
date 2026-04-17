@@ -8,6 +8,13 @@ import { config } from "../config/env";
 
 const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
+/**
+ * 个人「贡献」列表一次性拉取的最大条数。
+ * 后端 submissions 接口已取消硬上限，这里用足够大的值覆盖绝大多数用户，
+ * 避免贡献 > 100 时被旧的 pageSize=100 截断。
+ */
+export const CONTRIBUTION_PAGE_SIZE = 1000;
+
 // API 响应包装类型
 interface ApiResponse<T> {
   code: number;

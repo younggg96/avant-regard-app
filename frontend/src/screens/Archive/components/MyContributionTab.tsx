@@ -25,6 +25,7 @@ import {
   buyerStoreService,
   UserSubmittedStore,
   deleteMyStoreSubmission,
+  CONTRIBUTION_PAGE_SIZE,
 } from "../../../services/buyerStoreService";
 import { useAuthStore } from "../../../store/authStore";
 import ContributionCard, { CARD_PADDING } from "./ContributionCard";
@@ -47,7 +48,7 @@ const MyContributionTab: React.FC = () => {
     const [showsResult, brandsResult, storesResult] = await Promise.all([
       showService.getMyShows(),
       brandService.getMySubmissions(),
-      buyerStoreService.getMySubmissions(1, 100),
+      buyerStoreService.getMySubmissions(1, CONTRIBUTION_PAGE_SIZE),
     ]);
     setMyShows(showsResult);
     setMyBrands(brandsResult);

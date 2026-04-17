@@ -1,6 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { FadeImage } from "@/components/FadeImage";
+import { VideoCover, VideoBadge } from "@/components/VideoCover";
+import { isVideoUrl } from "@/lib/media";
 import type { Post } from "@/lib/types";
 import { formatCount, postTypeLabel } from "@/lib/format";
 
@@ -12,6 +13,7 @@ interface PostCardProps {
 export function PostCard({ post, priority = false }: PostCardProps) {
   const cover = post.imageUrls?.[0];
   const typeLabel = postTypeLabel(post.postType);
+  const coverIsVideo = isVideoUrl(cover);
 
   return (
     <Link
@@ -23,15 +25,23 @@ export function PostCard({ post, priority = false }: PostCardProps) {
       {/* Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#f0f0f0] dark:bg-[#252525]">
         {cover ? (
-          <FadeImage
-            src={cover}
-            alt={post.title || typeLabel}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 25vw, 280px"
-            quality={85}
-            className="object-cover transition-transform duration-700 ease-out will-change-transform group-hover:scale-[1.05]"
-            priority={priority}
-          />
+          coverIsVideo ? (
+            <VideoCover
+              src={cover}
+              label={post.title || typeLabel}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out will-change-transform group-hover:scale-[1.05]"
+            />
+          ) : (
+            <FadeImage
+              src={cover}
+              alt={post.title || typeLabel}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 25vw, 280px"
+              quality={85}
+              className="object-cover transition-transform duration-700 ease-out will-change-transform group-hover:scale-[1.05]"
+              priority={priority}
+            />
+          )
         ) : (
           <div className="flex h-full items-center justify-center font-label text-[10px] uppercase tracking-[0.2em] text-black/20 dark:text-white/20">
             No image
@@ -46,6 +56,9 @@ export function PostCard({ post, priority = false }: PostCardProps) {
                          bg-white/88 text-black/55 dark:bg-black/60 dark:text-white/60">
           {typeLabel}
         </span>
+
+        {/* Video indicator (only when cover is a video) */}
+        {coverIsVideo && <VideoBadge />}
 
         {/* Hover info overlay */}
         <div className="absolute inset-x-0 bottom-0 translate-y-1.5 p-3.5 opacity-0 transition-all duration-400 ease-out group-hover:translate-y-0 group-hover:opacity-100">

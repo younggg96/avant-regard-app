@@ -278,10 +278,10 @@ async def submit_store(
 @router.get("/submissions/my")
 async def get_my_submissions(
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=100),
+    pageSize: int = Query(20, ge=1),
     current_user_id: int = Depends(get_current_user),
 ):
-    """获取我提交的买手店列表"""
+    """获取我提交的买手店列表（pageSize 不设硬上限，支持个人贡献全量）"""
     stores, total = buyer_store_community_service.get_user_submissions(
         current_user_id, page, pageSize
     )
@@ -311,9 +311,9 @@ async def delete_my_submission(
 async def get_user_submissions_public(
     target_user_id: int,
     page: int = Query(1, ge=1),
-    pageSize: int = Query(20, ge=1, le=100),
+    pageSize: int = Query(20, ge=1),
 ):
-    """获取指定用户已通过审核的买手店提交（公开接口）"""
+    """获取指定用户已通过审核的买手店提交（公开接口，pageSize 不设硬上限）"""
     stores, total = buyer_store_community_service.get_approved_user_submissions(
         target_user_id, page, pageSize
     )

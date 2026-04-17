@@ -32,10 +32,10 @@ export function Marquee({ items = DEFAULT_BRANDS, className = "" }: MarqueeProps
         {track.map((brand, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-5 px-5 font-sans text-[10px] uppercase tracking-[0.28em] text-ink/30"
+            className="inline-flex items-center gap-5 px-5 font-sans text-[10px] uppercase tracking-[0.28em] text-black/40 dark:text-white/45"
           >
             {brand}
-            <span className="inline-block h-[3px] w-[3px] rounded-full bg-ink/15" />
+            <span className="inline-block h-[3px] w-[3px] rounded-full bg-black/20 dark:bg-white/25" />
           </span>
         ))}
       </div>

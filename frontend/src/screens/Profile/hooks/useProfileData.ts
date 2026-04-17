@@ -24,6 +24,7 @@ import {
   buyerStoreService,
   UserSubmittedStore,
   UserStoreActivity,
+  CONTRIBUTION_PAGE_SIZE,
 } from "../../../services/buyerStoreService";
 import { TabType, TabData, initialTabState, ContribSubTab, StoreActivitySubTab } from "../types";
 import { Alert } from "../../../utils/Alert";
@@ -214,7 +215,7 @@ export function useProfileData() {
       const [showsRes, brandsRes, storesRes] = await Promise.all([
         showService.getMyShows(),
         brandService.getMySubmissions(),
-        buyerStoreService.getMySubmissions(1, 100),
+        buyerStoreService.getMySubmissions(1, CONTRIBUTION_PAGE_SIZE),
       ]);
       setMyShows(showsRes);
       setMyBrands(brandsRes);

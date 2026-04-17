@@ -1,5 +1,94 @@
 # Progress Log
 
+## 2026-04-17: 贡献榜 / 个人贡献 —— 取消两个隐性上限
+
+### Summary
+Archive 贡献榜两处上限被放开：
+1. Discover/Archive Leaderboard Tab 的总榜，从只显示 **Top 10** 放宽到 **Top 100**（前端请求参数调整，后端 `limit` 本身无硬上限）。
+2. 个人贡献 Tab 中「买手店」子页的 **pageSize=100 硬上限**被去掉，用户自己或他人贡献数 >100 时不再被截断。
+
+### Why
+- 榜单 Top 10 对活跃用户区分度太低，中腰部贡献者完全看不到自己；改成 Top 100 后榜单长度更接近实际激励场景。
+- 买手店列表之前唯一命中 `pageSize le=100` 约束的就是个人贡献视图，导致头部贡献者的 stores 子页存在「第 101 条之后消失」的隐性截断——是纯粹的 pagination cap 残留，不是业务意图。秀场与品牌链路本来就没有这一层限制，三条子页现在行为对齐。
+
+### Key Changes
+
+- `frontend/src/screens/Discover/components/ArchiveLeaderboard.tsx`
+  - `getContributionLeaderboard(10)` → `getContributionLeaderboard(100)`。组件外层已经包在 `LeaderboardTab.tsx` 的 `ScrollView` 里，100 条的垂直滚动体验不受影响，不需要改成 FlatList。
+- `backend/app/api/routes/buyer_store.py`
+  - `GET /submissions/my` 与 `GET /submissions/user/{target_user_id}` 的 `pageSize: int = Query(20, ge=1, le=100)` 去掉 `le=100`，仅保留 `ge=1`。其它 `submissions/pending`、`submissions/all` 等管理员接口不动——那些是后台分页，保持 le=100 是合理的。
+- `frontend/src/services/buyerStoreService.ts`
+  - 新增导出常量 `CONTRIBUTION_PAGE_SIZE = 1000`，集中表达「个人贡献一次性拉取」的语义。
+- `frontend/src/screens/UserProfileScreen.tsx`、`frontend/src/screens/Profile/hooks/useProfileData.ts`、`frontend/src/screens/Archive/components/MyContributionTab.tsx`
+  - 三处 `buyerStoreService.getMySubmissions(1, 100)` / `getSubmissionsByUser(userId, 1, 100)` 统一改用 `CONTRIBUTION_PAGE_SIZE`，消除 magic number 与重复（DRY）。
+
+### Dependencies Impacted
+
+- 后端同一文件里 `/submissions/pending`、`/submissions/all` 等管理员分页接口保留 `le=100`，未受波及。
+- `show_service.get_shows_by_user` / `get_approved_shows_by_user`、`brand_service.get_user_submissions` / `get_approved_user_submissions` 本来就无 `pageSize` 参数，只受 Supabase 客户端默认上限（1000 行）影响——在目前业务量级下不会触达，暂不动。
+
+### Verification
+
+- 读取三个前端调用点 + 服务常量 + 后端两个 route + Leaderboard 组件，`ReadLints` 无 lint 报错。
+- `grep "getMySubmissions(1, 100|getSubmissionsByUser.*, 100)"` 全仓无残留。
+
+---
+
+## 2026-04-17: Web — 支持帖子视频渲染（卡片封面 + 详情页播放器）
+
+### Summary
+后端把图片和视频混存在 `Post.imageUrls: string[]` 里（通过文件扩展名区分，与 App 端的 `isVideoUrl` 一致），Web 端之前完全没处理，遇到 `.mp4/.mov/...` URL 会被 `next/image` 当图片加载，控制台持续刷屏 `The requested resource isn't a valid image ... received video/quicktime`，封面直接空白。本次给 Web 加上视频识别与渲染：`PostCard` 的网格卡片在视频封面下改用 `<video>` 元素（hover 自动静音循环播放、右上角加 play 徽标），`/posts/[id]` 详情页按项分支，视频走带原生 controls 的 `VideoPlayer`；`isVideoUrl` 抽到共享的 `lib/media.ts`，扩展名集合与 `frontend/src/services/postService.ts` 同步。
+
+### Why
+dev server 的错误日志直接暴露了 bug：`https://.../videos/20260417/....mov` 被当图片请求 → Next.js Image Optimization 返回 `MIME type mismatch` → 封面渲染失败。用户本次明确提到 "PostCard 里面可能有视频" —— 确认后端早已存在 `/upload-video` 接口与 videos 桶，App 端也早已支持视频上传和展示（`isVideoUrl` + `VideoThumbnailView`），只有营销站 web 端漏了这条路径，属于跨端一致性缺口。
+
+### Key Changes
+
+- `web/src/lib/media.ts`（新增）
+  - `isVideoUrl(uri)`：扩展名集合 `mp4/mov/m4v/webm/avi`，与 `frontend/src/services/postService.ts#isVideoUrl` **完全镜像**（扩展名集合显式注释"任何一边增加格式都要同步另一边"，避免未来漂移）。
+  - `withPosterFragment(url)`：追加 `#t=0.1` 媒体片段，让浏览器在 `preload="metadata"` 下直接把首帧作为静止海报帧渲染——无需额外的缩略图资源，也无需运行时生成（App 端用的是 `expo-video-thumbnails`，Web 无等价库，借浏览器能力是最 KISS 的方案）。
+  - 函数实现对 `null/undefined` 和带 query/hash 的 URL 都做了防御。
+
+- `web/src/components/VideoCover.tsx`（新增，client 组件）
+  - `VideoCover`：网格卡片专用视频缩略图。`muted` + `loop` + `playsInline` + `preload="metadata"`，`onMouseEnter/Leave` 自控 `play/pause` 并在离开时 `currentTime = 0`。触屏设备保持静止首帧——与 App 端"缩略图 + 点开详情"的交互一致。
+  - 因为 PostCard 整张卡是一个 `<Link>`，直接用 video 元素自身的 mouse 事件就能覆盖卡片主视觉区域，**不需要**把 hover state 上提到 PostCard（PostCard 得以继续保持纯 server component，SSR 不打折）。
+  - `VideoBadge`：独立导出的小徽标（右上角圆形毛玻璃 + 白色 play 三角 SVG）。和 PostCard 的 `typeLabel`（左上角）错开位置避免视觉打架。
+
+- `web/src/components/VideoPlayer.tsx`（新增，client 组件）
+  - 详情页全尺寸播放器，**原生 controls**（无自定义 UI 层）—— a11y、键盘控制、全屏、画中画全部交给浏览器。
+  - `priority` 映射到 `preload="auto"`（只对帖子第一条媒体开启），非首条走 `preload="metadata"`——首帧出得来、但不预下载整段视频，对流量友好。
+
+- `web/src/components/PostCard.tsx`
+  - 引入 `isVideoUrl` 判断 `cover`，视频时渲染 `<VideoCover>`（`absolute inset-0 h-full w-full object-cover` 保持和 `FadeImage fill` 完全一致的布局表现），图片时维持原 `<FadeImage>` 分支。
+  - 视频封面再叠一层 `<VideoBadge>`，和原有的 `typeLabel` / 渐变遮罩 / hover overlay 共存。
+  - 删掉了未使用的 `import Image from "next/image"`（原本 import 了但组件内只用 FadeImage，顺手清理）。
+
+- `web/src/app/posts/[id]/page.tsx`
+  - `images.map` 内部加 `isVideoUrl(src) ? <VideoPlayer> : <FadeImage>` 分支，`priority={index === 0}` 规则对两种类型都生效。
+  - `generateMetadata` 里 `openGraph.images` 用 `find((u) => !isVideoUrl(u))` 取第一张**图片**作为分享卡封面—— OG/Twitter 卡只接受静态图，之前直接用 `imageUrls[0]` 遇到视频会让 Facebook/微信分享显示空白卡片。
+
+### Dependencies Impacted
+
+- `web/src/app/discover/page.tsx`、`web/src/app/users/[id]/page.tsx`、`web/src/app/page.tsx` —— 都是 `PostCard` 的消费者，props 形状未变（`post: Post`、`priority?: boolean`），**零改动**。
+- `next.config.js` —— `remotePatterns` 是给 `next/image` 用的，`<video>` 元素不经过 Image Optimization，直接 `GET` 源文件，不需要新增 allow-list。
+- Supabase `videos` 桶 —— 已在 `backend/app/services/file_service.py` 创建并且是 public 桶，CORS 默认允许 `<video>` 直接拉取。
+
+### Verification
+
+dev server (`npm run web:dev`, port 3100) 日志对比：
+
+- **fix 前**（第 152-175 行）：每次访问 `/discover` 或 `/posts/128` 都刷 2-3 条 `⨯ The requested resource isn't a valid image for .../.mov received video/quicktime`。
+- **fix 后**（第 183-184 行）：`GET /discover 200 in 915ms` + `GET /posts/128 200 in 533ms`，**零错误**。
+
+### Design Principles
+
+- **DRY**：`isVideoUrl` 的扩展名集合在 web 和 frontend 两侧通过显式注释约束同步（源头是后端 `ALLOWED_VIDEO_TYPES`）；如果未来后端放开新格式，这是明确的单点扩散路径。
+- **KISS**：没引入 `expo-video-thumbnails` 的 web 等价库（如 `video-thumbnails` / ffmpeg.wasm），仅用 `#t=0.1` 媒体片段让浏览器自己出首帧——零依赖、零打包体积影响。
+- **SOLID（SRP）**：`VideoCover`（网格 hover 自动播放）和 `VideoPlayer`（详情页原生 controls）是两个不同 use case，拆成两个组件而不是一个带 mode 参数的"万能组件"——避免将来其中一侧需求变化污染另一侧。
+- **Holistic**：不只改 PostCard，一并修了详情页渲染循环和 OG metadata 里的同源缺陷（两处都会 404/空白）；检查了 PostCard 的全部消费者确认 props 契约不变。
+
+---
+
 ## 2026-04-17: Release — iOS v1.3.0 (App Store 提交准备)
 
 ### Summary

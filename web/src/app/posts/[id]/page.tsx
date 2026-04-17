@@ -4,8 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DownloadCTAs } from "@/components/DownloadCTAs";
 import { FadeImage } from "@/components/FadeImage";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { ApiError, getPost } from "@/lib/api";
 import { formatCount, formatRelativeTime, postTypeLabel } from "@/lib/format";
+import { isVideoUrl } from "@/lib/media";
 
 export const revalidate = 60;
 
@@ -19,6 +21,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const description =
       post.contentText?.slice(0, 140) ||
       `${post.username} 分享的${postTypeLabel(post.postType)}内容。`;
+    const ogImage = post.imageUrls?.find((u) => !isVideoUrl(u));
     return {
       title: post.title || `${post.username} 的${postTypeLabel(post.postType)}`,
       description,
@@ -27,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         type: "article",
         title: post.title,
         description,
-        images: post.imageUrls?.[0] ? [{ url: post.imageUrls[0] }] : undefined,
+        images: ogImage ? [{ url: ogImage }] : undefined,
       },
     };
   } catch {
@@ -88,16 +91,25 @@ export default async function PostDetailPage({ params }: PageProps) {
                 key={`${src}-${index}`}
                 className="relative w-full overflow-hidden rounded bg-[#f0f0f0] dark:bg-[#1a1a1a]"
               >
-                <FadeImage
-                  src={src}
-                  alt={`${post.title || "post"} image ${index + 1}`}
-                  width={1600}
-                  height={2000}
-                  quality={90}
-                  className="h-auto w-full object-cover"
-                  sizes="(max-width: 768px) 100vw, 720px"
-                  priority={index === 0}
-                />
+                {isVideoUrl(src) ? (
+                  <VideoPlayer
+                    src={src}
+                    label={`${post.title || "post"} video ${index + 1}`}
+                    className="h-auto w-full"
+                    priority={index === 0}
+                  />
+                ) : (
+                  <FadeImage
+                    src={src}
+                    alt={`${post.title || "post"} image ${index + 1}`}
+                    width={1600}
+                    height={2000}
+                    quality={90}
+                    className="h-auto w-full object-cover"
+                    sizes="(max-width: 768px) 100vw, 720px"
+                    priority={index === 0}
+                  />
+                )}
               </div>
             ))}
           </div>

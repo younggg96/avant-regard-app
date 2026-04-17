@@ -78,7 +78,7 @@ export const ArchiveLeaderboard: React.FC = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const data = await getContributionLeaderboard(10);
+        const data = await getContributionLeaderboard(100);
         setLeaderboard(data);
       } catch (err) {
         console.warn("获取贡献榜失败:", err);

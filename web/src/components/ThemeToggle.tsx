@@ -63,9 +63,10 @@ export function ThemeToggle() {
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
-      className="flex h-8 w-8 items-center justify-center rounded text-black/50 transition-colors duration-200
-                 hover:bg-black/5 hover:text-black
-                 dark:text-white/45 dark:hover:bg-white/8 dark:hover:text-white"
+      title={isDark ? "切换到浅色模式" : "切换到深色模式"}
+      className="flex h-8 w-8 items-center justify-center rounded border text-black/70 transition-colors duration-200
+                 border-black/[0.08] hover:bg-black/[0.04] hover:text-black
+                 dark:border-white/[0.10] dark:text-white/70 dark:hover:bg-white/[0.06] dark:hover:text-white"
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
     </button>

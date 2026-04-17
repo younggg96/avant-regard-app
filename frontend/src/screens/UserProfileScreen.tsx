@@ -70,6 +70,7 @@ import { brandService, BrandSubmission } from "../services/brandService";
 import {
   buyerStoreService,
   UserSubmittedStore,
+  CONTRIBUTION_PAGE_SIZE,
 } from "../services/buyerStoreService";
 
 type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
@@ -408,7 +409,7 @@ const UserProfileScreen = () => {
         const [showsRes, brandsRes, storesRes] = await Promise.all([
           showService.getMyShows(),
           brandService.getMySubmissions(),
-          buyerStoreService.getMySubmissions(1, 100),
+          buyerStoreService.getMySubmissions(1, CONTRIBUTION_PAGE_SIZE),
         ]);
         setMyShows(showsRes);
         setMyBrands(brandsRes);
@@ -417,7 +418,7 @@ const UserProfileScreen = () => {
         const [showsRes, brandsRes, storesRes] = await Promise.all([
           showService.getShowsByUser(userId),
           brandService.getSubmissionsByUser(userId),
-          buyerStoreService.getSubmissionsByUser(userId, 1, 100),
+          buyerStoreService.getSubmissionsByUser(userId, 1, CONTRIBUTION_PAGE_SIZE),
         ]);
         setMyShows(showsRes);
         setMyBrands(brandsRes);

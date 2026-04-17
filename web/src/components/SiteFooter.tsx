@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeSegmented } from "@/components/ThemeSegmented";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -39,11 +40,16 @@ export function SiteFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex flex-col items-start justify-between gap-2 border-t py-6
+        <div className="flex flex-col items-start gap-4 border-t py-6
                         border-black/[0.06] dark:border-white/[0.08]
                         font-label text-[10px] text-black/25 dark:text-white/20
-                        md:flex-row md:items-center">
-          <span className="uppercase tracking-[0.15em]">© {year} Avant Regard</span>
+                        md:flex-row md:items-center md:justify-between md:gap-6">
+          {/* Appearance switcher – keeps the OS-following "Auto" option the
+              header icon toggle intentionally omits. */}
+          <ThemeSegmented />
+
+          <span className="uppercase tracking-[0.15em] md:order-none">© {year} Avant Regard</span>
+
           <span className="font-serif italic tracking-normal text-black/20 dark:text-white/15">
             Designed in Shanghai · Worn worldwide.
           </span>
