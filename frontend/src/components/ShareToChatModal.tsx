@@ -26,8 +26,10 @@ import {
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { Post } from "./PostCard";
+import { Post as ServicePost } from "../services/postService";
 import { BuyerStore, BuyerStoreDetail } from "../services/buyerStoreService";
 import { Brand } from "../services/brandService";
+import { UserInfo } from "../services/userInfoService";
 
 export interface PostSharePayload {
   postId: string;
@@ -68,6 +70,42 @@ export interface ShowSharePayload {
   category?: string;
 }
 
+export interface UserSharePayload {
+  userId: number;
+  username: string;
+  avatarUrl?: string;
+  bio?: string;
+  location?: string;
+  primaryTitle?: string;
+}
+
+type ShareableUser =
+  | UserInfo
+  | {
+      userId: number;
+      username: string;
+      avatarUrl?: string;
+      avatar?: string;
+      bio?: string;
+      location?: string;
+      primaryTitle?: string;
+    };
+
+export function buildUserSharePayload(user: ShareableUser): UserSharePayload {
+  const avatarUrl =
+    (user as UserInfo).avatarUrl ??
+    (user as { avatar?: string }).avatar ??
+    undefined;
+  return {
+    userId: user.userId,
+    username: user.username,
+    avatarUrl: avatarUrl || undefined,
+    bio: user.bio || undefined,
+    location: user.location || undefined,
+    primaryTitle: (user as UserInfo).primaryTitle || undefined,
+  };
+}
+
 export interface ShareableShow {
   id: string | number;
   title: string;
@@ -100,6 +138,24 @@ export function buildPostSharePayload(post: Post): PostSharePayload {
     imageUrl: post.content?.images?.[0] || post.image,
     authorName: post.author.name,
     authorAvatar: post.author.avatar,
+  };
+}
+
+/**
+ * Build a post share payload from the raw service-shaped Post
+ * (as returned by postService.getPostsByUserId / getLikedPostsByUserId /
+ * getFavoritePostsByUserId / searchPosts).
+ *
+ * Keeps the share payload builder logic in one place (DRY) while allowing
+ * callers that never materialize the UI-shaped Post to share directly.
+ */
+export function buildPostSharePayloadFromService(post: ServicePost): PostSharePayload {
+  return {
+    postId: String(post.id),
+    title: post.title || "",
+    imageUrl: post.imageUrls?.[0],
+    authorName: post.username,
+    authorAvatar: post.avatarUrl,
   };
 }
 

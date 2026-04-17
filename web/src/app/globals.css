@@ -3,16 +3,29 @@
 @tailwind utilities;
 
 /* --------------------------------------------------------------------------
- *  Brand globals – keep in lockstep with frontend/src/theme/index.ts
+ *  Semantic color tokens – dark mode inverts the monochrome palette.
+ *  Light:  canvas = #fff, ink = #000
+ *  Dark:   canvas = #0a0a0a (warm near-black), ink = #ededed (warm off-white)
  * -------------------------------------------------------------------------- */
 
 :root {
-  --color-ink: #000000;
-  --color-ink-soft: #222222;
-  --color-muted: #666666;
-  --color-hairline: rgba(0, 0, 0, 0.08);
-  --color-canvas: #ffffff;
-  --color-canvas-soft: #f9f9f9;
+  --canvas:       #ffffff;
+  --canvas-soft:  #f9f9f9;   /* app gray50  */
+  --canvas-raised:#f0f0f0;   /* app gray100 */
+  --ink:          #000000;
+  --ink-soft:     #222222;
+  --ink-muted:    #666666;
+  --border:       rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --canvas:       #0a0a0a;
+  --canvas-soft:  #111111;
+  --canvas-raised:#1a1a1a;
+  --ink:          #ededed;
+  --ink-soft:     #aaaaaa;
+  --ink-muted:    #666666;
+  --border:       rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -22,40 +35,109 @@
 
 html,
 body {
-  background: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  background-color: var(--canvas);
+  color: var(--ink);
+  /* Smooth transition between themes */
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 body {
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
   min-height: 100vh;
   text-rendering: optimizeLegibility;
 }
 
-/* Selection styling matches the app's monochromatic brand. */
+.font-label {
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 ::selection {
-  background: #000;
-  color: #fff;
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {
+  /* Hairline uses CSS variable for dark-mode awareness */
   .hairline {
-    @apply border-b border-ink/5;
+    border-bottom: 1px solid var(--border);
   }
 
+  /* Chip / badge */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/70 px-3 py-1 text-xs uppercase tracking-wider text-ink/70 backdrop-blur;
+    @apply inline-flex items-center gap-1.5 rounded border px-2.5 py-0.5
+           font-label text-[10px] uppercase tracking-[0.18em] backdrop-blur
+           border-black/10 bg-white/80 text-black/50
+           dark:border-white/10 dark:bg-white/[0.05] dark:text-white/45;
   }
 
+  /* Primary button: black / inverted in dark mode */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+    @apply inline-flex items-center justify-center gap-2 rounded px-6 py-3
+           font-label text-sm font-medium tracking-wide
+           transition-all duration-200 active:scale-[0.98]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           bg-black text-white hover:bg-[#222] hover:shadow-card
+           dark:bg-white dark:text-black dark:hover:bg-[#e0e0e0]
+           focus-visible:outline-black dark:focus-visible:outline-white;
   }
 
+  /* Secondary button: outline */
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/15 bg-white px-6 py-3 text-sm font-medium tracking-wide text-ink transition hover:border-ink hover:bg-ink hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+    @apply inline-flex items-center justify-center gap-2 rounded px-6 py-3
+           font-label text-sm font-medium tracking-wide
+           transition-all duration-200 active:scale-[0.98]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           border bg-white text-black hover:bg-black hover:text-white
+           border-black/15 hover:border-black
+           dark:bg-transparent dark:text-white dark:border-white/20
+           dark:hover:bg-white dark:hover:text-black dark:hover:border-white
+           focus-visible:outline-black dark:focus-visible:outline-white;
   }
 
+  /* Muted link */
   .link-muted {
-    @apply text-ink/60 transition hover:text-ink;
+    @apply transition-colors duration-200
+           text-black/55 hover:text-black
+           dark:text-white/45 dark:hover:text-white;
   }
+
+  /* Nav animated-underline link – app CenteredTabBar indicator */
+  .link-underline {
+    @apply relative inline-block transition-colors duration-200
+           text-black/60 hover:text-black
+           dark:text-white/50 dark:hover:text-white;
+  }
+
+  .link-underline::after {
+    content: "";
+    @apply absolute -bottom-px left-1/2 h-0.5 w-6 -translate-x-1/2 origin-center
+           scale-x-0 transition-transform duration-300 ease-out
+           bg-black dark:bg-white;
+  }
+
+  .link-underline:hover::after,
+  .link-underline[aria-current="page"]::after {
+    @apply scale-x-100;
+  }
+}
+
+@layer utilities {
+  .delay-75  { animation-delay:  75ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+  .delay-700 { animation-delay: 700ms; }
 }

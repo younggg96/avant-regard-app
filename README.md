@@ -78,10 +78,15 @@ npm run android             # expo run:android
 ### Web（营销 / 只读网站）
 
 ```bash
-npm run web:dev             # next dev @ http://localhost:3000
+npm run web:dev             # next dev @ http://localhost:3100（默认）
 npm run web:build           # 生产构建
 npm run web:start           # 生产启动
+
+# 想换端口时：
+PORT=4000 npm run web:dev
 ```
+
+> 默认端口选 3100 而不是 3000，是为了避开本机其他 Next.js 项目的冲突。
 
 首次运行前，复制 `web/.env.example` 为 `web/.env.local`，并把 `NEXT_PUBLIC_API_BASE_URL` 指向后端（默认 `https://api.avantregard.com`）。
 

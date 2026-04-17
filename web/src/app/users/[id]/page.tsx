@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostCard } from "@/components/PostCard";
+import { FadeImage } from "@/components/FadeImage";
 import {
   ApiError,
   getUserFollowerCount,
@@ -18,9 +19,7 @@ interface PageProps {
   params: { id: string };
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
     const user = await getUserInfo(params.id);
     return {
@@ -50,23 +49,25 @@ export default async function UserProfilePage({ params }: PageProps) {
 
     return (
       <section className="mx-auto max-w-content px-6 py-12 md:py-16">
-        <nav className="mb-10 text-sm text-ink/50">
+        <nav className="mb-10 font-label text-sm">
           <Link href="/discover" className="link-muted">
             ← 返回 Discover
           </Link>
         </nav>
 
-        <header className="overflow-hidden rounded-3xl border border-ink/5 bg-ink-100">
-          <div className="relative h-40 w-full bg-ink-200 md:h-56">
+        <header className="overflow-hidden rounded border
+                           border-black/[0.06] bg-[#f9f9f9]
+                           dark:border-white/[0.08] dark:bg-[#111]">
+          <div className="relative h-40 w-full bg-[#e8e8e8] dark:bg-[#1a1a1a] md:h-56">
             {user.coverUrl && (
-              <Image
+              <FadeImage
                 src={user.coverUrl}
                 alt={`${user.username} cover`}
                 fill
-                sizes="100vw"
+                sizes="(max-width: 768px) 100vw, 1200px"
+                quality={85}
                 className="object-cover"
                 priority
-                unoptimized
               />
             )}
           </div>
@@ -74,27 +75,31 @@ export default async function UserProfilePage({ params }: PageProps) {
           <div className="relative px-6 pb-8 pt-0 md:px-10">
             <div className="relative -mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
-                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-ink-200 shadow-card">
+                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 shadow-card
+                                bg-[#e8e8e8] border-white dark:bg-[#2a2a2a] dark:border-[#0a0a0a]">
                   {user.avatarUrl && (
                     <Image
                       src={user.avatarUrl}
                       alt={user.username}
                       fill
                       sizes="96px"
+                      quality={80}
                       className="object-cover"
-                      unoptimized
+                      priority
                     />
                   )}
                 </div>
                 <div className="pb-2">
-                  <h1 className="font-serif text-3xl">@{user.username}</h1>
+                  <h1 className="font-serif text-3xl text-black dark:text-white">
+                    @{user.username}
+                  </h1>
                   {user.bio && (
-                    <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink/60">
+                    <p className="mt-2 max-w-lg font-serif text-sm leading-relaxed text-black/60 dark:text-white/50">
                       {user.bio}
                     </p>
                   )}
                   {user.location && (
-                    <p className="mt-1 text-xs uppercase tracking-widest text-ink/40">
+                    <p className="mt-1 font-label text-xs uppercase tracking-widest text-black/40 dark:text-white/30">
                       {user.location}
                     </p>
                   )}
@@ -106,8 +111,9 @@ export default async function UserProfilePage({ params }: PageProps) {
               </Link>
             </div>
 
-            <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-ink/5 pt-6 md:max-w-md">
-              <Stat label="帖子" value={formatCount(posts.length)} />
+            <dl className="mt-8 grid grid-cols-3 gap-4 border-t pt-6 md:max-w-md
+                           border-black/[0.06] dark:border-white/[0.08]">
+              <Stat label="帖子"  value={formatCount(posts.length)} />
               <Stat label="关注者" value={formatCount(followerCount)} />
               <Stat label="关注中" value={formatCount(followingCount)} />
             </dl>
@@ -115,13 +121,15 @@ export default async function UserProfilePage({ params }: PageProps) {
         </header>
 
         <section className="mt-14">
-          <h2 className="mb-8 font-serif text-2xl">发布</h2>
+          <h2 className="mb-8 font-serif text-2xl text-black dark:text-white">发布</h2>
           {posts.length === 0 ? (
-            <div className="rounded-xl border border-ink/10 bg-ink-100 p-8 text-sm text-ink/60">
+            <div className="rounded border p-8 font-serif text-sm
+                            border-black/[0.08] bg-[#f9f9f9] text-black/55
+                            dark:border-white/[0.08] dark:bg-[#111] dark:text-white/40">
               该用户还没有公开发布的内容。
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {posts.map((post, index) => (
                 <PostCard key={post.id} post={post} priority={index < 4} />
               ))}
@@ -131,9 +139,7 @@ export default async function UserProfilePage({ params }: PageProps) {
       </section>
     );
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      notFound();
-    }
+    if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
   }
 }
@@ -141,8 +147,10 @@ export default async function UserProfilePage({ params }: PageProps) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="font-serif text-2xl">{value}</div>
-      <div className="text-xs uppercase tracking-widest text-ink/40">{label}</div>
+      <div className="font-serif text-2xl text-black dark:text-white">{value}</div>
+      <div className="font-label text-xs uppercase tracking-widest text-black/40 dark:text-white/30">
+        {label}
+      </div>
     </div>
   );
 }

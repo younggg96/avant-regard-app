@@ -11,9 +11,12 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useAnimatedScrollHandler,
+  useDerivedValue,
   interpolate,
   Extrapolation,
   runOnJS,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { Post as DisplayPost } from "../../components/PostCard";
 import { useAuthStore } from "../../store/authStore";
@@ -161,11 +164,18 @@ const ProfileScreen = () => {
     setIsCollapsed(collapsed);
   }, []);
 
+  // Track last collapsed boolean on the UI thread so we only touch JS state on
+  // an actual toggle (avoids per-frame setState traffic via runOnJS).
+  const lastCollapsedShared = useSharedValue(false);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
       const collapsed = event.contentOffset.y > headerFadeThreshold;
-      runOnJS(updateCollapsedState)(collapsed);
+      if (collapsed !== lastCollapsedShared.value) {
+        lastCollapsedShared.value = collapsed;
+        runOnJS(updateCollapsedState)(collapsed);
+      }
     },
   });
 
@@ -179,24 +189,24 @@ const ProfileScreen = () => {
     return { transform: [{ translateY }] };
   });
 
+  // Time-based header visibility (0 = hidden, 1 = visible). Replaces the
+  // 20px scroll-driven interpolation that could freeze at a half-opaque value
+  // when scroll momentum/rubber-banding stopped inside the transition zone,
+  // leaving a translucent white band stuck over the cover image.
+  const headerProgress = useDerivedValue(() => {
+    const shouldShow = scrollY.value > headerFadeThreshold ? 1 : 0;
+    return withTiming(shouldShow, {
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+    });
+  });
+
   const collapsedHeaderAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [headerFadeThreshold - 20, headerFadeThreshold],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
+    return { opacity: headerProgress.value };
   });
 
   const topActionsAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [headerFadeThreshold - 20, headerFadeThreshold],
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
+    return { opacity: 1 - headerProgress.value };
   });
 
   const stickyTabBarAnimatedStyle = useAnimatedStyle(() => {

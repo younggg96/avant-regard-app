@@ -31,7 +31,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     onSearchPress,
 }) => {
     return (
-        <Box bg="$white" px="$md" pt="$sm" pb="$md">
+        <Box bg="$white" px="$md" pt="$xs" pb="$xs">
             <VStack space="sm">
                 <HStack alignItems="center" justifyContent="space-between">
                     <DiscoverLogo />

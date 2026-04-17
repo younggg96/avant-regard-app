@@ -6,6 +6,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Pressable,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -14,7 +16,7 @@ import { theme } from "../../theme";
 import { Box, Text } from "../../components/ui";
 import { useChatStore } from "../../store/chatStore";
 import { useAuthStore } from "../../store/authStore";
-import { Message, chatWS } from "../../services/chatService";
+import { Message, chatWS, sendMessageREST } from "../../services/chatService";
 import { getUserType } from "../../services/userInfoService";
 import { ChatRouteParams } from "./types";
 import { shouldShowTimestamp } from "./utils";
@@ -22,6 +24,11 @@ import { ChatHeader } from "./components/ChatHeader";
 import { MessageBubble } from "./components/MessageBubble";
 import { ChatReportModal } from "./components/ChatReportModal";
 import { MessageInput } from "./components/MessageInput";
+import { SharePickerSheet, ShareCategory } from "./components/SharePickerSheet";
+import {
+  ShareContentPickerModal,
+  SharePayload,
+} from "./components/ShareContentPickerModal";
 import { styles } from "./styles";
 
 type ReportTarget =
@@ -55,6 +62,8 @@ const ChatScreen = () => {
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [showReport, setShowReport] = useState(false);
   const [otherIsAdmin, setOtherIsAdmin] = useState(false);
+  const [sharePickerOpen, setSharePickerOpen] = useState(false);
+  const [shareCategory, setShareCategory] = useState<ShareCategory | null>(null);
   const inputRef = useRef<TextInput>(null);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -99,22 +108,68 @@ const ChatScreen = () => {
       .catch(() => {});
   }, [currentUser?.userId, otherUserId]);
 
+  const sendPayload = useCallback(
+    (content: string, messageType: string) => {
+      if (chatWS.isConnected) {
+        chatWS.sendMessage(conversationId, content, messageType);
+      } else {
+        sendMessageREST(conversationId, content, messageType).catch((e: Error) =>
+          console.error("Failed to send message:", e)
+        );
+      }
+    },
+    [conversationId]
+  );
+
   const handleSend = useCallback(() => {
     if (sendRestricted) return;
     const text = inputText.trim();
     if (!text) return;
 
     setInputText("");
+    sendPayload(text, "text");
+  }, [inputText, sendRestricted, sendPayload]);
 
-    if (chatWS.isConnected) {
-      chatWS.sendMessage(conversationId, text);
-    } else {
-      const { sendMessageREST } = require("../../services/chatService");
-      sendMessageREST(conversationId, text).catch((e: Error) =>
-        console.error("Failed to send message:", e)
-      );
+  /**
+   * Exit the composing state without sending.
+   * Called by:
+   *   - the tap-outside overlay that covers the message list while writing
+   *   - the `+` toggle button (which swaps writing mode for the share picker)
+   *   - the onSend callback (after the message leaves)
+   *
+   * Keeping a single helper avoids drift between the two call sites (DRY) and
+   * makes the "what does cancel mean" contract explicit.
+   */
+  const exitWriting = useCallback(() => {
+    setIsWriting(false);
+    setInputText("");
+    inputRef.current?.blur();
+  }, []);
+
+  const handleToggleSharePicker = useCallback(() => {
+    if (isWriting) {
+      exitWriting();
     }
-  }, [inputText, conversationId, sendRestricted]);
+    setSharePickerOpen((prev) => !prev);
+  }, [isWriting, exitWriting]);
+
+  const handleSelectShareCategory = useCallback((cat: ShareCategory) => {
+    setShareCategory(cat);
+  }, []);
+
+  const handleCloseShareContent = useCallback(() => {
+    setShareCategory(null);
+  }, []);
+
+  const handleShareSelected = useCallback(
+    (result: SharePayload) => {
+      if (sendRestricted) return;
+      sendPayload(JSON.stringify(result.payload), result.messageType);
+      setShareCategory(null);
+      setSharePickerOpen(false);
+    },
+    [sendPayload, sendRestricted]
+  );
 
   const canLoadMore = hasMoreMessages[conversationId] !== false;
 
@@ -187,7 +242,8 @@ const ChatScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        <FlatList
+        <View style={styles.flex1}>
+          <FlatList
           ref={flatListRef}
           data={reversedMessages}
           inverted
@@ -196,6 +252,7 @@ const ChatScreen = () => {
           contentContainerStyle={styles.messageList}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             showFirstMsgHint ? (
               <View style={styles.restrictionBanner}>
@@ -243,28 +300,47 @@ const ChatScreen = () => {
               </View>
             ) : null
           }
-        />
+          />
+          {isWriting && (
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={exitWriting}
+              accessibilityLabel="退出输入"
+            />
+          )}
+        </View>
 
         <MessageInput
           inputText={inputText}
           isWriting={isWriting}
           inputRef={inputRef as React.RefObject<TextInput>}
           disabled={sendRestricted}
+          sharePickerOpen={sharePickerOpen}
           onChangeText={setInputText}
           onStartWriting={() => {
             setIsWriting(true);
+            setSharePickerOpen(false);
             setTimeout(() => inputRef.current?.focus(), 100);
-          }}
-          onCancel={() => {
-            setIsWriting(false);
-            setInputText("");
           }}
           onSend={() => {
             handleSend();
             setIsWriting(false);
           }}
+          onToggleSharePicker={handleToggleSharePicker}
+        />
+
+        <SharePickerSheet
+          visible={sharePickerOpen && !sendRestricted}
+          onSelect={handleSelectShareCategory}
         />
       </KeyboardAvoidingView>
+
+      <ShareContentPickerModal
+        visible={shareCategory !== null}
+        category={shareCategory}
+        onClose={handleCloseShareContent}
+        onSelect={handleShareSelected}
+      />
 
       <ChatReportModal
         visible={showReport}

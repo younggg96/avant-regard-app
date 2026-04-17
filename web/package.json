@@ -4,14 +4,15 @@
   "private": true,
   "description": "Avant Regard marketing website (Next.js 14, App Router).",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p ${PORT:-3100}",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p ${PORT:-3100}",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "next": "14.2.18",
+    "next-themes": "^0.4.6",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },

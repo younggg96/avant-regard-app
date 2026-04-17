@@ -95,6 +95,26 @@ export const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.gray100,
   },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  inputRowFlex: {
+    flex: 1,
+  },
+  plusButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.gray50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  plusButtonActive: {
+    backgroundColor: theme.colors.black,
+  },
   writeMessageButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -125,20 +145,9 @@ export const styles = StyleSheet.create({
     maxHeight: 160,
     marginBottom: 12,
   },
-  inputActions: {
+  inputActionsEnd: {
     flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  cancelButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-  },
-  cancelButtonText: {
-    ...theme.typography.bodySmall,
-    fontWeight: "500",
-    color: theme.colors.gray400,
+    justifyContent: "flex-end",
   },
   sendButton: {
     paddingHorizontal: 20,

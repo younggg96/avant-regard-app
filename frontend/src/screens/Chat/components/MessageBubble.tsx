@@ -14,7 +14,7 @@ import { ImageSize } from "../../../utils/imageUtils";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
 import type { ActionSheetAction } from "../../../components/ui/ActionSheet";
 import { Message } from "../../../services/chatService";
-import { PostSharePayload, StoreSharePayload, BrandSharePayload, ShowSharePayload } from "../../../components/ShareToChatModal";
+import { PostSharePayload, StoreSharePayload, BrandSharePayload, ShowSharePayload, UserSharePayload } from "../../../components/ShareToChatModal";
 import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
 import { styles } from "../styles";
@@ -60,6 +60,16 @@ function tryParseShowCard(content: string): ShowSharePayload | null {
   return null;
 }
 
+function tryParseUserCard(content: string): UserSharePayload | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed.userId === "number" && typeof parsed.username === "string") {
+      return parsed;
+    }
+  } catch { }
+  return null;
+}
+
 export const MessageBubble = ({
   message,
   showTime,
@@ -84,6 +94,9 @@ export const MessageBubble = ({
 
   const isShowCard = message.messageType === "show_card";
   const showCard = isShowCard ? tryParseShowCard(message.content) : null;
+
+  const isUserCard = message.messageType === "user_card";
+  const userCard = isUserCard ? tryParseUserCard(message.content) : null;
 
   const menuActions = useMemo<ActionSheetAction[]>(() => {
     const list: ActionSheetAction[] = [];
@@ -121,6 +134,11 @@ export const MessageBubble = ({
     (navigation.navigate as any)("BrandDetail", { id: String(brandCard.brandId), name: brandCard.name });
   };
 
+  const handleUserCardPress = () => {
+    if (!userCard) return;
+    (navigation.navigate as any)("UserProfile", { userId: userCard.userId });
+  };
+
   const handleShowCardPress = () => {
     if (!showCard) return;
     (navigation.navigate as any)("CollectionDetail", {
@@ -139,6 +157,95 @@ export const MessageBubble = ({
   };
 
   const renderContent = () => {
+    if (userCard) {
+      const metaParts = [userCard.primaryTitle, userCard.location].filter(Boolean) as string[];
+      return (
+        <TouchableOpacity
+          style={[
+            cardStyles.container,
+            userCardStyles.container,
+            isMine ? cardStyles.containerMine : cardStyles.containerOther,
+          ]}
+          onPress={handleUserCardPress}
+          activeOpacity={0.7}
+        >
+          <View style={userCardStyles.body}>
+            <UserAvatar
+              uri={userCard.avatarUrl}
+              name={userCard.username}
+              size={52}
+            />
+            <View style={userCardStyles.info}>
+              <Text
+                style={[
+                  cardStyles.title,
+                  isMine ? cardStyles.titleMine : cardStyles.titleOther,
+                ]}
+                numberOfLines={1}
+              >
+                {userCard.username}
+              </Text>
+              {metaParts.length > 0 && (
+                <Text
+                  style={[
+                    userCardStyles.meta,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {metaParts.join(" · ")}
+                </Text>
+              )}
+              {userCard.bio ? (
+                <Text
+                  style={[
+                    userCardStyles.bio,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {userCard.bio}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <View style={[cardStyles.footer, userCardStyles.footer]}>
+            <View style={cardStyles.authorRow}>
+              <Ionicons
+                name="person-outline"
+                size={14}
+                color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+              />
+              <Text
+                style={[
+                  cardStyles.authorName,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                用户主页
+              </Text>
+            </View>
+            <View style={cardStyles.tapHint}>
+              <Text
+                style={[
+                  cardStyles.tapHintText,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+              >
+                查看
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={12}
+                color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     if (showCard) {
       const seasonLine = [showCard.season, showCard.year].filter(Boolean).join(" ");
       const metaParts = [showCard.designer, showCard.category].filter(Boolean) as string[];
@@ -731,5 +838,33 @@ const showCardStyles = StyleSheet.create({
   meta: {
     fontSize: 11,
     fontStyle: "italic",
+  },
+});
+
+const userCardStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  body: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  meta: {
+    fontSize: 12,
+  },
+  bio: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  footer: {
+    marginTop: 4,
   },
 });

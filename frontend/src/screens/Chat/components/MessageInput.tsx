@@ -9,10 +9,11 @@ interface MessageInputProps {
   isWriting: boolean;
   inputRef: React.RefObject<TextInput>;
   disabled?: boolean;
+  sharePickerOpen?: boolean;
   onChangeText: (text: string) => void;
   onStartWriting: () => void;
-  onCancel: () => void;
   onSend: () => void;
+  onToggleSharePicker?: () => void;
 }
 
 export const MessageInput = ({
@@ -20,10 +21,11 @@ export const MessageInput = ({
   isWriting,
   inputRef,
   disabled = false,
+  sharePickerOpen = false,
   onChangeText,
   onStartWriting,
-  onCancel,
   onSend,
+  onToggleSharePicker,
 }: MessageInputProps) => {
   if (disabled) {
     return (
@@ -38,16 +40,40 @@ export const MessageInput = ({
     );
   }
 
+  // Plus button only shows in the collapsed (non-writing) state — when the user
+  // is actively composing, extra controls just add noise.
+  const plusButton =
+    !isWriting && onToggleSharePicker ? (
+      <TouchableOpacity
+        style={[
+          styles.plusButton,
+          sharePickerOpen && styles.plusButtonActive,
+        ]}
+        onPress={onToggleSharePicker}
+        activeOpacity={0.7}
+        accessibilityLabel="打开分享菜单"
+      >
+        <Ionicons
+          name={sharePickerOpen ? "close" : "add"}
+          size={22}
+          color={sharePickerOpen ? theme.colors.white : theme.colors.gray400}
+        />
+      </TouchableOpacity>
+    ) : null;
+
   return (
     <View style={styles.inputContainer}>
       {!isWriting ? (
-        <TouchableOpacity
-          style={styles.writeMessageButton}
-          onPress={onStartWriting}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.writeMessagePlaceholder}>输入消息...</Text>
-        </TouchableOpacity>
+        <View style={styles.inputRow}>
+          {plusButton}
+          <TouchableOpacity
+            style={[styles.writeMessageButton, styles.inputRowFlex]}
+            onPress={onStartWriting}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.writeMessagePlaceholder}>输入消息...</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={styles.writeMessageExpanded}>
           <TextInput
@@ -62,10 +88,7 @@ export const MessageInput = ({
             maxLength={5000}
             autoFocus
           />
-          <View style={styles.inputActions}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-              <Text style={styles.cancelButtonText}>取消</Text>
-            </TouchableOpacity>
+          <View style={styles.inputActionsEnd}>
             <TouchableOpacity
               style={[
                 styles.sendButton,

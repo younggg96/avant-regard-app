@@ -25,9 +25,12 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useAnimatedScrollHandler,
+  useDerivedValue,
   interpolate,
   Extrapolation,
   runOnJS,
+  withTiming,
+  Easing,
 } from "react-native-reanimated";
 import {
   Box,
@@ -581,12 +584,18 @@ const UserProfileScreen = () => {
     setIsCollapsed(collapsed);
   }, []);
 
+  // 记录 UI 线程上一次的 collapsed 状态，只在布尔值真正翻转时才触发 JS setState，
+  // 避免每帧都 runOnJS 造成抖动/滞后。
+  const lastCollapsedShared = useSharedValue(false);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      // 使用动态计算的阈值
       const collapsed = event.contentOffset.y > headerFadeThreshold;
-      runOnJS(updateCollapsedState)(collapsed);
+      if (collapsed !== lastCollapsedShared.value) {
+        lastCollapsedShared.value = collapsed;
+        runOnJS(updateCollapsedState)(collapsed);
+      }
     },
   });
 
@@ -609,28 +618,24 @@ const UserProfileScreen = () => {
     return { transform: [{ translateY }, { scale }] };
   });
 
-  // 2. 吸顶 Header 背景透明度
-  // 修正：使用计算好的准确阈值。在滚动到阈值前20px开始变白，平滑过渡。
-  const collapsedHeaderAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [headerFadeThreshold - 20, headerFadeThreshold],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
+  // 2. 吸顶 Header 显隐进度（0 = 隐藏, 1 = 显示）。
+  // 使用时间动画代替滚动位置插值，避免快速滑动 / 回弹时
+  // opacity 卡在 0.3 ~ 0.7 之间，留下半透明白色覆盖层在封面上的视觉 bug。
+  const headerProgress = useDerivedValue(() => {
+    const shouldShow = scrollY.value > headerFadeThreshold ? 1 : 0;
+    return withTiming(shouldShow, {
+      duration: 180,
+      easing: Easing.out(Easing.quad),
+    });
   });
 
-  // 3. 顶部透明按钮区 (TopActions) 渐隐
-  // 当 Header 变白时，原本的透明按钮应该消失，避免重叠
+  const collapsedHeaderAnimatedStyle = useAnimatedStyle(() => {
+    return { opacity: headerProgress.value };
+  });
+
+  // 3. 顶部透明按钮区 (TopActions) 与吸顶 Header 完全反向，共用同一进度。
   const topActionsAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [headerFadeThreshold - 20, headerFadeThreshold],
-      [1, 0], // 与 Header 相反
-      Extrapolation.CLAMP
-    );
-    return { opacity };
+    return { opacity: 1 - headerProgress.value };
   });
 
   // 4. 吸顶 Tab 栏动画

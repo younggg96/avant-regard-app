@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -9,6 +10,13 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600"],
   display: "swap",
 });
 
@@ -43,29 +51,32 @@ export const metadata: Metadata = {
     title: "Avant Regard",
     description: "为先锋时装而生的社区",
   },
-  icons: {
-    icon: "/favicon.ico",
-  },
+  icons: { icon: "/favicon.ico" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)",  color: "#0a0a0a" },
+  ],
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN" className={playfair.variable}>
-      <body className="flex min-h-screen flex-col bg-white font-serif text-ink antialiased">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+    <html
+      lang="zh-CN"
+      className={`${playfair.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="flex min-h-screen flex-col antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </ThemeProvider>
       </body>
     </html>
   );
