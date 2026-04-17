@@ -1,5 +1,30 @@
 # Progress Log
 
+## 2026-04-17: Release — iOS v1.3.0 (App Store 提交准备)
+
+### Summary
+把 `frontend/app.json` 的 `expo.version` 从 `1.2.2` 升到 `1.3.0`，`frontend/package.json` 同步到 `1.3.0`；清理一个被 Expo 误生成在 monorepo 根目录的空壳 `app.json`（`{"expo": {}}`）。iOS `buildNumber` 由 `eas.json` 的 `production.autoIncrement: true` 自动处理，无需手动填。
+
+### Why
+本轮累积了一批面向用户的明显变化——聊天内多类型卡片分享（含全新 `user_card`）、聊天撰写态的极简交互（隐藏 `+`、移除 Cancel、tap-outside 退出）、`SharePickerSheet` 的黑白单色重设计、以及后端补齐 `USER_CARD` 枚举修复分享 422——属于新功能 + 设计语言升级，符合 minor bump 的语义。
+
+### Key Changes
+- `frontend/app.json` — `expo.version: 1.2.2 → 1.3.0`
+- `frontend/package.json` — `version: 1.0.0 → 1.3.0`（与 app.json 对齐，避免未来 semver 工具困惑）
+- `app.json`（根目录）— 删除（空壳 `{"expo": {}}`，Expo CLI 在 workspace root 误生成，保留会让外部工具误以为根也是一个 Expo 工程）
+
+### Release Plan
+1. 本地 commit + push 到 `origin/main`
+2. `cd frontend && eas build --platform ios --profile production`
+3. 构建完成后 `eas submit --platform ios --profile production`（上传到 App Store Connect）
+4. 在 App Store Connect 选择分发到 TestFlight 或提交审核
+
+### Design Principles
+- **Holistic**：版本号三处（app.json、package.json、PROGRESS_LOG）同步更新，避免割裂。
+- **KISS**：iOS buildNumber 交给 EAS 自增，不手写，减少人为错配。
+
+---
+
 ## 2026-04-17: Chat Input — Hide `+` While Writing, Remove Cancel Button, Tap-Outside to Exit (写消息时的极简交互)
 
 ### Summary
@@ -456,6 +481,37 @@ Extracted the store search from BuyerMapScreen into a dedicated StoreSearchScree
 - `web/src/app/discover/page.tsx` — 页面背景、空状态、分隔线 dark 处理
 - `web/src/app/posts/[id]/page.tsx` — 文章页完整 dark 支持
 - `web/src/app/users/[id]/page.tsx` — 用户主页完整 dark 支持
+
+## 2026-04-17: Fix user_card Share Request Failure (修复用户卡片分享 422 错误)
+
+### Bug
+在聊天中分享「用户」卡片时，REST 请求 422 失败，前端报 `Failed to send message: Error: Request failed`。
+WebSocket 路径能通过（因为那条路径把 `message_type` 当裸字符串透传），但一旦落到 REST 回退，就被 Pydantic 验证拒绝。
+
+### Root Cause
+`backend/app/schemas/chat.py` 的 `MessageType` 枚举缺少 `USER_CARD`：
+```
+TEXT / IMAGE / SYSTEM / POST_CARD / STORE_CARD / BRAND_CARD / SHOW_CARD
+```
+前端 `SharePayload` 已包含 `user_card`，`MessageBubble` 也已经有渲染逻辑（`tryParseUserCard` / `handleUserCardPress`），但后端枚举没有同步扩展。
+
+### Fix
+- `backend/app/schemas/chat.py` — 在 `MessageType` 枚举追加 `USER_CARD = "user_card"`
+- 其他路径无需改动：`chat_service.send_message` 直接把 `message_type` 作为字符串写入 DB；WebSocket 路径本来就不走 enum；`MessageBubble` 已有完整支持
+
+## 2026-04-17: SharePickerSheet Monochrome Restyle (聊天分享选择器极简化)
+
+### Problem
+`SharePickerSheet` 底部的 5 个分类图标（帖子/买手店/品牌/秀场/用户）使用了饱和度极高的彩色（`#FF6B6B`、`#4ECDC4`、`#FFA94D`、`#845EF7`、`#339AF0`），与 app 整体黑白极简的编辑风格严重冲突。
+
+### Changes
+- `frontend/src/screens/Chat/components/SharePickerSheet.tsx`
+  - 移除 `CategoryConfig.color` 字段
+  - 图标气泡统一使用 `theme.colors.gray50` 背景 + `theme.colors.gray100` 描边
+  - 图标颜色统一为 `theme.colors.black`
+  - 圆角从 14 调整为 `theme.borderRadius.md`（8px），与 app 卡片/按钮一致
+  - 气泡尺寸 52→48，图标尺寸 24→22，整体更收敛
+
 
 
 

@@ -14,15 +14,18 @@ interface CategoryConfig {
   key: ShareCategory;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-  color: string;
 }
 
+/*
+ * Categories share the same monochrome treatment – consistent with the app's
+ * minimalist black/white editorial language (see theme/index.ts).
+ */
 const CATEGORIES: CategoryConfig[] = [
-  { key: "post", label: "帖子", icon: "document-text-outline", color: "#FF6B6B" },
-  { key: "store", label: "买手店", icon: "storefront-outline", color: "#4ECDC4" },
-  { key: "brand", label: "品牌", icon: "pricetag-outline", color: "#FFA94D" },
-  { key: "show", label: "秀场", icon: "sparkles-outline", color: "#845EF7" },
-  { key: "user", label: "用户", icon: "person-outline", color: "#339AF0" },
+  { key: "post",  label: "帖子",   icon: "document-text-outline" },
+  { key: "store", label: "买手店", icon: "storefront-outline" },
+  { key: "brand", label: "品牌",   icon: "pricetag-outline" },
+  { key: "show",  label: "秀场",   icon: "sparkles-outline" },
+  { key: "user",  label: "用户",   icon: "person-outline" },
 ];
 
 interface SharePickerSheetProps {
@@ -44,10 +47,10 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
             key={cat.key}
             style={styles.button}
             onPress={() => onSelect(cat.key)}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
-            <View style={[styles.iconBubble, { backgroundColor: cat.color }]}>
-              <Ionicons name={cat.icon} size={24} color={theme.colors.white} />
+            <View style={styles.iconBubble}>
+              <Ionicons name={cat.icon} size={22} color={theme.colors.black} />
             </View>
             <Text style={styles.label}>{cat.label}</Text>
           </TouchableOpacity>
@@ -73,19 +76,22 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     flex: 1,
   },
   iconBubble: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.md, // 8 px – matches app card / button radius
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: theme.colors.gray50,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray100,
   },
   label: {
     ...theme.typography.caption,
-    color: theme.colors.gray400,
+    color: theme.colors.gray300,
   },
 });
 

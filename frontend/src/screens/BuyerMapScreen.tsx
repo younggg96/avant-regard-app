@@ -856,7 +856,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   return (
     <Wrapper {...(wrapperProps as any)}>
       {/* 搜索栏 */}
-      <Box px="$md" pb="$sm">
+      <Box px="$md" pb="$sm" pt="$xs">
         <HStack alignItems="center" gap="$sm">
           <Pressable
             flex={1}
