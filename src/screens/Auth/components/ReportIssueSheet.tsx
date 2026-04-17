@@ -117,7 +117,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>

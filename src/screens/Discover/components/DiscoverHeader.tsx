@@ -1,29 +1,21 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { Image as ExpoImage } from "expo-image";
 import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { theme } from "../../../theme";
 
-const headerVideoSource = require("../../../../assets/video/header1.mp4");
+const headerLogoSource = require("../../../../assets/gif/header-logo.gif");
 
-const DiscoverLogoVideo: React.FC = () => {
-    const player = useVideoPlayer(headerVideoSource, (p) => {
-        p.loop = true;
-        p.muted = true;
-        p.play();
-    });
-    return (
-        <VideoView
-            player={player}
-            style={styles.logoVideo}
-            contentFit="contain"
-            nativeControls={false}
-        />
-    );
-};
+const DiscoverLogo: React.FC = () => (
+    <ExpoImage
+        source={headerLogoSource}
+        style={styles.logoImage}
+        contentFit="contain"
+    />
+);
 
 interface DiscoverHeaderProps {
     avatar?: string;
@@ -42,7 +34,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
         <Box bg="$white" px="$md" pt="$sm" pb="$md">
             <VStack space="sm">
                 <HStack alignItems="center" justifyContent="space-between">
-                    <DiscoverLogoVideo />
+                    <DiscoverLogo />
 
                     <HStack alignItems="center" space="md">
                         <Pressable
@@ -85,7 +77,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-    logoVideo: {
+    logoImage: {
         width: 140,
         height: 36,
     },

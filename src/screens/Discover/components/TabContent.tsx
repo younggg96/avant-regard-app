@@ -108,7 +108,11 @@ const convertToPost = (post: DisplayPost): Post => ({
   communityName: post.communityName,
 });
 
-const ESTIMATED_ITEM_SIZE = 280;
+// Measured on a standard-size iPhone (SCREEN_WIDTH≈390, column width≈173):
+//   image (aspectRatio 3/4) ≈ 230 + title 2 lines ≈ 36 + footer ≈ 36 + margin 12 ≈ 314.
+// Slight over-estimate is better than under-estimate for MasonryFlashList
+// recycling — prevents re-measure stutter on the first scroll.
+const ESTIMATED_ITEM_SIZE = 320;
 
 /**
  * Tab 内容组件 — 使用 MasonryFlashList 实现高性能瀑布流
@@ -143,15 +147,17 @@ export const TabContent: React.FC<TabContentProps> = ({
   const renderMasonryItem = useCallback(
     ({ item }: MasonryListRenderItemInfo<Post>) => {
       if (!item || !item.id || !item.author) return null;
+      // Plain View + StyleSheet avoids gluestack `sx` theme resolution on
+      // every re-render, which adds up when Masonry mounts 30+ cards at once.
       return (
-        <Box px={4} mb="$sm">
+        <View style={masonryItemStyles.wrapper}>
           <PostCard
             post={item}
             onPress={onPostPress}
             onAuthorPress={onAuthorPress}
             onLike={onLike}
           />
-        </Box>
+        </View>
       );
     },
     [onPostPress, onAuthorPress, onLike]
@@ -361,6 +367,13 @@ const endFooterStyles = StyleSheet.create({
     flex: 1,
     height: 1,
     backgroundColor: "#ECECEC",
+  },
+});
+
+const masonryItemStyles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 4,
+    marginBottom: 8, // 等价于原 gluestack mb="$sm"
   },
 });
 

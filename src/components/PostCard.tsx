@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
@@ -97,6 +97,15 @@ const PostCardInner = ({
   // 是否为待审核状态
   const isPending = post.auditStatus === "PENDING";
 
+  // Stable handlers — avoids creating 4 new closures on every render, which
+  // matters when MasonryFlashList mounts / recycles many cards at once.
+  const handlePressPost = useCallback(() => onPress?.(post), [onPress, post]);
+  const handlePressAuthor = useCallback(
+    () => onAuthorPress?.(post.author.id),
+    [onAuthorPress, post.author.id]
+  );
+  const handleLike = useCallback(() => onLike?.(post.id), [onLike, post.id]);
+
   return (
     <Box
       bg="$white"
@@ -111,7 +120,7 @@ const PostCardInner = ({
       }}
     >
       {/* 封面媒体 */}
-      <Pressable onPress={() => onPress?.(post)}>
+      <Pressable onPress={handlePressPost}>
         <Box position="relative">
           {isVideoUrl(displayImage) ? (
             <View style={[styles.image, isPending && styles.pendingImage]}>
@@ -165,7 +174,7 @@ const PostCardInner = ({
       </Pressable>
 
       {/* 标题 */}
-      <Pressable px="$sm" pt="$sm" pb="$xs" onPress={() => onPress?.(post)}>
+      <Pressable px="$sm" pt="$sm" pb="$xs" onPress={handlePressPost}>
         <Text
           color="$black"
           fontWeight="$semibold"
@@ -179,11 +188,7 @@ const PostCardInner = ({
 
       {/* 底部：用户信息和点赞 */}
       <HStack px="$sm" pb="$sm" justifyContent="between" alignItems="center">
-        <Pressable
-          onPress={() => onAuthorPress?.(post.author.id)}
-          flex={1}
-          mr="$sm"
-        >
+        <Pressable onPress={handlePressAuthor} flex={1} mr="$sm">
           <HStack space="xs" alignItems="center">
             <OptimizedImage
               uri={post.author.avatar}
@@ -211,7 +216,7 @@ const PostCardInner = ({
           </HStack>
         </Pressable>
 
-        <Pressable onPress={() => onLike?.(post.id)}>
+        <Pressable onPress={handleLike}>
           <HStack space="xs" alignItems="center">
             <Ionicons
               name={displayIsLiked ? "heart" : "heart-outline"}

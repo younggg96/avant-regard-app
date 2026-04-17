@@ -57,6 +57,28 @@ export interface BrandSharePayload {
   founder?: string;
 }
 
+export interface ShowSharePayload {
+  showId: string;
+  title: string;
+  season: string;
+  year?: string;
+  imageUrl?: string;
+  brandName?: string;
+  designer?: string;
+  category?: string;
+}
+
+export interface ShareableShow {
+  id: string | number;
+  title: string;
+  season: string;
+  year?: string | number;
+  coverImage?: string;
+  brandName?: string;
+  designer?: string | null;
+  category?: string | null;
+}
+
 type ShareableStore = BuyerStore | BuyerStoreDetail;
 
 interface ShareToChatModalProps {
@@ -64,6 +86,7 @@ interface ShareToChatModalProps {
   post?: Post | null;
   store?: ShareableStore | null;
   brand?: Brand | null;
+  show?: ShareableShow | null;
   onClose: () => void;
   onShareComplete?: () => void;
 }
@@ -104,11 +127,24 @@ export function buildBrandSharePayload(brand: Brand): BrandSharePayload {
   };
 }
 
+export function buildShowSharePayload(show: ShareableShow): ShowSharePayload {
+  return {
+    showId: String(show.id),
+    title: show.title,
+    season: show.season,
+    year: show.year !== undefined && show.year !== null ? String(show.year) : undefined,
+    imageUrl: show.coverImage || undefined,
+    brandName: show.brandName || undefined,
+    designer: show.designer || undefined,
+    category: show.category || undefined,
+  };
+}
+
 interface SharePreview {
   imageUrl?: string;
   title: string;
   subtitle: string;
-  messageType: "post_card" | "store_card" | "brand_card";
+  messageType: "post_card" | "store_card" | "brand_card" | "show_card";
   payload: string;
   placeholderIcon?: keyof typeof Ionicons.glyphMap;
 }
@@ -117,6 +153,7 @@ function resolvePreview(
   post?: Post | null,
   store?: ShareableStore | null,
   brand?: Brand | null,
+  show?: ShareableShow | null,
 ): SharePreview | null {
   if (post) {
     const p = buildPostSharePayload(post);
@@ -151,6 +188,18 @@ function resolvePreview(
       placeholderIcon: "pricetag-outline",
     };
   }
+  if (show) {
+    const p = buildShowSharePayload(show);
+    const seasonLine = [p.season, p.year].filter(Boolean).join(" ");
+    return {
+      imageUrl: p.imageUrl,
+      title: p.brandName ? `${p.brandName} · ${p.title}` : p.title,
+      subtitle: seasonLine || "秀场",
+      messageType: "show_card",
+      payload: JSON.stringify(p),
+      placeholderIcon: "sparkles-outline",
+    };
+  }
   return null;
 }
 
@@ -159,6 +208,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   post,
   store,
   brand,
+  show,
   onClose,
   onShareComplete,
 }) => {
@@ -215,7 +265,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
-  const preview = resolvePreview(post, store, brand);
+  const preview = resolvePreview(post, store, brand, show);
 
   const handleSend = useCallback(
     async (conversation: Conversation) => {

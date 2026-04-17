@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Dimensions,
   Linking,
-  ActivityIndicator,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,8 +15,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
-import { ShareModal } from "../components/ShareModal";
-import { Post as SharePost } from "../components/PostCard";
+import { ShareToChatModal, ShareableShow } from "../components/ShareToChatModal";
 import { getPostsByShowId, Post } from "../services/postService";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -84,19 +82,19 @@ const CollectionDetailScreen = () => {
   const [isReviewExpanded, setIsReviewExpanded] = useState(false);
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
-  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [showShareToChat, setShowShareToChat] = useState(false);
 
-  const sharePost = useMemo<SharePost>(() => ({
+  const shareableShow = useMemo<ShareableShow>(() => ({
     id: collection.id,
-    title: `${collection.title} - ${collection.season} ${collection.year}`,
-    image: collection.coverImage,
-    author: { id: "0", name: brandName || collection.title, avatar: "" },
-    content: {
-      title: `${collection.title} - ${collection.season} ${collection.year}`,
-      description: `${brandName || collection.title} ${collection.season} ${collection.year} 时装秀`,
-      images: collection.coverImage ? [collection.coverImage] : [],
-    },
-  }), [collection, brandName]);
+    title: collection.title,
+    season: collection.season,
+    year: collection.year,
+    coverImage:
+      (images && images.length > 0 && images[0]?.imageUrl) || collection.coverImage,
+    brandName: brandName,
+    designer: collection.designer,
+    category: collection.category,
+  }), [collection, brandName, images]);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -135,7 +133,7 @@ const CollectionDetailScreen = () => {
   }, [collection, images, id]);
 
   const handleShare = () => {
-    setShareModalVisible(true);
+    setShowShareToChat(true);
   };
 
   const handleOpenShowWebsite = async () => {
@@ -148,19 +146,7 @@ const CollectionDetailScreen = () => {
     }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
-      </TouchableOpacity>
-      <View style={styles.shareButton} />
-    </View>
-  );
-
-  const renderImageGallery = () => {
+  const renderHeroGallery = () => {
     const imagesToShow =
       collectionImages.length > 0
         ? collectionImages.map((img) => img.imageUrl).filter(url => url && url.trim() !== "")
@@ -172,12 +158,39 @@ const CollectionDetailScreen = () => {
     }
 
     return (
-      <ImageGallery
-        images={imagesToShow}
-        imageHeight={screenWidth * 1.2}
-        showThumbnails={collectionImages.length > 1}
-        showFullscreenOnPress={true}
-      />
+      <View style={styles.heroContainer}>
+        <ImageGallery
+          images={imagesToShow}
+          imageHeight={screenWidth * 1.2}
+          showThumbnails={collectionImages.length > 1}
+          showFullscreenOnPress={true}
+        />
+        <LinearGradient
+          colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]}
+          style={styles.heroGradient}
+          pointerEvents="none"
+        />
+        <SafeAreaView style={styles.heroTopBar} edges={["top"]}>
+          <TouchableOpacity
+            style={styles.heroIconButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={8}
+          >
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="arrow-back" size={22} color={theme.colors.white} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.heroIconButton}
+            onPress={handleShare}
+            hitSlop={8}
+          >
+            <View style={styles.heroIconCircle}>
+              <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+            </View>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </View>
     );
   };
 
@@ -375,20 +388,24 @@ const CollectionDetailScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {renderHeader()}
-        {renderImageGallery()}
+        {renderHeroGallery()}
         {renderCollectionInfo()}
         {renderReview()}
         {renderRelatedPosts()}
       </ScrollView>
 
-      {/* ShareModal - temporarily hidden */}
-    </SafeAreaView>
+      <ShareToChatModal
+        visible={showShareToChat}
+        show={shareableShow}
+        onClose={() => setShowShareToChat(false)}
+      />
+    </View>
   );
 };
 
@@ -397,23 +414,44 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  heroContainer: {
+    position: "relative",
+    width: screenWidth,
+  },
+  heroGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  heroTopBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    paddingHorizontal: 12,
   },
-  backButton: {
-    padding: 8,
+  heroIconButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
-  shareButton: {
-    padding: 8,
-  },
-  scrollView: {
-    flex: 1,
+  heroIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.sm,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   infoContainer: {
     padding: 20,

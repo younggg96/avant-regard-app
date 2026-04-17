@@ -783,7 +783,15 @@ class PostService:
         return [self._format_post(p, current_user_id) for p in filtered]
 
     def _load_recommend_config(self) -> dict:
-        """从 app_config 加载推荐配置，缺失字段用默认值补全"""
+        """从 app_config 加载推荐配置，缺失字段用默认值补全。
+
+        Tolerates three failure modes so the recommendation pipeline never
+        crashes on a cold-start database:
+          1. `app_config` table missing (PostgREST 404).
+          2. No row for `recommend_config` (maybe_single may return None or raise).
+          3. Saved JSON missing/partial sections (e.g. older schema).
+        """
+        saved = None
         try:
             result = (
                 self.db.table("app_config")
@@ -792,18 +800,19 @@ class PostService:
                 .maybe_single()
                 .execute()
             )
-            if result.data and result.data.get("value"):
-                saved = result.data["value"]
-                merged = {}
-                for section, defaults in DEFAULT_RECOMMEND_CONFIG.items():
-                    if isinstance(defaults, dict):
-                        merged[section] = {**defaults, **(saved.get(section) or {})}
-                    else:
-                        merged[section] = saved.get(section, defaults)
-                return merged
+            if result is not None and getattr(result, "data", None):
+                saved = result.data.get("value") or None
         except Exception as e:
             print(f"[RecommendConfig] Failed to load, using defaults: {e}")
-        return {**DEFAULT_RECOMMEND_CONFIG}
+
+        merged = {}
+        for section, defaults in DEFAULT_RECOMMEND_CONFIG.items():
+            section_saved = (saved or {}).get(section) if isinstance(saved, dict) else None
+            if isinstance(defaults, dict):
+                merged[section] = {**defaults, **(section_saved or {})}
+            else:
+                merged[section] = section_saved if section_saved is not None else defaults
+        return merged
 
     def _sort_by_grade_and_time(self, posts: list) -> list:
         """按 grade 升序（A 优先）、同级按 created_at 倒序"""

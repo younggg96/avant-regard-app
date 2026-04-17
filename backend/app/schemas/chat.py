@@ -12,6 +12,10 @@ class MessageType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
     SYSTEM = "system"
+    POST_CARD = "post_card"
+    STORE_CARD = "store_card"
+    BRAND_CARD = "brand_card"
+    SHOW_CARD = "show_card"
 
 
 class SendMessageRequest(BaseModel):

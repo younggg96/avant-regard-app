@@ -14,7 +14,7 @@ import { ImageSize } from "../../../utils/imageUtils";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
 import type { ActionSheetAction } from "../../../components/ui/ActionSheet";
 import { Message } from "../../../services/chatService";
-import { PostSharePayload, StoreSharePayload, BrandSharePayload } from "../../../components/ShareToChatModal";
+import { PostSharePayload, StoreSharePayload, BrandSharePayload, ShowSharePayload } from "../../../components/ShareToChatModal";
 import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
 import { styles } from "../styles";
@@ -52,6 +52,14 @@ function tryParseBrandCard(content: string): BrandSharePayload | null {
   return null;
 }
 
+function tryParseShowCard(content: string): ShowSharePayload | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed.showId === "string") return parsed;
+  } catch { }
+  return null;
+}
+
 export const MessageBubble = ({
   message,
   showTime,
@@ -73,6 +81,9 @@ export const MessageBubble = ({
 
   const isBrandCard = message.messageType === "brand_card";
   const brandCard = isBrandCard ? tryParseBrandCard(message.content) : null;
+
+  const isShowCard = message.messageType === "show_card";
+  const showCard = isShowCard ? tryParseShowCard(message.content) : null;
 
   const menuActions = useMemo<ActionSheetAction[]>(() => {
     const list: ActionSheetAction[] = [];
@@ -110,7 +121,123 @@ export const MessageBubble = ({
     (navigation.navigate as any)("BrandDetail", { id: String(brandCard.brandId), name: brandCard.name });
   };
 
+  const handleShowCardPress = () => {
+    if (!showCard) return;
+    (navigation.navigate as any)("CollectionDetail", {
+      collection: {
+        id: showCard.showId,
+        title: showCard.title,
+        season: showCard.season,
+        year: showCard.year || "",
+        coverImage: showCard.imageUrl || "",
+        imageCount: 0,
+        designer: showCard.designer,
+        category: showCard.category,
+      },
+      brandName: showCard.brandName,
+    });
+  };
+
   const renderContent = () => {
+    if (showCard) {
+      const seasonLine = [showCard.season, showCard.year].filter(Boolean).join(" ");
+      const metaParts = [showCard.designer, showCard.category].filter(Boolean) as string[];
+      return (
+        <TouchableOpacity
+          style={[
+            cardStyles.container,
+            isMine ? cardStyles.containerMine : cardStyles.containerOther,
+          ]}
+          onPress={handleShowCardPress}
+          activeOpacity={0.7}
+        >
+          {showCard.imageUrl ? (
+            <OptimizedImage
+              uri={showCard.imageUrl}
+              size={ImageSize.MEDIUM}
+              style={cardStyles.image}
+              contentFit="cover"
+              lazy
+            />
+          ) : (
+            <View style={[cardStyles.image, showCardStyles.placeholder]}>
+              <Ionicons
+                name="sparkles-outline"
+                size={36}
+                color={isMine ? "rgba(255,255,255,0.3)" : theme.colors.gray200}
+              />
+            </View>
+          )}
+          <View style={cardStyles.body}>
+            <Text
+              style={[
+                cardStyles.title,
+                isMine ? cardStyles.titleMine : cardStyles.titleOther,
+              ]}
+              numberOfLines={2}
+            >
+              {showCard.brandName ? `${showCard.brandName} · ${showCard.title}` : showCard.title}
+            </Text>
+            {seasonLine ? (
+              <Text
+                style={[
+                  showCardStyles.season,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                {seasonLine}
+              </Text>
+            ) : null}
+            {metaParts.length > 0 && (
+              <Text
+                style={[
+                  showCardStyles.meta,
+                  isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                ]}
+                numberOfLines={1}
+              >
+                {metaParts.join(" · ")}
+              </Text>
+            )}
+            <View style={cardStyles.footer}>
+              <View style={cardStyles.authorRow}>
+                <Ionicons
+                  name="sparkles-outline"
+                  size={14}
+                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                />
+                <Text
+                  style={[
+                    cardStyles.authorName,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                  numberOfLines={1}
+                >
+                  秀场
+                </Text>
+              </View>
+              <View style={cardStyles.tapHint}>
+                <Text
+                  style={[
+                    cardStyles.tapHintText,
+                    isMine ? cardStyles.textMuted : cardStyles.textSubtle,
+                  ]}
+                >
+                  查看
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={12}
+                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     if (brandCard) {
       const infoParts = [brandCard.country, brandCard.category].filter(Boolean);
       return (
@@ -599,6 +726,21 @@ const brandCardStyles = StyleSheet.create({
     fontSize: 12,
   },
   founder: {
+    fontSize: 11,
+    fontStyle: "italic",
+  },
+});
+
+const showCardStyles = StyleSheet.create({
+  placeholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.gray50,
+  },
+  season: {
+    fontSize: 12,
+  },
+  meta: {
     fontSize: 11,
     fontStyle: "italic",
   },

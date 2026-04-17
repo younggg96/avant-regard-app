@@ -3,7 +3,7 @@
 """
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Query, Body
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from app.services.admin_service import admin_service
 from app.services.cache_service import cache_service
 from app.services.notification_service import notification_service
@@ -733,15 +733,50 @@ async def update_auto_reply_config(
 
 # ==================== 推荐算法配置 ====================
 
+VALID_GRADES = {"A", "B", "C", "D"}
+
+
+def _normalize_grades(value: List[str]) -> List[str]:
+    """Deduplicate, uppercase, and validate grade codes."""
+    if not isinstance(value, list):
+        raise ValueError("grades 必须是数组")
+    cleaned = []
+    for g in value:
+        if not isinstance(g, str):
+            raise ValueError("grades 元素必须是字符串")
+        code = g.strip().upper()
+        if code not in VALID_GRADES:
+            raise ValueError(f"无效的评级: {g}（合法值：A/B/C/D）")
+        if code not in cleaned:
+            cleaned.append(code)
+    return sorted(cleaned)
+
 
 class PoolRatiosConfig(BaseModel):
     core: float = Field(0.5, ge=0, le=1)
     discovery: float = Field(0.3, ge=0, le=1)
     random: float = Field(0.2, ge=0, le=1)
 
+    @model_validator(mode="after")
+    def _ratios_sum_to_one(self) -> "PoolRatiosConfig":
+        total = self.core + self.discovery + self.random
+        if abs(total - 1.0) > 0.005:
+            raise ValueError(
+                f"三个池的比例之和必须等于 1.0（当前为 {total:.3f}）"
+            )
+        return self
+
 
 class CorePoolConfig(BaseModel):
     grades: List[str] = ["A", "B", "C"]
+
+    @field_validator("grades")
+    @classmethod
+    def _validate(cls, v: List[str]) -> List[str]:
+        normalized = _normalize_grades(v)
+        if not normalized:
+            raise ValueError("核心池至少选择一个评级")
+        return normalized
 
 
 class DiscoveryPoolConfig(BaseModel):
@@ -751,10 +786,26 @@ class DiscoveryPoolConfig(BaseModel):
 class RandomPoolConfig(BaseModel):
     grades: List[str] = ["A", "B"]
 
+    @field_validator("grades")
+    @classmethod
+    def _validate(cls, v: List[str]) -> List[str]:
+        normalized = _normalize_grades(v)
+        if not normalized:
+            raise ValueError("随机池至少选择一个评级")
+        return normalized
+
 
 class ColdStartConfig(BaseModel):
     days: int = Field(7, ge=1, le=90)
     grades: List[str] = ["A", "B"]
+
+    @field_validator("grades")
+    @classmethod
+    def _validate(cls, v: List[str]) -> List[str]:
+        normalized = _normalize_grades(v)
+        if not normalized:
+            raise ValueError("冷启动至少选择一个评级")
+        return normalized
 
 
 class RecommendConfigRequest(BaseModel):
@@ -784,8 +835,17 @@ async def update_recommend_config(
     from app.db.supabase import get_supabase
     db = get_supabase()
     config = request.model_dump()
-    db.table("app_config").upsert(
-        {"key": "recommend_config", "value": config},
-        on_conflict="key",
-    ).execute()
+    try:
+        db.table("app_config").upsert(
+            {"key": "recommend_config", "value": config},
+            on_conflict="key",
+        ).execute()
+    except Exception as exc:  # noqa: BLE001 — translate to clean envelope
+        # Supabase/PostgREST errors arrive as dict-like objects whose str() is
+        # unreadable for end users. Re-raise a plain RuntimeError with a clear
+        # hint; the global Exception handler will wrap it in the standard
+        # {code, message, data} envelope that the admin UI already understands.
+        raise RuntimeError(
+            f"保存推荐配置失败：{exc}（请确认 app_config 表已创建）"
+        ) from exc
     return success(config)

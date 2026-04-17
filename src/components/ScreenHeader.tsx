@@ -8,25 +8,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Box, Text, Pressable, HStack, VStack } from "./ui";
 import { theme } from "../theme";
-import { useVideoPlayer, VideoView } from "expo-video";
-
-const headerVideoSource = require("../../assets/video/header1.mp4");
-
-const HeaderVideo: React.FC = () => {
-  const player = useVideoPlayer(headerVideoSource, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-  return (
-    <VideoView
-      player={player}
-      style={{ flex: 1, height: 80 }}
-      contentFit="contain"
-      nativeControls={false}
-    />
-  );
-};
 
 export interface HeaderAction {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -49,13 +30,11 @@ export interface ScreenHeaderProps {
   borderless?: boolean;
   onBackPress?: () => void;
   boldTitle?: boolean;
-  useHeaderVideo?: boolean;
 }
 
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   subtitle,
-  useHeaderVideo = false,
   showBack = false,
   showBackButton = false,
   showCloseButton = false,
@@ -187,30 +166,28 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       <HStack alignItems="center" justifyContent="between">
         {renderLeftButton()}
 
-        {useHeaderVideo ?
-          <HeaderVideo /> :
-          <VStack flex={1} alignItems="center" px="$sm">
+        <VStack flex={1} alignItems="center" px="$sm">
+          <Text
+            textAlign="center"
+            style={[boldTitle ? styles.boldTitle : getTitleStyle()]}
+          >
+            {title}
+          </Text>
+          {subtitle && (
             <Text
+              color="$gray400"
+              fontSize="$xs"
+              lineHeight="$xs"
               textAlign="center"
-              style={[boldTitle ? styles.boldTitle : getTitleStyle()]}
+              mt="$xs"
+              sx={{
+                letterSpacing: 1,
+              }}
             >
-              {title}
+              {subtitle}
             </Text>
-            {subtitle && (
-              <Text
-                color="$gray400"
-                fontSize="$xs"
-                lineHeight="$xs"
-                textAlign="center"
-                mt="$xs"
-                sx={{
-                  letterSpacing: 1,
-                }}
-              >
-                {subtitle}
-              </Text>
-            )}
-          </VStack>}
+          )}
+        </VStack>
         {renderRightActions()}
       </HStack>
     </Box>

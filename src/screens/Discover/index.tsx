@@ -7,6 +7,7 @@ import {
   Linking,
   StatusBar,
 } from "react-native";
+import Reanimated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
@@ -159,12 +160,9 @@ const DiscoverScreen: React.FC = () => {
     loadMoreRecommend,
   } = useDiscoverData();
 
-  // Header 动画 Hook (single Animated.Value drives both height + opacity)
-  const {
-    headerOpacity,
-    handleVerticalScroll,
-    interpolatedHeaderHeight,
-  } = useHeaderAnimation();
+  // Header 动画 Hook（reanimated 版本，在 UI 线程驱动 height + opacity，
+  // 避免冷启动首次下滑时和滚动事件、图片解码在 JS 线程互相抢占）
+  const { headerAnimatedStyle, handleVerticalScroll } = useHeaderAnimation();
 
   // 骨架屏动画
   const { skeletonOpacity } = useSkeletonAnimation();
@@ -383,13 +381,7 @@ const DiscoverScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" />
       {/* 顶部栏 - Logo视频 + 头像 + 通知 + 搜索框（滚动时可收起） */}
-      <Animated.View
-        style={{
-          height: interpolatedHeaderHeight,
-          opacity: headerOpacity,
-          overflow: "hidden",
-        }}
-      >
+      <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
         <DiscoverHeader
           avatar={userAvatarUrl}
           totalInteractionUnread={totalInteractionUnread}
@@ -397,7 +389,7 @@ const DiscoverScreen: React.FC = () => {
           onSearchPress={handleSearchPress}
           onInteractionPress={handleInteractionPress}
         />
-      </Animated.View>
+      </Reanimated.View>
 
       {/* Tab 栏 - 居中样式 */}
       <DiscoverTabBar

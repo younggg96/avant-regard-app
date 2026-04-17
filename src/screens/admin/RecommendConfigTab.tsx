@@ -86,10 +86,15 @@ const RecommendConfigTab = () => {
     setDirty(true);
   };
 
-  const handleRatioBlur = () => {
+  const parsedRatios = useCallback(() => {
     const c = parseInt(coreInput, 10) || 0;
     const d = parseInt(discoveryInput, 10) || 0;
     const r = parseInt(randomInput, 10) || 0;
+    return { c, d, r };
+  }, [coreInput, discoveryInput, randomInput]);
+
+  const handleRatioBlur = () => {
+    const { c, d, r } = parsedRatios();
     updateField("pool_ratios", {
       core: c / 100,
       discovery: d / 100,
@@ -104,9 +109,7 @@ const RecommendConfigTab = () => {
   };
 
   const ratioSum = () => {
-    const c = parseInt(coreInput, 10) || 0;
-    const d = parseInt(discoveryInput, 10) || 0;
-    const r = parseInt(randomInput, 10) || 0;
+    const { c, d, r } = parsedRatios();
     return c + d + r;
   };
 
@@ -129,9 +132,28 @@ const RecommendConfigTab = () => {
       return;
     }
 
+    // Sync un-blurred inputs into the config before shipping to the backend;
+    // otherwise, tapping Save directly after typing would send stale ratios/days.
+    const { c, d, r } = parsedRatios();
+    const clampedDays = Math.max(1, Math.min(90, parseInt(daysInput, 10) || 7));
+    const payload: RecommendConfig = {
+      ...config,
+      pool_ratios: {
+        core: c / 100,
+        discovery: d / 100,
+        random: r / 100,
+      },
+      cold_start: { ...config.cold_start, days: clampedDays },
+    };
+
     try {
       setSaving(true);
-      await updateRecommendConfig(config);
+      const saved = await updateRecommendConfig(payload);
+      setConfig(saved);
+      setDaysInput(String(saved.cold_start.days));
+      setCoreInput(String(Math.round(saved.pool_ratios.core * 100)));
+      setDiscoveryInput(String(Math.round(saved.pool_ratios.discovery * 100)));
+      setRandomInput(String(Math.round(saved.pool_ratios.random * 100)));
       setDirty(false);
       Alert.alert("保存成功", "推荐算法配置已更新");
     } catch (e) {
