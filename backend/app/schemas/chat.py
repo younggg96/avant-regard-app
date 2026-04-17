@@ -16,6 +16,7 @@ class MessageType(str, Enum):
     STORE_CARD = "store_card"
     BRAND_CARD = "brand_card"
     SHOW_CARD = "show_card"
+    USER_CARD = "user_card"
 
 
 class SendMessageRequest(BaseModel):
