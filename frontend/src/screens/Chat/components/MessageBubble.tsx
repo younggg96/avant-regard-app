@@ -344,7 +344,7 @@ export const MessageBubble = ({
           onPress={handleStoreCardPress}
           activeOpacity={0.7}
         >
-          {storeCard.imageUrl ? (
+          {storeCard.imageUrl && (
             <OptimizedImage
               uri={storeCard.imageUrl}
               size={ImageSize.MEDIUM}
@@ -352,14 +352,6 @@ export const MessageBubble = ({
               contentFit="cover"
               lazy
             />
-          ) : (
-            <View style={[cardStyles.image, storeCardStyles.placeholder]}>
-              <Ionicons
-                name="storefront-outline"
-                size={36}
-                color={isMine ? "rgba(255,255,255,0.3)" : theme.colors.gray200}
-              />
-            </View>
           )}
           <View style={cardStyles.body}>
             <Text
@@ -665,10 +657,6 @@ const cardStyles = StyleSheet.create({
 });
 
 const storeCardStyles = StyleSheet.create({
-  placeholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
   meta: {
     flexDirection: "row",
     alignItems: "center",

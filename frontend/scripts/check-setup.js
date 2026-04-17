@@ -4,38 +4,35 @@ const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 
-console.log("🔍 检查 Avant Regard 项目设置...\n");
+console.log("🔍 检查 Avant Regard Frontend 项目设置...\n");
+
+const rootDir = path.join(__dirname, "..");
 
 const checks = [
   {
     name: "检查 Node.js 版本",
     check: () => {
       const version = process.version;
-      const major = parseInt(version.slice(1).split(".")[0]);
+      const major = parseInt(version.slice(1).split(".")[0], 10);
       return major >= 18;
     },
     fix: "请安装 Node.js 18 或更高版本",
   },
   {
-    name: "检查 packages/core 目录",
-    check: () => fs.existsSync(path.join(__dirname, "..", "packages", "core")),
-    fix: "请确保 packages/core 目录存在",
-  },
-  {
     name: "检查 src 目录",
-    check: () => fs.existsSync(path.join(__dirname, "..", "src")),
+    check: () => fs.existsSync(path.join(rootDir, "src")),
     fix: "请确保 src 目录存在",
   },
   {
     name: "检查 node_modules",
-    check: () => fs.existsSync(path.join(__dirname, "..", "node_modules")),
-    fix: "请运行 npm install",
+    check: () => fs.existsSync(path.join(rootDir, "node_modules")),
+    fix: "请在 frontend/ 目录下运行 npm install（或在仓库根目录运行 npm install）",
   },
   {
     name: "检查 Expo CLI",
     check: () => {
       try {
-        execSync("npx expo --version", { stdio: "pipe" });
+        execSync("npx expo --version", { stdio: "pipe", cwd: rootDir });
         return true;
       } catch {
         return false;
@@ -44,15 +41,14 @@ const checks = [
     fix: "请安装 Expo CLI: npm install -g @expo/cli",
   },
   {
-    name: "检查核心包构建",
-    check: () =>
-      fs.existsSync(path.join(__dirname, "..", "packages", "core", "dist")),
-    fix: "请运行 npm run build:core",
+    name: "检查 App.tsx",
+    check: () => fs.existsSync(path.join(rootDir, "App.tsx")),
+    fix: "请确保 App.tsx 文件存在",
   },
   {
-    name: "检查 App.tsx",
-    check: () => fs.existsSync(path.join(__dirname, "..", "App.tsx")),
-    fix: "请确保 App.tsx 文件存在",
+    name: "检查 .env",
+    check: () => fs.existsSync(path.join(rootDir, ".env")),
+    fix: "请基于 .env.example 在 frontend/ 下创建 .env",
   },
 ];
 

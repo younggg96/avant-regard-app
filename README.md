@@ -1,255 +1,129 @@
-# Avant Regard - Fashion Runway Archive Mobile App
+# Avant Regard
 
-一个受 Vogue 启发的高端时装秀场归档移动应用，具有结构化收藏、Lookbook 和市场功能。使用 React Native 和 Expo 构建。
+> 为先锋时装而生的社区。  
+> A community for avant-garde fashion lovers — runway archives, outfit sharing, item reviews, and boutique discovery.
 
-## 🎨 产品概览
+这是 **Avant Regard** 的 monorepo，包含三个独立但协作的子项目：
 
-**Avant Regard** 是一个高端时装内容聚合平台，提供：
+| 子项目 | 路径 | 技术栈 | 说明 |
+| --- | --- | --- | --- |
+| 移动端 app（iOS + Android） | [`frontend/`](./frontend) | React Native + Expo 51 + TypeScript + Zustand + React Query + Gluestack | 主交付产品，用户发帖、聊天、发现等完整体验 |
+| 后端 API | [`backend/`](./backend) | FastAPI + SQLAlchemy + Supabase/Postgres + Docker | REST 服务，供 frontend 与 web 共同消费 |
+| 营销 / 只读网站 | [`web/`](./web) | Next.js 14 (App Router) + TypeScript + Tailwind | 落地页、下载引导，以及 Discover / 帖子详情 / 用户主页的只读视图 |
 
-- 结构化秀场归档（设计师 → 品牌分支 → 季节 → Lookbook → Look → 单品）
-- UGC 笔记和市场列表
-- 基于关注设计师的个性化 Feed
-- 针对 iOS 和 Android 优化的原生移动体验
-
-## 🏗️ 项目架构
+## 🗂️ 仓库结构
 
 ```
 avant-regard-app/
-├── packages/core/          # 共享类型、API 客户端、模拟数据
-├── src/                    # React Native 应用源码
-│   ├── screens/           # 页面组件
-│   ├── components/        # 可重用组件
-│   ├── store/             # 状态管理
-│   └── theme/             # 设计系统
-├── assets/                # 静态资源
-├── scripts/               # 项目脚本
-└── App.tsx                # 应用入口
+├── backend/          # FastAPI 后端
+│   ├── app/            # 应用代码（routes, services, db migrations）
+│   ├── scripts/        # 数据导入 / 种子脚本
+│   ├── requirements.txt
+│   └── docker-compose.yml
+├── frontend/         # React Native / Expo 移动端
+│   ├── App.tsx
+│   ├── src/            # screens, components, services, store, theme
+│   ├── assets/
+│   ├── android/ · ios/ # 原生工程
+│   ├── scripts/        # 启动与检查脚本
+│   └── package.json
+├── web/              # Next.js 14 营销 / 只读网站
+│   ├── src/app/        # App Router pages (/, /discover, /posts/[id], /users/[id], /download)
+│   ├── src/components/ # UI 组件
+│   ├── src/lib/        # API client, types, formatters, config
+│   └── package.json
+├── package.json      # 根 workspace manifest（npm workspaces）
+├── PROGRESS_LOG.md   # 迭代日志
+└── README.md
 ```
+
+> **Tip**：frontend 与 web 通过 npm workspaces 统一安装依赖；backend 是独立的 Python 项目，不参与 node workspace。
 
 ## 🚀 快速开始
 
 ### 环境要求
 
 - Node.js 18+
-- npm 或 yarn
-- Expo CLI（用于移动开发）
+- npm 10+（自带 workspaces 支持）
+- Python 3.11+（仅 backend 需要）
+- Xcode / Android Studio（仅 iOS / Android 原生构建需要）
 
-### 安装步骤
-
-1. 克隆仓库：
-
-```bash
-git clone https://github.com/yourusername/avant-regard-app.git
-cd avant-regard-app
-```
-
-2. 安装依赖：
+### 一次性安装（frontend + web 的所有 JS 依赖）
 
 ```bash
 npm install
 ```
 
-3. 构建核心包：
+此命令会自动为 `frontend/` 与 `web/` 安装依赖，依赖会被尽可能 hoist 到根 `node_modules`。
+
+### Frontend（移动端 app）
 
 ```bash
-npm run build:core
+npm run frontend:dev        # 启动 Expo Dev Server（脚本位于 frontend/scripts/start-mobile.js）
+npm run frontend:ios        # 在 iOS 模拟器运行原生构建
+npm run frontend:android    # 在 Android 模拟器运行原生构建
 ```
 
-### 运行移动应用
+或在 `frontend/` 目录内直接使用原生 Expo 命令：
 
 ```bash
-npm run dev
+cd frontend
+npm run start               # expo start
+npm run ios                 # expo run:ios
+npm run android             # expo run:android
 ```
 
-然后：
+首次运行前，复制 `frontend/.env.example` 为 `frontend/.env` 并根据需要修改 `EXPO_PUBLIC_API_BASE_URL`。
 
-- 按 `i` 启动 iOS 模拟器
-- 按 `a` 启动 Android 模拟器
-- 使用手机上的 Expo Go 应用扫描二维码
-
-其他命令：
+### Web（营销 / 只读网站）
 
 ```bash
-npm run ios      # 在 iOS 模拟器上运行
-npm run android  # 在 Android 模拟器上运行
+npm run web:dev             # next dev @ http://localhost:3000
+npm run web:build           # 生产构建
+npm run web:start           # 生产启动
 ```
 
-## 📱 功能特色
+首次运行前，复制 `web/.env.example` 为 `web/.env.local`，并把 `NEXT_PUBLIC_API_BASE_URL` 指向后端（默认 `https://api.avantregard.com`）。
 
-- **Tab 导航**：发现、设计师、收藏、个人资料
-- **发现 Feed**：混合 PGC 秀场内容和 UGC 笔记
-- **设计师库**：带搜索的 A-Z 索引设计师目录
-- **Lookbook 浏览**：按季节筛选的系列
-- **Look 详情**：高分辨率图片和单品分解
-- **单品页面**：列表、定价和可用性
-- **收藏系统**：保存和整理 Look 和单品
-- **响应式设计**：针对各种屏幕尺寸优化
-- **离线支持**：核心功能可离线工作
+### Backend（FastAPI）
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
+
+或通过 Docker：
+
+```bash
+cd backend
+docker compose -f docker-compose.dev.yml up
+```
 
 ## 🎨 设计系统
 
-### 色彩调色板
+Frontend 与 web 共用一致的视觉语言（极简黑白灰 + Playfair Display 衬线字体）。移动端定义在 `frontend/src/theme/index.ts`；web 在 `web/tailwind.config.ts` 与 `web/src/app/globals.css` 中镜像了同一套令牌，确保品牌一致。
 
-- **主色**：#000000（纯黑）
-- **次色**：#FFFFFF（纯白）
-- **强调色**：#C7A27C（香槟金）
-- **灰度**：#111, #222, #666, #AAA, #F5F5F5
+## 🔌 API 约定
 
-### 字体系统
+所有 API 响应统一采用 `{ code, message, data }` 信封格式，`code !== 0` 视为业务错误。  
+Web 与 frontend 在各自的 API 客户端里解包（见 `web/src/lib/api.ts` 与 `frontend/src/services/postService.ts`）。
 
-- **衬线标题**：Playfair Display
-- **无衬线正文**：Inter
-- **Hero**：48-60px，行高 1.1
-- **正文**：16-18px，行高 1.6
+## 🧪 Web 页面清单（当前范围：落地页 + 下载 + 核心只读）
 
-### 组件库
+- `/` — 落地页 Hero / 功能介绍 / Discover 预览 / CTA
+- `/discover` — 社区最新帖子瀑布（调用后端 `GET /api/posts/feed`）
+- `/posts/[id]` — 帖子详情（图片 / 文案 / 单品信息 / 作者链接）
+- `/users/[id]` — 用户主页（头像 / Bio / 粉丝数 / 发布列表）
+- `/download` — 下载引导 + 移动端自动跳转（`?auto=1` 时 UA 嗅探）
+- `/robots.txt` · `/sitemap.xml` — SEO 基础
 
-- `RunwayShowCard`：全宽度 Hero 卡片
-- `LookCard`：网格优化图片卡片
-- `ItemCard`：带定价的产品展示
-- `FilterBar`：粘性筛选导航
-- `NoteCard`：用户生成内容卡片
+## 📝 版本控制
 
-## 📊 数据模型
+- 所有改动请记录在 [`PROGRESS_LOG.md`](./PROGRESS_LOG.md)
+- 提交前请同步更新依赖（根 `npm install` 保证 workspaces 链接正确）
 
-### 核心实体
+## 📞 联系
 
-- **BrandBranch**：子品牌（如 Y's、Ground Y）
-- **Season**：FW24、SS24 等
-- **Lookbook**：秀场系列
-- **Look**：个别秀场造型
-- **Item**：特定服装/配饰
-- **Listing**：市场可用性
-- **Note**：用户注释和评论
-
-## 🔌 API 结构
-
-### REST 端点
-
-```
-GET /lookbooks?season=FW24
-GET /looks/:id
-GET /items/:id/listings
-POST /notes
-POST /listings
-```
-
-### 模拟数据
-
-应用包含全面的模拟数据，包括：
-
-- 3 位设计师（Yohji Yamamoto、Rei Kawakubo、Maison Margiela）
-- 5 个品牌分支
-- 3 个季节
-- 3 个 Lookbook
-- 5 个带详细描述的 Look
-- 带列表的示例单品
-
-## 🛠️ 开发
-
-### 项目结构
-
-#### 核心包（`packages/core/`）
-
-```typescript
-src/
-├── types/          # TypeScript 接口
-├── api/            # API 客户端
-└── mocks/          # 种子数据
-```
-
-#### 移动应用（`apps/mobile/`）
-
-```typescript
-src/
-├── screens/        # 屏幕组件
-├── components/     # 可重用组件
-├── store/          # Zustand 状态管理
-└── theme/          # 设计令牌
-```
-
-### 状态管理
-
-- **本地状态**：Zustand 用于收藏和用户偏好
-- **数据获取**：TanStack Query（React Query）带缓存
-- **持久化**：AsyncStorage 用于离线数据
-
-### 样式
-
-- **React Native StyleSheet** 带集中化主题对象
-- **设计令牌** 确保间距、颜色和字体的一致性
-- **平台特定** 针对 iOS 和 Android 的优化
-
-## 🚢 部署
-
-### 移动端（Expo）
-
-```bash
-cd apps/mobile
-eas build --platform ios
-eas build --platform android
-```
-
-应用商店提交：
-
-```bash
-eas submit --platform ios
-eas submit --platform android
-```
-
-## 📈 性能优化
-
-- **虚拟列表**：用于大型集合
-- **图片懒加载**：渐进式图片加载
-- **缓存**：API 查询 5 分钟缓存时间
-- **骨架屏**：加载占位符
-
-## 🔐 安全与合规
-
-- 无版权 Vogue 内容
-- 所有图片都是占位符
-- 用户数据本地存储
-- GDPR 合规数据处理
-
-## 🔄 未来增强
-
-### 第二阶段
-
-- [ ] 价格下降实时通知
-- [ ] 带筛选的高级搜索
-- [ ] 用户认证
-- [ ] 社交功能（关注、分享）
-
-### 第三阶段
-
-- [ ] AR 试穿功能
-- [ ] AI 驱动推荐
-- [x] 买卖双方直接消息（即时聊天系统）
-- [ ] 支付集成
-
-## 🤝 贡献
-
-1. Fork 仓库
-2. 创建功能分支（`git checkout -b feature/amazing-feature`）
-3. 提交更改（`git commit -m 'Add amazing feature'`）
-4. 推送到分支（`git push origin feature/amazing-feature`）
-5. 打开 Pull Request
-
-## 📄 许可证
-
-此项目仅用于教育目的。所有时装内容均为虚构，仅用于演示。
-
-## 🙏 致谢
-
-- 设计灵感来自 Vogue Runway
-- 字体来自 Google Fonts
-- 图标来自 Expo Vector Icons
-- 状态管理使用 Zustand
-
-## 📞 支持
-
-如有问题或支持需求，请在 GitHub 仓库中开启 issue。
-
----
-
-**注意**：这是一个演示项目。所有设计师姓名、品牌和内容仅用于教育目的。不包含任何实际时装屋内容或商标。
+有问题请通过 issue 提交，或写信至 `hello@avantregard.com`。

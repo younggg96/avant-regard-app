@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --------------------------------------------------------------------------
+ *  Brand globals – keep in lockstep with frontend/src/theme/index.ts
+ * -------------------------------------------------------------------------- */
+
+:root {
+  --color-ink: #000000;
+  --color-ink-soft: #222222;
+  --color-muted: #666666;
+  --color-hairline: rgba(0, 0, 0, 0.08);
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #f9f9f9;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+}
+
+body {
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+}
+
+/* Selection styling matches the app's monochromatic brand. */
+::selection {
+  background: #000;
+  color: #fff;
+}
+
+@layer components {
+  .hairline {
+    @apply border-b border-ink/5;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/70 px-3 py-1 text-xs uppercase tracking-wider text-ink/70 backdrop-blur;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium tracking-wide text-white transition hover:bg-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/15 bg-white px-6 py-3 text-sm font-medium tracking-wide text-ink transition hover:border-ink hover:bg-ink hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink;
+  }
+
+  .link-muted {
+    @apply text-ink/60 transition hover:text-ink;
+  }
+}

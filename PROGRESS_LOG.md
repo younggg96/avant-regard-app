@@ -1,5 +1,105 @@
 # Progress Log
 
+## 2026-04-17: Monorepo Restructure — `frontend/` + `backend/` + new `web/` (Next.js 14)
+
+### Summary
+Split the repository into a 3-workspace monorepo:
+
+| Workspace | Path | Stack | Role |
+| --- | --- | --- | --- |
+| `@avant-regard/frontend` | `frontend/` | Expo 51 · React Native · TS · Zustand · React Query · Gluestack | 移动端 app (原有代码整体迁入) |
+| `@avant-regard/web` | `web/` | Next.js 14 App Router · TypeScript · Tailwind CSS | 全新营销 / 只读网站 |
+| backend (Python) | `backend/` | FastAPI · SQLAlchemy · Docker | 保持不变，只做结构性归位（数据导入脚本移入 `backend/scripts/`） |
+
+Root now只保留 monorepo 级别的文件：`package.json`（npm workspaces）、`.gitignore`、`README.md`、`PROGRESS_LOG.md`。
+
+### Why
+App 的业务逻辑越来越复杂，同时 SEO 与应用商店外的获客通道需要一个独立的 web 站点。把 frontend/backend/web 并列放在一个 monorepo 下：
+- 共享一个 git 历史与 issue tracker
+- 通过 npm workspaces 共用 node 依赖缓存
+- 当 web 与 frontend 未来需要共享 API 类型或业务 hook 时，可零成本抽出 `packages/shared`（本次范围之外）
+- 不互相污染：web 的 Next.js 构建与 frontend 的 Expo Metro 互不干扰
+
+### Key Structural Changes
+
+#### Repo layout
+- 新增 `frontend/` 目录，把原根目录下的 app 文件整体迁入（通过 `git mv` 保留历史）：
+  - `App.tsx`, `index.js`, `package.json`, `package-lock.json`
+  - `app.json`, `babel.config.js`, `metro.config.js`, `tsconfig.json`, `eas.json`, `gluestack.config.ts`, `env.d.ts`
+  - `src/`, `assets/`, `android/`, `ios/`, `patches/`
+  - `.env`, `.env.example`, `.expo/`, `node_modules/`（gitignored 的直接 mv）
+- 把 `scripts/` 里的前端脚本 (`start-mobile.js`, `check-setup.js`) 迁入 `frontend/scripts/`；数据导入脚本 (`excel_to_csv.py` 等) 迁入 `backend/scripts/`
+- `backend/` 保持不动
+- 新建 `web/`（Next.js 14 App Router 项目）
+
+#### Root `package.json`
+新增根 `package.json`，声明 `workspaces: ["frontend", "web"]`，并提供短命令：
+- `npm run frontend:dev` / `:ios` / `:android`
+- `npm run web:dev` / `:build` / `:start`
+- `npm run backend:dev`（调用 `backend/venv/bin/python run.py`）
+
+#### Frontend 调整
+- `frontend/package.json` 更名为 `@avant-regard/frontend`；`"web": "expo start --web"` 改名为 `"expo:web"`，避免与 monorepo 的 `web` workspace 命令冲突
+- `frontend/tsconfig.json` 移除了不存在的 `packages/core` path 映射，保持 `@/*: ./src/*` 单一映射
+- `frontend/scripts/check-setup.js` 重写，移除 `packages/core` 相关检查，新增 `.env` 存在性检查
+- `.npmrc` 从 frontend 提升到根目录，让 `legacy-peer-deps=true` 对所有 workspaces 生效
+
+#### Backend 调整
+- 新增 `backend/scripts/`，容纳原根 `scripts/` 中的数据/数据库导入脚本
+- 代码不变
+
+#### Web 新项目
+创建 Next.js 14 (App Router) + Tailwind，页面清单：
+- `src/app/page.tsx` — 落地页：Hero、功能四宫格、Discover 预览 grid、CTA 段
+- `src/app/download/page.tsx` — 下载引导页 + `SmartRedirect`（`?auto=1` 时按 UA 自动跳 App Store / Play Store）
+- `src/app/discover/page.tsx` — 只读 Discover（调用后端 `GET /api/posts/feed`）
+- `src/app/posts/[id]/page.tsx` — 帖子详情（图片 / 文案 / 单品信息 / 作者链接 / 评论点赞统计）
+- `src/app/users/[id]/page.tsx` — 用户主页（头像 / bio / 粉丝数 / 发布瀑布）
+- `src/app/not-found.tsx`, `src/app/error.tsx` — 404 / 错误边界
+- `src/app/robots.ts`, `src/app/sitemap.ts` — SEO 基础
+- `src/components/SiteHeader.tsx`, `SiteFooter.tsx`, `PostCard.tsx`, `DownloadCTAs.tsx`, `SmartRedirect.tsx` — UI 组件
+- `src/lib/{config,types,api,format}.ts` — 运行时配置、类型镜像、只读 API 客户端（解包 `{ code, message, data }`）、格式化工具
+
+设计令牌在 `tailwind.config.ts` 中镜像 `frontend/src/theme/index.ts`（同色阶黑白灰 + Playfair Display 衬线字体）。
+
+### Design Principles
+- **DRY / 镜像而非复制**：web 的类型与 API 客户端是 frontend 的"narrow mirror"，只保留只读所需字段；当未来需要真正复用业务 hook 时，可抽出 `packages/shared`
+- **SRP**：workspace 边界清晰——frontend 负责原生体验，web 负责 SEO / 公开访问，backend 是唯一数据源
+- **KISS**：web v1 全部是 server components，没有客户端状态；`SmartRedirect` 是唯一 `"use client"` 组件，只负责 UA 嗅探
+- **Open/Closed**：新增页面（例如 `/brands/[id]`）时无需改动 layout / header；`web/src/lib/api.ts` 只需再加一个函数
+- **Holistic**：stash 迁移时对 patch 做了路径重写（`a/src/` → `a/frontend/src/`），保证 30+ 未提交改动（FeedbackSheet、ShareContentPickerModal 等）无缝落在新结构下
+
+### Verification
+- `npm install` 从根部成功完成，workspaces 依赖正确链接
+- `npm run web:build` 通过，生成 8 条 App Router 路由（首页 / download 静态化，posts/users 动态）
+- `frontend/` 下 `./node_modules/.bin/expo --version` 正常，原有 TS 报错为迁移前遗留，不由本次改动引入
+
+### Notes
+- Next.js 14.2.18 有已知安全告警（2025-12 CVE），后续可升级到最新 14.2.x patch 或 15.x
+- Frontend 的 `.npmrc` 已提升到根目录；之前在 workspace 内的 `.npmrc` 会被 npm 忽略
+
+---
+
+## 2026-04-17: Store Share Card — Drop Image Placeholder When Store Has No Image (买手店卡片无图时不占位)
+
+### Summary
+In `frontend/src/screens/Chat/components/MessageBubble.tsx`, the buyer-store (`store_card`) share message no longer renders a grey storefront-icon placeholder when the underlying store has no `imageUrl`. The card now collapses to a pure text card (title + city/country + rating + tags + footer), matching the post card's null-image idiom.
+
+### Why
+The placeholder added ~160pt of decorative grey space that carried no information and actively competed with the real content (store name, city, rating, tags). The post card path (`postCard.imageUrl && <OptimizedImage …/>`) already did the right thing by simply omitting the image node; the store card was the outlier.
+
+### Key Changes (`frontend/src/screens/Chat/components/MessageBubble.tsx`)
+- Replaced the `storeCard.imageUrl ? <OptimizedImage/> : <View placeholder>` ternary with a single `&&` conditional — no image ⇒ no image node.
+- Removed the now-unused `storeCardStyles.placeholder` block (it only held `alignItems` / `justifyContent`; grep confirmed zero remaining references).
+
+### Design Principles
+- **KISS**: a missing image is best expressed by absence, not by a grey-box stand-in.
+- **DRY**: store card now follows the same null-image idiom as the post card.
+- **Holistic**: searched for other consumers of `storeCardStyles.placeholder` before deleting — none existed. Show (`秀场`) and brand (`品牌`) cards intentionally left unchanged: their placeholders still read as an explicit "media missing" signal for those domains; can revisit if the same request lands.
+
+### Verification
+- `ReadLints` clean on `MessageBubble.tsx`.
+
 ## 2026-04-13: Store Follow Button (关注店铺按钮)
 
 ### Feature Summary

@@ -1,76 +1,79 @@
-# Dependencies
+# ---------- Dependencies ----------
 node_modules/
 .pnp
 .pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
 
-# Testing
-coverage/
-.nyc_output/
-
-# Production
+# ---------- Build output ----------
 build/
 dist/
 out/
 .next/
+web-build/
+*.tsbuildinfo
 
-# Misc
-.DS_Store
-*.pem
+# ---------- Testing ----------
+coverage/
+.nyc_output/
 
-# Environment variables
+# ---------- Environment variables ----------
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+frontend/.env
+frontend/.env.local
+web/.env
+web/.env.local
+backend/.env
+backend/.env.production
 
-# Debug
+# ---------- Logs ----------
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# IDE
+# ---------- IDE / OS ----------
+.DS_Store
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.agents/*
+.cursor/*
 
-# Expo
+# ---------- Expo / React Native ----------
 .expo/
+frontend/.expo/
+frontend/ios/build/
+frontend/ios/Pods/
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/.idea/
+frontend/android/local.properties
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
 
-# Next.js
+# ---------- Next.js ----------
 .next/
 out/
 .vercel
+web/.next/
+web/out/
 
-# TypeScript
-*.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Yarn
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
-.agents/*
-.cursor/*
-
-# Python
+# ---------- Python / Backend ----------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -80,4 +83,10 @@ __pycache__/
 .eggs/
 venv/
 .venv/
-backend/.env.production
+backend/venv/
+backend/.venv/
+
+# ---------- Misc ----------
+*.pem
+.npm
+.eslintcache
