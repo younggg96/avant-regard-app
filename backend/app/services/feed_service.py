@@ -30,11 +30,13 @@ Global rules:
                            PostService).
 """
 
-from typing import Optional, List, Set
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional, Set, Tuple
 
 from app.db.supabase import get_supabase
 from app.schemas.post import PostGrade, GRADE_REWARD_MAP
-from app.services.cache_service import cache_service, CacheService
+from app.services.cache_service import cache_service
 
 # -- Slot layout ---------------------------------------------------------------
 STAGE1_SIZE = 6           # Fresh (slots 1..6)
@@ -43,18 +45,32 @@ STAGE2_END = STAGE1_SIZE + STAGE2_SIZE  # 26 — boundary at which we switch to 
 
 # -- Mixer knobs ---------------------------------------------------------------
 SHOW_INSERT_INTERVAL = 8
-NEW_USER_POST_THRESHOLD = 20
+
+# -- Rule 3 new-user cutoff ----------------------------------------------------
+# A user is "new" when their account is younger than this many days OR they are
+# anonymous. We intentionally do NOT derive this from exclude_ids, because that
+# array is reset on pull-to-refresh and would misclassify every refresh as a
+# fresh session.
+NEW_USER_REGISTRATION_DAYS = 7
+NEW_USER_CACHE_TTL_SEC = 300  # 5 min — acceptable staleness vs. DB hit savings
 
 # -- Stage 1 cache -------------------------------------------------------------
 # We over-fetch so per-user dedup / block filtering still yields STAGE1_SIZE.
 STAGE1_FETCH_MULTIPLIER = 5
 STAGE1_CACHE_KEY = "feed:stage1:fresh"
 STAGE1_CACHE_TTL = 30  # seconds — short enough to feel fresh, long enough to deflect hot-spot load
+# Ungraded posts are included if they were created within this horizon, matching
+# the scored RPC so Stage 1 never hides brand-new un-graded content.
+STAGE1_UNGRADED_HORIZON = timedelta(hours=1)
 
 
 class FeedService:
     def __init__(self):
         self.db = get_supabase()
+        # In-process TTL cache: user_id -> (is_new_user, cached_at_epoch)
+        # Small dict; fine at single-process scale. Process restart is OK —
+        # worst case one extra DB round-trip per user.
+        self._new_user_cache: Dict[int, Tuple[bool, float]] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -145,7 +161,7 @@ class FeedService:
         remaining = total_cap - len(stage1_posts)
         if remaining > 0 and stage2_needed > 0:
             stage2_limit = min(remaining, stage2_needed)
-            if self._is_new_user(current_user_id, exclude_ids):
+            if self._is_new_user(current_user_id):
                 stage2_posts = self._get_curated_posts(
                     current_user_id=current_user_id,
                     blocked_ids=blocked_ids,
@@ -160,6 +176,17 @@ class FeedService:
                     boost_brand_id=boost_brand_id,
                     blocked_ids=blocked_ids,
                 )
+            # If Stage 2 (and the curated fallback) came up empty — e.g. every
+            # recent post is already in exclude_ids — fall through to the
+            # long-tail RPC so the client keeps getting content instead of
+            # terminating the feed prematurely.
+            if not stage2_posts:
+                stage3_rows = self._fetch_longtail_posts(
+                    limit=stage2_limit,
+                    exclude_ids=exclude_for_stage2,
+                    blocked_ids=blocked_ids,
+                )
+                stage2_posts = stage3_rows
 
         # ---- Mix ----------------------------------------------------------------
         # Shows only interleave inside stage-2 (Rule 4 — stage-1 stays pristine).
@@ -184,14 +211,25 @@ class FeedService:
         exclude_ids: List[int],
         blocked_ids: set,
     ) -> dict:
+        posts = self._fetch_longtail_posts(
+            limit=limit, exclude_ids=exclude_ids, blocked_ids=blocked_ids
+        )
+        return {"items": [{"type": "post", "data": p} for p in posts]}
+
+    def _fetch_longtail_posts(
+        self,
+        limit: int,
+        exclude_ids: List[int],
+        blocked_ids: set,
+    ) -> List[dict]:
+        """Raw long-tail RPC call — reused by Stage 3 and by the Stage-2 empty fallback."""
         params = {
             "p_exclude_ids": exclude_ids,
             "p_blocked_ids": list(blocked_ids),
             "p_limit": limit,
         }
         result = self.db.rpc("get_feed_longtail", params).execute()
-        posts = result.data or []
-        return {"items": [{"type": "post", "data": p} for p in posts]}
+        return result.data or []
 
     # ------------------------------------------------------------------
     # Data fetching
@@ -234,13 +272,22 @@ class FeedService:
                 return cached
 
         fetch_limit = STAGE1_SIZE * STAGE1_FETCH_MULTIPLIER
+        ungraded_cutoff = (
+            datetime.now(timezone.utc) - STAGE1_UNGRADED_HORIZON
+        ).isoformat()
+
+        # Match get_feed_scored's grade filter: include graded posts OR
+        # ungraded-but-recent posts awaiting async grading, so that brand-new
+        # un-graded content still shows up in the freshness lane.
         result = (
             self.db.table("posts")
             .select("*")
             .eq("status", "PUBLISHED")
             .eq("audit_status", "APPROVED")
             .is_("community_id", "null")
-            .in_("grade", ["A", "B", "C"])
+            .or_(
+                f"grade.in.(A,B,C),and(grade.is.null,created_at.gte.{ungraded_cutoff})"
+            )
             .order("created_at", desc=True)
             .limit(fetch_limit)
             .execute()
@@ -312,13 +359,54 @@ class FeedService:
     # Rule 3: new-user curated feed
     # ------------------------------------------------------------------
 
-    def _is_new_user(
-        self, user_id: Optional[int], exclude_ids: Optional[List[int]]
-    ) -> bool:
+    def _is_new_user(self, user_id: Optional[int]) -> bool:
+        """
+        Rule 3 gate. Anonymous users and accounts younger than
+        NEW_USER_REGISTRATION_DAYS are considered new and receive the
+        PM-curated feed in Stage 2.
+
+        We deliberately do NOT look at `exclude_ids` length here: that array
+        is session-local and cleared on every pull-to-refresh, so it would
+        mis-flag long-time users as "new" on each refresh.
+        """
         if not user_id:
             return True
-        seen_count = len(exclude_ids) if exclude_ids else 0
-        return seen_count < NEW_USER_POST_THRESHOLD
+
+        now = time.time()
+        cached = self._new_user_cache.get(user_id)
+        if cached and (now - cached[1]) < NEW_USER_CACHE_TTL_SEC:
+            return cached[0]
+
+        is_new = self._fetch_user_is_new(user_id)
+        self._new_user_cache[user_id] = (is_new, now)
+        return is_new
+
+    def _fetch_user_is_new(self, user_id: int) -> bool:
+        try:
+            result = (
+                self.db.table("users")
+                .select("created_at")
+                .eq("id", user_id)
+                .maybe_single()
+                .execute()
+            )
+            created_at_raw = (result.data or {}).get("created_at") if result else None
+            if not created_at_raw:
+                return False
+            # Supabase returns ISO-8601 with either Z suffix or explicit offset.
+            created_at = datetime.fromisoformat(
+                str(created_at_raw).replace("Z", "+00:00")
+            )
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            return (
+                datetime.now(timezone.utc) - created_at
+            ) < timedelta(days=NEW_USER_REGISTRATION_DAYS)
+        except Exception as e:
+            # Fail-closed: if we can't read the user, assume they're NOT new so
+            # we don't override the scored feed with curated for every request.
+            print(f"[FeedService] _fetch_user_is_new failed for {user_id}: {e}")
+            return False
 
     def _get_curated_posts(
         self,

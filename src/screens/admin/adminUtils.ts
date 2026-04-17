@@ -12,7 +12,7 @@ export const getPostTypeName = (type: string) => {
     OUTFIT: "穿搭",
     DAILY_SHARE: "日常分享",
     ITEM_REVIEW: "单品评价",
-    ARTICLES: "文章",
+    ARTICLES: "论坛帖子",
   };
   return typeMap[type] || type;
 };

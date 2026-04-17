@@ -9,3 +9,4 @@ export { TermsContent } from "./TermsContent";
 export { PrivacyContent } from "./PrivacyContent";
 export { CommunityGuidelinesContent } from "./CommunityGuidelinesContent";
 export { MinorProtectionContent } from "./MinorProtectionContent";
+export { ReportIssueSheet } from "./ReportIssueSheet";

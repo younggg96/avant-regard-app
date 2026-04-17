@@ -22,7 +22,7 @@ import { ImageSize } from "../utils/imageUtils";
 
 interface DraftItem {
   id: string;
-  type: "lookbook" | "outfit" | "review" | "article";
+  type: "lookbook" | "outfit" | "review" | "forum";
   title: string;
   content?: string;
   images: string[];
@@ -43,7 +43,7 @@ const DraftsScreen = () => {
   // 将 API 帖子类型转换为草稿类型
   const convertPostTypeToDraftType = (
     postType: string
-  ): "lookbook" | "outfit" | "review" | "article" => {
+  ): "lookbook" | "outfit" | "review" | "forum" => {
     switch (postType) {
       case "OUTFIT":
         return "outfit";
@@ -52,7 +52,7 @@ const DraftsScreen = () => {
       case "ITEM_REVIEW":
         return "review";
       case "ARTICLES":
-        return "article";
+        return "forum";
       default:
         return "outfit";
     }
@@ -189,10 +189,10 @@ const DraftsScreen = () => {
           icon: "star-outline",
           color: "#f59e0b",
         };
-      case "article":
+      case "forum":
         return {
-          label: "时尚文章",
-          icon: "document-text-outline",
+          label: "论坛帖子",
+          icon: "chatbubbles-outline",
           color: "#8b5cf6",
         };
       default:

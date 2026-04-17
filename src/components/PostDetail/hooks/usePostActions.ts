@@ -29,7 +29,7 @@ const POST_TYPE_TO_SCREEN: Record<string, string> = {
   OUTFIT: "PublishLookbook",
   DAILY_SHARE: "PublishOutfit",
   ITEM_REVIEW: "PublishReview",
-  ARTICLES: "PublishArticle",
+  ARTICLES: "PublishForumPost",
 };
 
 /**

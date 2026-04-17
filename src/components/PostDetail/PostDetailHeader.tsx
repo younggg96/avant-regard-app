@@ -83,8 +83,8 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                 </Box>
               ) : null}
             </HStack>
-            <HStack space="xs" alignItems="center">
-              <Text fontSize="$xs" color="$gray600">
+            <HStack space="xs" alignItems="center" flexShrink={1}>
+              <Text fontSize="$xs" color="$gray600" flexShrink={0}>
                 {post.timestamp ? formatTimestamp(post.timestamp) : ""}
               </Text>
               {post.communityName && (
@@ -94,9 +94,10 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                     borderRadius: 4,
+                    flexShrink: 1,
                   }}
                 >
-                  <Text fontSize="$xs" color="$gray600">
+                  <Text fontSize="$xs" color="$gray600" numberOfLines={1}>
                     # {post.communityName}
                   </Text>
                 </View>

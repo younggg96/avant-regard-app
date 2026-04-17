@@ -132,6 +132,9 @@ const AuthScreen = () => {
             onAppleLogin={handleAppleLogin}
             agreedToTerms={agreedToTerms}
             setAgreedToTerms={setAgreedToTerms}
+            reportDefaultContact={
+              loginMethod === "email" ? formData.email : formData.phone
+            }
           />
         </ScrollView>
       </KeyboardAvoidingView>

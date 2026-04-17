@@ -52,7 +52,6 @@ import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
 import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
-import PublishArticleScreen from "./src/screens/PublishArticleScreen";
 import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 
@@ -457,13 +456,6 @@ function AppNavigator() {
         <Stack.Screen
           name="PublishReview"
           component={PublishReviewScreen}
-          options={{
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen
-          name="PublishArticle"
-          component={PublishArticleScreen}
           options={{
             headerShown: false,
           }}

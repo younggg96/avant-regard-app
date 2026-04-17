@@ -5,7 +5,7 @@ import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
-import { formatTime } from "../utils";
+import { formatTime, formatLastMessage } from "../utils";
 import { styles } from "../styles";
 
 interface StrangerEntryProps {
@@ -63,7 +63,7 @@ export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) =>
             numberOfLines={1}
           >
             {latest
-              ? `${latestName}: ${latest.lastMessageText || "发来一条消息"}`
+              ? `${latestName}: ${formatLastMessage(latest.lastMessageText) || "发来一条消息"}`
               : "暂无陌生人消息"}
           </Text>
         </VStack>

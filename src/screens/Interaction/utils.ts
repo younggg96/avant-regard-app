@@ -19,8 +19,10 @@ export function formatTime(iso: string | null): string {
 
 export function formatLastMessage(text: string | null): string {
   if (!text) return "暂无消息";
-  if (text.startsWith("{") && text.includes('"postId"')) {
-    return "[帖子分享]";
+  if (text.startsWith("{")) {
+    if (text.includes('"postId"')) return "[帖子分享]";
+    if (text.includes('"storeId"')) return "[店铺分享]";
+    if (text.includes('"brandId"')) return "[品牌分享]";
   }
   return text;
 }

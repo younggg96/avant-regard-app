@@ -16,7 +16,6 @@ interface ApiResponse<T> {
 }
 
 // 帖子类型
-// 注意：论坛帖子使用 ARTICLES 类型，通过 community_id 来区分
 export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
 
 // 审核状态
@@ -973,18 +972,36 @@ export interface GetFeedParams {
   limit?: number;
   excludeIds?: number[];
   boostBrandId?: number | null;
+  /**
+   * Number of post items already consumed by the client.
+   * Drives the server's three-stage slot dispatch:
+   *   skip == 0            → Stage 1 (fresh) + Stage 2 (scored)
+   *   skip >= STAGE2_END   → Stage 3 (long-tail cursor pagination)
+   */
+  skip?: number;
+  /**
+   * Pull-to-refresh hint. When true, the server bypasses Stage 1's shared
+   * 30s cache pool so the client sees the absolute latest posts.
+   */
+  forceFresh?: boolean;
 }
 
 /**
- * Feed v2: HN-style scored feed with show archive interleaving.
- * Pagination is cursor-free — dedup is driven entirely by exclude_ids.
+ * Feed v2.1: three-stage slot dispatch.
+ *   Stage 1 (1..6)   : freshness, cached, no personalization
+ *   Stage 2 (7..27)  : HN-scored + 24h/brand boosts + show interleave
+ *   Stage 3 (28..)   : long-tail chronological cursor
  * Negative IDs in excludeIds encode already-seen show card IDs.
  * GET /api/posts/feed
  */
 export async function getFeed(params: GetFeedParams = {}): Promise<FeedResponse> {
-  const { limit = 30, excludeIds, boostBrandId } = params;
+  const { limit = 30, excludeIds, boostBrandId, skip = 0, forceFresh = false } = params;
   const query = new URLSearchParams();
   query.set("limit", String(limit));
+  query.set("skip", String(skip));
+  if (forceFresh) {
+    query.set("force_fresh", "true");
+  }
   if (excludeIds && excludeIds.length > 0) {
     query.set("exclude_ids", excludeIds.join(","));
   }

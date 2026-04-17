@@ -41,6 +41,18 @@ interface TabContentProps {
   onAuthorPress: (authorId: string) => void;
   onLike: (postId: string) => void;
   onBannerPress: (banner: Banner) => void;
+  /**
+   * 无限滚动：触底加载下一页（仅推荐 Tab 使用；不传则关闭）。
+   */
+  onEndReached?: () => void;
+  /**
+   * 是否还有更多帖子。`false` 时在列表底部显示「没有更多帖子」提示。
+   */
+  hasMore?: boolean;
+  /**
+   * 触发 loadMore 后、下一页返回前为 true（仅用于推荐 Tab 的 footer 指示）。
+   */
+  loadingMore?: boolean;
 }
 
 const GifLoading: React.FC = () => (
@@ -117,6 +129,9 @@ export const TabContent: React.FC<TabContentProps> = ({
   onAuthorPress,
   onLike,
   onBannerPress,
+  onEndReached,
+  hasMore,
+  loadingMore,
 }) => {
   const currentPosts = useMemo(
     () => (Array.isArray(tabPosts) ? tabPosts.map(convertToPost) : []),
@@ -285,12 +300,32 @@ export const TabContent: React.FC<TabContentProps> = ({
     </>
   );
 
-  const footer = loading ? (
-    <HStack justifyContent="center" alignItems="center" py="$lg">
-      <ActivityIndicator color={theme.colors.accent} />
-      <Text color="$gray400" fontSize="$sm" ml="$sm">加载更多...</Text>
-    </HStack>
-  ) : null;
+  // Footer：
+  //   • 正在加载下一页 → Spinner + 文案
+  //   • 已经没有更多帖子 → 提示用户稍后刷新查看
+  //   • 其它情况（兼容旧行为） → 仅 loading 时显示
+  const footer = (() => {
+    if (loadingMore || (onEndReached == null && loading)) {
+      return (
+        <HStack justifyContent="center" alignItems="center" py="$lg">
+          <ActivityIndicator color={theme.colors.accent} />
+          <Text color="$gray400" fontSize="$sm" ml="$sm">加载更多...</Text>
+        </HStack>
+      );
+    }
+    if (onEndReached != null && hasMore === false && currentPosts.length > 0) {
+      return (
+        <View style={endFooterStyles.container}>
+          <View style={endFooterStyles.divider} />
+          <Text color="$gray400" fontSize="$sm" textAlign="center">
+            已经没有更多的帖子了，请稍后刷新查看
+          </Text>
+          <View style={endFooterStyles.divider} />
+        </View>
+      );
+    }
+    return null;
+  })();
 
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
@@ -306,9 +341,27 @@ export const TabContent: React.FC<TabContentProps> = ({
         scrollEventThrottle={16}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.4}
       />
     </View>
   );
 };
+
+const endFooterStyles = StyleSheet.create({
+  container: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ECECEC",
+  },
+});
 
 export default TabContent;

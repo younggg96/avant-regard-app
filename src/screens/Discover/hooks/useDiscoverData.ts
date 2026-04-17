@@ -1,5 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { getRecommendPosts, getForumPosts, getFollowingPosts, likePost, unlikePost } from "../../../services/postService";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  getForumPosts,
+  getFollowingPosts,
+  likePost,
+  unlikePost,
+  Post,
+  FeedItem,
+} from "../../../services/postService";
 import { userInfoService, UserInfo } from "../../../services/userInfoService";
 import { useAuthStore } from "../../../store/authStore";
 import { getActiveBanners, Banner } from "../../../services/bannerService";
@@ -7,6 +14,7 @@ import { getCommunities, CommunityListResponse } from "../../../services/communi
 import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
 import { Alert } from "../../../utils/Alert";
+import { useFeedRecommendation } from "./useFeedRecommendation";
 
 // 每个 Tab 的加载状态
 interface TabLoadingState {
@@ -41,9 +49,12 @@ interface UseDiscoverDataReturn {
   handleRefresh: (activeTab: TabType) => Promise<void>;
   handleLike: (postId: string) => Promise<void>;
   loadTabData: (tab: TabType) => Promise<void>;
-  setRecommendPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
   setForumPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
   setFollowingPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
+  // 推荐 Tab 分页（Feed v2.1 三段式）
+  recommendHasMore: boolean;
+  recommendLoadingMore: boolean;
+  loadMoreRecommend: () => Promise<void>;
 }
 
 /**
@@ -53,7 +64,6 @@ interface UseDiscoverDataReturn {
  */
 export const useDiscoverData = (): UseDiscoverDataReturn => {
   const { user } = useAuthStore();
-  const [recommendPosts, setRecommendPosts] = useState<DisplayPost[]>([]);
   const [forumPosts, setForumPosts] = useState<DisplayPost[]>([]);
   const [followingPosts, setFollowingPosts] = useState<DisplayPost[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
@@ -62,6 +72,17 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 推荐 Tab：接入 Feed v2.1 三段式分页 hook（首屏保鲜 + 黄金推荐 + 长尾兜底）
+  const {
+    feedItems,
+    setFeedItems,
+    refreshing: feedRefreshing,
+    loading: feedLoadingMore,
+    hasMore: feedHasMore,
+    refresh: refreshFeed,
+    loadMore: loadMoreFeed,
+  } = useFeedRecommendation();
 
   // 每个 Tab 独立的加载状态
   const [tabLoading, setTabLoading] = useState<TabLoadingState>({
@@ -112,27 +133,67 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   );
 
   /**
-   * 获取推荐帖子（非论坛帖子）
+   * 将 Feed v2.1 返回的 post 型条目转换为 Discover 使用的 DisplayPost。
+   * show 卡片暂不在此 Tab 渲染，直接过滤；后端已在 feed 接口内批量补全
+   * username/avatarUrl，因此大部分情况下无需再次请求 user_info。
+   */
+  const mapFeedItemsToDisplayPosts = useCallback(
+    (items: FeedItem[]): DisplayPost[] => {
+      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      const result: DisplayPost[] = [];
+      for (const item of items) {
+        if (item.type !== "post") continue;
+        const post = item.data as Post;
+        result.push(mapApiPostToDisplayPost(post, userInfoMap));
+      }
+      return result;
+    },
+    []
+  );
+
+  const recommendPosts = useMemo<DisplayPost[]>(
+    () => mapFeedItemsToDisplayPosts(feedItems),
+    [feedItems, mapFeedItemsToDisplayPosts]
+  );
+
+  /**
+   * 后台补全未缓存作者的 user_info（不阻塞首屏）。
+   * 拉到新数据后异步触发一次，下一次 mapFeedItemsToDisplayPosts 会读到最新头像/昵称。
+   */
+  const backfillUserInfosForFeed = useCallback(
+    async (items: FeedItem[]) => {
+      const ids = new Set<number>();
+      for (const item of items) {
+        if (item.type === "post") {
+          ids.add((item.data as Post).userId);
+        }
+      }
+      if (ids.size === 0) return;
+      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      await fetchUserInfos(Array.from(ids), userInfoMap);
+    },
+    [fetchUserInfos]
+  );
+
+  useEffect(() => {
+    if (feedItems.length === 0) return;
+    backfillUserInfosForFeed(feedItems).catch(() => {
+      // non-blocking; next load will retry
+    });
+  }, [feedItems, backfillUserInfosForFeed]);
+
+  /**
+   * 触发推荐 Tab 首次加载（供初始化 / tab 懒加载复用）。
    */
   const fetchRecommendPosts = useCallback(async () => {
     try {
       setError(null);
-      const apiPosts = await getRecommendPosts();
-
-      const userIds = [...new Set(apiPosts.map((post) => post.userId))];
-      const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
-      await fetchUserInfos(userIds, userInfoMap);
-
-      const displayPosts = apiPosts.map((post) =>
-        mapApiPostToDisplayPost(post, userInfoMap)
-      );
-      setRecommendPosts(displayPosts);
+      await refreshFeed();
     } catch (err) {
       console.error("获取推荐帖子失败:", err);
       setError(err instanceof Error ? err.message : "获取推荐帖子失败");
-      setRecommendPosts([]);
     }
-  }, [fetchUserInfos]);
+  }, [refreshFeed]);
 
   /**
    * 获取论坛帖子
@@ -285,8 +346,35 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   );
 
   /**
-   * 点赞/取消点赞
+   * 点赞/取消点赞（乐观更新 + 失败回滚）。
+   * 推荐 Tab 的数据存放在 feedItems 里，需要通过 setFeedItems 同步；
+   * 论坛 / 关注 Tab 仍使用各自的 DisplayPost 列表。
    */
+  const applyLikeToFeed = useCallback(
+    (postId: number, liked: boolean) => {
+      setFeedItems((prev) =>
+        prev.map((item) => {
+          if (item.type !== "post") return item;
+          const post = item.data as Post;
+          if (post.id !== postId) return item;
+          const nextLikeCount = Math.max(
+            0,
+            (post.likeCount || 0) + (liked ? 1 : -1)
+          );
+          return {
+            ...item,
+            data: {
+              ...post,
+              likedByMe: liked,
+              likeCount: nextLikeCount,
+            },
+          };
+        })
+      );
+    },
+    [setFeedItems]
+  );
+
   const handleLike = useCallback(
     async (postId: string) => {
       const targetRecommend = recommendPosts.find((p) => p.id === postId);
@@ -296,7 +384,8 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
       if (!target) return;
 
-      const isCurrentlyLiked = target.engagement.isLiked;
+      const isCurrentlyLiked = !!target.engagement.isLiked;
+      const nextLiked = !isCurrentlyLiked;
 
       const updatePost = (post: DisplayPost) =>
         post.id === postId
@@ -304,16 +393,17 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
               ...post,
               engagement: {
                 ...post.engagement,
-                isLiked: !isCurrentlyLiked,
-                likes: isCurrentlyLiked
-                  ? post.engagement.likes - 1
-                  : post.engagement.likes + 1,
+                isLiked: nextLiked,
+                likes: nextLiked
+                  ? post.engagement.likes + 1
+                  : Math.max(0, post.engagement.likes - 1),
               },
             }
           : post;
 
       if (targetRecommend) {
-        setRecommendPosts((prev) => prev.map(updatePost));
+        const numericId = parseInt(postId, 10);
+        if (!Number.isNaN(numericId)) applyLikeToFeed(numericId, nextLiked);
       }
       if (targetForum) {
         setForumPosts((prev) => prev.map(updatePost));
@@ -344,13 +434,16 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
                   isLiked: isCurrentlyLiked,
                   likes: isCurrentlyLiked
                     ? post.engagement.likes + 1
-                    : post.engagement.likes - 1,
+                    : Math.max(0, post.engagement.likes - 1),
                 },
               }
             : post;
 
         if (targetRecommend) {
-          setRecommendPosts((prev) => prev.map(rollbackPost));
+          const numericId = parseInt(postId, 10);
+          if (!Number.isNaN(numericId)) {
+            applyLikeToFeed(numericId, isCurrentlyLiked);
+          }
         }
         if (targetForum) {
           setForumPosts((prev) => prev.map(rollbackPost));
@@ -360,8 +453,12 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         }
       }
     },
-    [recommendPosts, forumPosts, followingPosts, user]
+    [recommendPosts, forumPosts, followingPosts, user, applyLikeToFeed]
   );
+
+  // 推荐 Tab 的 refreshing 以 feed hook 为准（下拉刷新时 feed hook 接管），
+  // 其余 Tab 仍沿用原先的 refreshing。对外只暴露合并值，让 UI 层无需关心来源。
+  const mergedRefreshing = refreshing || feedRefreshing;
 
   return {
     recommendPosts,
@@ -370,7 +467,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     banners,
     communities,
     isInitialized,
-    refreshing,
+    refreshing: mergedRefreshing,
     loading,
     error,
     userInfoCache,
@@ -379,9 +476,11 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     handleRefresh,
     handleLike,
     loadTabData,
-    setRecommendPosts,
     setForumPosts,
     setFollowingPosts,
+    recommendHasMore: feedHasMore,
+    recommendLoadingMore: feedLoadingMore,
+    loadMoreRecommend: loadMoreFeed,
   };
 };
 

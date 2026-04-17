@@ -1,11 +1,17 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, Dispatch, SetStateAction } from "react";
 import { getFeed, FeedItem, Post } from "../../../services/postService";
 
 const EXCLUDE_IDS_MAX_SIZE = 200;
 const PAGE_SIZE = 30;
+// Mirrors backend STAGE2_END (STAGE1_SIZE + STAGE2_SIZE = 6 + 20). Below this
+// cursor the server is still in the Stage 1+2 path and can return short pages
+// by design (first page is ~26 items, not PAGE_SIZE). So we only flag
+// "no more data" once we've crossed into Stage 3.
+const STAGE2_END = 26;
 
 interface UseFeedRecommendationReturn {
   feedItems: FeedItem[];
+  setFeedItems: Dispatch<SetStateAction<FeedItem[]>>;
   loading: boolean;
   refreshing: boolean;
   hasMore: boolean;
@@ -16,13 +22,15 @@ interface UseFeedRecommendationReturn {
 }
 
 /**
- * Feed v2 recommendation hook.
+ * Feed v2.1 recommendation hook — drives the three-stage server dispatch.
  *
- * Manages:
- *  - exclude_ids sliding window (Rule 1: dedup, max 200 entries)
- *  - Negative IDs in exclude_ids encode already-seen show card IDs
- *  - boost_brand_id session state (Rule 5/6: brand affinity)
- *  - Cursor-free pagination: entirely driven by exclude_ids, no offset
+ * Client responsibilities:
+ *   • Maintain a sliding `exclude_ids` window (Rule 1 dedup, bounded at 200).
+ *     Negative IDs encode already-seen show cards.
+ *   • Track `skip` = number of post items already consumed. The server uses
+ *     this to choose Stage 1+2 (skip==0) vs Stage 3 (skip>=STAGE2_END=26).
+ *   • Hold a session-only `boost_brand_id` so recent brand affinity is
+ *     reflected in Stage 2 scoring without being persisted.
  */
 export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
@@ -32,6 +40,7 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
   const [boostBrandId, setBoostBrandId] = useState<number | null>(null);
 
   const excludeIdsRef = useRef<number[]>([]);
+  const postSkipRef = useRef<number>(0);
   const requestInFlight = useRef(false);
 
   const extractExcludeIds = (items: FeedItem[]): number[] => {
@@ -49,32 +58,36 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
     return ids;
   };
 
-  const trimExcludeIds = (ids: number[]): number[] => {
-    if (ids.length > EXCLUDE_IDS_MAX_SIZE) {
-      return ids.slice(ids.length - EXCLUDE_IDS_MAX_SIZE);
-    }
-    return ids;
-  };
+  const countPosts = (items: FeedItem[]): number =>
+    items.reduce((acc, it) => acc + (it.type === "post" ? 1 : 0), 0);
+
+  const trimExcludeIds = (ids: number[]): number[] =>
+    ids.length > EXCLUDE_IDS_MAX_SIZE
+      ? ids.slice(ids.length - EXCLUDE_IDS_MAX_SIZE)
+      : ids;
 
   const refresh = useCallback(async () => {
     if (requestInFlight.current) return;
     requestInFlight.current = true;
     setRefreshing(true);
     excludeIdsRef.current = [];
+    postSkipRef.current = 0;
 
     try {
       const resp = await getFeed({
         limit: PAGE_SIZE,
         excludeIds: [],
         boostBrandId,
+        skip: 0,
+        forceFresh: true,
       });
 
       setFeedItems(resp.items);
-      setHasMore(
-        resp.items.filter((i) => i.type === "post").length >= PAGE_SIZE
-      );
+      const postCount = countPosts(resp.items);
+      setHasMore(postCount > 0);
 
       excludeIdsRef.current = extractExcludeIds(resp.items);
+      postSkipRef.current = postCount;
     } catch (err) {
       console.error("[FeedV2] refresh failed:", err);
     } finally {
@@ -93,18 +106,33 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
         limit: PAGE_SIZE,
         excludeIds: excludeIdsRef.current,
         boostBrandId,
+        skip: postSkipRef.current,
       });
 
       setFeedItems((prev) => [...prev, ...resp.items]);
 
-      const postCount = resp.items.filter((i) => i.type === "post").length;
-      setHasMore(postCount >= PAGE_SIZE);
-
+      const postCount = countPosts(resp.items);
       const newIds = extractExcludeIds(resp.items);
       excludeIdsRef.current = trimExcludeIds([
         ...excludeIdsRef.current,
         ...newIds,
       ]);
+      postSkipRef.current += postCount;
+
+      // End-of-feed detection:
+      //   • An empty page always means "nothing left" (both stage 2 and stage 3
+      //     fallbacks on the server already ran), so flip hasMore off.
+      //   • Otherwise, below STAGE2_END a short page is expected (first page is
+      //     ~26 items) — let Stage 3 kick in on the next loadMore.
+      //   • In Stage 3 territory, a short page means the 90-day long-tail
+      //     window is exhausted.
+      if (postCount === 0) {
+        setHasMore(false);
+      } else if (postSkipRef.current < STAGE2_END) {
+        setHasMore(true);
+      } else {
+        setHasMore(postCount >= PAGE_SIZE);
+      }
     } catch (err) {
       console.error("[FeedV2] loadMore failed:", err);
     } finally {
@@ -119,6 +147,7 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
 
   return {
     feedItems,
+    setFeedItems,
     loading,
     refreshing,
     hasMore,

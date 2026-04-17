@@ -1,10 +1,9 @@
 import React, { useCallback } from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, ScrollView as RNScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
   Box,
   Text,
-  ScrollView,
   Pressable,
   HStack,
 } from "../../../components/ui";
@@ -55,7 +54,7 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
           </Text>
         </Pressable>
       </HStack>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <RNScrollView horizontal showsHorizontalScrollIndicator={false}>
         <HStack gap="$md">
           {communities.popular.map((community: Community) => (
             <TouchableOpacity
@@ -92,7 +91,7 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
             </TouchableOpacity>
           ))}
         </HStack>
-      </ScrollView>
+      </RNScrollView>
     </Box>
   );
 };

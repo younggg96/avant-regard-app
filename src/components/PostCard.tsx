@@ -49,7 +49,6 @@ export interface Post {
   isLiked?: boolean;
   timestamp?: string;
   rating?: number;
-  readTime?: string;
   brandName?: string;
   productName?: string;
   season?: string;

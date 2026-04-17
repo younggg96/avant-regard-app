@@ -154,6 +154,9 @@ const DiscoverScreen: React.FC = () => {
     handleRefresh,
     handleLike,
     loadTabData,
+    recommendHasMore,
+    recommendLoadingMore,
+    loadMoreRecommend,
   } = useDiscoverData();
 
   // Header 动画 Hook (single Animated.Value drives both height + opacity)
@@ -445,6 +448,9 @@ const DiscoverScreen: React.FC = () => {
           onAuthorPress={handleAuthorPress}
           onLike={handleLike}
           onBannerPress={handleBannerPress}
+          onEndReached={loadMoreRecommend}
+          hasMore={recommendHasMore}
+          loadingMore={recommendLoadingMore}
         />
         <TabContent
           tab="following"

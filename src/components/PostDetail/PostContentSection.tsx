@@ -8,7 +8,6 @@ import { isVideoUrl } from "../../services/postService";
 import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import HalfStarRating from "../HalfStarRating";
-import { styles } from "./styles";
 import { VideoPlayer } from "./VideoPlayer";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -26,7 +25,7 @@ interface PostContentSectionProps {
 // 解析内容：支持新的块格式和旧的纯文本格式
 const parseContent = (description: string | undefined): ContentBlock[] | null => {
   if (!description) return null;
-  
+
   try {
     const parsed = JSON.parse(description);
     if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
@@ -46,7 +45,7 @@ const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => (
   />
 );
 
-const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
+const ContentBlockRenderer: React.FC<{ block: ContentBlock; isForumPost?: boolean }> = ({ block, isForumPost }) => {
   if (block.type === "text") {
     if (!block.content.trim()) return null;
     return (
@@ -71,8 +70,8 @@ const ContentBlockRenderer: React.FC<{ block: ContentBlock }> = ({ block }) => {
         <OptimizedImage
           uri={block.content}
           size={ImageSize.LARGE}
-          style={contentStyles.blockImage}
-          contentFit="cover"
+          style={isForumPost ? contentStyles.blockImageContain : contentStyles.blockImage}
+          contentFit={isForumPost ? "contain" : "cover"}
           lazy={true}
         />
       </View>
@@ -93,6 +92,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
 
   // 判断是否使用块格式
   const isBlockFormat = contentBlocks !== null;
+  const isForumPost = !!post.communityName;
 
   return (
     <VStack style={contentStyles.container}>
@@ -111,7 +111,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
         // 块格式：渲染每个内容块
         <VStack style={contentStyles.blocksContainer}>
           {contentBlocks.map((block) => (
-            <ContentBlockRenderer key={block.id} block={block} />
+            <ContentBlockRenderer key={block.id} block={block} isForumPost={isForumPost} />
           ))}
         </VStack>
       ) : (
@@ -126,19 +126,6 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
             {post.content.description}
           </Text>
         )
-      )}
-
-      {post.type === "article" && post.readTime && (
-        <HStack style={contentStyles.metaRow}>
-          <Ionicons
-            name="time-outline"
-            size={14}
-            color={theme.colors.gray300}
-          />
-          <Text style={contentStyles.metaText}>
-            {post.readTime}
-          </Text>
-        </HStack>
       )}
 
       {/* ITEM_REVIEW 类型显示品牌、产品名和评分 */}
@@ -217,16 +204,11 @@ const contentStyles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 0.5625,
   },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray300,
-    letterSpacing: 0.3,
+  blockImageContain: {
+    width: SCREEN_WIDTH,
+    height: undefined,
+    aspectRatio: 1,
+    backgroundColor: theme.colors.gray50,
   },
   reviewMeta: {
     marginTop: 4,

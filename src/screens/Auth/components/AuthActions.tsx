@@ -16,6 +16,7 @@ import { TermsContent } from "./TermsContent";
 import { PrivacyContent } from "./PrivacyContent";
 import { CommunityGuidelinesContent } from "./CommunityGuidelinesContent";
 import { MinorProtectionContent } from "./MinorProtectionContent";
+import { ReportIssueSheet } from "./ReportIssueSheet";
 
 type DocumentType = "terms" | "privacy" | "guidelines" | "minor";
 
@@ -36,6 +37,7 @@ interface AuthActionsProps {
   onAppleLogin?: () => void;
   agreedToTerms: boolean;
   setAgreedToTerms: (agreed: boolean) => void;
+  reportDefaultContact?: string;
 }
 
 const getButtonText = (mode: AuthMode, loading: boolean): string => {
@@ -78,11 +80,13 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   onAppleLogin,
   agreedToTerms,
   setAgreedToTerms,
+  reportDefaultContact,
 }) => {
   const showAppleLogin = false;
   const [viewingDocument, setViewingDocument] = useState<DocumentType | null>(
     null
   );
+  const [showReportSheet, setShowReportSheet] = useState(false);
 
   const showCheckbox =
     mode === "login" || mode === "register" || mode === "verification";
@@ -203,6 +207,33 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
         )}
       </View>
 
+      {/* 问题反馈入口 */}
+      <View style={reportStyles.container}>
+        <Text style={reportStyles.hint}>
+          若您收不到验证码，或注册/登录出现问题，请点击下方按钮提交反馈，
+          工作人员会尽快与您联系。
+        </Text>
+        <TouchableOpacity
+          style={reportStyles.button}
+          onPress={() => setShowReportSheet(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="megaphone-outline"
+            size={16}
+            color={theme.colors.black}
+          />
+          <Text style={reportStyles.buttonText}>问题反馈 / Report</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ReportIssueSheet
+        visible={showReportSheet}
+        onClose={() => setShowReportSheet(false)}
+        loginMethod={loginMethod}
+        defaultContact={reportDefaultContact}
+      />
+
       {/* 协议内容查看 Modal */}
       <Modal
         visible={viewingDocument !== null}
@@ -242,6 +273,39 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
     </View>
   );
 };
+
+const reportStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  hint: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: "PlayfairDisplay-Regular",
+    color: theme.colors.gray200,
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    gap: 6,
+  },
+  buttonText: {
+    fontSize: 13,
+    fontFamily: "PlayfairDisplay-Medium",
+    color: theme.colors.black,
+    letterSpacing: 0.3,
+  },
+});
 
 const checkboxStyles = StyleSheet.create({
   container: {
