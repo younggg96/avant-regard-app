@@ -19,10 +19,22 @@ export function formatTime(iso: string | null): string {
 
 export function formatLastMessage(text: string | null): string {
   if (!text) return "暂无消息";
-  if (text.startsWith("{")) {
-    if (text.includes('"postId"')) return "[帖子分享]";
-    if (text.includes('"storeId"')) return "[店铺分享]";
-    if (text.includes('"brandId"')) return "[品牌分享]";
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === "object") {
+        if (typeof parsed.postId === "string") return "[帖子分享]";
+        if (typeof parsed.storeId === "string") return "[店铺分享]";
+        if (typeof parsed.brandId === "number") return "[品牌分享]";
+        if (typeof parsed.showId === "string") return "[秀场分享]";
+        if (typeof parsed.userId === "number" && typeof parsed.username === "string") {
+          return "[名片分享]";
+        }
+      }
+    } catch {
+      // Not valid JSON; fall through to raw text.
+    }
   }
   return text;
 }

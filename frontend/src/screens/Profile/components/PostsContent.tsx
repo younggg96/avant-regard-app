@@ -3,7 +3,6 @@ import { View, Text as RNText, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import {
-  Box,
   Text,
   Pressable,
   VStack,
@@ -12,6 +11,7 @@ import {
 } from "../../../components/ui";
 import PostCard, { Post as DisplayPost } from "../../../components/PostCard";
 import ForumPostCard from "../../../components/ForumPostCard";
+import { splitIntoMasonryColumns } from "../../../utils/masonryLayout";
 import { TabType, TabData, ContribSubTab, StoreActivitySubTab } from "../types";
 import { Show } from "../../../services/showService";
 import { BrandSubmission } from "../../../services/brandService";
@@ -84,7 +84,13 @@ const ContributionContent = ({
     store: "暂无买手店贡献",
   };
 
-  const renderCard = (item: any, type: ContribSubTab) => {
+  // Build a displayable post + its press handler for a contribution item.
+  // Returning a flat shape lets the outer masonry splitter know each item's
+  // media URI so it can balance columns by natural height.
+  const buildContribCard = (
+    item: any,
+    type: ContribSubTab
+  ): { post: DisplayPost; onPress: () => void } => {
     const key = `${type}-${item.id}`;
     const image = type === "store"
       ? (item.images && item.images.length > 0 ? item.images[0] : null)
@@ -109,11 +115,7 @@ const ContributionContent = ({
       engagement: { likes: 0 },
     };
 
-    return (
-      <Box key={key} width="48%" mb="$md">
-        <PostCard post={post} onPress={() => onPress()} />
-      </Box>
-    );
+    return { post, onPress };
   };
 
   return (
@@ -149,9 +151,24 @@ const ContributionContent = ({
           <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
         </VStack>
       ) : (
-        <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-          {data.map((item) => renderCard(item, contribSubTab))}
-        </HStack>
+        (() => {
+          const cards = data.map((item) => buildContribCard(item, contribSubTab));
+          const columns = splitIntoMasonryColumns(
+            cards,
+            ({ post }) => post.content?.images?.[0] || post.image
+          );
+          return (
+            <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
+              {columns.map((column, colIndex) => (
+                <VStack key={colIndex} flex={1} space="sm">
+                  {column.map(({ post, onPress }) => (
+                    <PostCard key={post.id} post={post} onPress={onPress} />
+                  ))}
+                </VStack>
+              ))}
+            </HStack>
+          );
+        })()
       )}
     </VStack>
   );
@@ -402,21 +419,35 @@ export const PostsContent = ({
       );
     }
 
+    // Two-column masonry — each column flows independently so cards with
+    // different natural heights don't leave a gap at the top of a row like
+    // a flex-wrap grid does. Long-press on editable tabs still triggers
+    // delete; the outer Pressable sits inside the column and gets the
+    // natural card width via flex.
+    const postColumns = splitIntoMasonryColumns(
+      currentTabData.posts,
+      (post) => post.content?.images?.[0] || post.image
+    );
+    const isEditableTab =
+      activeTab === "published" ||
+      activeTab === "draft" ||
+      activeTab === "pending";
     return (
-      <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-        {currentTabData.posts.map((post) => (
-          <Box key={post.id} width="48%" mb="$md">
-            <Pressable
-              onPress={() => onPostPress(post)}
-              onLongPress={() => {
-                if (activeTab === "published" || activeTab === "draft" || activeTab === "pending") {
-                  onDeletePost(post);
+      <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
+        {postColumns.map((column, colIndex) => (
+          <VStack key={colIndex} flex={1} space="sm">
+            {column.map((post) => (
+              <Pressable
+                key={post.id}
+                onPress={() => onPostPress(post)}
+                onLongPress={
+                  isEditableTab ? () => onDeletePost(post) : undefined
                 }
-              }}
-            >
-              <PostCard post={post} onPress={() => onPostPress(post)} />
-            </Pressable>
-          </Box>
+              >
+                <PostCard post={post} onPress={() => onPostPress(post)} />
+              </Pressable>
+            ))}
+          </VStack>
         ))}
       </HStack>
     );

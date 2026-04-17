@@ -9,6 +9,7 @@ import { theme } from "../../theme";
 import { Post } from "../PostCard";
 import HalfStarRating from "../HalfStarRating";
 import { VideoPlayer } from "./VideoPlayer";
+import { useMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -37,13 +38,40 @@ const parseContent = (description: string | undefined): ContentBlock[] | null =>
   return null;
 };
 
-const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => (
-  <VideoPlayer
-    uri={uri}
-    style={contentStyles.blockImageContainer}
-    videoStyle={contentStyles.blockImage}
-  />
-);
+// The content blocks span the full screen width (see `blockImageContainer`
+// negative margin). Height is derived from each block's natural aspect ratio
+// so 16:9 videos / 3:4 photos all display uncropped at their true shape.
+const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => {
+  const ratio = useMediaAspectRatio(uri, 16 / 9);
+  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / ratio };
+  return (
+    <VideoPlayer
+      uri={uri}
+      style={[contentStyles.blockImageContainer, mediaSize]}
+      videoStyle={mediaSize}
+      contentFit="contain"
+    />
+  );
+};
+
+const ImageBlockRenderer: React.FC<{ uri: string; isForumPost?: boolean }> = ({
+  uri,
+  isForumPost,
+}) => {
+  const ratio = useMediaAspectRatio(uri, isForumPost ? 1 : 16 / 9);
+  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / ratio };
+  return (
+    <View style={[contentStyles.blockImageContainer, mediaSize]}>
+      <OptimizedImage
+        uri={uri}
+        size={ImageSize.LARGE}
+        style={mediaSize}
+        contentFit="contain"
+        lazy={true}
+      />
+    </View>
+  );
+};
 
 const ContentBlockRenderer: React.FC<{ block: ContentBlock; isForumPost?: boolean }> = ({ block, isForumPost }) => {
   if (block.type === "text") {
@@ -65,17 +93,7 @@ const ContentBlockRenderer: React.FC<{ block: ContentBlock; isForumPost?: boolea
   }
 
   if (block.type === "image") {
-    return (
-      <View style={contentStyles.blockImageContainer}>
-        <OptimizedImage
-          uri={block.content}
-          size={ImageSize.LARGE}
-          style={isForumPost ? contentStyles.blockImageContain : contentStyles.blockImage}
-          contentFit={isForumPost ? "contain" : "cover"}
-          lazy={true}
-        />
-      </View>
-    );
+    return <ImageBlockRenderer uri={block.content} isForumPost={isForumPost} />;
   }
 
   return null;
@@ -199,15 +217,6 @@ const contentStyles = StyleSheet.create({
   blockImageContainer: {
     marginHorizontal: -20, // 让图片撑满屏幕宽度
     marginBottom: 16,
-  },
-  blockImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 0.5625,
-  },
-  blockImageContain: {
-    width: SCREEN_WIDTH,
-    height: undefined,
-    aspectRatio: 1,
     backgroundColor: theme.colors.gray50,
   },
   reviewMeta: {

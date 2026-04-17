@@ -506,12 +506,23 @@ const PublishLookbookScreen = () => {
         const videoUri = result.assets[0].uri;
         const thumbnail = await getVideoThumbnail(videoUri);
         if (thumbnail) {
-          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail }));
+          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail.uri }));
+          // Key the natural size under BOTH the video URI and the thumbnail
+          // URI: the gallery shows the thumbnail URI for videos (see
+          // `previewImages`), but other places may reference the original
+          // video URI. Keeping both in sync keeps the cover-driven preview
+          // height correct either way. (DRY: single source of truth for the
+          // dimensions, fanned out to both keys that may hit `imageDimensions`.)
+          setImageDimensions((prev) => ({
+            ...prev,
+            [videoUri]: { width: thumbnail.width, height: thumbnail.height },
+            [thumbnail.uri]: { width: thumbnail.width, height: thumbnail.height },
+          }));
         }
         const newImages = [...images, videoUri];
         setImages(newImages);
         if (!coverImage) {
-          setCoverImage(thumbnail || videoUri);
+          setCoverImage(thumbnail?.uri ?? videoUri);
         }
         Alert.show("视频已添加", "", 1500);
       }

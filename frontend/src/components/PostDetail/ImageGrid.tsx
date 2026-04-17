@@ -6,6 +6,7 @@ import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { theme } from "../../theme";
 import { VideoPlayer } from "./VideoPlayer";
+import { useMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -21,13 +22,15 @@ const MediaItem: React.FC<{
   imageSize: ImageSize;
   index: number;
   onOpenFullscreen: (index: number) => void;
-}> = ({ uri, wrapperStyle, imageStyle, imageSize, index, onOpenFullscreen }) => {
+  contentFit?: "cover" | "contain";
+}> = ({ uri, wrapperStyle, imageStyle, imageSize, index, onOpenFullscreen, contentFit = "cover" }) => {
   if (isVideoUrl(uri)) {
     return (
       <VideoPlayer
         uri={uri}
         style={wrapperStyle}
         videoStyle={{ width: "100%", height: "100%" }}
+        contentFit={contentFit}
       />
     );
   }
@@ -37,10 +40,38 @@ const MediaItem: React.FC<{
         uri={uri}
         size={imageSize}
         style={imageStyle}
-        contentFit="cover"
+        contentFit={contentFit}
         lazy={true}
       />
     </Pressable>
+  );
+};
+
+/**
+ * Single-media posts (1 image or 1 video) use the media's natural aspect
+ * ratio — no more 4:5 cover-crop that chops the sides off a 16:9 video or
+ * squeezes a 1:1 photo. Multi-item grids keep their fixed-ratio cells so
+ * the collage layout stays predictable.
+ */
+const SingleMediaItem: React.FC<{
+  uri: string;
+  onOpenFullscreen: (index: number) => void;
+}> = ({ uri, onOpenFullscreen }) => {
+  const ratio = useMediaAspectRatio(uri, 4 / 5);
+  const wrapperStyle = [
+    gridStyles.singleImageWrapperBase,
+    { aspectRatio: ratio },
+  ];
+  return (
+    <MediaItem
+      uri={uri}
+      wrapperStyle={wrapperStyle}
+      imageStyle={gridStyles.singleImage}
+      imageSize={ImageSize.LARGE}
+      index={0}
+      onOpenFullscreen={onOpenFullscreen}
+      contentFit="contain"
+    />
   );
 };
 
@@ -56,12 +87,8 @@ export const ImageGrid: React.FC<MediaGridProps> = ({
   return (
     <View style={gridStyles.container}>
       {isSingleItem ? (
-        <MediaItem
+        <SingleMediaItem
           uri={images[0]}
-          wrapperStyle={gridStyles.singleImageWrapper}
-          imageStyle={gridStyles.singleImage}
-          imageSize={ImageSize.LARGE}
-          index={0}
           onOpenFullscreen={onOpenFullscreen}
         />
       ) : isTwoItems ? (
@@ -106,11 +133,13 @@ const gridStyles = StyleSheet.create({
     paddingHorizontal: GRID_PADDING,
     paddingVertical: 12,
   },
-  singleImageWrapper: {
+  // aspectRatio is injected at render time from the media's natural size so
+  // single-media posts no longer cover-crop into a fixed 4:5 frame.
+  singleImageWrapperBase: {
     width: "100%",
-    aspectRatio: 4 / 5,
     borderRadius: 8,
     overflow: "hidden",
+    backgroundColor: theme.colors.gray50,
   },
   singleImage: {
     width: "100%",

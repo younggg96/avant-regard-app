@@ -41,6 +41,7 @@ import { Post } from "../components/PostCard";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
+import { useMediaAspectRatio } from "../utils/useMediaAspectRatio";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -62,6 +63,35 @@ type PublishForumPostRouteParams = {
 
 // 生成唯一 ID
 const generateId = () => `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+/**
+ * Forum post content block preview — renders an image or a video thumbnail at
+ * the media's natural aspect ratio so composition preview matches the final
+ * post detail view (no 200px fixed-height cover-crop anymore).
+ */
+const MediaBlockPreview: React.FC<{ uri: string }> = ({ uri }) => {
+  const ratio = useMediaAspectRatio(uri, 16 / 9);
+  const size = { width: "100%" as const, aspectRatio: ratio };
+  if (isVideoUrl(uri)) {
+    return (
+      <View style={size}>
+        <VideoThumbnailView uri={uri} style={StyleSheet.absoluteFill} />
+        <View style={styles.videoOverlay}>
+          <Ionicons name="play-circle" size={48} color="white" />
+        </View>
+      </View>
+    );
+  }
+  return (
+    <OptimizedImage
+      uri={uri}
+      size={ImageSize.MEDIUM}
+      style={size}
+      contentFit="contain"
+      lazy={true}
+    />
+  );
+};
 
 const PublishForumPostScreen = () => {
   const navigation = useNavigation();
@@ -321,7 +351,7 @@ const PublishForumPostScreen = () => {
         if (!coverImage) {
           const thumbnail = await getVideoThumbnail(videoUri);
           if (thumbnail) {
-            setCoverImage(thumbnail);
+            setCoverImage(thumbnail.uri);
           }
         }
 
@@ -638,30 +668,10 @@ const PublishForumPostScreen = () => {
 
   // 渲染图片块
   const renderImageBlock = (block: ContentBlock, index: number) => {
-    const isVideo = isVideoUrl(block.content);
-
     return (
       <Box key={block.id} mx="$md" mb="$sm">
         <Box borderRadius="$md" overflow="hidden" bg="$gray100">
-          {isVideo ? (
-            <Box style={styles.imageBlock}>
-              <VideoThumbnailView
-                uri={block.content}
-                style={StyleSheet.absoluteFill}
-              />
-              <Box style={styles.videoOverlay}>
-                <Ionicons name="play-circle" size={48} color="white" />
-              </Box>
-            </Box>
-          ) : (
-            <OptimizedImage
-              uri={block.content}
-              size={ImageSize.MEDIUM}
-              style={styles.imageBlock}
-              contentFit="cover"
-              lazy={true}
-            />
-          )}
+          <MediaBlockPreview uri={block.content} />
 
           {/* 图片块操作栏 */}
           <HStack
@@ -1066,10 +1076,6 @@ const styles = StyleSheet.create({
   addMenuItem: {
     alignItems: "center",
     paddingHorizontal: 8,
-  },
-  imageBlock: {
-    width: "100%",
-    height: 200,
   },
   imageActionButton: {
     width: 32,

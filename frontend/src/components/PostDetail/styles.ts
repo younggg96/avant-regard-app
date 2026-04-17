@@ -38,15 +38,9 @@ export const styles = StyleSheet.create({
     position: "relative",
     backgroundColor: theme.colors.black,
   },
-  lookbookImageWrapper: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.55,
-  },
-  lookbookImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
+  // Lookbook slide dimensions are derived inside `LookbookContent` from the
+  // cover slide's natural aspect ratio, so we no longer hardcode the wrapper
+  // or inner media sizes here.
   // 圆点指示器
   dotIndicatorContainer: {
     position: "absolute",

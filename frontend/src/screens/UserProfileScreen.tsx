@@ -64,6 +64,7 @@ import {
 } from "../services/userInfoService";
 import ForumPostCard from "../components/ForumPostCard";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
+import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 import { ImageCropper } from "../components/ImageCropper";
 import { showService, Show } from "../services/showService";
 import { brandService, BrandSubmission } from "../services/brandService";
@@ -723,7 +724,13 @@ const UserProfileScreen = () => {
       store: isCurrentUser ? "暂无买手店贡献" : `${displayName} 暂无买手店贡献`,
     };
 
-    const renderCard = (item: any, type: ContribSubTab) => {
+    // Build a displayable post + its press handler for a contribution item.
+    // Returning a flat shape (post + onPress) lets the outer masonry splitter
+    // know each item's media URI so it can balance columns by natural height.
+    const buildContribCard = (
+      item: any,
+      type: ContribSubTab
+    ): { post: DisplayPost; onPress: () => void } => {
       const key = `${type}-${item.id}`;
       const image = type === "store"
         ? (item.images && item.images.length > 0 ? item.images[0] : null)
@@ -751,11 +758,7 @@ const UserProfileScreen = () => {
         engagement: { likes: 0 },
       };
 
-      return (
-        <Box key={key} width="48%" mb="$md">
-          <PostCard post={post} onPress={() => onPress()} />
-        </Box>
-      );
+      return { post, onPress };
     };
 
     return (
@@ -793,9 +796,24 @@ const UserProfileScreen = () => {
             <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
           </VStack>
         ) : (
-          <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-            {data.map((item) => renderCard(item, contribSubTab))}
-          </HStack>
+          (() => {
+            const cards = data.map((item) => buildContribCard(item, contribSubTab));
+            const columns = splitIntoMasonryColumns(
+              cards,
+              ({ post }) => post.content?.images?.[0] || post.image
+            );
+            return (
+              <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
+                {columns.map((column, colIndex) => (
+                  <VStack key={colIndex} flex={1} space="sm">
+                    {column.map(({ post, onPress }) => (
+                      <PostCard key={post.id} post={post} onPress={onPress} />
+                    ))}
+                  </VStack>
+                ))}
+              </HStack>
+            );
+          })()
         )}
       </VStack>
     );
@@ -834,15 +852,26 @@ const UserProfileScreen = () => {
         );
       }
 
-      // 其他 tab 使用两列网格布局
+      // 其他 tab 使用双列瀑布流：每列独立纵向流动，告别 flex-wrap
+      // 把相邻卡片强制对齐到同一行顶部造成的空白间隙。卡片本身按媒体自
+      // 然比例渲染（见 PostCard 的 useMediaAspectRatio），所以布局随内容
+      // 真实高度起伏，视觉上接近小红书 / 瀑布流。
+      const postColumns = splitIntoMasonryColumns(
+        currentTabData.posts,
+        (post) => post.content?.images?.[0] || post.image
+      );
       return (
-        <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-          {currentTabData.posts.map((post) => (
-            <Box key={post.id} width="48%" mb="$md">
-              <Pressable onPress={() => handlePostPress(post)}>
-                <PostCard post={post} onPress={() => handlePostPress(post)} />
-              </Pressable>
-            </Box>
+        <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
+          {postColumns.map((column, colIndex) => (
+            <VStack key={colIndex} flex={1} space="sm">
+              {column.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onPress={handlePostPress}
+                />
+              ))}
+            </VStack>
           ))}
         </HStack>
       );

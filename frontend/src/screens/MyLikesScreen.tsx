@@ -36,6 +36,7 @@ import {
     Post,
 } from "../services/postService";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
+import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -222,6 +223,14 @@ const MyLikesScreen = () => {
             );
         }
 
+        // Two-column masonry: columns flow independently so differently-sized
+        // cards don't leave a flex-wrap row-top gap. Long-press still unlikes
+        // the post; each Pressable sits directly in the column and gets its
+        // width from `flex: 1` on the VStack.
+        const columns = splitIntoMasonryColumns(
+            likedPosts,
+            (post) => post.content?.images?.[0] || post.image
+        );
         return (
             <RNScrollView
                 refreshControl={
@@ -230,19 +239,22 @@ const MyLikesScreen = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: theme.spacing.xl }}
             >
-                <HStack flexWrap="wrap" px="$md" pt="$sm" justifyContent="space-between">
-                    {likedPosts.map((post) => (
-                        <Box key={post.id} width="48%" mb="$md" position="relative">
-                            <Pressable
-                                onPress={() => handlePostPress(post)}
-                                onLongPress={() => handleUnlikePost(post)}
-                            >
-                                <PostCard
-                                    post={post}
+                <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
+                    {columns.map((column, colIndex) => (
+                        <VStack key={colIndex} flex={1} space="sm">
+                            {column.map((post) => (
+                                <Pressable
+                                    key={post.id}
                                     onPress={() => handlePostPress(post)}
-                                />
-                            </Pressable>
-                        </Box>
+                                    onLongPress={() => handleUnlikePost(post)}
+                                >
+                                    <PostCard
+                                        post={post}
+                                        onPress={() => handlePostPress(post)}
+                                    />
+                                </Pressable>
+                            ))}
+                        </VStack>
                     ))}
                 </HStack>
             </RNScrollView>

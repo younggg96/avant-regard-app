@@ -3,6 +3,7 @@ import { View, Image, StyleSheet, ViewStyle, ImageStyle, StyleProp, ActivityIndi
 import * as FileSystem from "expo-file-system";
 
 import { getVideoThumbnail } from "../utils/videoThumbnail";
+import { rememberMediaAspectRatio } from "../utils/useMediaAspectRatio";
 
 function cleanVideoUri(uri: string): string {
   return uri.endsWith("?") ? uri.slice(0, -1) : uri;
@@ -74,8 +75,12 @@ export const VideoThumbnailView: React.FC<VideoThumbnailViewProps> = ({
         }
 
         if (!cancelled && thumb) {
-          await FileSystem.copyAsync({ from: thumb, to: thumbPath }).catch(() => {});
-          setThumbnail(thumb);
+          await FileSystem.copyAsync({ from: thumb.uri, to: thumbPath }).catch(() => {});
+          setThumbnail(thumb.uri);
+          // Share the measured aspect ratio with other mounted consumers
+          // (e.g. PostCard, PostContentSection) so they don't redecode the
+          // same video just to know its shape.
+          rememberMediaAspectRatio(cleanUri, thumb.width, thumb.height);
         }
       } catch {
         // Thumbnail generation failed

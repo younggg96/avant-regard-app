@@ -746,12 +746,20 @@ const PublishOutfitScreen = () => {
         const videoUri = result.assets[0].uri;
         const thumbnail = await getVideoThumbnail(videoUri);
         if (thumbnail) {
-          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail }));
+          setVideoThumbnails(prev => ({ ...prev, [videoUri]: thumbnail.uri }));
+          // Track the natural size of the selected video so the preview
+          // height (keyed on the cover URI) adapts to its real aspect ratio
+          // instead of the 300px fallback.
+          setImageDimensions((prev) => ({
+            ...prev,
+            [videoUri]: { width: thumbnail.width, height: thumbnail.height },
+            [thumbnail.uri]: { width: thumbnail.width, height: thumbnail.height },
+          }));
         }
         const newImages = [...images, videoUri];
         setImages(newImages);
         if (!coverImage) {
-          setCoverImage(thumbnail || videoUri);
+          setCoverImage(thumbnail?.uri ?? videoUri);
         }
         Alert.show("视频已添加", "", 1500);
       }

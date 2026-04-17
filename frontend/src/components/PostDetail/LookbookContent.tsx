@@ -7,6 +7,10 @@ import { isVideoUrl } from "../../services/postService";
 import { Post } from "../PostCard";
 import { styles, SCREEN_WIDTH } from "./styles";
 import { VideoPlayer } from "./VideoPlayer";
+import {
+  useMediaAspectRatio,
+  clampAspectRatio,
+} from "../../utils/useMediaAspectRatio";
 
 interface LookbookContentProps {
   post: Post;
@@ -23,6 +27,23 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
   onImageIndexChange,
   onOpenFullscreen,
 }) => {
+  // Drive the carousel height from the cover (first) slide's natural aspect
+  // ratio, clamped to a pleasant range. All slides share this height because
+  // a paginated horizontal FlatList needs a consistent viewport — mismatched
+  // slides fall back to `contentFit="contain"` so nothing is cropped. This
+  // replaces the old fixed `SCREEN_HEIGHT * 0.55` box that cover-cropped
+  // 16:9 videos into a tall portrait frame.
+  const coverRatio = clampAspectRatio(
+    useMediaAspectRatio(images[0], 4 / 5),
+    3 / 4, // tallest allowed frame (portrait 3:4)
+    16 / 9 // widest allowed frame (landscape 16:9)
+  );
+  const wrapperStyle = {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH / coverRatio,
+  };
+  const mediaStyle = { width: "100%" as const, height: "100%" as const };
+
   return (
     <View style={styles.lookbookContainer}>
       {/* 图片轮播 */}
@@ -40,12 +61,12 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
           }}
           renderItem={({ item, index }) => {
             if (isVideoUrl(item)) {
-              console.log("item", item);
               return (
                 <VideoPlayer
                   uri={item}
-                  style={styles.lookbookImageWrapper}
-                  videoStyle={styles.lookbookImage}
+                  style={wrapperStyle}
+                  videoStyle={mediaStyle}
+                  contentFit="contain"
                   playIconSize={56}
                 />
               );
@@ -53,13 +74,13 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
             return (
               <Pressable
                 onPress={() => onOpenFullscreen(index)}
-                style={styles.lookbookImageWrapper}
+                style={wrapperStyle}
               >
                 <OptimizedImage
                   uri={item}
                   size={ImageSize.LARGE}
-                  style={styles.lookbookImage}
-                  contentFit="cover"
+                  style={mediaStyle}
+                  contentFit="contain"
                   lazy={index > 0}
                 />
               </Pressable>

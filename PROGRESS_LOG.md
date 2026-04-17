@@ -1,5 +1,150 @@
 # Progress Log
 
+## 2026-04-17: 用户 / 我的 / 点赞 帖子网格 —— 改成双列瀑布流（真正按自然比例排版）
+
+### Summary
+用户主页（`UserProfileScreen` / `Profile/PostsContent`）与「我点赞的」页（`MyLikesScreen`）的帖子网格之前用 `HStack flexWrap="wrap"` + `Box width="48%"` 做两列。虽然 `PostCard` 本身已经按自然比例渲染，但 flex-wrap 会强制同一行的两张卡片顶部对齐，一旦左右高度不同，就会在较矮那侧产生大片视觉空白。本次把三处网格统一改成双列瀑布流（Masonry），每列独立纵向堆叠，视觉上向小红书这类双列信息流靠齐。
+
+### Why
+- 用户反馈：看图二的排版——内容按自身尺寸和比例排版，两列错落而不是整齐的「行」。
+- 根因：`flex-wrap` 天然就是网格（grid），不是瀑布流（masonry）。要实现图二那种自由堆叠必须走「两列分别渲染」的路子。
+- 我们 feed 里的 `MasonryFlashList` 不能直接塞进 `AnimatedScrollView`（会破坏滚动委托 / 估算）；写一个轻量的「拆列 + 每列独立 VStack」算法就足够，而且没有额外依赖。
+
+### Key Changes
+
+- `frontend/src/utils/useMediaAspectRatio.ts`
+  - 导出 `peekMediaAspectRatio(uri)`：同步读取共享缓存中的自然比例，供父容器做列高平衡时用。不会触发测量、不会订阅变化。
+- `frontend/src/utils/masonryLayout.ts`（**新增**）
+  - `splitIntoMasonryColumns(items, getMediaUri, columnCount = 2, fallbackRatio = 3/4)`：
+    - 已缓存比例的条目按「当前最矮列」策略插入，估算项相对高度 = `1 / ratio + 0.3`（`+0.3` 留给标题 + 底部条，避免正方形 / 横图被低估）；
+    - 尚未测量的条目按下标交替分配（`index % columnCount`），首帧仍能得到一个漂亮的错位布局，等比例陆续解析后，各卡片各自在原位增高，不会触发重排。
+- `frontend/src/screens/UserProfileScreen.tsx`
+  - 「笔记 / 收藏 / 赞过 / 愿望单」Tab：`HStack flexWrap + Box width=48%` 换成 `HStack space=sm` + 两个 `VStack flex=1`，用 `splitIntoMasonryColumns` 分列。
+  - 「贡献」Tab：把 `renderCard` 重构为 `buildContribCard`，返回 `{ post, onPress }`；外层走同样的双列瀑布流，保留秀场 / 品牌 / 买手店各自的点击跳转。
+- `frontend/src/screens/Profile/components/PostsContent.tsx`（我的主页）
+  - 与上面完全同构的两处改造（Contribution 子页 + 其他 Tab）；长按删除（published / draft / pending）逻辑提炼到 `isEditableTab`，语义更清晰。
+  - 移除不再使用的 `Box` 导入。
+- `frontend/src/screens/MyLikesScreen.tsx`
+  - 「我点赞的帖子」列表同样改成双列瀑布流；长按解除点赞（`onLongPress={() => handleUnlikePost(post)}`）保留在每列里的 `Pressable` 上。
+
+### Dependencies Impacted
+
+- 所有调用方统一走 `splitIntoMasonryColumns`；未来新增双列信息流（秀场详情内嵌帖子等）可直接复用，不必再各自写一份 flex-wrap 逻辑。
+- `PostCard` 不需要任何改动：其内部 `useMediaAspectRatio` 仍然按自然比例驱动高度，现在在瀑布流里更能发挥出来。
+- `Discover` Tab 使用的是 `MasonryFlashList`，那里已经原生支持瀑布流，不受本次改动影响。
+
+### Verification
+
+- `ReadLints` 对 5 个文件无报错。
+- `tsc --noEmit` 过滤本次改动的文件后无类型错误（仓库原有 5 处前置错误与本次改动无关）。
+
+---
+
+## 2026-04-17: 品牌页帖子网格 —— 视频封面不再显示为灰底
+
+### Summary
+在品牌详情页（`BrandDetailScreen`）的「帖子」Tab 下，视频类型的帖子封面一直显示为灰色占位块。原因是该处直接用 `OptimizedImage` 渲染 `post.imageUrls[0]`，遇到 `.mp4` 链接时 `expo-image` 无法解码，就只剩下背景色。
+
+### Why
+- 之前已经在发现页 `PostCard` 里为视频帖子接入了 `VideoThumbnailView`，但同样的「图片 / 视频二选一」分支在品牌详情里是独立重写的一段，没跟上。这种跨文件重复最容易漏修，违反 DRY。
+- 统一封装成一个共享组件后，后续任何新增的「帖子网格」入口（秀场页、用户主页等）直接复用即可，杜绝同类 bug 再次出现。
+
+### Key Changes
+
+- `frontend/src/components/PostCoverMedia.tsx`（**新增**）
+  - 单一职责：给一个帖子的首图 URI 渲染封面。内部根据 `isVideoUrl(uri)` 分派到 `VideoThumbnailView` 或 `OptimizedImage`，外层只暴露 `uri / style / size / contentFit / lazy`。
+  - 通过 `StyleProp<ViewStyle & ImageStyle>` 让同一套 `aspectRatio / width / backgroundColor` 布局样式在 View 和 Image 两条分支上都可复用，调用方无需关心差异。
+- `frontend/src/components/PostCard.tsx`
+  - 把内部的 `isVideoUrl ? <View><VideoThumbnailView/></View> : <OptimizedImage/>` 折叠成单个 `<PostCoverMedia>`，移除不再需要的 `View` / `VideoThumbnailView` / `isVideoUrl` 导入，纯视觉行为与之前保持一致。
+- `frontend/src/screens/BrandDetailScreen.tsx`
+  - 帖子网格的 `<OptimizedImage uri={post.imageUrls[0]} ... />` 替换为 `<PostCoverMedia uri={post.imageUrls[0]} style={styles.postImage} />`。`styles.postImage` 的固定 3:4 保持不变，仅负责在视频帖子上补出缩略图。
+
+### Dependencies Impacted
+
+- `PostCoverMedia` 当前有两个调用方（`PostCard` / `BrandDetailScreen`）。后续秀场详情、收藏列表等类似网格新增时应优先复用此组件。
+- `BrandDetailScreen` 品牌 Hero (`brand.coverImages`) 与秀场卡片 (`show.coverImage`) 是管理后台上传的静态图，不是用户视频帖，继续用 `OptimizedImage`。
+- 未触达其它已按自然比例渲染的视频入口（发现页瀑布流 / 帖子详情 / 发帖预览），本次改动是纯增量修复。
+
+### Verification
+
+- `ReadLints` 对 3 个文件无报错。
+- `tsc --noEmit` 过滤本次改动的文件后无类型错误（仓库原有 5 处前置错误与本次改动无关，保留现状）。
+
+---
+
+## 2026-04-17: 视频与图片 —— 全链路按原始比例展示，取消固定容器裁切
+
+### Summary
+上传 16:9 视频过去会被 `contentFit="cover"` 裁进 3:4 / 4:5 / 16:9 等固定容器，侧边或上下被切掉。现在发现页卡片、帖子详情（内嵌块 / 单图单视频 / Lookbook 轮播）、发帖预览（论坛 / 搭配 / Lookbook）统一按媒体自然长宽比撑满，不再二次裁切。
+
+### Why
+- 产品规格：视频的原始尺寸是创作意图的一部分，不应被前端布局强行裁掉关键内容。用户明确反馈「上传了 16:9 视频被裁成 4:3」。
+- 图片布局早已基于 `Image.getSize` 算自然比例（见 PublishOutfit/Lookbook 的 `previewHeight`），视频却没走这条路径，两种媒介行为不一致。这次把两边收敛到同一个 hook 上，符合 DRY / KISS。
+
+### Key Changes
+
+- `frontend/src/utils/videoThumbnail.ts`
+  - `getVideoThumbnail` 的返回类型由 `string | null` 升级为 `VideoThumbnail | null`（`{ uri, width, height }`），直接透传 `expo-video-thumbnails` 已有的原始像素尺寸，避免再用 `Image.getSize` 二次解码。
+- `frontend/src/utils/useMediaAspectRatio.ts`（**新增**）
+  - `useMediaAspectRatio(uri, fallback)`：图片走 `Image.getSize`、视频走 `getVideoThumbnail` 的 width/height，模块级 `Map<string, number>` 缓存避免重复测量。
+  - `rememberMediaAspectRatio(uri, w, h)`：对外暴露的写缓存 API，支持带 pub/sub —— 已订阅的组件在其它组件解析完同一个 URI 后会实时更新（解决 Android 上 HTTP 直链 `getThumbnailAsync` 会失败、但 `VideoThumbnailView` 的「先下载再抽帧」回退分支能成功的场景）。
+  - `clampAspectRatio(ratio, min=3/4, max=16/9)`：给 feed / Lookbook 这类瀑布流/轮播做防护阈，防止单张超宽超高媒体打乱排版。
+- `frontend/src/components/VideoThumbnailView.tsx` / `frontend/src/components/PostDetail/VideoPlayer.tsx`
+  - 适配新的 `getVideoThumbnail` 返回值；拿到帧后同步调用 `rememberMediaAspectRatio` 向共享缓存写入真实尺寸。
+- `frontend/src/components/PostCard.tsx`（发现页瀑布流卡片）
+  - 去掉 `styles.image` 固定 `aspectRatio: 3 / 4`，改成运行时注入 `clampAspectRatio(useMediaAspectRatio(...))` 的结果，16:9 视频 / 1:1 截图 / 3:4 竖图都能按原比例撑满，`MasonryFlashList` 原生支持异高单元格无需额外改动。
+- `frontend/src/components/PostDetail/PostContentSection.tsx`
+  - 新增 `VideoBlockRenderer` / `ImageBlockRenderer`，内嵌媒体块的 `height = SCREEN_WIDTH / ratio`，并用 `contentFit="contain"` 兜底；删除不再使用的 `blockImage`、`blockImageContain` 固定样式。
+- `frontend/src/components/PostDetail/ImageGrid.tsx`
+  - 单张（图片或视频）走新增的 `SingleMediaItem` 按自然比例展示；两张 / 多张网格仍保留固定 3:4 / 4:5 的拼图规格（统一的格子仍然有更好的视觉秩序，不在此次范围内）。
+- `frontend/src/components/PostDetail/LookbookContent.tsx` + `frontend/src/components/PostDetail/styles.ts`
+  - 轮播容器高度从 `SCREEN_HEIGHT * 0.55` 改为以**封面图自然比例 (clamp 到 3:4 ~ 16:9)** 推导；其余与封面比例不同的 slide 用 `contentFit="contain"` 保证不被裁切；删除 `lookbookImageWrapper` / `lookbookImage` 硬编码样式。
+- `frontend/src/screens/PublishForumPostScreen.tsx`
+  - 抽出 `MediaBlockPreview` 组件，内嵌图 / 视频按自然比例渲染；移除 `imageBlock: { height: 200 }` 固定高度样式，和帖子详情预览保持一致。
+- `frontend/src/screens/PublishLookbookScreen.tsx` / `frontend/src/screens/PublishOutfitScreen.tsx`
+  - `handleVideoSelection` 里把 `thumbnail.width/height` 同时写进 `imageDimensions`（同时键入 `videoUri` 与 `thumbnail.uri`，因为发帖态 cover 取值路径两者都可能命中）。原有基于 cover 尺寸算 `previewHeight` 的逻辑现在对视频也生效，视频不会再被裁进 300px 的兜底框。
+
+### Dependencies Impacted
+
+- `getVideoThumbnail` 的返回类型是 breaking change，已逐一更新 5 个调用点：`PublishForumPostScreen.tsx`、`PublishLookbookScreen.tsx`、`PublishOutfitScreen.tsx`、`PostDetail/VideoPlayer.tsx`、`VideoThumbnailView.tsx`。原本直接 `thumbnail` 当字符串用的地方都改成 `thumbnail.uri`。
+- `frontend/src/screens/Discover/components/TabContent.tsx` 的 `ESTIMATED_ITEM_SIZE = 320` 是 `MasonryFlashList` 的高度估值，仅用于首屏渲染优化、不会决定最终布局，动态比例下无需调整。
+- `frontend/src/screens/Discover/styles.ts` 的 `skeletonImage` 保留 3:4 占位比（loading 态不知道真实尺寸，保持统一瀑布流形态）。
+- `VideoPreviewModal` 已经是 `contentFit="contain"` 的全屏预览，本次不变。
+
+### Verification
+
+- `ReadLints` 对本次改动的 12 个文件无报错。
+- `tsc --noEmit` 过滤本次改动涉及的文件后无类型错误（仓库原有 5 处前置错误 `RelatedLooks.tsx` / `OptimizedImage.tsx` / `UserAvatar.tsx` / `BrandDetailScreen.tsx` / `deepLinking.ts` 与本次改动无关，保留现状）。
+- 手工核对所有 `aspectRatio:` 出现点、`getVideoThumbnail(` 调用点、`VideoPlayer` / `VideoThumbnailView` 使用点，确认没有遗漏的固定比例容器。
+
+---
+
+## 2026-04-17: 互动页会话列表 —— 秀场 / 名片分享回退到原始 JSON 的修复
+
+### Summary
+互动页「消息」列表的会话预览 `formatLastMessage` 只识别 `postId / storeId / brandId` 三种分享载荷，遇到后续新增的 `show_card`（`showId`）与 `user_card`（`userId+username`）会直接 fall-through，把整段 JSON 作为最后一条消息渲染出来（截图里 `客服` 会话显示 `{"showId":"...","title":"A...` 即为此症状）。
+
+### Why
+`ShareToChatModal` / `MessageBubble` 的分享体系共有 5 种卡片类型：`post_card / store_card / brand_card / show_card / user_card`。后加入的两种没有同步到会话列表预览的格式化逻辑上，导致消息预览与聊天详情的语义不一致，用户体验上就是「chat list 里的文字还是 JSON」。
+
+### Key Changes
+
+- `frontend/src/screens/Interaction/utils.ts`
+  - 重写 `formatLastMessage`：将原本基于 `text.includes('"postId"')` 的字符串匹配改成 `JSON.parse` + 字段类型校验，和 `MessageBubble.tryParseXxx` 同一套判定规则（`postId: string` / `storeId: string` / `brandId: number` / `showId: string` / `userId: number & username: string`），避免误判嵌套字符串。
+  - 补齐 `[秀场分享]`、`[名片分享]` 两个兜底预览文本；解析失败时保留原始文本展示（与旧行为一致）。
+
+### Dependencies Impacted
+
+- `ConversationRow`（互动页主列表）和 `StrangerMessagesScreen`（陌生人消息页）都通过 `formatLastMessage` 渲染 `lastMessageText`，改动同时覆盖两处，无需额外修改调用方。
+- 后端 `Conversation.lastMessageText` / `last_message_text` 透传的是消息原文，不区分 `messageType`，因此仍由前端根据 payload 结构推断类型，保持现有契约。
+
+### Verification
+
+- `ReadLints` 对 `Interaction/utils.ts` 无报错。
+- 手动对照 `MessageBubble` 中 `tryParsePostCard / tryParseStoreCard / tryParseBrandCard / tryParseShowCard / tryParseUserCard` 五组判定条件，保证预览文案与详情气泡类型一一对应。
+
+---
+
 ## 2026-04-17: 贡献榜 / 个人贡献 —— 取消两个隐性上限
 
 ### Summary

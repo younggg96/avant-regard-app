@@ -33,6 +33,7 @@ import ImagePreviewModal from "../components/ImagePreviewModal";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import { pickAndUploadImage } from "./admin/adminUtils";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
+import { PostCoverMedia } from "../components/PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
 
 type TabType = "shows" | "posts";
@@ -607,12 +608,9 @@ const BrandDetailScreen = () => {
                       onPress={() => handlePostPress(post)}
                       activeOpacity={0.9}
                     >
-                      <OptimizedImage
+                      <PostCoverMedia
                         uri={post.imageUrls[0]}
-                        size={ImageSize.MEDIUM}
                         style={styles.postImage}
-                        contentFit="cover"
-                        lazy={true}
                       />
                       <View style={styles.postContent}>
                         <Text style={styles.postTitle} numberOfLines={2}>

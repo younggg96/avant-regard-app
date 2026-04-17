@@ -1,13 +1,16 @@
 import React, { useCallback } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
-import { VideoThumbnailView } from "./VideoThumbnailView";
+import { PostCoverMedia } from "./PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
-import { isVideoUrl } from "../services/postService";
 import { theme } from "../theme";
 import { Show } from "../services/showService";
 import { Brand } from "../services/brandService";
+import {
+  useMediaAspectRatio,
+  clampAspectRatio,
+} from "../utils/useMediaAspectRatio";
 
 // 关联秀场类型（兼容旧数据）
 export interface ShowImageInfo {
@@ -97,6 +100,12 @@ const PostCardInner = ({
   // 是否为待审核状态
   const isPending = post.auditStatus === "PENDING";
 
+  // Feed card uses the media's natural aspect ratio so 16:9 videos /
+  // landscape photos are no longer cover-cropped into a 3:4 portrait box.
+  // Clamp [3/4, 16/9] keeps the masonry feed visually balanced and prevents
+  // ultra-tall or ultra-wide outliers from dominating a column.
+  const mediaRatio = clampAspectRatio(useMediaAspectRatio(displayImage, 3 / 4));
+
   // Stable handlers — avoids creating 4 new closures on every render, which
   // matters when MasonryFlashList mounts / recycles many cards at once.
   const handlePressPost = useCallback(() => onPress?.(post), [onPress, post]);
@@ -122,22 +131,15 @@ const PostCardInner = ({
       {/* 封面媒体 */}
       <Pressable onPress={handlePressPost}>
         <Box position="relative">
-          {isVideoUrl(displayImage) ? (
-            <View style={[styles.image, isPending && styles.pendingImage]}>
-              <VideoThumbnailView
-                uri={displayImage}
-                style={{ width: "100%", height: "100%" }}
-              />
-            </View>
-          ) : (
-            <OptimizedImage
-              uri={displayImage}
-              size={ImageSize.MEDIUM}
-              style={[styles.image, isPending && styles.pendingImage]}
-              contentFit="cover"
-              lazy={true}
-            />
-          )}
+          <PostCoverMedia
+            uri={displayImage}
+            style={[
+              styles.image,
+              { aspectRatio: mediaRatio },
+              isPending && styles.pendingImage,
+            ]}
+          />
+
           {/* 待审核标签 */}
           {isPending && (
             <Box
@@ -243,7 +245,9 @@ PostCard.displayName = "PostCard";
 const styles = StyleSheet.create({
   image: {
     width: "100%",
-    aspectRatio: 3 / 4,
+    // aspectRatio is injected per-card from the media's natural size; we
+    // keep a background color here so the placeholder is still visible
+    // while the ratio is being resolved.
     backgroundColor: theme.colors.gray100,
   },
   pendingImage: {

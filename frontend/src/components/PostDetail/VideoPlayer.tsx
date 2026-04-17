@@ -17,6 +17,7 @@ import type { VideoContentFit, VideoPlayerStatus } from "expo-video";
 import * as FileSystem from "expo-file-system";
 import { Pressable } from "../ui";
 import { getVideoThumbnail } from "../../utils/videoThumbnail";
+import { rememberMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
 function cleanVideoUri(uri: string): string {
   return uri.endsWith("?") ? uri.slice(0, -1) : uri;
@@ -150,7 +151,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!localUri) return;
     let cancelled = false;
     getVideoThumbnail(localUri).then((thumb) => {
-      if (!cancelled && thumb) setThumbnail(thumb);
+      if (cancelled || !thumb) return;
+      setThumbnail(thumb.uri);
+      // Surface the natural size for aspect-ratio-aware containers (feed
+      // card, content block, lookbook slide) so they refresh if they were
+      // still showing the fallback ratio.
+      rememberMediaAspectRatio(cleanUri, thumb.width, thumb.height);
     });
     return () => { cancelled = true; };
   }, [localUri]);
