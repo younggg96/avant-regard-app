@@ -595,6 +595,8 @@ class FeedService:
             "title": post_data.get("title", ""),
             "contentText": post_data.get("content_text", ""),
             "imageUrls": post_data.get("image_urls") or [],
+            "coverWidth": post_data.get("cover_width"),
+            "coverHeight": post_data.get("cover_height"),
             "likeCount": post_data.get("like_count", 0),
             "favoriteCount": post_data.get("favorite_count", 0),
             "commentCount": post_data.get("comment_count", 0),

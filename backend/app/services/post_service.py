@@ -120,6 +120,8 @@ class PostService:
             title=post_data["title"],
             contentText=post_data.get("content_text", ""),
             imageUrls=post_data.get("image_urls", []),
+            coverWidth=post_data.get("cover_width"),
+            coverHeight=post_data.get("cover_height"),
             likeCount=post_data.get("like_count", 0),
             favoriteCount=post_data.get("favorite_count", 0),
             commentCount=post_data.get("comment_count", 0),
@@ -229,6 +231,8 @@ class PostService:
         title: str,
         content_text: str = "",
         image_urls: List[str] = None,
+        cover_width: Optional[int] = None,
+        cover_height: Optional[int] = None,
         product_name: str = None,
         brand_name: str = None,
         rating: float = None,
@@ -244,7 +248,7 @@ class PostService:
         """创建帖子"""
         # 验证 show_ids（确保是有效的整数列表）
         validated_show_ids = self._validate_show_ids(show_ids or [])
-        
+
         # 插入帖子
         insert_data = {
             "user_id": user_id,
@@ -254,6 +258,8 @@ class PostService:
             "title": title,
             "content_text": content_text,
             "image_urls": image_urls or [],
+            "cover_width": cover_width,
+            "cover_height": cover_height,
             "product_name": product_name,
             "brand_name": brand_name,
             "rating": rating,
@@ -307,6 +313,12 @@ class PostService:
             update_data["content_text"] = kwargs["content_text"]
         if "image_urls" in kwargs:
             update_data["image_urls"] = kwargs["image_urls"]
+        # 封面尺寸（同 image_urls[0] 联动变化；若 image_urls 变了但没传 cover_*,
+        # 调用方应显式清 None，否则我们保持原值不动以避免误覆盖）
+        if "cover_width" in kwargs:
+            update_data["cover_width"] = kwargs["cover_width"]
+        if "cover_height" in kwargs:
+            update_data["cover_height"] = kwargs["cover_height"]
         # 单品评价专用字段
         if "product_name" in kwargs:
             update_data["product_name"] = kwargs["product_name"]

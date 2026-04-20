@@ -107,6 +107,11 @@ CREATE TABLE IF NOT EXISTS posts (
     title VARCHAR(500) NOT NULL,
     content_text TEXT DEFAULT '',
     image_urls TEXT[] DEFAULT '{}',
+    -- 封面图（image_urls[0]）原始像素尺寸；用于瀑布流客户端直接按比例渲染，
+    -- 避免 Image.getSize 在滚动时触发异步重排导致掉帧。
+    -- 老帖子为 NULL，前端回退 3/4。
+    cover_width INTEGER,
+    cover_height INTEGER,
     -- 单品评价专用字段
     product_name VARCHAR(200),
     brand_name VARCHAR(200),

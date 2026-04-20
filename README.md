@@ -58,22 +58,75 @@ npm install
 
 ### Frontend（移动端 app）
 
-```bash
-npm run frontend:dev        # 启动 Expo Dev Server（脚本位于 frontend/scripts/start-mobile.js）
-npm run frontend:ios        # 在 iOS 模拟器运行原生构建
-npm run frontend:android    # 在 Android 模拟器运行原生构建
-```
+首次运行前，复制 `frontend/.env.example` 为 `frontend/.env` 并按需修改 `EXPO_PUBLIC_API_BASE_URL`。
 
-或在 `frontend/` 目录内直接使用原生 Expo 命令：
+#### 场景 A —— 日常开发（只改 JS / TS）
+
+原生二进制已经装在模拟器里时，只需起 Metro：
 
 ```bash
 cd frontend
-npm run start               # expo start
-npm run ios                 # expo run:ios
-npm run android             # expo run:android
+env -u CI npx expo start --clear
 ```
 
-首次运行前，复制 `frontend/.env.example` 为 `frontend/.env` 并根据需要修改 `EXPO_PUBLIC_API_BASE_URL`。
+模拟器里按 `Cmd+R`，或 Metro 终端按 `r` 即可热重载。
+
+> ⚠️ **必须 `env -u CI`**：当前 shell 环境里若存在残留的 `CI=1`，Expo 会进入 CI 模式并禁用 watch/热重载（日志会出现 `Metro is running in CI mode, reloads are disabled`）。用 `env | grep -i ^CI=` 自查。
+
+也可以继续用封装过的脚本（同样会受 `CI` 影响，建议也先 `unset CI`）：
+
+```bash
+npm run frontend:dev        # 等价于 cd frontend && node scripts/start-mobile.js
+```
+
+#### 场景 B —— iOS 首次启动 / 需要重建原生
+
+出现 `requireNativeComponent: "<X>" was not found in the UIManager` 这类错误，或刚拉了含原生模块的新依赖时，必须重建 dev client：
+
+```bash
+cd frontend
+
+# 1. 清理陈旧的 Pods 与构建产物
+rm -rf ios/Pods ios/build
+rm -rf ~/Library/Developer/Xcode/DerivedData/AvantRegard-*
+watchman watch-del-all 2>/dev/null || true
+rm -rf node_modules/.cache .expo
+
+# 2. 重装 CocoaPods（把 RNFlashList / RNScreens / React-Core 等原生模块装进 ios/Pods）
+cd ios && pod install --repo-update && cd ..
+
+# 3. 编译并安装到已启动的 iPhone 模拟器；命令会顺便起 Metro
+env -u CI npx expo run:ios
+# 或指定具体模拟器：
+# env -u CI npx expo run:ios --device "iPhone 16 Pro"
+```
+
+#### 场景 C —— Android 模拟器
+
+```bash
+cd frontend
+npm run android             # 等价于 expo run:android
+```
+
+Android 的 Gradle 会自动处理原生依赖，无需额外的 `pod install`；但新增含原生代码的依赖后仍要重新跑一次 `npm run android`。
+
+#### 何时必须重建原生 vs 只重启 Metro
+
+| 变更 | 需要 `expo run:ios` / `run:android` |
+| --- | :---: |
+| 只改 `.ts` / `.tsx` / `.js` / 样式 | ❌ Metro 按 `r` 即可 |
+| 新增 / 升级含原生代码的依赖（flash-list、reanimated、svg、maps 等） | ✅ |
+| 改 `ios/` 原生代码、`Info.plist`、`Podfile` | ✅ |
+| 改 `android/` 原生代码、`AndroidManifest.xml`、`build.gradle` | ✅ |
+| 改 `app.json` 里影响原生的字段（bundleId、权限、icon、splash） | ✅ |
+
+#### 手动连 Metro（dev client 停在首屏时）
+
+安装好 dev client 后，`xcrun simctl launch` 起来的 app 有时会停在 Expo dev launcher 首屏。用 deep link 强制连到本机 Metro：
+
+```bash
+xcrun simctl openurl booted "exp+avant-regard://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+```
 
 ### Web（营销 / 只读网站）
 

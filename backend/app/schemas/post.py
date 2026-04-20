@@ -57,6 +57,11 @@ class Post(BaseModel):
     title: str
     contentText: str = ""
     imageUrls: List[str] = []
+    # 封面图（image_urls[0]）原始像素尺寸；前端瀑布流直接按比例渲染，
+    # 避免 Image.getSize 在滚动中触发 MasonryFlashList 重排。老帖为 None
+    # 时前端回退 3/4。
+    coverWidth: Optional[int] = None
+    coverHeight: Optional[int] = None
     likeCount: int = 0
     favoriteCount: int = 0
     commentCount: int = 0
@@ -110,6 +115,9 @@ class CreatePostRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     contentText: Optional[str] = ""
     imageUrls: List[str] = []
+    # 封面原始像素尺寸（见 Post.coverWidth 注释）
+    coverWidth: Optional[int] = Field(None, ge=1)
+    coverHeight: Optional[int] = Field(None, ge=1)
     # 单品评价专用字段
     productName: Optional[str] = None
     brandName: Optional[str] = None
@@ -142,6 +150,9 @@ class UpdatePostRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     contentText: str = ""
     imageUrls: List[str] = []
+    # 封面原始像素尺寸（见 Post.coverWidth 注释）
+    coverWidth: Optional[int] = Field(None, ge=1)
+    coverHeight: Optional[int] = Field(None, ge=1)
     # 单品评价专用字段
     productName: Optional[str] = None
     brandName: Optional[str] = None
