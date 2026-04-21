@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PostCard } from "@/components/PostCard";
 import { FadeImage } from "@/components/FadeImage";
+import { FollowButton } from "@/components/user/FollowButton";
 import {
   ApiError,
   getUserFollowerCount,
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: `@${user.username}`,
       description: user.bio || `${user.username} 的 Avant Regard 主页。`,
-      alternates: { canonical: `/users/${user.id}` },
+      alternates: { canonical: `/users/${user.userId}` },
       openGraph: {
         type: "profile",
         title: `@${user.username} · Avant Regard`,
@@ -55,10 +56,10 @@ export default async function UserProfilePage({ params }: PageProps) {
           </Link>
         </nav>
 
-        <header className="overflow-hidden rounded border
-                           border-black/[0.06] bg-[#f9f9f9]
+        <header className="overflow-hidden rounded border border-black/[0.06] bg-[#f9f9f9]
                            dark:border-white/[0.08] dark:bg-[#111]">
-          <div className="relative h-40 w-full bg-[#e8e8e8] dark:bg-[#1a1a1a] md:h-56">
+          {/* Cover — hero, stays clean with no overlapping text. */}
+          <div className="relative h-44 w-full bg-[#e8e8e8] dark:bg-[#1a1a1a] md:h-64">
             {user.coverUrl && (
               <FadeImage
                 src={user.coverUrl}
@@ -72,47 +73,47 @@ export default async function UserProfilePage({ params }: PageProps) {
             )}
           </div>
 
-          <div className="relative px-6 pb-8 pt-0 md:px-10">
-            <div className="relative -mt-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <div className="flex flex-col items-start gap-4 md:flex-row md:items-end">
-                <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 shadow-card
-                                bg-[#e8e8e8] border-white dark:bg-[#2a2a2a] dark:border-[#0a0a0a]">
-                  {user.avatarUrl && (
-                    <Image
-                      src={user.avatarUrl}
-                      alt={user.username}
-                      fill
-                      sizes="96px"
-                      quality={80}
-                      className="object-cover"
-                      priority
-                    />
-                  )}
-                </div>
-                <div className="pb-2">
-                  <h1 className="font-serif text-3xl text-black dark:text-white">
-                    @{user.username}
-                  </h1>
-                  {user.bio && (
-                    <p className="mt-2 max-w-lg font-serif text-sm leading-relaxed text-black/60 dark:text-white/50">
-                      {user.bio}
-                    </p>
-                  )}
-                  {user.location && (
-                    <p className="mt-1 font-label text-xs uppercase tracking-widest text-black/40 dark:text-white/30">
-                      {user.location}
-                    </p>
-                  )}
-                </div>
+          <div className="px-6 pb-8 md:px-10">
+            {/* Avatar overlaps cover by half; follow button sits on the far right. */}
+            <div className="-mt-14 mb-6 flex items-end justify-between gap-4 md:-mt-16">
+              <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 shadow-card
+                              bg-[#e8e8e8] border-[#f9f9f9] dark:bg-[#2a2a2a] dark:border-[#111]
+                              md:h-32 md:w-32">
+                {user.avatarUrl && (
+                  <Image
+                    src={user.avatarUrl}
+                    alt={user.username}
+                    fill
+                    sizes="128px"
+                    quality={80}
+                    className="object-cover"
+                    priority
+                  />
+                )}
               </div>
-
-              <Link href="/download" className="btn-primary self-start md:self-end">
-                在 App 中关注
-              </Link>
+              <div className="pb-1">
+                <FollowButton targetUserId={user.userId} />
+              </div>
             </div>
 
-            <dl className="mt-8 grid grid-cols-3 gap-4 border-t pt-6 md:max-w-md
-                           border-black/[0.06] dark:border-white/[0.08]">
+            {/* Identity block — readable column, no cramping around the avatar. */}
+            <div className="max-w-2xl">
+              <h1 className="font-serif text-3xl leading-tight text-black dark:text-white md:text-4xl">
+                @{user.username}
+              </h1>
+              {user.bio && (
+                <p className="mt-3 font-serif text-[15px] leading-relaxed text-black/65 dark:text-white/55">
+                  {user.bio}
+                </p>
+              )}
+              {user.location && (
+                <p className="mt-3 font-label text-[11px] uppercase tracking-widest text-black/45 dark:text-white/35">
+                  {user.location}
+                </p>
+              )}
+            </div>
+
+            <dl className="mt-8 grid grid-cols-3 gap-4 border-t border-black/[0.06] pt-6 dark:border-white/[0.08] md:max-w-md">
               <Stat label="帖子"  value={formatCount(posts.length)} />
               <Stat label="关注者" value={formatCount(followerCount)} />
               <Stat label="关注中" value={formatCount(followingCount)} />

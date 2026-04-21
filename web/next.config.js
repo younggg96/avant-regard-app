@@ -24,8 +24,13 @@ const nextConfig = {
       // Alibaba Cloud / Tencent Cloud (CN object storage)
       { protocol: "https", hostname: "**.aliyuncs.com" },
       { protocol: "https", hostname: "**.myqcloud.com" },
-      // Generic fallback for user-generated content from unknown origins
+      // Generic fallback for user-generated content from unknown origins.
+      // Both protocols are accepted because brand / store metadata still
+      // references plain-http logos (e.g. legacy brand shop CDNs such as
+      // oscardelarenta.com). Next.js proxies and re-serves everything over
+      // HTTPS, so clients never see the insecure upstream.
       { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
     ],
   },
   experimental: {

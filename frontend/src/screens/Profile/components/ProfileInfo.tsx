@@ -18,6 +18,7 @@ interface ProfileInfoProps {
   onEditProfile: () => void;
   onFollowingPress: () => void;
   onFollowersPress: () => void;
+  onAvatarPress?: () => void;
 }
 
 function getGenderText(gender?: string): string {
@@ -40,19 +41,25 @@ export const ProfileInfo = ({
   onEditProfile,
   onFollowingPress,
   onFollowersPress,
+  onAvatarPress,
 }: ProfileInfoProps) => (
   <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
     <View style={styles.avatarRow}>
       <View style={styles.avatarWrapper}>
-        {avatarUri ? (
-          <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.avatar} contentFit="cover" lazy={false} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <RNText style={styles.avatarText}>
-              {username?.slice(0, 2).toUpperCase() || "AG"}
-            </RNText>
-          </View>
-        )}
+        <Pressable
+          onPress={avatarUri ? onAvatarPress : onEditProfile}
+          disabled={!avatarUri && !onEditProfile}
+        >
+          {avatarUri ? (
+            <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.avatar} contentFit="cover" lazy={false} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <RNText style={styles.avatarText}>
+                {username?.slice(0, 2).toUpperCase() || "AG"}
+              </RNText>
+            </View>
+          )}
+        </Pressable>
         <Pressable style={styles.avatarAddButton} onPress={onEditProfile}>
           <Ionicons name="add" size={14} color="white" />
         </Pressable>

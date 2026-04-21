@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { DownloadCTAs } from "@/components/DownloadCTAs";
 import { PostCard } from "@/components/PostCard";
 import { Marquee } from "@/components/Marquee";
 import { AnimateIn } from "@/components/AnimateIn";
+import { RotatingHeadline } from "@/components/RotatingHeadline";
 import { getFeed } from "@/lib/api";
 import type { Post } from "@/lib/types";
 
@@ -57,14 +57,10 @@ export default async function LandingPage() {
               <span className="chip w-fit">先锋时装社区</span>
             </div>
 
-            <h1
+            <RotatingHeadline
               className="mt-6 animate-slide-up font-serif text-hero font-semibold text-black dark:text-white"
               style={{ animationDelay: "120ms" }}
-            >
-              为先锋时装
-              <br />
-              而生的社区。
-            </h1>
+            />
 
             <p
               className="mt-6 max-w-xl animate-slide-up font-serif text-base leading-relaxed text-black/55 dark:text-white/50 md:text-lg"
@@ -75,18 +71,15 @@ export default async function LandingPage() {
               让每一次着装选择都有迹可循。
             </p>
 
-            <div className="mt-10 animate-slide-up" style={{ animationDelay: "360ms" }}>
-              <DownloadCTAs />
-            </div>
-
             <div
-              className="mt-6 flex animate-fade-in items-center gap-5 font-label text-xs text-black/35 dark:text-white/30"
-              style={{ animationDelay: "520ms" }}
+              className="mt-10 flex animate-slide-up flex-wrap items-center gap-3"
+              style={{ animationDelay: "360ms" }}
             >
-              <span className="uppercase tracking-wider">iOS 15+ · Android 10+</span>
-              <span className="h-1 w-1 rounded-full bg-black/15 dark:bg-white/15" />
-              <Link href="/discover" className="link-underline font-label text-xs">
-                先在网页上逛逛 →
+              <Link href="/discover" className="btn-primary px-5 py-3 text-sm">
+                浏览 Discover
+              </Link>
+              <Link href="/#features" className="btn-secondary px-5 py-3 text-sm">
+                了解功能
               </Link>
             </div>
           </div>
@@ -121,7 +114,7 @@ export default async function LandingPage() {
           <div className="max-w-2xl">
             <span className="chip">功能</span>
             <h2 className="mt-4 font-serif text-display text-black dark:text-white">
-              一个 app，涵盖
+              一处聚合
               <br />
               先锋时装的全部动线。
             </h2>
@@ -165,7 +158,7 @@ export default async function LandingPage() {
                     正在社区里发生的事。
                   </h2>
                   <p className="mt-4 font-serif text-sm leading-relaxed text-black/50 dark:text-white/40">
-                    用户刚刚分享的穿搭与单品测评。打开 app 即可点赞、评论与关注。
+                    用户刚刚分享的穿搭与单品测评，社区每天都在更新。
                   </p>
                 </div>
                 <Link href="/discover" className="btn-secondary whitespace-nowrap">
@@ -204,7 +197,12 @@ export default async function LandingPage() {
               </p>
             </div>
           </AnimateIn>
-          <DownloadCTAs variant="inverted" />
+          <Link
+            href="/discover"
+            className="inline-flex items-center gap-3 self-start rounded border border-white/15 bg-white px-5 py-3 font-label text-sm font-medium text-black transition-all duration-200 hover:bg-[#e8e8e8] active:scale-[0.98] md:self-end"
+          >
+            进入 Discover →
+          </Link>
         </div>
       </section>
     </>

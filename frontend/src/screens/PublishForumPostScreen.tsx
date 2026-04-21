@@ -41,7 +41,7 @@ import { Post } from "../components/PostCard";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
-import { useMediaAspectRatio } from "../utils/useMediaAspectRatio";
+import { useMediaAspectRatio, resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -409,6 +409,7 @@ const PublishForumPostScreen = () => {
     });
 
     const thumbnailUri = coverImage || allImages[0] || null;
+    const coverDims = await resolveCoverDimensions(thumbnailUri);
 
     useUploadStore.getState().startUpload({
       title: title.trim(),
@@ -425,6 +426,7 @@ const PublishForumPostScreen = () => {
         title: title.trim(),
         contentText: "",
         imageUrls: [],
+        ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
         communityId: selectedCommunity?.id,
       },
       updateParams: editMode && draftPostId
@@ -437,6 +439,7 @@ const PublishForumPostScreen = () => {
               title: title.trim(),
               contentText: "",
               imageUrls: [],
+              ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
               communityId: selectedCommunity?.id,
             },
           }
@@ -504,6 +507,7 @@ const PublishForumPostScreen = () => {
 
       const contentText = JSON.stringify(updatedBlocks);
       const finalCoverImage = coverImage ? imageMapping[coverImage] || coverImage : null;
+      const coverDims = await resolveCoverDimensions(finalCoverImage);
 
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
@@ -513,6 +517,7 @@ const PublishForumPostScreen = () => {
           title: title.trim() || "论坛草稿",
           contentText,
           imageUrls: finalCoverImage ? [finalCoverImage] : [],
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           communityId: selectedCommunity?.id,
         });
       } else {
@@ -523,6 +528,7 @@ const PublishForumPostScreen = () => {
           title: title.trim() || "论坛草稿",
           contentText,
           imageUrls: finalCoverImage ? [finalCoverImage] : [],
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           communityId: selectedCommunity?.id,
         });
       }

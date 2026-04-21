@@ -55,6 +55,10 @@ const FavoritesScreen = () => {
         title: apiPost.title || "无标题",
         description: apiPost.contentText || "",
         images: apiPost.imageUrls || [],
+        coverAspectRatio:
+          apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0
+            ? apiPost.coverWidth / apiPost.coverHeight
+            : undefined,
       },
       engagement: {
         likes: apiPost.likeCount || 0,

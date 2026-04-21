@@ -115,7 +115,7 @@ const mapApiPostToDisplayPost = (
     author: {
       id: String(apiPost.userId),
       name: userInfo?.username || apiPost.username || "匿名用户",
-      avatar: userInfo?.avatarUrl || defaultAvatar,
+      avatar: userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar,
       isVerified: false,
     },
     content: {
@@ -271,9 +271,15 @@ const CommunityDetailScreen = () => {
         name: post.author.name,
         avatar: post.author.avatar,
       },
+      content: {
+        title: post.content.title,
+        description: post.content.description,
+        images: post.content.images,
+        tags: post.content.tags,
+        coverAspectRatio: post.content.coverAspectRatio,
+      },
       likes: post.engagement.likes,
       isLiked: post.engagement.isLiked,
-      // 论坛帖子所属社区
       communityId: post.communityId,
       communityName: post.communityName,
     };

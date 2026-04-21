@@ -3,7 +3,10 @@ import { View, Image, StyleSheet, ViewStyle, ImageStyle, StyleProp, ActivityIndi
 import * as FileSystem from "expo-file-system";
 
 import { getVideoThumbnail } from "../utils/videoThumbnail";
-import { rememberMediaAspectRatio } from "../utils/useMediaAspectRatio";
+import {
+  peekMediaAspectRatio,
+  rememberMediaAspectRatio,
+} from "../utils/useMediaAspectRatio";
 
 function cleanVideoUri(uri: string): string {
   return uri.endsWith("?") ? uri.slice(0, -1) : uri;
@@ -45,6 +48,23 @@ export const VideoThumbnailView: React.FC<VideoThumbnailViewProps> = ({
           if (!cancelled) {
             setThumbnail(thumbPath);
             setLoading(false);
+          }
+          // On warm-cache mounts we skipped the native decoder entirely, so
+          // the sibling `useMediaAspectRatio` hook would otherwise stay on
+          // its 3/4 fallback. If we haven't already published a ratio this
+          // session, decode the cached JPG (cheap, no VideoToolbox) and
+          // share its natural size so every consumer snaps to the true
+          // cover aspect ratio without triggering another AVAsset pass.
+          if (!cancelled && peekMediaAspectRatio(cleanUri) == null) {
+            Image.getSize(
+              thumbPath,
+              (w, h) => {
+                if (!cancelled) rememberMediaAspectRatio(cleanUri, w, h);
+              },
+              () => {
+                /* ignore — placeholder stays on fallback ratio */
+              }
+            );
           }
           return;
         }

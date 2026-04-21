@@ -2,12 +2,19 @@
 
 import { useRef, useState } from "react";
 import { withPosterFragment } from "@/lib/media";
+import { MediaSkeleton } from "@/components/MediaSkeleton";
 
 interface VideoCoverProps {
   src: string;
   /** Accessible label; PostCard passes the post title. */
   label?: string;
   className?: string;
+  /**
+   * Fired once on `loadedmetadata` with `videoWidth / videoHeight`.
+   * Used by masonry layouts that size the parent box to the media's
+   * natural aspect ratio. No-op for fixed-ratio callers.
+   */
+  onAspectRatio?: (ratio: number) => void;
 }
 
 /**
@@ -22,7 +29,12 @@ interface VideoCoverProps {
  * on the video element itself are sufficient to drive play/pause without
  * threading hover state through the parent.
  */
-export function VideoCover({ src, label, className = "" }: VideoCoverProps) {
+export function VideoCover({
+  src,
+  label,
+  className = "",
+  onAspectRatio,
+}: VideoCoverProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -41,22 +53,35 @@ export function VideoCover({ src, label, className = "" }: VideoCoverProps) {
     el.currentTime = 0;
   };
 
+  const handleLoadedMetadata = () => {
+    const el = videoRef.current;
+    if (!el || !onAspectRatio) return;
+    const { videoWidth, videoHeight } = el;
+    if (videoWidth > 0 && videoHeight > 0) {
+      onAspectRatio(videoWidth / videoHeight);
+    }
+  };
+
   return (
-    <video
-      ref={videoRef}
-      src={withPosterFragment(src)}
-      aria-label={label}
-      muted
-      loop
-      playsInline
-      preload="metadata"
-      onLoadedData={() => setLoaded(true)}
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-      className={`${className} transition-opacity duration-500 ease-out ${
-        loaded ? "opacity-100" : "opacity-0"
-      }`}
-    />
+    <>
+      <video
+        ref={videoRef}
+        src={withPosterFragment(src)}
+        aria-label={label}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedData={() => setLoaded(true)}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+        className={`${className} transition-opacity duration-500 ease-out ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <MediaSkeleton visible={!loaded} />
+    </>
   );
 }
 

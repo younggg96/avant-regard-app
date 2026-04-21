@@ -326,14 +326,24 @@ const SearchScreen = () => {
   // 转换帖子格式
   const convertToPost = (post: PostData): Post => {
     const userId = post.userId?.toString() || "0";
+    const images = post.imageUrls || [];
     return {
       id: post.id?.toString() || "",
       title: post.title || "",
-      image: post.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+      image: images[0] || "https://picsum.photos/id/1/600/800",
       author: {
         id: userId,
         name: post.username || "用户",
         avatar: post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
+      },
+      content: {
+        title: post.title || "",
+        description: post.contentText || "",
+        images,
+        coverAspectRatio:
+          post.coverWidth && post.coverHeight && post.coverHeight > 0
+            ? post.coverWidth / post.coverHeight
+            : undefined,
       },
       likes: post.likeCount || 0,
       isLiked: post.likedByMe || false,

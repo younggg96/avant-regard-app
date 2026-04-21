@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Image } from "react-native";
 import { isVideoUrl } from "../services/postService";
-import { getVideoThumbnail } from "./videoThumbnail";
 
 /**
  * In-memory aspect ratio cache keyed by URI.
@@ -47,27 +46,116 @@ export function peekMediaAspectRatio(
 }
 
 /**
+ * Resolve `{ width, height }` of a cover image for the publish flow. Used
+ * by `PublishXXXScreen` to populate `coverWidth` / `coverHeight` on the
+ * create-post payload so the feed masonry has the aspect ratio up-front.
+ *
+ * Resolution order:
+ *   1. `localDims` — the picker-level record the screen already keeps
+ *      (keyed by local URI, populated from `asset.width/height` or
+ *      `getVideoThumbnail`). Hits in-memory, zero cost.
+ *   2. Shared aspect-ratio cache (`peekMediaAspectRatio`). If another screen
+ *      already measured this URI we reuse it. We only know the ratio here,
+ *      so `width` defaults to the ratio and `height` to 1 — the backend
+ *      stores two integers but the frontend only ever uses `w/h` anyway.
+ *   3. Asynchronous `Image.getSize` fallback. Returns `null` on failure;
+ *      the caller should submit the post without the dims (server accepts
+ *      NULL, feed falls back to 3/4).
+ *
+ * Returning `null` (rather than throwing) keeps the publish flow resilient:
+ * we never block post creation just because a single cover failed to decode.
+ */
+export async function resolveCoverDimensions(
+  uri: string | null | undefined,
+  localDims?: Record<string, { width: number; height: number }>
+): Promise<{ width: number; height: number } | null> {
+  if (!uri) return null;
+
+  const tracked = localDims?.[uri];
+  if (tracked?.width && tracked?.height) {
+    rememberMediaAspectRatio(uri, tracked.width, tracked.height);
+    return { width: tracked.width, height: tracked.height };
+  }
+
+  const cachedRatio = aspectRatioCache.get(uri);
+  if (cachedRatio && Number.isFinite(cachedRatio) && cachedRatio > 0) {
+    // Reconstruct integer-ish dims from the ratio. The backend only uses
+    // them as a ratio on the read path, so any {w, h} preserving the ratio
+    // works; we pick h=1000 so both sides round to non-trivial integers.
+    const height = 1000;
+    const width = Math.round(cachedRatio * height);
+    return { width, height };
+  }
+
+  return new Promise((resolve) => {
+    Image.getSize(
+      uri,
+      (width, height) => {
+        if (width > 0 && height > 0) {
+          rememberMediaAspectRatio(uri, width, height);
+          resolve({ width, height });
+        } else {
+          resolve(null);
+        }
+      },
+      () => resolve(null)
+    );
+  });
+}
+
+/**
  * Resolve and return the natural aspect ratio (width / height) of an image
  * or video URI. While the real size is being measured, the `fallback` ratio
  * is returned so containers render at a sensible size immediately.
  *
  * - For images, `Image.getSize` is used directly.
- * - For videos, a first-frame thumbnail is extracted via
- *   `getVideoThumbnail`, which also surfaces the natural pixel size from
- *   expo-video-thumbnails (no extra image decode required).
+ * - For videos, we DO NOT spawn an extra `getVideoThumbnail` pass from
+ *   this hook. Every screen that renders a video cover already mounts a
+ *   sibling `VideoThumbnailView` / `VideoPlayer`, and those components
+ *   publish `{width, height}` into the shared aspect-ratio cache as soon
+ *   as their decode finishes. Spawning a second decode here just doubled
+ *   the load on iOS VideoToolbox and caused `err=-12900 / 操作已停止`
+ *   cancel-storms under feed refresh.
+ *
+ *   Consumers still subscribe to the cache so the ratio updates in place
+ *   the moment the sibling finishes — no visible regression for
+ *   displayable videos, and legacy posts without `coverAspectRatio` now
+ *   simply stay at the 3/4 fallback until a thumbnail is actually
+ *   rendered, which is strictly better than thrashing the decoder pool.
  *
  * Safe to call with null/undefined/empty URIs — it just returns the fallback.
+ *
+ * @param knownRatio When provided and valid (finite, > 0), short-circuits the
+ *   async measurement pipeline and returns this ratio directly. The hook
+ *   still publishes it to the shared cache so other consumers reuse the
+ *   same value. Used by feed cards where the backend already supplies
+ *   `coverWidth` / `coverHeight`, avoiding per-scroll `Image.getSize` calls.
  */
 export function useMediaAspectRatio(
   uri: string | null | undefined,
-  fallback: number = 3 / 4
+  fallback: number = 3 / 4,
+  knownRatio?: number
 ): number {
+  const hasKnownRatio =
+    typeof knownRatio === "number" &&
+    Number.isFinite(knownRatio) &&
+    knownRatio > 0;
+
   const [ratio, setRatio] = useState<number>(() => {
+    if (hasKnownRatio) return knownRatio as number;
     if (uri && aspectRatioCache.has(uri)) return aspectRatioCache.get(uri)!;
     return fallback;
   });
 
   useEffect(() => {
+    if (hasKnownRatio) {
+      setRatio(knownRatio as number);
+      // Seed the shared cache so any sibling card rendering the same URI
+      // (e.g. detail screen prefetch) inherits the ratio without a decode.
+      if (uri) aspectRatioCache.set(uri, knownRatio as number);
+      return;
+    }
+
     if (!uri) {
       setRatio(fallback);
       return;
@@ -97,10 +185,9 @@ export function useMediaAspectRatio(
     };
 
     if (isVideoUrl(uri)) {
-      (async () => {
-        const thumb = await getVideoThumbnail(uri);
-        apply(thumb?.width, thumb?.height);
-      })();
+      // No direct decode here — the sibling video component will call
+      // `rememberMediaAspectRatio` and our subscription above will pick
+      // up the real ratio. Keeps the fallback until then.
     } else {
       Image.getSize(uri, apply, () => {
         /* ignore — keep fallback */
@@ -114,7 +201,7 @@ export function useMediaAspectRatio(
       s.delete(onResolved);
       if (s.size === 0) subscribers.delete(uri);
     };
-  }, [uri, fallback]);
+  }, [uri, fallback, hasKnownRatio, knownRatio]);
 
   return ratio;
 }

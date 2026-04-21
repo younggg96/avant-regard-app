@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from "react";
-import { FlatList, RefreshControl, Linking } from "react-native";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { FlatList, RefreshControl, Linking, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
@@ -7,36 +7,68 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { theme } from "../../theme";
-import {
-  Notification,
-  getAllNotifications,
-  markAsRead as markNotificationAsRead,
-  markAllAsRead as markAllNotificationsAsRead,
-} from "../../services/notificationService";
+import { Notification } from "../../services/notificationService";
+import { useNotificationStore } from "../../store/notificationStore";
 import { ActivityFilter, FILTER_TABS, EXCLUDED_TYPES } from "./constants";
 import { matchesFilter } from "./utils";
 import { NotificationRow } from "./components/NotificationRow";
 import { FilterChip } from "./components/FilterChip";
 import { styles } from "./styles";
 
+const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
+
 const ActivityScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const systemOnly = route.params?.filter === "system";
   const [filter, setFilter] = useState<ActivityFilter>("all");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  // Skip the useFocusEffect that fires right after mount — the initial
+  // useEffect below already owns the first fetch, avoiding a double request.
+  const didInitialFetchRef = useRef(false);
+
+  const notifications = useNotificationStore((s) => s.notifications);
+  const loadNotifications = useNotificationStore((s) => s.loadNotifications);
+  const markRead = useNotificationStore((s) => s.markRead);
+  const markManyRead = useNotificationStore((s) => s.markManyRead);
+
+  // 把「当前 tab 列表里」的未读全部标已读。聊天类通知 (navigateTo==="Chat")
+  // 由 Chat 屏自己清理，避免在用户进入互动消息详情时误清未打开的聊天提醒。
+  const markVisibleAsRead = useCallback(() => {
+    const ids = useNotificationStore
+      .getState()
+      .notifications.filter((n) => {
+        if (n.isRead) return false;
+        if (isChatNotif(n)) return false;
+        if (systemOnly) return n.type === "system" || n.type === "mention";
+        return !EXCLUDED_TYPES.includes(n.type);
+      })
+      .map((n) => n.id);
+    if (ids.length > 0) markManyRead(ids);
+  }, [systemOnly, markManyRead]);
 
   const loadData = useCallback(async () => {
-    try {
-      setNotifications(await getAllNotifications());
-    } catch (e) {
-      console.error("Error loading notifications:", e);
-    }
-  }, []);
+    await loadNotifications();
+    // 进入/刷新即视为「看完」：拉完最新列表后立刻清掉视觉上的红点/数字。
+    markVisibleAsRead();
+  }, [loadNotifications, markVisibleAsRead]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      await loadData();
+      if (!cancelled) setInitialLoading(false);
+      didInitialFetchRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadData]);
 
   useFocusEffect(
     useCallback(() => {
+      if (!didInitialFetchRef.current) return;
       loadData();
     }, [loadData])
   );
@@ -50,10 +82,7 @@ const ActivityScreen = () => {
   const handleNotifPress = useCallback(
     async (n: Notification) => {
       if (!n.isRead) {
-        await markNotificationAsRead(n.id);
-        setNotifications((prev) =>
-          prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x))
-        );
+        await markRead(n.id);
       }
       switch (n.type) {
         case "like":
@@ -79,15 +108,19 @@ const ActivityScreen = () => {
           break;
       }
     },
-    [navigation]
+    [navigation, markRead]
   );
 
   const handleMarkAllRead = useCallback(async () => {
-    await markAllNotificationsAsRead();
-    setNotifications((prev) => prev.map((x) => ({ ...x, isRead: true })));
-  }, []);
-
-  const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
+    // 只把当前列表里可见的未读标已读；避免把聊天通知（由 Chat 屏自己清）也误清。
+    const ids = (systemOnly
+      ? notifications.filter((n) => (n.type === "system" || n.type === "mention") && !isChatNotif(n))
+      : notifications.filter((n) => !EXCLUDED_TYPES.includes(n.type))
+    )
+      .filter((n) => !n.isRead)
+      .map((n) => n.id);
+    await markManyRead(ids);
+  }, [notifications, systemOnly, markManyRead]);
 
   const filtered = systemOnly
     ? notifications.filter((n) => (n.type === "system" || n.type === "mention") && !isChatNotif(n))
@@ -129,15 +162,21 @@ const ActivityScreen = () => {
           <NotificationRow item={item} onPress={() => handleNotifPress(item)} />
         )}
         ListEmptyComponent={
-          <Box py={48} px="$lg" alignItems="center">
-            <Ionicons name="notifications-outline" size={44} color={theme.colors.gray200} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
-              暂无互动消息
-            </Text>
-            <Text fontSize="$sm" color="$gray400" textAlign="center">
-              当有人点赞、评论或关注你时，将在这里显示
-            </Text>
-          </Box>
+          initialLoading ? (
+            <Box py={48} px="$lg" alignItems="center">
+              <ActivityIndicator size="small" color={theme.colors.gray300} />
+            </Box>
+          ) : (
+            <Box py={48} px="$lg" alignItems="center">
+              <Ionicons name="notifications-outline" size={44} color={theme.colors.gray200} />
+              <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
+                暂无互动消息
+              </Text>
+              <Text fontSize="$sm" color="$gray400" textAlign="center">
+                当有人点赞、评论或关注你时，将在这里显示
+              </Text>
+            </Box>
+          )
         }
         refreshControl={
           <RefreshControl

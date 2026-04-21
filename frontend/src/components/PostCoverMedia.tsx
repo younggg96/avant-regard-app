@@ -17,7 +17,12 @@ interface PostCoverMediaProps {
   style?: PostCoverStyle;
   size?: ImageSize;
   contentFit?: "cover" | "contain";
-  lazy?: boolean;
+  /**
+   * Optional priority override. Leave undefined to keep the default
+   * "normal" priority that's correct for feed covers. Set to "high" only
+   * for single-cover, full-screen contexts (e.g. post detail hero).
+   */
+  priority?: "low" | "normal" | "high";
 }
 
 /**
@@ -29,13 +34,22 @@ interface PostCoverMediaProps {
  * image-vs-video branch so callers only deal with a single URI + style
  * and every feed shares the same video-thumbnail pipeline (with its
  * aspect-ratio cache).
+ *
+ * Priority note:
+ *   Cover images are the primary visual payload of a feed card, so this
+ *   component intentionally does NOT set `lazy={true}` on the underlying
+ *   `OptimizedImage`. Earlier versions did, which made expo-image schedule
+ *   covers behind avatars and icons — manifesting as a grid of gray
+ *   placeholders while a single image loaded at a time. If a caller has
+ *   an off-screen / low-priority use case, pass `priority="low"`
+ *   explicitly rather than bringing back the `lazy` knob.
  */
 export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
   uri,
   style,
   size = ImageSize.MEDIUM,
   contentFit = "cover",
-  lazy = true,
+  priority,
 }) => {
   if (isVideoUrl(uri)) {
     return (
@@ -54,7 +68,7 @@ export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
       size={size}
       style={style as StyleProp<ImageStyle>}
       contentFit={contentFit}
-      lazy={lazy}
+      priority={priority}
     />
   );
 };

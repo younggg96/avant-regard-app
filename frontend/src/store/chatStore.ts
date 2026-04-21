@@ -37,7 +37,7 @@ interface ChatActions {
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
   handleWSMessage: (msg: WSIncomingMessage) => void;
-  markConversationRead: (conversationId: number) => void;
+  markConversationRead: (conversationId: number) => Promise<void>;
   removeConversation: (conversationId: number) => Promise<void>;
   removeConversationsBatch: (conversationIds: number[]) => Promise<void>;
   toggleConversationRead: (conversationId: number) => Promise<void>;
@@ -63,7 +63,29 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     set({ isLoadingConversations: true });
     try {
       const data = await getConversations();
-      set({ conversations: data });
+      // Merge: if local state already marked a conversation as read
+      // (unreadCount 0) and no newer message has arrived on the server
+      // (lastMessageAt unchanged), preserve the local 0. This guards
+      // against the race where the user opens a chat (optimistic
+      // unread=0), pops back before the mark-read REST round-trip
+      // finishes, and the re-fetch would otherwise resurrect the badge.
+      set((state) => {
+        const prevMap = new Map(
+          state.conversations.map((c) => [c.id, c] as const)
+        );
+        const merged = data.map((incoming) => {
+          const prev = prevMap.get(incoming.id);
+          if (
+            prev &&
+            prev.unreadCount === 0 &&
+            prev.lastMessageAt === incoming.lastMessageAt
+          ) {
+            return { ...incoming, unreadCount: 0 };
+          }
+          return incoming;
+        });
+        return { conversations: merged };
+      });
     } catch (e) {
       console.error("Failed to load conversations:", e);
     } finally {
@@ -156,18 +178,33 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     });
   },
 
-  markConversationRead: (conversationId) => {
+  markConversationRead: async (conversationId) => {
+    // Always broadcast via WS so other tabs/devices update in realtime.
+    // Note: WS send is fire-and-forget and is silently dropped when the
+    // socket is still CONNECTING (common right after entering Chat screen),
+    // so we MUST also persist via REST below — otherwise the backend keeps
+    // `last_read_at` stale and the unread badge resurrects the next time
+    // the conversation list is reloaded.
     chatWS.markRead(conversationId);
-    set((state) => {
-      const conv = state.conversations.find((c) => c.id === conversationId);
-      const unreadDelta = conv?.unreadCount || 0;
-      return {
+
+    const state = get();
+    const conv = state.conversations.find((c) => c.id === conversationId);
+    const unreadDelta = conv?.unreadCount || 0;
+
+    if (unreadDelta > 0) {
+      set({
         conversations: state.conversations.map((c) =>
           c.id === conversationId ? { ...c, unreadCount: 0 } : c
         ),
         totalUnread: Math.max(0, state.totalUnread - unreadDelta),
-      };
-    });
+      });
+    }
+
+    try {
+      await markConversationReadApi(conversationId);
+    } catch (e) {
+      console.error("Failed to persist conversation read state:", e);
+    }
   },
 
   removeConversation: async (conversationId) => {

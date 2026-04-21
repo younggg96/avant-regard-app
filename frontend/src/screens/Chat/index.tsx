@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { Box, Text } from "../../components/ui";
 import { useChatStore } from "../../store/chatStore";
+import { useNotificationStore } from "../../store/notificationStore";
 import { useAuthStore } from "../../store/authStore";
 import { Message, chatWS, sendMessageREST } from "../../services/chatService";
 import { getUserType } from "../../services/userInfoService";
@@ -56,6 +57,10 @@ const ChatScreen = () => {
     refreshBlockedUsers,
   } = useChatStore();
 
+  const markChatNotificationsRead = useNotificationStore(
+    (s) => s.markChatNotificationsRead
+  );
+
   const flatListRef = useRef<FlatList>(null);
   const [inputText, setInputText] = useState("");
   const [isWriting, setIsWriting] = useState(false);
@@ -95,6 +100,9 @@ const ChatScreen = () => {
     connectWebSocket();
     loadMessages(conversationId);
     markConversationRead(conversationId);
+    // 把「XX 发来了一条消息」这类通知一并标已读，避免打开聊天后互动页
+    // 入口上的红点还挂着。不阻塞主流程（store 层已做乐观更新）。
+    markChatNotificationsRead(conversationId);
 
     return () => {
       setCurrentConversation(null);

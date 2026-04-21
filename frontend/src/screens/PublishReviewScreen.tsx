@@ -34,6 +34,7 @@ import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useAuthStore } from "../store/authStore";
 import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
+import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const PAGE_SIZE = 30;
 
@@ -474,6 +475,7 @@ const PublishReviewScreen = () => {
       .filter((id): id is number | string => id !== undefined && id !== null);
     const brandIds = selectedBrands.map((brand) => brand.id);
     const thumbnailUri = images[0] || null;
+    const coverDims = await resolveCoverDimensions(thumbnailUri);
 
     useUploadStore.getState().startUpload({
       title: title.trim(),
@@ -488,6 +490,7 @@ const PublishReviewScreen = () => {
         title: title.trim(),
         contentText: reviewText.trim(),
         imageUrls: [],
+        ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
         productName: productName.trim(),
         rating,
         showIds,
@@ -508,6 +511,7 @@ const PublishReviewScreen = () => {
               title: title.trim(),
               contentText: reviewText.trim(),
               imageUrls: [],
+              ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
               productName: productName.trim(),
               rating,
               showIds,
@@ -569,6 +573,8 @@ const PublishReviewScreen = () => {
       // 保存草稿
       setUploadProgress("正在保存...");
 
+      const coverDims = await resolveCoverDimensions(images[0] || null);
+
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
           userId: user.userId,
@@ -577,6 +583,7 @@ const PublishReviewScreen = () => {
           title: title.trim() || "单品评价草稿",
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           productName: productName.trim(),
           rating: rating,
           showIds: showIds,
@@ -595,6 +602,7 @@ const PublishReviewScreen = () => {
           title: title.trim() || "单品评价草稿",
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           productName: productName.trim(),
           rating: rating,
           showIds: showIds,

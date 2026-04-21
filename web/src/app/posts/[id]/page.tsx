@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DownloadCTAs } from "@/components/DownloadCTAs";
 import { FadeImage } from "@/components/FadeImage";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { PostInteractionBar } from "@/components/post/PostInteractionBar";
+import { PostCommentSection } from "@/components/post/PostCommentSection";
 import { ApiError, getPost } from "@/lib/api";
-import { formatCount, formatRelativeTime, postTypeLabel } from "@/lib/format";
+import { formatRelativeTime, postTypeLabel } from "@/lib/format";
 import { isVideoUrl } from "@/lib/media";
 
 export const revalidate = 60;
@@ -45,10 +46,21 @@ export default async function PostDetailPage({ params }: PageProps) {
 
     return (
       <article className="mx-auto max-w-3xl px-6 py-12 md:py-20">
-        <nav className="mb-10 font-label text-sm">
+        <nav className="mb-10 flex items-center gap-3 font-label text-sm">
           <Link href="/discover" className="link-muted">
-            ← 返回 Discover
+            ← Discover
           </Link>
+          {post.communityName && post.communitySlug && (
+            <>
+              <span className="text-black/20 dark:text-white/20">/</span>
+              <Link
+                href={`/communities/${post.communitySlug}`}
+                className="link-muted"
+              >
+                {post.communityName}
+              </Link>
+            </>
+          )}
         </nav>
 
         <header className="space-y-5">
@@ -136,32 +148,18 @@ export default async function PostDetailPage({ params }: PageProps) {
           </section>
         )}
 
-        <footer className="mt-14 flex flex-wrap items-center justify-between gap-6 border-t pt-8
-                           border-black/[0.06] dark:border-white/[0.08]
+        <div className="mt-14 border-t pt-8 border-black/[0.06] dark:border-white/[0.08]">
+          <PostInteractionBar post={post} />
+        </div>
+
+        <PostCommentSection postId={post.id} />
+
+        <footer className="mt-14 border-t pt-8 border-black/[0.06] dark:border-white/[0.08]
                            font-label text-sm text-black/50 dark:text-white/35">
-          <div className="flex items-center gap-6">
-            <span>♥ {formatCount(post.likeCount)}</span>
-            <span>✦ {formatCount(post.favoriteCount)}</span>
-            <span>💬 {formatCount(post.commentCount)}</span>
-          </div>
-          <Link href="/download" className="btn-primary">
-            在 App 中点赞 / 评论
+          <Link href="/discover" className="link-underline">
+            返回 Discover →
           </Link>
         </footer>
-
-        <section className="mt-20 rounded bg-black p-10 text-white dark:bg-[#1a1a1a]">
-          <h2 className="font-serif text-2xl leading-snug">
-            在 Avant Regard 中
-            <br />
-            继续探索。
-          </h2>
-          <p className="mt-3 font-serif text-sm text-white/60">
-            下载 App 加入社区，点赞、收藏、关注你喜爱的穿搭者。
-          </p>
-          <div className="mt-6">
-            <DownloadCTAs variant="inverted" />
-          </div>
-        </section>
       </article>
     );
   } catch (err) {

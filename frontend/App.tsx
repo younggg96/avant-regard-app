@@ -79,13 +79,14 @@ import StrangerMessagesScreen from "./src/screens/StrangerMessagesScreen";
 
 // Stores & Services
 import { useChatStore } from "./src/store/chatStore";
-import { getUnreadCount as getNotifUnreadCount } from "./src/services/notificationService";
+import { useNotificationStore } from "./src/store/notificationStore";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
 import PublishTabButton from "./src/components/PublishTabButton";
 import UploadProgressBanner from "./src/components/UploadProgressBanner";
 import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
+import FpsMonitor from "./src/components/FpsMonitor";
 
 // Theme
 import { theme } from "./src/theme";
@@ -127,19 +128,18 @@ function AuthNavigator() {
 
 function TabNavigator() {
   const { totalUnread } = useChatStore();
-  const [notifUnread, setNotifUnread] = useState(0);
-
-  const refreshNotifBadge = useCallback(() => {
-    getNotifUnreadCount()
-      .then((c) => setNotifUnread(c))
-      .catch(() => { });
-  }, []);
+  // 统一从 notificationStore 读未读数。当页面内调用 markRead / markAllRead 时，
+  // tab 角标会立刻更新，不用等 30 秒 polling。polling 仍保留作为兜底，覆盖
+  // 后台推送在 App 处于前台但还没被任何页面消费的场景。
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
+  const loadNotifications = useNotificationStore((s) => s.loadNotifications);
+  const refreshUnreadCount = useNotificationStore((s) => s.refreshUnreadCount);
 
   useEffect(() => {
-    refreshNotifBadge();
-    const timer = setInterval(refreshNotifBadge, 30_000);
+    loadNotifications();
+    const timer = setInterval(refreshUnreadCount, 30_000);
     return () => clearInterval(timer);
-  }, [refreshNotifBadge]);
+  }, [loadNotifications, refreshUnreadCount]);
 
   const interactionBadge = totalUnread + notifUnread;
 
@@ -244,9 +244,12 @@ function AppNavigator() {
 
   // Connect chat WebSocket when authenticated
   const { connectWebSocket, disconnectWebSocket } = useChatStore();
+  const resetNotifications = useNotificationStore((s) => s.reset);
   useEffect(() => {
     if (isAuthenticated) {
       connectWebSocket();
+    } else {
+      resetNotifications();
     }
     return () => disconnectWebSocket();
   }, [isAuthenticated]);
@@ -625,6 +628,7 @@ export default function App() {
                 <SplashVideo onFinish={handleSplashVideoFinish} />
               )}
               <MaintenanceOverlay />
+              <FpsMonitor />
             </View>
           </ToastProvider>
         </SafeAreaProvider>

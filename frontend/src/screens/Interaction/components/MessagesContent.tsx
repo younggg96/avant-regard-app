@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { FlatList, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,11 +6,8 @@ import { theme } from "../../../theme";
 import { Box, Text, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { useChatStore } from "../../../store/chatStore";
+import { useNotificationStore } from "../../../store/notificationStore";
 import { Conversation } from "../../../services/chatService";
-import {
-  Notification,
-  getAllNotifications,
-} from "../../../services/notificationService";
 import { ConversationRow } from "./ConversationRow";
 import { ActivityEntry } from "./ActivityEntry";
 import { SystemEntry } from "./SystemEntry";
@@ -29,40 +26,39 @@ export const MessagesContent = () => {
     deletingConversationIds,
   } = useChatStore();
 
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const notifications = useNotificationStore((s) => s.notifications);
+  const loadNotifications = useNotificationStore((s) => s.loadNotifications);
+
   const [refreshing, setRefreshing] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetTitle, setSheetTitle] = useState("");
   const [sheetActions, setSheetActions] = useState<ActionSheetAction[]>([]);
+  const didInitialFetchRef = useRef(false);
 
-  const loadNotifications = useCallback(async () => {
-    try {
-      const all = await getAllNotifications();
-      all.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setNotifications(all);
-    } catch (e) {
-      console.error("Error loading notifications:", e);
-    }
-  }, []);
-
-  React.useEffect(() => {
+  useEffect(() => {
     connectWebSocket();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      await Promise.all([loadConversations(), loadNotifications()]);
+      didInitialFetchRef.current = true;
+    })();
+  }, [loadNotifications]);
+
   useFocusEffect(
     useCallback(() => {
+      if (!didInitialFetchRef.current) return;
       loadConversations();
       loadNotifications();
-    }, [])
+    }, [loadNotifications])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([loadConversations(), loadNotifications()]);
     setRefreshing(false);
-  }, []);
+  }, [loadNotifications]);
 
   const handleConvPress = useCallback(
     (c: Conversation) => {

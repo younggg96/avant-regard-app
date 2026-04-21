@@ -39,14 +39,28 @@ export const mapApiPostToDisplayPost = (
   // 生成默认头像（如果没有用户信息或没有头像）
   const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`;
 
+  // Avatar resolution priority:
+  //   1. cached user_info.avatarUrl  — freshest profile data
+  //   2. apiPost.avatarUrl           — batched from backend on feed response,
+  //                                    available immediately on first launch
+  //                                    before the user_info backfill completes
+  //   3. dicebear default            — final fallback for users without avatars
+  // Without step 2 the first render of the recommend tab on cold start shows
+  // the dicebear default until `backfillUserInfosForFeed` resolves, which the
+  // user perceives as "avatars disappear on first launch".
+  const resolvedAvatar =
+    userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar;
+  const resolvedName =
+    userInfo?.username || apiPost.username || "匿名用户";
+
   return {
     id: String(apiPost.id),
     type: apiPost.postType, // Uses the exact Enum value
     auditStatus: apiPost.auditStatus, // 审核状态
     author: {
       id: String(apiPost.userId),
-      name: userInfo?.username || apiPost.username || "匿名用户",
-      avatar: userInfo?.avatarUrl || defaultAvatar,
+      name: resolvedName,
+      avatar: resolvedAvatar,
       isVerified: false,
       title: userInfo?.primaryTitle || undefined,
     },
@@ -58,6 +72,10 @@ export const mapApiPostToDisplayPost = (
           ? apiPost.imageUrls
           : ["https://picsum.photos/id/1/600/800"],
       tags: [],
+      coverAspectRatio:
+        apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0
+          ? apiPost.coverWidth / apiPost.coverHeight
+          : undefined,
     },
     engagement: {
       likes: apiPost.likeCount || 0,

@@ -4,35 +4,73 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  Text,
+  LayoutChangeEvent,
+} from 'react-native';
 import { Image, ImageProps, ImageSource } from 'expo-image';
 import { theme } from '../../theme';
 import { getOptimizedImageUrl, ImageSize } from '../../utils/imageUtils';
 
-interface OptimizedImageProps extends Omit<ImageProps, 'source' | 'contentFit'> {
+type ImagePriority = 'low' | 'normal' | 'high';
+
+interface OptimizedImageProps extends Omit<ImageProps, 'source' | 'contentFit' | 'priority'> {
   uri: string;
   size?: ImageSize;
   showPlaceholder?: boolean;
+  /**
+   * Hint for downloader scheduling.
+   *
+   * Historically this component derived `priority` from `lazy`, which
+   * meant every caller that passed `lazy={true}` — including the primary
+   * feed cover (`PostCoverMedia`) — got silently downgraded to `low`.
+   * That produced the "gray placeholder storm" seen in the Discover
+   * tab: the most visually important asset on screen was scheduled
+   * after secondary UI chrome.
+   *
+   * We now separate the two concerns:
+   *   `priority` controls the expo-image scheduler (download order).
+   *   `lazy`     is purely an author hint for secondary assets (avatars,
+   *              off-screen thumbnails). It only affects priority when
+   *              no explicit `priority` prop is given, and even then it
+   *              only lowers — it cannot accidentally escalate.
+   */
+  priority?: ImagePriority;
   lazy?: boolean;
   placeholderColor?: string;
   errorColor?: string;
-  contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scaleDown';
+  contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  /**
+   * When true, suppresses the "加载中…" text even on large containers.
+   * Useful for cases where the spinner alone is sufficient (e.g. full-
+   * bleed hero media where text would compete with editorial content).
+   */
+  hideLoadingLabel?: boolean;
 }
 
-const blurhash = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
+// Any container shorter than this (in dp) renders spinner-only; the text
+// would otherwise crowd small thumbnails (avatars, tag icons, etc).
+const LOADING_LABEL_MIN_HEIGHT = 96;
 
 const OptimizedImageInner = ({
   uri,
   size = ImageSize.MEDIUM,
   showPlaceholder = true,
+  priority,
   lazy = false,
-  placeholderColor = theme.colors.gray100,
+  placeholderColor = theme.colors.black,
   errorColor = theme.colors.gray200,
   contentFit = 'cover',
+  hideLoadingLabel = false,
   style,
   ...props
 }: OptimizedImageProps) => {
   const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const optimizedUri = React.useMemo(() => {
     if (!uri) return '';
@@ -44,25 +82,74 @@ const OptimizedImageInner = ({
     return { uri: optimizedUri };
   }, [optimizedUri]);
 
+  // Explicit `priority` wins; otherwise `lazy` degrades to `low`; default
+  // is `normal`. This preserves the old "lazy⇒low" behaviour for callers
+  // that never set `priority`, while letting feed covers opt into
+  // `normal` / `high` without twiddling the misleading `lazy` flag.
+  const resolvedPriority: ImagePriority =
+    priority ?? (lazy ? 'low' : 'normal');
+
+  // Use the raw URI as the recycling key so expo-image can share the
+  // decoded bitmap across different `size` presets (e.g. THUMBNAIL →
+  // MEDIUM upgrade when the user opens the detail screen). Keying on the
+  // transformed URL would make every size variant a cold cache miss.
+  const recyclingKey = React.useMemo(() => uri || undefined, [uri]);
+
+  // Reset load state when the underlying uri changes so recycled cells
+  // show the spinner again instead of a stale "loaded" flag.
+  React.useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+  }, [optimizedUri]);
+
   const handleError = useCallback(() => {
     setHasError(true);
+    setIsLoaded(true);
   }, []);
 
+  const handleLoad = useCallback(() => {
+    setIsLoaded(true);
+  }, []);
+
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    setContainerHeight(event.nativeEvent.layout.height);
+  }, []);
+
+  const showSpinner = showPlaceholder && !isLoaded && !hasError && !!uri;
+  const showLabel =
+    showSpinner && !hideLoadingLabel && containerHeight >= LOADING_LABEL_MIN_HEIGHT;
+
   return (
-    <View style={[styles.container, style]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: placeholderColor },
+        style,
+      ]}
+      onLayout={handleLayout}
+    >
       <Image
         source={imageSource}
         style={[StyleSheet.absoluteFill, styles.image]}
         contentFit={contentFit}
         transition={150}
         cachePolicy="memory-disk"
-        priority={lazy ? 'low' : 'normal'}
-        placeholder={{ blurhash }}
-        placeholderContentFit="cover"
+        priority={resolvedPriority}
         onError={handleError}
-        recyclingKey={optimizedUri}
+        onLoad={handleLoad}
+        recyclingKey={recyclingKey}
         {...props}
       />
+
+      {showSpinner && (
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, styles.loadingOverlay]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.gray300} />
+          {showLabel && <Text style={styles.loadingText}>加载中…</Text>}
+        </View>
+      )}
 
       {hasError && (
         <View
@@ -88,6 +175,16 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  loadingOverlay: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: theme.colors.gray300,
+    letterSpacing: 0.3,
   },
   errorPlaceholder: {
     justifyContent: 'center',

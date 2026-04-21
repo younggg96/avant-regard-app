@@ -39,6 +39,7 @@ import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
+import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -270,6 +271,7 @@ const PublishLookbookScreen = () => {
 
     const brandIds = selectedBrands.map((brand) => brand.id);
     const thumbnailUri = coverImage || images[0] || null;
+    const coverDims = await resolveCoverDimensions(thumbnailUri, imageDimensions);
 
     useUploadStore.getState().startUpload({
       title: title.trim(),
@@ -284,6 +286,7 @@ const PublishLookbookScreen = () => {
         title: title.trim(),
         contentText: description.trim(),
         imageUrls: [],
+        ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
         brandIds,
         ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
         ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
@@ -301,6 +304,7 @@ const PublishLookbookScreen = () => {
               title: title.trim(),
               contentText: description.trim(),
               imageUrls: [],
+              ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
               brandIds,
               ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
               ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
@@ -349,6 +353,13 @@ const PublishLookbookScreen = () => {
       // 保存草稿
       setUploadProgress("正在保存...");
 
+      // Measure the cover once (local dims already tracked from the picker)
+      // so the backend stores cover_width/cover_height and the feed masonry
+      // can render at the right aspect ratio without running Image.getSize
+      // during scroll.
+      const coverLocalUri = coverImage || images[0] || null;
+      const coverDims = await resolveCoverDimensions(coverLocalUri, imageDimensions);
+
       if (editMode && draftPostId) {
         await postService.updatePost(draftPostId, {
           userId: user.userId,
@@ -357,6 +368,7 @@ const PublishLookbookScreen = () => {
           title: title.trim() || "未命名草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           brandIds: brandIds,
           ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
           ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },
@@ -372,6 +384,7 @@ const PublishLookbookScreen = () => {
           title: title.trim() || "未命名草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           brandIds: brandIds,
           ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
           ...productInfo.itemBrandId && { itemBrandId: productInfo.itemBrandId },

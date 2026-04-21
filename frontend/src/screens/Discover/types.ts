@@ -17,6 +17,14 @@ export interface DisplayPost {
     description?: string;
     images: string[];
     tags?: string[];
+    /**
+     * Natural aspect ratio (width / height) of the cover image, derived from
+     * backend-provided `coverWidth` / `coverHeight`. When present, feed cards
+     * can size themselves on first paint instead of running an async
+     * `Image.getSize` on every scroll — the main source of MasonryFlashList
+     * re-layout jank. `undefined` falls back to the 3/4 portrait default.
+     */
+    coverAspectRatio?: number;
   };
   engagement: {
     likes: number;

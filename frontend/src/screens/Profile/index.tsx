@@ -42,6 +42,7 @@ import { UserTitlesSection } from "./components/UserTitlesSection";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
+import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
@@ -59,6 +60,7 @@ const ProfileScreen = () => {
   const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [avatarPreviewVisible, setAvatarPreviewVisible] = useState(false);
 
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
@@ -69,7 +71,6 @@ const ProfileScreen = () => {
     userProfile,
     followingUsersCount,
     followersCount,
-    unreadNotificationCount,
     coverImage,
     followedBrands,
     userTitles,
@@ -228,10 +229,6 @@ const ProfileScreen = () => {
 
   const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
-  const navigateToInteraction = useCallback(() => {
-    (navigation as any).navigate("Main", { screen: "Interaction", params: { subTab: "messages" } });
-  }, [navigation]);
-
   const navigateToSettings = useCallback(() => {
     (navigation as any).navigate("Settings");
   }, [navigation]);
@@ -330,13 +327,12 @@ const ProfileScreen = () => {
       <CollapsedHeader
         avatarUri={avatarUri}
         username={displayUsername}
-        unreadNotificationCount={unreadNotificationCount}
         isCollapsed={isCollapsed}
         insetTop={insets.top}
         headerTotalHeight={headerTotalHeight}
         animatedStyle={collapsedHeaderAnimatedStyle}
-        onInteractionPress={navigateToInteraction}
         onSettingsPress={navigateToSettings}
+        onAvatarPress={() => setAvatarPreviewVisible(true)}
       />
 
       <StickyTabBar
@@ -362,11 +358,9 @@ const ProfileScreen = () => {
       >
         <CoverSection
           coverImage={coverImage}
-          unreadNotificationCount={unreadNotificationCount}
           insetTop={insets.top}
           coverAnimatedStyle={coverAnimatedStyle}
           topActionsAnimatedStyle={topActionsAnimatedStyle}
-          onInteractionPress={navigateToInteraction}
           onSettingsPress={navigateToSettings}
         />
 
@@ -382,6 +376,7 @@ const ProfileScreen = () => {
           onEditProfile={() => (navigation as any).navigate("EditProfile")}
           onFollowingPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}
           onFollowersPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}
+          onAvatarPress={() => setAvatarPreviewVisible(true)}
         />
 
         <FollowedBrands
@@ -443,6 +438,12 @@ const ProfileScreen = () => {
           }
         }}
         onConfirm={handleConfirmDelete}
+      />
+
+      <AvatarPreviewModal
+        visible={avatarPreviewVisible}
+        uri={avatarUri}
+        onClose={() => setAvatarPreviewVisible(false)}
       />
     </View>
   );

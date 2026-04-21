@@ -52,6 +52,7 @@ export const convertApiPostToUiPost = async (
       name: userInfo?.username || apiPost.username || "用户",
       avatar:
         userInfo?.avatarUrl ||
+        apiPost.avatarUrl ||
         `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
       title: userInfo?.primaryTitle,
     },

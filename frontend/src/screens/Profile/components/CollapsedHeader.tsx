@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text as RNText } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
-import { OptimizedImage, NotificationBadge, Pressable } from "../../../components/ui";
+import { OptimizedImage, Pressable } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
 import { HEADER_CONTENT_HEIGHT } from "../constants";
 import { styles } from "../styles";
@@ -10,25 +10,23 @@ import { styles } from "../styles";
 interface CollapsedHeaderProps {
   avatarUri: string | undefined;
   username: string;
-  unreadNotificationCount: number;
   isCollapsed: boolean;
   insetTop: number;
   headerTotalHeight: number;
   animatedStyle: any;
-  onInteractionPress: () => void;
   onSettingsPress: () => void;
+  onAvatarPress?: () => void;
 }
 
 export const CollapsedHeader = ({
   avatarUri,
   username,
-  unreadNotificationCount,
   isCollapsed,
   insetTop,
   headerTotalHeight,
   animatedStyle,
-  onInteractionPress,
   onSettingsPress,
+  onAvatarPress,
 }: CollapsedHeaderProps) => (
   <Animated.View
     style={[
@@ -40,17 +38,13 @@ export const CollapsedHeader = ({
   >
     <View style={[styles.collapsedHeaderBg, { backgroundColor: '#FFF' }]} />
     <View style={[styles.collapsedHeaderContent, { height: HEADER_CONTENT_HEIGHT }]}>
-      <Pressable style={styles.headerButton} onPress={onInteractionPress}>
-        <View style={{ position: "relative" }}>
-          <Ionicons name="notifications-outline" size={20} color="#1A1A1A" />
-          {unreadNotificationCount > 0 && (
-            <NotificationBadge count={unreadNotificationCount} size="sm" />
-          )}
-        </View>
-      </Pressable>
+      {/* 左侧占位：保持 avatar 居中对齐（宽度与右侧 settings 按钮一致）。 */}
+      <View style={styles.headerButton} />
       <View style={styles.collapsedAvatarContainer}>
         {avatarUri ? (
-          <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.collapsedAvatar} contentFit="cover" lazy={false} />
+          <Pressable onPress={onAvatarPress} hitSlop={8} disabled={!onAvatarPress}>
+            <OptimizedImage uri={avatarUri} size={ImageSize.THUMBNAIL} style={styles.collapsedAvatar} contentFit="cover" lazy={false} />
+          </Pressable>
         ) : (
           <View style={[styles.collapsedAvatar, styles.avatarPlaceholder]}>
             <RNText style={styles.avatarTextSmall}>

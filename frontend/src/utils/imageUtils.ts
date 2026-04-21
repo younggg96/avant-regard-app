@@ -1,93 +1,130 @@
 /**
- * 图片优化工具函数
- * 用于生成优化后的图片URL，支持不同尺寸和质量
+ * 图片优化工具：按尺寸预设生成图片 URL。
+ *
+ * ## 架构
+ * 后端暴露一条代理路由 `GET /api/files/image?url=...&w=...&q=...`，
+ * 内部用 Pillow 做 resize + WebP/JPEG 编码 + 磁盘缓存。客户端所有
+ * Storage 图片都通过这条路由拉取，命中缓存时后端零处理成本、直接
+ * sendfile 返回，未命中才跑一次转换。
+ *
+ * ## 为什么不用存储端原生 transform
+ * 本项目用 MemFire Cloud 的托管 Storage（`*.baseapi.memfiredb.com`），
+ * 实测其服务未部署 `render/image` 转换端点（返回 404 Route not found），
+ * 尽管其 SDK 文档描述了 `transform` 契约。那套能力只在自托管 Supabase
+ * 配 imgproxy 时才真正生效。所以我们在自己的后端做了一层。
+ *
+ * ## URL 改写规则
+ * - `size === ORIGINAL`、开关关闭、或 URL 不是 Storage 对象 → 原样透传。
+ * - 其它 → 改写为 `${API_BASE}/api/files/image?url=<encoded>&w=W&q=Q`。
+ *   未传 `fmt` 让后端按客户端 Accept 自动协商 WebP。
+ *
+ * ## 兼容面
+ * 代码不假设 host 是 MemFireDB；只要原 URL 包含 `/storage/v1/object/public/`
+ * 就会走代理 —— 同时覆盖 Supabase 官方域名、MemFire Cloud、任何兼容
+ * Supabase Storage API 的实现。非 Storage URL（品牌官网、第三方 CDN、
+ * 本地 `file://`、占位图）直接透传。
  */
+
+import { config } from "../config/env";
 
 /**
  * 图片尺寸预设
  */
 export enum ImageSize {
   /** 缩略图：用于列表、网格等小图展示 */
-  THUMBNAIL = 'thumbnail',
+  THUMBNAIL = "thumbnail",
   /** 中等尺寸：用于卡片、详情页预览 */
-  MEDIUM = 'medium',
+  MEDIUM = "medium",
   /** 大图：用于详情页、全屏查看 */
-  LARGE = 'large',
+  LARGE = "large",
   /** 原始尺寸：不进行优化 */
-  ORIGINAL = 'original',
+  ORIGINAL = "original",
 }
 
 /**
- * 图片尺寸配置
+ * 每个预设对应的转换参数。`width` 对齐常见终端物理像素：
+ *  - THUMBNAIL 400px 覆盖 2 列瀑布流卡片（≈180dp × 2x DPR）+ 一点余量
+ *  - MEDIUM 800px 覆盖单列 feed、评论图、分享图
+ *  - LARGE 1440px 覆盖详情页放大预览（不做 zoom 时足够锐利）
+ *
+ * `quality` 在 20-100 区间里选：75~85 是视觉无损临界值，越低体积越小
+ * 但开始出现 JPEG 块状伪影。与后端 `_transform_bytes` 默认质量对齐。
  */
-const IMAGE_SIZE_CONFIG: Record<ImageSize, { width: number; quality?: number }> = {
-  [ImageSize.THUMBNAIL]: { width: 300, quality: 75 },
-  [ImageSize.MEDIUM]: { width: 800, quality: 85 },
-  [ImageSize.LARGE]: { width: 1200, quality: 90 },
+const IMAGE_SIZE_CONFIG: Record<
+  ImageSize,
+  { width: number; quality: number }
+> = {
+  [ImageSize.THUMBNAIL]: { width: 400, quality: 75 },
+  [ImageSize.MEDIUM]: { width: 800, quality: 80 },
+  [ImageSize.LARGE]: { width: 1440, quality: 85 },
   [ImageSize.ORIGINAL]: { width: 0, quality: 100 },
 };
 
 /**
- * 检查URL是否为Supabase Storage URL
+ * Storage 原始对象路径前缀。基于 path 而非 host 判断，可以同时覆盖
+ * Supabase 官方 `*.supabase.co` 与 MemFire Cloud `*.memfiredb.com`。
  */
-function isSupabaseStorageUrl(url: string): boolean {
-  return url.includes('supabase.co') && url.includes('/storage/v1/object/public/');
+const OBJECT_PUBLIC_PATH = "/storage/v1/object/public/";
+
+/**
+ * 图片转换总开关。
+ *
+ * 打开时所有 Storage URL 会改写为 `${API_BASE}/api/files/image?...`，
+ * 由后端代理路由做实时转换。关闭时退化为透传原图（历史行为）。
+ *
+ * 线上紧急情况下，把这里置 `false` 即可立刻回退到直拉 Storage，而不
+ * 需要等后端发版或回滚。
+ */
+const IMAGE_TRANSFORM_ENABLED = true;
+
+/**
+ * 代理路由 URL。API_BASE 去掉可能的末尾 `/`，避免拼出 `//api/files/image`
+ * 这种双斜杠路径（FastAPI 默认会 308 重定向，多一次 RTT 且破坏
+ * CORS preflight 缓存）。
+ */
+const IMAGE_PROXY_ENDPOINT = `${config.EXPO_PUBLIC_API_BASE_URL.replace(
+  /\/+$/,
+  "",
+)}/api/files/image`;
+
+function canTransform(url: string): boolean {
+  return url.includes(OBJECT_PUBLIC_PATH);
 }
 
 /**
- * 从Supabase Storage URL中提取文件路径
- */
-function extractStoragePath(url: string): string | null {
-  if (!isSupabaseStorageUrl(url)) {
-    return null;
-  }
-  
-  // Supabase Storage URL格式: https://xxx.supabase.co/storage/v1/object/public/bucket/path
-  const match = url.match(/\/storage\/v1\/object\/public\/([^?]+)/);
-  return match ? match[1] : null;
-}
-
-/**
- * 生成优化后的图片URL
- * 
- * 注意：Supabase Storage 本身不支持图片转换，但我们可以：
- * 1. 使用第三方图片优化服务（如 Cloudinary, Imgix）
- * 2. 或者在上传时生成多个尺寸
- * 
- * 当前实现：返回原始URL，但添加了尺寸标识用于后续优化
- * 
+ * 生成优化后的图片URL。
+ *
  * @param url 原始图片URL
  * @param size 目标尺寸
- * @returns 优化后的图片URL
+ * @returns 优化后的图片URL（若不可转换则原样返回）
  */
 export function getOptimizedImageUrl(
   url: string,
-  size: ImageSize = ImageSize.MEDIUM
+  size: ImageSize = ImageSize.MEDIUM,
 ): string {
-  if (!url || url.trim() === '') {
+  if (!url || url.trim() === "") {
     return url;
   }
 
-  // 如果不是Supabase Storage URL，直接返回
-  if (!isSupabaseStorageUrl(url)) {
-    return url;
-  }
-
-  // 如果请求原始尺寸，直接返回
   if (size === ImageSize.ORIGINAL) {
     return url;
   }
 
-  // 获取配置
-  const config = IMAGE_SIZE_CONFIG[size];
-  
-  // TODO: 如果未来集成了图片优化服务（如 Cloudinary），可以在这里添加转换逻辑
-  // 例如：return `${url}?width=${config.width}&quality=${config.quality}`;
-  
-  // 当前返回原始URL，但可以添加查询参数用于标识
-  // 这样前端可以根据需要选择是否使用优化服务
-  const separator = url.includes('?') ? '&' : '?';
-  return `${url}${separator}_size=${size}&_width=${config.width}`;
+  if (!IMAGE_TRANSFORM_ENABLED) {
+    return url;
+  }
+
+  if (!canTransform(url)) {
+    return url;
+  }
+
+  const { width, quality } = IMAGE_SIZE_CONFIG[size];
+
+  // URL 必须 encode：原 Storage URL 里可能有 `+`、空格（中文文件名
+  // 转码后）、`?token=` 等字符，不 encode 会被后端的 query parser 错
+  // 误截断。`encodeURIComponent` 覆盖 RFC3986 里所有 reserved char。
+  const encoded = encodeURIComponent(url);
+  return `${IMAGE_PROXY_ENDPOINT}?url=${encoded}&w=${width}&q=${quality}`;
 }
 
 /**

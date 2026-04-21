@@ -40,6 +40,12 @@ export interface Post {
   communityId?: number;
   communityName?: string;
   communitySlug?: string;
+
+  // Current-user interaction state (present when caller is authenticated).
+  likedByMe?: boolean;
+  favoritedByMe?: boolean;
+  wantedByMe?: boolean;
+  wantCount?: number;
 }
 
 export interface FeedShowCard {
@@ -61,14 +67,21 @@ export interface FeedResponse {
   items: FeedItem[];
 }
 
+/**
+ * Mirrors the backend `UserInfoVO` shape (see `frontend/src/services/userInfoService.ts`).
+ * The backend returns `userId` as the primary key — NOT `id` — so any web code
+ * reading this type must use `user.userId`.
+ */
 export interface UserInfo {
-  id: number;
+  userId: number;
+  infoId?: number;
   username: string;
   avatarUrl?: string;
   coverUrl?: string;
   bio?: string;
   gender?: string;
   location?: string;
+  primaryTitle?: string;
   postCount?: number;
   followerCount?: number;
   followingCount?: number;

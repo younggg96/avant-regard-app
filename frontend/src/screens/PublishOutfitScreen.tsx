@@ -46,6 +46,7 @@ import { useUploadStore } from "../store/uploadStore";
 import { Post } from "../components/PostCard";
 import { ImageSize } from "../utils/imageUtils";
 import { getVideoThumbnail } from "../utils/videoThumbnail";
+import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PAGE_SIZE = 30;
@@ -488,6 +489,7 @@ const PublishOutfitScreen = () => {
       .filter((id): id is number | string => id !== undefined && id !== null);
     const brandIds = selectedBrands.map((brand) => brand.id);
     const thumbnailUri = coverImage || images[0] || null;
+    const coverDims = await resolveCoverDimensions(thumbnailUri, imageDimensions);
 
     useUploadStore.getState().startUpload({
       title: title.trim(),
@@ -502,6 +504,7 @@ const PublishOutfitScreen = () => {
         title: title.trim(),
         contentText: description.trim(),
         imageUrls: [],
+        ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
         showIds,
         brandIds,
         ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
@@ -520,6 +523,7 @@ const PublishOutfitScreen = () => {
               title: title.trim(),
               contentText: description.trim(),
               imageUrls: [],
+              ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
               showIds,
               brandIds,
               ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
@@ -579,6 +583,9 @@ const PublishOutfitScreen = () => {
       // 保存草稿
       setUploadProgress("正在保存...");
 
+      const coverLocalUri = coverImage || images[0] || null;
+      const coverDims = await resolveCoverDimensions(coverLocalUri, imageDimensions);
+
       if (editMode && draftPostId) {
         // 编辑模式：更新草稿
         await postService.updatePost(draftPostId, {
@@ -588,6 +595,7 @@ const PublishOutfitScreen = () => {
           title: title.trim() || "搭配草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           showIds: showIds,
           brandIds: brandIds,
           ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },
@@ -605,6 +613,7 @@ const PublishOutfitScreen = () => {
           title: title.trim() || "搭配草稿",
           contentText: description.trim(),
           imageUrls: uploadedUrls,
+          ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           showIds: showIds,
           brandIds: brandIds,
           ...productInfo.itemBrand && { itemBrand: productInfo.itemBrand },

@@ -38,6 +38,12 @@ export interface Post {
     description?: string;
     images: string[];
     tags?: string[];
+    /**
+     * Natural aspect ratio (width / height) of the cover image. When set,
+     * `PostCard` skips the async `Image.getSize` path and sizes the cover
+     * synchronously — removes MasonryFlashList re-layout jank during scroll.
+     */
+    coverAspectRatio?: number;
   };
   engagement?: {
     likes: number;
@@ -104,7 +110,15 @@ const PostCardInner = ({
   // landscape photos are no longer cover-cropped into a 3:4 portrait box.
   // Clamp [3/4, 16/9] keeps the masonry feed visually balanced and prevents
   // ultra-tall or ultra-wide outliers from dominating a column.
-  const mediaRatio = clampAspectRatio(useMediaAspectRatio(displayImage, 3 / 4));
+  //
+  // When the backend already supplies `coverAspectRatio` (new posts write
+  // `coverWidth` / `coverHeight` at publish time), we short-circuit the
+  // async `Image.getSize` path by passing it as `knownRatio` — critical for
+  // MasonryFlashList scroll smoothness. Legacy posts (NULL dims) fall back
+  // to the hook's measurement pipeline.
+  const mediaRatio = clampAspectRatio(
+    useMediaAspectRatio(displayImage, 3 / 4, post.content?.coverAspectRatio)
+  );
 
   // Stable handlers — avoids creating 4 new closures on every render, which
   // matters when MasonryFlashList mounts / recycles many cards at once.

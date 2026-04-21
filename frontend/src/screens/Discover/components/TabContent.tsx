@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   RefreshControl,
   ActivityIndicator,
@@ -23,6 +23,7 @@ import { DisplayPost, TabType } from "../types";
 import { SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
 import { BrandSection } from "./BrandSection";
+import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
 
 
 interface TabContentProps {
@@ -93,6 +94,7 @@ const convertToPost = (post: DisplayPost): Post => ({
     description: post.content.description,
     images: post.content.images,
     tags: post.content.tags,
+    coverAspectRatio: post.content.coverAspectRatio,
   },
   engagement: {
     likes: post.engagement.likes,
@@ -113,6 +115,84 @@ const convertToPost = (post: DisplayPost): Post => ({
 // Slight over-estimate is better than under-estimate for MasonryFlashList
 // recycling — prevents re-measure stutter on the first scroll.
 const ESTIMATED_ITEM_SIZE = 320;
+
+// Shared per-card height constants, used both for (a) pre-balancing the
+// feed (`arrangeForNaiveMasonry`) and (b) giving the inner column FlashLists
+// precise item heights via `overrideItemLayout`. Keep in sync with
+// `masonryItemStyles.wrapper` and the fixed chrome of `PostCard`
+// (title 2 lines + author row + paddings).
+const CARD_WRAPPER_PADDING_H = 8; // wrapper paddingHorizontal × 2
+const CARD_WRAPPER_MARGIN_B = 8; // wrapper marginBottom
+const CARD_CHROME_HEIGHT = 80;   // title (2 lines ≈40) + author row (≈28) + vertical padding (≈12)
+const COLUMN_WIDTH = SCREEN_WIDTH / 2;
+const FALLBACK_RATIO = 3 / 4;
+
+/**
+ * Estimate a card's rendered height so column balancing is accurate.
+ *
+ * We prefer `post.content.coverAspectRatio` (backend-provided cover dims,
+ * migration 037). Legacy posts with NULL dims fall back to the 3/4 portrait
+ * default that `PostCard` uses as its placeholder ratio. Clamp bounds mirror
+ * `PostCard` so the estimate matches the actual render.
+ */
+const estimateCardHeight = (post: Post): number => {
+  const rawRatio = post.content?.coverAspectRatio ?? FALLBACK_RATIO;
+  const ratio = clampAspectRatio(rawRatio);
+  const imageWidth = COLUMN_WIDTH - CARD_WRAPPER_PADDING_H;
+  const imageHeight = imageWidth / ratio;
+  return imageHeight + CARD_CHROME_HEIGHT + CARD_WRAPPER_MARGIN_B;
+};
+
+/**
+ * Pre-arrange a post list so that the naïve `i % numColumns` masonry
+ * distribution produces visually balanced columns.
+ *
+ * Why not `MasonryFlashList.optimizeItemArrangement`?
+ *   That flag lets the list push items to the shortest column, but it also
+ *   lets one column grow substantially more items than the other. The outer
+ *   FlashList's `estimatedItemSize` is hard-coded to
+ *   `dataSet[0].length × estimatedItemSize` (see
+ *   `@shopify/flash-list/src/MasonryFlashList.tsx:176`) — it ignores our
+ *   per-item `overrideItemLayout`. Skewed column counts therefore make the
+ *   outer/inner layout estimates diverge, producing the "big gap on top,
+ *   cards peeking at the bottom" rendering bug we hit in production.
+ *
+ * Strategy:
+ *   Simulate a two-column greedy placement locally using each post's
+ *   estimated height, then interleave the two columns back into the feed
+ *   array — even indices go to the conceptual "left" column, odd to
+ *   "right". The naïve `i % 2` split inside MasonryFlashList then lands
+ *   every post on the column we already balanced it toward, guaranteeing
+ *   `dataSet[0].length ≈ dataSet[1].length` and keeping column heights
+ *   within one card's worth of each other.
+ *
+ * Ordering contract:
+ *   Feed recommendation order is preserved within each column (items stay
+ *   in their relative position among same-column peers). Adjacent pairs
+ *   may swap left/right, which is acceptable for a visual feed.
+ */
+const MASONRY_COLUMNS = 2;
+const arrangeForNaiveMasonry = (posts: Post[]): Post[] => {
+  if (posts.length <= MASONRY_COLUMNS) return posts;
+
+  const columns: Post[][] = [[], []];
+  const heights: number[] = [0, 0];
+
+  for (const post of posts) {
+    const h = estimateCardHeight(post);
+    const target = heights[0] <= heights[1] ? 0 : 1;
+    columns[target].push(post);
+    heights[target] += h;
+  }
+
+  const merged: Post[] = [];
+  const maxLen = Math.max(columns[0].length, columns[1].length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < columns[0].length) merged.push(columns[0][i]);
+    if (i < columns[1].length) merged.push(columns[1][i]);
+  }
+  return merged;
+};
 
 /**
  * Tab 内容组件 — 使用 MasonryFlashList 实现高性能瀑布流
@@ -137,10 +217,14 @@ export const TabContent: React.FC<TabContentProps> = ({
   hasMore,
   loadingMore,
 }) => {
-  const currentPosts = useMemo(
-    () => (Array.isArray(tabPosts) ? tabPosts.map(convertToPost) : []),
-    [tabPosts]
-  );
+  const currentPosts = useMemo(() => {
+    if (!Array.isArray(tabPosts)) return [];
+    const mapped = tabPosts.map(convertToPost);
+    // Only the masonry tabs benefit from (and survive) pre-balancing. The
+    // forum tab is single-column so reshuffling would only scramble order.
+    if (tab === "forum") return mapped;
+    return arrangeForNaiveMasonry(mapped);
+  }, [tabPosts, tab]);
 
   const keyExtractor = useCallback((item: Post) => item.id, []);
 
@@ -174,6 +258,50 @@ export const TabContent: React.FC<TabContentProps> = ({
     ),
     [onPostPress, onAuthorPress, onLike]
   );
+
+  // Feed a precise per-item height to the inner column FlashLists so they
+  // recycle/scroll smoothly even when card aspect ratios vary a lot. We do
+  // NOT pair this with `optimizeItemArrangement` — see `arrangeForNaiveMasonry`
+  // for why. With column pre-balancing done upstream and a naïve `i % 2`
+  // column assignment, `overrideItemLayout` is pure scroll-perf polish; the
+  // outer FlashList's crude estimate stays honest because column lengths
+  // stay symmetric.
+  const overrideItemLayout = useCallback(
+    (layout: { size?: number }, item: Post) => {
+      layout.size = estimateCardHeight(item);
+    },
+    []
+  );
+
+  // -------------------------------------------------------------------------
+  // onEndReached gate
+  //
+  // Why: MasonryFlashList emits a synthetic scroll on `onLoad` (see
+  //   @shopify/flash-list/src/MasonryFlashList.tsx → onLoadForNestedLists),
+  // and on every data append the nested column lists briefly report wrong
+  // content heights while re-splitting. In both cases the outer FlashList's
+  // "near end" heuristic can trip even when the user is sitting still at the
+  // top — which we observed firing `onEndReached` 5× in ~2s, pulling 146
+  // posts and thrashing layout into a blank screen.
+  //
+  // Fix (standard RN infinite-scroll pattern): require the user to actually
+  // kick off a momentum scroll before `onEndReached` is allowed to invoke
+  // `loadMore`. Re-arm on every momentum begin so legitimate continuous
+  // scrolling still pages normally; disarm after each fire so a single
+  // momentum gesture only pulls one page.
+  // -------------------------------------------------------------------------
+  const endReachedArmedRef = useRef(false);
+
+  const handleMomentumScrollBegin = useCallback(() => {
+    endReachedArmedRef.current = true;
+  }, []);
+
+  const handleEndReached = useCallback(() => {
+    if (!onEndReached) return;
+    if (!endReachedArmedRef.current) return;
+    endReachedArmedRef.current = false;
+    onEndReached();
+  }, [onEndReached]);
 
   const refreshControl = useMemo(
     () => (
@@ -337,18 +465,20 @@ export const TabContent: React.FC<TabContentProps> = ({
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
       <MasonryFlashList
         data={currentPosts}
-        numColumns={2}
+        numColumns={MASONRY_COLUMNS}
         keyExtractor={keyExtractor}
         renderItem={renderMasonryItem}
         estimatedItemSize={ESTIMATED_ITEM_SIZE}
+        overrideItemLayout={overrideItemLayout}
         ListHeaderComponent={masonryHeader}
         ListFooterComponent={footer}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
-        onEndReached={onEndReached}
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
+        onMomentumScrollBegin={handleMomentumScrollBegin}
       />
     </View>
   );

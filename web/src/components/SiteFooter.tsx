@@ -24,7 +24,7 @@ export function SiteFooter() {
             </h3>
             <ul className="mt-5 space-y-3 font-serif text-sm">
               <li><Link href="/discover" className="link-muted">发现</Link></li>
-              <li><Link href="/download" className="link-muted">下载 App</Link></li>
+              <li><Link href="/#features" className="link-muted">功能</Link></li>
             </ul>
           </nav>
 

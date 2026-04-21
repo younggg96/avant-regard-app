@@ -16,7 +16,6 @@ import {
   getFollowingBrands,
   FollowingBrand,
 } from "../../../services/followService";
-import { getUnreadCount } from "../../../services/notificationService";
 import { Post as DisplayPost } from "../../../components/PostCard";
 import { showService, Show } from "../../../services/showService";
 import { brandService, BrandSubmission } from "../../../services/brandService";
@@ -48,6 +47,10 @@ function convertToDisplayPost(
       title: apiPost.title || "无标题",
       description: apiPost.contentText || "",
       images: apiPost.imageUrls || [],
+      coverAspectRatio:
+        apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0
+          ? apiPost.coverWidth / apiPost.coverHeight
+          : undefined,
     },
     engagement: {
       likes: apiPost.likeCount || 0,
@@ -70,7 +73,6 @@ export function useProfileData() {
   const [followingUsersCount, setFollowingUsersCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfileInfo | null>(null);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
@@ -165,15 +167,6 @@ export function useProfileData() {
       console.error("Error loading followers count:", error);
     }
   }, [user?.userId]);
-
-  const loadUnreadNotificationCount = useCallback(async () => {
-    try {
-      const count = await getUnreadCount();
-      setUnreadNotificationCount(count);
-    } catch (error) {
-      console.error("Error loading unread notification count:", error);
-    }
-  }, []);
 
   const loadUserProfile = useCallback(async () => {
     if (!user?.userId) return;
@@ -331,17 +324,15 @@ export function useProfileData() {
     loadUserProfile();
     loadFollowingUsersCount();
     loadFollowersCount();
-    loadUnreadNotificationCount();
     loadFollowedBrands();
     loadUserTitles();
-  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadUnreadNotificationCount, loadFollowedBrands, loadUserTitles]);
+  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadFollowedBrands, loadUserTitles]);
 
   return {
     userInfo,
     userProfile,
     followingUsersCount,
     followersCount,
-    unreadNotificationCount,
     coverImage,
     followedBrands,
     userTitles,
@@ -365,7 +356,6 @@ export function useProfileData() {
     loadUserProfile,
     loadFollowingUsersCount,
     loadFollowersCount,
-    loadUnreadNotificationCount,
     loadFollowedBrands,
     loadUserTitles,
     loadContributions,

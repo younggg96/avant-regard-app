@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s · Avant Regard",
   },
   description:
-    "Avant Regard 是面向先锋时装爱好者的社区 app：发现设计师品牌、浏览秀场、分享穿搭与单品测评。",
+    "Avant Regard 是面向先锋时装爱好者的社区：发现设计师品牌、浏览秀场、分享穿搭与单品测评。",
   keywords: [
     "Avant Regard",
     "先锋时装",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     siteName: "Avant Regard",
     title: "Avant Regard — 为先锋时装而生的社区",
     description:
-      "发现设计师品牌、浏览秀场、分享穿搭与单品测评。下载 Avant Regard 加入社区。",
+      "发现设计师品牌、浏览秀场、穿搭与单品测评的社区。",
   },
   twitter: {
     card: "summary_large_image",

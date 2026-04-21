@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Modal,
   StyleSheet,
@@ -7,14 +7,14 @@ import {
   StatusBar,
   View,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable } from "./ui";
-import { OptimizedImage } from "./ui/OptimizedImage";
-import { ImageSize } from "../utils/imageUtils";
+import { ZoomableImage } from "./ZoomableImage";
 import { theme } from "../theme";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface ImagePreviewModalProps {
   visible: boolean;
@@ -39,6 +39,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 }) => {
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  // Lock horizontal paging while the active image is zoomed so pan
+  // gestures stay with the image instead of swiping to the next slide.
+  const [isZoomed, setIsZoomed] = useState(false);
 
   // 确定要显示的图片数组
   const images = imageUrls || (imageUrl ? [imageUrl] : []);
@@ -48,8 +51,21 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
+      setIsZoomed(false);
     }
   }, [visible, initialIndex]);
+
+  const handleIndexChange = useCallback((newIndex: number) => {
+    setIsZoomed(false);
+    setCurrentIndex(newIndex);
+  }, []);
+
+  const handleTap = useCallback(
+    (index: number) => {
+      onImagePress?.(index);
+    },
+    [onImagePress]
+  );
 
   if (images.length === 0) return null;
 
@@ -60,7 +76,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
       onRequestClose={onClose}
       transparent={false}
     >
-      <View style={styles.fullscreenContainer}>
+      <GestureHandlerRootView style={styles.fullscreenContainer}>
         <StatusBar hidden />
 
         {/* 关闭按钮 */}
@@ -83,6 +99,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           data={images}
           horizontal
           pagingEnabled
+          scrollEnabled={!isZoomed}
           showsHorizontalScrollIndicator={false}
           initialScrollIndex={initialIndex}
           getItemLayout={(data, index) => ({
@@ -94,22 +111,18 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
             const newIndex = Math.round(
               event.nativeEvent.contentOffset.x / SCREEN_WIDTH
             );
-            setCurrentIndex(newIndex);
+            handleIndexChange(newIndex);
           }}
           renderItem={({ item, index }) => (
-            <Pressable
-              style={styles.fullscreenImageWrapper}
-              onPress={() => onImagePress?.(index)}
-              disabled={!onImagePress}
-            >
-              <OptimizedImage
+            <View style={styles.fullscreenImageWrapper}>
+              <ZoomableImage
                 uri={item}
-                size={ImageSize.ORIGINAL}
-                style={styles.fullscreenImage}
-                contentFit="contain"
-                lazy={true}
+                width={SCREEN_WIDTH}
+                height={SCREEN_HEIGHT}
+                onZoomChange={setIsZoomed}
+                onTap={onImagePress ? () => handleTap(index) : undefined}
               />
-            </Pressable>
+            </View>
           )}
           keyExtractor={(item, index) => `image-${index}`}
         />
@@ -144,7 +157,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
             </SafeAreaView>
           </Box>
         )}
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 };
@@ -183,10 +196,6 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-  },
-  fullscreenImage: {
-    width: SCREEN_WIDTH,
-    height: "100%",
   },
 });
 

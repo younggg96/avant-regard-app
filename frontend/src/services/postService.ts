@@ -5,6 +5,7 @@
 import { useAuthStore } from "../store/authStore";
 import { config } from "../config/env";
 import { PostStatus } from "./userPostService";
+import { compressBeforeUpload } from "../utils/imageCompression";
 
 const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
 
@@ -33,6 +34,15 @@ export interface Post {
   title: string;
   contentText: string;
   imageUrls: string[];
+  /**
+   * Natural pixel size of the cover image (`imageUrls[0]`).
+   * Populated by the publish flow so the discover masonry can render at the
+   * correct aspect ratio without running `Image.getSize` on the JS thread
+   * during scroll. Legacy posts predating migration 037 are `undefined`;
+   * callers must fall back to `3/4`.
+   */
+  coverWidth?: number;
+  coverHeight?: number;
   likeCount: number;
   favoriteCount: number;
   commentCount: number;
@@ -74,6 +84,9 @@ export interface CreatePostParams {
   title: string;
   contentText?: string;
   imageUrls: string[];
+  /** Cover image natural pixel size — see `Post.coverWidth`. */
+  coverWidth?: number;
+  coverHeight?: number;
   // 单品评价专用字段
   productName?: string;
   brandName?: string;
@@ -100,6 +113,9 @@ export interface UpdatePostParams {
   title: string;
   contentText: string;
   imageUrls: string[];
+  /** Cover image natural pixel size — see `Post.coverWidth`. */
+  coverWidth?: number;
+  coverHeight?: number;
   // 单品评价专用字段
   productName?: string;
   brandName?: string;
@@ -488,30 +504,27 @@ export async function uploadImage(
   onProgress?: UploadProgressCallback,
 ): Promise<string> {
   console.log("uploadImage called with URI:", imageUri);
+
+  // Compress + normalise format BEFORE the network round-trip. A typical
+  // 8 MB iPhone HEIC shrinks to 300–600 KB JPEG at 1600 px / q0.8 — worth
+  // it because every downstream consumer (feed thumbnails, detail page,
+  // push-notification previews, web app) pays the download cost forever.
+  // `compressBeforeUpload` swallows manipulator errors and falls back to
+  // the raw URI so a compression failure never blocks publishing.
+  const prepared = await compressBeforeUpload(imageUri);
+
   const formData = new FormData();
 
-  let filename = imageUri.split("/").pop() || "image.jpg";
-  const match = /\.(\w+)$/.exec(filename);
-  let type: string;
-
-  if (match) {
-    const ext = match[1].toLowerCase();
-    type = IMAGE_MIME_MAP[ext] || "image/jpeg";
-  } else {
-    type = "image/jpeg";
-    filename = `${filename}.jpg`;
-  }
-
   console.log("Upload file info:", {
-    filename,
-    type,
-    uri: imageUri.substring(0, 100),
+    filename: prepared.filename,
+    type: prepared.mimeType,
+    uri: prepared.uri.substring(0, 100),
   });
 
   formData.append("file", {
-    uri: imageUri,
-    name: filename,
-    type,
+    uri: prepared.uri,
+    name: prepared.filename,
+    type: prepared.mimeType,
   } as any);
 
   const result = onProgress

@@ -66,6 +66,7 @@ import ForumPostCard from "../components/ForumPostCard";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 import { ImageCropper } from "../components/ImageCropper";
+import { AvatarPreviewModal } from "../components/AvatarPreviewModal";
 import { showService, Show } from "../services/showService";
 import { brandService, BrandSubmission } from "../services/brandService";
 import {
@@ -139,6 +140,7 @@ const UserProfileScreen = () => {
   const [tempCropImage, setTempCropImage] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [avatarPreviewVisible, setAvatarPreviewVisible] = useState(false);
   const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
@@ -215,6 +217,10 @@ const UserProfileScreen = () => {
         title: apiPost.title || "无标题",
         description: apiPost.contentText || "",
         images: validImages.length > 0 ? validImages : [firstImage],
+        coverAspectRatio:
+          apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0
+            ? apiPost.coverWidth / apiPost.coverHeight
+            : undefined,
       },
       engagement: {
         likes: apiPost.likeCount || 0,
@@ -929,13 +935,18 @@ const UserProfileScreen = () => {
           </Pressable>
           <View style={styles.collapsedAvatarContainer}>
             {avatarUri ? (
-              <OptimizedImage
-                uri={avatarUri}
-                size={ImageSize.THUMBNAIL}
-                style={styles.collapsedAvatar}
-                contentFit="cover"
-                lazy={false}
-              />
+              <Pressable
+                onPress={() => setAvatarPreviewVisible(true)}
+                hitSlop={8}
+              >
+                <OptimizedImage
+                  uri={avatarUri}
+                  size={ImageSize.THUMBNAIL}
+                  style={styles.collapsedAvatar}
+                  contentFit="cover"
+                  lazy={false}
+                />
+              </Pressable>
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <RNText style={styles.collapsedUsername} numberOfLines={1}>
@@ -1047,7 +1058,13 @@ const UserProfileScreen = () => {
         {/* 用户信息 (移除 fade out 动画，让它自然滚动) */}
         <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
           <View style={styles.avatarRow}>
-            <View style={styles.avatarWrapper}>
+            <Pressable
+              style={styles.avatarWrapper}
+              onPress={() => {
+                if (avatarUri) setAvatarPreviewVisible(true);
+              }}
+              disabled={!avatarUri}
+            >
               {avatarUri ? (
                 <OptimizedImage
                   uri={avatarUri}
@@ -1063,7 +1080,7 @@ const UserProfileScreen = () => {
                   </RNText>
                 </View>
               )}
-            </View>
+            </Pressable>
 
             <View style={styles.actionButtonsRow}>
               {!isCurrentUser ? (
@@ -1285,6 +1302,12 @@ const UserProfileScreen = () => {
           <ImageCropper sourceUri={tempCropImage} aspect="16:9" onCancel={handleCropCancel} onDone={handleCropDone} />
         )}
       </Modal>
+
+      <AvatarPreviewModal
+        visible={avatarPreviewVisible}
+        uri={avatarUri}
+        onClose={() => setAvatarPreviewVisible(false)}
+      />
     </View>
   );
 };
