@@ -9,7 +9,11 @@ from app.schemas.chat import (
     SendMessageRequest,
     BatchDeleteConversationsRequest,
 )
-from app.services.chat_service import chat_service, BlockedUserError
+from app.services.chat_service import (
+    chat_service,
+    BlockedUserError,
+    format_chat_message_preview,
+)
 from app.services.moderation_service import moderation_service
 from app.services.notification_service import notification_service
 from app.schemas.notification import NotificationType
@@ -162,11 +166,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                         if not manager.is_online(pid):
                             try:
                                 sender_brief = chat_service._get_user_brief(user_id)
+                                preview = format_chat_message_preview(content, message_type)
                                 notification_service.create_notification(
                                     user_id=pid,
                                     notification_type=NotificationType.SYSTEM,
                                     title=f"{sender_brief['username']} 发来了一条消息",
-                                    message=content[:100],
+                                    message=preview[:100],
                                     action_data={
                                         "user_id": user_id,
                                         "navigateTo": "Chat",

@@ -2,6 +2,7 @@
 Chat service - handles conversation and message business logic
 """
 
+import json
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -19,6 +20,50 @@ logger = logging.getLogger(__name__)
 class BlockedUserError(Exception):
     """Raised when a message is rejected due to a block relationship."""
     pass
+
+
+# Human-readable previews for card-type chat messages. Keep these labels in sync
+# with the frontend (`frontend/src/screens/Interaction/utils.ts#formatLastMessage`)
+# so notifications, push payloads, and conversation previews stay consistent.
+_CARD_TYPE_LABELS: Dict[str, str] = {
+    "post_card": "[帖子分享]",
+    "store_card": "[店铺分享]",
+    "brand_card": "[品牌分享]",
+    "show_card": "[秀场分享]",
+    "user_card": "[名片分享]",
+    "image": "[图片]",
+}
+
+
+def format_chat_message_preview(content: str, message_type: str) -> str:
+    """Return a human-readable preview for a chat message.
+
+    Card-type messages store their payload as a JSON string in `content`; showing
+    that raw JSON in a notification or list preview is not useful, so we fall back
+    to a localized label (e.g. "[帖子分享]"). Plain text messages are returned as-is.
+    """
+    label = _CARD_TYPE_LABELS.get(message_type)
+    if label:
+        title = _extract_card_title(content)
+        return f"{label} {title}" if title else label
+    return content or ""
+
+
+def _extract_card_title(content: str) -> Optional[str]:
+    """Pull a short title out of a card JSON payload, if present."""
+    if not content:
+        return None
+    try:
+        parsed = json.loads(content)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    for key in ("title", "name", "brandName", "username"):
+        value = parsed.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 class ChatService:
