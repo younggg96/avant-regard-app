@@ -1,10 +1,42 @@
 """
-文件上传路由
+文件上传路由 + 图片转换代理
+
+## 图片转换代理（GET /files/image）
+MemFire Cloud 的 Storage 没有 `render/image` 端点，客户端只能拉原图
+（几 MB 起步），feed 加载体验很差。这里用 Pillow 做一次性转换 + 磁盘
+缓存，让下游消费方能按需请求缩略图 / 中图，典型 400px WebP 只有
+20~60KB。
+
+设计要点：
+- **URL 白名单**：只接受 `settings.SUPABASE_URL` 的 host，避免被当成
+  SSRF 开放代理。
+- **不鉴权**：expo-image / 浏览器 `<img>` 发请求时不带我们的 Bearer，
+  强行要求鉴权会把这条路由完全用不起来。白名单 + 资源本身 public 即
+  是正确的安全边界。
+- **不可变缓存**：Storage 对象路径里带 uuid + 日期，一旦写入永不变更；
+  响应直接 `Cache-Control: public, max-age=31536000, immutable`，并
+  带 ETag 允许客户端 304。
+- **磁盘缓存 + FileResponse**：命中时走 zero-copy sendfile，不把图片
+  读进 Python 堆，单进程也能扛高 QPS。
+- **Pillow 放在 `asyncio.to_thread`**：避免阻塞事件循环。
 """
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+import asyncio
+import hashlib
+import io
+import os
+import tempfile
+from typing import Optional
+from urllib.parse import urlparse
+
+import httpx
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, Header
+from fastapi.responses import FileResponse, Response
+from PIL import Image
+
 from app.services.file_service import file_service, FileService
 from app.api.deps import get_current_user_id
 from app.core.response import success
+from app.core.config import settings
 
 router = APIRouter(prefix="/files", tags=["文件上传"])
 
@@ -76,3 +108,222 @@ async def upload_video(
     if not url:
         raise HTTPException(status_code=500, detail="视频上传失败")
     return success({"url": url, "mediaType": "video"})
+
+
+# ============================================================================
+# 图片转换代理
+# ============================================================================
+
+_IMAGE_CACHE_DIR = os.environ.get(
+    "IMAGE_PROXY_CACHE_DIR",
+    os.path.join(tempfile.gettempdir(), "avant_image_cache"),
+)
+os.makedirs(_IMAGE_CACHE_DIR, exist_ok=True)
+
+_STORAGE_HOST = urlparse(settings.SUPABASE_URL).hostname or ""
+_ALLOWED_HOSTS = {_STORAGE_HOST} - {""}
+
+# 输出尺寸上限：与 Supabase Image Transformation 保持一致，既够用又能
+# 防止恶意请求把服务端放大图浪费 CPU。
+_MAX_DIMENSION = 2500
+# 源图体积上限。超过视为异常内容直接拒绝 —— 上传链路现在会压到 ~1MB
+# 以内，服务器上只有老数据会命中这条；即便不命中也能防极端请求。
+_MAX_SOURCE_BYTES = 25 * 1024 * 1024
+_FETCH_TIMEOUT_S = 15.0
+# 长期缓存头：Storage 对象路径是 uuid + 日期，写入后从不改变，可以让
+# 客户端 / CDN 无限期缓存。
+_CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+
+def _is_allowed_source(url: str) -> bool:
+    """URL 白名单：仅 Storage 自家的 host 可被代理。"""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in ("https", "http"):
+        return False
+    return parsed.hostname in _ALLOWED_HOSTS
+
+
+def _pick_output_format(
+    accept_header: Optional[str], explicit_fmt: Optional[str]
+) -> tuple[str, str, str]:
+    """
+    决定输出格式。返回 `(pillow_format, mime_type, extension)`。
+
+    策略：
+      1. 显式 `fmt=` 最高优先 —— 方便老浏览器 / 需要 JPEG 的场景强制。
+      2. 若客户端 `Accept` 含 `image/webp`，用 WebP（10-30% 小于 JPEG，
+         移动浏览器 & expo-image 普遍支持）。
+      3. 保底 JPEG（兼容最广、Pillow 编码最稳）。
+    """
+    if explicit_fmt:
+        f = explicit_fmt.lower()
+        if f == "webp":
+            return "WEBP", "image/webp", "webp"
+        if f in ("jpeg", "jpg"):
+            return "JPEG", "image/jpeg", "jpg"
+        if f == "png":
+            return "PNG", "image/png", "png"
+
+    if accept_header and "image/webp" in accept_header.lower():
+        return "WEBP", "image/webp", "webp"
+
+    return "JPEG", "image/jpeg", "jpg"
+
+
+def _cache_key(url: str, w: int, h: int, q: int, fmt: str) -> str:
+    digest = hashlib.sha256(
+        f"{url}|{w}|{h}|{q}|{fmt}".encode("utf-8")
+    ).hexdigest()
+    return digest
+
+
+def _cache_path(key: str, ext: str) -> str:
+    return os.path.join(_IMAGE_CACHE_DIR, f"{key}.{ext}")
+
+
+def _transform_bytes(
+    src_bytes: bytes,
+    width: int,
+    height: int,
+    quality: int,
+    pil_fmt: str,
+) -> bytes:
+    """
+    CPU-bound 转换。调用方用 `asyncio.to_thread` 包起来跑。
+
+    resize 策略：
+      - 零 → 不 resize（当作只做格式 / 质量转换）。
+      - 只给 width / height → 按长边约束，保持宽高比。
+      - 两个都给 → 以较小 scale fit 在矩形内（类似 `contain`）。
+      - 永不放大：若原图已经比目标小，直接返原尺寸，避免像素拉伸。
+    """
+    with Image.open(io.BytesIO(src_bytes)) as im:
+        # JPEG 不支持 alpha；统一 flatten 成 RGB 避免 Pillow 抛
+        # `OSError: cannot write mode RGBA as JPEG`。
+        if pil_fmt == "JPEG" and im.mode != "RGB":
+            im = im.convert("RGB")
+        elif pil_fmt == "WEBP" and im.mode not in ("RGB", "RGBA"):
+            im = im.convert("RGBA")
+
+        ow, oh = im.size
+        if width or height:
+            if width and height:
+                scale = min(width / ow, height / oh)
+            elif width:
+                scale = width / ow
+            else:
+                scale = height / oh
+            if scale < 1.0:
+                new_w = max(1, int(round(ow * scale)))
+                new_h = max(1, int(round(oh * scale)))
+                im = im.resize((new_w, new_h), Image.LANCZOS)
+
+        out = io.BytesIO()
+        save_kwargs: dict = {"quality": quality}
+        if pil_fmt == "JPEG":
+            # progressive JPEG 在弱网下感知速度更好，optimize 再省 3-5%。
+            save_kwargs.update(optimize=True, progressive=True)
+        elif pil_fmt == "WEBP":
+            # method=6 质量最好但慢 ~5×；4 是质量/耗时的平衡点。
+            save_kwargs.update(method=4)
+        im.save(out, format=pil_fmt, **save_kwargs)
+        return out.getvalue()
+
+
+@router.get("/image")
+async def proxy_image(
+    url: str = Query(..., description="原始图片 URL（必须属于受信任的 Storage 域名）"),
+    w: int = Query(0, ge=0, le=_MAX_DIMENSION, description="目标宽度，0 表示不缩放"),
+    h: int = Query(0, ge=0, le=_MAX_DIMENSION, description="目标高度，0 表示不约束"),
+    q: int = Query(80, ge=20, le=100, description="质量 20-100"),
+    fmt: Optional[str] = Query(
+        None,
+        pattern="^(webp|jpeg|jpg|png)$",
+        description="显式指定输出格式；不传则按 Accept 协商",
+    ),
+    accept: Optional[str] = Header(None, description="客户端 Accept（用于 WebP 协商）"),
+    if_none_match: Optional[str] = Header(None, alias="If-None-Match"),
+):
+    """
+    图片代理 + 转换端点。
+
+    典型调用：
+      GET /api/files/image?url=https://.../images/2024/xxx.jpg&w=400&q=75
+      → 返回约 30-60KB 的 WebP / JPEG 缩略图，带 31536000s immutable 缓存头。
+    """
+    if not _is_allowed_source(url):
+        raise HTTPException(status_code=400, detail="URL 不在允许的源站白名单")
+
+    pil_fmt, mime, ext = _pick_output_format(accept, fmt)
+    key = _cache_key(url, w, h, q, pil_fmt)
+    etag = f'"{key}"'
+
+    # 客户端已经拿过这张图就回 304，省流量。因为我们每次根据
+    # (url, w, h, q, fmt) 算出确定性 key，ETag 具有幂等性。
+    if if_none_match and if_none_match.strip() == etag:
+        return Response(status_code=304, headers={
+            "ETag": etag,
+            "Cache-Control": _CACHE_CONTROL,
+        })
+
+    cached = _cache_path(key, ext)
+    if os.path.isfile(cached):
+        return FileResponse(
+            cached,
+            media_type=mime,
+            headers={
+                "Cache-Control": _CACHE_CONTROL,
+                "ETag": etag,
+            },
+        )
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=_FETCH_TIMEOUT_S, follow_redirects=True
+        ) as client:
+            resp = await client.get(url)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"回源失败: {e}")
+
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=resp.status_code if resp.status_code >= 400 else 502,
+            detail=f"回源返回 {resp.status_code}",
+        )
+
+    src = resp.content
+    if len(src) > _MAX_SOURCE_BYTES:
+        raise HTTPException(status_code=413, detail="源图过大")
+
+    try:
+        out_bytes = await asyncio.to_thread(
+            _transform_bytes, src, w, h, q, pil_fmt
+        )
+    except Exception as e:
+        # Pillow 偶尔会碰到无法解码的格式（比如 HEIC 没装 pillow-heif
+        # 的环境）—— 不要把整个 feed 弄崩，直接 502 让客户端 fallback
+        # 到占位图就行。
+        print(f"[image proxy] transform failed: {e}")
+        raise HTTPException(status_code=502, detail=f"图片转换失败: {e}")
+
+    # 原子写入缓存：先写 tmp 再 rename，避免并发请求读到半个文件。
+    try:
+        tmp = cached + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(out_bytes)
+        os.replace(tmp, cached)
+    except Exception as e:
+        # 缓存写失败不影响本次响应返回，日志记录留着排查磁盘问题。
+        print(f"[image proxy] cache write failed: {e}")
+
+    return Response(
+        content=out_bytes,
+        media_type=mime,
+        headers={
+            "Cache-Control": _CACHE_CONTROL,
+            "ETag": etag,
+        },
+    )
