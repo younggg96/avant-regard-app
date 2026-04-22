@@ -1,6 +1,3 @@
 {
-  "node_version": "20",
-  "install_command": "cd .. && npm ci --workspace=@avant-regard/web --include-workspace-root",
-  "build_command": "cd .. && npm run web:build",
-  "start_command": "npm run start"
+  "node_version": "20"
 }
