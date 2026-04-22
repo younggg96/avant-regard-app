@@ -11,7 +11,7 @@
  * the page redirects to `?next=...` (defaults to `/discover`).
  */
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,7 +37,10 @@ type Credential = "password" | "otp";
 const PHONE_RE = /^1[3-9]\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginPage() {
+// `useSearchParams()` must be wrapped in <Suspense> to avoid Next.js' CSR
+// bailout during prerender. Keeping the form in an inner component lets the
+// default export stay a thin Suspense wrapper.
+function LoginPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const nextPath = params.get("next") || "/discover";
@@ -175,5 +178,13 @@ export default function LoginPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -7,7 +7,7 @@
  * immediately get a LoginResponse — no separate login round-trip needed.
  */
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -29,7 +29,9 @@ import {
 const PHONE_RE = /^1[3-9]\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function RegisterPage() {
+// `useSearchParams()` needs to sit inside a <Suspense> boundary, otherwise the
+// page fails to prerender at build time. Inner component holds the form.
+function RegisterPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const nextPath = params.get("next") || "/discover";
@@ -172,5 +174,13 @@ export default function RegisterPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageInner />
+    </Suspense>
   );
 }

@@ -7,6 +7,7 @@
  * Pagination uses `?page=N` in the URL to mirror the /archive/shows pattern.
  */
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -30,7 +31,9 @@ const TARGET_LABEL: Record<string, string> = {
 
 const PAGE_SIZE = 20;
 
-export default function MyReportsPage() {
+// `useSearchParams()` needs a <Suspense> boundary for `next build` to
+// prerender this route without falling back to full CSR.
+function MyReportsPageInner() {
   const sp = useSearchParams();
   const router = useRouter();
   const page = Math.max(1, Number(sp.get("page") || 1));
@@ -145,5 +148,13 @@ export default function MyReportsPage() {
         </>
       )}
     </section>
+  );
+}
+
+export default function MyReportsPage() {
+  return (
+    <Suspense fallback={null}>
+      <MyReportsPageInner />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Avant Regard",
     "slug": "avant-regard",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "orientation": "portrait",
     "icon": "./assets/images/logo.jpg",
     "userInterfaceStyle": "light",
@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
@@ -34,7 +36,10 @@
         ]
       },
       "bundleIdentifier": "com.yanggg96.avant-regard",
-      "associatedDomains": ["applinks:app.avantregard.com"]
+      "buildNumber": "2",
+      "associatedDomains": [
+        "applinks:app.avantregard.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -49,6 +54,7 @@
         "ACCESS_COARSE_LOCATION"
       ],
       "package": "com.yanggg96.avantregard",
+      "versionCode": 1,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -65,7 +71,10 @@
               "pathPrefix": "/share"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },

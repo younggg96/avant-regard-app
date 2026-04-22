@@ -10,7 +10,7 @@
  * via SWR with the filter params as the key.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
@@ -82,7 +82,10 @@ async function fetchAllStores(
   return { stores: acc, total };
 }
 
-export default function StoresPage() {
+// `useSearchParams()` must live under <Suspense> so `next build` can prerender
+// the outer shell without bailing to full CSR. Inner component owns the hooks;
+// default export below provides the boundary.
+function StoresPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -325,5 +328,13 @@ export default function StoresPage() {
         </aside>
       </div>
     </section>
+  );
+}
+
+export default function StoresPage() {
+  return (
+    <Suspense fallback={null}>
+      <StoresPageInner />
+    </Suspense>
   );
 }

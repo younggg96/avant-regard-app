@@ -8,6 +8,7 @@
  * content when the user has no relations, not when the request is pending.
  */
 
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -17,7 +18,9 @@ import { followService, type FollowingUser } from "@/lib/services/follow";
 
 type Tab = "following" | "followers";
 
-export default function MyFollowsPage() {
+// `useSearchParams()` needs a <Suspense> boundary so `next build` can
+// prerender the outer shell; inner component owns the hooks.
+function MyFollowsPageInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const user = useAuthStore((s) => s.user);
@@ -132,5 +135,13 @@ function TabBtn({
     >
       {children}
     </button>
+  );
+}
+
+export default function MyFollowsPage() {
+  return (
+    <Suspense fallback={null}>
+      <MyFollowsPageInner />
+    </Suspense>
   );
 }
