@@ -1,0 +1,28 @@
+# Keep the builder context small — prevents leaking local dev state into the
+# image and speeds up `COPY . .` considerably.
+
+node_modules
+.next
+out
+dist
+
+# Secrets / local env — Zeabur provides env vars at runtime, not via files.
+.env
+.env.*
+!.env.example
+
+# VCS / editor / OS noise
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+*.log
+
+# Test + typescript build cache (not needed at runtime)
+coverage
+*.tsbuildinfo
+
+# Dockerfile itself doesn't need to be in the image.
+Dockerfile
+.dockerignore
