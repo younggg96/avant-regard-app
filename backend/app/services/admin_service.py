@@ -1140,5 +1140,64 @@ class AdminService:
         }
 
 
+    # ==================== 增长统计 ====================
+
+    def get_growth_stats(self, days: int = 30) -> dict:
+        """获取最近 N 天的用户/帖子/评论每日新增数量"""
+        from datetime import timedelta
+
+        end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        start = end - timedelta(days=days)
+        start_iso = start.isoformat()
+
+        users_raw = (
+            self.db.table("users")
+            .select("created_at")
+            .gte("created_at", start_iso)
+            .order("created_at")
+            .execute()
+        )
+        posts_raw = (
+            self.db.table("posts")
+            .select("created_at")
+            .gte("created_at", start_iso)
+            .order("created_at")
+            .execute()
+        )
+        comments_raw = (
+            self.db.table("post_comments")
+            .select("created_at")
+            .gte("created_at", start_iso)
+            .order("created_at")
+            .execute()
+        )
+
+        def bucket(rows):
+            counts: dict[str, int] = {}
+            for r in rows or []:
+                day = r.get("created_at", "")[:10]
+                if day:
+                    counts[day] = counts.get(day, 0) + 1
+            return counts
+
+        user_counts = bucket(users_raw.data)
+        post_counts = bucket(posts_raw.data)
+        comment_counts = bucket(comments_raw.data)
+
+        series = []
+        cursor = start
+        while cursor < end:
+            d = cursor.strftime("%Y-%m-%d")
+            series.append({
+                "date": d,
+                "users": user_counts.get(d, 0),
+                "posts": post_counts.get(d, 0),
+                "comments": comment_counts.get(d, 0),
+            })
+            cursor += timedelta(days=1)
+
+        return {"days": days, "series": series}
+
+
 # 单例
 admin_service = AdminService()

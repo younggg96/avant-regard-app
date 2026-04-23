@@ -849,6 +849,16 @@ async def update_maintenance_config(
     return success(config)
 
 
+@router.get("/stats/growth")
+async def get_growth_stats(
+    days: int = Query(default=30, ge=7, le=90),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取最近 N 天用户/帖子/评论增长曲线数据"""
+    data = admin_service.get_growth_stats(days)
+    return success(data)
+
+
 @router.get("/recommend-config")
 async def get_recommend_config(
     current_user_id: int = Depends(get_current_admin_user),
