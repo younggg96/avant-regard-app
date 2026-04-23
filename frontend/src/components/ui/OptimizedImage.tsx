@@ -3,7 +3,7 @@
  * Minimizes state updates during scroll for better FlatList/FlashList perf.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -70,7 +70,7 @@ const OptimizedImageInner = ({
 }: OptimizedImageProps) => {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [containerHeight, setContainerHeight] = useState(0);
+  const containerHeightRef = useRef(0);
 
   const optimizedUri = React.useMemo(() => {
     if (!uri) return '';
@@ -112,12 +112,12 @@ const OptimizedImageInner = ({
   }, []);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    setContainerHeight(event.nativeEvent.layout.height);
+    containerHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
   const showSpinner = showPlaceholder && !isLoaded && !hasError && !!uri;
   const showLabel =
-    showSpinner && !hideLoadingLabel && containerHeight >= LOADING_LABEL_MIN_HEIGHT;
+    showSpinner && !hideLoadingLabel && containerHeightRef.current >= LOADING_LABEL_MIN_HEIGHT;
 
   return (
     <View

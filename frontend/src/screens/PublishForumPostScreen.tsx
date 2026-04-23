@@ -969,9 +969,10 @@ const PublishForumPostScreen = () => {
             onImageSelected={setCoverImage}
             onImageRemoved={() => setCoverImage(null)}
             placeholder="添加封面图（可选）"
-            subtitle="建议尺寸 1:1"
+            subtitle="支持自由裁剪、1:1、4:3、16:9、9:16"
             height={300}
-            aspectRatio={[1, 1]}
+            enableCropper={true}
+            defaultCropAspect="free"
           />
 
           {/* Title Input */}

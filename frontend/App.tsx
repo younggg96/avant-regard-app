@@ -21,7 +21,10 @@ import { LINKING_CONFIG, setNavigationRef, initDeepLinking } from "./src/utils/d
 import SplashVideo from "./src/components/SplashVideo";
 
 // Maintenance
-import "./src/store/maintenanceStore";
+import {
+  startMaintenancePolling,
+  stopMaintenancePolling,
+} from "./src/store/maintenanceStore";
 import MaintenanceOverlay from "./src/components/MaintenanceOverlay";
 
 // Screens
@@ -243,12 +246,13 @@ function AppNavigator() {
   usePushNotifications();
 
   // Connect chat WebSocket when authenticated
-  const { connectWebSocket, disconnectWebSocket } = useChatStore();
+  const { connectWebSocket, disconnectWebSocket, reset: resetChat } = useChatStore();
   const resetNotifications = useNotificationStore((s) => s.reset);
   useEffect(() => {
     if (isAuthenticated) {
       connectWebSocket();
     } else {
+      resetChat();
       resetNotifications();
     }
     return () => disconnectWebSocket();
@@ -603,6 +607,13 @@ export default function App() {
     }
   }, [appIsReady]);
 
+  // 维护模式轮询：App 就绪后启动单例轮询，卸载时停止，避免重复定时器泄漏
+  useEffect(() => {
+    if (!appIsReady) return;
+    startMaintenancePolling();
+    return () => stopMaintenancePolling();
+  }, [appIsReady]);
+
   const handleSplashVideoFinish = useCallback(() => {
     setShowSplashVideo(false);
   }, []);
@@ -628,7 +639,7 @@ export default function App() {
                 <SplashVideo onFinish={handleSplashVideoFinish} />
               )}
               <MaintenanceOverlay />
-              <FpsMonitor />
+              {/* <FpsMonitor /> */}
             </View>
           </ToastProvider>
         </SafeAreaProvider>

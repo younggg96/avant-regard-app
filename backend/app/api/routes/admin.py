@@ -859,6 +859,14 @@ async def get_growth_stats(
     return success(data)
 
 
+@router.get("/stats/demographics")
+async def get_demographics(
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """用户画像统计：性别 / 年龄段 / 地区分布"""
+    return success(admin_service.get_demographics())
+
+
 @router.get("/recommend-config")
 async def get_recommend_config(
     current_user_id: int = Depends(get_current_admin_user),

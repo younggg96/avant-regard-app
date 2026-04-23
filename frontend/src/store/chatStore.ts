@@ -21,6 +21,7 @@ interface ChatState {
   hasMoreMessages: Record<number, boolean>;
   totalUnread: number;
   isLoadingConversations: boolean;
+  isConversationsInitialLoaded: boolean;
   isLoadingMessages: boolean;
   deletingConversationIds: Set<number>;
   wsConnected: boolean;
@@ -41,6 +42,7 @@ interface ChatActions {
   removeConversation: (conversationId: number) => Promise<void>;
   removeConversationsBatch: (conversationIds: number[]) => Promise<void>;
   toggleConversationRead: (conversationId: number) => Promise<void>;
+  reset: () => void;
 }
 
 type ChatStore = ChatState & ChatActions;
@@ -54,6 +56,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   hasMoreMessages: {},
   totalUnread: 0,
   isLoadingConversations: false,
+  isConversationsInitialLoaded: false,
   isLoadingMessages: false,
   deletingConversationIds: new Set<number>(),
   wsConnected: false,
@@ -89,7 +92,7 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     } catch (e) {
       console.error("Failed to load conversations:", e);
     } finally {
-      set({ isLoadingConversations: false });
+      set({ isLoadingConversations: false, isConversationsInitialLoaded: true });
     }
   },
 
@@ -341,5 +344,22 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     }
     chatWS.disconnect();
     set({ wsConnected: false });
+  },
+
+  reset: () => {
+    const state = get();
+    state.disconnectWebSocket();
+    set({
+      conversations: [],
+      currentConversationId: null,
+      messages: {},
+      hasMoreMessages: {},
+      totalUnread: 0,
+      isLoadingConversations: false,
+      isConversationsInitialLoaded: false,
+      isLoadingMessages: false,
+      deletingConversationIds: new Set<number>(),
+      blockedUserIds: new Set<number>(),
+    });
   },
 }));

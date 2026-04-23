@@ -13,4 +13,4 @@ export const TAB_INDEX_MAP = {
 export const HEADER_ANIMATION_DURATION = 150;
 export const SCROLL_THRESHOLD = 50;
 export const BOTTOM_THRESHOLD = 100;
-export const HEADER_HEIGHT = 110; // DiscoverHeader 高度（视频行 + 搜索框行）
+export const HEADER_HEIGHT = 106; // DiscoverHeader 高度（视频行 + 搜索框行）

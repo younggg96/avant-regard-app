@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
-import { StyleSheet } from "react-native";
+import { View, Text as RNText, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, OptimizedImage } from "./ui";
+import { OptimizedImage } from "./ui";
 import { PostCoverMedia } from "./PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
@@ -12,7 +12,6 @@ import {
   clampAspectRatio,
 } from "../utils/useMediaAspectRatio";
 
-// 关联秀场类型（兼容旧数据）
 export interface ShowImageInfo {
   id: number;
   imageUrl: string;
@@ -20,11 +19,10 @@ export interface ShowImageInfo {
   season?: string;
 }
 
-// Post类型定义
 export interface Post {
   id: string;
   type?: string;
-  auditStatus?: string; // 审核状态: PENDING, APPROVED, REJECTED
+  auditStatus?: string;
   title?: string;
   image?: string;
   author: {
@@ -68,13 +66,9 @@ export interface Post {
     price: string;
     imageUrl: string;
   }>;
-  // 关联的秀场造型（兼容旧数据）
   showImages?: ShowImageInfo[];
-  // 关联的秀场（完整信息）
   shows?: Show[];
-  // 关联的品牌（完整信息）
   brands?: Brand[];
-  // 论坛帖子所属社区
   communityId?: number;
   communityName?: string;
 }
@@ -92,36 +86,21 @@ const PostCardInner = ({
   onAuthorPress,
   onLike,
 }: PostCardProps) => {
-  // 安全检查
   if (!post || !post.id || !post.author) {
     return null;
   }
 
-  // 获取显示数据，支持新旧两种数据结构
   const displayTitle = post.content?.title || post.title || "";
   const displayImage = post.content?.images?.[0] || post.image || "";
   const displayLikes = post.engagement?.likes || post.likes || 0;
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
 
-  // 是否为待审核状态
   const isPending = post.auditStatus === "PENDING";
 
-  // Feed card uses the media's natural aspect ratio so 16:9 videos /
-  // landscape photos are no longer cover-cropped into a 3:4 portrait box.
-  // Clamp [3/4, 16/9] keeps the masonry feed visually balanced and prevents
-  // ultra-tall or ultra-wide outliers from dominating a column.
-  //
-  // When the backend already supplies `coverAspectRatio` (new posts write
-  // `coverWidth` / `coverHeight` at publish time), we short-circuit the
-  // async `Image.getSize` path by passing it as `knownRatio` — critical for
-  // MasonryFlashList scroll smoothness. Legacy posts (NULL dims) fall back
-  // to the hook's measurement pipeline.
   const mediaRatio = clampAspectRatio(
     useMediaAspectRatio(displayImage, 3 / 4, post.content?.coverAspectRatio)
   );
 
-  // Stable handlers — avoids creating 4 new closures on every render, which
-  // matters when MasonryFlashList mounts / recycles many cards at once.
   const handlePressPost = useCallback(() => onPress?.(post), [onPress, post]);
   const handlePressAuthor = useCallback(
     () => onAuthorPress?.(post.author.id),
@@ -130,21 +109,9 @@ const PostCardInner = ({
   const handleLike = useCallback(() => onLike?.(post.id), [onLike, post.id]);
 
   return (
-    <Box
-      bg="$white"
-      rounded="$md"
-      overflow="hidden"
-      sx={{
-        shadowColor: "$black",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
-      }}
-    >
-      {/* 封面媒体 */}
+    <View style={styles.card}>
       <Pressable onPress={handlePressPost}>
-        <Box position="relative">
+        <View>
           <PostCoverMedia
             uri={displayImage}
             style={[
@@ -154,58 +121,32 @@ const PostCardInner = ({
             ]}
           />
 
-          {/* 待审核标签 */}
           {isPending && (
-            <Box
-              position="absolute"
-              top={8}
-              left={8}
-              bg="rgba(255, 165, 0, 0.9)"
-              px="$sm"
-              py="$xs"
-              rounded="$sm"
-            >
-              <Text color="$white" fontSize="$xs" fontWeight="$semibold">
-                审核中
-              </Text>
-            </Box>
+            <View style={styles.pendingBadge}>
+              <RNText style={styles.badgeText}>审核中</RNText>
+            </View>
           )}
-          {/* 社区标签（论坛帖子） */}
           {!isPending && post.communityName && (
-            <Box
-              position="absolute"
-              top={8}
-              left={8}
-              bg="rgba(0, 0, 0, 0.6)"
-              px="$sm"
-              py="$xs"
-              rounded="$sm"
-            >
-              <Text color="$white" fontSize="$xs">
+            <View style={styles.communityBadge}>
+              <RNText style={styles.communityText}>
                 # {post.communityName}
-              </Text>
-            </Box>
+              </RNText>
+            </View>
           )}
-        </Box>
+        </View>
       </Pressable>
 
-      {/* 标题 */}
-      <Pressable px="$sm" pt="$sm" pb="$xs" onPress={handlePressPost}>
-        <Text
-          color="$black"
-          fontWeight="$semibold"
-          fontSize="$sm"
-          lineHeight="$sm"
-          numberOfLines={2}
-        >
-          {displayTitle}
-        </Text>
+      <Pressable onPress={handlePressPost}>
+        <View style={styles.titleArea}>
+          <RNText style={styles.title} numberOfLines={2}>
+            {displayTitle}
+          </RNText>
+        </View>
       </Pressable>
 
-      {/* 底部：用户信息和点赞 */}
-      <HStack px="$sm" pb="$sm" justifyContent="between" alignItems="center">
-        <Pressable onPress={handlePressAuthor} flex={1} mr="$sm">
-          <HStack space="xs" alignItems="center">
+      <View style={styles.footer}>
+        <Pressable onPress={handlePressAuthor} style={styles.authorPressable}>
+          <View style={styles.authorRow}>
             <OptimizedImage
               uri={post.author.avatar}
               size={ImageSize.THUMBNAIL}
@@ -213,43 +154,35 @@ const PostCardInner = ({
               contentFit="cover"
               lazy={true}
             />
-            <Text
-              color="$gray600"
-              fontWeight="$medium"
-              fontSize="$xs"
-              numberOfLines={1}
-              flex={1}
-            >
+            <RNText style={styles.authorName} numberOfLines={1}>
               {post.author.name}
-            </Text>
+            </RNText>
             {post.author.title ? (
-              <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
-                <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+              <View style={styles.authorTitleBadge}>
+                <RNText style={styles.authorTitleText} numberOfLines={1}>
                   {post.author.title}
-                </Text>
-              </Box>
+                </RNText>
+              </View>
             ) : null}
-          </HStack>
+          </View>
         </Pressable>
 
-        <Pressable onPress={handleLike}>
-          <HStack space="xs" alignItems="center">
+        <Pressable onPress={handleLike} hitSlop={8}>
+          <View style={styles.likeRow}>
             <Ionicons
               name={displayIsLiked ? "heart" : "heart-outline"}
               size={16}
               color={displayIsLiked ? "#FF3040" : theme.colors.gray400}
             />
-            <Text
-              color={displayIsLiked ? "#FF3040" : "$gray400"}
-              fontWeight="$semibold"
-              fontSize="$xs"
+            <RNText
+              style={[styles.likeCount, displayIsLiked && styles.likeCountActive]}
             >
               {displayLikes}
-            </Text>
-          </HStack>
+            </RNText>
+          </View>
         </Pressable>
-      </HStack>
-    </Box>
+      </View>
+    </View>
   );
 };
 
@@ -257,15 +190,72 @@ const PostCard = React.memo(PostCardInner);
 PostCard.displayName = "PostCard";
 
 const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: theme.borderRadius.md,
+    overflow: "hidden",
+    ...theme.shadows.sm,
+  },
   image: {
     width: "100%",
-    // aspectRatio is injected per-card from the media's natural size; we
-    // keep a background color here so the placeholder is still visible
-    // while the ratio is being resolved.
     backgroundColor: theme.colors.gray100,
   },
   pendingImage: {
     opacity: 0.85,
+  },
+  pendingBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(255, 165, 0, 0.9)",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  communityBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  communityText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+  },
+  titleArea: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+  },
+  title: {
+    color: theme.colors.black,
+    fontWeight: "600",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+  },
+  authorPressable: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
   },
   avatar: {
     width: 20,
@@ -273,11 +263,35 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.gray100,
   },
-  videoIndicator: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
+  authorName: {
+    color: theme.colors.gray600,
+    fontWeight: "500",
+    fontSize: 12,
+    flex: 1,
+  },
+  authorTitleBadge: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 1,
+    borderRadius: theme.borderRadius.sm,
+  },
+  authorTitleText: {
+    color: theme.colors.gray600,
+    fontSize: 9,
+    fontWeight: "500",
+  },
+  likeRow: {
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.15)",
+    gap: theme.spacing.xs,
+  },
+  likeCount: {
+    color: theme.colors.gray400,
+    fontWeight: "600",
+    fontSize: 12,
+  },
+  likeCountActive: {
+    color: "#FF3040",
   },
 });
 

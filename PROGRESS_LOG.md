@@ -1,5 +1,197 @@
 # Progress Log
 
+## 2026-04-22: FpsMonitor — 移除 `__DEV__` 守卫，使 TestFlight 构建也能显示
+
+### Context
+`FpsMonitor` 组件在第一行就通过 `if (!__DEV__) return null` 拦截，导致所有 production build（包括 TestFlight）完全不渲染 HUD。用户在真机上无法观察帧率。
+
+### What
+- 移除 `__DEV__` 守卫，FpsMonitor 现在在所有环境（dev / TestFlight / production）均可显示。
+- 更新文件顶部 JSDoc，反映不再是 dev-only。
+
+### Files changed
+- `frontend/src/components/FpsMonitor.tsx`
+
+---
+
+## 2026-04-22: Interaction · 消息页加载修复（双重请求 + 登出残留 + 计算浪费）
+
+### Context
+上一轮把 `MessagesContent` 的首屏从"逐条弹出"改为"loading → 整体渲染"，引入了 store 层的 `isConversationsInitialLoaded` / `isInitialLoaded` gate。
+
+复查发现三个问题仍存在：
+
+1. **双重请求**：`useEffect`（首次加载）和 `useFocusEffect`（获得焦点刷新）**同时存在**，且 `useFocusEffect` 的依赖里包含 `isInitialLoaded`——当首次加载完成后这个依赖翻转，useFocusEffect 重新触发，导致同一帧内发出 4 个 API 请求（2 组 × 2 个 store）。
+2. **登出后旧数据残留**：`chatStore` 没有 `reset()` 方法。用户登出后 `isConversationsInitialLoaded` 仍为 `true`，换号登录时 gate 不生效，直接渲染上一个用户的会话列表，直到后台刷新回来才覆盖。`App.tsx` 只 reset 了 `notificationStore` 而没有 reset `chatStore`。
+3. **loading 阶段的无用计算**：`sortedConversations` / `strangerConversations` / `regularConversations` 在 gate (`if (!isInitialLoaded)`) 之前计算，loading 阶段对空数组做排序和 filter 完全是浪费。
+
+### What
+
+**`MessagesContent.tsx`**
+- 移除初次加载的 `useEffect`（含 `Promise.all`），只留 `useFocusEffect` 一个入口统一处理首次和后续焦点加载。`useFocusEffect` 不依赖 `isInitialLoaded`，避免 flag 翻转导致的二次触发。
+- 排序 / 筛选逻辑移到 `if (!isInitialLoaded)` gate 之后，loading 阶段不做无用计算。
+- `renderItem` 从 `useCallback` 提升为内联 render function（hook 必须在所有条件分支之前调用，但排序 / 筛选已挪到 gate 后，不再需要 `useCallback` 包裹）。
+
+**`chatStore.ts`**
+- 新增 `reset()` action：先调 `disconnectWebSocket()` 清理 WS，再把所有状态重置为初始值（包括 `isConversationsInitialLoaded: false`）。
+
+**`App.tsx`**
+- 在 `isAuthenticated` 变 `false` 的分支里，除已有的 `resetNotifications()` 外新增 `resetChat()`，确保两个 store 在登出时同步归零。
+
+### Why (DRY / KISS / SOLID / Holistic)
+- **KISS**：一个 `useFocusEffect` 管首次 + 后续，移除多余的 `useEffect`，依赖链更短、不用思考两个 effect 的交互时序。
+- **Single Source of Truth**：`reset()` 保证"未登录 = 无数据 = gate 显示 loading"三者一致，不留孤立残态。
+- **DRY**：`chatStore.reset()` 与已有的 `notificationStore.reset()` 结构对齐。
+- **Holistic**：登出路径（`SettingsScreen` 手动退出 + token 过期被踢）都经过 `authStore.logout()` → `App.tsx` 检测到 `isAuthenticated=false` → 两个 store 同时 reset，无遗漏。
+
+### Files
+- `frontend/src/screens/Interaction/components/MessagesContent.tsx`
+- `frontend/src/store/chatStore.ts`
+- `frontend/App.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-22: Interaction · 消息页首次加载统一 loading（消除条目逐个弹出 / "暂无对话"闪现）
+
+### Context
+互动 tab 的 `MessagesContent` 打开时会并发请求 `loadConversations()` 和 `loadNotifications()`，但渲染逻辑没有"首次加载完成"这一层 gate：
+- 系统消息 / 互动消息入口行来自 `notificationStore.notifications`，数据没回就是空；
+- 陌生人消息 / 正式会话列表来自 `chatStore.conversations`，同样为空；
+- 两条链路各自到达 → 条目一条条"弹"出来，空态时直接给用户一个"暂无对话"，给人错觉：我的会话都没了。
+
+原来的 `didInitialFetchRef` 只是在组件 local 用来跳过 `useFocusEffect` 的第二次拉取，它既不触发重渲染、也不跨 mount 生效，所以对 UI 体感毫无帮助。
+
+### What
+把"首次加载完成"提升到 store 层，让两侧状态都 ready 之后再整体渲染：
+
+**Store**
+- `chatStore` 新增 `isConversationsInitialLoaded: boolean`，在 `loadConversations()` 的 `finally` 里置 `true`（和 `notificationStore.isInitialLoaded` 对齐）。
+- 因此即便网络失败，flag 也会翻到 `true`，页面不会永远转圈。
+
+**UI**
+- `MessagesContent` 订阅两个 store 的 init flag，组合出 `isInitialLoaded`：
+  - `false` → 渲染居中 `ActivityIndicator`；
+  - `true` → 一次性渲染 `RecentAvatars` / `SystemEntry` / `ActivityEntry` / `StrangerEntry` / `FlatList`，不再有条目逐个弹出。
+- 移除已失效的 `didInitialFetchRef`（职责被 store flag 取代）。
+
+### Why (DRY / KISS / SOLID / Holistic)
+- **Single Source of Truth**：加载完成状态落在 store 里，所有 mount / 任意消费方看到的都是同一份真值，彻底解决"组件卸载后 ref 丢了，重进又闪一次 loading"的老问题。
+- **DRY**：对齐 `notificationStore.isInitialLoaded` 已有的命名和语义，不发明新概念。
+- **KISS**：`isInitialLoaded = A && B`，没有新增 reducer、没有新加 context。
+- **SOLID · SRP**：loading gate 只负责"首帧是否显示骨架"，加载本身仍由 store action 负责，组件不重复实现错误处理（store 已经 `console.error`）。
+- **Holistic**：`onRefresh`（下拉刷新）、`useFocusEffect`（回到页面刷新）、WebSocket 推送（实时更新）三条路径都不受 gate 影响，只在"首次打开，数据全无"时显示 loading，不回归被刷新遮挡的体验。
+
+### Files
+- `frontend/src/store/chatStore.ts`
+- `frontend/src/screens/Interaction/components/MessagesContent.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-22: Admin · 维护模式全链路接入（后台开关 + 中间件 503 + 前端轮询 + 自定义文案）
+
+### Context
+`frontend/src/store/maintenanceStore.ts` 早期只实现了被动维护提示：`fetch` 被猴子补丁成收到 `502` 就切到维护态、30 秒后自动复位。这导致两个问题：
+
+1. **被动触发**：只有用户真的点坏接口才会显示维护提示，管理员无法主动告知全站"我正在发版"。
+2. **无配置面**：没有后台开关、没有自定义文案，用户看到的永远是写死的一行字。
+3. **恢复靠"猜"**：`setTimeout 30s` 自动关闭遮罩，但真实恢复时间谁都不知道，UI 可能比后端更早"宣布恢复"。
+
+### What
+跨层打通管理员 → 后端 → 中间件 → 前端 overlay 的完整链路：
+
+**Backend**
+- 新增 `app/services/maintenance_service.py`：基于已有 `app_config` 表（`key=maintenance_mode`）做 get/set，容错到默认配置；提供 `is_enabled()` 供中间件调用。
+- `app/api/routes/admin.py` 新增 `GET /api/admin/maintenance`、`PUT /api/admin/maintenance`（走现有 `get_current_admin_user` 依赖）。
+- 新增 `app/api/routes/maintenance.py`：公开 `GET /api/maintenance/status`，无需鉴权，供 App 轮询。
+- `app/main.py` 注册 `maintenance_router`，并挂一个 HTTP middleware：维护开启时对非白名单路径统一返回 `503 {code:503, message, data:{maintenance:true}}`；白名单 = `/api/auth`、`/api/admin`、`/api/maintenance`、`/health`、`/docs`、`/redoc`、`/openapi.json`、`/` + 所有 `OPTIONS` 预检。
+
+**Frontend**
+- 重写 `src/store/maintenanceStore.ts`：
+  - State 新增 `message` 字段，统一 `setStatus(isDown, message?)`。
+  - 保留 `fetch` 补丁：收到 `502/503` 时读后端下发的 `message` 立即进入维护态。
+  - 新增 `startMaintenancePolling()` / `stopMaintenancePolling()`，以 20s 周期调 `/api/maintenance/status`，以**后端配置**作为恢复的唯一来源，不再依赖计时器自解封。
+- `App.tsx` 在 `appIsReady` 后启动一次轮询，卸载时停止，保证单例。
+- `components/MaintenanceOverlay.tsx` 从 store 读 `message` 并展示，默认文案作为兜底。
+- `services/adminService.ts` 新增 `getMaintenanceConfig` / `updateMaintenanceConfig` + 类型 `MaintenanceConfig`。
+- 新增 `screens/admin/MaintenanceTab.tsx`：开关 + 500 字上限的多行文案输入 + 恢复默认 + 保存，保存成功后直接把新配置写回本地 store，当前管理员设备立即看到效果，不用等轮询。
+- `screens/admin/AdminScreen.tsx` 注册 `maintenance` tab（"维护模式"）。
+
+### Why (DRY / KISS / SOLID / Holistic)
+- **Single Source of Truth**：维护状态只存在于后端 `app_config.maintenance_mode` 一处；前端 overlay、中间件、管理员面板都派生于它。`setTimeout` 自解封被移除，杜绝"前端比后端更早宣布恢复"。
+- **SOLID · OCP**：沿用已有 `app_config` 键值对模式（`recommend_config`、`cs_auto_reply`、`curated_feed_ids` 已经在用），不新建表、不改 schema，扩展而非修改。
+- **DRY**：`MaintenanceConfig` 类型在 service / admin route / 前端 `adminService` 一致；overlay 文案由 store 下发一次，不在多处硬编码。
+- **KISS**：中间件仅做"白名单 + is_enabled"判断，不耦合业务；前端保留轻量 `fetch` 补丁作为"被动 tripwire"，主动源是每 20s 一次的公开状态端点。
+- **Holistic**：管理员后台能登录（auth 在白名单）、能切换维护（admin 在白名单）、能看到公开状态端点（maintenance 在白名单）——维护开启后仍可自救解封，不会把自己锁死。
+
+### Files
+- `backend/app/services/maintenance_service.py`（新增）
+- `backend/app/api/routes/maintenance.py`（新增）
+- `backend/app/api/routes/admin.py`
+- `backend/app/main.py`
+- `frontend/src/store/maintenanceStore.ts`
+- `frontend/src/components/MaintenanceOverlay.tsx`
+- `frontend/src/services/adminService.ts`
+- `frontend/src/screens/admin/MaintenanceTab.tsx`（新增）
+- `frontend/src/screens/admin/AdminScreen.tsx`
+- `frontend/App.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-21: Mobile · TestFlight 启动崩溃定位到根因 —— monorepo 双份 React/Scheduler 打进同一 bundle
+
+### Context
+上一轮通过在 `frontend/index.js` 植入三层 CrashGuard（全局错误 handler / 模块加载 try-catch / `RenderErrorBoundary`），TestFlight 上的 1.3.1 build 终于把真正的 JS 错误显示在屏幕上而不是直接 SIGABRT：
+
+```
+TypeError: Cannot read property 'useRef' of null
+    at anonymous (main.jsbundle:82639:28)
+    at anonymous (main.jsbundle:163276:25)
+    at useStore (main.jsbundle:163156:49)
+    at useBoundStore (main.jsbundle:163163:22)
+    at MaintenanceOverlay (main.jsbundle:165734:60)
+    at renderWithHooks (main.jsbundle:28780:24)
+```
+
+### Root cause（chain-of-thought）
+1. 报错的精确形态是"**对 null 访问 `.useRef`**"，不是 "undefined is not a function"。React 18.2 生产版本把每个 hook 编译成 `exports.useRef=function(a){return U.current.useRef(a)}`，其中 `U = ReactCurrentDispatcher`，`U.current` 在渲染期间由 renderer 设为当前 dispatcher、结束后置回 null。此刻既然是 `null.useRef`，就意味着 **`U.current` 在渲染 `MaintenanceOverlay` 的这帧里是 null**。
+2. `MaintenanceOverlay` 是正常 function component，且已经到了 `renderWithHooks → MaintenanceOverlay` —— React renderer 在调用组件函数**之前**就会设置 `U.current`，所以同一份 React 里不可能让 `useRef` 读到 null。唯一能解释的是 **renderer 设置的 `U` 和 `useRef` 读取的 `U` 不是同一个对象**，也就是 bundle 里存在**两份 React 实例**。
+3. 本仓库是 npm workspaces monorepo（根 `package.json` 里 `workspaces: ["frontend","web"]`）：
+   - `web`（Next.js 14）依赖 `react@18.3.1` / `react-dom@18.3.1` / `scheduler@^0.23`，npm 把它们 **hoist** 到根 `/node_modules/`。
+   - `frontend`（Expo SDK 51 / RN 0.74.5）锁死 `react@18.2.0`，与根版本冲突，于是额外保留在 `/frontend/node_modules/react@18.2.0`。
+   - `react-native@0.74.5` 硬钉 `scheduler@0.24.0-canary-efb381bbf-20230505`，与 root 的 `0.23.2` 不兼容，额外嵌套在 `/frontend/node_modules/react-native/node_modules/scheduler/`。
+4. Expo 默认的 `getDefaultConfig(__dirname)` 给 Metro 配了 `nodeModulesPaths = [frontend/node_modules, root/node_modules]` + `disableHierarchicalLookup: false`。只要某条 require 链路从 "位于 root 的 hoisted 包" 往外找 `react`，hierarchical 就会在 root 命中 **18.3.1**；从 `frontend/` 内的文件找则命中 **18.2.0** —— Metro 把它们当成两个不同模块各打一份。React Native 的 renderer 只会 mutate 其中一份 React 的 `ReactCurrentDispatcher`，另一份 React 被 zustand / `use-sync-external-store/shim/with-selector` 捕获用来做 `useRef`，就永远读到 `null.useRef` 崩溃。这是经典的"同一 bundle 里两份 React/Scheduler"问题。
+5. 本地 `NODE_ENV=production expo export --platform ios` 对照实验（带 / 不带我们的 metro 修复）也验证了 **`react-native` 内嵌的 scheduler 0.24.0-canary** 和 root 的 `scheduler 0.23.2` 确实都会被打进 bundle；加上 resolveRequest 强制 singleton 后，bundle 里少掉两份 scheduler 源（`react-native/node_modules/scheduler/cjs/scheduler.native.production.min.js` 及其 index.native.js）。React 的双份在 EAS 构建环境（npm 布局略有差异）下同样成立。
+
+### What
+**新增 `frontend/metro.config.js`（从原先的最小 5 行扩展成结构化配置）**
+- 显式写出 monorepo 的 `watchFolders`（含根仓库）和 `nodeModulesPaths`（`frontend/node_modules` 优先，根次之），保持 Expo 默认行为。
+- 核心修复：通过 `resolver.resolveRequest` 把一组「hook-sensitive / 必须全局唯一」的包名强制改写 `originModulePath` 为 `frontend/index.js`，让 Metro 总是从 frontend workspace 出发做 hierarchical 解析，从而无论调用者文件实际位于 `/frontend/node_modules/*` 还是 `/node_modules/*`，拿到的都是同一份：
+  ```
+  react, react-dom, react-native, scheduler,
+  use-sync-external-store, use-sync-external-store/shim,
+  use-sync-external-store/shim/index,
+  use-sync-external-store/shim/with-selector,
+  zustand
+  ```
+- 通过调用 `context.resolveRequest(...)` 委派回 Metro 内置解析器，完全复用其平台扩展（`.native.js` / `.ios.js`）、`package.json#exports` 等逻辑，没有自己手写路径拼接，避免 KISS 失守。
+
+### Why
+- **SOLID · Single Source of Truth**：`ReactCurrentDispatcher` 依赖"整个 bundle 只有一份 React"这一隐式不变量；一旦破坏就会出现像本次这种高度隐蔽的 hook 崩溃。`resolveRequest` 显式强制这个不变量，让系统的正确性不再靠"npm 刚好没 hoist 第二份"这种侥幸。
+- **DRY**：没有复制/patch 任何依赖源码，也没有写平台判断分支；一条 Set 维护所有 singleton 包名，后续新增（比如引入 jotai/react-query 自带的内部 hook 库）只需加入这组集合。
+- **KISS**：保留了 Expo 默认的 watchFolders / nodeModulesPaths 结构不动，只在 resolver 层"外挂一层重写"，不触碰 babel / transformer / cacheVersion 等风险面。
+- **Holistic**：同批清理了 React Native 嵌套 scheduler（`0.24.0-canary` vs root `0.23.2`）的双份，这个二重 scheduler 在 RN 0.74 / Expo SDK 51 的所有 monorepo 项目里都会悄悄存在，即便此次不是唯一诱因，也会拖慢/破坏 React 的 work-loop 一致性。
+
+### Files
+- `frontend/metro.config.js`
+- `PROGRESS_LOG.md`
+
+### Verification
+- 本地 `NODE_ENV=production npx expo export --platform ios` 对照 source map 的 `sources[]`：修复后不再出现 `react-native/node_modules/scheduler/...` 两个 entry，bundle 减小 ~3 KB；HBC 输出稳定。
+- 等下一次 EAS build + TestFlight 实机，若 `CrashScreen` 不再被触发即说明 monorepo 双实例是 TestFlight 启动崩溃的根因；若仍有其他错误，`CrashScreen` 会把新错误显示在屏上继续定位（两道防线互相独立，互不遮蔽）。
+
 ## 2026-04-20: Mobile · 修复「进入聊天后返回列表，未读红点又出现」的 bug
 
 ### Context
@@ -2107,7 +2299,142 @@ TEXT / IMAGE / SYSTEM / POST_CARD / STORE_CARD / BRAND_CARD / SHOW_CARD
   - 圆角从 14 调整为 `theme.borderRadius.md`（8px），与 app 卡片/按钮一致
   - 气泡尺寸 52→48，图标尺寸 24→22，整体更收敛
 
+## 2026-04-22: 推荐列表下拉刷新改为增量加载（Prepend instead of Replace）
+
+### Problem
+推荐 Tab 下拉刷新时，`useFeedRecommendation.refresh()` 会清空 `excludeIds` 和 `postSkip`，然后用全新数据**替换**整个列表。用户滑到顶部刷新后，之前浏览的内容全部消失，体验不佳。
+
+### Changes
+- `frontend/src/screens/Discover/hooks/useFeedRecommendation.ts`
+  - **首次加载**（`excludeIdsRef` 为空）：行为不变，正常填充列表
+  - **后续刷新**：保留已有 `excludeIds`，调用 `getFeed({ skip: 0, forceFresh: true, excludeIds: existing })` 让后端返回 Stage 1+2 的新推荐内容（自动排除已见帖子），然后将新数据 **prepend** 到列表头部
+  - `postSkipRef` 和 `excludeIdsRef` 累加而非重置，确保底部 `loadMore` 分页不受影响
+  - 后端无需改动：`exclude_ids` + `force_fresh` 已有完整去重 + 缓存刷新支持
+
+### Result
+用户在推荐列表顶部下拉刷新时，新推荐内容从上方插入，已浏览内容保持在下方，实现类似 Twitter/微博的增量刷新体验。
+
+## 2026-04-22: 推荐首页冷启动首滑卡顿修复 (PostCard Perf Optimization)
+
+### Problem
+App 冷启动后，推荐列表首次向下滑动时出现明显卡顿和掉帧。
+
+### Root Cause
+1. **PostCard 使用 11+ 个 gluestack `styled()` 组件**（Box ×3, Text ×4, Pressable ×3, HStack ×2）。每个 styled() 在渲染时做 React Context 读取 + token 解析 + 样式合并 + 新对象分配。首屏 26+ 张卡片 = **280+ 次不必要的 styled() 解析**，全部在 JS 线程执行，与图片解码和滚动事件竞争。
+2. **PostCard 外层 `sx={{...shadow...}}` prop** 在每次渲染时创建新对象并触发 gluestack 运行时解析，是 styled() 中最重的模式。
+3. **OptimizedImage 的 `containerHeight` 状态** 每张图片挂载时 `onLayout` → `setContainerHeight()` → 触发一次额外重渲染，仅为判断是否显示 "加载中…" 文字。30 张图片 = 30 次不必要的重渲染。
+
+### Changes
+- `frontend/src/components/PostCard.tsx`
+  - **全部 gluestack 组件替换为 RN 原生组件**：`Box` → `View`，`Text` → `RNText`，`Pressable` → RN `Pressable`，`HStack` → `View` + `flexDirection: 'row'`
+  - `sx={{shadow}}` 动态解析 → `theme.shadows.sm` 静态 StyleSheet
+  - 所有样式通过 `StyleSheet.create()` 预编译，零运行时开销
+  - 保持 `React.memo` 包裹和 `useCallback` 稳定引用
+  - 保持所有 interface/type 导出不变，消费方零影响
+
+- `frontend/src/components/ui/OptimizedImage.tsx`
+  - `containerHeight` 从 `useState` 改为 `useRef`，不再因 `onLayout` 触发重渲染
+  - 保留 `onLayout` 写入 ref（前向兼容），spinner 仍正常显示
+
+### Impact
+- 首屏 26 张卡片挂载：减少 ~280 次 styled() 解析 + ~30 次 onLayout 重渲染
+- 滚动回收/复用新卡片：每张卡片减少 ~11 次 styled() 解析 + 1 次 onLayout 重渲染
 
 
+## 2026-04-23: 管理面板增长趋势图表 (Admin Dashboard Growth Charts)
+
+### Problem
+管理面板仅显示静态的汇总数字，缺少用户、帖子、评论随时间的增长趋势可视化。
+
+### Changes
+
+**后端**
+- `backend/app/services/admin_service.py` — 新增 `get_growth_stats(days)` 方法，查询 `users`、`posts`、`post_comments` 三张表的 `created_at`，按天聚合为 series 数据
+- `backend/app/api/routes/admin.py` — 新增 `GET /api/admin/stats/growth?days=30` 端点（支持 7–90 天范围），需管理员权限
+
+**前端**
+- `web/src/components/admin/LineChart.tsx` — 纯 SVG 折线图组件（零依赖），支持多条线、hover tooltip、自适应 Y 轴、网格线，三种线型（实线/虚线/点线）区分数据系列
+- `web/src/lib/services/admin.ts` — 新增 `statsApi.getGrowth()` 接口
+- `web/src/app/admin/page.tsx` — 仪表盘新增「近 30 天增长趋势」图表区块
+
+### Design Decisions
+- 图表使用纯 SVG 实现，不引入 recharts/chart.js 等第三方库，保持极简
+- 三条线用实线/虚线/点线 + ink/ink-muted/border 三种灰度区分，不引入颜色
+
+
+## 2026-04-23: Web 管理后台完整移植 (Admin Panel Migration to Web)
+
+### Problem
+管理员功能仅在移动端 App 中可用（通过 `AdminScreen` 的 16 个 Tab），没有 Web 版管理后台。在浏览器上管理内容、审核帖子、配置系统参数等操作非常不便。
+
+### Changes
+
+**基础架构 (3 个新文件)**
+- `web/src/lib/services/admin.ts` — Admin API 服务层，使用 `apiClient` 封装所有管理接口（帖子、用户、评论、社区、品牌、秀场、店铺、Banner、广播、客服、推荐、维护模式），共 11 个 API 命名空间
+- `web/src/components/admin/AdminRequired.tsx` — Admin 权限守卫组件，扩展 AuthRequired 增加 `is_admin` 校验
+- `web/src/components/admin/AdminNav.tsx` — 侧栏导航组件，5 个分组、17 个导航项，使用 lucide-react 图标
+
+**UI 组件库 (1 个新文件)**
+- `web/src/components/admin/ui.tsx` — 管理后台通用组件：PageHeader、SearchBar、FilterChips、StatusBadge、Pagination、ConfirmDialog、FormDialog、FormField、TextInput、Toggle、Button、EmptyState、LoadingState、PromptDialog
+
+**页面路由 (17 个新页面)**
+- `web/src/app/admin/layout.tsx` — 管理后台布局（固定左侧栏 + 右侧内容区）
+- `web/src/app/admin/page.tsx` — 概览仪表盘（统计卡片 + 待审核队列）
+- `web/src/app/admin/posts/pending/page.tsx` — 待审核帖子（批量审核、拒绝原因）
+- `web/src/app/admin/posts/page.tsx` — 帖子管理（搜索、筛选、评级、批量重新评级）
+- `web/src/app/admin/comments/page.tsx` — 评论管理（分页表格、删除）
+- `web/src/app/admin/users/page.tsx` — 用户管理（搜索、头衔管理、删除）
+- `web/src/app/admin/reports/page.tsx` — 举报管理（状态筛选、解决/驳回）
+- `web/src/app/admin/communities/page.tsx` — 社区管理（CRUD、图标/封面上传、启停）
+- `web/src/app/admin/brands/page.tsx` — 品牌管理（搜索、编辑、删除）
+- `web/src/app/admin/brands/submissions/page.tsx` — 品牌审核（通过/拒绝）
+- `web/src/app/admin/brands/images/page.tsx` — 品牌图片审核（通过/拒绝/删除）
+- `web/src/app/admin/shows/page.tsx` — 秀场管理（搜索、筛选、CRUD）
+- `web/src/app/admin/shows/review/page.tsx` — 秀场审核（通过/拒绝）
+- `web/src/app/admin/stores/page.tsx` — 买手店管理（搜索、CRUD、坐标、封面上传）
+- `web/src/app/admin/banners/page.tsx` — Banner 管理（CRUD、链接类型、排序、启停）
+- `web/src/app/admin/broadcast/page.tsx` — 广播通知（编辑、链接配置、预览、发送结果）
+- `web/src/app/admin/customer-service/page.tsx` — 客服设置（自动回复开关、消息、邮箱）
+- `web/src/app/admin/recommend/page.tsx` — 推荐配置（池比例、等级选择、冷启动）
+- `web/src/app/admin/maintenance/page.tsx` — 维护模式（开关、自定义消息、恢复默认）
+
+**导航集成**
+- `web/src/components/auth/UserMenu.tsx` — 管理员用户下拉菜单新增「管理后台」入口
+
+**新增依赖**
+- `lucide-react` — 图标库（已在 next.config.js 的 optimizePackageImports 中配置）
+
+### Design Decisions
+- **Web 优先布局**: 采用固定侧栏 + 表格视图替代移动端的横向 Tab + 卡片列表，信息密度更高
+- **单色体系**: 全部使用 ink/canvas CSS 变量，不引入语义颜色（无绿/红/蓝），与网站整体极简黑白风格保持一致
+- **文字操作按钮**: 表格操作列使用文字按钮（通过/拒绝/删除/编辑）而非彩色图标，减少视觉噪音
+- **无装饰图标**: 侧栏导航和操作按钮均不使用图标，仅保留 SearchBar/Pagination 等功能性 UI 控件的图标
+- **统一组件库**: 所有 admin 页面共享 `ui.tsx` 中的原子组件，保持视觉一致性
+- **API 复用**: 使用已有 `apiClient` 处理认证、Token 刷新、错误包装，无需重复实现
+
+### Impact
+- 管理员可在浏览器中完成所有后台管理操作，无需打开移动端 App
+- 表格视图在大屏上一次性展示更多数据，操作效率显著提升
+- 所有 16 个移动端管理功能模块均已完整移植
+
+
+## 2026-04-22: 论坛封面图支持多比例裁剪 (Forum Cover Multi-Ratio Crop)
+
+### Problem
+论坛帖子封面图固定使用 1:1 比例，不像其他发布类型（穿搭、Lookbook、评测）支持自由裁剪和多种比例选择。
+
+### Changes
+- `frontend/src/components/SingleImageUploader.tsx`
+  - 新增 `enableCropper` 和 `defaultCropAspect` props
+  - 当 `enableCropper=true` 时，选择图片后进入自定义 `ImageCropper`，支持 自由裁剪/1:1/4:3/16:9/9:16 五种比例
+  - 已有图片可通过「裁剪」按钮重新进入裁剪器调整比例
+  - 未开启 cropper 时行为完全不变（向后兼容）
+
+- `frontend/src/screens/PublishForumPostScreen.tsx`
+  - 封面图 `SingleImageUploader` 启用 `enableCropper={true}`，默认裁剪比例 `1:1`
+  - 提示文字更新为「支持自由裁剪、1:1、4:3、16:9、9:16」
+
+### Impact
+论坛帖子封面图现在与穿搭/Lookbook/评测等发布类型一致，用户可自由选择裁剪比例。
 
 

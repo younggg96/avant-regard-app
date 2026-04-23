@@ -51,7 +51,10 @@ export const metadata: Metadata = {
     title: "Avant Regard",
     description: "为先锋时装而生的社区",
   },
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 export const viewport: Viewport = {

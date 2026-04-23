@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
@@ -16,10 +17,18 @@ export function SiteHeader() {
       <div className="mx-auto flex h-14 max-w-content items-center justify-between px-6">
         <Link
           href="/"
-          className="font-serif text-[1.05rem] tracking-[0.06em] transition-opacity duration-200
-                     text-black hover:opacity-40 dark:text-white"
+          className="flex items-center gap-2 transition-opacity duration-200 hover:opacity-40"
         >
-          Avant Regard
+          <Image
+            src="/logo.jpg"
+            alt="Avant Regard"
+            width={32}
+            height={32}
+            className="rounded-sm dark:invert"
+          />
+          <span className="font-serif text-[1.05rem] tracking-[0.06em] text-black dark:text-white">
+            Avant Regard
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-7 font-label text-[13px] tracking-wide md:flex">

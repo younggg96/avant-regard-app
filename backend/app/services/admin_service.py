@@ -1211,6 +1211,51 @@ class AdminService:
 
         return {"days": days, "series": series}
 
+    def get_demographics(self) -> dict:
+        """Aggregate gender / age-bracket / location distribution from user_info."""
+        rows = (
+            self.db.table("user_info")
+            .select("gender, age, location")
+            .execute()
+        ).data or []
+
+        gender_counts: dict[str, int] = {}
+        age_brackets: dict[str, int] = {
+            "<18": 0, "18-24": 0, "25-30": 0, "31-40": 0, "41-50": 0, "50+": 0,
+        }
+        region_counts: dict[str, int] = {}
+
+        for r in rows:
+            g = (r.get("gender") or "OTHER").upper()
+            gender_counts[g] = gender_counts.get(g, 0) + 1
+
+            age = r.get("age") or 0
+            if age > 0:
+                if age < 18:
+                    age_brackets["<18"] += 1
+                elif age <= 24:
+                    age_brackets["18-24"] += 1
+                elif age <= 30:
+                    age_brackets["25-30"] += 1
+                elif age <= 40:
+                    age_brackets["31-40"] += 1
+                elif age <= 50:
+                    age_brackets["41-50"] += 1
+                else:
+                    age_brackets["50+"] += 1
+
+            loc = (r.get("location") or "").strip()
+            if loc:
+                region_counts[loc] = region_counts.get(loc, 0) + 1
+
+        sorted_regions = sorted(region_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+
+        return {
+            "gender": gender_counts,
+            "ageBrackets": age_brackets,
+            "regions": [{"name": n, "count": c} for n, c in sorted_regions],
+        }
+
 
 # 单例
 admin_service = AdminService()

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { Modal } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Box, Text, Pressable } from "./ui";
@@ -6,6 +8,7 @@ import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import ImagePickerModal from "./ImagePickerModal";
+import ImageCropper, { AspectRatio } from "./ImageCropper";
 import { Alert } from "../utils/Alert";
 
 interface SingleImageUploaderProps {
@@ -17,6 +20,8 @@ interface SingleImageUploaderProps {
   height?: number;
   aspectRatio?: [number, number];
   allowEditing?: boolean;
+  enableCropper?: boolean;
+  defaultCropAspect?: AspectRatio;
 }
 
 const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
@@ -28,8 +33,12 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   height = 180,
   aspectRatio = [16, 9],
   allowEditing = true,
+  enableCropper = false,
+  defaultCropAspect = "free",
 }) => {
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [rawImageUri, setRawImageUri] = useState<string | null>(null);
 
   const handleAddImage = () => {
     setShowImagePicker(true);
@@ -53,26 +62,54 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
         }
       }
 
+      const pickerEditing = enableCropper ? false : allowEditing;
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync({
-            allowsEditing: allowEditing,
+            allowsEditing: pickerEditing,
             aspect: aspectRatio,
             quality: 1.0,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: allowEditing,
+            allowsEditing: pickerEditing,
             aspect: aspectRatio,
             quality: 1.0,
           });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        onImageSelected(result.assets[0].uri);
-        Alert.show("图片已设置", "", 1500);
+        const selectedUri = result.assets[0].uri;
+        if (enableCropper) {
+          setRawImageUri(selectedUri);
+          setShowCropper(true);
+        } else {
+          onImageSelected(selectedUri);
+          Alert.show("图片已设置", "", 1500);
+        }
       }
     } catch (error) {
       console.error("Image selection error:", error);
       Alert.show("错误: 图片选择失败，请重试");
+    }
+  };
+
+  const handleCropDone = (croppedUri: string) => {
+    setShowCropper(false);
+    setRawImageUri(null);
+    onImageSelected(croppedUri);
+    Alert.show("图片已设置", "", 1500);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setRawImageUri(null);
+  };
+
+  const handleEditWithCropper = () => {
+    if (imageUri && enableCropper) {
+      setRawImageUri(imageUri);
+      setShowCropper(true);
+    } else {
+      handleAddImage();
     }
   };
 
@@ -81,9 +118,30 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     Alert.show("图片已移除");
   };
 
+  const cropperModal = enableCropper ? (
+    <Modal
+      visible={showCropper && !!rawImageUri}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+    >
+      <SafeAreaProvider>
+        {rawImageUri && (
+          <ImageCropper
+            sourceUri={rawImageUri}
+            aspect={defaultCropAspect}
+            onCancel={handleCropCancel}
+            onDone={handleCropDone}
+          />
+        )}
+      </SafeAreaProvider>
+    </Modal>
+  ) : null;
+
   if (!imageUri) {
     return (
       <>
+        {cropperModal}
         <Box mx="$md" mb="$md">
           <Pressable
             h={height}
@@ -120,6 +178,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
 
   return (
     <>
+      {cropperModal}
       <Box mx="$md" mb="$md" position="relative">
         <Box h={height} rounded="$md" overflow="hidden">
           <OptimizedImage
@@ -147,7 +206,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           <Ionicons name="close" size={20} color={theme.colors.white} />
         </Pressable>
 
-        {/* Edit button */}
+        {/* Edit/crop button */}
         <Pressable
           position="absolute"
           bottom={8}
@@ -158,12 +217,32 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           bg="rgba(0,0,0,0.6)"
           alignItems="center"
           justifyContent="center"
-          onPress={handleAddImage}
+          onPress={handleEditWithCropper}
         >
           <Text color="$white" fontSize="$xs" fontWeight="$medium">
-            更换
+            {enableCropper ? "裁剪" : "更换"}
           </Text>
         </Pressable>
+
+        {/* Replace button (shown when cropper is enabled) */}
+        {enableCropper && (
+          <Pressable
+            position="absolute"
+            bottom={8}
+            left={8}
+            px="$sm"
+            py="$xs"
+            rounded="$md"
+            bg="rgba(0,0,0,0.6)"
+            alignItems="center"
+            justifyContent="center"
+            onPress={handleAddImage}
+          >
+            <Text color="$white" fontSize="$xs" fontWeight="$medium">
+              更换
+            </Text>
+          </Pressable>
+        )}
       </Box>
 
       <ImagePickerModal

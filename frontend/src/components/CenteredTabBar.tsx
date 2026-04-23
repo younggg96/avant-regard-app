@@ -53,7 +53,7 @@ export function CenteredTabBar<T extends string>({
 }: CenteredTabBarProps<T>) {
   return (
     <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
-      <HStack justifyContent="center" alignItems="center" py="$xs">
+      <HStack justifyContent="center" alignItems="center" py={2}>
         {tabs.map((tab) => (
           <TabButton
             key={tab.id}

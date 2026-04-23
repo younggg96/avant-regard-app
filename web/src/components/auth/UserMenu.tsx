@@ -132,6 +132,11 @@ export function UserMenu() {
             <MenuItem href="/settings" onSelect={() => setOpen(false)}>
               设置
             </MenuItem>
+            {user.is_admin && (
+              <MenuItem href="/admin" onSelect={() => setOpen(false)}>
+                管理后台
+              </MenuItem>
+            )}
             <button
               type="button"
               role="menuitem"

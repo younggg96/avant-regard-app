@@ -945,6 +945,34 @@ export async function updateAutoReplyConfig(
   });
 }
 
+// ==================== 维护模式 ====================
+
+export interface MaintenanceConfig {
+  enabled: boolean;
+  message: string;
+}
+
+export interface UpdateMaintenanceConfigParams {
+  enabled: boolean;
+  /** 可选：留空则保留已有文案 */
+  message?: string;
+}
+
+export async function getMaintenanceConfig(): Promise<MaintenanceConfig> {
+  return request<MaintenanceConfig>("/api/admin/maintenance", {
+    method: "GET",
+  });
+}
+
+export async function updateMaintenanceConfig(
+  params: UpdateMaintenanceConfigParams
+): Promise<MaintenanceConfig> {
+  return request<MaintenanceConfig>("/api/admin/maintenance", {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
 // ==================== 推荐算法配置 ====================
 
 export interface PoolRatios {
@@ -1041,6 +1069,9 @@ export const adminService = {
   // 推荐算法配置
   getRecommendConfig,
   updateRecommendConfig,
+  // 维护模式
+  getMaintenanceConfig,
+  updateMaintenanceConfig,
 };
 
 export default adminService;

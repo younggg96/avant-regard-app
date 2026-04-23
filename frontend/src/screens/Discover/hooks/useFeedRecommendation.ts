@@ -70,24 +70,35 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
     if (requestInFlight.current) return;
     requestInFlight.current = true;
     setRefreshing(true);
-    excludeIdsRef.current = [];
-    postSkipRef.current = 0;
+
+    const isFirstLoad = excludeIdsRef.current.length === 0;
 
     try {
       const resp = await getFeed({
         limit: PAGE_SIZE,
-        excludeIds: [],
+        excludeIds: excludeIdsRef.current,
         boostBrandId,
         skip: 0,
         forceFresh: true,
       });
 
-      setFeedItems(resp.items);
-      const postCount = countPosts(resp.items);
-      setHasMore(postCount > 0);
+      const newItems = resp.items;
+      const postCount = countPosts(newItems);
+      const newIds = extractExcludeIds(newItems);
 
-      excludeIdsRef.current = extractExcludeIds(resp.items);
-      postSkipRef.current = postCount;
+      if (isFirstLoad) {
+        setFeedItems(newItems);
+        excludeIdsRef.current = newIds;
+        postSkipRef.current = postCount;
+        setHasMore(postCount > 0);
+      } else if (newItems.length > 0) {
+        setFeedItems((prev) => [...newItems, ...prev]);
+        excludeIdsRef.current = trimExcludeIds([
+          ...excludeIdsRef.current,
+          ...newIds,
+        ]);
+        postSkipRef.current += postCount;
+      }
     } catch (err) {
       console.error("[FeedV2] refresh failed:", err);
     } finally {

@@ -1,18 +1,16 @@
 /**
  * FpsMonitor
  * -----------------------------------------------------------------------------
- * Dev-only floating HUD that measures the JS-thread frame rate using
+ * Floating HUD that measures the JS-thread frame rate using
  * `requestAnimationFrame` ticks, and renders a draggable pill in the top-right
- * corner.
+ * corner. Shown in all builds (including TestFlight / production) for
+ * real-device performance profiling.
  *
  * Why RAF ticks?
  *   In React Native the JS thread drives `requestAnimationFrame`. When JS is
  *   blocked (e.g. heavy re-renders during a `MasonryFlashList` scroll), RAF
  *   ticks slow down and the measured FPS drops — which is exactly the signal
  *   we want for scroll-perf debugging.
- *
- * Rendering is fully skipped in production (`__DEV__` guard) so there is zero
- * runtime cost for shipped builds.
  */
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
@@ -38,7 +36,6 @@ function pickColor(fps: number): string {
 }
 
 export default function FpsMonitor() {
-  if (!__DEV__) return null;
   return <FpsMonitorImpl />;
 }
 

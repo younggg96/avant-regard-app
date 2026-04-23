@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { FlatList, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,31 +24,34 @@ export const MessagesContent = () => {
     removeConversation,
     toggleConversationRead,
     deletingConversationIds,
+    isConversationsInitialLoaded,
   } = useChatStore();
 
   const notifications = useNotificationStore((s) => s.notifications);
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
+  const isNotificationsInitialLoaded = useNotificationStore(
+    (s) => s.isInitialLoaded
+  );
+
+  // Gate the whole page on BOTH stores having completed their first fetch.
+  // Why not `useRef`: the flag must drive rendering. Why store-level instead
+  // of component-local state: `MessagesContent` remounts when the user leaves
+  // and returns to the 互动 tab; if the data is already in the store we must
+  // skip the spinner to avoid a useless flash.
+  const isInitialLoaded =
+    isConversationsInitialLoaded && isNotificationsInitialLoaded;
 
   const [refreshing, setRefreshing] = useState(false);
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetTitle, setSheetTitle] = useState("");
   const [sheetActions, setSheetActions] = useState<ActionSheetAction[]>([]);
-  const didInitialFetchRef = useRef(false);
 
   useEffect(() => {
     connectWebSocket();
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      await Promise.all([loadConversations(), loadNotifications()]);
-      didInitialFetchRef.current = true;
-    })();
-  }, [loadNotifications]);
-
   useFocusEffect(
     useCallback(() => {
-      if (!didInitialFetchRef.current) return;
       loadConversations();
       loadNotifications();
     }, [loadNotifications])
@@ -113,6 +116,14 @@ export const MessagesContent = () => {
     [toggleConversationRead, removeConversation]
   );
 
+  if (!isInitialLoaded) {
+    return (
+      <Box flex={1} justifyContent="center" alignItems="center">
+        <ActivityIndicator size="large" color={theme.colors.black} />
+      </Box>
+    );
+  }
+
   const sortedConversations = [...conversations].sort((a, b) => {
     const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
     const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
@@ -122,39 +133,34 @@ export const MessagesContent = () => {
   const strangerConversations = sortedConversations.filter(isStrangerConversation);
   const regularConversations = sortedConversations.filter((c) => !isStrangerConversation(c));
 
-  const renderItem = useCallback(
-    ({ item }: { item: Conversation }) => {
-      const itemDeleting = deletingConversationIds.has(item.id);
-      return (
-        <Box opacity={itemDeleting ? 0.5 : 1} position="relative">
-          <ConversationRow
-            item={item}
-            onPress={() => handleConvPress(item)}
-            onLongPress={() => handleLongPress(item)}
-          />
-          {itemDeleting && (
-            <Box
-              position="absolute"
-              right={16}
-              top={0}
-              bottom={0}
-              justifyContent="center"
-            >
-              <ActivityIndicator size="small" color={theme.colors.gray300} />
-            </Box>
-          )}
-        </Box>
-      );
-    },
-    [handleConvPress, handleLongPress, deletingConversationIds]
-  );
-
   return (
     <>
       <FlatList
         data={regularConversations}
         keyExtractor={(item) => `conv-${item.id}`}
-        renderItem={renderItem}
+        renderItem={({ item }) => {
+          const itemDeleting = deletingConversationIds.has(item.id);
+          return (
+            <Box opacity={itemDeleting ? 0.5 : 1} position="relative">
+              <ConversationRow
+                item={item}
+                onPress={() => handleConvPress(item)}
+                onLongPress={() => handleLongPress(item)}
+              />
+              {itemDeleting && (
+                <Box
+                  position="absolute"
+                  right={16}
+                  top={0}
+                  bottom={0}
+                  justifyContent="center"
+                >
+                  <ActivityIndicator size="small" color={theme.colors.gray300} />
+                </Box>
+              )}
+            </Box>
+          );
+        }}
         ListHeaderComponent={
           <>
             <RecentAvatars conversations={sortedConversations} />

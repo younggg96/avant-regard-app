@@ -5,21 +5,27 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { useMaintenanceStore } from "../store/maintenanceStore";
+import {
+  DEFAULT_MAINTENANCE_MESSAGE,
+  useMaintenanceStore,
+} from "../store/maintenanceStore";
 
 export default function MaintenanceOverlay() {
   const isDown = useMaintenanceStore((s) => s.isDown);
+  const message = useMaintenanceStore((s) => s.message);
 
   if (!isDown) return null;
+
+  const displayMessage = message?.trim()
+    ? message
+    : DEFAULT_MAINTENANCE_MESSAGE;
 
   return (
     <View style={styles.overlay}>
       <View style={styles.card}>
         <Text style={styles.icon}>🔧</Text>
         <Text style={styles.title}>服务器维护中</Text>
-        <Text style={styles.message}>
-          服务暂时不可用，正在恢复中{"\n"}请稍后再试
-        </Text>
+        <Text style={styles.message}>{displayMessage}</Text>
         <ActivityIndicator
           size="small"
           color="#999"

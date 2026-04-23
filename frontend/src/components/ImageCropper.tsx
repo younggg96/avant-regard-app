@@ -18,13 +18,17 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  cancelAnimation,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-// Aspect ratio types and utilities
+const HANDLE_HIT_SLOP = 20;
+const HANDLE_VISUAL_SIZE = 20;
+const IMAGE_AREA_PADDING = 24;
+
 export type AspectRatio = "free" | "1:1" | "4:3" | "16:9" | "9:16";
 
 interface AspectConfig {
@@ -40,7 +44,6 @@ const ASPECT_CONFIGS: Record<AspectRatio, AspectConfig> = {
   "9:16": { label: "9:16", ratio: 9 / 16 },
 };
 
-// Component props
 export interface ImageCropperProps {
   sourceUri: string;
   aspect?: AspectRatio;
@@ -49,7 +52,6 @@ export interface ImageCropperProps {
   minBoxSize?: number;
 }
 
-// Image display dimensions
 interface ImageDimensions {
   width: number;
   height: number;
@@ -62,9 +64,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   aspect = "free",
   onCancel,
   onDone,
-  minBoxSize = 80,
+  minBoxSize = 60,
 }) => {
-  // State
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>(aspect);
   const [imageDimensions, setImageDimensions] =
     useState<ImageDimensions | null>(null);
@@ -77,25 +78,24 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     height: number;
   } | null>(null);
 
-  // Animated values for crop box
-  const cropX = useSharedValue(50);
-  const cropY = useSharedValue(100);
+  const cropX = useSharedValue(0);
+  const cropY = useSharedValue(0);
   const cropWidth = useSharedValue(200);
   const cropHeight = useSharedValue(200);
 
-  // Shared values for image bounds (for use in worklets)
   const imageBoundsX = useSharedValue(0);
   const imageBoundsY = useSharedValue(0);
   const imageBoundsWidth = useSharedValue(SCREEN_WIDTH);
   const imageBoundsHeight = useSharedValue(SCREEN_HEIGHT);
 
-  // Context for gesture handlers
+  // Shared value for aspect ratio so worklets always read latest
+  const aspectRatio = useSharedValue<number>(0); // 0 = free
+
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const startWidth = useSharedValue(0);
   const startHeight = useSharedValue(0);
 
-  // Update shared values when image dimensions change
   React.useEffect(() => {
     if (imageDimensions) {
       imageBoundsX.value = imageDimensions.x;
@@ -105,13 +105,16 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     }
   }, [imageDimensions]);
 
-  // Handle container layout
+  React.useEffect(() => {
+    const config = ASPECT_CONFIGS[selectedAspect];
+    aspectRatio.value = config.ratio ?? 0;
+  }, [selectedAspect]);
+
   const handleContainerLayout = useCallback((event: any) => {
     const { width, height } = event.nativeEvent.layout;
     setContainerSize({ width, height });
   }, []);
 
-  // Handle image load
   const handleImageLoad = useCallback(
     (event: any) => {
       if (!containerSize) return;
@@ -119,13 +122,12 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
       const { width: imgWidth, height: imgHeight } = event.source;
       setOriginalImageSize({ width: imgWidth, height: imgHeight });
 
-      // Calculate display dimensions (fit-contain) using actual container size
       const containerWidth = containerSize.width;
       const containerHeight = containerSize.height;
       const imageAspectRatio = imgWidth / imgHeight;
       const containerAspectRatio = containerWidth / containerHeight;
 
-      let displayWidth, displayHeight, displayX, displayY;
+      let displayWidth: number, displayHeight: number, displayX: number, displayY: number;
 
       if (imageAspectRatio > containerAspectRatio) {
         displayWidth = containerWidth;
@@ -148,419 +150,312 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
 
       setImageDimensions(imgDims);
 
-      // Update shared values immediately
       imageBoundsX.value = displayX;
       imageBoundsY.value = displayY;
       imageBoundsWidth.value = displayWidth;
       imageBoundsHeight.value = displayHeight;
 
-      // Initialize crop box - default to full image
-      cropX.value = displayX;
-      cropY.value = displayY;
-      cropWidth.value = displayWidth;
-      cropHeight.value = displayHeight;
+      const initialConfig = ASPECT_CONFIGS[aspect];
+      if (initialConfig.ratio) {
+        const ratio = initialConfig.ratio;
+        let boxW: number, boxH: number;
+        if (displayWidth / displayHeight > ratio) {
+          boxH = displayHeight;
+          boxW = boxH * ratio;
+        } else {
+          boxW = displayWidth;
+          boxH = boxW / ratio;
+        }
+        cropX.value = displayX + (displayWidth - boxW) / 2;
+        cropY.value = displayY + (displayHeight - boxH) / 2;
+        cropWidth.value = boxW;
+        cropHeight.value = boxH;
+      } else {
+        cropX.value = displayX;
+        cropY.value = displayY;
+        cropWidth.value = displayWidth;
+        cropHeight.value = displayHeight;
+      }
     },
-    [
-      containerSize,
-      imageBoundsX,
-      imageBoundsY,
-      imageBoundsWidth,
-      imageBoundsHeight,
-      cropX,
-      cropY,
-      cropWidth,
-      cropHeight,
-    ]
+    [containerSize]
   );
 
-  // Resize handlers
+  // Helper: clamp resize for a given anchor and direction
+  const clampResize = (
+    anchorX: number,
+    anchorY: number,
+    rawW: number,
+    rawH: number,
+    fromLeft: boolean,
+    fromTop: boolean
+  ) => {
+    "worklet";
+    const ratio = aspectRatio.value;
+    const bx = imageBoundsX.value;
+    const by = imageBoundsY.value;
+    const bw = imageBoundsWidth.value;
+    const bh = imageBoundsHeight.value;
+
+    // Pre-compute max available space from anchor in each direction
+    const maxW = fromLeft ? anchorX - bx : bx + bw - anchorX;
+    const maxH = fromTop ? anchorY - by : by + bh - anchorY;
+
+    let w: number, h: number;
+
+    if (ratio > 0) {
+      // With fixed ratio, both dimensions must fit within bounds simultaneously
+      const maxWFromH = maxH * ratio;
+      const effectiveMaxW = Math.min(maxW, maxWFromH);
+
+      w = Math.max(minBoxSize, Math.min(rawW, effectiveMaxW));
+      h = w / ratio;
+
+      if (h < minBoxSize) {
+        h = minBoxSize;
+        w = h * ratio;
+      }
+    } else {
+      w = Math.max(minBoxSize, Math.min(rawW, maxW));
+      h = Math.max(minBoxSize, Math.min(rawH, maxH));
+    }
+
+    const x = fromLeft ? anchorX - w : anchorX;
+    const y = fromTop ? anchorY - h : anchorY;
+
+    return { x, y, w, h };
+  };
+
+  // NW: anchor = bottom-right, drag top-left
   const resizeGestureNW = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
     .onStart(() => {
       startX.value = cropX.value;
       startY.value = cropY.value;
       startWidth.value = cropWidth.value;
       startHeight.value = cropHeight.value;
     })
-    .onUpdate((event) => {
-      const config = ASPECT_CONFIGS[selectedAspect];
-
-      // Fixed anchor point (bottom-right corner)
+    .onUpdate((e) => {
       const anchorX = startX.value + startWidth.value;
       const anchorY = startY.value + startHeight.value;
-
-      // Calculate new dimensions based on drag
-      let newWidth = startWidth.value - event.translationX;
-      let newHeight = startHeight.value - event.translationY;
-
-      // Apply minimum size
-      newWidth = Math.max(minBoxSize, newWidth);
-      newHeight = Math.max(minBoxSize, newHeight);
-
-      // Apply aspect ratio
-      if (config.ratio) {
-        // When dragging NW corner, prioritize width
-        newHeight = newWidth / config.ratio;
-      }
-
-      // Calculate new position (top-left moves, bottom-right stays fixed)
-      let newX = anchorX - newWidth;
-      let newY = anchorY - newHeight;
-
-      // Constrain to image boundaries using shared values
-      // Ensure we don't go beyond left edge
-      if (newX < imageBoundsX.value) {
-        newX = imageBoundsX.value;
-        newWidth = anchorX - newX;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-          newY = anchorY - newHeight;
-        }
-      }
-
-      // Ensure we don't go beyond top edge
-      if (newY < imageBoundsY.value) {
-        newY = imageBoundsY.value;
-        newHeight = anchorY - newY;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-          newX = anchorX - newWidth;
-          // Re-check left boundary
-          if (newX < imageBoundsX.value) {
-            newX = imageBoundsX.value;
-            newWidth = anchorX - newX;
-            newHeight = newWidth / config.ratio;
-            newY = anchorY - newHeight;
-          }
-        }
-      }
-
-      // Ensure anchor doesn't exceed image bounds
-      if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
-        newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-        }
-      }
-
-      if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
-        newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-          newX = anchorX - newWidth;
-        }
-      }
-
-      // Final boundary check - ensure crop box is completely within image
-      newX = Math.max(imageBoundsX.value, newX);
-      newY = Math.max(imageBoundsY.value, newY);
-
-      // Ensure right and bottom don't exceed
-      const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-      const finalMaxHeight =
-        imageBoundsY.value + imageBoundsHeight.value - newY;
-
-      newWidth = Math.min(newWidth, finalMaxWidth);
-      newHeight = Math.min(newHeight, finalMaxHeight);
-
-      cropX.value = newX;
-      cropY.value = newY;
-      cropWidth.value = Math.max(minBoxSize, newWidth);
-      cropHeight.value = Math.max(minBoxSize, newHeight);
+      const rawW = startWidth.value - e.translationX;
+      const rawH = startHeight.value - e.translationY;
+      const r = clampResize(anchorX, anchorY, rawW, rawH, true, true);
+      cropX.value = r.x;
+      cropY.value = r.y;
+      cropWidth.value = r.w;
+      cropHeight.value = r.h;
     });
 
+  // NE: anchor = bottom-left, drag top-right
   const resizeGestureNE = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
     .onStart(() => {
       startX.value = cropX.value;
       startY.value = cropY.value;
       startWidth.value = cropWidth.value;
       startHeight.value = cropHeight.value;
     })
-    .onUpdate((event) => {
-      const config = ASPECT_CONFIGS[selectedAspect];
-
-      // Fixed anchor point (bottom-left corner)
+    .onUpdate((e) => {
       const anchorX = startX.value;
       const anchorY = startY.value + startHeight.value;
-
-      let newWidth = startWidth.value + event.translationX;
-      let newHeight = startHeight.value - event.translationY;
-
-      newWidth = Math.max(minBoxSize, newWidth);
-      newHeight = Math.max(minBoxSize, newHeight);
-
-      if (config.ratio) {
-        newHeight = newWidth / config.ratio;
-      }
-
-      let newY = anchorY - newHeight;
-
-      // Right boundary
-      const maxWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
-      if (newWidth > maxWidth) {
-        newWidth = maxWidth;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-          newY = anchorY - newHeight;
-        }
-      }
-
-      // Top boundary
-      if (newY < imageBoundsY.value) {
-        newY = imageBoundsY.value;
-        newHeight = anchorY - newY;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-          // Re-check right boundary
-          if (
-            anchorX + newWidth >
-            imageBoundsX.value + imageBoundsWidth.value
-          ) {
-            newWidth = imageBoundsX.value + imageBoundsWidth.value - anchorX;
-            newHeight = newWidth / config.ratio;
-            newY = anchorY - newHeight;
-          }
-        }
-      }
-
-      // Bottom boundary (anchor shouldn't exceed)
-      if (anchorY > imageBoundsY.value + imageBoundsHeight.value) {
-        newHeight = imageBoundsY.value + imageBoundsHeight.value - newY;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-        }
-      }
-
-      // Final boundary check - ensure crop box is completely within image
-      newY = Math.max(imageBoundsY.value, newY);
-
-      // Ensure right edge doesn't exceed
-      const finalMaxWidth =
-        imageBoundsX.value + imageBoundsWidth.value - anchorX;
-      newWidth = Math.min(newWidth, finalMaxWidth);
-
-      // Ensure bottom edge doesn't exceed
-      const finalMaxHeight =
-        imageBoundsY.value + imageBoundsHeight.value - newY;
-      newHeight = Math.min(newHeight, finalMaxHeight);
-
-      cropY.value = newY;
-      cropWidth.value = Math.max(minBoxSize, newWidth);
-      cropHeight.value = Math.max(minBoxSize, newHeight);
+      const rawW = startWidth.value + e.translationX;
+      const rawH = startHeight.value - e.translationY;
+      const r = clampResize(anchorX, anchorY, rawW, rawH, false, true);
+      cropX.value = r.x;
+      cropY.value = r.y;
+      cropWidth.value = r.w;
+      cropHeight.value = r.h;
     });
 
+  // SW: anchor = top-right, drag bottom-left
   const resizeGestureSW = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
     .onStart(() => {
       startX.value = cropX.value;
       startY.value = cropY.value;
       startWidth.value = cropWidth.value;
       startHeight.value = cropHeight.value;
     })
-    .onUpdate((event) => {
-      const config = ASPECT_CONFIGS[selectedAspect];
-
-      // Fixed anchor point (top-right corner)
+    .onUpdate((e) => {
       const anchorX = startX.value + startWidth.value;
       const anchorY = startY.value;
-
-      let newWidth = startWidth.value - event.translationX;
-      let newHeight = startHeight.value + event.translationY;
-
-      newWidth = Math.max(minBoxSize, newWidth);
-      newHeight = Math.max(minBoxSize, newHeight);
-
-      if (config.ratio) {
-        newHeight = newWidth / config.ratio;
-      }
-
-      let newX = anchorX - newWidth;
-
-      // Left boundary
-      if (newX < imageBoundsX.value) {
-        newX = imageBoundsX.value;
-        newWidth = anchorX - newX;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-        }
-      }
-
-      // Right boundary (anchor shouldn't exceed)
-      if (anchorX > imageBoundsX.value + imageBoundsWidth.value) {
-        newWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-        }
-      }
-
-      // Bottom boundary
-      const maxHeight = imageBoundsY.value + imageBoundsHeight.value - anchorY;
-      if (newHeight > maxHeight) {
-        newHeight = maxHeight;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-          newX = anchorX - newWidth;
-          // Re-check left boundary
-          if (newX < imageBoundsX.value) {
-            newX = imageBoundsX.value;
-            newWidth = anchorX - newX;
-            newHeight = newWidth / config.ratio;
-          }
-        }
-      }
-
-      // Final boundary check - ensure crop box is completely within image
-      newX = Math.max(imageBoundsX.value, newX);
-
-      // Ensure right edge doesn't exceed
-      const finalMaxWidth = imageBoundsX.value + imageBoundsWidth.value - newX;
-      newWidth = Math.min(newWidth, finalMaxWidth);
-
-      // Ensure bottom edge doesn't exceed (anchor is at top)
-      const finalMaxHeight =
-        imageBoundsY.value + imageBoundsHeight.value - anchorY;
-      newHeight = Math.min(newHeight, finalMaxHeight);
-
-      cropX.value = newX;
-      cropWidth.value = Math.max(minBoxSize, newWidth);
-      cropHeight.value = Math.max(minBoxSize, newHeight);
+      const rawW = startWidth.value - e.translationX;
+      const rawH = startHeight.value + e.translationY;
+      const r = clampResize(anchorX, anchorY, rawW, rawH, true, false);
+      cropX.value = r.x;
+      cropY.value = r.y;
+      cropWidth.value = r.w;
+      cropHeight.value = r.h;
     });
 
+  // SE: anchor = top-left, drag bottom-right
   const resizeGestureSE = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
     .onStart(() => {
       startX.value = cropX.value;
       startY.value = cropY.value;
       startWidth.value = cropWidth.value;
       startHeight.value = cropHeight.value;
     })
-    .onUpdate((event) => {
-      const config = ASPECT_CONFIGS[selectedAspect];
-
-      // Top-left corner is fixed
-      let newWidth = startWidth.value + event.translationX;
-      let newHeight = startHeight.value + event.translationY;
-
-      newWidth = Math.max(minBoxSize, newWidth);
-      newHeight = Math.max(minBoxSize, newHeight);
-
-      if (config.ratio) {
-        // Prioritize width when dragging SE
-        newHeight = newWidth / config.ratio;
-      }
-
-      // Calculate maximum available space
-      const maxWidth =
-        imageBoundsX.value + imageBoundsWidth.value - startX.value;
-      const maxHeight =
-        imageBoundsY.value + imageBoundsHeight.value - startY.value;
-
-      // Constrain to image bounds
-      if (newWidth > maxWidth) {
-        newWidth = maxWidth;
-        if (config.ratio) {
-          newHeight = newWidth / config.ratio;
-          // If height exceeds, recalculate from height
-          if (newHeight > maxHeight) {
-            newHeight = maxHeight;
-            newWidth = newHeight * config.ratio;
-            // Final check
-            if (newWidth > maxWidth) {
-              newWidth = maxWidth;
-              newHeight = newWidth / config.ratio;
-            }
-          }
-        }
-      }
-
-      if (newHeight > maxHeight) {
-        newHeight = maxHeight;
-        if (config.ratio) {
-          newWidth = newHeight * config.ratio;
-          // Re-check width
-          if (newWidth > maxWidth) {
-            newWidth = maxWidth;
-            newHeight = newWidth / config.ratio;
-          }
-        }
-      }
-
-      // Final boundary check - absolutely ensure we're within bounds
-      newWidth = Math.min(newWidth, maxWidth);
-      newHeight = Math.min(newHeight, maxHeight);
-
-      cropWidth.value = Math.max(minBoxSize, newWidth);
-      cropHeight.value = Math.max(minBoxSize, newHeight);
+    .onUpdate((e) => {
+      const anchorX = startX.value;
+      const anchorY = startY.value;
+      const rawW = startWidth.value + e.translationX;
+      const rawH = startHeight.value + e.translationY;
+      const r = clampResize(anchorX, anchorY, rawW, rawH, false, false);
+      cropX.value = r.x;
+      cropY.value = r.y;
+      cropWidth.value = r.w;
+      cropHeight.value = r.h;
     });
 
-  // Pan gesture handler for moving crop box
+  // Edge resize gestures for mid-edge handles
+  const resizeGestureN = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
+    .onStart(() => {
+      startY.value = cropY.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((e) => {
+      const anchorBottom = startY.value + startHeight.value;
+      let newH = startHeight.value - e.translationY;
+      let newY = anchorBottom - newH;
+      if (newY < imageBoundsY.value) {
+        newY = imageBoundsY.value;
+        newH = anchorBottom - newY;
+      }
+      newH = Math.max(minBoxSize, newH);
+      newY = anchorBottom - newH;
+
+      if (aspectRatio.value > 0) {
+        let newW = newH * aspectRatio.value;
+        const maxW = imageBoundsWidth.value;
+        if (newW > maxW) { newW = maxW; newH = newW / aspectRatio.value; newY = anchorBottom - newH; }
+        const cx = cropX.value + cropWidth.value / 2;
+        let newX = cx - newW / 2;
+        newX = Math.max(imageBoundsX.value, Math.min(imageBoundsX.value + imageBoundsWidth.value - newW, newX));
+        cropX.value = newX;
+        cropWidth.value = newW;
+      }
+      cropY.value = newY;
+      cropHeight.value = newH;
+    });
+
+  const resizeGestureS = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
+    .onStart(() => {
+      startY.value = cropY.value;
+      startHeight.value = cropHeight.value;
+    })
+    .onUpdate((e) => {
+      let newH = startHeight.value + e.translationY;
+      const maxH = imageBoundsY.value + imageBoundsHeight.value - startY.value;
+      newH = Math.max(minBoxSize, Math.min(maxH, newH));
+
+      if (aspectRatio.value > 0) {
+        let newW = newH * aspectRatio.value;
+        const maxW = imageBoundsWidth.value;
+        if (newW > maxW) { newW = maxW; newH = newW / aspectRatio.value; }
+        const cx = cropX.value + cropWidth.value / 2;
+        let newX = cx - newW / 2;
+        newX = Math.max(imageBoundsX.value, Math.min(imageBoundsX.value + imageBoundsWidth.value - newW, newX));
+        cropX.value = newX;
+        cropWidth.value = newW;
+      }
+      cropHeight.value = newH;
+    });
+
+  const resizeGestureW = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
+    .onStart(() => {
+      startX.value = cropX.value;
+      startWidth.value = cropWidth.value;
+    })
+    .onUpdate((e) => {
+      const anchorRight = startX.value + startWidth.value;
+      let newW = startWidth.value - e.translationX;
+      let newX = anchorRight - newW;
+      if (newX < imageBoundsX.value) {
+        newX = imageBoundsX.value;
+        newW = anchorRight - newX;
+      }
+      newW = Math.max(minBoxSize, newW);
+      newX = anchorRight - newW;
+
+      if (aspectRatio.value > 0) {
+        let newH = newW / aspectRatio.value;
+        const maxH = imageBoundsHeight.value;
+        if (newH > maxH) { newH = maxH; newW = newH * aspectRatio.value; newX = anchorRight - newW; }
+        const cy = cropY.value + cropHeight.value / 2;
+        let newY = cy - newH / 2;
+        newY = Math.max(imageBoundsY.value, Math.min(imageBoundsY.value + imageBoundsHeight.value - newH, newY));
+        cropY.value = newY;
+        cropHeight.value = newH;
+      }
+      cropX.value = newX;
+      cropWidth.value = newW;
+    });
+
+  const resizeGestureE = Gesture.Pan()
+    .hitSlop(HANDLE_HIT_SLOP)
+    .onStart(() => {
+      startX.value = cropX.value;
+      startWidth.value = cropWidth.value;
+    })
+    .onUpdate((e) => {
+      let newW = startWidth.value + e.translationX;
+      const maxW = imageBoundsX.value + imageBoundsWidth.value - startX.value;
+      newW = Math.max(minBoxSize, Math.min(maxW, newW));
+
+      if (aspectRatio.value > 0) {
+        let newH = newW / aspectRatio.value;
+        const maxH = imageBoundsHeight.value;
+        if (newH > maxH) { newH = maxH; newW = newH * aspectRatio.value; }
+        const cy = cropY.value + cropHeight.value / 2;
+        let newY = cy - newH / 2;
+        newY = Math.max(imageBoundsY.value, Math.min(imageBoundsY.value + imageBoundsHeight.value - newH, newY));
+        cropY.value = newY;
+        cropHeight.value = newH;
+      }
+      cropWidth.value = newW;
+    });
+
   const panGesture = Gesture.Pan()
     .onStart(() => {
       startX.value = cropX.value;
       startY.value = cropY.value;
     })
-    .onUpdate((event) => {
-      let newX = startX.value + event.translationX;
-      let newY = startY.value + event.translationY;
+    .onUpdate((e) => {
+      let newX = startX.value + e.translationX;
+      let newY = startY.value + e.translationY;
 
-      // Constrain within image bounds using shared values
-      const minX = imageBoundsX.value;
-      const maxX =
-        imageBoundsX.value + imageBoundsWidth.value - cropWidth.value;
-      const minY = imageBoundsY.value;
-      const maxY =
-        imageBoundsY.value + imageBoundsHeight.value - cropHeight.value;
-
-      // Clamp to bounds
-      newX = Math.max(minX, Math.min(maxX, newX));
-      newY = Math.max(minY, Math.min(maxY, newY));
+      newX = Math.max(
+        imageBoundsX.value,
+        Math.min(imageBoundsX.value + imageBoundsWidth.value - cropWidth.value, newX)
+      );
+      newY = Math.max(
+        imageBoundsY.value,
+        Math.min(imageBoundsY.value + imageBoundsHeight.value - cropHeight.value, newY)
+      );
 
       cropX.value = newX;
       cropY.value = newY;
     });
 
-  // Animated styles
-  const cropBoxStyle = useAnimatedStyle(() => {
-    "worklet";
-
-    // Final safety clamp - ensure crop box never exceeds image bounds
-    const safeX = Math.max(
-      imageBoundsX.value,
-      Math.min(
-        imageBoundsX.value + imageBoundsWidth.value - cropWidth.value,
-        cropX.value
-      )
-    );
-
-    const safeY = Math.max(
-      imageBoundsY.value,
-      Math.min(
-        imageBoundsY.value + imageBoundsHeight.value - cropHeight.value,
-        cropY.value
-      )
-    );
-
-    const safeWidth = Math.min(
-      cropWidth.value,
-      imageBoundsX.value + imageBoundsWidth.value - safeX
-    );
-
-    const safeHeight = Math.min(
-      cropHeight.value,
-      imageBoundsY.value + imageBoundsHeight.value - safeY
-    );
-
-    return {
-      position: "absolute",
-      left: safeX,
-      top: safeY,
-      width: safeWidth,
-      height: safeHeight,
-      borderWidth: 2,
-      borderColor: "white",
-      backgroundColor: "transparent",
-    };
-  });
+  const cropBoxStyle = useAnimatedStyle(() => ({
+    position: "absolute" as const,
+    left: cropX.value,
+    top: cropY.value,
+    width: cropWidth.value,
+    height: cropHeight.value,
+    borderWidth: 2,
+    borderColor: "white",
+    backgroundColor: "transparent",
+    overflow: "visible" as const,
+  }));
 
   const maskStyle = useAnimatedStyle(() => ({
-    position: "absolute",
+    position: "absolute" as const,
     top: 0,
     left: 0,
     right: 0,
@@ -568,97 +463,75 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
     backgroundColor: "rgba(0,0,0,0.5)",
   }));
 
-  // Handle aspect ratio change
   const handleAspectChange = (newAspect: AspectRatio) => {
     if (!imageDimensions) return;
 
     setSelectedAspect(newAspect);
     const config = ASPECT_CONFIGS[newAspect];
+    const imgX = imageDimensions.x;
+    const imgY = imageDimensions.y;
+    const imgW = imageDimensions.width;
+    const imgH = imageDimensions.height;
 
-    let newWidth = cropWidth.value;
-    let newHeight = cropHeight.value;
-
-    if (config.ratio) {
-      const currentCenterX = cropX.value + cropWidth.value / 2;
-      const currentCenterY = cropY.value + cropHeight.value / 2;
-
-      // Calculate new dimensions based on ratio
-      if (config.ratio > 1) {
-        // Wider than tall (e.g., 16:9, 4:3)
-        newHeight = Math.min(
-          imageDimensions.height * 0.9,
-          newWidth / config.ratio
-        );
-        newWidth = newHeight * config.ratio;
-      } else {
-        // Taller than wide (e.g., 9:16)
-        newWidth = Math.min(
-          imageDimensions.width * 0.9,
-          newHeight * config.ratio
-        );
-        newHeight = newWidth / config.ratio;
-      }
-
-      // Ensure dimensions fit within image bounds
-      const maxPossibleWidth = imageDimensions.width;
-      const maxPossibleHeight = imageDimensions.height;
-
-      if (newWidth > maxPossibleWidth) {
-        newWidth = maxPossibleWidth;
-        newHeight = newWidth / config.ratio;
-      }
-
-      if (newHeight > maxPossibleHeight) {
-        newHeight = maxPossibleHeight;
-        newWidth = newHeight * config.ratio;
-      }
-
-      // Calculate new position centered on current position
-      let newX = Math.max(
-        imageDimensions.x,
-        Math.min(
-          imageDimensions.x + imageDimensions.width - newWidth,
-          currentCenterX - newWidth / 2
-        )
-      );
-      let newY = Math.max(
-        imageDimensions.y,
-        Math.min(
-          imageDimensions.y + imageDimensions.height - newHeight,
-          currentCenterY - newHeight / 2
-        )
-      );
-
-      // Final safety check - ensure crop box is completely within image
-      if (newX + newWidth > imageDimensions.x + imageDimensions.width) {
-        newX = imageDimensions.x + imageDimensions.width - newWidth;
-      }
-      if (newY + newHeight > imageDimensions.y + imageDimensions.height) {
-        newY = imageDimensions.y + imageDimensions.height - newHeight;
-      }
-
-      cropX.value = withSpring(newX);
-      cropY.value = withSpring(newY);
+    if (!config.ratio) {
+      // Free: expand to full image
+      cropX.value = withSpring(imgX);
+      cropY.value = withSpring(imgY);
+      cropWidth.value = withSpring(imgW);
+      cropHeight.value = withSpring(imgH);
+      return;
     }
 
+    const ratio = config.ratio;
+
+    // Fit the largest possible box with this ratio inside the image
+    let newWidth: number, newHeight: number;
+    if (imgW / imgH > ratio) {
+      newHeight = imgH;
+      newWidth = newHeight * ratio;
+    } else {
+      newWidth = imgW;
+      newHeight = newWidth / ratio;
+    }
+
+    // Center within image
+    const newX = imgX + (imgW - newWidth) / 2;
+    const newY = imgY + (imgH - newHeight) / 2;
+
+    cropX.value = withSpring(newX);
+    cropY.value = withSpring(newY);
     cropWidth.value = withSpring(newWidth);
     cropHeight.value = withSpring(newHeight);
   };
 
-  // Handle crop and save
   const handleDone = async () => {
     if (!imageDimensions || !originalImageSize) return;
+
+    // Cancel any running spring animations to read final target values
+    cancelAnimation(cropX);
+    cancelAnimation(cropY);
+    cancelAnimation(cropWidth);
+    cancelAnimation(cropHeight);
 
     try {
       const scaleX = originalImageSize.width / imageDimensions.width;
       const scaleY = originalImageSize.height / imageDimensions.height;
 
-      const cropConfig = {
-        originX: Math.max(0, (cropX.value - imageDimensions.x) * scaleX),
-        originY: Math.max(0, (cropY.value - imageDimensions.y) * scaleY),
-        width: Math.min(cropWidth.value * scaleX, originalImageSize.width),
-        height: Math.min(cropHeight.value * scaleY, originalImageSize.height),
-      };
+      const originX = Math.max(0, (cropX.value - imageDimensions.x) * scaleX);
+      const originY = Math.max(0, (cropY.value - imageDimensions.y) * scaleY);
+      const width = Math.min(
+        cropWidth.value * scaleX,
+        originalImageSize.width - originX
+      );
+      const height = Math.min(
+        cropHeight.value * scaleY,
+        originalImageSize.height - originY
+      );
+
+      // Ensure valid crop dimensions
+      if (width <= 0 || height <= 0) return;
+
+      const cropConfig = { originX, originY, width, height };
 
       const result = await ImageManipulator.manipulateAsync(
         sourceUri,
@@ -675,8 +548,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <StatusBar barStyle="dark-content" backgroundColor="black" />
-        {/* Header */}
+        <StatusBar barStyle="light-content" backgroundColor="black" />
         <View style={styles.header}>
           <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
             <Text style={styles.headerButtonText}>取消</Text>
@@ -684,49 +556,64 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
           <Text style={styles.headerTitle}>裁剪图片</Text>
           <View style={styles.headerButton} />
         </View>
-        {/* Image and crop area */}
-        <View style={styles.imageContainer} onLayout={handleContainerLayout}>
-          <Image
-            source={{ uri: sourceUri }}
-            style={styles.image}
-            contentFit="contain"
-            onLoad={handleImageLoad}
-          />
 
-          {/* Mask overlay */}
-          <Animated.View style={maskStyle} pointerEvents="none" />
+        <View style={styles.imageOuterContainer}>
+          <View style={styles.imageContainer} onLayout={handleContainerLayout}>
+            <Image
+              source={{ uri: sourceUri }}
+              style={styles.image}
+              contentFit="contain"
+              onLoad={handleImageLoad}
+            />
 
-          {/* Crop box */}
+            <Animated.View style={maskStyle} pointerEvents="none" />
+
           {imageDimensions && (
-            <GestureDetector gesture={panGesture}>
-              <Animated.View style={cropBoxStyle}>
-                {/* Grid lines */}
-                <View style={styles.gridContainer}>
-                  <View style={[styles.gridLine, { top: "33.33%" }]} />
-                  <View style={[styles.gridLine, { top: "66.66%" }]} />
-                  <View style={[styles.gridLineVertical, { left: "33.33%" }]} />
-                  <View style={[styles.gridLineVertical, { left: "66.66%" }]} />
-                </View>
+            <>
+              {/* Crop box - pan to move */}
+              <GestureDetector gesture={panGesture}>
+                <Animated.View style={cropBoxStyle}>
+                  <View style={styles.gridContainer}>
+                    <View style={[styles.gridLine, { top: "33.33%" }]} />
+                    <View style={[styles.gridLine, { top: "66.66%" }]} />
+                    <View style={[styles.gridLineVertical, { left: "33.33%" }]} />
+                    <View style={[styles.gridLineVertical, { left: "66.66%" }]} />
+                  </View>
 
-                {/* Corner handles */}
-                <GestureDetector gesture={resizeGestureNW}>
-                  <Animated.View style={[styles.handle, styles.handleNW]} />
-                </GestureDetector>
-                <GestureDetector gesture={resizeGestureNE}>
-                  <Animated.View style={[styles.handle, styles.handleNE]} />
-                </GestureDetector>
-                <GestureDetector gesture={resizeGestureSW}>
-                  <Animated.View style={[styles.handle, styles.handleSW]} />
-                </GestureDetector>
-                <GestureDetector gesture={resizeGestureSE}>
-                  <Animated.View style={[styles.handle, styles.handleSE]} />
-                </GestureDetector>
-              </Animated.View>
-            </GestureDetector>
+                  {/* Corner handles */}
+                  <GestureDetector gesture={resizeGestureNW}>
+                    <Animated.View style={[styles.handle, styles.handleNW]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureNE}>
+                    <Animated.View style={[styles.handle, styles.handleNE]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureSW}>
+                    <Animated.View style={[styles.handle, styles.handleSW]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureSE}>
+                    <Animated.View style={[styles.handle, styles.handleSE]} />
+                  </GestureDetector>
+
+                  {/* Edge handles */}
+                  <GestureDetector gesture={resizeGestureN}>
+                    <Animated.View style={[styles.edgeHandle, styles.edgeN]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureS}>
+                    <Animated.View style={[styles.edgeHandle, styles.edgeS]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureW}>
+                    <Animated.View style={[styles.edgeHandle, styles.edgeW]} />
+                  </GestureDetector>
+                  <GestureDetector gesture={resizeGestureE}>
+                    <Animated.View style={[styles.edgeHandle, styles.edgeE]} />
+                  </GestureDetector>
+                </Animated.View>
+              </GestureDetector>
+            </>
           )}
+          </View>
         </View>
 
-        {/* Bottom controls */}
         <View style={styles.bottomContainer}>
           <View style={styles.aspectContainer}>
             {(Object.keys(ASPECT_CONFIGS) as AspectRatio[]).map((aspectKey) => (
@@ -762,6 +649,8 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   );
 };
 
+const EDGE_THICKNESS = 30;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -786,9 +675,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
+  imageOuterContainer: {
+    flex: 1,
+    paddingHorizontal: IMAGE_AREA_PADDING,
+    paddingVertical: IMAGE_AREA_PADDING / 2,
+  },
   imageContainer: {
     flex: 1,
     position: "relative",
+    overflow: "visible",
   },
   image: {
     width: "100%",
@@ -814,28 +709,58 @@ const styles = StyleSheet.create({
   },
   handle: {
     position: "absolute",
-    width: 20,
-    height: 20,
+    width: HANDLE_VISUAL_SIZE,
+    height: HANDLE_VISUAL_SIZE,
     backgroundColor: "white",
-    borderRadius: 10,
+    borderRadius: HANDLE_VISUAL_SIZE / 2,
     borderWidth: 1,
     borderColor: "black",
+    zIndex: 10,
   },
   handleNW: {
-    top: -10,
-    left: -10,
+    top: -HANDLE_VISUAL_SIZE / 2,
+    left: -HANDLE_VISUAL_SIZE / 2,
   },
   handleNE: {
-    top: -10,
-    right: -10,
+    top: -HANDLE_VISUAL_SIZE / 2,
+    right: -HANDLE_VISUAL_SIZE / 2,
   },
   handleSW: {
-    bottom: -10,
-    left: -10,
+    bottom: -HANDLE_VISUAL_SIZE / 2,
+    left: -HANDLE_VISUAL_SIZE / 2,
   },
   handleSE: {
-    bottom: -10,
-    right: -10,
+    bottom: -HANDLE_VISUAL_SIZE / 2,
+    right: -HANDLE_VISUAL_SIZE / 2,
+  },
+  edgeHandle: {
+    position: "absolute",
+    backgroundColor: "transparent",
+    zIndex: 5,
+  },
+  edgeN: {
+    top: -EDGE_THICKNESS / 2,
+    left: HANDLE_VISUAL_SIZE,
+    right: HANDLE_VISUAL_SIZE,
+    height: EDGE_THICKNESS,
+  },
+  edgeS: {
+    bottom: -EDGE_THICKNESS / 2,
+    left: HANDLE_VISUAL_SIZE,
+    right: HANDLE_VISUAL_SIZE,
+    height: EDGE_THICKNESS,
+  },
+  edgeW: {
+    left: -EDGE_THICKNESS / 2,
+    top: HANDLE_VISUAL_SIZE,
+    bottom: HANDLE_VISUAL_SIZE,
+    width: EDGE_THICKNESS,
+  },
+  edgeE: {
+    right: -EDGE_THICKNESS / 2,
+    top: HANDLE_VISUAL_SIZE,
+    bottom: HANDLE_VISUAL_SIZE,
+    width: EDGE_THICKNESS,
   },
   bottomContainer: {
     paddingHorizontal: 36,
