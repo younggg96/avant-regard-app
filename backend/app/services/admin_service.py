@@ -1143,12 +1143,21 @@ class AdminService:
     # ==================== 增长统计 ====================
 
     def get_growth_stats(self, days: int = 30) -> dict:
-        """获取最近 N 天的用户/帖子/评论每日新增数量"""
+        """获取最近 N 天的用户/帖子/评论每日新增数量 + 累计用户总数"""
         from datetime import timedelta
 
         end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         start = end - timedelta(days=days)
         start_iso = start.isoformat()
+
+        # 统计窗口之前已有的用户总数
+        users_before = (
+            self.db.table("users")
+            .select("id", count="exact")
+            .lt("created_at", start_iso)
+            .execute()
+        )
+        base_user_count = users_before.count or 0
 
         users_raw = (
             self.db.table("users")
@@ -1185,14 +1194,18 @@ class AdminService:
         comment_counts = bucket(comments_raw.data)
 
         series = []
+        cumulative_users = base_user_count
         cursor = start
         while cursor < end:
             d = cursor.strftime("%Y-%m-%d")
+            daily_users = user_counts.get(d, 0)
+            cumulative_users += daily_users
             series.append({
                 "date": d,
-                "users": user_counts.get(d, 0),
+                "users": daily_users,
                 "posts": post_counts.get(d, 0),
                 "comments": comment_counts.get(d, 0),
+                "totalUsers": cumulative_users,
             })
             cursor += timedelta(days=1)
 
