@@ -8,6 +8,7 @@ from app.services.admin_service import admin_service
 from app.services.cache_service import cache_service
 from app.services.notification_service import notification_service
 from app.services.moderation_service import moderation_service
+from app.services.maintenance_service import maintenance_service
 from app.api.deps import get_current_admin_user
 from app.core.response import success
 
@@ -814,6 +815,38 @@ class RecommendConfigRequest(BaseModel):
     discovery_pool: DiscoveryPoolConfig = DiscoveryPoolConfig()
     random_pool: RandomPoolConfig = RandomPoolConfig()
     cold_start: ColdStartConfig = ColdStartConfig()
+
+
+# ==================== 维护模式 ====================
+
+class MaintenanceConfigRequest(BaseModel):
+    """维护模式配置更新请求"""
+    enabled: bool = Field(..., description="是否开启维护模式")
+    message: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="展示给用户的维护提示文案；留空则沿用已有文案",
+    )
+
+
+@router.get("/maintenance")
+async def get_maintenance_config(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取维护模式配置（管理员）"""
+    return success(maintenance_service.get_config())
+
+
+@router.put("/maintenance")
+async def update_maintenance_config(
+    request: MaintenanceConfigRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新维护模式配置（管理员）"""
+    config = maintenance_service.set_config(
+        enabled=request.enabled, message=request.message
+    )
+    return success(config)
 
 
 @router.get("/recommend-config")

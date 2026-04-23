@@ -28,9 +28,11 @@ from app.api.routes.banner import router as banner_router
 from app.api.routes.community import router as community_router
 from app.api.routes.moderation import router as moderation_router
 from app.api.routes.chat import router as chat_router
+from app.api.routes.maintenance import router as maintenance_router
 
 # 导入缓存服务
 from app.services.cache_service import cache_service
+from app.services.maintenance_service import maintenance_service
 
 
 @asynccontextmanager
@@ -69,6 +71,48 @@ app.add_middleware(
 )
 
 
+# 维护模式中间件：开启后除白名单外全部返回 503
+# 白名单：认证、管理员后台、维护状态查询、健康检查、OpenAPI 文档、根路径
+_MAINTENANCE_ALLOWLIST_PREFIXES = (
+    "/api/auth",
+    "/api/admin",
+    "/api/maintenance",
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+)
+
+
+@app.middleware("http")
+async def maintenance_mode_middleware(request: Request, call_next):
+    """维护模式统一拦截。
+
+    - OPTIONS 请求（CORS 预检）不拦截，否则浏览器会因预检失败拿不到真实错误体。
+    - 白名单前缀直接放行，保证管理员仍能登录并关闭维护。
+    - 其他情况在维护开启时统一返回 503，响应体与业务错误信封保持一致。
+    """
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    path = request.url.path
+    if path == "/" or any(path.startswith(p) for p in _MAINTENANCE_ALLOWLIST_PREFIXES):
+        return await call_next(request)
+
+    config = maintenance_service.get_config()
+    if config.get("enabled"):
+        return JSONResponse(
+            status_code=503,
+            content=error(
+                code=503,
+                message=config.get("message", "服务维护中"),
+                data={"maintenance": True},
+            ),
+        )
+
+    return await call_next(request)
+
+
 # 全局异常处理
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -97,6 +141,7 @@ app.include_router(banner_router, prefix="/api")
 app.include_router(community_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
+app.include_router(maintenance_router, prefix="/api")
 
 
 # 健康检查
