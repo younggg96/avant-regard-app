@@ -690,15 +690,16 @@ class PostService:
         return sanitized.strip()
 
     def search_posts(
-        self, keyword: str, limit: int = 50, current_user_id: Optional[int] = None
-    ) -> List[Post]:
+        self, keyword: str, limit: int = 20, offset: int = 0, current_user_id: Optional[int] = None
+    ) -> dict:
         """
         搜索帖子（支持标题、内容、作者名搜索）
         仅返回已发布且审核通过的帖子
+        返回 { "posts": [...], "total": N }
         """
         safe_keyword = self._sanitize_search_keyword(keyword)
         if not safe_keyword:
-            return []
+            return {"posts": [], "total": 0}
 
         blocked_ids = self._get_blocked_user_ids(current_user_id)
 
@@ -712,7 +713,6 @@ class PostService:
                     f"title.ilike.*{safe_keyword}*,content_text.ilike.*{safe_keyword}*"
                 )
                 .order("created_at", desc=True)
-                .limit(limit)
                 .execute()
             )
 
@@ -743,7 +743,6 @@ class PostService:
                         .eq("status", "PUBLISHED")
                         .eq("audit_status", "APPROVED")
                         .order("created_at", desc=True)
-                        .limit(limit)
                         .execute()
                     )
                     for p in user_posts_result.data or []:
@@ -754,10 +753,12 @@ class PostService:
                             post_ids.add(p["id"])
 
             posts_from_content.sort(key=lambda x: x.createdAt, reverse=True)
-            return posts_from_content[:limit]
+            total = len(posts_from_content)
+            paginated = posts_from_content[offset:offset + limit]
+            return {"posts": paginated, "total": total}
         except Exception as e:
             print(f"Search posts error: {e}")
-            return []
+            return {"posts": [], "total": 0}
 
     def get_posts_by_community_id(
         self, community_id: int, current_user_id: Optional[int] = None

@@ -17,14 +17,18 @@ router = APIRouter(prefix="/posts", tags=["帖子"])
 @router.get("/search")
 async def search_posts(
     keyword: str = Query(..., description="搜索关键词"),
-    limit: int = Query(50, description="返回数量限制"),
+    limit: int = Query(20, ge=1, le=50, description="每页数量"),
+    offset: int = Query(0, ge=0, description="偏移量"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """搜索帖子（支持标题、内容、作者名搜索）"""
-    results = post_service.search_posts(
-        keyword=keyword, limit=limit, current_user_id=current_user_id
+    result = post_service.search_posts(
+        keyword=keyword, limit=limit, offset=offset, current_user_id=current_user_id
     )
-    return success([r.model_dump() for r in results])
+    return success({
+        "posts": [r.model_dump() for r in result["posts"]],
+        "total": result["total"],
+    })
 
 
 @router.get("")
