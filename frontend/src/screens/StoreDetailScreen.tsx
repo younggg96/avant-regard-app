@@ -935,6 +935,21 @@ const StoreDetailScreen = () => {
                   </HStack>
                 </VStack>
               )}
+
+              {/* 店铺介绍 */}
+              {!!store.description && (
+                <VStack mb="$md">
+                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
+                    店铺介绍
+                  </Text>
+                  <Box bg="$gray50" rounded="$sm" p="$md">
+                    <Text fontSize="$sm" color="$black" lineHeight={22} style={styles.textRegular}>
+                      {store.description}
+                    </Text>
+                  </Box>
+                </VStack>
+              )}
+
               {/* 店铺图片 */}
               {(store.images?.length ?? 0) > 0 && (
                 <VStack mb="$md">

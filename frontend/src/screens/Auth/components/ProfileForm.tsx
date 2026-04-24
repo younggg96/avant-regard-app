@@ -34,6 +34,7 @@ interface ProfileFormProps {
   hasMoreBrands: boolean;
   brandSearchKeyword: string;
   onBrandSearch: (keyword: string) => void;
+  onBrandSearchSubmit: () => void;
   onLoadMoreBrands: () => void;
 }
 
@@ -52,6 +53,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   hasMoreBrands,
   brandSearchKeyword,
   onBrandSearch,
+  onBrandSearchSubmit,
   onLoadMoreBrands,
 }) => {
   // 切换品牌选择
@@ -322,6 +324,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               onChangeText={onBrandSearch}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={onBrandSearchSubmit}
             />
             {brandSearchKeyword.length > 0 && (
               <TouchableOpacity onPress={() => onBrandSearch("")}>

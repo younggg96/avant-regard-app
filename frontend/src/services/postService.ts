@@ -906,14 +906,21 @@ export async function getPostsByBrandName(
  * 搜索帖子（支持标题、内容、作者名搜索）
  * GET /api/posts/search
  * @param keyword 搜索关键词
- * @param limit 返回数量限制
+ * @param limit 每页数量
+ * @param offset 偏移量
  */
+export interface SearchPostsResult {
+  posts: Post[];
+  total: number;
+}
+
 export async function searchPosts(
   keyword: string,
-  limit: number = 50,
-): Promise<Post[]> {
-  return request<Post[]>(
-    `/api/posts/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+  limit: number = 20,
+  offset: number = 0,
+): Promise<SearchPostsResult> {
+  return request<SearchPostsResult>(
+    `/api/posts/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}&offset=${offset}`,
     {
       method: "GET",
     },

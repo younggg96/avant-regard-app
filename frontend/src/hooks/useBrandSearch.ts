@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { brandService, Brand } from "../services/brandService";
 
 const BRAND_PAGE_SIZE = 30;
-const SEARCH_DEBOUNCE_MS = 300;
 
 interface UseBrandSearchReturn {
   brands: Brand[];
@@ -10,6 +9,7 @@ interface UseBrandSearchReturn {
   isLoading: boolean;
   hasMore: boolean;
   setSearchQuery: (query: string) => void;
+  search: () => void;
   loadMore: () => void;
   reload: () => void;
 }
@@ -17,14 +17,43 @@ interface UseBrandSearchReturn {
 export function useBrandSearch(): UseBrandSearchReturn {
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
   const [searchResults, setSearchResults] = useState<Brand[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQueryState] = useState("");
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const isLoadingMoreRef = useRef(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchQueryRef = useRef("");
+
+  const setSearchQuery = useCallback((query: string) => {
+    setSearchQueryState(query);
+    searchQueryRef.current = query;
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, []);
+
+  const search = useCallback(async () => {
+    const query = searchQueryRef.current.trim();
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await brandService.searchBrands(query, 30);
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Failed to search brands:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
 
   const loadBrands = useCallback(
     async (reset: boolean = true) => {
@@ -63,7 +92,7 @@ export function useBrandSearch(): UseBrandSearchReturn {
   );
 
   const loadMore = useCallback(() => {
-    if (isLoadingMoreRef.current || !hasMore || isLoadingList || searchQuery.trim()) {
+    if (isLoadingMoreRef.current || !hasMore || isLoadingList || searchQueryRef.current.trim()) {
       return;
     }
 
@@ -89,41 +118,7 @@ export function useBrandSearch(): UseBrandSearchReturn {
         setIsLoadingList(false);
         isLoadingMoreRef.current = false;
       });
-  }, [page, hasMore, isLoadingList, searchQuery]);
-
-  useEffect(() => {
-    const query = searchQuery.trim();
-
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current);
-    }
-
-    if (!query) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    searchTimerRef.current = setTimeout(async () => {
-      try {
-        const results = await brandService.searchBrands(query, 30);
-        setSearchResults(results);
-      } catch (error) {
-        console.error("Failed to search brands:", error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      if (searchTimerRef.current) {
-        clearTimeout(searchTimerRef.current);
-      }
-    };
-  }, [searchQuery]);
+  }, [page, hasMore, isLoadingList]);
 
   useEffect(() => {
     loadBrands(true);
@@ -139,6 +134,7 @@ export function useBrandSearch(): UseBrandSearchReturn {
     isLoading,
     hasMore: isSearchActive ? false : hasMore,
     setSearchQuery,
+    search,
     loadMore,
     reload: () => loadBrands(true),
   };

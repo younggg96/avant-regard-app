@@ -64,7 +64,7 @@ import {
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_HEIGHT = Math.round(SCREEN_HEIGHT * 0.6);
-const SEARCH_DEBOUNCE_MS = 300;
+
 
 type PostTab = "published" | "favorite" | "liked";
 
@@ -168,17 +168,18 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   }, [visible, category]);
 
   // ---------- Data loading ----------
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (searchKeyword?: string) => {
     if (!category) return;
     const reqId = ++reqIdRef.current;
     setLoading(true);
     try {
-      const trimmed = keyword.trim();
+      const trimmed = (searchKeyword ?? "").trim();
 
       if (category === "post") {
         let list: ServicePost[] = [];
         if (trimmed.length > 0) {
-          list = await searchPosts(trimmed, 30);
+          const result = await searchPosts(trimmed, 30);
+          list = result.posts;
         } else if (currentUserId) {
           if (postTab === "published") {
             list = await getPostsByUserId(currentUserId, "PUBLISHED");
@@ -218,15 +219,12 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     } finally {
       if (reqId === reqIdRef.current) setLoading(false);
     }
-  }, [category, keyword, postTab, currentUserId]);
+  }, [category, postTab, currentUserId]);
 
   useEffect(() => {
     if (!visible || !category) return;
-    const handle = setTimeout(() => {
-      loadData();
-    }, keyword ? SEARCH_DEBOUNCE_MS : 0);
-    return () => clearTimeout(handle);
-  }, [visible, category, keyword, postTab, loadData]);
+    loadData();
+  }, [visible, category, postTab, loadData]);
 
   // ---------- Row renderers ----------
   const handleSelectPost = useCallback(
@@ -620,9 +618,10 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
             placeholder={placeholder}
             placeholderTextColor={theme.colors.gray200}
             returnKeyType="search"
+            onSubmitEditing={() => loadData(keyword)}
           />
           {keyword.length > 0 && (
-            <TouchableOpacity onPress={() => setKeyword("")}>
+            <TouchableOpacity onPress={() => { setKeyword(""); loadData(); }}>
               <Ionicons
                 name="close-circle"
                 size={16}

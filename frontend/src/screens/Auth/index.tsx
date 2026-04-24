@@ -45,6 +45,7 @@ const AuthScreen = () => {
     hasMoreBrands,
     brandSearchKeyword,
     handleBrandSearch,
+    handleBrandSearchSubmit,
     loadMoreBrands,
 
     // 引用
@@ -165,6 +166,7 @@ const AuthScreen = () => {
         hasMoreBrands={hasMoreBrands}
         brandSearchKeyword={brandSearchKeyword}
         onBrandSearch={handleBrandSearch}
+        onBrandSearchSubmit={handleBrandSearchSubmit}
         onLoadMoreBrands={loadMoreBrands}
         onComplete={handleCompleteProfile}
       />

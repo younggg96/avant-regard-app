@@ -33,7 +33,6 @@ import {
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
 
 const PAGE_SIZE = 20;
-const SEARCH_DEBOUNCE_MS = 400;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
@@ -50,7 +49,6 @@ const StoreListScreen = () => {
     // 搜索相关状态
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearching, setIsSearching] = useState(false);
-    const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const inputRef = useRef<TextInput>(null);
 
     // 店铺详情弹窗状态
@@ -63,30 +61,15 @@ const StoreListScreen = () => {
         loadInitialStores();
     }, []);
 
-    // 搜索防抖
-    useEffect(() => {
-        if (searchDebounceRef.current) {
-            clearTimeout(searchDebounceRef.current);
-        }
-
-        searchDebounceRef.current = setTimeout(() => {
-            handleSearch(searchQuery);
-        }, SEARCH_DEBOUNCE_MS);
-
-        return () => {
-            if (searchDebounceRef.current) {
-                clearTimeout(searchDebounceRef.current);
-            }
-        };
-    }, [searchQuery]);
-
-    const handleSearch = async (query: string) => {
+    const handleSearch = async () => {
+        const query = searchQuery.trim();
+        Keyboard.dismiss();
         try {
             setIsSearching(true);
             const result = await getStoresPaginated({
                 page: 1,
                 pageSize: PAGE_SIZE,
-                searchQuery: query.trim() || undefined,
+                searchQuery: query || undefined,
             });
             setStores(result.stores);
             syncCountsFromStores(result.stores);
@@ -120,6 +103,7 @@ const StoreListScreen = () => {
         setSearchQuery("");
         inputRef.current?.blur();
         Keyboard.dismiss();
+        loadInitialStores();
     };
 
     // 下拉刷新
@@ -392,47 +376,48 @@ const StoreListScreen = () => {
     // 搜索框组件
     const renderSearchBar = () => (
         <Box px="$md" py="$sm" bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
-            <HStack
-                alignItems="center"
-                bg="$gray50"
-                rounded="$lg"
-                px="$md"
-                h={44}
-            >
-                <Ionicons
-                    name="search"
-                    size={18}
-                    color={theme.colors.gray300}
-                />
-                <TextInput
-                    ref={inputRef}
-                    style={styles.searchInput}
-                    placeholder="搜索店铺名称、城市或品牌..."
-                    placeholderTextColor={theme.colors.gray300}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    returnKeyType="search"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
-                {isSearching && (
-                    <ActivityIndicator size="small" color={theme.colors.gray300} />
-                )}
-                {searchQuery.length > 0 && !isSearching && (
-                    <Pressable onPress={clearSearch} hitSlop={8}>
-                        <Ionicons
-                            name="close-circle"
-                            size={18}
-                            color={theme.colors.gray300}
-                        />
-                    </Pressable>
-                )}
+            <HStack alignItems="center" gap="$sm">
+                <HStack
+                    flex={1}
+                    alignItems="center"
+                    bg="$gray50"
+                    rounded="$lg"
+                    px="$md"
+                    h={44}
+                >
+                    <Ionicons
+                        name="search"
+                        size={18}
+                        color={theme.colors.gray300}
+                    />
+                    <TextInput
+                        ref={inputRef}
+                        style={styles.searchInput}
+                        placeholder="搜索店铺名称、城市或品牌..."
+                        placeholderTextColor={theme.colors.gray300}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        onSubmitEditing={handleSearch}
+                        returnKeyType="search"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    {searchQuery.length > 0 && !isSearching && (
+                        <Pressable onPress={clearSearch} hitSlop={8}>
+                            <Ionicons
+                                name="close-circle"
+                                size={18}
+                                color={theme.colors.gray300}
+                            />
+                        </Pressable>
+                    )}
+                </HStack>
+                <Pressable onPress={handleSearch} px="$lg" py="$sm" bg="$black" rounded="$sm" h={44} justifyContent="center">
+                    <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                        搜索
+                    </Text>
+                </Pressable>
             </HStack>
-            {searchQuery.trim().length > 0 && (
-                <Text fontSize="$xs" color="$gray300" mt="$xs" ml="$xs">
-                    找到 {totalStores} 个结果
-                </Text>
-            )}
         </Box>
     );
 

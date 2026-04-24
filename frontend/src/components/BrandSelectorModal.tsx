@@ -23,6 +23,7 @@ interface BrandSelectorModalProps {
   isLoading?: boolean;
   hasMore?: boolean;
   onSearchChange: (query: string) => void;
+  onSearch: () => void;
   onSelectBrand: (brand: Brand) => void;
   onClose: () => void;
   onLoadMore?: () => void;
@@ -35,6 +36,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
   isLoading = false,
   hasMore = false,
   onSearchChange,
+  onSearch,
   onSelectBrand,
   onClose,
   onLoadMore,
@@ -80,17 +82,28 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                   />
                 </Pressable>
               </HStack>
-              <Input
-                value={searchQuery}
-                onChangeText={onSearchChange}
-                placeholder="搜索品牌名称..."
-                placeholderTextColor={theme.colors.gray400}
-                variant="outline"
-                sx={{
-                  fontSize: 14,
-                  height: 40,
-                }}
-              />
+              <HStack alignItems="center" gap="$sm">
+                <Box flex={1}>
+                  <Input
+                    value={searchQuery}
+                    onChangeText={onSearchChange}
+                    onSubmitEditing={onSearch}
+                    placeholder="搜索品牌名称..."
+                    placeholderTextColor={theme.colors.gray400}
+                    variant="outline"
+                    returnKeyType="search"
+                    sx={{
+                      fontSize: 14,
+                      height: 40,
+                    }}
+                  />
+                </Box>
+                <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
+                  <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                    搜索
+                  </Text>
+                </Pressable>
+              </HStack>
             </Box>
 
             <FlatList

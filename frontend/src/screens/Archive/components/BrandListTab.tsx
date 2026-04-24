@@ -58,18 +58,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   const isLoadingMoreRef = useRef(false);
   const lastScrollY = useRef(0);
 
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 400);
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, [searchQuery]);
+  const searchQueryRef = useRef("");
 
   const buildParams = useCallback(
     (pageNum: number) => {
@@ -77,11 +66,12 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         page: pageNum,
         pageSize: PAGE_SIZE,
       };
-      if (debouncedSearch) params.keyword = debouncedSearch;
+      const kw = searchQueryRef.current.trim();
+      if (kw) params.keyword = kw;
       if (selectedCategory !== "all") params.category = selectedCategory;
       return params;
     },
-    [debouncedSearch, selectedCategory]
+    [selectedCategory]
   );
 
   const loadBrands = useCallback(async () => {
@@ -127,6 +117,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       isLoadingMoreRef.current = false;
     }
   }, [page, hasMore, isLoading, brands.length, buildParams]);
+
+  const handleSearch = useCallback(() => {
+    searchQueryRef.current = searchQuery;
+    loadBrands();
+  }, [searchQuery, loadBrands]);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -266,9 +261,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
               placeholderTextColor={theme.colors.gray300}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <TouchableOpacity onPress={() => { setSearchQuery(""); searchQueryRef.current = ""; loadBrands(); }}>
                 <Ionicons
                   name="close-circle"
                   size={18}

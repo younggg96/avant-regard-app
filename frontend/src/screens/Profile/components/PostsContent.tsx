@@ -44,6 +44,7 @@ interface PostsContentProps {
   onBrandSubmissionPress: (sub: BrandSubmission) => void;
   onStoreCardPress: (store: UserSubmittedStore) => void;
   onStoreActivityPress: (storeId: string) => void;
+  onLike?: (postId: string) => void;
 }
 
 const ContributionContent = ({
@@ -356,6 +357,7 @@ export const PostsContent = ({
   onBrandSubmissionPress,
   onStoreCardPress,
   onStoreActivityPress,
+  onLike,
 }: PostsContentProps) => {
   if (activeTab === "storeActivity") {
     return (
@@ -444,7 +446,7 @@ export const PostsContent = ({
                   isEditableTab ? () => onDeletePost(post) : undefined
                 }
               >
-                <PostCard post={post} onPress={() => onPostPress(post)} />
+                <PostCard post={post} onPress={() => onPostPress(post)} onLike={onLike} />
               </Pressable>
             ))}
           </VStack>

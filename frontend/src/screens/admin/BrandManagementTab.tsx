@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   RefreshControl,
@@ -23,14 +23,9 @@ const BrandManagementTab = () => {
   const [keyword, setKeyword] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      fetchBrands(1, keyword);
-    }, 400);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [keyword]);
+    fetchBrands(1, keyword);
+  }, []);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingBrand, setEditingBrand] = useState<AdminBrand | null>(null);

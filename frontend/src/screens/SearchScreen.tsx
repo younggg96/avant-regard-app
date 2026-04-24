@@ -8,6 +8,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -21,6 +23,7 @@ import { searchBrands, Brand } from "../services/brandService";
 import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 
 type SearchType = "posts" | "users" | "brands";
 
@@ -50,30 +53,17 @@ const SearchScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [postTotal, setPostTotal] = useState(0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const postOffsetRef = useRef(0);
+
+  const POST_PAGE_SIZE = 20;
 
   // 加载搜索历史
   useEffect(() => {
     setSearchHistory([]);
   }, []);
-
-  // 输入防抖：自动搜索
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setPostResults([]);
-      setUserResults([]);
-      setBrandResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      handleSearch();
-    }, 400);
-
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  }, [searchQuery]);
 
   // 执行搜索
   const handleSearch = useCallback(async () => {
@@ -82,6 +72,7 @@ const SearchScreen = () => {
       setUserResults([]);
       setBrandResults([]);
       setIsSearching(false);
+      setPostTotal(0);
       return;
     }
 
@@ -93,8 +84,12 @@ const SearchScreen = () => {
       const query = searchQuery.trim();
 
       if (searchType === "posts") {
-        const posts = await searchPosts(query);
-        setPostResults(posts);
+        postOffsetRef.current = 0;
+        const result = await searchPosts(query, POST_PAGE_SIZE, 0);
+        setPostResults(result.posts);
+        setPostTotal(result.total);
+        setHasMorePosts(result.posts.length < result.total);
+        postOffsetRef.current = result.posts.length;
       } else if (searchType === "users") {
         const users = await searchUsers(query);
         setUserResults(users);
@@ -128,6 +123,8 @@ const SearchScreen = () => {
       }
       if (searchType === "posts") {
         setPostResults([]);
+        setPostTotal(0);
+        setHasMorePosts(false);
       } else if (searchType === "users") {
         setUserResults([]);
       } else {
@@ -149,8 +146,12 @@ const SearchScreen = () => {
       try {
         const query = searchQuery.trim();
         if (type === "posts") {
-          const posts = await searchPosts(query);
-          setPostResults(posts);
+          postOffsetRef.current = 0;
+          const result = await searchPosts(query, POST_PAGE_SIZE, 0);
+          setPostResults(result.posts);
+          setPostTotal(result.total);
+          setHasMorePosts(result.posts.length < result.total);
+          postOffsetRef.current = result.posts.length;
         } else if (type === "users") {
           const users = await searchUsers(query);
           setUserResults(users);
@@ -167,6 +168,8 @@ const SearchScreen = () => {
         }
         if (type === "posts") {
           setPostResults([]);
+          setPostTotal(0);
+          setHasMorePosts(false);
         } else if (type === "users") {
           setUserResults([]);
         } else {
@@ -186,6 +189,9 @@ const SearchScreen = () => {
     setUserResults([]);
     setBrandResults([]);
     setIsSearching(false);
+    setPostTotal(0);
+    setHasMorePosts(false);
+    postOffsetRef.current = 0;
   }, []);
 
   // 点击历史记录
@@ -197,8 +203,12 @@ const SearchScreen = () => {
 
       try {
         if (searchType === "posts") {
-          const posts = await searchPosts(keyword);
-          setPostResults(posts);
+          postOffsetRef.current = 0;
+          const result = await searchPosts(keyword, POST_PAGE_SIZE, 0);
+          setPostResults(result.posts);
+          setPostTotal(result.total);
+          setHasMorePosts(result.posts.length < result.total);
+          postOffsetRef.current = result.posts.length;
         } else if (searchType === "users") {
           const users = await searchUsers(keyword);
           setUserResults(users);
@@ -215,6 +225,8 @@ const SearchScreen = () => {
         }
         if (searchType === "posts") {
           setPostResults([]);
+          setPostTotal(0);
+          setHasMorePosts(false);
         } else if (searchType === "users") {
           setUserResults([]);
         } else {
@@ -350,14 +362,35 @@ const SearchScreen = () => {
     };
   };
 
-  // 分离左右列数据
-  const getLeftColumnPosts = useCallback(() => {
-    return postResults.filter((_, index) => index % 2 === 0);
-  }, [postResults]);
+  const loadMorePosts = useCallback(async () => {
+    if (isLoadingMore || !hasMorePosts || !searchQuery.trim()) return;
+    setIsLoadingMore(true);
+    try {
+      const result = await searchPosts(searchQuery.trim(), POST_PAGE_SIZE, postOffsetRef.current);
+      setPostResults((prev) => [...prev, ...result.posts]);
+      setPostTotal(result.total);
+      postOffsetRef.current += result.posts.length;
+      setHasMorePosts(postOffsetRef.current < result.total);
+    } catch (error) {
+      console.error("Load more posts failed:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMorePosts, searchQuery]);
 
-  const getRightColumnPosts = useCallback(() => {
-    return postResults.filter((_, index) => index % 2 === 1);
-  }, [postResults]);
+  const handlePostScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 200;
+      if (isCloseToBottom) loadMorePosts();
+    },
+    [loadMorePosts]
+  );
+
+  const postColumns = splitIntoMasonryColumns(
+    postResults,
+    (item) => item.imageUrls?.[0],
+  );
 
   // 渲染历史记录项
   const renderHistoryItem = ({ item }: { item: SearchHistory }) => (
@@ -557,7 +590,7 @@ const SearchScreen = () => {
         <Text fontSize="$md" color="$gray600">
           找到{" "}
           <Text fontWeight="$semibold" color="$black">
-            {postResults.length}
+            {postTotal}
           </Text>{" "}
           个帖子
         </Text>
@@ -567,42 +600,33 @@ const SearchScreen = () => {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          onScroll={handlePostScroll}
+          scrollEventThrottle={200}
         >
-          <HStack px="$sm" pt="$sm">
-            {/* Left Column */}
-            <VStack flex={1} pr="$xs">
-              {getLeftColumnPosts().map((item) => {
-                const post = convertToPost(item);
-                return (
-                  <Box key={item.id} mb="$sm">
-                    <PostCard
-                      post={post}
-                      onPress={() => handlePostPress(item)}
-                      onAuthorPress={handleAuthorPress}
-                      onLike={handleLike}
-                    />
-                  </Box>
-                );
-              })}
-            </VStack>
-
-            {/* Right Column */}
-            <VStack flex={1} pl="$xs">
-              {getRightColumnPosts().map((item) => {
-                const post = convertToPost(item);
-                return (
-                  <Box key={item.id} mb="$sm">
-                    <PostCard
-                      post={post}
-                      onPress={() => handlePostPress(item)}
-                      onAuthorPress={handleAuthorPress}
-                      onLike={handleLike}
-                    />
-                  </Box>
-                );
-              })}
-            </VStack>
+          <HStack px="$sm" pt="$sm" alignItems="flex-start">
+            {postColumns.map((column, colIndex) => (
+              <VStack key={colIndex} flex={1} px="$xs">
+                {column.map((item) => {
+                  const post = convertToPost(item);
+                  return (
+                    <Box key={item.id} mb="$sm">
+                      <PostCard
+                        post={post}
+                        onPress={() => handlePostPress(item)}
+                        onAuthorPress={handleAuthorPress}
+                        onLike={handleLike}
+                      />
+                    </Box>
+                  );
+                })}
+              </VStack>
+            ))}
           </HStack>
+          {isLoadingMore && (
+            <VStack py="$md" alignItems="center">
+              <ActivityIndicator size="small" color={theme.colors.gray400} />
+            </VStack>
+          )}
         </ScrollView>
       ) : (
         <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">

@@ -120,7 +120,6 @@ const PublishOutfitScreen = () => {
   const [hasMoreShows, setHasMoreShows] = useState(true);
   const [totalShows, setTotalShows] = useState(0);
   const isLoadingMoreRef = useRef(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 品牌相关状态
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
@@ -132,6 +131,7 @@ const PublishOutfitScreen = () => {
     isLoading: isLoadingBrands,
     hasMore: hasMoreBrands,
     setSearchQuery: setBrandSearchQuery,
+    search: searchBrands,
     loadMore: loadMoreBrands,
   } = useBrandSearch();
 
@@ -261,36 +261,17 @@ const PublishOutfitScreen = () => {
     }
   }, []);
 
-  // 处理搜索词变化（带 debounce）
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-
-    // 清除之前的定时器
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
     if (!query.trim()) {
       setSearchResults([]);
       setIsSearching(false);
-      return;
     }
-
-    // 设置 debounce 延迟搜索
-    setIsSearching(true);
-    searchTimeoutRef.current = setTimeout(() => {
-      searchShowsFromApi(query);
-    }, 300);
-  }, [searchShowsFromApi]);
-
-  // 清理搜索定时器
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
   }, []);
+
+  const handleSearchSubmit = useCallback(() => {
+    searchShowsFromApi(searchQuery);
+  }, [searchQuery, searchShowsFromApi]);
 
   useEffect(() => {
     loadShows(true);
@@ -1305,6 +1286,7 @@ const PublishOutfitScreen = () => {
         isLoading={isLoadingShows || isSearching}
         hasMore={hasMoreShows && !searchQuery.trim()}
         onSearchChange={handleSearchChange}
+        onSearch={handleSearchSubmit}
         onSelectShow={handleSelectShow}
         onClose={() => setShowSelector(false)}
         onLoadMore={loadMoreShows}
@@ -1329,6 +1311,7 @@ const PublishOutfitScreen = () => {
         isLoading={isLoadingBrands}
         hasMore={hasMoreBrands}
         onSearchChange={setBrandSearchQuery}
+        onSearch={searchBrands}
         onSelectBrand={handleSelectBrand}
         onClose={() => setShowBrandSelector(false)}
         onLoadMore={loadMoreBrands}

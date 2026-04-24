@@ -181,20 +181,19 @@ const EditProfileScreen = () => {
     loadBrands(brandPage + 1, brandSearchKeyword);
   };
 
-  // 搜索品牌（防抖处理）
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const handleBrandSearch = (keyword: string) => {
     setBrandSearchKeyword(keyword);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(() => {
+    if (!keyword.trim()) {
       setBrandPage(1);
       setHasMoreBrands(true);
-      loadBrands(1, keyword, true);
-    }, 300);
+      loadBrands(1, "", true);
+    }
+  };
+
+  const handleBrandSearchSubmit = () => {
+    setBrandPage(1);
+    setHasMoreBrands(true);
+    loadBrands(1, brandSearchKeyword, true);
   };
 
   // 初始加载品牌
@@ -906,6 +905,8 @@ const EditProfileScreen = () => {
                 onChangeText={handleBrandSearch}
                 autoCapitalize="none"
                 autoCorrect={false}
+                returnKeyType="search"
+                onSubmitEditing={handleBrandSearchSubmit}
               />
               {brandSearchKeyword.length > 0 && (
                 <TouchableOpacity onPress={() => handleBrandSearch("")}>

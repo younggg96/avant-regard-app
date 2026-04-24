@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   RefreshControl,
@@ -81,8 +81,6 @@ const StoreManagementTab = () => {
   });
   const [imageUploading, setImageUploading] = useState(false);
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   useEffect(() => {
     loadCountries();
   }, []);
@@ -97,14 +95,8 @@ const StoreManagementTab = () => {
   }, [filterCountry]);
 
   useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      fetchStores(1);
-    }, 400);
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [keyword, filterCountry, filterCity]);
+    fetchStores(1);
+  }, [filterCountry, filterCity]);
 
   const loadCountries = async () => {
     try {

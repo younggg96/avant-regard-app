@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -20,7 +20,6 @@ import {
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
 
 const PAGE_SIZE = 20;
-const SEARCH_DEBOUNCE_MS = 600;
 
 const StoreSearchScreen = () => {
   const navigation = useNavigation();
@@ -34,25 +33,6 @@ const StoreSearchScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setStores([]);
-      setTotalStores(0);
-      setIsSearching(false);
-      return;
-    }
-
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      handleSearch();
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [searchQuery]);
 
   const handleSearch = useCallback(async () => {
     const query = searchQuery.trim();

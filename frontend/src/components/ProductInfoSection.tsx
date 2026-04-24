@@ -55,6 +55,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
     isLoading: brandLoading,
     hasMore: brandHasMore,
     setSearchQuery: setBrandQuery,
+    search: searchBrands,
     loadMore: loadMoreBrands,
   } = useBrandSearch();
 
@@ -307,6 +308,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
         isLoading={brandLoading}
         hasMore={brandHasMore}
         onSearchChange={setBrandQuery}
+        onSearch={searchBrands}
         onSelectBrand={handleSelectBrand}
         onClose={() => setShowBrandPicker(false)}
         onLoadMore={loadMoreBrands}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   RefreshControl,
@@ -43,7 +43,6 @@ const BannersTab = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchResults, setSearchResults] = useState<(Post | Show)[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = useCallback(async (keyword: string, linkType: string) => {
     if (!keyword.trim()) {
@@ -53,7 +52,7 @@ const BannersTab = () => {
     try {
       setSearchLoading(true);
       if (linkType === "POST") {
-        const results = await searchPosts(keyword.trim(), 20);
+        const results = (await searchPosts(keyword.trim(), 20)).posts;
         setSearchResults(results);
       } else if (linkType === "SHOW") {
         const results = await searchShows(keyword.trim(), 20);
@@ -66,11 +65,9 @@ const BannersTab = () => {
     }
   }, []);
 
-  const handleSearchInputChange = useCallback((text: string, linkType: string) => {
+  const handleSearchInputChange = useCallback((text: string) => {
     setSearchKeyword(text);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => handleSearch(text, linkType), 400);
-  }, [handleSearch]);
+  }, []);
 
   const handleSelectSearchResult = useCallback((item: Post | Show) => {
     setForm((prev) => ({ ...prev, link_value: String(item.id) }));
@@ -372,7 +369,9 @@ const BannersTab = () => {
                           placeholder={form.link_type === "POST" ? "搜索帖子标题 / 内容 / 作者..." : "搜索品牌 / 季节 / 类别..."}
                           placeholderTextColor={theme.colors.gray300}
                           value={searchKeyword}
-                          onChangeText={(text: string) => handleSearchInputChange(text, form.link_type)}
+                          onChangeText={(text: string) => handleSearchInputChange(text)}
+                          onSubmitEditing={() => handleSearch(searchKeyword, form.link_type)}
+                          returnKeyType="search"
                           variant="outline"
                           size="sm"
                         />

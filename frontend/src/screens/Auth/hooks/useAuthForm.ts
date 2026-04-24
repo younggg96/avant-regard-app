@@ -42,7 +42,6 @@ export const useAuthForm = () => {
   const [hasMoreBrands, setHasMoreBrands] = useState(true);
   const [brandSearchKeyword, setBrandSearchKeyword] = useState("");
   const brandPageSize = 50;
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 输入框引用
   const phoneInputRef = useRef<TextInput>(null);
@@ -197,23 +196,23 @@ export const useAuthForm = () => {
     loadBrands(brandPage + 1, brandSearchKeyword);
   }, [loadingMoreBrands, hasMoreBrands, brandPage, brandSearchKeyword, loadBrands]);
 
-  // 搜索品牌（防抖处理）
   const handleBrandSearch = useCallback(
     (keyword: string) => {
       setBrandSearchKeyword(keyword);
-
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-
-      searchTimeoutRef.current = setTimeout(() => {
+      if (!keyword.trim()) {
         setBrandPage(1);
         setHasMoreBrands(true);
-        loadBrands(1, keyword, true);
-      }, 300);
+        loadBrands(1, "", true);
+      }
     },
     [loadBrands]
   );
+
+  const handleBrandSearchSubmit = useCallback(() => {
+    setBrandPage(1);
+    setHasMoreBrands(true);
+    loadBrands(1, brandSearchKeyword, true);
+  }, [loadBrands, brandSearchKeyword]);
 
   // 当显示品牌选择器时加载品牌
   useEffect(() => {
@@ -821,6 +820,7 @@ export const useAuthForm = () => {
     hasMoreBrands,
     brandSearchKeyword,
     handleBrandSearch,
+    handleBrandSearchSubmit,
     loadMoreBrands,
 
     // 引用

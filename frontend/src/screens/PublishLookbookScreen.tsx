@@ -90,6 +90,7 @@ const PublishLookbookScreen = () => {
     isLoading: isLoadingBrands,
     hasMore: hasMoreBrands,
     setSearchQuery: setBrandSearchQuery,
+    search: searchBrands,
     loadMore: loadMoreBrands,
   } = useBrandSearch();
 
@@ -1119,6 +1120,7 @@ const PublishLookbookScreen = () => {
         isLoading={isLoadingBrands}
         hasMore={hasMoreBrands}
         onSearchChange={setBrandSearchQuery}
+        onSearch={searchBrands}
         onSelectBrand={handleSelectBrand}
         onClose={() => setShowBrandSelector(false)}
         onLoadMore={loadMoreBrands}

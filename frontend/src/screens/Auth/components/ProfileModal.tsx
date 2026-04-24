@@ -32,6 +32,7 @@ interface ProfileModalProps {
   hasMoreBrands: boolean;
   brandSearchKeyword: string;
   onBrandSearch: (keyword: string) => void;
+  onBrandSearchSubmit: () => void;
   onLoadMoreBrands: () => void;
   onComplete: () => void;
 }
@@ -53,6 +54,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   hasMoreBrands,
   brandSearchKeyword,
   onBrandSearch,
+  onBrandSearchSubmit,
   onLoadMoreBrands,
   onComplete,
 }) => {
@@ -95,6 +97,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               hasMoreBrands={hasMoreBrands}
               brandSearchKeyword={brandSearchKeyword}
               onBrandSearch={onBrandSearch}
+              onBrandSearchSubmit={onBrandSearchSubmit}
               onLoadMoreBrands={onLoadMoreBrands}
             />
 

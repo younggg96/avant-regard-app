@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -119,24 +119,23 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
     loadBrands(brandPage + 1, brandSearchKeyword);
   }, [loadingMoreBrands, hasMoreBrands, brandPage, brandSearchKeyword, loadBrands]);
 
-  // 搜索品牌（防抖处理）
-  const brandSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleBrandSearch = useCallback(
     (keyword: string) => {
       setBrandSearchKeyword(keyword);
-
-      if (brandSearchTimerRef.current) {
-        clearTimeout(brandSearchTimerRef.current);
-      }
-
-      brandSearchTimerRef.current = setTimeout(() => {
+      if (!keyword.trim()) {
         setBrandPage(1);
         setHasMoreBrands(true);
-        loadBrands(1, keyword, true);
-      }, 400);
+        loadBrands(1, "", true);
+      }
     },
     [loadBrands]
   );
+
+  const handleBrandSearchSubmit = useCallback(() => {
+    setBrandPage(1);
+    setHasMoreBrands(true);
+    loadBrands(1, brandSearchKeyword, true);
+  }, [loadBrands, brandSearchKeyword]);
 
   // 当显示品牌选择器时加载品牌
   useEffect(() => {
@@ -487,6 +486,8 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
               onChangeText={handleBrandSearch}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={handleBrandSearchSubmit}
             />
             {brandSearchKeyword.length > 0 && (
               <TouchableOpacity onPress={() => handleBrandSearch("")}>

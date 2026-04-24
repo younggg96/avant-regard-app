@@ -5,6 +5,7 @@ import {
   Dimensions,
   StyleSheet,
   GestureResponderEvent,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,6 +34,7 @@ interface ShowSelectorModalProps {
   isLoading?: boolean;
   hasMore?: boolean;
   onSearchChange: (query: string) => void;
+  onSearch: () => void;
   onSelectShow: (show: Show) => void;
   onClose: () => void;
   onLoadMore?: () => void;
@@ -45,6 +47,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
   isLoading = false,
   hasMore = false,
   onSearchChange,
+  onSearch,
   onSelectShow,
   onClose,
   onLoadMore,
@@ -90,17 +93,28 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                   />
                 </Pressable>
               </HStack>
-              <Input
-                value={searchQuery}
-                onChangeText={onSearchChange}
-                placeholder="搜索品牌、设计师、季度、类别、年份..."
-                placeholderTextColor={theme.colors.gray400}
-                variant="outline"
-                sx={{
-                  fontSize: 14,
-                  height: 40,
-                }}
-              />
+              <HStack alignItems="center" gap="$sm">
+                <Box flex={1}>
+                  <Input
+                    value={searchQuery}
+                    onChangeText={onSearchChange}
+                    onSubmitEditing={onSearch}
+                    placeholder="搜索品牌、设计师、季度、类别、年份..."
+                    placeholderTextColor={theme.colors.gray400}
+                    variant="outline"
+                    returnKeyType="search"
+                    sx={{
+                      fontSize: 14,
+                      height: 40,
+                    }}
+                  />
+                </Box>
+                <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
+                  <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                    搜索
+                  </Text>
+                </Pressable>
+              </HStack>
             </Box>
 
             <FlatList

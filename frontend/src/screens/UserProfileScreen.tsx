@@ -44,7 +44,7 @@ import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
-import { postService, Post as ApiPost } from "../services/postService";
+import { postService, Post as ApiPost, likePost, unlikePost } from "../services/postService";
 import {
   followService,
   isFollowingUser,
@@ -825,6 +825,73 @@ const UserProfileScreen = () => {
     );
   };
 
+  const handleLike = useCallback(
+    async (postId: string) => {
+      const allPosts = Object.values(tabsData).flatMap((td) => td.posts);
+      const target = allPosts.find((p) => p.id === postId);
+      if (!target) return;
+
+      const isCurrentlyLiked = !!target.engagement?.isLiked;
+      const nextLiked = !isCurrentlyLiked;
+
+      const updatePost = (post: DisplayPost) =>
+        post.id === postId
+          ? {
+              ...post,
+              engagement: {
+                ...post.engagement,
+                isLiked: nextLiked,
+                likes: nextLiked
+                  ? (post.engagement?.likes || 0) + 1
+                  : Math.max(0, (post.engagement?.likes || 0) - 1),
+              },
+            }
+          : post;
+
+      setTabsData((prev) => {
+        const next = { ...prev };
+        for (const key of Object.keys(next) as TabType[]) {
+          next[key] = { ...next[key], posts: next[key].posts.map(updatePost) };
+        }
+        return next;
+      });
+
+      try {
+        const numericPostId = parseInt(postId, 10);
+        const uid = currentUser?.userId || 0;
+        if (isCurrentlyLiked) {
+          await unlikePost(numericPostId, uid);
+        } else {
+          await likePost(numericPostId, uid);
+        }
+      } catch (err) {
+        console.error("点赞操作失败:", err);
+        const rollbackPost = (post: DisplayPost) =>
+          post.id === postId
+            ? {
+                ...post,
+                engagement: {
+                  ...post.engagement,
+                  isLiked: isCurrentlyLiked,
+                  likes: isCurrentlyLiked
+                    ? (post.engagement?.likes || 0) + 1
+                    : Math.max(0, (post.engagement?.likes || 0) - 1),
+                },
+              }
+            : post;
+
+        setTabsData((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(next) as TabType[]) {
+            next[key] = { ...next[key], posts: next[key].posts.map(rollbackPost) };
+          }
+          return next;
+        });
+      }
+    },
+    [tabsData, currentUser]
+  );
+
   const renderPostsContent = () => {
     if (activeTab === "archive") return renderContributionContent();
 
@@ -875,6 +942,7 @@ const UserProfileScreen = () => {
                   key={post.id}
                   post={post}
                   onPress={handlePostPress}
+                  onLike={handleLike}
                 />
               ))}
             </VStack>
