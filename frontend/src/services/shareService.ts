@@ -21,47 +21,41 @@ export interface ShareContent {
   type: "text" | "image" | "webPage";
 }
 
-// 分享配置
+export type ShareContentType = "post" | "store" | "brand" | "show" | "user";
+
 const SHARE_CONFIG = {
-  // 应用 URL Scheme，用于深度链接
   APP_SCHEME: "avantregard",
-  // 通用链接域名（需要后端支持）
-  UNIVERSAL_LINK_DOMAIN: "app.avantregard.com",
-  // 网页分享页面基础 URL
-  WEB_SHARE_BASE_URL: "https://app.avantregard.com/share",
-  // 应用名称
+  SITE_URL: "https://avantregard.com",
   APP_NAME: "AVANT REGARD",
-  // 默认分享描述
   DEFAULT_DESCRIPTION: "发现时尚，分享穿搭灵感",
-  // 默认分享图片
-  DEFAULT_IMAGE: "https://app.avantregard.com/share/default-card.png",
+  DEFAULT_IMAGE: "https://avantregard.com/share/default-card.png",
 };
 
-/**
- * 生成帖子的深度链接
- * @param postId 帖子ID
- * @returns 深度链接 URL
- */
+const CONTENT_TYPE_PATH: Record<ShareContentType, string> = {
+  post: "/posts",
+  store: "/stores",
+  brand: "/archive/brands",
+  show: "/archive/shows",
+  user: "/users",
+};
+
+export const generateShareUrl = (
+  contentType: ShareContentType,
+  id: string | number,
+): string => {
+  return `${SHARE_CONFIG.SITE_URL}${CONTENT_TYPE_PATH[contentType]}/${id}`;
+};
+
 export const generateDeepLink = (postId: string): string => {
   return `${SHARE_CONFIG.APP_SCHEME}://post/${postId}`;
 };
 
-/**
- * 生成帖子的网页分享链接
- * @param postId 帖子ID
- * @returns 网页链接 URL
- */
 export const generateWebShareUrl = (postId: string): string => {
-  return `${SHARE_CONFIG.WEB_SHARE_BASE_URL}/post/${postId}`;
+  return generateShareUrl("post", postId);
 };
 
-/**
- * 生成通用链接（iOS Universal Links / Android App Links）
- * @param postId 帖子ID
- * @returns 通用链接 URL
- */
 export const generateUniversalLink = (postId: string): string => {
-  return `https://${SHARE_CONFIG.UNIVERSAL_LINK_DOMAIN}/post/${postId}`;
+  return generateShareUrl("post", postId);
 };
 
 /**
@@ -84,13 +78,94 @@ export const buildShareContent = (post: Post): ShareContent => {
   };
 };
 
-/**
- * 生成分享消息文本
- * @param content 分享内容
- * @returns 格式化的分享消息
- */
+export interface GenericShareInput {
+  contentType: ShareContentType;
+  id: string | number;
+  title: string;
+  subtitle: string;
+}
+
+export const buildGenericShareContent = (input: GenericShareInput): ShareContent => {
+  const webUrl = generateShareUrl(input.contentType, input.id);
+  return {
+    title: input.title,
+    description: input.subtitle.length > 50
+      ? `${input.subtitle.substring(0, 50)}...`
+      : input.subtitle,
+    webUrl,
+    type: "webPage",
+  };
+};
+
 const formatShareMessage = (content: ShareContent): string => {
   return `【${content.title}】\n${content.description}\n\n点击查看详情：${content.webUrl}\n\n来自 ${SHARE_CONFIG.APP_NAME}`;
+};
+
+export const copyShareUrl = async (url: string): Promise<boolean> => {
+  try {
+    await Clipboard.setStringAsync(url);
+    Alert.show("链接已复制", "可以粘贴分享给好友");
+    return true;
+  } catch (error) {
+    console.error("复制链接失败:", error);
+    Alert.show("复制失败", "请稍后重试");
+    return false;
+  }
+};
+
+export const shareWithSystemGeneric = async (
+  content: ShareContent,
+): Promise<boolean> => {
+  try {
+    const message = formatShareMessage(content);
+    const result = await Share.share(
+      {
+        message,
+        title: content.title,
+        url: Platform.OS === "ios" ? content.webUrl : undefined,
+      },
+      { dialogTitle: "分享", subject: content.title },
+    );
+    return result.action === Share.sharedAction;
+  } catch (error) {
+    console.error("系统分享失败:", error);
+    Alert.show("分享失败", "请稍后重试");
+    return false;
+  }
+};
+
+export const shareToWeChatGeneric = async (
+  content: ShareContent,
+): Promise<boolean> => {
+  try {
+    const isInstalled = await isWeChatInstalled();
+    if (!isInstalled) {
+      Alert.show("未安装微信", "请先安装微信客户端");
+      return false;
+    }
+    return await shareWithSystemGeneric(content);
+  } catch (error) {
+    console.error("分享到微信失败:", error);
+    Alert.show("分享失败", "请稍后重试");
+    return false;
+  }
+};
+
+export const shareToWeiboGeneric = async (
+  content: ShareContent,
+): Promise<boolean> => {
+  try {
+    const isInstalled = await isWeiboInstalled();
+    if (!isInstalled) {
+      Alert.show("未安装微博", "请先安装微博客户端");
+      return false;
+    }
+    return await shareWithSystemGeneric(content);
+  } catch (error) {
+    console.error("分享到微博失败:", error);
+    Alert.show("分享失败", "请稍后重试");
+    return false;
+  }
 };
 
 /**
@@ -315,17 +390,23 @@ export const getAvailablePlatforms = async (): Promise<SharePlatform[]> => {
 };
 
 export default {
+  generateShareUrl,
   generateDeepLink,
   generateWebShareUrl,
   generateUniversalLink,
   buildShareContent,
+  buildGenericShareContent,
   copyLink,
+  copyShareUrl,
   isWeChatInstalled,
   isWeiboInstalled,
   shareToWeChat,
+  shareToWeChatGeneric,
   shareToWeChatMoments,
   shareToWeibo,
+  shareToWeiboGeneric,
   shareWithSystem,
+  shareWithSystemGeneric,
   shareToplatform,
   getAvailablePlatforms,
 };

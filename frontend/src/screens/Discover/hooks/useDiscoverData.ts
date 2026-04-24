@@ -288,7 +288,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         if (tab === "forum") {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
         } else if (tab === "recommend") {
-          await Promise.all([fetchRecommendPosts(), fetchBanners()]);
+          await fetchRecommendPosts();
         } else if (tab === "following") {
           await fetchFollowingPosts();
         }
@@ -309,7 +309,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     const initData = async () => {
       setTabLoading((prev) => ({ ...prev, recommend: true }));
       try {
-        await Promise.all([fetchRecommendPosts(), fetchBanners()]);
+        await fetchRecommendPosts();
         setTabLoaded((prev) => ({ ...prev, recommend: true }));
       } catch (err) {
         console.error("初始化加载推荐数据失败:", err);
@@ -319,7 +319,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       setIsInitialized(true);
     };
     initData();
-  }, [fetchRecommendPosts, fetchBanners]);
+  }, [fetchRecommendPosts]);
 
   /**
    * 刷新数据 - 刷新时也更新 tabLoaded 状态
@@ -331,7 +331,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         if (activeTab === "forum") {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
         } else if (activeTab === "recommend") {
-          await Promise.all([fetchRecommendPosts(), fetchBanners()]);
+          await fetchRecommendPosts();
         } else {
           await fetchFollowingPosts();
         }

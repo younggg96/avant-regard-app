@@ -78,6 +78,10 @@ interface PostCardProps {
   onPress?: (post: Post) => void;
   onAuthorPress?: (authorId: string) => void;
   onLike?: (postId: string) => void;
+  coverImageSize?: ImageSize;
+  coverImagePriority?: "low" | "normal" | "high";
+  showCoverPlaceholder?: boolean;
+  coverImageTransition?: number;
 }
 
 const PostCardInner = ({
@@ -85,6 +89,10 @@ const PostCardInner = ({
   onPress,
   onAuthorPress,
   onLike,
+  coverImageSize = ImageSize.MEDIUM,
+  coverImagePriority,
+  showCoverPlaceholder = true,
+  coverImageTransition,
 }: PostCardProps) => {
   if (!post || !post.id || !post.author) {
     return null;
@@ -114,6 +122,10 @@ const PostCardInner = ({
         <View>
           <PostCoverMedia
             uri={displayImage}
+            size={coverImageSize}
+            priority={coverImagePriority}
+            showPlaceholder={showCoverPlaceholder}
+            transition={coverImageTransition}
             style={[
               styles.image,
               { aspectRatio: mediaRatio },

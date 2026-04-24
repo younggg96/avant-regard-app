@@ -17,6 +17,8 @@ interface PostCoverMediaProps {
   style?: PostCoverStyle;
   size?: ImageSize;
   contentFit?: "cover" | "contain";
+  showPlaceholder?: boolean;
+  transition?: number;
   /**
    * Optional priority override. Leave undefined to keep the default
    * "normal" priority that's correct for feed covers. Set to "high" only
@@ -49,6 +51,8 @@ export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
   style,
   size = ImageSize.MEDIUM,
   contentFit = "cover",
+  showPlaceholder = true,
+  transition,
   priority,
 }) => {
   if (isVideoUrl(uri)) {
@@ -68,6 +72,8 @@ export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
       size={size}
       style={style as StyleProp<ImageStyle>}
       contentFit={contentFit}
+      showPlaceholder={showPlaceholder}
+      transition={transition}
       priority={priority}
     />
   );

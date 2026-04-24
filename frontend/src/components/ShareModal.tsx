@@ -69,7 +69,7 @@ const SHARE_PLATFORMS: PlatformConfig[] = [
   {
     id: "more",
     name: "更多",
-    icon: "ellipsis-horizontal",
+    icon: "share-outline",
     iconColor: theme.colors.gray700,
     bgColor: theme.colors.gray100,
   },

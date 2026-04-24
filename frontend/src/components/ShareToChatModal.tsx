@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Dimensions,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
@@ -30,6 +31,15 @@ import { Post as ServicePost } from "../services/postService";
 import { BuyerStore, BuyerStoreDetail } from "../services/buyerStoreService";
 import { Brand } from "../services/brandService";
 import { UserInfo } from "../services/userInfoService";
+import {
+  ShareContentType,
+  generateShareUrl,
+  copyShareUrl,
+  shareWithSystemGeneric,
+  shareToWeChatGeneric,
+  shareToWeiboGeneric,
+  buildGenericShareContent,
+} from "../services/shareService";
 
 export interface PostSharePayload {
   postId: string;
@@ -125,6 +135,7 @@ interface ShareToChatModalProps {
   store?: ShareableStore | null;
   brand?: Brand | null;
   show?: ShareableShow | null;
+  user?: ShareableUser | null;
   onClose: () => void;
   onShareComplete?: () => void;
 }
@@ -200,9 +211,11 @@ interface SharePreview {
   imageUrl?: string;
   title: string;
   subtitle: string;
-  messageType: "post_card" | "store_card" | "brand_card" | "show_card";
+  messageType: "post_card" | "store_card" | "brand_card" | "show_card" | "user_card";
   payload: string;
   placeholderIcon?: keyof typeof Ionicons.glyphMap;
+  contentType: ShareContentType;
+  contentId: string | number;
 }
 
 function resolvePreview(
@@ -210,6 +223,7 @@ function resolvePreview(
   store?: ShareableStore | null,
   brand?: Brand | null,
   show?: ShareableShow | null,
+  user?: ShareableUser | null,
 ): SharePreview | null {
   if (post) {
     const p = buildPostSharePayload(post);
@@ -219,6 +233,8 @@ function resolvePreview(
       subtitle: `@${p.authorName}`,
       messageType: "post_card",
       payload: JSON.stringify(p),
+      contentType: "post",
+      contentId: p.postId,
     };
   }
   if (store) {
@@ -230,6 +246,8 @@ function resolvePreview(
       messageType: "store_card",
       payload: JSON.stringify(p),
       placeholderIcon: "storefront-outline",
+      contentType: "store",
+      contentId: p.storeId,
     };
   }
   if (brand) {
@@ -242,6 +260,8 @@ function resolvePreview(
       messageType: "brand_card",
       payload: JSON.stringify(p),
       placeholderIcon: "pricetag-outline",
+      contentType: "brand",
+      contentId: p.brandId,
     };
   }
   if (show) {
@@ -254,6 +274,22 @@ function resolvePreview(
       messageType: "show_card",
       payload: JSON.stringify(p),
       placeholderIcon: "sparkles-outline",
+      contentType: "show",
+      contentId: p.showId,
+    };
+  }
+  if (user) {
+    const p = buildUserSharePayload(user);
+    const parts = [p.location, p.primaryTitle].filter(Boolean);
+    return {
+      imageUrl: p.avatarUrl,
+      title: p.username,
+      subtitle: parts.length ? parts.join(" · ") : "用户主页",
+      messageType: "user_card",
+      payload: JSON.stringify(p),
+      placeholderIcon: "person-outline",
+      contentType: "user",
+      contentId: p.userId,
     };
   }
   return null;
@@ -265,6 +301,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   store,
   brand,
   show,
+  user,
   onClose,
   onShareComplete,
 }) => {
@@ -321,7 +358,47 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
-  const preview = resolvePreview(post, store, brand, show);
+  const preview = resolvePreview(post, store, brand, show, user);
+
+  const shareUrl = preview
+    ? generateShareUrl(preview.contentType, preview.contentId)
+    : "";
+
+  const handleCopyLink = useCallback(async () => {
+    if (!shareUrl) return;
+    await copyShareUrl(shareUrl);
+  }, [shareUrl]);
+
+  const buildShareContent = useCallback(() => {
+    if (!preview) return null;
+    return buildGenericShareContent({
+      contentType: preview.contentType,
+      id: preview.contentId,
+      title: preview.title,
+      subtitle: preview.subtitle,
+    });
+  }, [preview]);
+
+  const handleWeChatShare = useCallback(async () => {
+    const content = buildShareContent();
+    if (!content) return;
+    const success = await shareToWeChatGeneric(content);
+    if (success) onClose();
+  }, [buildShareContent, onClose]);
+
+  const handleWeiboShare = useCallback(async () => {
+    const content = buildShareContent();
+    if (!content) return;
+    const success = await shareToWeiboGeneric(content);
+    if (success) onClose();
+  }, [buildShareContent, onClose]);
+
+  const handleSystemShare = useCallback(async () => {
+    const content = buildShareContent();
+    if (!content) return;
+    const success = await shareWithSystemGeneric(content);
+    if (success) onClose();
+  }, [buildShareContent, onClose]);
 
   const handleSend = useCallback(
     async (conversation: Conversation) => {
@@ -419,12 +496,19 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
             <OptimizedImage
               uri={preview.imageUrl}
               size={ImageSize.THUMBNAIL}
-              style={s.previewImage}
+              style={[
+                s.previewImage,
+                preview.messageType === "user_card" && s.previewImageRound,
+              ]}
               contentFit="cover"
               lazy
             />
           ) : preview.placeholderIcon ? (
-            <View style={[s.previewImage, s.previewPlaceholder]}>
+            <View style={[
+              s.previewImage,
+              s.previewPlaceholder,
+              preview.messageType === "user_card" && s.previewImageRound,
+            ]}>
               <Ionicons name={preview.placeholderIcon} size={22} color={theme.colors.gray300} />
             </View>
           ) : null}
@@ -437,6 +521,51 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
             </Text>
           </View>
         </View>
+
+        {/* Social share platforms */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.platformsRow}
+          style={s.platformsScroll}
+        >
+          <TouchableOpacity style={s.platformItem} onPress={handleWeChatShare} activeOpacity={0.6}>
+            <View style={[s.platformIcon, { backgroundColor: "#07C160" }]}>
+              <Ionicons name="chatbubble-ellipses" size={22} color="#fff" />
+            </View>
+            <Text style={s.platformLabel}>微信</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.platformItem} onPress={handleWeChatShare} activeOpacity={0.6}>
+            <View style={[s.platformIcon, { backgroundColor: "#07C160" }]}>
+              <Ionicons name="aperture" size={22} color="#fff" />
+            </View>
+            <Text style={s.platformLabel}>朋友圈</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.platformItem} onPress={handleWeiboShare} activeOpacity={0.6}>
+            <View style={[s.platformIcon, { backgroundColor: "#E6162D" }]}>
+              <Ionicons name="logo-rss" size={22} color="#fff" />
+            </View>
+            <Text style={s.platformLabel}>微博</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.platformItem} onPress={handleCopyLink} activeOpacity={0.6}>
+            <View style={[s.platformIcon, { backgroundColor: theme.colors.gray100 }]}>
+              <Ionicons name="link" size={22} color={theme.colors.gray700} />
+            </View>
+            <Text style={s.platformLabel}>复制链接</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={s.platformItem} onPress={handleSystemShare} activeOpacity={0.6}>
+            <View style={[s.platformIcon, { backgroundColor: theme.colors.gray100 }]}>
+              <Ionicons name="share-outline" size={22} color={theme.colors.gray700} />
+            </View>
+            <Text style={s.platformLabel}>更多</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        <View style={s.divider} />
 
         {/* Conversations list */}
         {loading ? (
@@ -524,6 +653,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  previewImageRound: {
+    borderRadius: 24,
+  },
   previewInfo: {
     flex: 1,
     justifyContent: "center",
@@ -540,8 +672,39 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
   list: {
-    maxHeight: 320,
+    maxHeight: 260,
     paddingHorizontal: 16,
+  },
+  platformsScroll: {
+    flexGrow: 0,
+    marginBottom: 4,
+  },
+  platformsRow: {
+    paddingHorizontal: 16,
+    gap: 20,
+  },
+  platformItem: {
+    alignItems: "center",
+    width: 56,
+  },
+  platformIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  platformLabel: {
+    fontSize: 11,
+    color: theme.colors.gray300,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.gray100,
+    marginHorizontal: 16,
+    marginVertical: 8,
   },
   conversationRow: {
     flexDirection: "row",

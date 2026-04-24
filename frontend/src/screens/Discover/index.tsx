@@ -27,6 +27,8 @@ import { TabContent } from "./components/TabContent";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 
+const RECOMMEND_TAB_DOUBLE_TAP_MS = 700;
+
 // 骨架屏 Header 占位（匹配 DiscoverHeader 布局）
 const SkeletonHeader: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
@@ -133,10 +135,12 @@ const DiscoverScreen: React.FC = () => {
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const totalInteractionUnread = unreadNotificationCount + unreadChatCount;
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
+  const [recommendScrollToTopSignal, setRecommendScrollToTopSignal] = useState(0);
 
   // 滑动视图引用
   const scrollViewRef = useRef<RNScrollView>(null);
   const hasInitialScrolled = useRef(false);
+  const lastRecommendTabPressAt = useRef(0);
 
   // 数据 Hook
   const {
@@ -147,7 +151,6 @@ const DiscoverScreen: React.FC = () => {
     communities,
     isInitialized,
     refreshing,
-    loading,
     error,
     userInfoCache,
     tabLoading,
@@ -155,8 +158,6 @@ const DiscoverScreen: React.FC = () => {
     handleRefresh,
     handleLike,
     loadTabData,
-    recommendHasMore,
-    recommendLoadingMore,
     loadMoreRecommend,
   } = useDiscoverData();
 
@@ -232,8 +233,37 @@ const DiscoverScreen: React.FC = () => {
     (navigation.navigate as any)("Main", { screen: "Interaction" });
   }, [navigation]);
 
-  // 处理标签切换 - 点击 tab 时也触发懒加载
+  const refreshRecommendAndScrollToTop = useCallback(() => {
+    setActiveTab("recommend");
+    scrollViewRef.current?.scrollTo({
+      x: TAB_INDEX_MAP.recommend * SCREEN_WIDTH,
+      animated: true,
+    });
+
+    // Give immediate visual feedback, then scroll again after refresh inserts
+    // newer items at the top.
+    setRecommendScrollToTopSignal((value) => value + 1);
+    void handleRefresh("recommend").finally(() => {
+      setRecommendScrollToTopSignal((value) => value + 1);
+    });
+  }, [handleRefresh]);
+
+  // 处理标签切换 - 点击 tab 时也触发懒加载。重按/双击推荐 Tab 时刷新并回到顶部。
   const handleTabChange = useCallback((tab: TabType) => {
+    const now = Date.now();
+    const isRecommendTab = tab === "recommend";
+    const isRecommendDoubleTap =
+      isRecommendTab &&
+      now - lastRecommendTabPressAt.current <= RECOMMEND_TAB_DOUBLE_TAP_MS;
+    const isActiveRecommendRetap = isRecommendTab && activeTab === "recommend";
+
+    lastRecommendTabPressAt.current = isRecommendTab ? now : 0;
+
+    if (isActiveRecommendRetap || isRecommendDoubleTap) {
+      refreshRecommendAndScrollToTop();
+      return;
+    }
+
     setActiveTab(tab);
     scrollViewRef.current?.scrollTo({
       x: TAB_INDEX_MAP[tab] * SCREEN_WIDTH,
@@ -241,7 +271,7 @@ const DiscoverScreen: React.FC = () => {
     });
     // 触发懒加载
     loadTabData(tab);
-  }, [loadTabData]);
+  }, [activeTab, loadTabData, refreshRecommendAndScrollToTop]);
 
   // 处理滑动结束 - 切换 tab 时触发懒加载
   const handleScrollEnd = useCallback(
@@ -413,10 +443,10 @@ const DiscoverScreen: React.FC = () => {
           banners={banners}
           communities={communities}
           error={error}
-          loading={loading}
           refreshing={refreshing}
           tabLoading={tabLoading.forum}
           tabLoaded={tabLoaded.forum}
+          isActive={activeTab === "forum"}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}
@@ -430,10 +460,10 @@ const DiscoverScreen: React.FC = () => {
           banners={banners}
           communities={communities}
           error={error}
-          loading={loading}
           refreshing={refreshing}
           tabLoading={tabLoading.recommend}
           tabLoaded={tabLoaded.recommend}
+          isActive={activeTab === "recommend"}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}
@@ -441,8 +471,7 @@ const DiscoverScreen: React.FC = () => {
           onLike={handleLike}
           onBannerPress={handleBannerPress}
           onEndReached={loadMoreRecommend}
-          hasMore={recommendHasMore}
-          loadingMore={recommendLoadingMore}
+          scrollToTopSignal={recommendScrollToTopSignal}
         />
         <TabContent
           tab="following"
@@ -450,10 +479,10 @@ const DiscoverScreen: React.FC = () => {
           banners={banners}
           communities={communities}
           error={error}
-          loading={loading}
           refreshing={refreshing}
           tabLoading={tabLoading.following}
           tabLoaded={tabLoaded.following}
+          isActive={activeTab === "following"}
           onRefresh={onRefresh}
           onScroll={handleVerticalScroll}
           onPostPress={handlePostPress}

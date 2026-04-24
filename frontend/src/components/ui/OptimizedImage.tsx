@@ -98,9 +98,11 @@ const OptimizedImageInner = ({
   // Reset load state when the underlying uri changes so recycled cells
   // show the spinner again instead of a stale "loaded" flag.
   React.useEffect(() => {
-    setIsLoaded(false);
+    if (showPlaceholder) {
+      setIsLoaded(false);
+    }
     setHasError(false);
-  }, [optimizedUri]);
+  }, [optimizedUri, showPlaceholder]);
 
   const handleError = useCallback(() => {
     setHasError(true);
@@ -108,8 +110,9 @@ const OptimizedImageInner = ({
   }, []);
 
   const handleLoad = useCallback(() => {
+    if (!showPlaceholder) return;
     setIsLoaded(true);
-  }, []);
+  }, [showPlaceholder]);
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     containerHeightRef.current = event.nativeEvent.layout.height;
@@ -136,7 +139,7 @@ const OptimizedImageInner = ({
         cachePolicy="memory-disk"
         priority={resolvedPriority}
         onError={handleError}
-        onLoad={handleLoad}
+        onLoad={showPlaceholder ? handleLoad : undefined}
         recyclingKey={recyclingKey}
         {...props}
       />

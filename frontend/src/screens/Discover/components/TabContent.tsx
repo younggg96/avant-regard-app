@@ -1,9 +1,7 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   RefreshControl,
-  ActivityIndicator,
   View,
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
@@ -20,10 +18,13 @@ import BannerCarousel from "../../../components/BannerCarousel";
 import { Banner } from "../../../services/bannerService";
 import { CommunityListResponse } from "../../../services/communityService";
 import { DisplayPost, TabType } from "../types";
-import { SCREEN_WIDTH } from "../constants";
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
 import { BrandSection } from "./BrandSection";
 import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
+import { ImageSize } from "../../../utils/imageUtils";
+
+type RenderablePost = Post & { renderKey?: string };
 
 
 interface TabContentProps {
@@ -32,7 +33,6 @@ interface TabContentProps {
   banners: Banner[];
   communities: CommunityListResponse | null;
   error: string | null;
-  loading: boolean;
   refreshing: boolean;
   tabLoading: boolean;
   tabLoaded: boolean;
@@ -42,27 +42,20 @@ interface TabContentProps {
   onAuthorPress: (authorId: string) => void;
   onLike: (postId: string) => void;
   onBannerPress: (banner: Banner) => void;
+  isActive?: boolean;
   /**
    * 无限滚动：触底加载下一页（仅推荐 Tab 使用；不传则关闭）。
    */
   onEndReached?: () => void;
   /**
-   * 是否还有更多帖子。`false` 时在列表底部显示「没有更多帖子」提示。
+   * Incrementing signal from the parent to scroll this tab's list back to top.
    */
-  hasMore?: boolean;
-  /**
-   * 触发 loadMore 后、下一页返回前为 true（仅用于推荐 Tab 的 footer 指示）。
-   */
-  loadingMore?: boolean;
+  scrollToTopSignal?: number;
 }
 
-const GifLoading: React.FC = () => (
+const LightweightLoading: React.FC = () => (
   <View style={loadingStyles.container}>
-    <Image
-      source={require("../../../../assets/gif/home-loading.gif")}
-      style={loadingStyles.gif}
-      resizeMode="contain"
-    />
+    <View style={loadingStyles.pulseDot} />
   </View>
 );
 
@@ -73,9 +66,11 @@ const loadingStyles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.colors.white,
   },
-  gif: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH,
+  pulseDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.gray100,
   },
 });
 
@@ -172,10 +167,11 @@ const estimateCardHeight = (post: Post): number => {
  *   may swap left/right, which is acceptable for a visual feed.
  */
 const MASONRY_COLUMNS = 2;
-const arrangeForNaiveMasonry = (posts: Post[]): Post[] => {
+const MASONRY_DRAW_DISTANCE = Math.round(SCREEN_HEIGHT * 0.35);
+const arrangeForNaiveMasonry = <T extends Post>(posts: T[]): T[] => {
   if (posts.length <= MASONRY_COLUMNS) return posts;
 
-  const columns: Post[][] = [[], []];
+  const columns: T[][] = [[], []];
   const heights: number[] = [0, 0];
 
   for (const post of posts) {
@@ -185,13 +181,26 @@ const arrangeForNaiveMasonry = (posts: Post[]): Post[] => {
     heights[target] += h;
   }
 
-  const merged: Post[] = [];
+  const merged: T[] = [];
   const maxLen = Math.max(columns[0].length, columns[1].length);
   for (let i = 0; i < maxLen; i++) {
     if (i < columns[0].length) merged.push(columns[0][i]);
     if (i < columns[1].length) merged.push(columns[1][i]);
   }
   return merged;
+};
+
+const withStableRenderKeys = (posts: Post[]): RenderablePost[] => {
+  const seen = new Map<string, number>();
+  return posts.map((post) => {
+    const occurrence = seen.get(post.id) ?? 0;
+    seen.set(post.id, occurrence + 1);
+    return {
+      ...post,
+      renderKey:
+        occurrence === 0 ? post.id : `${post.id}-repeat-${occurrence}`,
+    };
+  });
 };
 
 /**
@@ -203,7 +212,6 @@ export const TabContent: React.FC<TabContentProps> = ({
   banners,
   communities,
   error,
-  loading,
   refreshing,
   tabLoading,
   tabLoaded,
@@ -213,20 +221,38 @@ export const TabContent: React.FC<TabContentProps> = ({
   onAuthorPress,
   onLike,
   onBannerPress,
+  isActive = true,
   onEndReached,
-  hasMore,
-  loadingMore,
+  scrollToTopSignal = 0,
 }) => {
+  const flatListRef = useRef<FlatList<Post>>(null);
+  const masonryListRef = useRef<any>(null);
+
   const currentPosts = useMemo(() => {
     if (!Array.isArray(tabPosts)) return [];
     const mapped = tabPosts.map(convertToPost);
+    const keyed = withStableRenderKeys(mapped);
     // Only the masonry tabs benefit from (and survive) pre-balancing. The
     // forum tab is single-column so reshuffling would only scramble order.
-    if (tab === "forum") return mapped;
-    return arrangeForNaiveMasonry(mapped);
+    if (tab === "forum") return keyed;
+    return arrangeForNaiveMasonry(keyed);
   }, [tabPosts, tab]);
 
-  const keyExtractor = useCallback((item: Post) => item.id, []);
+  const keyExtractor = useCallback(
+    (item: RenderablePost) => item.renderKey ?? item.id,
+    []
+  );
+
+  useEffect(() => {
+    if (scrollToTopSignal <= 0) return;
+
+    if (tab === "forum") {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      return;
+    }
+
+    masonryListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+  }, [scrollToTopSignal, tab]);
 
   const renderMasonryItem = useCallback(
     ({ item }: MasonryListRenderItemInfo<Post>) => {
@@ -240,6 +266,10 @@ export const TabContent: React.FC<TabContentProps> = ({
             onPress={onPostPress}
             onAuthorPress={onAuthorPress}
             onLike={onLike}
+            coverImageSize={ImageSize.THUMBNAIL}
+            coverImagePriority="normal"
+            showCoverPlaceholder={false}
+            coverImageTransition={0}
           />
         </View>
       );
@@ -331,7 +361,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   if (tabLoading || !tabLoaded) {
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-        <GifLoading />
+        {isActive ? <LightweightLoading /> : null}
       </View>
     );
   }
@@ -400,6 +430,7 @@ export const TabContent: React.FC<TabContentProps> = ({
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <FlatList
+          ref={flatListRef}
           data={currentPosts}
           keyExtractor={keyExtractor}
           renderItem={renderForumItem}
@@ -434,44 +465,19 @@ export const TabContent: React.FC<TabContentProps> = ({
     </>
   );
 
-  // Footer：
-  //   • 正在加载下一页 → Spinner + 文案
-  //   • 已经没有更多帖子 → 提示用户稍后刷新查看
-  //   • 其它情况（兼容旧行为） → 仅 loading 时显示
-  const footer = (() => {
-    if (loadingMore || (onEndReached == null && loading)) {
-      return (
-        <HStack justifyContent="center" alignItems="center" py="$lg">
-          <ActivityIndicator color={theme.colors.accent} />
-          <Text color="$gray400" fontSize="$sm" ml="$sm">加载更多...</Text>
-        </HStack>
-      );
-    }
-    if (onEndReached != null && hasMore === false && currentPosts.length > 0) {
-      return (
-        <View style={endFooterStyles.container}>
-          <View style={endFooterStyles.divider} />
-          <Text color="$gray400" fontSize="$sm" textAlign="center">
-            已经没有更多的帖子了，请稍后刷新查看
-          </Text>
-          <View style={endFooterStyles.divider} />
-        </View>
-      );
-    }
-    return null;
-  })();
-
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
       <MasonryFlashList
+        ref={masonryListRef}
         data={currentPosts}
         numColumns={MASONRY_COLUMNS}
         keyExtractor={keyExtractor}
         renderItem={renderMasonryItem}
         estimatedItemSize={ESTIMATED_ITEM_SIZE}
+        estimatedListSize={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+        drawDistance={MASONRY_DRAW_DISTANCE}
         overrideItemLayout={overrideItemLayout}
         ListHeaderComponent={masonryHeader}
-        ListFooterComponent={footer}
         onScroll={onScroll}
         scrollEventThrottle={16}
         refreshControl={refreshControl}
@@ -483,22 +489,6 @@ export const TabContent: React.FC<TabContentProps> = ({
     </View>
   );
 };
-
-const endFooterStyles = StyleSheet.create({
-  container: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ECECEC",
-  },
-});
 
 const masonryItemStyles = StyleSheet.create({
   wrapper: {

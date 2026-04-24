@@ -74,6 +74,7 @@ import {
   UserSubmittedStore,
   CONTRIBUTION_PAGE_SIZE,
 } from "../services/buyerStoreService";
+import { ShareToChatModal } from "../components/ShareToChatModal";
 
 type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
 
@@ -144,6 +145,7 @@ const UserProfileScreen = () => {
   const [privacySettings, setPrivacySettings] = useState<UserPrivacySettings | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
+  const [showShareToChat, setShowShareToChat] = useState(false);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -1025,19 +1027,27 @@ const UserProfileScreen = () => {
           </View>
           <View style={styles.headerRightButtons}>
             {!isCurrentUser && (
-              <Pressable
-                style={[styles.followButtonSmall, isFollowing && styles.followingButtonSmall]}
-                onPress={handleFollowToggle}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <ActivityIndicator color="white" size="small" />
-                ) : (
-                  <RNText style={styles.followButtonTextSmall}>
-                    {isFollowing ? "已关注" : "关注"}
-                  </RNText>
-                )}
-              </Pressable>
+              <>
+                <Pressable
+                  style={[styles.followButtonSmall, isFollowing && styles.followingButtonSmall]}
+                  onPress={handleFollowToggle}
+                  disabled={followLoading}
+                >
+                  {followLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <RNText style={styles.followButtonTextSmall}>
+                      {isFollowing ? "已关注" : "关注"}
+                    </RNText>
+                  )}
+                </Pressable>
+                <Pressable
+                  style={styles.headerButton}
+                  onPress={() => setShowShareToChat(true)}
+                >
+                  <Ionicons name="share-outline" size={20} color={theme.colors.black} />
+                </Pressable>
+              </>
             )}
             {/* 在白色 Header 显示深色编辑按钮 */}
             {isCurrentUser && (
@@ -1120,6 +1130,11 @@ const UserProfileScreen = () => {
             <Pressable style={styles.actionButton} onPress={() => navigation.goBack()}>
               <Ionicons name="chevron-back" size={24} color="white" />
             </Pressable>
+            {!isCurrentUser && (
+              <Pressable style={styles.actionButton} onPress={() => setShowShareToChat(true)}>
+                <Ionicons name="share-outline" size={20} color="white" />
+              </Pressable>
+            )}
           </Animated.View>
         </Animated.View>
 
@@ -1376,6 +1391,21 @@ const UserProfileScreen = () => {
         uri={avatarUri}
         onClose={() => setAvatarPreviewVisible(false)}
       />
+
+      {!isCurrentUser && (
+        <ShareToChatModal
+          visible={showShareToChat}
+          user={{
+            userId,
+            username: userInfo?.username || username || "用户",
+            avatarUrl: userInfo?.avatarUrl || avatar,
+            bio: userInfo?.bio,
+            location: userInfo?.location,
+            primaryTitle: userInfo?.primaryTitle,
+          }}
+          onClose={() => setShowShareToChat(false)}
+        />
+      )}
     </View>
   );
 };

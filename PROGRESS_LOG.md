@@ -1,5 +1,75 @@
 # Progress Log
 
+## 2026-04-24: 首页推荐瀑布流首屏渲染性能优化
+
+- `TabContent.tsx`：未激活且未加载的 Tab 不再渲染全屏 GIF loader，改为当前 Tab 才显示轻量占位；推荐瀑布流增加 `estimatedListSize` / `drawDistance`，减少首屏测量和预渲染压力。
+- `PostCard.tsx` / `PostCoverMedia.tsx` / `OptimizedImage.tsx`：推荐流封面改用 `ImageSize.THUMBNAIL`，关闭封面 placeholder/spinner 与 transition，避免首屏每张图 `onLoad` 都触发 JS 状态更新。
+- `TabContent.tsx`：重复回放帖子使用稳定 `renderKey`，避免刷新插入新内容时因 `id-index` key 变化导致老卡片大面积重挂载。
+- `useDiscoverData.ts`：推荐 Tab 首屏初始化和刷新不再等待 `fetchBanners()`，banner 仍由论坛 Tab 加载，减少首页启动阶段无关网络等待。
+
+---
+
+## 2026-04-24: 首页推荐 Tab 支持重按/双击刷新并回到顶部
+
+- `Discover/index.tsx`：为当前已选中的「推荐」Tab 重按增加刷新逻辑，并将双击窗口放宽到 700ms；触发时立即发送一次滚顶信号，刷新结束后再校准到顶部。
+- `TabContent.tsx`：为 FlatList / MasonryFlashList 增加列表 ref 和 `scrollToTopSignal`，支持父组件驱动当前列表回到顶部。
+
+---
+
+## 2026-04-24: 首页推荐流到底后循环已展示帖子
+
+- `useFeedRecommendation.ts`：推荐流在后端长尾分页耗尽后进入本地 replay 模式，按页追加本次会话已经展示过的内容，避免 `hasMore=false` 后停止加载。
+- `TabContent.tsx`：移除瀑布流底部 footer /「已经没有更多的帖子了」提示，并为推荐流重复帖子使用带 index 的 key，支持同一帖子再次出现在列表尾部。
+
+---
+
+## 2026-04-24: ShareToChatModal — 增加微信 / 朋友圈 / 微博分享
+
+- `shareService.ts`：新增 `shareToWeChatGeneric` / `shareToWeiboGeneric`，接收通用 `ShareContent`（不限于 Post），内部检测 app 安装状态后 fallback 到系统分享。
+- `ShareToChatModal.tsx`：社交平台行从 2 个按钮扩展为 5 个（微信 → 朋友圈 → 微博 → 复制链接 → 更多），提取共享的 `buildShareContent` 回调避免重复构建。
+
+---
+
+## 2026-04-24: ShareToChatModal — 增加社交媒体分享（复制链接 / 系统分享）
+
+### Context
+`ShareToChatModal` 原本只能将内容分享给聊天好友，不支持外部平台分享。用户需要一键复制链接或调用系统分享面板。
+
+### What
+- **`shareService.ts`**：
+  - 新增 `ShareContentType` 类型（post / store / brand / show / user）和 `CONTENT_TYPE_PATH` 映射，统一生成 `avantregard.com` 域名的分享链接。
+  - 新增 `generateShareUrl(contentType, id)`：按内容类型拼接对应的 web 路由。
+  - 新增 `buildGenericShareContent()`、`copyShareUrl()`、`shareWithSystemGeneric()`，支持所有内容类型的复制链接和系统原生分享。
+  - 原有 `generateWebShareUrl` / `generateUniversalLink` 内部改为复用 `generateShareUrl`。
+- **`ShareToChatModal.tsx`**：
+  - `SharePreview` 接口新增 `contentType` / `contentId`，`resolvePreview()` 为每种内容类型填充对应值。
+  - 在预览卡片下方、聊天列表上方新增「复制链接」和「更多」两个社交分享按钮，以水平 ScrollView 展示。
+  - 两个按钮分别调用 `copyShareUrl` 和 `shareWithSystemGeneric`。
+
+### URL 规则
+| 类型 | 示例 URL |
+|------|----------|
+| Post | `https://avantregard.com/posts/{id}` |
+| Store | `https://avantregard.com/stores/{id}` |
+| Brand | `https://avantregard.com/archive/brands/{id}` |
+| Show | `https://avantregard.com/archive/shows/{id}` |
+| User | `https://avantregard.com/users/{id}` |
+
+### Files changed
+- `frontend/src/services/shareService.ts`
+- `frontend/src/components/ShareToChatModal.tsx`
+
+---
+
+## 2026-04-24: 用户资料分享入口与 ShareModal「更多」使用 share-outline
+
+- `UserProfileScreen`：他人资料页打开「分享到聊天」的 Header 按钮由 `ellipsis-horizontal` 改为 `share-outline`（与 `setShowShareToChat` 行为一致）。
+- `ShareModal`：平台列表里「更多」一项的图标改为 `share-outline`，与站内其他分享入口一致。
+
+## 2026-04-24: Web · PostInteractionBar 评论行使用 lucide 图标替代 emoji
+
+- `web/src/components/post/PostInteractionBar.tsx`：评论数前的 💬 改为 `MessageCircle`（`lucide-react`），与站内 admin 等处的图标栈一致，并加 `inline-flex`/`gap` 与 `aria-hidden` 以兼顾对齐与可访问性。
+
 ## 2026-04-22: FpsMonitor — 移除 `__DEV__` 守卫，使 TestFlight 构建也能显示
 
 ### Context
@@ -2436,5 +2506,31 @@ App 冷启动后，推荐列表首次向下滑动时出现明显卡顿和掉帧�
 
 ### Impact
 论坛帖子封面图现在与穿搭/Lookbook/评测等发布类型一致，用户可自由选择裁剪比例。
+
+
+## 2026-04-24: 支持分享用户主页给聊天对象 (Share User Profile to Chat)
+
+### Problem
+在其他用户的个人主页上，无法将该用户的主页分享给聊天对象。已有帖子、买手店、品牌、秀场的分享到聊天功能，但缺少用户主页的分享入口。
+
+### Changes
+- `frontend/src/components/ShareToChatModal.tsx`
+  - `ShareToChatModalProps` 新增 `user?: ShareableUser | null` prop
+  - `SharePreview.messageType` union 新增 `"user_card"` 类型
+  - `resolvePreview()` 增加 user 分支，使用 `buildUserSharePayload` 构建 payload
+  - 预览卡片对 `user_card` 类型显示圆形头像（新增 `previewImageRound` 样式）
+
+- `frontend/src/screens/UserProfileScreen.tsx`
+  - 导入 `ShareToChatModal` 组件
+  - 新增 `showShareToChat` state 控制弹窗显隐
+  - 透明封面叠层和吸顶白色 Header 右侧均添加 "..." 按钮（仅他人主页显示）
+  - 页面底部渲染 `ShareToChatModal`，传入当前浏览用户的信息
+
+### Architecture
+- 复用已有的 `buildUserSharePayload` / `UserSharePayload` 类型和 `MessageBubble` 中已实现的 `user_card` 渲染逻辑，无需新增聊天消息渲染代码
+- 遵循 DRY 原则，与 post/store/brand/show 的分享流程完全一致
+
+### Impact
+用户在浏览他人主页时，可通过右上角 "..." 按钮将该用户的主页卡片分享到任意聊天对话中。
 
 

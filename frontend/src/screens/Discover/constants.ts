@@ -1,6 +1,6 @@
 import { Dimensions } from "react-native";
 
-export const { width: SCREEN_WIDTH } = Dimensions.get("window");
+export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Tab 索引映射
 export const TAB_INDEX_MAP = {

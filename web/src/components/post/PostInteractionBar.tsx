@@ -19,6 +19,7 @@ import { useAuthStore } from "@/lib/auth/store";
 import { postService } from "@/lib/services/post";
 import type { Post } from "@/lib/types";
 import { formatCount } from "@/lib/format";
+import { MessageCircle } from "lucide-react";
 
 type ActionKey = "like" | "favorite" | "want";
 
@@ -96,8 +97,13 @@ export function PostInteractionBar({
       {actions.map((a) => (
         <ActionButton key={a.key} postId={post.id} config={a} />
       ))}
-      <span className="font-label text-sm text-[color:var(--ink-muted)]">
-        💬 {formatCount(post.commentCount ?? 0)} 评论
+      <span className="inline-flex items-center gap-1.5 font-label text-sm text-[color:var(--ink-muted)]">
+        <MessageCircle
+          className="size-4 shrink-0"
+          strokeWidth={2}
+          aria-hidden
+        />
+        {formatCount(post.commentCount ?? 0)} 评论
       </span>
     </div>
   );
