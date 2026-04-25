@@ -4,6 +4,12 @@
       "eas": {
         "projectId": "33932395-ec13-4c7d-9583-5699e844187c"
       }
+    },
+    "ios": {
+      "bundleIdentifier": "com.yanggg96.avantregardmonorepo",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

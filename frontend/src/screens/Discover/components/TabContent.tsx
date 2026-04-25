@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   RefreshControl,
   View,
+  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
@@ -53,9 +54,13 @@ interface TabContentProps {
   scrollToTopSignal?: number;
 }
 
-const LightweightLoading: React.FC = () => (
+const GifLoading: React.FC = () => (
   <View style={loadingStyles.container}>
-    <View style={loadingStyles.pulseDot} />
+    <Image
+      source={require("../../../../assets/gif/home-loading.gif")}
+      style={loadingStyles.gif}
+      resizeMode="contain"
+    />
   </View>
 );
 
@@ -66,11 +71,9 @@ const loadingStyles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: theme.colors.white,
   },
-  pulseDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.gray100,
+  gif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
   },
 });
 
@@ -221,7 +224,6 @@ export const TabContent: React.FC<TabContentProps> = ({
   onAuthorPress,
   onLike,
   onBannerPress,
-  isActive = true,
   onEndReached,
   scrollToTopSignal = 0,
 }) => {
@@ -361,7 +363,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   if (tabLoading || !tabLoaded) {
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-        {isActive ? <LightweightLoading /> : null}
+        <GifLoading />
       </View>
     );
   }
