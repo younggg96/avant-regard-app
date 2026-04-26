@@ -6,6 +6,7 @@ import { FadeImage } from "@/components/FadeImage";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { PostInteractionBar } from "@/components/post/PostInteractionBar";
 import { PostCommentSection } from "@/components/post/PostCommentSection";
+import { ArticleBody, parseArticleBlocks } from "@/components/post/ArticleBody";
 import { ApiError, getPost } from "@/lib/api";
 import { formatRelativeTime, postTypeLabel } from "@/lib/format";
 import { isVideoUrl } from "@/lib/media";
@@ -19,8 +20,18 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   try {
     const post = await getPost(params.id);
+    // Articles store body as a JSON block array; flatten text blocks for the
+    // meta description so we don't leak `[{"id":"block_..."}]` into og:desc.
+    const articleBlocks = parseArticleBlocks(post.contentText);
+    const plainText = articleBlocks
+      ? articleBlocks
+          .filter((b) => b.type === "text")
+          .map((b) => b.content)
+          .join(" ")
+          .trim()
+      : post.contentText;
     const description =
-      post.contentText?.slice(0, 140) ||
+      plainText?.slice(0, 140) ||
       `${post.username} 分享的${postTypeLabel(post.postType)}内容。`;
     const ogImage = post.imageUrls?.find((u) => !isVideoUrl(u));
     return {
@@ -42,7 +53,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PostDetailPage({ params }: PageProps) {
   try {
     const post = await getPost(params.id);
-    const images = post.imageUrls ?? [];
+    const articleBlocks = parseArticleBlocks(post.contentText);
+    // When the body parses as blocks, embedded media lives inside the blocks
+    // and `imageUrls` only holds the cover (see PublishForumPostScreen). Show
+    // just the cover once at the top and render the blocks in order.
+    const images = articleBlocks
+      ? post.imageUrls?.slice(0, 1) ?? []
+      : post.imageUrls ?? [];
 
     return (
       <article className="mx-auto max-w-3xl px-6 py-12 md:py-20">
@@ -127,10 +144,14 @@ export default async function PostDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {post.contentText && (
-          <div className="mt-10 whitespace-pre-wrap font-serif text-lg leading-relaxed text-black/80 dark:text-white/75">
-            {post.contentText}
-          </div>
+        {articleBlocks ? (
+          <ArticleBody blocks={articleBlocks} title={post.title} />
+        ) : (
+          post.contentText && (
+            <div className="mt-10 whitespace-pre-wrap font-serif text-lg leading-relaxed text-black/80 dark:text-white/75">
+              {post.contentText}
+            </div>
+          )
         )}
 
         {(post.brandName || post.productName || post.rating) && (

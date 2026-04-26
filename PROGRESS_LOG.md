@@ -1,5 +1,306 @@
 # Progress Log
 
+## 2026-04-26: 消息 Tab 报 "Error loading stores" —— 懒挂载 + 后端重试 + 统一 http.ts
+
+### Context
+
+用户反馈：「我是进入消息 screen 的时候有报错」，附带前端日志：
+
+```
+ERROR  Error loading stores: [Error: {'message': 'JSON could not be generated', 'code': 502, 'hint': 'Refer to full message for details', 'details': "b'<html>...502 Bad Gateway...nginx...'"}]
+```
+
+链路顺藤摸瓜定位到 **两条叠加的病灶**：
+
+1. **架构层：买手店子 Tab 被预挂载。** `InteractionScreen`（即"消息" Tab 的容器）把 `MessagesContent` 和 `BuyerMapScreen` 放在同一个 `pagingEnabled` 横向 `ScrollView` 里并排渲染。用户只点进"消息"，RN 也会立刻把 `BuyerMapScreen` 一并挂载，`useEffect` 随即触发 `getAllStores()` / `getAllCountries()` / 定位请求——这是用户没有主动要求的 IO。
+
+2. **弹性层：Supabase 瞬时 502 直接冒到用户眼前。**
+   - `code=502` + `JSON could not be generated` 是 Supabase 网关（PostgREST 前的 nginx）偶发不可用时的典型信号。
+   - 后端 `buyer_store_service.get_all_stores` 对 `.execute()` 没有重试，异常直接冒到 FastAPI 全局异常 handler。
+   - 全局 handler 用 `str(exc)` 把 `APIError` 对象 **当字符串** 塞进响应 `message`，结果客户端收到的是 Python dict 的 repr。
+   - 前端 `buyerStoreService` 自带的本地 `request` 也没有对 5xx 的退避重试，第 1 次失败就抛到 UI。
+   - 用户并没有去"地图"子 Tab，却被迫承担了 map screen 的 IO 错误，而且错误信息是完全不可读的 dict repr。
+
+### What
+
+改动按 **后端弹性 → 前端统一 → 用户视角 Fix 1** 三层落地，任何一层单独上线都能缓解症状；三层齐上则根治。
+
+#### 后端：Supabase 调用弹性 + 异常清洗
+
+**`backend/app/db/supabase.py`**
+- 新增 `is_transient_supabase_error(exc)`：识别 `httpx.{ConnectError, ReadTimeout, WriteTimeout, RemoteProtocolError, PoolTimeout}` + `APIError.code ∈ {502, 503, 504}` + 上游非 JSON 响应（message 含 `JSON could not be generated`）。**不**把 PG 业务错误码（`23505` 等）算作瞬时——这些重试无意义。
+- 新增 `execute_with_retry(query_fn, retries=2, base_delay=0.4, label=...)`：把任意 `.execute()` 调用包成可重试。指数退避（0.4 → 0.8s），最多 3 次尝试，只对瞬时错误重试。`label` 参数让重试日志能定位到具体的热点路径。
+- 接受 `Callable` 而不是已经构造好的 query 对象——这样每次重试都是一次全新的 `.execute()`，不会踩到 postgrest-py 内部 httpx 请求对象的一次性消费问题。
+
+**`backend/app/services/buyer_store_service.py`** 热点路径全部接入 `execute_with_retry`：`get_all_stores`、`get_store_by_id`、`get_all_countries`、`get_all_cities`、`get_all_styles`、`get_stores_by_brand`、`get_stores_in_viewport`、`get_nearby_stores`、`search_stores`。
+
+**`backend/app/services/buyer_store_community_service.py`**：`get_batch_favorite_counts` 也接入——它在 `/api/buyer-stores` 的 `_enrich_stores_with_favorite_count` 里被每次列表请求调用，同样是热点。
+
+**`backend/app/services/buyer_store_service.py:get_all_stores` count 优化**：
+- 原 `self.db.table("buyer_stores").select("*", count="exact")` 在大表上是 `COUNT(*)` 级别的全表扫描，单次请求对 Supabase 压力不小，也是 502 的放大器。
+- 现在只在 `page == 1` 时带 `count`，且把 `exact` 改成 `planned`（PostgreSQL planner 估算，毫秒级）。首屏还是能拿到一个 total 做 "XXX 个买手店" 展示。
+- 后续翻页不再请求 count——前端 `getAllStores` 原本就用 `stores.length < PAGE_SIZE` 做终止条件，不依赖 total。
+
+**`backend/app/main.py`** 异常处理分层：
+- 新增 `@app.exception_handler(APIError)`：瞬时故障 → 502 + `"数据服务暂不可用，请稍后重试"`；其它 PostgREST 错误 → 400 + 透传 `exc.message`。无论哪种都 **不再** 把 Python dict repr 塞进响应。
+- 新增 `@app.exception_handler(httpx.HTTPError)`：连接/超时类错误统一转 502。
+- 保留 `@app.exception_handler(Exception)` 兜底，但只做日志，不再接收 Supabase 错误（已被上面两个 handler 拦截）。
+- FastAPI 按异常类型 MRO 派发，具体优先于泛化；无需显式排序。
+
+#### 前端：统一 HTTP 底座
+
+**新增 `frontend/src/services/http.ts`**：
+- `request<T>(endpoint, options)` 作为所有 service 的统一入口。
+- 自动注入 `Authorization`，即将过期时预刷新 token，与历史 `postService` 行为对齐。
+- 401 自动刷新一次 token 后重放（单次，不循环）。
+- 对 `status ∈ {502, 503, 504}` 和网络/超时错误做指数退避重试（默认 2 次，0.4s → 0.8s）。同时识别后端信封 `code ∈ {502, 503, 504}`（我们刚刚让后端把上游 5xx 映射成这个 code），也按瞬时处理——后端和前端两层重试都是幂等的 GET，不会引入副作用。
+- 自带 `AbortController` 超时（默认 15s），超时按网络错误进入重试。
+- 暴露 `ApiError` 类，带上 `status / code / transient` 字段，业务层未来可据此决定"展示 toast" vs "展示 retry 按钮"。
+
+**迁移 `frontend/src/services/buyerStoreService.ts`**：删除本地 80 行重复的 `request`，改为 `import { request } from "./http"`。其余业务函数一行没动——这是保持 API 签名向后兼容的关键。其它 15 个 service 仍使用各自的本地 `request`，作为单独的 tech-debt 条目逐步迁移（单次性动 16 个文件风险太大）。
+
+#### 前端 Fix 1：买手店子 Tab 懒挂载
+
+**`frontend/src/screens/Interaction/index.tsx`**：
+- 新增 `hasMountedMap` state：初始为 `initialTab === "map"`（支持从其它页带 `subTab=map` 参数直达的场景）。
+- 只有当用户 **第一次** 通过点击 tab 或横滑切到"地图"子 Tab，才 `setHasMountedMap(true)`；此后保持挂载，避免来回切时反复重建地图（地图重建成本高：MapView + markers + region fit）。
+- 在 `hasMountedMap` 为 false 时渲染轻量占位 `MapTabPlaceholder`（居中一个 `ActivityIndicator`）。用户真的切过去时，占位会被 `BuyerMapScreen` 的初始 `isLoading=true` 状态（一个 map-loading.gif）自然接力，视觉不跳帧。
+
+**`frontend/src/screens/BuyerMapScreen.tsx`**：
+- 新增 `loadError: string | null` state。`loadStores` 成功会清空；失败会用 `error.message` 填充。
+- `useEffect` 初始化抽出 `loadInitialData()` 函数，用于"点击重试"直接复用。
+- 渲染增加第三分支：`isLoading ? loading : loadError ? ErrorCard : MapView`。错误卡片：`cloud-offline-outline` 图标 + "加载失败" 标题 + `loadError` 文本 + "点击重试" 按钮（触发 `loadInitialData`）。
+- 只对 **首屏** 失败展示 ErrorCard；视口内/附近的增量失败只记录 console，不改动 `loadError`——避免把局部错误放大成整屏 fallback，用户已经能看到地图的情况下不应被错误遮住。
+
+### Why (DRY / KISS / SOLID / Holistic)
+
+- **DRY**：重试逻辑在后端和前端各收敛为一个函数（`execute_with_retry` / `request`）。未来任何 service 新增 Supabase 调用只写 `execute_with_retry(lambda: query.execute())`；前端新写 service 只要 `request(endpoint)`。
+- **KISS**：
+  - 后端重试是纯函数 + `time.sleep` + 一个 for 循环，没有引入 async 重试框架、tenacity 或装饰器魔法。
+  - 前端 `http.ts` 不引入状态机、Promise 队列或中间件。就是一个 for 循环 + `AbortController`。
+  - Fix 1 是一个 `useState` + 一次条件渲染，不碰 navigation 栈或懒加载框架。
+- **SOLID · SRP**：
+  - `execute_with_retry` 只管"对瞬时错误做退避重试"；瞬时错误的定义收在 `is_transient_supabase_error`；业务 service 还是只写领域逻辑。异常清洗收在 FastAPI exception handler，不混进 service 层。
+  - `http.ts` 的 `request` 只管"发一个有 token、有重试、有超时、有信封解包的 HTTP"。业务 service（如 `buyerStoreService`）只管 "endpoint + 参数 + 反序列化"。
+- **SOLID · OCP**：
+  - 新加 service 想用不同重试次数？传 `options.retries`。想禁用？`retries: 0`。不需要改 `http.ts` 内部。
+  - 想把其它 15 个 service 迁过来？`import { request } from "./http"` 即可，签名兼容本地 `request<T>(endpoint, options)`。
+- **Holistic**：
+  - 后端对瞬时错误统一返回 `code=502`，前端 `http.ts` 也识别这个 code 做第二层重试。两层重试 **都只针对 GET/幂等写入语义安全的场景**，用户可见路径（列表、筛选、查询）本就都是 GET。
+  - 异常清洗不再泄漏 Python 对象 repr——既是 UX（用户看得懂），也是轻度安全（不把内部错误细节暴露给客户端）。
+  - 懒挂载同时解决了 **两个症状**：(a) 消息 Tab 不再意外触发买手店 IO；(b) 进入"地图" Tab 之前的冷启动时间减少（不需要等地图 JS 模块加载）。
+  - BuyerMapScreen 的 `loadError` 只覆盖首屏，不污染用户已经能看到地图的增量刷新——行为上保持了"错误信息恰好匹配当前画面信息量"的最小惊讶原则。
+
+### Files
+
+**Backend**
+- `backend/app/db/supabase.py`（新增 `is_transient_supabase_error` / `execute_with_retry`）
+- `backend/app/main.py`（新增 `APIError` / `httpx.HTTPError` 专用 handler）
+- `backend/app/services/buyer_store_service.py`（热点路径 + count 优化）
+- `backend/app/services/buyer_store_community_service.py`（`get_batch_favorite_counts` 热点路径）
+
+**Frontend**
+- `frontend/src/services/http.ts`（**新文件**，统一 request）
+- `frontend/src/services/buyerStoreService.ts`（迁移到 http.ts）
+- `frontend/src/screens/Interaction/index.tsx`（Map 子 Tab 懒挂载 + 占位）
+- `frontend/src/screens/BuyerMapScreen.tsx`（`loadError` + 重试 UI）
+- `PROGRESS_LOG.md`
+
+### Follow-ups（留给后续 PR）
+
+- 其余 15 个 service（`postService` / `userService` / `chatService` 等）仍使用各自本地的 `request`，建议逐步迁移到 `./http.ts`。迁移策略：一 service 一 PR，只做 `request` 替换不改业务，跑一遍回归。
+- `StoreListScreen` 的 `console.error("Error loading stores")` 目前只打 log，可以复用 `BuyerMapScreen` 的错误卡片模式。
+- 后端其它 service（`userService` / `postService` 等）的 Supabase 调用也可以接入 `execute_with_retry`；目前只有买手店相关的几个确认是瞬时 502 受害者。
+
+---
+
+## 2026-04-26: 推荐 Tab 触底加载"卡住"感 —— ListFooter loading + mount 错帧
+
+### Context
+
+用户反馈：「我现在往下滑动然后估计在加载下一页的时候就会卡住，不要这个卡住，可以增加 loading 来替代」。
+
+`FpsMonitor` 上验证：推荐 Tab 滑到底触发 `onEndReached` 那一瞬间，JS 线程帧率会跌到 ~10-20fps 1-2 帧，表现为"手指还在往上推但列表停住"。两条独立成因：
+
+1. **无视觉反馈**：`onEndReached` 发出网络请求到数据到达之间 200-800ms，UI 完全没有"正在加载"提示。用户滑到底没有 footer，视觉上就是一个死胡同。
+2. **mount 尖峰和 momentum 帧重叠**：`getFeed` 成功返回后 `setFeedItems((prev) => [...prev, ...resp.items])` 追加 30 条。`onEndReached` 是 MasonryFlashList 在 JS scroll 帧**同步**回调的，意味着 setState 命令落在"手指还在驱动滚动动画"的那一帧，于是 React reconciliation（30 张 DisplayPost → Post → MasonryFlashList 的内部列拆分 + overrideItemLayout）和 scroll translate 抢同一个 JS 帧，反映到用户就是那 1-2 帧的画面定格。
+
+### What
+
+**`components/TabContent.tsx`**
+- 新增 `loadingMore?: boolean` prop（只对分页 Tab 有意义；forum/following 无需传入）。
+- 新增模块级 `LoadMoreFooter` 组件：`ActivityIndicator` + "加载中..." 文案。`React.memo` 包装保持引用稳定，避免 `ListFooterComponent` 的 reference churn 触发 FlashList 内部 re-measure footer 区域。
+- `listFooter` 通过 `useMemo([loadingMore])` 在 `null` 与 `<LoadMoreFooter />` 之间切换，两个 Tab list（`FlatList` 论坛 / `MasonryFlashList` 推荐）都挂上。
+- 为什么把 footer 做成模块级 `React.memo`：组件函数体内部每次重渲染都会创建新 JSX，即便 prop 相同，FlashList 判断 `ListFooterComponent` 变了仍会 remount footer。提到模块级 + memo 就等价于"静态节点"，不受 render 频率影响。
+
+**`screens/Discover/index.tsx`**
+- 从 `useDiscoverData()` 解构 `recommendLoadingMore`（值 = `useFeedRecommendation.loading`）。
+- 推荐 Tab 的 `<TabContent>` 透传 `loadingMore={recommendLoadingMore}`。论坛/关注 Tab 不传，保持原行为。
+
+**`hooks/useFeedRecommendation.ts`**
+- `loadMore` 分离为三段：replay 路径立即同步 commit（无网络/无 mount 尖峰，不需要延帧）；网络请求段 `try/catch`；成功段**用 `requestAnimationFrame` 推迟 commit 到下一帧**。
+- rAF 回调里批处理：`setFeedItems` + `setLoading(false)` + `requestInFlight.current = false` + end-of-feed 的 `isReplayingRef / replayCursorRef / setHasMore` 全部放在同一帧。React 会把这些 state 更新合成一次 commit —— footer 消失与新卡片挂载在同一次 paint 完成，没有"footer 先消失、卡片才出现"的闪烁空窗。
+- `requestInFlight.current` 仍在 rAF 回调里清理：这意味着从 `loadMore` Promise resolve 到 rAF fire 这 ~16ms 窗口里，重复触发的 `onEndReached` 被 guard 正确挡住，不会发出重复请求。
+- 错误分支独立走 sync cleanup（`setLoading(false)` + `requestInFlight=false`），不走 rAF —— 出错不需要等下一帧，越早恢复越好。
+
+### Why (DRY / KISS / SOLID / Holistic)
+
+- **KISS**：没有引入 `InteractionManager`、`useTransition`、新 worker 或任何复杂调度。就是一次 `requestAnimationFrame` 错帧 + 一个静态 footer 组件。修改全部局限在三个文件，语义清晰。
+- **DRY**：`LoadMoreFooter` 是模块级单例，不在组件函数体内创建 JSX。两个 list（FlatList / MasonryFlashList）共用同一个 `listFooter` `useMemo` 结果。
+- **SOLID · SRP**：
+  - `useFeedRecommendation.loadMore` 职责："从后端拉下一页并追加到 feed 中"——在哪一帧落到 React state 是它自己的调度策略，对消费者透明。
+  - `TabContent` 职责："把 data 喂给虚拟列表 + 描绘容器 chrome"——是否正在加载下一页通过 prop 注入，组件不跨层知道"是哪个 hook 在驱动"。
+- **Holistic**：
+  - `excludeIdsRef` / `postSkipRef` 的更新和 `setFeedItems` 放进同一个 rAF，不会在 rAF pending 期间让下一次 `loadMore` 看到半更新的分页状态。
+  - `requestInFlight.current` 继续作为重复触发 guard：rAF pending 期间 guard 仍为 true，重复 `onEndReached` 被正确屏蔽。
+  - replay 路径绕开 rAF：replay items 是 memory 里已有的引用，mount cost ≈ 0，延帧只会增加用户等待，没有收益。
+  - forum Tab 的 FlatList 也挂了 `ListFooterComponent={listFooter}`，虽然当前 forum Tab 不分页（`loadingMore` 永远为 undefined → footer 为 null），但未来如果 forum 加分页不需要再改 render path，Open/Closed 友好。
+  - 错误路径不走 rAF：保证异常时 loading 立即恢复，不被延帧掩盖。
+
+### Files
+
+- `frontend/src/screens/Discover/components/TabContent.tsx`
+- `frontend/src/screens/Discover/index.tsx`
+- `frontend/src/screens/Discover/hooks/useFeedRecommendation.ts`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-26: 修复 `ReferenceError: Property 'TabContent' doesn't exist`
+
+### Context
+
+上一条 entry 引入 `React.memo(TabContent)` 之后，iOS dev build 在 HMR 注入模块时报：
+
+```
+transform[stderr]: The exported identifier "TabContent" is not declared in Babel's
+scope tracker as a JavaScript value binding, and "@babel/plugin-transform-typescript"
+never encountered it as a TypeScript type declaration.
+transform[stderr]: It will be treated as a JavaScript value.
+ERROR  ReferenceError: Property 'TabContent' doesn't exist, js engine: hermes
+```
+
+根因定位：`TabContent.tsx` 内存在以下三行连续模式：
+
+```ts
+export const TabContent = React.memo(TabContentInner);
+TabContent.displayName = "TabContent";
+export default TabContent;
+```
+
+`react-refresh/babel` 会在第一行后面注入 `$RefreshReg$` 登记调用，而后续对 `TabContent` 的属性赋值 + `export default TabContent` 组合，让 `@babel/plugin-transform-typescript` 的 scope tracker 无法把 `TabContent` 识别为 value binding，落到 output bundle 里这个标识符缺失，Hermes 运行时直接抛 `ReferenceError`。
+
+### What
+
+**`TabContent.tsx`**
+- 删除 dead code `export default TabContent;`（工程内仅 `Discover/index.tsx` 一处用 `import { TabContent }` named import，default 导出从未被消费）。
+- 把 `displayName` 从 `TabContent`（`React.memo` 返回值）挪到 `TabContentInner`（原始函数组件）。`React.memo` 会继承 inner 的 `displayName`，React DevTools 面板里仍显示为 `TabContent`，行为零变化。
+- 在源码注释里明确记录该 Babel 交互 bug 与规避方式，避免后续 contributor 复现同类问题。
+
+### Why (DRY / KISS / SOLID / Holistic)
+
+- **KISS**：不引入 workaround 包、不调 babel 配置、不重写 memo 写法，只删冗余 export + 挪一行 displayName，最小改动解决 root cause。
+- **DRY**：原先 named export 与 default export 指向同一符号、语义完全重复，属于典型的冗余入口；删除后只有 named 一条路径，避免未来误改其中一个导致两边不一致。
+- **SOLID · ISP**：模块对外暴露的接口收敛成唯一的命名导出，消费者不再能通过 default 路径"偷渡"引用。
+- **Holistic**：全量 grep 确认没有任何位置使用 `import TabContent from` 或 `require("...TabContent").default`，修改无回归风险。lint 清零。
+
+### Files
+
+- `frontend/src/screens/Discover/components/TabContent.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-26: 首页推荐 Tab 特有卡顿 —— 延迟 backfill + 稳定 onRefresh + TabContent memo
+
+### Context
+
+上一轮切断了 card 级联重渲染之后，用户反馈：「关注的帖子 list 就很流畅但是推荐的 list 还是很卡顿」。这是非常关键的对比信号，说明瓶颈不是通用 MasonryFlashList 渲染栈，而是推荐 Tab 独有的某条链路。
+
+逐条对比两条路径后找到三处差异：
+
+1. **关注 Tab**：`fetchFollowingPosts → await fetchUserInfos(批量) → setFollowingPosts(mapped)`。数据 ready 后一次性写入 state，render 完成后 JS 线程进入 idle。
+2. **推荐 Tab**：`refreshFeed → setFeedItems(newItems)` 立即触发首屏 render，**紧接着** `useEffect([feedItems])` 里同步调 `backfillUserInfosForFeed`。这会在 MasonryFlashList 挂载 26 张卡的**关键 paint 窗口**并发发起多个 `/api/users/:id`，response JSON 解析和 `userInfoCache.set` 全部回到 JS 线程，和首屏挂载、图片解码竞争资源。
+3. 另外 `onRefresh = useCallback(..., [handleRefresh, activeTab])` 每次切 Tab 都失效，使三个 TabContent 的 refreshControl memo 连环重建。
+
+### What
+
+**`useDiscoverData.ts`**
+- 把 `backfillUserInfosForFeed` 的触发从「feedItems 一变就跑」改为「`InteractionManager.runAfterInteractions` + 1200ms `setTimeout` 兜底」，给首屏 paint/scroll 腾出关键窗口。任一调度器先触发就把 `cancelled` 置位，防止两套调度重复跑。
+- `useEffect` cleanup 清理未完成的 `timeout` 和 `InteractionManager.handle`，避免 feedItems 快速连续变化时 backfill 堆积。
+- 原理：backend 自 2026-04-20 起已在 feed response 批量携带 `avatarUrl / username`，backfill 只为补 `user_info.primaryTitle` 这类非关键字段，**完全可以延迟**。
+
+**`Discover/index.tsx`**
+- `onRefresh` 通过 `activeTabRef` 读取 activeTab，`useCallback` 依赖从 `[handleRefresh, activeTab]` 收敛到 `[handleRefresh]`。回调引用跨 Tab 切换保持稳定，TabContent 的 `refreshControl` memo 命中率从 0 提升到 100%。
+
+**`TabContent.tsx`**
+- `TabContentInner` 用 `React.memo` 包裹为 `TabContent`。配合上一轮的回调稳定化 + onRefresh 收敛，DiscoverScreen 里未读计数 poll、聚焦刷新、`currentUserInfo` 异步填充这些「与列表无关」的 state 变化不再穿透进 TabContent 的函数体重执行，也不再让另外两个未激活的 Tab 跟着 rebuild masonry。
+
+### Why (DRY / KISS / SOLID / Holistic)
+
+- **Single Source of Truth**：回调内部要用到的「当前 activeTab」通过 ref 读取，避免在 useCallback 依赖里重复声明相同数据，保持回调的身份稳定性。
+- **KISS**：没有引入新依赖（`InteractionManager` 是 RN 自带），没有改 FlashList 的私有协议；就是把已有的 useEffect 延迟一段。
+- **SOLID · SRP**：
+  - backfill 职责：「把 user_info 拉全以供下次 mapping 用」——不是首屏必要路径，自然应该延迟。
+  - `onRefresh` 职责：「让当前 Tab 下拉刷新」——语义不随身份变化，回调身份也不该变。
+- **Holistic**：
+  - 延迟 backfill 不影响首次刷新后的头像正确性（apiPost 自带 avatarUrl），只对极少数回退到 `user_info.avatarUrl` 的旧帖子有肉眼几乎不可察觉的 1200ms 以内延迟。
+  - `TabContent.memo` 使用浅比较，所有 props 要么是原生类型（boolean/number/string/null）要么是稳定引用（带 useCallback/useMemo/ref）——已经在本轮和上一轮完成 ✓。
+  - 论坛 Tab 因为走一次性 awaited 加载，本来就没有 backfill 延迟问题；关注 Tab 同理。对这两个 Tab 的 UI 行为零影响。
+
+### Files
+
+- `frontend/src/screens/Discover/hooks/useDiscoverData.ts`
+- `frontend/src/screens/Discover/index.tsx`
+- `frontend/src/screens/Discover/components/TabContent.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-26: 首页推荐瀑布流滚动掉帧 —— 切断 cards 级联重渲染
+
+### Context
+
+冷启动进入 Discover → 推荐 Tab 首屏出现、滑动时仍能感到掉帧。`FpsMonitor` 观察 JS 线程帧率在滚动 + loadMore 叠加时会跌到 30-40 区间。逐层追踪发现真正的瓶颈不在 MasonryFlashList 本身，而在 props 引用稳定性断裂导致 React.memo 全面失效：
+
+1. `useDiscoverData.handleLike` 的 `useCallback` 依赖 `[recommendPosts, forumPosts, followingPosts, user, applyLikeToFeed]`。feedItems 每次 refresh/loadMore/乐观点赞后 `recommendPosts = useMemo([feedItems])` 重算 → `handleLike` 引用变 → `TabContent` 里 `renderMasonryItem` 的 `useCallback([onLike])` 重建 → MasonryFlashList 判定 renderItem 变 → **所有已挂载的 PostCard 强制重渲染**，React.memo 完全失效。
+
+2. `mapFeedItemsToDisplayPosts` 对每个 FeedItem 都返回**新建的 DisplayPost**。loadMore 追加一页后，前 30 条未变的 DisplayPost 也得到新引用 → 下游 `convertToPost` 又克隆一层 `Post` → `withStableRenderKeys` 再包一层 `{ ...post, renderKey }` → 每次数据变化生成 60+ 个新对象，即便 `renderItem` 稳定，props 引用也不稳，`PostCard.memo` 照样失败。
+
+3. `scrollEventThrottle={16}` 让滚动时 JS 线程每 16ms 被原生 onScroll 回调打断一次。handler 本身很便宜，但叠加上面的级联重渲染时就成了压垮 JS 帧率的最后一根稻草。
+
+### What
+
+**`useDiscoverData.ts`**
+- 新增 `displayPostCacheRef = Map<postId, { source: apiPost, userInfoVersion, display }>`。`mapFeedItemsToDisplayPosts` 对每个 post：同一 apiPost 引用 + userInfoCache 版本未变 → 返回**同一 DisplayPost 引用**；否则重建并刷新缓存。`applyLikeToFeed` 会替换对应 feedItem 的 data 引用 → 只触发**那一个**帖子的 DisplayPost 重建，其余 29 个引用保持不变。
+- `fetchUserInfos` 成功写入新用户信息时 `userInfoVersionRef.current += 1`，强制下一次 mapping pass 重建所有 DisplayPost（backfill 到的头像/用户名能生效），同时避免每次都全量失效。
+- 每轮 mapping 末尾按 `liveIds` 淘汰不再出现于 feed 的条目，防止 replay 模式长会话内缓存膨胀。
+- `handleLike` 的依赖从 `[recommendPosts, forumPosts, followingPosts, user, applyLikeToFeed]` 收敛到 `[applyLikeToFeed]`，内部通过 `recommendPostsRef / forumPostsRef / followingPostsRef / userRef` 实时读取最新值。回调引用从此稳定，`renderMasonryItem` 不再因 feedItems 变化而重建。
+
+**`TabContent.tsx`**
+- `convertToPost` 引入 `WeakMap<DisplayPost, Post>` 二级缓存：同一 DisplayPost 引用返回同一 Post 引用。配合上面的 DisplayPost 引用稳定，列表 map 不再创建新对象。
+- `withStableRenderKeys` 仅对**重复 id**（replay-mode 才出现）做 spread 克隆，首次出现的帖子原样透传，彻底消除「每张卡片每次渲染都过一次展开」的无谓拷贝。
+- `scrollEventThrottle` 从 `16`（60Hz）提到 `32`（30Hz）。Header 收/展开依赖方向翻转而不是每一帧位置，30Hz 足够捕获；但 JS 线程 onScroll 回调量直接减半，给 MasonryFlashList 的 cell mount / recycle 让出预算。动画本身走 reanimated UI 线程，不受此影响。
+
+### Why (DRY / KISS / SOLID / Holistic)
+
+- **Single Source of Truth**：DisplayPost 引用由数据层统一负责维护；渲染层（TabContent）只做 pass-through 缓存，不再重复实现"identity stability"。`WeakMap` 与上游 Map 形成两级弱 → 强引用链，回收语义一致。
+- **KISS**：不引入新依赖（没有动 FlashList → AnimatedFlashList 的复杂迁移），只修补引用稳定性这一根问题。
+- **SOLID · SRP**：`handleLike` 只负责"把点击事件映射为乐观 UI 更新 + 服务端调用"，不再承担"随时暴露最新 posts 数组"的副职；该职责下沉到 refs。
+- **Holistic**：
+  - 点赞路径：apiPost 引用变 → 单点帖子 DisplayPost 缓存 miss → 单张卡 memo miss → 其余卡保持 → 符合"只该动的动"直觉。
+  - 刷新路径：refresh 若返回全新 post 集，`liveIds` 驱逐旧缓存；若返回之前见过的 post（replay 模式）引用复用。
+  - User-info backfill：版本号递增驱动全量失效，避免悄悄留下 dicebear 占位头像；命中缓存的场景下零开销。
+  - 论坛 Tab 没有这条路径，但它的 DisplayPost 由 `setForumPosts((prev) => prev.map(updatePost))` 精确替换单条，对缓存天然友好。
+
+### Files
+
+- `frontend/src/screens/Discover/hooks/useDiscoverData.ts`
+- `frontend/src/screens/Discover/components/TabContent.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
 ## 2026-04-24: 首页推荐瀑布流首屏渲染性能优化
 
 - `TabContent.tsx`：未激活且未加载的 Tab 不再渲染全屏 GIF loader，改为当前 Tab 才显示轻量占位；推荐瀑布流增加 `estimatedListSize` / `drawDistance`，减少首屏测量和预渲染压力。

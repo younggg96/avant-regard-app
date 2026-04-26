@@ -57,20 +57,6 @@ target 'AvantRegard' do
       :ccache_enabled => podfile_properties['apple.ccacheEnabled'] == 'true',
     )
 
-    # Patch expo-dev-menu: TARGET_IPHONE_SIMULATOR removed in newer Xcode/SDK
-    dev_menu_file = File.join(installer.sandbox.root, '..', 'node_modules', 'expo-dev-menu', 'ios', 'DevMenuViewController.swift')
-    if File.exist?(dev_menu_file)
-      content = File.read(dev_menu_file)
-      if content.include?('TARGET_IPHONE_SIMULATOR')
-        content.gsub!(
-          'let isSimulator = TARGET_IPHONE_SIMULATOR > 0',
-          "#if targetEnvironment(simulator)\n    let isSimulator = true\n    #else\n    let isSimulator = false\n    #endif"
-        )
-        File.write(dev_menu_file, content)
-        Pod::UI.puts 'Patched expo-dev-menu TARGET_IPHONE_SIMULATOR'.green
-      end
-    end
-
     # This is necessary for Xcode 14, because it signs resource bundles by default
     # when building for devices.
     installer.target_installation_results.pod_target_installation_results

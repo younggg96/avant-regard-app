@@ -5,7 +5,7 @@
 from typing import Optional, List, Tuple
 from datetime import datetime
 
-from app.db.supabase import get_supabase, get_supabase_admin
+from app.db.supabase import get_supabase, get_supabase_admin, execute_with_retry
 from app.schemas.buyer_store import (
     UserSubmittedStoreCreate,
     UserSubmittedStore,
@@ -682,11 +682,12 @@ class BuyerStoreCommunityService:
         """批量获取多个买手店的收藏数，返回 {store_id: count}"""
         if not store_ids:
             return {}
-        result = (
-            self.supabase.table("buyer_store_favorites")
+        result = execute_with_retry(
+            lambda: self.supabase.table("buyer_store_favorites")
             .select("store_id")
             .in_("store_id", store_ids)
-            .execute()
+            .execute(),
+            label="buyer_store_community.get_batch_favorite_counts",
         )
         counts: dict = {}
         for row in result.data:

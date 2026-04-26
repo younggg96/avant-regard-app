@@ -175,22 +175,66 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
     requestInFlight.current = true;
     setLoading(true);
 
-    try {
-      if (isReplayingRef.current) {
+    // Replay mode re-uses FeedItem refs already sitting in memory, so no
+    // network round-trip and no mount spike — commit synchronously; there's
+    // nothing for the rAF deferral below to smooth out.
+    if (isReplayingRef.current) {
+      try {
         appendReplayItems();
-        return;
+      } finally {
+        setLoading(false);
+        requestInFlight.current = false;
       }
+      return;
+    }
 
-      const resp = await getFeed({
+    let resp: Awaited<ReturnType<typeof getFeed>>;
+    try {
+      resp = await getFeed({
         limit: PAGE_SIZE,
         excludeIds: excludeIdsRef.current,
         boostBrandId,
         skip: postSkipRef.current,
       });
+    } catch (err) {
+      console.error("[FeedV2] loadMore failed:", err);
+      setLoading(false);
+      requestInFlight.current = false;
+      return;
+    }
 
-      const postCount = countPosts(resp.items);
-      const newIds = extractExcludeIds(resp.items);
+    const postCount = countPosts(resp.items);
+    const newIds = extractExcludeIds(resp.items);
 
+    // ---------------------------------------------------------------------
+    // Defer the mount-heavy commit to the next frame.
+    //
+    // Why:
+    //   MasonryFlashList triggers `onEndReached` *inside* the JS scroll frame
+    //   while the finger is still carrying momentum. If `setFeedItems` lands
+    //   inside that same frame, React reconciliation for up to PAGE_SIZE (30)
+    //   new cards + FlashList re-layout runs on the same JS thread that's
+    //   currently driving scroll translations — reading as a visible 1-2
+    //   frame freeze at the bottom of the list ("just stops for a moment").
+    //
+    //   rAF-ing the commit lets FlashList's current momentum frame paint
+    //   cleanly first; the append then lands in the *next* frame when scroll
+    //   has naturally decelerated.
+    //
+    // Batching:
+    //   `setFeedItems` + `setLoading(false)` + `requestInFlight` reset all
+    //   live inside the SAME rAF callback so React batches them into one
+    //   commit — the "加载中" footer stays visible right up to the moment
+    //   the new cards appear. Releasing `setLoading(false)` earlier would
+    //   produce a "footer gone + empty gap" flicker between frames.
+    //
+    // Paging guards:
+    //   `excludeIdsRef` / `postSkipRef` are refs, not state — updating them
+    //   inside the rAF is fine because the outer `requestInFlight.current`
+    //   flag (also cleared inside the rAF) prevents any second `onEndReached`
+    //   from launching a duplicate request before the commit lands.
+    // ---------------------------------------------------------------------
+    requestAnimationFrame(() => {
       if (resp.items.length > 0) {
         setFeedItems((prev) => [...prev, ...resp.items]);
         excludeIdsRef.current = trimExcludeIds([
@@ -201,11 +245,11 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
       }
 
       // End-of-feed handling:
-      //   • Empty page: the backend has nothing new left, so immediately append
-      //     a replay page to keep the scroll continuous.
+      //   • Empty page: the backend has nothing new left, so immediately
+      //     append a replay page to keep the scroll continuous.
       //   • Stage 1+2 short pages are expected, so continue asking the server.
-      //   • Stage 3 short pages mean the long-tail window is exhausted; switch
-      //     subsequent loads to replay mode.
+      //   • Stage 3 short pages mean the long-tail window is exhausted;
+      //     switch subsequent loads to replay mode.
       if (postCount === 0) {
         isReplayingRef.current = true;
         appendReplayItems();
@@ -218,12 +262,10 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
       } else {
         setHasMore(true);
       }
-    } catch (err) {
-      console.error("[FeedV2] loadMore failed:", err);
-    } finally {
+
       setLoading(false);
       requestInFlight.current = false;
-    }
+    });
   }, [appendReplayItems, boostBrandId, setFeedItems]);
 
   const setBoostBrand = useCallback((brandId: number | null) => {

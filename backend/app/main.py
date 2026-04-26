@@ -10,6 +10,10 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.core.response import error
+from app.db.supabase import is_transient_supabase_error
+
+import httpx
+from postgrest.exceptions import APIError
 
 # 导入路由
 from app.api.routes.auth import router as auth_router
@@ -113,13 +117,71 @@ async def maintenance_mode_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# 全局异常处理
+# ===== 异常处理 =====
+# 设计说明：
+# - 上游数据层（Supabase/PostgREST/nginx）偶发 5xx 或网络抖动时，必须把"上游瞬时故障"
+#   和"业务错误"区分开：前者返回 502 + 友好文案，客户端应重试；后者保留原始语义。
+# - 原先 `global_exception_handler` 直接 `str(exc)`，会把 `APIError` 的 Python dict
+#   repr 泄漏给客户端（形如 `{'message': 'JSON could not be generated', ...}`），
+#   既不安全也无法被前端按语义处理。这里按异常类型分派处理，最后才兜底 Exception。
+
+_UPSTREAM_UNAVAILABLE_MESSAGE = "数据服务暂不可用，请稍后重试"
+
+
+@app.exception_handler(APIError)
+async def postgrest_api_error_handler(request: Request, exc: APIError):
+    """处理 supabase-py/postgrest-py 抛出的 APIError。
+
+    - 上游瞬时故障（502/503/504 或非 JSON 响应）：统一转为 502 + 友好文案。
+      前端/移动端看到 502 即可触发"重试"交互。
+    - 其他 PostgREST 错误（PG 错误码等业务问题）：透传 `exc.message`，HTTP 400。
+    """
+    if is_transient_supabase_error(exc):
+        print(
+            f"[APIError][upstream] path={request.url.path} "
+            f"code={exc.code} message={exc.message!r} "
+            f"hint={exc.hint!r} details={exc.details!r}",
+            flush=True,
+        )
+        return JSONResponse(
+            status_code=502,
+            content=error(code=502, message=_UPSTREAM_UNAVAILABLE_MESSAGE),
+        )
+
+    print(
+        f"[APIError] path={request.url.path} code={exc.code} "
+        f"message={exc.message!r} hint={exc.hint!r}",
+        flush=True,
+    )
+    return JSONResponse(
+        status_code=400,
+        content=error(code=400, message=exc.message or "数据层错误"),
+    )
+
+
+@app.exception_handler(httpx.HTTPError)
+async def httpx_error_handler(request: Request, exc: httpx.HTTPError):
+    """httpx 连接/超时/协议错误——上游不可达，按瞬时故障处理。"""
+    print(
+        f"[httpx] path={request.url.path} error={type(exc).__name__}: {exc!s}",
+        flush=True,
+    )
+    return JSONResponse(
+        status_code=502,
+        content=error(code=502, message=_UPSTREAM_UNAVAILABLE_MESSAGE),
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """全局异常处理器"""
+    """未被上方精确处理的异常兜底。保持原有 500 语义，但不再泄漏 repr。"""
+    print(
+        f"[Exception] path={request.url.path} error={type(exc).__name__}: {exc!s}",
+        flush=True,
+    )
     return JSONResponse(
         status_code=500,
-        content=error(code=500, message=str(exc))
+        content=error(code=500, message=str(exc)),
     )
 
 

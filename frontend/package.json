@@ -10,7 +10,7 @@
     "ios": "expo run:ios",
     "expo:web": "expo start --web",
     "check": "node scripts/check-setup.js",
-    "postinstall": "patch-package"
+    "postinstall": "node scripts/ensure-local-wechat.js && patch-package"
   },
   "dependencies": {
     "@babel/runtime": "^7.20.0",
@@ -36,6 +36,7 @@
     "expo-image-picker": "~15.1.0",
     "expo-linear-gradient": "~13.0.2",
     "expo-location": "~17.0.1",
+    "expo-native-wechat": "^0.1.8",
     "expo-notifications": "~0.28.19",
     "expo-splash-screen": "~0.27.7",
     "expo-status-bar": "~1.12.1",

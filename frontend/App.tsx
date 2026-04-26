@@ -27,6 +27,9 @@ import {
 } from "./src/store/maintenanceStore";
 import MaintenanceOverlay from "./src/components/MaintenanceOverlay";
 
+// Share SDK
+import { initWechat } from "./src/services/shareService";
+
 // Screens
 import DiscoverScreen from "./src/screens/DiscoverScreen";
 import ArchiveScreen from "./src/screens/Archive/ArchiveScreen";
@@ -612,6 +615,14 @@ export default function App() {
     if (!appIsReady) return;
     startMaintenancePolling();
     return () => stopMaintenancePolling();
+  }, [appIsReady]);
+
+  // 初始化微信 SDK（失败不阻塞，只是退化为系统分享）
+  useEffect(() => {
+    if (!appIsReady) return;
+    initWechat().catch((error) => {
+      console.warn("[App] initWechat failed:", error);
+    });
   }, [appIsReady]);
 
   const handleSplashVideoFinish = useCallback(() => {

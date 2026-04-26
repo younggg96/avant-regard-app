@@ -199,6 +199,10 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const [countries, setCountries] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // 首次 stores / countries 加载失败时的错误文案。用于渲染"加载失败 + 点击重试"占位。
+  // 成功加载后会被清空；只针对首屏，视口更新/附近更新的失败不改动这个 state，避免把
+  // 局部错误放大成全屏 fallback。
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyMode, setNearbyMode] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -229,10 +233,16 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
 
   // 加载所有店铺和国家列表，并获取用户位置
   useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // 首屏初始化：并发拉 stores + countries + 定位，任一首屏必需数据失败都要展示
+  // 错误占位。抽出来是为了"点击重试"时能直接调用（而不是 reload 整个 Screen）。
+  const loadInitialData = () => {
     loadStores();
     loadCountries();
     initUserLocation();
-  }, []);
+  };
 
   const initUserLocation = async () => {
     try {
@@ -288,6 +298,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const loadStores = async () => {
     try {
       setIsLoading(true);
+      setLoadError(null);
       const data = await getAllStores();
       setStores(data);
       syncCountsFromStores(data);
@@ -297,6 +308,11 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       }
     } catch (error) {
       console.error("Error loading stores:", error);
+      setLoadError(
+        error instanceof Error
+          ? error.message || "加载失败"
+          : "加载失败"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -924,6 +940,41 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               style={styles.loadingGif}
               resizeMode="contain"
             />
+          </VStack>
+        ) : loadError ? (
+          // 首屏加载失败占位：明确的错误文案 + 重试按钮，取代原先的"空白地图"体感。
+          // 上游瞬时 502 会被后端映射成 502 并由 http.ts 自动重试 2 次；若仍失败，
+          // 用户看到这个占位后可主动重试。
+          <VStack
+            flex={1}
+            justifyContent="center"
+            alignItems="center"
+            px="$lg"
+            gap="$md"
+          >
+            <Ionicons
+              name="cloud-offline-outline"
+              size={56}
+              color={theme.colors.gray300}
+            />
+            <Text fontSize="$md" fontWeight="$semibold" color="$black">
+              加载失败
+            </Text>
+            <Text fontSize="$sm" color="$gray400" textAlign="center">
+              {loadError}
+            </Text>
+            <Pressable
+              mt="$sm"
+              px="$lg"
+              py="$sm"
+              bg="$black"
+              rounded="$sm"
+              onPress={loadInitialData}
+            >
+              <Text fontSize="$sm" color="$white" fontWeight="$semibold">
+                点击重试
+              </Text>
+            </Pressable>
           </VStack>
         ) : (
           <MapView

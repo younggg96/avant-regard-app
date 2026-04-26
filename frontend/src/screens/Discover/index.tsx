@@ -159,6 +159,7 @@ const DiscoverScreen: React.FC = () => {
     handleLike,
     loadTabData,
     loadMoreRecommend,
+    recommendLoadingMore,
   } = useDiscoverData();
 
   // Header 动画 Hook（reanimated 版本，在 UI 线程驱动 height + opacity，
@@ -290,10 +291,15 @@ const DiscoverScreen: React.FC = () => {
     [activeTab, loadTabData]
   );
 
-  // 处理刷新
+  // 处理刷新 — read `activeTab` through a ref so the callback identity stays
+  // stable across tab switches. Otherwise `onRefresh` changes every time
+  // `activeTab` flips, invalidating the `refreshControl` memo in every
+  // TabContent and defeating `TabContent.memo` on tab switches.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
   const onRefresh = useCallback(() => {
-    handleRefresh(activeTab);
-  }, [handleRefresh, activeTab]);
+    handleRefresh(activeTabRef.current);
+  }, [handleRefresh]);
 
   // 处理帖子点击
   const handlePostPress = useCallback(
@@ -471,6 +477,7 @@ const DiscoverScreen: React.FC = () => {
           onLike={handleLike}
           onBannerPress={handleBannerPress}
           onEndReached={loadMoreRecommend}
+          loadingMore={recommendLoadingMore}
           scrollToTopSignal={recommendScrollToTopSignal}
         />
         <TabContent

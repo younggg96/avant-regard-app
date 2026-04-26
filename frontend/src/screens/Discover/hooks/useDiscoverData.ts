@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { InteractionManager } from "react-native";
 import {
   getForumPosts,
   getFollowingPosts,
@@ -101,6 +102,18 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   // 缓存用户信息
   const userInfoCache = useRef<UserInfoCache>(new Map());
 
+  // 缓存 DisplayPost 引用：key = postId，value = { source: apiPost, display: DisplayPost }。
+  // Feed v2.1 的 refresh / loadMore / 乐观点赞每次都会生成新的 feedItems 数组，
+  // 若直接 map(mapApiPostToDisplayPost) 会让未变化的老帖也得到全新 DisplayPost 引用，
+  // 进而让下游 `TabContent` → `PostCard.memo` 全部命中 shallow-diff 失效，
+  // 在瀑布流里表现为「追加一页 / 点一次赞 → 30 张卡片全部重渲染」。
+  // 以 apiPost 对象引用（以及 userInfoCache 的版本号）做失效检测，保留未变帖子的
+  // DisplayPost 引用，使 React.memo 真正生效。
+  const displayPostCacheRef = useRef<
+    Map<number, { source: Post; userInfoVersion: number; display: DisplayPost }>
+  >(new Map());
+  const userInfoVersionRef = useRef(0);
+
   /**
    * 获取用户信息（带缓存）
    */
@@ -120,12 +133,19 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       });
 
       const results = await Promise.all(userInfoPromises);
+      let changed = false;
       results.forEach((result) => {
         if (result && result.info) {
           existingMap.set(result.userId, result.info);
           userInfoCache.current.set(result.userId, result.info);
+          changed = true;
         }
       });
+      // Bump the cache version so stale DisplayPost entries (which were
+      // rendered with the old dicebear fallback) get rebuilt on the next
+      // mapping pass. This preserves reference stability for *unchanged*
+      // posts while invalidating just-backfilled authors.
+      if (changed) userInfoVersionRef.current += 1;
 
       return existingMap;
     },
@@ -136,15 +156,49 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    * 将 Feed v2.1 返回的 post 型条目转换为 Discover 使用的 DisplayPost。
    * show 卡片暂不在此 Tab 渲染，直接过滤；后端已在 feed 接口内批量补全
    * username/avatarUrl，因此大部分情况下无需再次请求 user_info。
+   *
+   * Reference-stability contract:
+   *   For unchanged apiPost objects (same object ref as last render, and the
+   *   user-info cache has not been bumped since), the same DisplayPost
+   *   instance is returned. This is what makes `PostCard` React.memo
+   *   actually prune re-renders on loadMore / like / refresh. When the
+   *   backing apiPost reference changes — e.g. `applyLikeToFeed` swaps in a
+   *   new `{...post, likedByMe, likeCount}` — the entry is rebuilt so the
+   *   single touched card re-renders, and every other card stays memoized.
    */
   const mapFeedItemsToDisplayPosts = useCallback(
     (items: FeedItem[]): DisplayPost[] => {
       const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+      const cache = displayPostCacheRef.current;
+      const version = userInfoVersionRef.current;
+      const liveIds = new Set<number>();
       const result: DisplayPost[] = [];
       for (const item of items) {
         if (item.type !== "post") continue;
         const post = item.data as Post;
-        result.push(mapApiPostToDisplayPost(post, userInfoMap));
+        liveIds.add(post.id);
+        const cached = cache.get(post.id);
+        if (
+          cached &&
+          cached.source === post &&
+          cached.userInfoVersion === version
+        ) {
+          result.push(cached.display);
+          continue;
+        }
+        const display = mapApiPostToDisplayPost(post, userInfoMap);
+        cache.set(post.id, {
+          source: post,
+          userInfoVersion: version,
+          display,
+        });
+        result.push(display);
+      }
+      // Evict entries for posts no longer in the feed so the cache cannot
+      // grow unbounded across long sessions (replay mode in particular can
+      // keep looping the same ids, but refresh + restart must clear them).
+      for (const id of cache.keys()) {
+        if (!liveIds.has(id)) cache.delete(id);
       }
       return result;
     },
@@ -175,11 +229,82 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     [fetchUserInfos]
   );
 
+  // -------------------------------------------------------------------------
+  // Backfill scheduling — the recommend-tab-specific scroll-jank root cause.
+  //
+  // `refreshFeed` / `loadMore` write straight into `feedItems` so the feed
+  // paints with whatever `avatarUrl` / `username` the backend already
+  // batched into the feed response (2026-04-20 change). The `backfill`
+  // pass is just to top up extras we don't strictly need on first paint
+  // (mainly `user_info.primaryTitle` for the author badge, and the rare
+  // post whose `avatarUrl` was null in the batch response).
+  //
+  // Running it synchronously inside a `useEffect([feedItems])` fires
+  // multiple concurrent HTTP requests at the exact moment the
+  // MasonryFlashList is mounting 26 cells — their JSON parse + state
+  // writes pile onto the JS thread during the most sensitive paint
+  // window. Followers tab does a single awaited `fetchUserInfos` *before*
+  // render and then sits idle, which is why it feels smooth.
+  //
+  // Fix: run the backfill through `InteractionManager.runAfterInteractions`
+  // so RN guarantees it fires only after the current interaction / layout
+  // batch completes, plus a small safety timeout so we still run on
+  // devices where InteractionManager's completion signal is delayed.
+  // A pending handle is stashed so rapid `feedItems` changes cancel the
+  // previous scheduled backfill instead of stacking them.
+  // -------------------------------------------------------------------------
+  const pendingBackfillTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const pendingInteractionHandleRef = useRef<ReturnType<
+    typeof InteractionManager.runAfterInteractions
+  > | null>(null);
+
   useEffect(() => {
     if (feedItems.length === 0) return;
-    backfillUserInfosForFeed(feedItems).catch(() => {
-      // non-blocking; next load will retry
-    });
+
+    // Clear any previously scheduled backfill — only the latest feedItems
+    // snapshot needs a pass. Without this, every append would schedule
+    // another overlapping fetch batch.
+    if (pendingBackfillTimerRef.current) {
+      clearTimeout(pendingBackfillTimerRef.current);
+      pendingBackfillTimerRef.current = null;
+    }
+    if (pendingInteractionHandleRef.current) {
+      pendingInteractionHandleRef.current.cancel();
+      pendingInteractionHandleRef.current = null;
+    }
+
+    let cancelled = false;
+    const runBackfill = () => {
+      if (cancelled) return;
+      // Mark done first so whichever scheduler fires second
+      // (InteractionManager vs the setTimeout safety net) is a no-op.
+      cancelled = true;
+      pendingBackfillTimerRef.current = null;
+      pendingInteractionHandleRef.current = null;
+      backfillUserInfosForFeed(feedItems).catch(() => {
+        // non-blocking; next load will retry
+      });
+    };
+
+    pendingInteractionHandleRef.current =
+      InteractionManager.runAfterInteractions(runBackfill);
+    // Safety net: if no interaction completion fires within 1.2s (e.g. user
+    // pauses mid-gesture), still run the backfill so author titles fill in.
+    pendingBackfillTimerRef.current = setTimeout(runBackfill, 1200);
+
+    return () => {
+      cancelled = true;
+      if (pendingBackfillTimerRef.current) {
+        clearTimeout(pendingBackfillTimerRef.current);
+        pendingBackfillTimerRef.current = null;
+      }
+      if (pendingInteractionHandleRef.current) {
+        pendingInteractionHandleRef.current.cancel();
+        pendingInteractionHandleRef.current = null;
+      }
+    };
   }, [feedItems, backfillUserInfosForFeed]);
 
   /**
@@ -375,11 +500,40 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     [setFeedItems]
   );
 
+  // ---------------------------------------------------------------------------
+  // Stable callback refs for handleLike.
+  //
+  // Why: handleLike originally depended on [recommendPosts, forumPosts,
+  // followingPosts, user, applyLikeToFeed]. Three of those arrays re-reference
+  // on every feedItems append / refresh / optimistic like, so the callback
+  // itself churned. That churn propagated downstream:
+  //   DiscoverScreen.handleLike ref change
+  //     → TabContent.renderMasonryItem (useCallback with [onLike] dep) rebuilt
+  //     → MasonryFlashList treats renderItem as new
+  //     → every mounted PostCard re-renders even though React.memo would
+  //       otherwise have pruned them.
+  // Moving the arrays into refs makes handleLike depend only on primitives,
+  // so the callback ref stays stable across the common feed mutations and
+  // the memoized card path actually pays off.
+  // ---------------------------------------------------------------------------
+  const recommendPostsRef = useRef(recommendPosts);
+  recommendPostsRef.current = recommendPosts;
+  const forumPostsRef = useRef(forumPosts);
+  forumPostsRef.current = forumPosts;
+  const followingPostsRef = useRef(followingPosts);
+  followingPostsRef.current = followingPosts;
+  const userRef = useRef(user);
+  userRef.current = user;
+
   const handleLike = useCallback(
     async (postId: string) => {
-      const targetRecommend = recommendPosts.find((p) => p.id === postId);
-      const targetForum = forumPosts.find((p) => p.id === postId);
-      const targetFollowing = followingPosts.find((p) => p.id === postId);
+      const targetRecommend = recommendPostsRef.current.find(
+        (p) => p.id === postId
+      );
+      const targetForum = forumPostsRef.current.find((p) => p.id === postId);
+      const targetFollowing = followingPostsRef.current.find(
+        (p) => p.id === postId
+      );
       const target = targetRecommend || targetForum || targetFollowing;
 
       if (!target) return;
@@ -414,7 +568,8 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
       try {
         const numericPostId = parseInt(postId, 10);
-        const userId = user?.id ? parseInt(user.id, 10) : 0;
+        const currentUser = userRef.current;
+        const userId = currentUser?.id ? parseInt(currentUser.id, 10) : 0;
 
         if (isCurrentlyLiked) {
           await unlikePost(numericPostId, userId);
@@ -453,7 +608,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         }
       }
     },
-    [recommendPosts, forumPosts, followingPosts, user, applyLikeToFeed]
+    [applyLikeToFeed]
   );
 
   // 推荐 Tab 的 refreshing 以 feed hook 为准（下拉刷新时 feed hook 接管），

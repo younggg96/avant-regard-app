@@ -4,7 +4,11 @@
 
 import math
 from typing import Optional, List, Tuple
-from app.db.supabase import get_supabase, get_supabase_admin
+from app.db.supabase import (
+    get_supabase,
+    get_supabase_admin,
+    execute_with_retry,
+)
 from app.schemas.buyer_store import (
     BuyerStore,
     BuyerStoreCreate,
@@ -91,8 +95,20 @@ class BuyerStoreService:
         page: int = 1,
         page_size: int = 50,
     ) -> Tuple[List[BuyerStore], int]:
-        """获取买手店列表"""
-        query = self.db.table("buyer_stores").select("*", count="exact")
+        """获取买手店列表。
+
+        优化：只在第 1 页请求 `count`，而且用 `planned`（PostgREST/PG planner 估算）
+        而非 `exact`（全表扫描）。这样：
+        - 列表首屏依旧能给前端一个 total 用于展示；
+        - 后续翻页不再附带 count 开销（前端用 `len(stores) < page_size` 作为
+          终止条件本就足够）；
+        - 大表下 Supabase 网关更不容易因为 count 超时触发 502/504。
+        """
+        # 仅在 page==1 时请求 count；改用 planned 避免 exact 全表扫描
+        if page == 1:
+            query = self.db.table("buyer_stores").select("*", count="planned")
+        else:
+            query = self.db.table("buyer_stores").select("*")
 
         # 国家筛选
         if country:
@@ -129,7 +145,10 @@ class BuyerStoreService:
         offset = (page - 1) * page_size
         query = query.range(offset, offset + page_size - 1)
 
-        result = query.execute()
+        result = execute_with_retry(
+            lambda: query.execute(),
+            label="buyer_stores.get_all_stores",
+        )
         total = result.count or 0
         stores = [self._format_store(s) for s in result.data]
 
@@ -137,8 +156,12 @@ class BuyerStoreService:
 
     def get_store_by_id(self, store_id: str) -> Optional[BuyerStore]:
         """通过 ID 获取买手店"""
-        result = (
-            self.db.table("buyer_stores").select("*").eq("id", store_id).execute()
+        result = execute_with_retry(
+            lambda: self.db.table("buyer_stores")
+            .select("*")
+            .eq("id", store_id)
+            .execute(),
+            label="buyer_stores.get_store_by_id",
         )
 
         if not result.data:
@@ -193,7 +216,10 @@ class BuyerStoreService:
 
     def get_all_countries(self) -> List[str]:
         """获取所有国家列表"""
-        result = self.db.table("buyer_stores").select("country").execute()
+        result = execute_with_retry(
+            lambda: self.db.table("buyer_stores").select("country").execute(),
+            label="buyer_stores.get_all_countries",
+        )
 
         countries = set(s["country"] for s in result.data if s.get("country"))
         return sorted(list(countries))
@@ -205,14 +231,20 @@ class BuyerStoreService:
         if country:
             query = query.eq("country", country)
 
-        result = query.execute()
+        result = execute_with_retry(
+            lambda: query.execute(),
+            label="buyer_stores.get_all_cities",
+        )
 
         cities = set(s["city"] for s in result.data if s.get("city"))
         return sorted(list(cities))
 
     def get_all_styles(self) -> List[str]:
         """获取所有风格列表"""
-        result = self.db.table("buyer_stores").select("style").execute()
+        result = execute_with_retry(
+            lambda: self.db.table("buyer_stores").select("style").execute(),
+            label="buyer_stores.get_all_styles",
+        )
 
         styles = set()
         for s in result.data:
@@ -225,10 +257,9 @@ class BuyerStoreService:
     def get_stores_by_brand(self, brand: str) -> List[BuyerStore]:
         """根据品牌获取买手店"""
         # 使用 ilike 进行模糊匹配
-        result = (
-            self.db.table("buyer_stores")
-            .select("*")
-            .execute()
+        result = execute_with_retry(
+            lambda: self.db.table("buyer_stores").select("*").execute(),
+            label="buyer_stores.get_stores_by_brand",
         )
 
         # 在应用层进行品牌过滤（因为 Supabase 数组模糊匹配有限制）
@@ -308,7 +339,10 @@ class BuyerStoreService:
             )
 
         query = query.order("city").order("name")
-        result = query.execute()
+        result = execute_with_retry(
+            lambda: query.execute(),
+            label="buyer_stores.get_stores_in_viewport",
+        )
 
         stores = [self._format_store(s) for s in result.data]
 
@@ -338,7 +372,10 @@ class BuyerStoreService:
         radius: float = 50.0,
     ) -> List[dict]:
         """获取附近的买手店"""
-        result = self.db.table("buyer_stores").select("*").execute()
+        result = execute_with_retry(
+            lambda: self.db.table("buyer_stores").select("*").execute(),
+            label="buyer_stores.get_nearby_stores",
+        )
 
         stores_with_distance = []
         for s in result.data:
@@ -384,10 +421,10 @@ class BuyerStoreService:
         safe_keyword = self._sanitize_search_keyword(keyword)
         if not safe_keyword:
             return []
-        
+
         try:
-            result = (
-                self.db.table("buyer_stores")
+            result = execute_with_retry(
+                lambda: self.db.table("buyer_stores")
                 .select("*")
                 .or_(
                     f"name.ilike.*{safe_keyword}*,"
@@ -395,7 +432,8 @@ class BuyerStoreService:
                     f"address.ilike.*{safe_keyword}*"
                 )
                 .limit(limit)
-                .execute()
+                .execute(),
+                label="buyer_stores.search_stores",
             )
             return [self._format_store(s) for s in result.data]
         except Exception as e:

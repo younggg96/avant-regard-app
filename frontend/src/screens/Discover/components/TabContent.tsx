@@ -8,6 +8,7 @@ import {
   StyleSheet,
   FlatList,
   ListRenderItemInfo,
+  ActivityIndicator,
 } from "react-native";
 import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list";
 import { Ionicons } from "@expo/vector-icons";
@@ -49,6 +50,15 @@ interface TabContentProps {
    */
   onEndReached?: () => void;
   /**
+   * True while a `loadMore` network page is in flight. Drives the bottom
+   * "加载中" footer so scrolling to the end never feels like the list is
+   * stuck — the user sees a clear spinner during the request window.
+   *
+   * Only meaningful for tabs that paginate (recommend); others can leave
+   * this undefined.
+   */
+  loadingMore?: boolean;
+  /**
    * Incrementing signal from the parent to scroll this tab's list back to top.
    */
   scrollToTopSignal?: number;
@@ -77,36 +87,83 @@ const loadingStyles = StyleSheet.create({
   },
 });
 
-const convertToPost = (post: DisplayPost): Post => ({
-  id: post.id,
-  title: post.content.title,
-  image: post.content.images[0] || "https://picsum.photos/id/1/600/800",
-  auditStatus: post.auditStatus,
-  author: {
-    id: post.author.id,
-    name: post.author.name,
-    avatar: post.author.avatar,
+/**
+ * Bottom footer shown while a `loadMore` page is in flight.
+ *
+ * Small, non-intrusive spinner — it lives inside the scroll content so the
+ * user sees "加载中" at the bottom as they scroll past the current page's
+ * last row, replacing the previous "scroll silently freezes while waiting
+ * for the next page" feel.
+ *
+ * Kept as a module-level stateless component so its identity is stable and
+ * `ListFooterComponent` reference churn does not re-commit the list.
+ */
+const listFooterStyles = StyleSheet.create({
+  wrapper: {
+    paddingVertical: 20,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
   },
-  content: {
-    title: post.content.title,
-    description: post.content.description,
-    images: post.content.images,
-    tags: post.content.tags,
-    coverAspectRatio: post.content.coverAspectRatio,
-  },
-  engagement: {
-    likes: post.engagement.likes,
-    saves: post.engagement.saves,
-    comments: post.engagement.comments,
-    isLiked: post.engagement.isLiked,
-    isSaved: post.engagement.isSaved,
-  },
-  likes: post.engagement.likes,
-  isLiked: post.engagement.isLiked,
-  timestamp: post.timestamp,
-  communityId: post.communityId,
-  communityName: post.communityName,
 });
+
+const LoadMoreFooter: React.FC = React.memo(() => (
+  <View style={listFooterStyles.wrapper}>
+    <ActivityIndicator size="small" color={theme.colors.gray400} />
+    <Text fontSize="$sm" color="$gray400">
+      加载中...
+    </Text>
+  </View>
+));
+LoadMoreFooter.displayName = "LoadMoreFooter";
+
+// Memoize DisplayPost → Post adaption so that identical DisplayPost refs keep
+// yielding identical Post refs. `useDiscoverData` already caches DisplayPost
+// per feed id; without this second-stage cache the `tabPosts.map(convertToPost)`
+// below would still mint new Post objects on every render, defeating the
+// upstream work and making `PostCard` React.memo useless again.
+//
+// WeakMap so entries auto-GC once DisplayPost is evicted from the upstream
+// cache — no manual invalidation required here.
+const displayToPostCache = new WeakMap<DisplayPost, Post>();
+
+const convertToPost = (post: DisplayPost): Post => {
+  const cached = displayToPostCache.get(post);
+  if (cached) return cached;
+  const mapped: Post = {
+    id: post.id,
+    title: post.content.title,
+    image: post.content.images[0] || "https://picsum.photos/id/1/600/800",
+    auditStatus: post.auditStatus,
+    author: {
+      id: post.author.id,
+      name: post.author.name,
+      avatar: post.author.avatar,
+    },
+    content: {
+      title: post.content.title,
+      description: post.content.description,
+      images: post.content.images,
+      tags: post.content.tags,
+      coverAspectRatio: post.content.coverAspectRatio,
+    },
+    engagement: {
+      likes: post.engagement.likes,
+      saves: post.engagement.saves,
+      comments: post.engagement.comments,
+      isLiked: post.engagement.isLiked,
+      isSaved: post.engagement.isSaved,
+    },
+    likes: post.engagement.likes,
+    isLiked: post.engagement.isLiked,
+    timestamp: post.timestamp,
+    communityId: post.communityId,
+    communityName: post.communityName,
+  };
+  displayToPostCache.set(post, mapped);
+  return mapped;
+};
 
 // Measured on a standard-size iPhone (SCREEN_WIDTH≈390, column width≈173):
 //   image (aspectRatio 3/4) ≈ 230 + title 2 lines ≈ 36 + footer ≈ 36 + margin 12 ≈ 314.
@@ -193,23 +250,30 @@ const arrangeForNaiveMasonry = <T extends Post>(posts: T[]): T[] => {
   return merged;
 };
 
+// Only clones for *duplicate* ids (replay-mode looping). First occurrences
+// pass through as-is so upstream reference stability is preserved — the
+// old implementation spread every item unconditionally, minting a new object
+// per card on every render even when nothing about that card had changed.
 const withStableRenderKeys = (posts: Post[]): RenderablePost[] => {
   const seen = new Map<string, number>();
-  return posts.map((post) => {
+  const result: RenderablePost[] = new Array(posts.length);
+  for (let i = 0; i < posts.length; i++) {
+    const post = posts[i];
     const occurrence = seen.get(post.id) ?? 0;
     seen.set(post.id, occurrence + 1);
-    return {
-      ...post,
-      renderKey:
-        occurrence === 0 ? post.id : `${post.id}-repeat-${occurrence}`,
-    };
-  });
+    if (occurrence === 0) {
+      result[i] = post as RenderablePost;
+    } else {
+      result[i] = { ...post, renderKey: `${post.id}-repeat-${occurrence}` };
+    }
+  }
+  return result;
 };
 
 /**
  * Tab 内容组件 — 使用 MasonryFlashList 实现高性能瀑布流
  */
-export const TabContent: React.FC<TabContentProps> = ({
+const TabContentInner: React.FC<TabContentProps> = ({
   tab,
   tabPosts,
   banners,
@@ -225,6 +289,7 @@ export const TabContent: React.FC<TabContentProps> = ({
   onLike,
   onBannerPress,
   onEndReached,
+  loadingMore = false,
   scrollToTopSignal = 0,
 }) => {
   const flatListRef = useRef<FlatList<Post>>(null);
@@ -347,6 +412,16 @@ export const TabContent: React.FC<TabContentProps> = ({
     [refreshing, onRefresh]
   );
 
+  // Stable footer slot: `undefined` means "don't mount footer at all" (avoids
+  // the list reserving whitespace); a `<LoadMoreFooter />` element appears
+  // only while a page is in flight. Using the module-level memoized
+  // `LoadMoreFooter` keeps the reference identical across flips (null ↔ node)
+  // so the internal FlashList doesn't re-measure the footer every append.
+  const listFooter = useMemo(
+    () => (loadingMore ? <LoadMoreFooter /> : null),
+    [loadingMore]
+  );
+
   const getEmptyStateText = () => {
     switch (tab) {
       case "forum":
@@ -437,8 +512,14 @@ export const TabContent: React.FC<TabContentProps> = ({
           keyExtractor={keyExtractor}
           renderItem={renderForumItem}
           ListHeaderComponent={forumHeader}
+          ListFooterComponent={listFooter}
           onScroll={onScroll}
-          scrollEventThrottle={16}
+          // 32ms (~30Hz) is enough to drive the header collapse/expand
+          // animation and halves the JS-thread callback pressure during
+          // scroll vs the default 16ms. The header direction-flip is the
+          // only consumer of these events; reanimated runs the actual
+          // height/opacity transition on the UI thread regardless.
+          scrollEventThrottle={32}
           refreshControl={refreshControl}
           showsVerticalScrollIndicator={false}
           removeClippedSubviews={true}
@@ -480,8 +561,13 @@ export const TabContent: React.FC<TabContentProps> = ({
         drawDistance={MASONRY_DRAW_DISTANCE}
         overrideItemLayout={overrideItemLayout}
         ListHeaderComponent={masonryHeader}
+        ListFooterComponent={listFooter}
         onScroll={onScroll}
-        scrollEventThrottle={16}
+        // See FlatList branch: 32ms is enough for the header direction
+        // detection and cuts the scroll-time JS callback rate in half,
+        // which pairs well with the stable-reference work above so the
+        // JS thread stays free for recycled-cell paint.
+        scrollEventThrottle={32}
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={false}
         onEndReached={handleEndReached}
@@ -492,11 +578,28 @@ export const TabContent: React.FC<TabContentProps> = ({
   );
 };
 
+TabContentInner.displayName = "TabContent";
+
+/**
+ * Memoize `TabContent` so unrelated DiscoverScreen state churn (unread-count
+ * polling, focus refresh, current-user-info fetch, scroll-to-top signal for
+ * *another* tab) does not re-execute the function body of all three tab
+ * instances. With the callback-stability work upstream (stable `onLike`,
+ * `onRefresh`, `onPostPress`, `onAuthorPress`, `onScroll`, `onEndReached`)
+ * all shallow-equal props reliably land memo hits on those re-renders.
+ *
+ * NOTE: Historical `TabContent.displayName = "TabContent"` + `export default
+ * TabContent` pattern tripped a `react-refresh/babel` ×
+ * `@babel/plugin-transform-typescript` scope-tracker interaction that produced
+ * `ReferenceError: Property 'TabContent' doesn't exist` at runtime. Keeping
+ * the displayName on the inner function and exposing only the named export
+ * avoids that transform bug.
+ */
+export const TabContent = React.memo(TabContentInner);
+
 const masonryItemStyles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 4,
     marginBottom: 8, // 等价于原 gluestack mb="$sm"
   },
 });
-
-export default TabContent;

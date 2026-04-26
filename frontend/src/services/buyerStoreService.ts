@@ -1,12 +1,11 @@
 /**
  * 买手店数据服务
  * 管理买手店数据的获取、筛选和推荐功能
+ *
+ * HTTP 底座统一走 `./http.ts`，享受瞬时 5xx 退避重试、401 刷新、统一信封解包。
  */
 
-import { useAuthStore } from "../store/authStore";
-import { config } from "../config/env";
-
-const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
+import { request } from "./http";
 
 /**
  * 个人「贡献」列表一次性拉取的最大条数。
@@ -14,13 +13,6 @@ const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
  * 避免贡献 > 100 时被旧的 pageSize=100 截断。
  */
 export const CONTRIBUTION_PAGE_SIZE = 1000;
-
-// API 响应包装类型
-interface ApiResponse<T> {
-  code: number;
-  message: string;
-  data: T;
-}
 
 export interface BuyerStore {
   id: string;
@@ -97,78 +89,6 @@ export interface ViewportStoreParams {
   openOnly?: boolean;
   hasPhone?: boolean;
   searchQuery?: string;
-}
-
-// 通用请求方法
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "*/*",
-    ...((options.headers as Record<string, string>) || {}),
-  };
-
-  const token = useAuthStore.getState().getAccessToken();
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const requestConfig: RequestInit = {
-    ...options,
-    headers,
-  };
-
-  try {
-    const response = await fetch(url, requestConfig);
-    const contentType = response.headers.get("content-type");
-
-    if (!response.ok) {
-      let errorMessage = "请求失败";
-      if (contentType?.includes("application/json")) {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } else {
-        const text = await response.text();
-        errorMessage = text || `HTTP ${response.status}`;
-      }
-      throw new Error(errorMessage);
-    }
-
-    if (contentType?.includes("application/json")) {
-      const jsonResponse = await response.json();
-
-      // 处理包装的 API 响应格式 { code, message, data }
-      if (
-        jsonResponse &&
-        typeof jsonResponse === "object" &&
-        "code" in jsonResponse
-      ) {
-        const apiResponse = jsonResponse as ApiResponse<T>;
-
-        if (apiResponse.code !== 0) {
-          throw new Error(apiResponse.message || "请求失败");
-        }
-
-        if ("data" in apiResponse) {
-          return apiResponse.data;
-        }
-      }
-
-      return jsonResponse as T;
-    }
-
-    const text = await response.text();
-    return text as unknown as T;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error("网络请求失败，请检查网络连接");
-  }
 }
 
 /**
