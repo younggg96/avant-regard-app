@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.deps import get_current_admin_user, get_current_user_id
 from app.core.response import success
 from app.schemas.level import (
+    AdminBackfillRequest,
     AdminCreateRoundRequest,
     AdminDrawLotteryRequest,
     AdminGrantLevelRequest,
@@ -155,6 +156,35 @@ async def review_upgrade_request(
     if not ok:
         raise HTTPException(status_code=404, detail="申请不存在或已处理")
     return success(message="已处理")
+
+
+@admin_level_router.post("/backfill")
+async def admin_backfill_levels(
+    request: AdminBackfillRequest,
+    _admin: int = Depends(get_current_admin_user),
+):
+    """存量用户等级回填 (幂等, 可 dryRun).
+
+    - userId=null + limit=null  -> 全量
+    - userId=X                  -> 仅该用户
+    - dryRun=True               -> 只计算不落库
+    """
+    if request.userId:
+        result = level_service.backfill_user(request.userId, dry_run=request.dryRun)
+        return success({
+            "scope":          "single",
+            "user":           result,
+        })
+
+    summary = level_service.backfill_all(
+        dry_run=request.dryRun,
+        limit=request.limit,
+        offset=request.offset,
+    )
+    return success({
+        "scope":   "all",
+        "summary": summary,
+    })
 
 
 @admin_level_router.post("/users/{user_id}/grant")

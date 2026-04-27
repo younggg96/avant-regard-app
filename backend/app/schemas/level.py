@@ -166,5 +166,18 @@ class AdminGrantLevelRequest(BaseModel):
     remark: str = ""
 
 
+class AdminBackfillRequest(BaseModel):
+    """存量用户等级回填请求.
+
+    - user_id=None + limit=None  -> 全量扫描
+    - user_id=X                  -> 单用户回填
+    - limit=N                    -> 最多处理 N 人 (用于分批压测)
+    """
+    userId: Optional[int] = None
+    dryRun: bool          = False
+    limit:  Optional[int] = None
+    offset: int           = 0
+
+
 # 允许 forward reference
 UserLevelStatus.model_rebuild()

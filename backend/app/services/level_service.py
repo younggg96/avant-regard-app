@@ -533,7 +533,299 @@ class LevelService:
                 logger.warning("admin_grant_level audit log failed: %s", e)
         return True
 
-    # ---- 3.6 通知 ------------------------------------------------------
+    # ---- 3.6 存量回填 --------------------------------------------------
+    #
+    # 等级系统上线前的老用户没有 counters, 需要根据业务表的真实行为做一次回溯:
+    #   1) 从业务表统计真实累计 (不是"操作次数", 是当前表里仍存在的行数).
+    #   2) 合并到 user_level_progress.counters (取 max 以兼容已有记录).
+    #   3) 静默升级到符合条件的 Lv1/2/3, Lv4 达标仅创建 PENDING.
+    #
+    # 幂等关键:
+    #   - current_level 有 only-ascent 触发器, 重复跑不会回退;
+    #   - _silent_grant_benefit 在已存在记录时 **跳过**, 不会把 quota 翻倍;
+    #   - level_upgrade_requests 的 PENDING 有 unique index, 不会重复建单;
+    #   - 静默升级不发站内信, 避免老用户收到成百上千条升级通知.
+
+    def _count_real_actions(self, user_id: int) -> Dict[str, int]:
+        """从业务表统计某 user 的真实累计行为计数.
+
+        每个 action 的口径与 record_action 调用点一致:
+          - POST_CREATED:       posts WHERE user_id=? AND status='PUBLISHED'
+          - COMMUNITY_FOLLOWED: community_follows WHERE user_id=?
+          - POST_LIKED:         post_likes WHERE user_id=?
+          - USER_FOLLOWED:      user_follows WHERE follower_id=?
+          - WANT_CLICKED:       post_wants WHERE user_id=?
+          - STORE_COMMENTED:    buyer_store_comments WHERE user_id=? AND parent_id IS NULL
+          - ARCHIVE_UPLOADED:   三张审核通过的提交表的和
+        """
+        def _count(table: str, field: str, val: Any, extra: Optional[Dict[str, Any]] = None) -> int:
+            try:
+                q = self.db.table(table).select("id", count="exact").eq(field, val)
+                for k, v in (extra or {}).items():
+                    if v is None:
+                        q = q.is_(k, "null")
+                    else:
+                        q = q.eq(k, v)
+                res = q.execute()
+                return int(res.count or 0)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("backfill count %s failed: %s", table, e)
+                return 0
+
+        post_created       = _count("posts",                "user_id",     user_id, {"status": "PUBLISHED"})
+        community_followed = _count("community_follows",    "user_id",     user_id)
+        post_liked         = _count("post_likes",           "user_id",     user_id)
+        user_followed      = _count("user_follows",         "follower_id", user_id)
+        want_clicked       = _count("post_wants",           "user_id",     user_id)
+        store_commented    = _count("buyer_store_comments", "user_id",     user_id, {"parent_id": None})
+        archive_stores     = _count("user_submitted_stores", "user_id",    user_id, {"status": "APPROVED"})
+        archive_shows      = _count("shows",                "created_by",  user_id, {"status": "APPROVED"})
+        archive_brands     = _count("brand_submissions",    "user_id",     user_id, {"status": "APPROVED"})
+
+        return {
+            LevelAction.POST_CREATED.value:       post_created,
+            LevelAction.COMMUNITY_FOLLOWED.value: community_followed,
+            LevelAction.POST_LIKED.value:         post_liked,
+            LevelAction.USER_FOLLOWED.value:      user_followed,
+            LevelAction.WANT_CLICKED.value:       want_clicked,
+            LevelAction.STORE_COMMENTED.value:    store_commented,
+            LevelAction.ARCHIVE_UPLOADED.value:   archive_stores + archive_shows + archive_brands,
+        }
+
+    def _silent_grant_benefit(self, user_id: int, benefit_id: int, quota: int) -> None:
+        """幂等发放权益:  已有记录 -> **不动**; 没有 -> 新建.
+
+        与 _grant_benefit 的"累加"语义不同, 专供回填使用, 避免重复发福利.
+        """
+        existing = (
+            self.db.table("user_level_benefits")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("benefit_id", benefit_id)
+            .execute()
+        )
+        if existing.data:
+            return
+        self.db.table("user_level_benefits").insert({
+            "user_id":    user_id,
+            "benefit_id": benefit_id,
+            "quota":      quota,
+            "used":       0,
+        }).execute()
+
+    def _silent_grant_level_benefits(self, user_id: int, level: int) -> None:
+        """批量幂等发放某 level 对应的所有权益."""
+        res = (
+            self.db.table("level_benefits")
+            .select("id, benefit_type, default_quota")
+            .eq("level_required", level)
+            .eq("is_active", True)
+            .execute()
+        )
+        for b in res.data or []:
+            self._silent_grant_benefit(user_id, b["id"], b["default_quota"])
+
+    def _silent_upgrade(self, user_id: int, new_level: int) -> None:
+        """回填专用: 只写等级 + 幂等发权益 + Lv3+ 进当月抽奖池, 不发通知."""
+        now = datetime.utcnow().isoformat()
+        self.db.table("user_levels").update({
+            "current_level":    new_level,
+            "last_level_up_at": now,
+            "pending_level":    None,
+        }).eq("user_id", user_id).execute()
+
+        self._silent_grant_level_benefits(user_id, new_level)
+
+        if new_level >= 3:
+            try:
+                from app.services.lottery_service import lottery_service
+                lottery_service.ensure_user_entered_current_round(user_id)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("silent enroll lottery failed user=%s: %s", user_id, e)
+
+    def _ensure_pending_request_silent(self, user_id: int, target_level: int) -> None:
+        """回填专用: Lv4 达标后去重创建 PENDING, 不发通知."""
+        existing = (
+            self.db.table("level_upgrade_requests")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("target_level", target_level)
+            .eq("status", "PENDING")
+            .execute()
+        )
+        if existing.data:
+            return
+        try:
+            self.db.table("level_upgrade_requests").insert({
+                "user_id":      user_id,
+                "target_level": target_level,
+                "status":       "PENDING",
+                "remark":       "backfill: 达标自动入审核队列",
+            }).execute()
+            self.db.table("user_levels").update({"pending_level": target_level}) \
+                .eq("user_id", user_id).execute()
+        except Exception as e:  # noqa: BLE001
+            msg = str(e).lower()
+            if "duplicate" in msg or "unique" in msg or "conflict" in msg:
+                return
+            logger.warning("backfill ensure_pending_request failed user=%s: %s", user_id, e)
+
+    def backfill_user(self, user_id: int, dry_run: bool = False) -> Dict[str, Any]:
+        """对单个用户做一次等级回溯.
+
+        Args:
+            user_id: 目标用户
+            dry_run: 只计算不写库, 用于脚本预览
+
+        Returns:
+            {
+              "userId":        int,
+              "beforeLevel":   int,
+              "afterLevel":    int,
+              "pendingLevel":  int | None,
+              "counters":      dict,
+              "dryRun":        bool,
+            }
+        """
+        with _lock_for(user_id):
+            real_counters = self._count_real_actions(user_id)
+            existing = self._get_counters(user_id)
+            merged = {
+                k: max(int(real_counters.get(k, 0)), int(existing.get(k, 0)))
+                for k in set(real_counters) | set(existing)
+            }
+
+            # dry_run 下避免 _get_row 的 lazy-create 写库
+            if dry_run:
+                r = (
+                    self.db.table("user_levels")
+                    .select("current_level, pending_level, last_level_up_at")
+                    .eq("user_id", user_id)
+                    .execute()
+                )
+                row = r.data[0] if r.data else {
+                    "current_level": 0, "pending_level": None, "last_level_up_at": None
+                }
+            else:
+                row = self._get_row(user_id)
+
+            before = int(row.get("current_level") or 0)
+
+            # 模拟升级路径, 找出"能升到的最高 AUTO 等级"和"是否触发 Lv4 PENDING"
+            current = before
+            pending_level: Optional[int] = row.get("pending_level")
+
+            while current < 5:
+                nxt = current + 1
+                spec = _spec_by_level(nxt)
+                if not spec:
+                    break
+                if not all(int(merged.get(t.action, 0)) >= t.target for t in spec.tasks):
+                    break
+                if spec.mode == "AUTO":
+                    if not dry_run:
+                        self._silent_upgrade(user_id, nxt)
+                    current = nxt
+                    continue
+                if spec.mode == "AUDIT":
+                    if not dry_run:
+                        self._ensure_pending_request_silent(user_id, nxt)
+                    pending_level = nxt
+                    break
+                # MANUAL (Lv5): 不自动触发
+                break
+
+            if not dry_run:
+                self.db.table("user_level_progress").upsert({
+                    "user_id":    user_id,
+                    "counters":   merged,
+                    "updated_at": datetime.utcnow().isoformat(),
+                }, on_conflict="user_id").execute()
+
+            return {
+                "userId":       user_id,
+                "beforeLevel":  before,
+                "afterLevel":   current,
+                "pendingLevel": pending_level,
+                "counters":     merged,
+                "dryRun":       dry_run,
+            }
+
+    def backfill_all(
+        self,
+        dry_run: bool = False,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """全量扫描 users 表, 对每个 user 做回填.
+
+        返回统计汇总; 明细逐个用户写入结构化日志便于事后审计.
+        """
+        page_size = 500
+        scanned = 0
+        changed = 0  # 实际升级到更高等级的数量
+        pending_created = 0
+        errors = 0
+        level_distribution: Dict[int, int] = defaultdict(int)
+
+        cursor = offset
+        while True:
+            q = (
+                self.db.table("users")
+                .select("id")
+                .order("id")
+                .range(cursor, cursor + page_size - 1)
+            )
+            res = q.execute()
+            rows = res.data or []
+            if not rows:
+                break
+
+            for r in rows:
+                uid = int(r["id"])
+                try:
+                    result = self.backfill_user(uid, dry_run=dry_run)
+                    scanned += 1
+                    if result["afterLevel"] > result["beforeLevel"]:
+                        changed += 1
+                    if (
+                        result["pendingLevel"]
+                        and result["pendingLevel"] != result["beforeLevel"]
+                    ):
+                        pending_created += 1
+                    level_distribution[result["afterLevel"]] += 1
+
+                    logger.info(
+                        "backfill user=%s before=%s after=%s pending=%s counters=%s",
+                        uid,
+                        result["beforeLevel"],
+                        result["afterLevel"],
+                        result["pendingLevel"],
+                        result["counters"],
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    errors += 1
+                    logger.exception("backfill user=%s failed: %s", uid, exc)
+
+                if limit is not None and scanned >= limit:
+                    break
+
+            if limit is not None and scanned >= limit:
+                break
+            cursor += page_size
+            if len(rows) < page_size:
+                break
+
+        return {
+            "scanned":           scanned,
+            "upgraded":          changed,
+            "pendingCreated":    pending_created,
+            "errors":            errors,
+            "levelDistribution": dict(level_distribution),
+            "dryRun":            dry_run,
+        }
+
+    # ---- 3.7 通知 ------------------------------------------------------
 
     def _notify_level_up(self, user_id: int, level: int) -> None:
         """升级成功后发站内信; 前端会监听这些通知触发全屏动画."""

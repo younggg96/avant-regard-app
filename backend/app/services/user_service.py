@@ -9,6 +9,35 @@ from app.schemas.user import UserInfo, UserProfileInfo, UserPrivacySettings
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_remote_url(value) -> Optional[str]:
+    """最后一道防线：拒绝写入非 http(s) 的 avatar / cover URL。
+
+    移动端 ImagePicker 会给出 `file:///var/mobile/.../ImagePicker/xxx.jpg`，
+    而 web 的 `next/image` 只接受 http(s)。历史上出现过客户端在上传尚未完成时
+    就把 `file://` URI 带进 `avatarUrl` / `coverUrl` 字段的情况，一旦写入
+    就会把该用户的每一张被引用头像的页面在 SSR 阶段整体 500。
+
+    返回：
+        - 合法 http(s) 字符串 → 原值（带 trim）
+        - 空串 → 空串（允许用户主动清空）
+        - 其它 → None（外层用 None 忽略，保持现有值不变）
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    if trimmed == "":
+        return ""
+    lower = trimmed.lower()
+    if lower.startswith("http://") or lower.startswith("https://"):
+        return trimmed
+    logger.warning(
+        "Rejected non-http(s) image URL in user profile update: %r", trimmed
+    )
+    return None
+
+
 class UserService:
     def __init__(self):
         self.db = get_supabase()
@@ -69,9 +98,13 @@ class UserService:
         if "location" in kwargs and kwargs["location"] is not None:
             update_data["location"] = kwargs["location"]
         if "avatarUrl" in kwargs and kwargs["avatarUrl"] is not None:
-            update_data["avatar_url"] = kwargs["avatarUrl"]
+            sanitized = _sanitize_remote_url(kwargs["avatarUrl"])
+            if sanitized is not None:
+                update_data["avatar_url"] = sanitized
         if "coverUrl" in kwargs and kwargs["coverUrl"] is not None:
-            update_data["cover_url"] = kwargs["coverUrl"]
+            sanitized = _sanitize_remote_url(kwargs["coverUrl"])
+            if sanitized is not None:
+                update_data["cover_url"] = sanitized
         
         # 更新用户表
         if user_update:
@@ -147,9 +180,13 @@ class UserService:
         if "location" in kwargs and kwargs["location"] is not None:
             update_data["location"] = kwargs["location"]
         if "avatarUrl" in kwargs and kwargs["avatarUrl"] is not None:
-            update_data["avatar_url"] = kwargs["avatarUrl"]
+            sanitized = _sanitize_remote_url(kwargs["avatarUrl"])
+            if sanitized is not None:
+                update_data["avatar_url"] = sanitized
         if "coverUrl" in kwargs and kwargs["coverUrl"] is not None:
-            update_data["cover_url"] = kwargs["coverUrl"]
+            sanitized = _sanitize_remote_url(kwargs["coverUrl"])
+            if sanitized is not None:
+                update_data["cover_url"] = sanitized
         if "gender" in kwargs and kwargs["gender"] is not None:
             update_data["gender"] = kwargs["gender"]
         if "age" in kwargs and kwargs["age"] is not None:
@@ -188,12 +225,19 @@ class UserService:
 
     def upload_avatar(self, user_id: int, avatar_url: str) -> Optional[UserInfo]:
         """更新用户头像"""
-        self.db.table("user_info").update({"avatar_url": avatar_url}).eq("user_id", user_id).execute()
+        sanitized = _sanitize_remote_url(avatar_url)
+        if not sanitized:
+            # 空字符串或非法 URL 一律拒绝写入，保留现有头像不变。
+            return self.get_user_info(user_id)
+        self.db.table("user_info").update({"avatar_url": sanitized}).eq("user_id", user_id).execute()
         return self.get_user_info(user_id)
 
     def upload_cover(self, user_id: int, cover_url: str) -> Optional[UserInfo]:
         """更新用户封面图片"""
-        self.db.table("user_info").update({"cover_url": cover_url}).eq("user_id", user_id).execute()
+        sanitized = _sanitize_remote_url(cover_url)
+        if not sanitized:
+            return self.get_user_info(user_id)
+        self.db.table("user_info").update({"cover_url": sanitized}).eq("user_id", user_id).execute()
         return self.get_user_info(user_id)
 
     def search_users(self, keyword: str, limit: int = 20) -> List[UserInfo]:
