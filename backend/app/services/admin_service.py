@@ -891,11 +891,31 @@ class AdminService:
                     .in_("user_id", user_ids)
                     .execute()
                 )
+                # 一个用户可能在多家买手店入驻;  优先保留 APPROVED 的那条,
+                # 让前端按 "merchant.status == 'APPROVED'" 一条判定就够用.
                 for m in merchant_result.data or []:
-                    merchant_map[m["user_id"]] = {
+                    uid = m["user_id"]
+                    existing = merchant_map.get(uid)
+                    if existing and existing.get("status") == "APPROVED":
+                        continue
+                    merchant_map[uid] = {
                         "storeId": m["store_id"],
                         "status": m["status"],
                     }
+            except Exception:
+                pass
+
+        level_map: dict = {}
+        if user_ids:
+            try:
+                level_result = (
+                    self.db.table("user_levels")
+                    .select("user_id, current_level")
+                    .in_("user_id", user_ids)
+                    .execute()
+                )
+                for l in level_result.data or []:
+                    level_map[l["user_id"]] = int(l.get("current_level") or 0)
             except Exception:
                 pass
 
@@ -921,6 +941,7 @@ class AdminService:
                 "followerCount": follower_count_map.get(u["id"], 0),
                 "followingCount": following_count_map.get(u["id"], 0),
                 "merchant": merchant_map.get(u["id"]),
+                "currentLevel": level_map.get(u["id"], 0),
             })
 
         return {
