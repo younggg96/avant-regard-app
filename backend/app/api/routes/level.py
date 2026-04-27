@@ -187,6 +187,25 @@ async def admin_backfill_levels(
     })
 
 
+@admin_level_router.get("/users")
+async def list_users_by_level(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    level: Optional[int] = Query(None, ge=0, le=5),
+    _admin: int = Depends(get_current_admin_user),
+):
+    """分页返回所有用户等级 (current_level DESC).
+
+    - level=null  -> 全部
+    - level=0     -> 仅未达 Lv1 的用户
+    - level=1..5  -> 精确等级过滤
+    """
+    data = level_service.list_users_by_level(
+        page=page, page_size=pageSize, level=level,
+    )
+    return success(data)
+
+
 @admin_level_router.post("/users/{user_id}/grant")
 async def admin_grant_level(
     user_id: int,

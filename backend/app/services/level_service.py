@@ -75,7 +75,7 @@ LEVEL_RULES: List[LevelSpec] = [
         benefit="每月参与一次专属抽奖",
         mode="AUTO",
         tasks=[
-            LevelTaskSpec(action=LevelAction.WANT_CLICKED,    target=10, label='点击 10 个 "我想去"'),
+            LevelTaskSpec(action=LevelAction.WANT_CLICKED,    target=10, label='点击 10 个 "我想要"'),
             LevelTaskSpec(action=LevelAction.STORE_COMMENTED, target=5,  label="评论 5 家买手店"),
         ],
     ),
@@ -559,8 +559,17 @@ class LevelService:
           - ARCHIVE_UPLOADED:   三张审核通过的提交表的和
         """
         def _count(table: str, field: str, val: Any, extra: Optional[Dict[str, Any]] = None) -> int:
+            """
+            计数某张业务表命中记录数.
+
+            注意:
+              - `.select(field, count="exact")` 里 select 的列必须**确实存在**,
+                否则 PostgREST 会抛 "column does not exist", 被 except 吞后返回 0.
+                这里选用作过滤条件的 `field` 作为 select 列, 保证它一定存在.
+              - 捕获异常时打 error 级 + 堆栈, 方便在生产环境定位表名 / 列名问题.
+            """
             try:
-                q = self.db.table(table).select("id", count="exact").eq(field, val)
+                q = self.db.table(table).select(field, count="exact").eq(field, val)
                 for k, v in (extra or {}).items():
                     if v is None:
                         q = q.is_(k, "null")
@@ -569,7 +578,10 @@ class LevelService:
                 res = q.execute()
                 return int(res.count or 0)
             except Exception as e:  # noqa: BLE001
-                logger.warning("backfill count %s failed: %s", table, e)
+                logger.exception(
+                    "backfill count failed · table=%s field=%s val=%s extra=%s · err=%s",
+                    table, field, val, extra, e,
+                )
                 return 0
 
         post_created       = _count("posts",                "user_id",     user_id, {"status": "PUBLISHED"})
@@ -874,6 +886,172 @@ class LevelService:
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("notify_audit_rejected failed: %s", e)
+
+    # ---- 3.8 Admin 视角:  用户等级总览 ----------------------------
+
+    def list_users_by_level(
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        level: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """分页返回"所有用户等级" (按等级 DESC, 同级按升级时间 DESC).
+
+        Admin 总览页用. 设计思路:
+          1. 先拉一份"所有用户 + 等级"的轻量骨架 (user_id + level 字段),
+             数据量 = 注册用户数, 目前几百条量级, 拉全内存排序+分页完全可控.
+          2. 再按当前页 20 个 user_id, 批量补 username / avatar / merchant.
+
+        这样做的好处:
+          - Lv0 用户 (无 user_levels 行) 能天然混在同一序列里分页, 不会
+            出现 "第一页有人, 后面页全空" 的怪象.
+          - 排序稳定: current_level DESC → last_level_up_at DESC → user_id ASC.
+
+        参数:
+          - level=None   全量
+          - level=0      仅 Lv0 (未达 Lv1 或无 user_levels 行)
+          - level=1..5   精确等级
+        """
+        page = max(1, int(page))
+        page_size = max(1, min(int(page_size), 100))
+
+        # --- 1) 拉"用户 × 等级"的轻量骨架 ---
+        # 单独拉, 避免 PostgREST nested select 在跨 schema / RLS 下的坑.
+        # 当前注册用户 < 1万, .range(0, 9999) 足够; 超过后应改为分批迭代.
+        MAX_SCAN = 10000
+        user_rows: List[Dict[str, Any]] = []
+        try:
+            ur = (
+                self.db.table("users")
+                .select("id")
+                .order("id", desc=False)
+                .range(0, MAX_SCAN - 1)
+                .execute()
+            )
+            user_rows = list(ur.data or [])
+        except Exception as e:  # noqa: BLE001
+            logger.exception("fetch all users failed: %s", e)
+
+        level_rows: List[Dict[str, Any]] = []
+        try:
+            lr = (
+                self.db.table("user_levels")
+                .select("user_id, current_level, pending_level, last_level_up_at")
+                .range(0, MAX_SCAN - 1)
+                .execute()
+            )
+            level_rows = list(lr.data or [])
+        except Exception as e:  # noqa: BLE001
+            logger.exception("fetch user_levels failed: %s", e)
+
+        level_map: Dict[int, Dict[str, Any]] = {
+            r["user_id"]: r for r in level_rows
+        }
+
+        merged: List[Dict[str, Any]] = []
+        for u in user_rows:
+            uid = u["id"]
+            lvl_row = level_map.get(uid) or {}
+            merged.append({
+                "user_id":          uid,
+                "current_level":    int(lvl_row.get("current_level") or 0),
+                "pending_level":    lvl_row.get("pending_level"),
+                "last_level_up_at": lvl_row.get("last_level_up_at"),
+            })
+
+        # --- 2) 过滤 + 排序 + 分页 ---
+        if level is not None:
+            merged = [r for r in merged if r["current_level"] == int(level)]
+
+        def _ts_ord(s: Optional[str]) -> int:
+            """ISO 时间串 -> 单调递增整数, 空值返回 0."""
+            if not s:
+                return 0
+            return int("".join(ch for ch in s if ch.isdigit()) or 0)
+
+        # 排序键: 等级 DESC → 升级时间 DESC (NULL 最后) → user_id ASC
+        def _sort_key(r: Dict[str, Any]):
+            ts_ord = _ts_ord(r.get("last_level_up_at"))
+            return (-r["current_level"], ts_ord == 0, -ts_ord, r["user_id"])
+
+        merged.sort(key=_sort_key)
+
+        total = len(merged)
+        start = (page - 1) * page_size
+        rows = merged[start : start + page_size]
+
+        user_ids = [r["user_id"] for r in rows]
+        if not user_ids:
+            return {"users": [], "total": total, "page": page, "pageSize": page_size}
+
+        # --- 3) 批量补充 username / avatar / merchant ---
+        users_map: Dict[int, Dict[str, Any]] = {}
+        try:
+            u_res = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", user_ids)
+                .execute()
+            )
+            for u in u_res.data or []:
+                users_map[u["id"]] = u
+        except Exception as e:  # noqa: BLE001
+            logger.warning("fetch users failed: %s", e)
+
+        info_map: Dict[int, Dict[str, Any]] = {}
+        try:
+            info_res = (
+                self.db.table("user_info")
+                .select("user_id, avatar_url")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            for i in info_res.data or []:
+                info_map[i["user_id"]] = i
+        except Exception as e:  # noqa: BLE001
+            logger.warning("fetch user_info failed: %s", e)
+
+        merchant_map: Dict[int, Dict[str, Any]] = {}
+        try:
+            m_res = (
+                self.db.table("store_merchants")
+                .select("user_id, store_id, status")
+                .in_("user_id", user_ids)
+                .execute()
+            )
+            # 同一 user 可能多条, 优先保留 APPROVED
+            for m in m_res.data or []:
+                uid = m["user_id"]
+                if uid in merchant_map and merchant_map[uid].get("status") == "APPROVED":
+                    continue
+                merchant_map[uid] = {
+                    "storeId": m["store_id"],
+                    "status":  m["status"],
+                }
+        except Exception as e:  # noqa: BLE001
+            logger.warning("fetch store_merchants failed: %s", e)
+
+        items = []
+        for r in rows:
+            uid = r["user_id"]
+            u = users_map.get(uid, {})
+            info = info_map.get(uid, {})
+            items.append({
+                "userId":        uid,
+                "username":      u.get("username", ""),
+                "avatarUrl":     info.get("avatar_url", ""),
+                "currentLevel":  int(r.get("current_level") or 0),
+                "pendingLevel":  r.get("pending_level"),
+                "lastLevelUpAt": r.get("last_level_up_at"),
+                "merchant":      merchant_map.get(uid),
+            })
+
+        return {
+            "users":    items,
+            "total":    total,
+            "page":     page,
+            "pageSize": page_size,
+        }
 
 
 # 单例
