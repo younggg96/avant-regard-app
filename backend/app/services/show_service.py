@@ -145,7 +145,19 @@ class ShowService:
         )
         if not result.data:
             raise Exception("秀场不存在")
-        return self._format_show(result.data[0])
+
+        # 等级规则引擎: 秀场审核通过时计入 archive_uploaded
+        row = result.data[0]
+        created_by = row.get("created_by")
+        if created_by:
+            try:
+                from app.services.level_service import level_service
+                from app.schemas.level import LevelAction
+                level_service.record_action(created_by, LevelAction.ARCHIVE_UPLOADED)
+            except Exception as level_err:
+                print(f"[WARN] level_service.record_action(archive-show) failed: {level_err}")
+
+        return self._format_show(row)
 
     def reject_show(self, show_id: str, reason: Optional[str] = None) -> Show:
         """拒绝秀场"""

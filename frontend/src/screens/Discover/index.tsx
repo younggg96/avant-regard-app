@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import {
   Animated,
   ScrollView as RNScrollView,
@@ -164,24 +164,48 @@ const DiscoverScreen: React.FC = () => {
 
   // Header 动画 Hook（reanimated 版本，在 UI 线程驱动 height + opacity，
   // 避免冷启动首次下滑时和滚动事件、图片解码在 JS 线程互相抢占）
-  const { headerAnimatedStyle, handleVerticalScroll } = useHeaderAnimation();
+  const { headerAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
+
+  // Sync refreshing state → header animation before paint so the very first
+  // scroll event after a refresh-start already sees the suppression flag.
+  useLayoutEffect(() => {
+    notifyRefreshing(refreshing);
+  }, [refreshing, notifyRefreshing]);
 
   // 骨架屏动画
   const { skeletonOpacity } = useSkeletonAnimation();
 
-  // 获取当前用户详细信息
+  // 获取当前用户详细信息。
+  //
+  // Cold-start note: `user.avatar` from the auth store is already good
+  // enough to paint the header; this fetch only fills in title/bio that
+  // we don't display on the Discover header anyway. Push it 2s out so
+  // its response + `setState` doesn't land inside the first-paint window
+  // of the masonry feed.
+  //
+  // Race protection: `cancelled` flag guards the setState so that if
+  // `user.userId` switches (sign-out / account switch) while the async
+  // `getUserInfo` is in flight, the stale response from the previous
+  // user cannot overwrite the current user's state. `clearTimeout` alone
+  // only catches the case where the user id changes within the first 2s.
   useEffect(() => {
-    const fetchCurrentUserInfo = async () => {
-      if (user?.userId) {
-        try {
-          const info = await userInfoService.getUserInfo(user.userId);
-          setCurrentUserInfo(info);
-        } catch (err) {
-          console.warn("获取当前用户信息失败:", err);
-        }
+    if (!user?.userId) return;
+    const currentUserId = user.userId;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const info = await userInfoService.getUserInfo(currentUserId);
+        if (cancelled) return;
+        setCurrentUserInfo(info);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("获取当前用户信息失败:", err);
       }
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
     };
-    fetchCurrentUserInfo();
   }, [user?.userId]);
 
   // 获取未读消息数量
@@ -200,10 +224,27 @@ const DiscoverScreen: React.FC = () => {
     }
   }, []);
 
-  // 页面聚焦时刷新未读消息数
+  // 页面聚焦时刷新未读消息数。
+  //
+  // Cold-start budget: the very first `useFocusEffect` pass fires while
+  // the recommend feed is still decoding its first screen of images. Two
+  // HTTP requests + their `setState` landing in that window visibly drops
+  // FPS. Delay the first focus by 2s so the first-paint budget belongs to
+  // the feed alone; subsequent focuses (user switching back from another
+  // tab) fire immediately — the badge is more interesting then, and the
+  // Discover tree is already warm.
+  const hasUnreadBootstrappedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      fetchUnreadCount();
+      if (hasUnreadBootstrappedRef.current) {
+        fetchUnreadCount();
+        return;
+      }
+      const kickoff = setTimeout(() => {
+        hasUnreadBootstrappedRef.current = true;
+        fetchUnreadCount();
+      }, 2000);
+      return () => clearTimeout(kickoff);
     }, [fetchUnreadCount])
   );
 

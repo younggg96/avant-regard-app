@@ -557,6 +557,16 @@ class AdminService:
             "reviewed_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", submission_id).execute()
 
+        # 等级规则引擎: 品牌提交审核通过时计入 archive_uploaded
+        user_id = submission.get("user_id")
+        if user_id:
+            try:
+                from app.services.level_service import level_service
+                from app.schemas.level import LevelAction
+                level_service.record_action(user_id, LevelAction.ARCHIVE_UPLOADED)
+            except Exception as level_err:
+                print(f"[WARN] level_service.record_action(archive-brand) failed: {level_err}")
+
         return True
 
     def reject_brand_submission(self, submission_id: int, reason: Optional[str] = None) -> bool:

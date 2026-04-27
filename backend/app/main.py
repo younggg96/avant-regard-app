@@ -33,6 +33,13 @@ from app.api.routes.community import router as community_router
 from app.api.routes.moderation import router as moderation_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.maintenance import router as maintenance_router
+from app.api.routes.level import (
+    router as level_router,
+    lottery_router,
+    benefit_router,
+    admin_level_router,
+    admin_lottery_router,
+)
 
 # 导入缓存服务
 from app.services.cache_service import cache_service
@@ -204,6 +211,11 @@ app.include_router(community_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(maintenance_router, prefix="/api")
+app.include_router(level_router, prefix="/api")
+app.include_router(lottery_router, prefix="/api")
+app.include_router(benefit_router, prefix="/api")
+app.include_router(admin_level_router, prefix="/api")
+app.include_router(admin_lottery_router, prefix="/api")
 
 
 # 健康检查

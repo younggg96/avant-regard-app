@@ -86,8 +86,15 @@ const OptimizedImageInner = ({
   // is `normal`. This preserves the old "lazy⇒low" behaviour for callers
   // that never set `priority`, while letting feed covers opt into
   // `normal` / `high` without twiddling the misleading `lazy` flag.
-  const resolvedPriority: ImagePriority =
-    priority ?? (lazy ? 'low' : 'normal');
+  //
+  // Memoized so the value identity is stable across scroll re-renders — not
+  // because it's expensive to compute, but because several call sites pass
+  // this down into further memoized children and we don't want priority's
+  // identity to invalidate them.
+  const resolvedPriority: ImagePriority = React.useMemo(
+    () => priority ?? (lazy ? 'low' : 'normal'),
+    [priority, lazy]
+  );
 
   // Use the raw URI as the recycling key so expo-image can share the
   // decoded bitmap across different `size` presets (e.g. THUMBNAIL →
@@ -97,11 +104,17 @@ const OptimizedImageInner = ({
 
   // Reset load state when the underlying uri changes so recycled cells
   // show the spinner again instead of a stale "loaded" flag.
+  //
+  // `setHasError` uses a functional updater to stay a true no-op when the
+  // state is already `false` — React will bail out without scheduling a
+  // re-render. This matters during MasonryFlashList scroll where every
+  // cell recycle hits this effect; the old unconditional `setHasError(false)`
+  // was a write that React had to reconcile before bailing out.
   React.useEffect(() => {
     if (showPlaceholder) {
       setIsLoaded(false);
     }
-    setHasError(false);
+    setHasError((prev) => (prev ? false : prev));
   }, [optimizedUri, showPlaceholder]);
 
   const handleError = useCallback(() => {

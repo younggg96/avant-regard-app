@@ -25,7 +25,12 @@ class FollowService:
             
             # 发送关注通知
             self._send_follow_notification(follower_id, target_user_id)
-            
+
+            # 等级规则引擎: user_followed 计数器 +1
+            from app.services.level_service import level_service
+            from app.schemas.level import LevelAction
+            level_service.record_action(follower_id, LevelAction.USER_FOLLOWED)
+
             return True
         except:
             return False

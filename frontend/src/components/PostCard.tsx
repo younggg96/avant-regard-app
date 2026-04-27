@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { View, Text as RNText, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage } from "./ui";
@@ -109,12 +109,37 @@ const PostCardInner = ({
     useMediaAspectRatio(displayImage, 3 / 4, post.content?.coverAspectRatio)
   );
 
+  // Stable cover style — feed-scroll hot path.
+  //
+  // Without this, every PostCard re-render (point-and-shoot likes, feedItems
+  // append, MasonryFlashList cell recycle) hands `PostCoverMedia` → `OptimizedImage`
+  // a freshly-built array literal, defeating `OptimizedImage`'s `React.memo`
+  // shallow-compare and forcing a reconciliation down to the `expo-image`
+  // layer. Memoizing on the two actual inputs (`mediaRatio`, `isPending`)
+  // keeps the array identity stable and lets the memoized children bail out.
+  const coverStyle = useMemo(
+    () => [
+      styles.image,
+      { aspectRatio: mediaRatio },
+      isPending && styles.pendingImage,
+    ],
+    [mediaRatio, isPending]
+  );
+
+  // Handlers only need `post.id` / `post.author.id` — not the whole post
+  // object. Depending on the post reference made `handlePressPost` churn on
+  // every like / feed mutation, which propagated re-renders into the
+  // Pressable tree. Narrowing the deps keeps handler identities stable as
+  // long as the author + post id are stable, matching how FlashList
+  // recycles cells.
+  const postId = post.id;
+  const authorId = post.author.id;
   const handlePressPost = useCallback(() => onPress?.(post), [onPress, post]);
   const handlePressAuthor = useCallback(
-    () => onAuthorPress?.(post.author.id),
-    [onAuthorPress, post.author.id]
+    () => onAuthorPress?.(authorId),
+    [onAuthorPress, authorId]
   );
-  const handleLike = useCallback(() => onLike?.(post.id), [onLike, post.id]);
+  const handleLike = useCallback(() => onLike?.(postId), [onLike, postId]);
 
   return (
     <View style={styles.card}>
@@ -126,11 +151,7 @@ const PostCardInner = ({
             priority={coverImagePriority}
             showPlaceholder={showCoverPlaceholder}
             transition={coverImageTransition}
-            style={[
-              styles.image,
-              { aspectRatio: mediaRatio },
-              isPending && styles.pendingImage,
-            ]}
+            style={coverStyle}
           />
 
           {isPending && (

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, Dispatch, SetStateAction } from "react";
 import { getFeed, FeedItem, Post } from "../../../services/postService";
+import { feedCacheService } from "../../../services/feedCacheService";
 
 const EXCLUDE_IDS_MAX_SIZE = 200;
 const PAGE_SIZE = 30;
@@ -12,16 +13,26 @@ const STAGE2_END = 26;
 const getFeedItemKey = (item: FeedItem): string =>
   `${item.type}:${String(item.data.id)}`;
 
+interface RefreshOptions {
+  /** When true, skip `setRefreshing` so no RefreshControl spinner shows.
+   *  Used for background revalidation after a cache-hit cold start. */
+  silent?: boolean;
+}
+
 interface UseFeedRecommendationReturn {
   feedItems: FeedItem[];
   setFeedItems: Dispatch<SetStateAction<FeedItem[]>>;
   loading: boolean;
   refreshing: boolean;
   hasMore: boolean;
-  refresh: () => Promise<void>;
+  refresh: (options?: RefreshOptions) => Promise<void>;
   loadMore: () => Promise<void>;
   setBoostBrand: (brandId: number | null) => void;
   boostBrandId: number | null;
+  /** Attempt to hydrate feedItems from the on-device cache.
+   *  Returns `true` if cached data was loaded (caller can skip the
+   *  loading screen and show stale content immediately). */
+  hydrateFromCache: () => Promise<boolean>;
 }
 
 /**
@@ -34,8 +45,24 @@ interface UseFeedRecommendationReturn {
  *     this to choose Stage 1+2 (skip==0) vs Stage 3 (skip>=STAGE2_END=26).
  *   • Hold a session-only `boost_brand_id` so recent brand affinity is
  *     reflected in Stage 2 scoring without being persisted.
- *   • When the backend has no fresh long-tail page left, append items from a
- *     local replay pool so the home feed keeps scrolling without an end footer.
+ *
+ * Endless-scroll guarantee (both directions):
+ *   loadMore (swipe up / onEndReached):
+ *     recommendations → 90-day chronological → full archive (server-side
+ *     window widening in FeedService._fetch_longtail_posts) → local replay
+ *     pool via `appendReplayItems` (loops de-duplicated feedItems by its own
+ *     cursor). Server-side layers are exhausted only when the caller's
+ *     exclude_ids covers every qualifying post in the DB.
+ *
+ *   refresh (pull-to-refresh):
+ *     fresh + scored (skip=0, force_fresh) → Stage 2 empty fallback also
+ *     benefits from the same archive widening → if the response is still
+ *     empty, prepend a page from the same local pool via
+ *     `getNextRefreshRecycleItems` so pull-to-refresh is never a no-op.
+ *
+ *   Both tiers share the de-duplicated source pool but maintain independent
+ *   cursors (`replayCursorRef` vs `refreshRecycleCursorRef`) so one path's
+ *   pagination never skips rows in the other.
  */
 export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
   const [feedItems, setFeedItemsState] = useState<FeedItem[]>([]);
@@ -50,6 +77,11 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
   const requestInFlight = useRef(false);
   const replayCursorRef = useRef(0);
   const isReplayingRef = useRef(false);
+  // Separate cursor for the refresh-side recycle tier. refresh and loadMore
+  // both fall back to the same de-duplicated pool (feedItemsRef keyed by
+  // `${type}:${id}`), but they advance independently so one path's
+  // pagination never causes a visible jump in the other.
+  const refreshRecycleCursorRef = useRef(0);
 
   const setFeedItems = useCallback<Dispatch<SetStateAction<FeedItem[]>>>(
     (value) => {
@@ -124,10 +156,52 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
     setHasMore(true);
   }, [getNextReplayItems, setFeedItems]);
 
-  const refresh = useCallback(async () => {
+  /**
+   * Refresh-side recycle: symmetric counterpart to `getNextReplayItems`.
+   *
+   * When the server has no fresh items left (backend already widened to the
+   * full archive — see FeedService `_fetch_longtail_posts` — but every
+   * qualifying post is still in `exclude_ids`), pull-to-refresh would
+   * otherwise resolve with an empty list and the user would see no feedback.
+   * Loop a page from the already-rendered pool so refresh always has
+   * something to prepend — visually mirrors the "之前出现过的帖子" tier we
+   * already provide for loadMore.
+   *
+   * Uses its own cursor so `replayCursorRef` (loadMore) keeps its position.
+   */
+  const getNextRefreshRecycleItems = useCallback((): FeedItem[] => {
+    const source = getReplaySourceItems();
+    if (source.length === 0) return [];
+
+    const items: FeedItem[] = [];
+    for (let i = 0; i < PAGE_SIZE; i++) {
+      items.push(source[(refreshRecycleCursorRef.current + i) % source.length]);
+    }
+    refreshRecycleCursorRef.current =
+      (refreshRecycleCursorRef.current + PAGE_SIZE) % source.length;
+    return items;
+  }, [getReplaySourceItems]);
+
+  const hydrateFromCache = useCallback(async (): Promise<boolean> => {
+    try {
+      const cached = await feedCacheService.get();
+      if (cached && cached.length > 0) {
+        setFeedItems(cached);
+        // Prevent premature loadMore while the background revalidation
+        // hasn't populated excludeIds / postSkip yet.
+        setHasMore(false);
+        return true;
+      }
+    } catch {
+      // Fall through to network.
+    }
+    return false;
+  }, [setFeedItems]);
+
+  const refresh = useCallback(async (options?: RefreshOptions) => {
     if (requestInFlight.current) return;
     requestInFlight.current = true;
-    setRefreshing(true);
+    if (!options?.silent) setRefreshing(true);
 
     const isFirstLoad = excludeIdsRef.current.length === 0;
 
@@ -147,10 +221,13 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
       if (isFirstLoad) {
         setFeedItems(newItems);
         replayCursorRef.current = 0;
+        refreshRecycleCursorRef.current = 0;
         isReplayingRef.current = false;
         excludeIdsRef.current = newIds;
         postSkipRef.current = postCount;
         setHasMore(postCount > 0);
+        // Persist the first page for instant next cold start.
+        void feedCacheService.set(newItems);
       } else if (newItems.length > 0) {
         setFeedItems((prev) => [...newItems, ...prev]);
         isReplayingRef.current = false;
@@ -161,14 +238,26 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
         ]);
         postSkipRef.current += postCount;
         setHasMore(true);
+      } else {
+        // Server genuinely has nothing new: backend already widened Stage 3
+        // to the full archive and still returned empty, i.e. every qualifying
+        // post is already in the caller's exclude_ids window. Instead of
+        // leaving pull-to-refresh as a no-op, cycle a page from the local
+        // pool so the user always sees new rows at the top. This is the
+        // refresh-side mirror of loadMore's replay tier — loadMore keeps
+        // its own cursor + state untouched.
+        const recycled = getNextRefreshRecycleItems();
+        if (recycled.length > 0) {
+          setFeedItems((prev) => [...recycled, ...prev]);
+        }
       }
     } catch (err) {
       console.error("[FeedV2] refresh failed:", err);
     } finally {
-      setRefreshing(false);
+      if (!options?.silent) setRefreshing(false);
       requestInFlight.current = false;
     }
-  }, [boostBrandId, setFeedItems]);
+  }, [boostBrandId, getNextRefreshRecycleItems, setFeedItems]);
 
   const loadMore = useCallback(async () => {
     if (requestInFlight.current) return;
@@ -282,6 +371,7 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
     loadMore,
     setBoostBrand,
     boostBrandId,
+    hydrateFromCache,
   };
 };
 

@@ -284,6 +284,11 @@ class PostService:
             from app.services.grading_service import grade_post_async
             grade_post_async(post["id"])
 
+            # 等级规则引擎: 已发布帖子计入 post_created 计数
+            from app.services.level_service import level_service
+            from app.schemas.level import LevelAction
+            level_service.record_action(user_id, LevelAction.POST_CREATED)
+
         return self._format_post(post, user_id)
 
     def update_post(self, post_id: int, user_id: int, **kwargs) -> Optional[Post]:
@@ -378,6 +383,11 @@ class PostService:
 
             # 发送通知
             self._send_like_notification(post_id, user_id)
+
+            # 等级规则引擎: post_liked 计数器 +1
+            from app.services.level_service import level_service
+            from app.schemas.level import LevelAction
+            level_service.record_action(user_id, LevelAction.POST_LIKED)
 
             return True
         except:
@@ -498,6 +508,11 @@ class PostService:
             self.db.rpc(
                 "increment_post_want_count", {"post_id_param": post_id}
             ).execute()
+
+            # 等级规则引擎: want_clicked 计数器 +1
+            from app.services.level_service import level_service
+            from app.schemas.level import LevelAction
+            level_service.record_action(user_id, LevelAction.WANT_CLICKED)
             return True
         except:
             return False

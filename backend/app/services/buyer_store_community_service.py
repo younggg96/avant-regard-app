@@ -252,6 +252,16 @@ class BuyerStoreCommunityService:
             .execute()
         )
         if result.data:
+            # 等级规则引擎: 审核通过时才计入 archive_uploaded (防刷)
+            if data.status == "APPROVED":
+                try:
+                    from app.services.level_service import level_service
+                    from app.schemas.level import LevelAction
+                    level_service.record_action(
+                        submission["user_id"], LevelAction.ARCHIVE_UPLOADED
+                    )
+                except Exception as level_err:
+                    print(f"[WARN] level_service.record_action(archive-store) failed: {level_err}")
             return self._format_submitted_store(result.data[0])
         raise Exception("更新提交状态失败")
 
@@ -373,6 +383,16 @@ class BuyerStoreCommunityService:
                 self.supabase.rpc(
                     "increment_reply_count", {"comment_id": data.parentId}
                 ).execute()
+
+            # 等级规则引擎: 仅"顶层"买手店评论计入 store_commented
+            # (回复不计, 避免用户通过连续回复自己刷任务)
+            if not data.parentId:
+                try:
+                    from app.services.level_service import level_service
+                    from app.schemas.level import LevelAction
+                    level_service.record_action(data.userId, LevelAction.STORE_COMMENTED)
+                except Exception as level_err:
+                    print(f"[WARN] level_service.record_action(store_comment) failed: {level_err}")
 
             return self._format_comment(result.data[0])
         raise Exception("评论失败")

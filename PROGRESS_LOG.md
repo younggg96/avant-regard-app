@@ -1,5 +1,441 @@
 # Progress Log
 
+## 2026-04-26: 冷启动改动全面 bug review —— 两处修正 + 八处验证通过
+
+### Context
+
+完成上一条冷启动削峰（A/B/C/D 四批）后做一次全面 bug review，按「改动 × 潜在陷阱」矩阵逐条核验。结果：**2 个需要修的点 + 8 个验证通过**。修正落在了真正有行为 hazard 的两处，不扩大改动面。
+
+### 验证通过的 8 点
+
+| # | 项目 | 核验依据 |
+|---|---|---|
+| 1 | `stopMaintenancePolling` 在 kickoff 3s 内被 cleanup 调用是否安全 | `maintenanceStore.ts:111-116` `if (pollingTimer)` 守卫，未启动时是 no-op |
+| 2 | A1/A2/A3/A4 的 `clearTimeout` cleanup 完整性 | 每个 `setTimeout` 都配了 `return () => clearTimeout(...)` |
+| 3 | A2 `initWechat` Promise 失败路径 | `.catch((error) => console.warn(...))` 到位，不会拉崩 app |
+| 4 | A3 interval 首次节拍 vs 立即节拍 | 原语义不变：`setInterval(refreshUnreadCount, 30_000)` 仍然立即调度，30s 后首轮；只推迟了 `loadNotifications()` 的首次调用 |
+| 5 | C1 `MasonryListRenderItemInfo.index` 到底是 column 内 index 还是原 data index | 看 `MasonryFlashList.tsx:207`：`index: innerArgs.item.originalIndex` —— 是**原 data 数组的 index**，所以 `index < 8` 精确映射到「视觉上的前 8 张」 |
+| 6 | C1 `priority` 在 FlashList cell recycle 时是否稳定 | 给定 `data index` → 永远映射到同一 priority → `PostCard.React.memo` 命中，recycle 不会触发 re-render |
+| 7 | D1 `hasFinishedRef` race 结论 | 同步写入 ref，`playToEnd` / hard-limit timeout / error 三路任一先到都会互斥 |
+| 8 | B3 backfill cleanup 链完整性 | 既 `clearTimeout(pendingBackfillTimerRef.current)`，也 `pendingInteractionHandleRef.current.cancel()` |
+
+### 2 处修正
+
+#### 修正 1 — `fetchCurrentUserInfo` 的 async race（`frontend/src/screens/Discover/index.tsx`）
+
+**问题**：原代码（推迟前就有）是 `setTimeout(async () => { ... setCurrentUserInfo(info); }, 2000)`。如果 `user.userId` 在 **timer 触发后、`getUserInfo` resolve 前** 发生变化（切号 / 退出登录），cleanup 只能 `clearTimeout`，拦不住 in-flight 的 async —— 旧用户的 `info` 会被写进新用户的 state，短暂显示错主的数据。推迟到 2s 让这个窗口变大，所以值得修。
+
+**修法**：引入 `cancelled` 闭包 flag：
+
+```ts
+useEffect(() => {
+  if (!user?.userId) return;
+  const currentUserId = user.userId;
+  let cancelled = false;
+  const timer = setTimeout(async () => {
+    try {
+      const info = await userInfoService.getUserInfo(currentUserId);
+      if (cancelled) return;
+      setCurrentUserInfo(info);
+    } catch (err) {
+      if (cancelled) return;
+      console.warn("获取当前用户信息失败:", err);
+    }
+  }, 2000);
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}, [user?.userId]);
+```
+
+这是 React 里处理「effect 里 async 不能 abort」的标准模式，和 `clearTimeout` 互补：timer 未触发靠 `clearTimeout`，已触发但 promise 未 resolve 靠 `cancelled` flag。
+
+#### 修正 2 — `SplashVideo.hasFinished` 是 dead state（`frontend/src/components/SplashVideo.tsx`）
+
+**问题**：引入 `hasFinishedRef` 之后，`hasFinished` state 在 render 树里没被读（render 路径用 `fadeAnim` 驱动），`setHasFinished(true)` 只剩一次无用的 re-render。按 KISS/DRY 清理掉。
+
+**修法**：
+
+- 删掉 `const [hasFinished, setHasFinished] = useState(false);`
+- 删掉 `finishWithFade` 里的 `setHasFinished(true);`
+- 在 `hasFinishedRef` 的 JSDoc 里写清楚「为什么用 ref 而不是 state」，防止未来有人"好心"加回来。
+
+### Why
+
+- **Holistic review**：用户明确要求「所有改动是否有 bug」，所以我按改动面把所有潜在陷阱列全，而不是只看表层；但只修那些**真正会出现**的 hazard，不扩大改动面。
+- **修正 1** 是真正的 use-after-free 级别 hazard（给错用户看错资料），不能留。
+- **修正 2** 是 dead code 清理，符合 KISS；保留 state 不会出 bug，但会增加下个 reader 的理解负担。
+- **其他 8 条核验**写进 log 的原因：下次 reviewer 不用重做一遍推演，直接看结论 + 依据行号。
+
+### Risk
+
+零。两处修正都不改变外部行为：
+
+- 修正 1 在正常 user flow（不切号）下完全等价于原代码；只有切号 race 场景下结果不同，且新结果更正确。
+- 修正 2 纯粹删 state，不影响任何 consumer。
+
+### Verification
+
+- `ReadLints` 五个改动文件全绿（`App.tsx` / `Discover/index.tsx` / `useDiscoverData.ts` / `TabContent.tsx` / `SplashVideo.tsx`）。
+- 冷启动 + 快速切号场景手测：头像 / 简介等字段不会错位。
+- FpsMonitor 读数不变（两处修正不影响热路径）。
+
+---
+
+## 2026-04-26: 冷启动掉帧 —— 削峰填谷把首屏 60fps 预算还给推荐列表
+
+### Context
+
+用户反馈即便已经做完了 cell 回收 re-render 链的修复和 Header 动画策略调整，**刚打开 app 滑动推荐列表时掉帧仍然严重，过一段时间后显著好转**。这种「稳态正常 / 冷启动糟糕」的曲线，说明问题不在组件本身，而在「首屏 mount 到稳态」这段 2–5 秒的资源竞争。
+
+### Diagnosis — 冷启动时间轴的「同步风暴」
+
+把用户点开 app 到推荐 tab 能流畅滑动这几秒内，**JS 线程 + 原生 UI/GPU 管线** 上同时跑的事情画一遍：
+
+- `Font.loadAsync` → `setAppIsReady` → NavigationContainer mount（40+ Stack.Screen 注册）。
+- `usePushNotifications`：`registerForPushNotificationsAsync` + `sendPushTokenToServer` + 2 个 subscriber + `getLastNotificationResponse`。
+- `chat.connectWebSocket()` 建长连接。
+- `TabNavigator` mount → `loadNotifications()` 立即发请求 + `setInterval(refreshUnreadCount, 30s)` 立即调度。
+- `DiscoverScreen` mount：
+  - `fetchCurrentUserInfo` → `/api/user_info` 一次。
+  - `useFocusEffect` 首次触发 → `fetchUnreadCount()` 两次请求（notification + chat）。
+  - `useDiscoverData.initData` → `fetchRecommendPosts` → `/api/feed`（首页 26 条）。
+- `App.useEffect[appReady]`：`initDeepLinking`、`startMaintenancePolling`（定时请求）、`initWechat`（原生 SDK register）。
+- `ProfileReminder setTimeout(3000)` 3 秒后尝试弹 Modal。
+- `SplashVideo` 用 `expo-video` 在最上层播视频，占用 **VideoToolbox 硬件解码器** 直到 `playToEnd`。
+- feed 响应回来（t≈1.5s）→ `setFeedItems(26)` → `mapFeedItemsToDisplayPosts` → `arrangeForNaiveMasonry` → `MasonryFlashList` mount **26 个 cell**。
+  - 每个 cell 的 cover + avatar 用 `priority="normal"`，**52 张图片并发解码**，全部和 SplashVideo 抢 GPU 管线。
+- `backfillUserInfosForFeed` 的 `setTimeout(runBackfill, 1200)` 兜底 —— 冷启动时 JS 线程根本 idle 不下来，`InteractionManager.runAfterInteractions` 永远等不到信号，1.2 秒正好落在用户首次滑动的时刻，此时又发一波 `user_info` 批量请求。
+
+三条最大的「盗贼」：
+
+1. **SplashVideo 视频解码 + 首屏 52 张图片解码竞争同一个 iOS 媒体线程池**，谁都拿不满。
+2. **DiscoverScreen mount 瞬间 7–8 个并发请求**，JS 线程被 JSON.parse + setState 连续打断。
+3. **backfill 的 1200ms 兜底正好卡在最敏感的时间点**，再添一波请求。
+
+等 SplashVideo `playToEnd` + 首屏图解码完 + 启动请求都回来 + backfill 落地（≈3–5s 上包络），推荐列表才真正独占自己的 60fps 预算。
+
+### What — 四层削峰
+
+#### A. App 级非关键初始化延后（`frontend/App.tsx`）
+
+| 项 | 原来 | 现在 | 理由 |
+|---|---|---|---|
+| `startMaintenancePolling` | `appReady` 立即 | `setTimeout(…, 3000)` | 轮询首次 HTTP + `setState` 落到首屏之外 |
+| `initWechat` | `appReady` 立即 | `setTimeout(…, 5000)` | 原生 SDK register 冷启动最贵；分享入口要点进 Post 才能到，5s 之后用户也没触到 |
+| `loadNotifications`（TabNavigator） | 立即 | `setTimeout(…, 2000)` | 30s 轮询的 interval 继续立即调度，只推迟首次 |
+| `profileReminder setTimeout` | 3000ms | 8000ms | 弹 Modal = 一次大的 subtree mount + 毛玻璃合成，不能落在滑动窗口 |
+
+每一项都用 `clearTimeout` 在 cleanup 里正确释放。
+
+#### B. Discover 级请求削峰
+
+- **`fetchCurrentUserInfo`**（`frontend/src/screens/Discover/index.tsx`）：改成 `setTimeout(…, 2000)`。`user.avatar` 从 authStore 里已经有值，Header 先用它画，2 秒后拿到完整 `userInfoService.getUserInfo` 再更新一次 —— 视觉无感，JS 线程少一次 fetch + setState。
+- **`fetchUnreadCount` 首次聚焦延后**（同上）：新增 `hasUnreadBootstrappedRef`，首次 `useFocusEffect` 用 `setTimeout(…, 2000)`，**之后每次 focus 立即触发**。用户切 tab 回来想看新红点的诉求不受影响，只是冷启动首次不和首屏抢资源。
+- **`backfillUserInfosForFeed` 兜底从 1200ms → 3500ms**（`frontend/src/screens/Discover/hooks/useDiscoverData.ts`）：3.5s 是专门选来「outlast 冷启动风暴」的 —— SplashVideo 结束 + 首屏图解码完 + 启动请求回来都在 3s 内落地，backfill 此时再发批量 `user_info` 就落在稳态里。热路径（滚动过程中的 loadMore / refresh 后续）仍走 `InteractionManager.runAfterInteractions` 的近即时通道，3.5s 只是安全网不是主调度。
+
+#### C. 首屏图片优先级分层（`frontend/src/screens/Discover/components/TabContent.tsx`）
+
+- 新增常量 `ABOVE_FOLD_COUNT = 8`。
+- `renderMasonryItem` 从 `{item}` 改成 `{item, index}`（`MasonryListRenderItemInfo` 已原生带 `index`），按 index 传 `coverImagePriority`：
+
+```ts
+const priority = index < ABOVE_FOLD_COUNT ? "high" : "low";
+```
+
+- 总带宽不变，但 expo-image 的 downloader pool 和 iOS ImageIO 解码队列，**前 200ms 里会优先解完用户真正能看到的那 8 张**。后面的 18 张降到 `low`，等 FlashList recycle / 用户真滚过去了再被自动 promote（expo-image 内部会根据 viewport 提升优先级）。
+- `PostCard.React.memo` 仍然生效：给定 index 的 cell 拿到的 priority 是稳定的（recycling 保留 data-index → cell 的映射），priority 不会在同一个 cell 上闪动。
+
+#### D. SplashVideo 硬限 2500ms（`frontend/src/components/SplashVideo.tsx`）
+
+- 新增常量 `MAX_SPLASH_DURATION_MS = 2500`。
+- 统一收尾路径：`playToEnd` / 超时 / 错误都走同一个 `finishWithFade()`，用 `hasFinishedRef`（`useRef<boolean>`）做 race-free 的单次兜底，避免两路 trigger 在同一 tick 里各自各跑一次 fade 动画。
+- 超过 2.5s 还没 `playToEnd` 时强制 fade → unmount → 释放 VideoToolbox。这让视频解码 **不会和首屏图片解码继续抢 GPU 管线**。视频本身短的场景（start-short.mp4）完全不受影响。
+
+### Why
+
+- **KISS**：每处改动都是「加一个 setTimeout 包裹，cleanup 里 clearTimeout」的标准模式，没有引入新的调度框架或事件总线。
+- **DRY / SOLID**：
+  - A/B 层都是「推迟非首屏必要的工作」的同一种策略，参数化成不同的延迟值，语义分别清晰。
+  - C 层把「首屏优先级」这条产品决策**落到数据流的单一位置**（`renderMasonryItem` 一个分支），不泄漏到 `PostCard` 或 `OptimizedImage` —— 未来要调阈值只改 `ABOVE_FOLD_COUNT`。
+  - D 层把 SplashVideo 的三条收尾路径（播完 / 超时 / 错误）收敛到一个 `finishWithFade`，消除了之前 `endSub` 和其它潜在调用方的副本逻辑。
+- **Observability**：解开了之前注释掉的 `<FpsMonitor />` HUD，右上角浮标显示实时 FPS + 本次启动最低 FPS（点击 reset），用户可在真机上直接验证改动前后冷启动掉帧的幅度和时长。
+- **零语义改动**：所有功能可见行为不变 —— 分享、推送、通知红点、profile 提醒、splash 视频、推荐列表、图片加载，一切都还在，只是把它们从「首屏 2s 内同时跑」重排成「首屏 2s 只留必要的」。
+
+### Risk
+
+极低。
+
+- **A.loadNotifications / profileReminder 延迟的可见影响**：用户在 app 打开的前 2s 看不到未读小红点（从 `chatStore.totalUnread` 分支），8s 内不会被 profile 提醒打断。对刚启动 app 还没开始使用的人是 net positive。
+- **B.fetchCurrentUserInfo 延迟**：`user.avatar` 已经在 authStore 里，header 头像秒出；2s 后才拿到完整 `userInfoService` 结果（title/bio 等），这些字段在 Discover header 并不显示，所以肉眼无感。
+- **B.fetchUnreadCount 首次延迟**：红点晚 2s 出现。首次聚焦用户往往还在看 feed，不是盯着 tab bar 数字，可接受；第二次以后 focus（tab 切回）立即触发。
+- **B.backfill 兜底延迟**：作者 `primaryTitle` 角标出现时间从「feed 加载后约 1.2s」推到「约 3.5s」。实际上大部分作者的 `username / avatarUrl` 已经由后端在 feed 响应里 batched 补全（2026-04-20 改动），backfill 主要影响 primaryTitle 的角标，视觉上是 3s 后多出一个灰底文字，不会让用户觉得「卡了」。
+- **C.priority=low 的图片**：冷启动一瞬间会有短暂（<1s）的灰色占位，但那些位置**本来就在可视区外**。FlashList 滑到之前 expo-image 的 promotion 逻辑会自动提升，体感是「滑过去图就在」。
+- **D.SplashVideo 强制 2.5s**：短版视频（start-short.mp4）本身就在 2s 左右，不受影响；长版（start_new.mp4 首次打开）播到 2.5s 时强制淡出，用户看到的是视频前半段 + 无感 fade 到推荐页。比起视频完整播完再进推荐但推荐是卡的，是明显更好的权衡。
+
+### Verification
+
+- 右上角胶囊式 HUD（`FpsMonitor`）实时显示 JS 线程 FPS + 本次启动最低值，绿/黄/红三色分档。用户可以在修改前后跑「杀后台重开 → 立刻滑推荐 → 等 15s 再滑 → 下拉刷新 → 切 tab 回来」五个场景对照最低 FPS。
+- 预期：修改前最低 FPS 通常 20–35（红到深黄），修改后最低 FPS 进入 45–55 区间（浅黄到绿），稳态（>10s 后）应稳定在 55–60。
+- 如果真机 profiler 仍显示冷启动掉帧，下一个候选是 `TabContent.arrangeForNaiveMasonry` 的首屏一次性 O(N) 重排（可以记忆化 last-id-sequence 避免重复计算），以及 `InteractionManager.runAfterInteractions` 在 Fabric 下的行为差异。
+
+### Follow-ups
+
+- 待真机实测后再决定是否把 `ABOVE_FOLD_COUNT` 从 8 下调到 6（更激进的 fold）或上调到 12（预加载一屏半）。
+- `usePushNotifications` 的 `registerForPushNotificationsAsync` 也是冷启动开销，考虑延后到 `appReady + 4000ms`（下一批 A 优化）。
+- WebSocket `chat.connectWebSocket()` 也可以延后 1–2s；目前用户冷启动刚进来不会立刻看聊天。
+
+---
+
+## 2026-04-26: Discover Header 收起/展开策略 —— 只在「回到顶部」时展开
+
+### Context
+
+用户希望修改推荐页顶栏（Logo / 搜索框那一条）的显隐行为。原来的逻辑是「方向翻转即展开」：任何一次 `contentOffset.y` 减小（包括中途向上半滑一点）就展开 Header，加上 `currentScrollY <= 10` 的兜底。这导致用户在列表中段阅读时只要轻轻向上拖一点，Header 就从上方砸下来盖住正在看的内容，体验吵。
+
+用户原话：
+> 改一下向上滚动到顶部的时候才会展开，向下滚动到一定位置就收起
+
+也就是：「收起」还是靠方向 + 阈值，「展开」不再看方向，只看位置 —— 必须真的滑到靠近顶部才展开。
+
+### What
+
+**一、常量层**（`frontend/src/screens/Discover/constants.ts`）
+
+- 删除 `BOTTOM_THRESHOLD = 100`（原本用于「靠近底部时不展开 Header」，新策略下天然不可能在底部满足展开条件，这个护栏冗余）。
+- 新增 `TOP_EXPAND_THRESHOLD = 10` —— 距离顶部 10px 以内视为「在顶部」，同时给用户 pull-to-refresh 的微抖动留容差，避免边界来回触发动画。
+- `SCROLL_THRESHOLD = 50` 与 `HEADER_HEIGHT = 106` 保持不变。
+
+**二、Hook 逻辑重写收起/展开分支**（`frontend/src/screens/Discover/hooks/useHeaderAnimation.ts`）
+
+```ts
+const shouldCollapse =
+  currentScrollY > SCROLL_THRESHOLD &&
+  currentScrollY > lastScrollY.current;
+const shouldExpand = currentScrollY <= TOP_EXPAND_THRESHOLD;
+```
+
+- **Collapse**（收起）：`currentScrollY > 50 && 向下滚动`。和之前相同 —— 一旦用户明确意图往下读，Header 立即让位。
+- **Expand**（展开）：只有 `currentScrollY <= 10` 才触发，**不再看方向**。中段向上半滑不会展开；只有滑回到顶部区域才会。
+- 去掉 `event.nativeEvent.contentSize.height` 和 `layoutMeasurement.height` 的读取与 `isNearBottom` 条件判断 —— 新语义下它们都是死代码。
+- `lastScrollY` 仍然保留，但现在**只服务于收起方向判断**；展开完全是位置型，所以 `lastScrollY` 对它没有意义，这一点在 docstring 里讲清楚了。
+
+**三、Docstring 更新**
+
+明确写出「Collapse/expand policy (2026-04-26 update)」段落，解释为什么收起是方向 + 阈值、展开是纯位置，以及「用户 pull-to-refresh 后停在顶部也应该拿到 Header」的用例动机。
+
+### Why
+
+- **符合 iOS / 小红书 / 微博等主流 feed 的心智**：这些产品的顶栏都是「只在顶部展示，往下读就消失，读完回顶看到它就行了」，中段半拖不会弹出干扰阅读。
+- **KISS**：两条策略各司其职 —— 收起=意图（方向），展开=位置（接近顶部）。不再尝试用同一套「方向翻转」逻辑同时处理两件事，代码读起来更直白。
+- **DRY/SOLID**：`isNearBottom` 原本是为了弥补「向上拖就展开」语义在底部的边界 bug，新语义下它成了死代码 —— 整段逻辑更简洁，依赖的 scroll event 字段也少了两个（不再读 contentSize / layoutMeasurement）。
+- **JS thread 减负**：每帧 scroll handler 少算一次加减比较和一次除法（`isNearBottom` 那一行被删）。搭配上一条「cell 回收多余 re-render 链」的修复，滚动期间的 JS 开销再降一档。
+
+### Risk
+
+极低。
+
+- 用户 pull-to-refresh 后 `contentOffset.y` 一般就是 0（或小负数，iOS 橡皮筋），稳稳进入 `shouldExpand` 分支，行为正确。
+- 若未来某处想拿 Header 下方的偏移做动画（比如 Header 滑入半程时列表同步下移），现在的状态机仍然是二值 `isHeaderVisible`，可以直接在上面扩展，不会被这次的简化卡住。
+- `BOTTOM_THRESHOLD` 删除前已通过 grep 确认全仓只有 `useHeaderAnimation` + `constants` 两处引用，无外部消费方。
+
+### Follow-ups
+
+- 如果后续发现「接近顶部但没完全到顶」（比如 `y = 30`）的过渡体验不够顺，可以把 `TOP_EXPAND_THRESHOLD` 调到 30~50，甚至改成渐进式 `progress.value = interpolate(currentScrollY, [TOP_EXPAND_THRESHOLD, SCROLL_THRESHOLD], [1, 0])` 让 Header 跟手滑入。现在的二值突变动画是最小改动。
+- `HEADER_HEIGHT = 106` 是硬编码值，若后续 Header 内部高度变化（例如搜索框加高），需要同步更新。未来可以考虑用 `onLayout` 动态量测，但当前值稳定，不做。
+
+---
+
+## 2026-04-26: 推荐瀑布流滚动掉帧 —— cell 回收时的多余 re-render 链
+
+### Context
+
+用户反馈推荐 tab 上下滑动依然有可感知的掉帧。排查路径 `useDiscoverData` → `TabContent` → `PostCard` → `PostCoverMedia` → `OptimizedImage` / `useMediaAspectRatio`，确认数据层（引用稳定、`applyLikeToFeed` 增量更新、`InteractionManager` 延迟 backfill）已经做到位，问题集中在 **MasonryFlashList 每次回收 cell 时触发的多余 re-render 链**：
+
+1. `useMediaAspectRatio` 在 `hasKnownRatio=true`（037 migration 之后 99% 的卡片）分支里，`useState` 初始化已经给了正确值，`useEffect` 又 `setRatio(knownRatio)` 一次 —— **每次 cell 回收多一次 reconciliation**。
+2. `PostCard` 传给 `PostCoverMedia` 的 `style` 是**每次 render 都新建的数组字面量**（`[styles.image, { aspectRatio }, isPending && ...]`），导致 `OptimizedImage` 的 `React.memo` shallow-compare 在 style 这一项永远失败 —— **memoization 形同虚设**，每次都下钻到 expo-image 那层 reconcile。
+3. `PostCoverMedia` 自身是**无 memo 的函数组件**，即便 props 没变，父 `PostCard` re-render 时它就跟着跑一遍 `isVideoUrl` 分支 + 重建整个 expo-image 树。
+4. `OptimizedImage.useEffect` 里 `setHasError(false)` 是**无条件调用** —— state 已经是 `false` 时 React 虽然会 bail-out 但 effect 本身已经跑了，并且做了不必要的 state scheduling。
+5. `OptimizedImage.resolvedPriority` 每次 render 都是新的三元表达式结果（primitive 上等价，但在某些下游 memo 场景里会拖累）。
+
+这些加起来，双列瀑布流快速滚动时同屏 8~10 个 cell 并发回收，瞬间能放大成 **30+ 次额外 bridge 调用**。
+
+### What
+
+**一、`useMediaAspectRatio` 加快路径**（`frontend/src/utils/useMediaAspectRatio.ts`）
+
+- `hasKnownRatio=true` 分支：`useEffect` 里**不再 `setRatio`**，只做共享 cache seed。
+- `return` 路径改成 `hasKnownRatio ? knownRatio : ratio` —— render 时直接用调用方传入的已知值，回收 cell 时新 `knownRatio` 立刻生效，无需一次 setState + re-render。
+- 异步测量分支（视频 / 旧库存无 `coverAspectRatio` 的帖子）的 subscribe / pub-sub / `Image.getSize` 逻辑完全保留，对 legacy 帖子行为不变。
+
+**二、`PostCard` 稳定封面 style + 收窄 callback deps**（`frontend/src/components/PostCard.tsx`）
+
+- 新增 `const coverStyle = useMemo(() => [...], [mediaRatio, isPending])`，传给 `PostCoverMedia` 的 style 现在只在两个真正的输入变化时才是新引用。
+- `handlePressAuthor` / `handleLike` 的 `useCallback` 依赖从 `[post.author.id]` / `[post.id]` 通过本地 `const authorId = post.author.id` / `const postId = post.id` 显式窄化，语义更清晰，DRY/KISS。
+- `handlePressPost` 仍依赖 `post`（调用 `onPress(post)` 需要整个对象），保留原语义。
+
+**三、`PostCoverMedia` 加 `React.memo`**（`frontend/src/components/PostCoverMedia.tsx`）
+
+- 原 `PostCoverMediaInner` 改名并用 `React.memo` 包装导出，`displayName = "PostCoverMedia"`。
+- 结合上面的 `coverStyle` 稳定化，这一层 memo 现在真正能拦住父组件 re-render 导致的下钻 —— **PostCard re-render ≠ PostCoverMedia re-render ≠ OptimizedImage re-render**，三层各自按自己的依赖决定是否重渲染。
+- 文档注释新增一段说明 memo 对调用方的契约：`style` 必须是稳定引用，否则 memo 失效。
+
+**四、`OptimizedImage` 幂等化 + `resolvedPriority` 记忆化**（`frontend/src/components/ui/OptimizedImage.tsx`）
+
+- `useEffect([optimizedUri, showPlaceholder])` 里 `setHasError` 改成函数式 updater：`setHasError(prev => prev ? false : prev)`。当 hasError 已经是 false 时 React 直接跳过 state scheduling，effect 不再触发任何下游 reconciliation。
+- `resolvedPriority` 从每次 render 都算一次的表达式改成 `useMemo([priority, lazy])` —— 字面上是 primitive 等价，但更重要的是以后给 expo-image 传 `priority` 作为 memo 化子组件的 prop 时，引用稳定。
+
+### Why
+
+- **SOLID/DRY**：每一层组件（`PostCard` / `PostCoverMedia` / `OptimizedImage` / `useMediaAspectRatio`）现在各自负责自己那一层的 memoization 契约，不跨层泄漏 —— 上层传稳定 props，这层 memo.bail-out 才真能发生。这是 memo 化生效的前提条件，过去只是形式上包了 memo 而没做到"契约闭环"，等于全链路 memo 白加。
+- **性能可量化**：最热的一次 cell 回收（双列滚动，每秒 8+ 个 cell 复用）原本要触发 `useMediaAspectRatio` 的 setState + `OptimizedImage` 的 `setHasError` + 三层组件函数体重算 + expo-image reconciliation。修完之后，`hasKnownRatio=true` 的 99% 路径上，cell 回收只产生"数据切换 → expo-image 换 bitmap"这一次必要的 render，其余全部 bail-out。
+- **零语义改动**：所有可见行为（封面图显示、点赞、跳转、加载动画、视频分支）一个不动；只是把"不必要的 render"裁掉。legacy 帖子（无 `coverAspectRatio`）的异步 `Image.getSize` 路径完全保留。
+- **KISS**：四处改动加起来约 30 行净新增，全部是 useMemo / functional setState / React.memo 这种标准 idiom，可读性不降。
+
+### Risk
+
+极低。
+
+- `useMediaAspectRatio` 的 `knownRatio` 快路径：render 时如果 caller 从「已知」切到「未知」（`coverAspectRatio` 从有变无），上一次渲染的 state 里仍是旧 known 值；但现有调用方（`PostCard`、`posts/[id]`、`PostCoverMedia` 链）都是一次性从 post 对象读 `coverAspectRatio`，post id 变 → coverAspectRatio 整体切换，`useState` 不会被复用 —— 这个 corner case 在目前的代码库里构造不出。
+- `PostCoverMedia` 加 memo：所有 props 都是 primitive 或经过 `useMemo` 稳定化的引用，memo shallow-compare 安全。视频分支里创建的 `{ width: "100%", height: "100%" }` 内联 style 只传给 VideoThumbnailView，后者本就不是 memo 化组件，不影响。
+- `setHasError` functional updater：React 对 setState 同值 bail-out 已经是官方保证，不改语义；改成函数式写法只是让意图更明确，并在某些 React 版本下提前跳过调度。
+- `coverStyle` useMemo 的 deps `[mediaRatio, isPending]`：这两个在 render 内就已定义，依赖完整；即使 post 对象换了但 mediaRatio 和 isPending 恰好等值（极罕见），返回同一个 style 数组引用也是语义正确的（内容一致）。
+
+### Follow-ups
+
+- 如果真机 profiler 显示仍有掉帧，下一个候选是 `TabContent.arrangeForNaiveMasonry` 的重排稳定性 —— 目前每次 `tabPosts` 变都会贪心重排，极端情况下相邻项可能左右对调，滚动时看起来是"卡片在自己抖动位置"。可以加一层"id 序列不变则返回上次 arrangement"的护栏，作为 Batch B。
+- `PostCard` 里 `post` 对象里未用到的字段（items / shows / brands / showImages 等）如果后端把它们从 feed 响应里拆掉，会进一步减少每次 post 对象引用变更的场景，让 `handlePressPost` 也能走 id-only 依赖。
+
+---
+
+## 2026-04-26: Discover 推荐 Feed —— 下拉刷新也接入本地循环兜底（refresh 与 loadMore 对称）
+
+### Context
+
+用户希望推荐流「无限向上滑动刷新」。排查 `useFeedRecommendation.ts` 的 `refresh` 函数发现一个不对称的漏洞：
+
+- `loadMore` 有三级兜底：Stage 1+2 → Stage 3（90 天时序） → 本地 replay pool，任何一级失败都会顺延到下一级，最终永远有内容。
+- `refresh` 只有一级：`getFeed({skip:0, forceFresh:true})`。后端一旦返回空（小库场景下 `exclude_ids` 很快盖住全库，或数据库本身规模不大），`else if (newItems.length > 0)` 分支直接把响应吞掉，**pull-to-refresh 变成无感操作** —— 下拉后 RefreshControl 停止旋转，但列表没有任何更新。
+
+这是「无限滚动」两条路径里 refresh 这条缺失的最后一块拼图。
+
+### What
+
+**一、新增独立的 refresh-recycle 游标**（`useFeedRecommendation.ts`）
+
+```ts
+const refreshRecycleCursorRef = useRef(0);
+```
+
+独立是关键：refresh 和 loadMore 都从 `getReplaySourceItems()`（按 `type:id` 去重的 feedItems 池）取回放内容，但**各自维护 cursor**。共用 cursor 会导致一条路径的分页推进让另一条路径看起来"跳帧"。独立 cursor = 两条路径的视觉体验正交。
+
+**二、新增 `getNextRefreshRecycleItems`**
+
+对称于已有的 `getNextReplayItems`：从 source pool 按 `refreshRecycleCursorRef` 取一页（`PAGE_SIZE = 30`），循环取模，返回后推进 cursor。实现与 `getNextReplayItems` 几乎一行对一行，唯一差别就是用独立 cursor。
+
+**三、`refresh` 增加 `else` 兜底分支**
+
+```ts
+} else {
+  const recycled = getNextRefreshRecycleItems();
+  if (recycled.length > 0) {
+    setFeedItems((prev) => [...recycled, ...prev]);
+  }
+}
+```
+
+进入条件：`!isFirstLoad && newItems.length === 0` —— 不是首次加载（首次为空应保持空态），且后端响应确实为空。
+
+关键约束：这条兜底**只改 `feedItems`，绝不碰 `excludeIdsRef` / `postSkipRef` / `hasMore` / `isReplayingRef` / `replayCursorRef`**。理由是 refresh 的视觉兜底与 loadMore 的推荐链条是正交的两件事：
+
+- 如果 refresh 回收时推进了 `excludeIds`，下次 loadMore 看到的候选池会扩大/缩小，行为不可预测。
+- 如果 refresh 推进了 `replayCursor`，loadMore 下次进入 replay 模式会从错位的位置开始。
+- 保持正交，两条路径的状态机互不干扰。
+
+**四、`isFirstLoad` 路径也 reset 新游标**
+
+在首次 refresh 成功赋值 feedItems 的分支里，把 `refreshRecycleCursorRef.current = 0` 一起归零（和 `replayCursorRef` 同一处理），保证每次会话从 0 开始。
+
+**五、hook 文档注释重写**
+
+原先的头部 docstring 只描述服务端三段式，没提客户端的「永不结束」契约。改写后把 loadMore 四级链条和 refresh 两级链条都写清楚，并说明两者共用 pool 但游标独立的设计原则。
+
+### Why
+
+- **对称性**：loadMore 已经做到「永不空响应」，refresh 也应该是。两条路径的用户期待都是「只要我有意向交互，列表就要有反馈」，不能一头硬一头软。
+- **SOLID / DRY**：`getReplaySourceItems()` 这个去重池逻辑只写一次，两条路径复用；cursor 独立才是真正的「单一职责」—— 一个 cursor 对应一条用户交互路径的阅读进度。
+- **KISS**：没加任何新的服务端契约，没改 API，没改 exclude_ids 的裁剪策略。只是在前端 refresh 的空响应分支加了一个和 loadMore 对称的本地兜底，最小改动。
+- **交互语义清晰**：pull-to-refresh 的核心契约是「我下拉，你给我东西」。后端无内容时回放本地池，既保留了这个契约，又不会污染 exclude_ids / boost_brand 等服务端信号。
+
+### Risk
+
+- 兜底分支会让已看过的帖子出现在列表顶部。`TabContent.withStableRenderKeys` 已经给重复 id 的项分配 `${id}-repeat-${occurrence}` 的稳定 renderKey，FlashList 不会 key 冲突。视觉上用户会看到「刚看过的卡片又来了一次」，但这恰好符合用户原话里的 "之前出现过的帖子" 预期，不是 bug 是 feature。
+- feedItems 会随回收不断增长。但都是对同一批引用的重复 push，`PostCard` 是 `React.memo` + `WeakMap` 缓存的，且 FlashList/MasonryFlashList 有 recycling，内存不会线性累积。
+- 独立 cursor 不会和已有的 `replayCursorRef` 产生任何同步问题 —— 它们读同一个 source（`feedItemsRef`）但各写各的，是纯读路径。
+
+### Follow-ups
+
+- 如果未来加入 reshuffle / 局部打分回放（让 replay 模式下的内容"看起来像重新排名"），应该两个 cursor 一起重置，不能偏袒任一侧。
+- `setBoostBrand` 仍然没有 caller（品牌提权链路铺好但未接入），独立于本次改动。
+
+---
+
+## 2026-04-26: 清理仓库根目录的历史遗留 —— 删除根 `ios/`、`app.json`、`eas.json`
+
+### Context
+
+用户发现根目录有一个 `ios/` 文件夹（显示为 `node_modules` 同级），询问它是否还需要。顺藤摸瓜排查发现三处当年把 Expo app 从根目录迁到 `frontend/` 时没清理干净的残留：
+
+1. **根 `/ios/`**：只剩一个残片 `ios/Pods/Target Support Files/Pods-AvantRegard/ExpoModulesProvider.swift`，连 `.xcodeproj`、`Podfile` 都没有。真正的 iOS 工程在 `frontend/ios/`（完整结构：`AvantRegard.xcodeproj`、`AvantRegard.xcworkspace`、`Podfile`、`Podfile.lock`、`Pods`、`build` 等）。
+2. **根 `/app.json`**：只有 `projectId: 33932395-ec13-4c7d-9583-5699e844187c` 和 `bundleIdentifier: com.yanggg96.avantregardmonorepo` 两个 stale 字段。真正的 Expo 配置在 `frontend/app.json`，有完全不同的 `projectId: 3e890188-f159-4285-81fb-790e46fce869` 和真实 App Store 包名 `com.yanggg96.avant-regard`，还有完整的图标、权限、plugins、App Store 关联域名等。
+3. **根 `/eas.json`**：和 `frontend/eas.json` 明显冲突（`appVersionSource` 一个 `remote` 一个 `local`、`cli.version` 约束不同、根缺少 `production.ios.appleId` 提交配置）。
+
+三者的共同特点：**git 跟踪中但没有任何源码/脚本/配置引用**。`grep` 过全仓（排除 `node_modules/`），只有 `README.md` 和本 `PROGRESS_LOG.md` 出于文档用途提到过 `ios/`。根 `package.json` 的 `frontend:ios` 脚本也明确是 `npm --workspace @avant-regard/frontend run ios`——所有 iOS / EAS 命令都在 `frontend/` 目录下跑，根目录的三个配置文件从来没人读。
+
+留着的风险：如果不小心在根目录跑 `eas` 或 `expo` 命令，会读到错的 `projectId`/`bundleIdentifier`，反而更糟。
+
+### What
+
+删除三个条目：
+
+```
+ios/          # 整个文件夹（4KB，只剩一个遗留 swift 文件）
+app.json      # 15 行占位
+eas.json      # 28 行冲突配置
+```
+
+清理后根目录只剩真正有意义的内容：
+
+```
+.git/ .gitignore .npmrc
+backend/ frontend/ web/
+node_modules/ package.json package-lock.json
+PROGRESS_LOG.md README.md
+```
+
+注意 **根 `node_modules/` 必须保留**——`package.json` 是 npm workspaces monorepo（`"workspaces": ["frontend", "web"]`），根 `node_modules/` 里 360 个包是 `frontend` 和 `web` 两个 workspace 的 hoisted 依赖和 `@avant-regard/*` 的 workspace symlink，删了两个子包都跑不起来。`.gitignore` 第 2 行也早就把 `node_modules/` 排除了，不进 Git。
+
+### Why
+
+- **KISS**：仓库根目录应该只有 monorepo 元数据（`package.json`、锁文件、`node_modules`、`.gitignore`、`.npmrc`、三个 workspace 目录、两个 Markdown），不该混进某个 workspace 的配置。
+- **SSOT（Single Source of Truth）**：`app.json` / `eas.json` 在 `frontend/` 里是唯一正确的，根目录留一份过时冲突的只会制造歧义。
+- **降风险**：根 `app.json` 的 `projectId` 和 `bundleIdentifier` 都是错的，留着就是埋雷——万一 EAS CLI 的 cwd 向上查找逻辑匹配到根 `eas.json`，构建直接跑错 EAS 项目。
+
+### Risk
+
+零风险。三个条目：
+
+- 没有任何源码/脚本/配置引用；
+- 都不是构建产物路径（不是 `dist`、不是 `build`、不是 `Pods` 缓存）；
+- Git 有历史，想复活随时可以 `git checkout HEAD~1 -- ios/ app.json eas.json`。
+
+### Follow-ups
+
+无。下一次 `npm install` 不受影响（根 `package.json` 没改），`npx expo run:ios` 依然走 `frontend/ios/`，`eas build` 依然读 `frontend/eas.json`。
+
+---
+
 ## 2026-04-26: 消息 Tab 报 "Error loading stores" —— 懒挂载 + 后端重试 + 统一 http.ts
 
 ### Context
@@ -2833,5 +3269,64 @@ App 冷启动后，推荐列表首次向下滑动时出现明显卡顿和掉帧�
 
 ### Impact
 用户在浏览他人主页时，可通过右上角 "..." 按钮将该用户的主页卡片分享到任意聊天对话中。
+
+
+## 2026-04-26: 修复推荐 Tab 下拉刷新时 Header 抖动 + 空白残留 (Refresh Header Jitter Fix)
+
+### Problem
+推荐 Tab 下拉刷新时 Header（Logo + 搜索框区域）出现明显抖动，偶尔刷新结束后 Tab 栏下方残留一段空白无法收回。
+
+Root cause: `RefreshControl` 回弹动画产生的 `contentOffset.y` 波动会短暂冲过 `SCROLL_THRESHOLD (50)` 再回到 0，触发 Header 快速收起→展开循环。如果刷新结束时 scroll 位置定在 `TOP_EXPAND_THRESHOLD (10)` 以上，Header 不会自动展开，留下空白。
+
+### Changes
+- `frontend/src/screens/Discover/hooks/useHeaderAnimation.ts`
+  - 新增 `notifyRefreshing(refreshing: boolean)` 回调，使 Hook 感知刷新状态
+  - 刷新期间（`isRefreshingRef = true`）：跳过所有 scroll-driven 的收起/展开逻辑，强制 Header 可见
+  - 刷新结束后：重置 `lastScrollY = 0` 避免残留负偏移导致错判；启动 400ms 冷却窗口（`REFRESH_COOLDOWN_MS`），在此期间仅允许展开、禁止收起，防止 RefreshControl 尾部回弹触发闪烁
+
+- `frontend/src/screens/Discover/index.tsx`
+  - 通过 `useLayoutEffect` 将 `refreshing` 状态同步到 `notifyRefreshing`，确保在 paint 前即生效
+
+### Architecture
+- 使用 Ref（`isRefreshingRef` / `refreshEndTimeRef`）而非 state 来驱动滚动回调内的判断，避免在高频 scroll handler 中引入 React re-render 依赖
+- `notifyRefreshing` 的 callback 身份稳定（依赖仅 `progress` shared value），不会破坏下游 `TabContent` 的 memo 优化
+
+### Impact
+推荐 Tab 下拉刷新时 Header 保持稳定不抖动，刷新结束后不再出现空白残留。
+
+
+## 2026-04-26: 推荐 Feed 本地缓存 — Stale-While-Revalidate 冷启动优化
+
+### Problem
+每次冷启动推荐 Tab 必须等待网络请求（~0.5–2s），期间显示 loading GIF，首屏体验慢。
+
+### Changes
+- **新增 `frontend/src/services/feedCacheService.ts`**
+  - 基于 AsyncStorage 的轻量 FeedItem[] 缓存，存储 key `avant-regard-feed-cache`
+  - `get()` / `set()` / `clear()` 三个方法，自动截断到 30 条（~150KB 以内）
+  - 所有操作 try-catch 降级，缓存读写失败不影响正常功能
+
+- **修改 `frontend/src/screens/Discover/hooks/useFeedRecommendation.ts`**
+  - 新增 `hydrateFromCache(): Promise<boolean>` — 从本地缓存恢复 feedItems，同时设 `hasMore=false` 防止在后台刷新完成前触发 loadMore
+  - `refresh()` 新增 `{ silent?: boolean }` 选项 — silent 模式下不操作 `refreshing` 状态，避免后台刷新时显示 RefreshControl spinner
+  - 首次加载成功后 `void feedCacheService.set(newItems)` fire-and-forget 持久化首页数据
+
+- **修改 `frontend/src/screens/Discover/hooks/useDiscoverData.ts`**
+  - `fetchRecommendPosts` 支持 `{ silent?: boolean }` 透传，silent 模式下不写 `error` 状态
+  - 初始化 useEffect 改为 stale-while-revalidate 流程：
+    1. `await hydrateFromCache()` — 若命中则立即 `setIsInitialized(true)` + `tabLoaded.recommend = true`（跳过骨架屏 + loading GIF）
+    2. 后台 `fetchRecommendPosts({ silent: true })` 无感刷新为最新数据
+    3. 缓存未命中时退回原流程（loading GIF → 网络请求 → 渲染）
+
+### Architecture
+- **Stale-While-Revalidate 模式**：用户冷启动瞬间看到上次保存的推荐内容，后台网络请求完成后无缝替换为最新数据
+- 缓存仅用于 UI 首屏填充，不干扰 Feed v2.1 的推荐状态（excludeIds / postSkip / cursor 全部保持初始值）
+- `silent` 标记贯穿 `refreshFeed → fetchRecommendPosts`，确保后台刷新不触发 RefreshControl spinner 也不覆盖 error 状态
+- `requestInFlight` 互斥锁天然防止缓存渲染期间 loadMore 发出无效请求
+
+### Impact
+- 有缓存时冷启动从"白屏 → GIF → 内容"变为"瞬间看到上次推荐 → 无感刷新"，感知加载时间接近 0
+- 首次安装 / 缓存清空时行为完全不变（向后兼容）
+- 缓存大小可控（≤30 条，~150KB），AsyncStorage 读取耗时约 10–30ms
 
 

@@ -8,6 +8,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const HAS_OPENED_APP_KEY = "has_opened_app_before";
 
+// Hard ceiling for how long the splash overlay is allowed to sit on top of
+// the app. Even when the video itself is longer, we fade out at this point
+// so the VideoToolbox decoder + compositor releases GPU budget back to the
+// feed's first-paint pipeline (expo-image is decoding 26+ covers + avatars
+// at the same time, and iOS ImageIO / VideoToolbox share the same high-
+// priority media thread pool). 2500ms is long enough that the short splash
+// variant plays fully and the first frame of the long variant is visible
+// beyond the intro glyph, but short enough that the splash never contends
+// with Discover's most sensitive cold-start window.
+const MAX_SPLASH_DURATION_MS = 2500;
+
 const startNew = require("../../assets/video/start_new.mp4");
 const startShort = require("../../assets/video/start-short.mp4");
 
@@ -18,9 +29,16 @@ interface SplashVideoProps {
 export default function SplashVideo({ onFinish }: SplashVideoProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const overlayFadeAnim = useRef(new Animated.Value(1)).current;
-  const [hasFinished, setHasFinished] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState<boolean | null>(null);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  // Race-free guard for the finish path. With the hard-limit timeout added
+  // alongside `playToEnd` and the error handler, two (or three) exits can
+  // race. A queued `setState` is too late — the second caller would still
+  // read `false` from closure. A ref written synchronously inside
+  // `finishWithFade` closes that window. We deliberately keep this as a
+  // ref (not a state) because nothing in the render tree needs to react
+  // to "has finished" — the fade-out is driven by `fadeAnim` instead.
+  const hasFinishedRef = useRef(false);
 
   useEffect(() => {
     checkFirstOpen();
@@ -51,6 +69,21 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
   useEffect(() => {
     if (!player || isFirstOpen === null) return;
 
+    // Single exit path so hard-limit timeout, `playToEnd`, and error
+    // all funnel through the same fade → unmount sequence. The ref guard
+    // makes this safe against the two triggers firing in the same tick.
+    const finishWithFade = () => {
+      if (hasFinishedRef.current) return;
+      hasFinishedRef.current = true;
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        onFinish();
+      });
+    };
+
     const playingSub = player.addListener(
       "playingChange",
       (newIsPlaying: boolean) => {
@@ -65,18 +98,7 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
       }
     );
 
-    const endSub = player.addListener("playToEnd", () => {
-      if (!hasFinished) {
-        setHasFinished(true);
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => {
-          onFinish();
-        });
-      }
-    });
+    const endSub = player.addListener("playToEnd", finishWithFade);
 
     const statusSub = player.addListener(
       "statusChange",
@@ -91,10 +113,17 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
       }
     );
 
+    // Hard ceiling: if the video is longer than MAX_SPLASH_DURATION_MS,
+    // force the fade-out anyway so the app can release the video decoder
+    // and let the feed's first paint breathe. See the constant's comment
+    // for the cold-start rationale.
+    const hardLimitTimer = setTimeout(finishWithFade, MAX_SPLASH_DURATION_MS);
+
     return () => {
       playingSub.remove();
       endSub.remove();
       statusSub.remove();
+      clearTimeout(hardLimitTimer);
     };
   }, [player, isFirstOpen]);
 

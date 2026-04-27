@@ -83,6 +83,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     hasMore: feedHasMore,
     refresh: refreshFeed,
     loadMore: loadMoreFeed,
+    hydrateFromCache,
   } = useFeedRecommendation();
 
   // 每个 Tab 独立的加载状态
@@ -290,9 +291,25 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
     pendingInteractionHandleRef.current =
       InteractionManager.runAfterInteractions(runBackfill);
-    // Safety net: if no interaction completion fires within 1.2s (e.g. user
-    // pauses mid-gesture), still run the backfill so author titles fill in.
-    pendingBackfillTimerRef.current = setTimeout(runBackfill, 1200);
+    // Safety net: if no interaction completion fires (e.g. user pauses
+    // mid-gesture, or InteractionManager's signal is delayed as it often
+    // is during cold start when the JS thread never goes idle), still run
+    // the backfill so author titles fill in.
+    //
+    // 3.5s is chosen specifically to outlast the cold-start storm —
+    // SplashVideo unmount, first-screen image decode, 7-8 concurrent boot
+    // HTTP requests, and the feed's own initial fetch all land inside the
+    // first ~3s. Firing the backfill (which issues 1-N `user_info` fetches
+    // whose responses trigger a userInfoVersion bump → the next feedItems
+    // mutation rebuilds affected DisplayPost entries) at 1.2s used to drop
+    // it right into the masonry's first-paint window. Pushing it out means
+    // the user sees author titles fill in a beat later, but the recommend
+    // tab is smooth from the first frame. On warm scrolls (subsequent
+    // loadMore / refresh) this codepath is gated behind
+    // `InteractionManager.runAfterInteractions` anyway, which fires
+    // near-immediately once the JS thread idles — the 3.5s is purely a
+    // safety net, not the primary scheduling mechanism.
+    pendingBackfillTimerRef.current = setTimeout(runBackfill, 3500);
 
     return () => {
       cancelled = true;
@@ -309,14 +326,19 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
   /**
    * 触发推荐 Tab 首次加载（供初始化 / tab 懒加载复用）。
+   * `silent` suppresses error-state and refresh-spinner writes — used for
+   * background revalidation after a cache-hit cold start so the user sees
+   * the cached feed undisturbed while fresh data loads behind the scenes.
    */
-  const fetchRecommendPosts = useCallback(async () => {
+  const fetchRecommendPosts = useCallback(async (options?: { silent?: boolean }) => {
     try {
-      setError(null);
-      await refreshFeed();
+      if (!options?.silent) setError(null);
+      await refreshFeed(options);
     } catch (err) {
       console.error("获取推荐帖子失败:", err);
-      setError(err instanceof Error ? err.message : "获取推荐帖子失败");
+      if (!options?.silent) {
+        setError(err instanceof Error ? err.message : "获取推荐帖子失败");
+      }
     }
   }, [refreshFeed]);
 
@@ -428,10 +450,29 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   );
 
   /**
-   * 初始化加载数据 - 只加载推荐 tab 的数据（默认显示的 tab）
+   * 初始化加载数据 — stale-while-revalidate for the recommend tab.
+   *
+   * 1. Try the on-device feed cache. If it contains data, render the stale
+   *    feed immediately (skip the skeleton / loading-GIF entirely) and kick
+   *    off a silent background refresh that seamlessly swaps in fresh data.
+   * 2. On cache miss (first install, cleared storage), fall back to the
+   *    original synchronous fetch path with the loading GIF.
    */
   useEffect(() => {
     const initData = async () => {
+      const cacheHit = await hydrateFromCache();
+
+      if (cacheHit) {
+        setTabLoaded((prev) => ({ ...prev, recommend: true }));
+        setIsInitialized(true);
+        // Background revalidation — silent so no spinner / error overlay.
+        fetchRecommendPosts({ silent: true }).catch((err) => {
+          console.warn("后台刷新推荐数据失败:", err);
+        });
+        return;
+      }
+
+      // Cache miss — show loading indicator and await network.
       setTabLoading((prev) => ({ ...prev, recommend: true }));
       try {
         await fetchRecommendPosts();
@@ -444,7 +485,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       setIsInitialized(true);
     };
     initData();
-  }, [fetchRecommendPosts]);
+  }, [fetchRecommendPosts, hydrateFromCache]);
 
   /**
    * 刷新数据 - 刷新时也更新 tabLoaded 状态

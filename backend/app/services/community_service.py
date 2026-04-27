@@ -272,7 +272,15 @@ class CommunityService:
                 ).execute()
             except Exception as rpc_error:
                 print(f"[WARN] 更新成员数失败（不影响关注）: {rpc_error}")
-            
+
+            # 等级规则引擎: community_followed 计数器 +1
+            try:
+                from app.services.level_service import level_service
+                from app.schemas.level import LevelAction
+                level_service.record_action(user_id, LevelAction.COMMUNITY_FOLLOWED)
+            except Exception as level_err:
+                print(f"[WARN] level_service.record_action(community) failed: {level_err}")
+
             return True
         except Exception as e:
             print(f"[ERROR] 关注社区失败: {e}")

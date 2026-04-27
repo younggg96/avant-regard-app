@@ -141,6 +141,11 @@ export function useMediaAspectRatio(
     Number.isFinite(knownRatio) &&
     knownRatio > 0;
 
+  // When the caller already knows the ratio up-front (feed covers since
+  // 037), we skip `useState` entirely on the render path and return the
+  // known value directly below. Keeping `ratio` state around is still
+  // required for the async-measure / pub-sub branch, but in the hot feed
+  // path we no longer pay a `setRatio` + re-render per cell recycle.
   const [ratio, setRatio] = useState<number>(() => {
     if (hasKnownRatio) return knownRatio as number;
     if (uri && aspectRatioCache.has(uri)) return aspectRatioCache.get(uri)!;
@@ -149,9 +154,11 @@ export function useMediaAspectRatio(
 
   useEffect(() => {
     if (hasKnownRatio) {
-      setRatio(knownRatio as number);
       // Seed the shared cache so any sibling card rendering the same URI
       // (e.g. detail screen prefetch) inherits the ratio without a decode.
+      // Intentionally NO setState here — the render path returns
+      // `knownRatio` directly so updating state would only trigger an
+      // extra reconciliation per FlashList cell recycle.
       if (uri) aspectRatioCache.set(uri, knownRatio as number);
       return;
     }
@@ -203,7 +210,10 @@ export function useMediaAspectRatio(
     };
   }, [uri, fallback, hasKnownRatio, knownRatio]);
 
-  return ratio;
+  // Feed-hot path: return the known ratio verbatim so recycled cells don't
+  // transiently render with a stale value. The `ratio` state is only read
+  // when the caller didn't provide `knownRatio`.
+  return hasKnownRatio ? (knownRatio as number) : ratio;
 }
 
 /**

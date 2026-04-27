@@ -11,6 +11,8 @@ export const TAB_INDEX_MAP = {
 
 // Header 动画配置
 export const HEADER_ANIMATION_DURATION = 150;
+// 向下滚动超过此距离即触发收起（仅在继续向下时生效）。
 export const SCROLL_THRESHOLD = 50;
-export const BOTTOM_THRESHOLD = 100;
+// 滑回到距离顶部此值以内时才展开 Header。留 10px 容差避免顶部微抖动连续触发。
+export const TOP_EXPAND_THRESHOLD = 10;
 export const HEADER_HEIGHT = 106; // DiscoverHeader 高度（视频行 + 搜索框行）

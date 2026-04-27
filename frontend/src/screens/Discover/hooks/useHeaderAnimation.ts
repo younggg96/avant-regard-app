@@ -9,9 +9,15 @@ import {
 import {
   HEADER_ANIMATION_DURATION,
   SCROLL_THRESHOLD,
-  BOTTOM_THRESHOLD,
+  TOP_EXPAND_THRESHOLD,
   HEADER_HEIGHT,
 } from "../constants";
+
+// After a refresh ends, suppress header collapse for this window to let
+// the RefreshControl bounce-back animation settle. Without this, the
+// transient scroll-Y spikes from the bounce can trigger an immediate
+// collapse → expand cycle (visible as a one-frame flicker).
+const REFRESH_COOLDOWN_MS = 400;
 
 interface UseHeaderAnimationReturn {
   /**
@@ -22,6 +28,12 @@ interface UseHeaderAnimationReturn {
    */
   headerAnimatedStyle: ReturnType<typeof useAnimatedStyle>;
   handleVerticalScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /**
+   * Sync the parent's `refreshing` state so the animation can suppress
+   * scroll-driven collapse/expand during pull-to-refresh and avoid
+   * header jitter + post-refresh blank space.
+   */
+  notifyRefreshing: (refreshing: boolean) => void;
 }
 
 /**
@@ -37,43 +49,97 @@ interface UseHeaderAnimationReturn {
  *   • Reanimated drives the animation on the UI thread, height included, so
  *     the JS thread stays free for scroll + data work.
  *
- * Scroll direction detection still happens on the JS thread (we need to read
- * `contentOffset.y` and compare with `lastScrollY`), but the handler is O(1)
- * and only *triggers* an animation when the direction flips — it doesn't
- * block every frame.
+ * Collapse/expand policy (2026-04-26 update):
+ *   • Collapse  : user scrolls down past `SCROLL_THRESHOLD` while the Y
+ *                 coordinate is still increasing. This matches the
+ *                 "content-first" feed idiom — the header gets out of the way
+ *                 as soon as the user shows intent to read.
+ *   • Expand    : ONLY when the user has scrolled all the way back within
+ *                 `TOP_EXPAND_THRESHOLD` of the top. Intentionally we do NOT
+ *                 expand on direction flip in the middle of the list — a
+ *                 half-swipe up while reading used to pop the header back
+ *                 down over content, which felt noisy. With this rule the
+ *                 header only reappears when the user is clearly "back at
+ *                 home".
+ *
+ * Refresh-awareness (2026-04-26 fix):
+ *   During pull-to-refresh the RefreshControl bounce-back produces rapid
+ *   `contentOffset.y` fluctuations that whip past SCROLL_THRESHOLD and
+ *   back to 0 within a few frames — triggering a collapse → expand cycle
+ *   visible as header jitter. Additionally, if the header stays collapsed
+ *   when the refresh finishes and the scroll offset settles above
+ *   `TOP_EXPAND_THRESHOLD`, the user sees blank space that never
+ *   collapses.
+ *
+ *   Fix: `notifyRefreshing(true)` suppresses all scroll-driven
+ *   collapse/expand and forces the header visible. After
+ *   `notifyRefreshing(false)`, a `REFRESH_COOLDOWN_MS` window suppresses
+ *   collapse only, so the header cannot flicker during the last bounce
+ *   frames while still expanding promptly.
+ *
+ * Scroll direction tracking (`lastScrollY`) is kept only for the collapse
+ * side; the expand side is position-based so a user lingering at the top
+ * after a pull-to-refresh still gets the header back.
  */
 export const useHeaderAnimation = (): UseHeaderAnimationReturn => {
   // 1 == header fully visible, 0 == fully collapsed.
   const progress = useSharedValue(1);
   const isHeaderVisible = useRef(true);
   const lastScrollY = useRef(0);
+  const isRefreshingRef = useRef(false);
+  const refreshEndTimeRef = useRef(0);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     height: progress.value * HEADER_HEIGHT,
     opacity: progress.value,
   }));
 
+  const notifyRefreshing = useCallback(
+    (refreshing: boolean) => {
+      const wasRefreshing = isRefreshingRef.current;
+      isRefreshingRef.current = refreshing;
+
+      if (refreshing && !isHeaderVisible.current) {
+        isHeaderVisible.current = true;
+        progress.value = withTiming(1, {
+          duration: HEADER_ANIMATION_DURATION,
+          easing: Easing.out(Easing.quad),
+        });
+      }
+
+      if (wasRefreshing && !refreshing) {
+        lastScrollY.current = 0;
+        refreshEndTimeRef.current = Date.now();
+      }
+    },
+    [progress]
+  );
+
   const handleVerticalScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const currentScrollY = event.nativeEvent.contentOffset.y;
-      const contentHeight = event.nativeEvent.contentSize.height;
-      const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-      const isNearBottom =
-        currentScrollY + layoutHeight >= contentHeight - BOTTOM_THRESHOLD;
 
-      const scrollingDown =
+      if (isRefreshingRef.current) {
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      const inCooldown =
+        Date.now() - refreshEndTimeRef.current < REFRESH_COOLDOWN_MS;
+
+      const shouldCollapse =
+        !inCooldown &&
         currentScrollY > SCROLL_THRESHOLD &&
         currentScrollY > lastScrollY.current;
-      const scrollingUp =
-        currentScrollY < lastScrollY.current || currentScrollY <= 10;
+      const shouldExpand = currentScrollY <= TOP_EXPAND_THRESHOLD;
 
-      if (scrollingDown && isHeaderVisible.current) {
+      if (shouldCollapse && isHeaderVisible.current) {
         isHeaderVisible.current = false;
         progress.value = withTiming(0, {
           duration: HEADER_ANIMATION_DURATION,
           easing: Easing.out(Easing.quad),
         });
-      } else if (scrollingUp && !isHeaderVisible.current && !isNearBottom) {
+      } else if (shouldExpand && !isHeaderVisible.current) {
         isHeaderVisible.current = true;
         progress.value = withTiming(1, {
           duration: HEADER_ANIMATION_DURATION,
@@ -89,6 +155,7 @@ export const useHeaderAnimation = (): UseHeaderAnimationReturn => {
   return {
     headerAnimatedStyle,
     handleVerticalScroll,
+    notifyRefreshing,
   };
 };
 

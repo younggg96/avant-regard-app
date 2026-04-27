@@ -45,8 +45,18 @@ interface PostCoverMediaProps {
  *   placeholders while a single image loaded at a time. If a caller has
  *   an off-screen / low-priority use case, pass `priority="low"`
  *   explicitly rather than bringing back the `lazy` knob.
+ *
+ * Memoization:
+ *   `React.memo` + shallow-equal props is the primary reason `PostCard` can
+ *   prevent the expo-image layer from re-committing on every feed mutation.
+ *   `style` must therefore be a stable reference at the call site
+ *   (`PostCard.coverStyle` via `useMemo`); changing `style` identity per
+ *   render would defeat this memo and re-enter `expo-image`'s reconciliation
+ *   path for every card on screen during a scroll. Other props are
+ *   primitives (uri / size / contentFit / priority / transition / showPlaceholder)
+ *   so shallow-compare handles them correctly.
  */
-export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
+const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
   uri,
   style,
   size = ImageSize.MEDIUM,
@@ -78,5 +88,8 @@ export const PostCoverMedia: React.FC<PostCoverMediaProps> = ({
     />
   );
 };
+
+export const PostCoverMedia = React.memo(PostCoverMediaInner);
+PostCoverMedia.displayName = "PostCoverMedia";
 
 export default PostCoverMedia;

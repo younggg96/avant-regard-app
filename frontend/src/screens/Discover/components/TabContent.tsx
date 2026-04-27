@@ -171,6 +171,14 @@ const convertToPost = (post: DisplayPost): Post => {
 // recycling — prevents re-measure stutter on the first scroll.
 const ESTIMATED_ITEM_SIZE = 320;
 
+// Above-the-fold cards that should decode first so the user sees filled
+// cells instead of gray placeholders on first paint. Double-column layout
+// fills ~2–3 visible rows in that count plus one just-below-the-fold row,
+// which matches the typical drawDistance below. Later cards drop to `low`
+// so the downloader queue doesn't starve the fold on slower networks;
+// expo-image promotes them once they actually scroll into view.
+const ABOVE_FOLD_COUNT = 8;
+
 // Shared per-card height constants, used both for (a) pre-balancing the
 // feed (`arrangeForNaiveMasonry`) and (b) giving the inner column FlashLists
 // precise item heights via `overrideItemLayout`. Keep in sync with
@@ -322,8 +330,29 @@ const TabContentInner: React.FC<TabContentProps> = ({
   }, [scrollToTopSignal, tab]);
 
   const renderMasonryItem = useCallback(
-    ({ item }: MasonryListRenderItemInfo<Post>) => {
+    ({ item, index }: MasonryListRenderItemInfo<Post>) => {
       if (!item || !item.id || !item.author) return null;
+      // Tiered image scheduling — the biggest lever against cold-start
+      // "gray placeholder storm" on the recommend tab.
+      //
+      // Historical behaviour: every cover fetched with `priority="normal"`.
+      // 26 first-page items × 2 (cover + avatar downgraded by `lazy`) =
+      // a burst of 40+ concurrent image requests, all competing for the
+      // same expo-image downloader slots and the system's ImageIO decode
+      // queue while the masonry is mounting. The cards the user actually
+      // sees first (top 2-3 rows, ~8 cards) got no preferential treatment
+      // over cards 6 screens down.
+      //
+      // Fix: explicitly prioritise the above-the-fold window. `high` for
+      // the first `ABOVE_FOLD_COUNT` items (decoded first), `low` for
+      // everything else (decoded as they scroll into view — expo-image
+      // promotes them automatically on mount). Same total bandwidth, but
+      // the decoder pool spends its first ~200ms on cards the user is
+      // actually looking at. PostCard's `React.memo` still bails out for
+      // recycled cells because the priority for a given index is stable
+      // as long as index is stable (masonry recycling preserves the
+      // data-index → cell mapping on a per-dataset basis).
+      const priority = index < ABOVE_FOLD_COUNT ? "high" : "low";
       // Plain View + StyleSheet avoids gluestack `sx` theme resolution on
       // every re-render, which adds up when Masonry mounts 30+ cards at once.
       return (
@@ -334,7 +363,7 @@ const TabContentInner: React.FC<TabContentProps> = ({
             onAuthorPress={onAuthorPress}
             onLike={onLike}
             coverImageSize={ImageSize.THUMBNAIL}
-            coverImagePriority="normal"
+            coverImagePriority={priority}
             showCoverPlaceholder={false}
             coverImageTransition={0}
           />

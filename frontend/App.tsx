@@ -141,10 +141,20 @@ function TabNavigator() {
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
   const refreshUnreadCount = useNotificationStore((s) => s.refreshUnreadCount);
 
+  // Delay the initial `loadNotifications` call by 2s so its HTTP round-trip
+  // + `setState` for unread badges doesn't land inside the Discover tab's
+  // first-paint window (recommend feed fetch + 26-card masonry mount + 52
+  // image decodes). The 30s polling timer still schedules immediately — it's
+  // the next tick that's delayed, not the cadence.
   useEffect(() => {
-    loadNotifications();
+    const kickoff = setTimeout(() => {
+      loadNotifications();
+    }, 2000);
     const timer = setInterval(refreshUnreadCount, 30_000);
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(kickoff);
+      clearInterval(timer);
+    };
   }, [loadNotifications, refreshUnreadCount]);
 
   const interactionBadge = totalUnread + notifUnread;
@@ -216,9 +226,9 @@ function TabNavigator() {
             backgroundColor: "#FF3B30",
             fontSize: 10,
             fontWeight: "700",
-            minWidth: 18,
-            height: 18,
-            lineHeight: 17,
+            minWidth: 16,
+            height: 16,
+            lineHeight: 18,
             borderRadius: 9,
             textAlign: "center",
             paddingHorizontal: 2,
@@ -301,13 +311,17 @@ function AppNavigator() {
   useEffect(() => {
     if (!isAuthenticated || !guideChecked || showOnboardingGuide) return;
 
-    // 首次检查（延迟3秒，等待应用完全加载）
+    // 首次检查：原先 3s 正好落在用户滑动推荐列表的关键帧窗口里，命中时弹
+    // Modal 会触发一次大的 React subtree mount + 毛玻璃背板合成，直接把
+    // 掉帧叠加到冷启动的图片解码风暴上。推到 8s：此时首屏图片已经解码完、
+    // backfill 已经落地、网络请求回来，JS 线程和 GPU 都腾空了，弹 Modal
+    // 对滚动体感基本无感。
     const initialCheck = setTimeout(() => {
       if (shouldShowProfileReminder()) {
         setShowProfileReminder(true);
         updateLastProfileReminderTime();
       }
-    }, 3000);
+    }, 8000);
 
     // 每隔1小时检查一次
     const interval = setInterval(() => {
@@ -610,19 +624,39 @@ export default function App() {
     }
   }, [appIsReady]);
 
-  // 维护模式轮询：App 就绪后启动单例轮询，卸载时停止，避免重复定时器泄漏
+  // 维护模式轮询：App 就绪后启动单例轮询，卸载时停止，避免重复定时器泄漏。
+  //
+  // Cold-start budget: the first few seconds after mount are already burning
+  // JS cycles on font loading, React tree hydration, feed fetch + 26-card
+  // masonry mount, and first-screen image decoding. Delaying the initial
+  // maintenance check by ~3s lets the recommend tab paint cleanly before
+  // this polling's first HTTP call + `setState` lands.
   useEffect(() => {
     if (!appIsReady) return;
-    startMaintenancePolling();
-    return () => stopMaintenancePolling();
+    const kickoff = setTimeout(() => {
+      startMaintenancePolling();
+    }, 3000);
+    return () => {
+      clearTimeout(kickoff);
+      stopMaintenancePolling();
+    };
   }, [appIsReady]);
 
-  // 初始化微信 SDK（失败不阻塞，只是退化为系统分享）
+  // 初始化微信 SDK（失败不阻塞，只是退化为系统分享）。
+  //
+  // `initWechat` calls into the native WeChat SDK on iOS which does a
+  // synchronous native-module register + app-id validation + bridge call.
+  // Nothing in the first-screen UX depends on it — the share sheet is only
+  // reachable after the user has tapped into a post. Push it 5s out so the
+  // native side doesn't contend with the first-screen image pipeline.
   useEffect(() => {
     if (!appIsReady) return;
-    initWechat().catch((error) => {
-      console.warn("[App] initWechat failed:", error);
-    });
+    const kickoff = setTimeout(() => {
+      initWechat().catch((error) => {
+        console.warn("[App] initWechat failed:", error);
+      });
+    }, 5000);
+    return () => clearTimeout(kickoff);
   }, [appIsReady]);
 
   const handleSplashVideoFinish = useCallback(() => {
@@ -650,7 +684,7 @@ export default function App() {
                 <SplashVideo onFinish={handleSplashVideoFinish} />
               )}
               <MaintenanceOverlay />
-              {/* <FpsMonitor /> */}
+              <FpsMonitor />
             </View>
           </ToastProvider>
         </SafeAreaProvider>
