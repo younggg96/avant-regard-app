@@ -584,7 +584,7 @@ export default function AdminLevelsPage() {
               <li>幂等:  重复执行不会重复发放权益, 不会回退等级</li>
               <li>Lv4 达标仅创建 PENDING 审批, 不自动升级</li>
               <li>Lv5 绝不会自动触发, 仍须在上方手动授予</li>
-              <li>不会发送"升级通知"消息, 避免骚扰老用户</li>
+              <li>不会发送“升级通知”消息, 避免骚扰老用户</li>
             </ul>
           </div>
 
