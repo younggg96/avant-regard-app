@@ -440,29 +440,58 @@ class LevelService:
     # ---- 3.5 Admin: 升级审批 / 手动赋等级 -----------------------------
 
     def list_pending_requests(self) -> List[UpgradeRequestInfo]:
+        """待审批的 Lv4 升级工单列表, 按提交时间升序.
+
+        不走 PostgREST 嵌入式 select. 原因:
+          `level_upgrade_requests` 同时有 `user_id` 和 `reviewed_by` 两条外键
+          指向 `users(id)`, 隐式写 `users(username)` 会触发 PostgREST PGRST201
+          歧义; 更糟的是 Supabase 前置 nginx / Kong 偶发会把这种非 200 响应
+          吞成非 JSON 的 502 HTML 页, postgrest-py 抛 "JSON could not be
+          generated", 被我们的异常 handler 翻成 502 "数据服务暂不可用".
+
+        因此保持与 `list_users_by_level` 同一风格: 先拉骨架, 再按 user_id
+        批量查 username. 读放大一次, 但稳定且对 RLS 透明.
+        """
         res = (
             self.db.table("level_upgrade_requests")
-            .select("*, users(username)")
+            .select("id, user_id, target_level, status, remark, created_at, reviewed_at")
             .eq("status", "PENDING")
             .order("created_at", desc=False)
             .execute()
         )
-        out: List[UpgradeRequestInfo] = []
-        for r in res.data or []:
-            user_meta = r.get("users") or {}
-            if isinstance(user_meta, list):
-                user_meta = user_meta[0] if user_meta else {}
-            out.append(UpgradeRequestInfo(
+        rows = list(res.data or [])
+        if not rows:
+            return []
+
+        user_ids = list({r["user_id"] for r in rows})
+        username_map: Dict[int, Optional[str]] = {}
+        try:
+            u_res = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", user_ids)
+                .execute()
+            )
+            username_map = {
+                u["id"]: u.get("username") for u in (u_res.data or [])
+            }
+        except Exception as e:  # noqa: BLE001
+            # 补不到 username 不影响审批本身, 降级为 None 继续返回.
+            logger.warning("fetch usernames for pending requests failed: %s", e)
+
+        return [
+            UpgradeRequestInfo(
                 id=r["id"],
                 userId=r["user_id"],
-                username=user_meta.get("username"),
+                username=username_map.get(r["user_id"]),
                 targetLevel=r["target_level"],
                 status=r["status"],
-                remark=r.get("remark", ""),
+                remark=r.get("remark") or "",
                 createdAt=r["created_at"],
                 reviewedAt=r.get("reviewed_at"),
-            ))
-        return out
+            )
+            for r in rows
+        ]
 
     def review_upgrade_request(
         self, request_id: int, reviewer_id: int, approve: bool, remark: str = ""
