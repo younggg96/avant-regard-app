@@ -1,11 +1,16 @@
-# syntax=docker/dockerfile:1
-
 # -----------------------------------------------------------------------------
 # Multi-stage build for the Avant Regard marketing website (Next.js 14).
 # Bypasses Zeabur's zbpack auto-builder because its mandatory
 # `npm update -g npm` pre-step fails on the provider's broken base image
 # (`Cannot find module 'promise-retry'`). Doing the whole pipeline ourselves
 # gives us deterministic, reproducible builds regardless of the base image.
+#
+# NOTE: We intentionally do NOT declare `# syntax=docker/dockerfile:1` here.
+# That directive forces BuildKit to pull the Dockerfile frontend image from
+# Docker Hub, which routes through `dockerhub.zeabur.cloud` on Zeabur and
+# occasionally fails with TLS handshake timeouts. This Dockerfile only uses
+# classic syntax (multi-stage, --from, --chown) that the built-in parser
+# already supports, so skipping the frontend pull makes builds more reliable.
 # -----------------------------------------------------------------------------
 
 # --- Stage 1: install production + dev deps from lockfile ---------------------
