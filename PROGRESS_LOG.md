@@ -1,5 +1,90 @@
 # Progress Log
 
+## 2026-04-27: 把 App 商家中心 / 我的店铺 全量移植到 Web `/me/merchant`
+
+### 背景
+
+App 端 (`frontend/`) 早就有完整的商家中心 (`MyMerchantStoresScreen` +
+`MerchantManageScreen`), 覆盖商家认证查看、店铺 Banner / 公告 / 活动 / 折扣
+全套 CRUD, 还包括商家自己改店铺基础信息 (name / phone / hours / brands
+/ style). Web 端此前完全缺位, 三端契约同一套 `/api/store-merchants/*`
+后端, 但 web 上只接了"管理员审核"那一层.
+
+本次把商家视角的所有功能完整搬到 Web.
+
+### 实现
+
+**1 · 新增 Web 服务层**
+`web/src/lib/services/store-merchant.ts` 对齐 `frontend/src/services/
+storeMerchantService.ts` 的契约, 全部通过 `apiClient` (自带 401 刷新 +
+envelope 解包). 导出:
+
+- 类型: `MerchantStatus / StoreMerchant / StoreBanner / StoreAnnouncement
+  / StoreActivity / StoreDiscount / MerchantBuyerStore` 等
+- API: `getMyMerchants / updateMerchant / getBuyerStore / updateBuyerStore`
+  + Banner/公告/活动/折扣 的 `getMerchant* / create* / update* / delete*`
+- 常量: `MERCHANT_STATUS_LABEL / ACTIVITY_TYPE_LABEL / DISCOUNT_TYPE_LABEL
+  / CONTENT_STATUS_LABEL`
+
+这里特意把商家视角的店铺叫 `MerchantBuyerStore` (扁平 `latitude/longitude`)
+以避免和 `web/src/lib/api.ts` 中买手店浏览端的 `BuyerStore` (嵌套
+`coordinates`) 互相污染 — 两个接口虽都叫 BuyerStore, 返回结构不一样是
+后端历史遗留.
+
+**2 · `/me/merchant` — 我的店铺列表**
+`web/src/app/me/merchant/page.tsx`:
+
+- 拉当前用户全部申请 (PENDING / APPROVED / REJECTED / SUSPENDED)
+- 并行补齐每条对应的 `/api/buyer-stores/{id}` 基础信息 (name / city /
+  country), 失败单条不挡整体
+- APPROVED → 「管理店铺 →」按钮跳 `/me/merchant/{merchantId}`
+- REJECTED → 展示拒绝原因
+- 其他状态给出明确提示 (等待审核 / 账号暂停)
+- 空态: 引导去 `/stores` 浏览买手店, 在移动端申请入驻
+
+**3 · `/me/merchant/[merchantId]` — 商家管理中心**
+`web/src/app/me/merchant/[merchantId]/page.tsx` 1:1 对齐移动端
+`MerchantManageScreen` 的 5 个 Tab:
+
+- **店铺信息**: 已开通权限 chip 行 + 联系信息 (查看/编辑) + 公开店铺信息
+  (查看/编辑, 支持 phone/brands/style chip 编辑)
+- **Banner**: 列表 + 新建/编辑/删除, 走 `/api/files/upload-image` 上传图片
+- **公告**: 列表 + 新建/编辑/删除, 支持置顶
+- **活动**: 列表 + 新建/编辑/删除, 含开始/结束时间 (datetime-local),
+  活动类型选择, 报名开关 + 人数上限
+- **折扣**: 列表 + 新建/编辑/删除, 含时间区间、折扣类型、优惠码
+
+非 `APPROVED` 的商家进来会渲染友好的"该商家尚未通过审核"提示, 不暴露
+任何编辑入口, 和后端权限一致.
+
+所有表单复用 `@/components/admin/ui` 原语 (`FormDialog / TextInput /
+Toggle / ConfirmDialog / Button / StatusBadge`), 避免重复造轮子.
+数据拉取走 SWR, CUD 后 `mutate()` 重新拉最新列表.
+
+**4 · 导航入口**
+
+- `web/src/components/me/nav-items.ts` 新增一个 group: "商家中心", 放
+  `"我的店铺" → /me/merchant`. `MeNav` 的高亮用 `startsWith`, 进
+  `/me/merchant/{id}` 也能正确高亮父项
+- `web/src/app/me/page.tsx` 加「我的店铺」Tile, 副标题会实时显示
+  `{总申请数} 个申请 · {已认证数} 家已认证` (SWR 拉一次 summary)
+
+### 红线 / 影响面
+
+- **纯前端新增**, 后端契约零改动 — 走的都是既有 `/api/store-merchants/*`
+  和 `/api/files/upload-image`, 这些 App 已经在用
+- **权限红线**: 非 `APPROVED` 用户看不到任何编辑入口 (前端先拦), 后端
+  `updateMerchant / updateBuyerStore / create* / delete*` 自己也会二次
+  校验 user_id / merchant 状态, 前后端双重保护
+- 图片上传: 走 `apiClient.post<{ url: string }>("/api/files/upload-image",
+  FormData)`, `apiClient` 已经会对 `FormData` 跳过 `Content-Type` 让浏览
+  器自动带 boundary, 和 `/admin/banners` 的用法一致
+- iOS / Android 端 (`MyMerchantStoresScreen` / `MerchantManageScreen`) 完
+  全未动 — 三端互不影响, 同一套后端
+- `tsc --noEmit` 和 `next lint` 均通过
+
+---
+
 ## 2026-04-27: /admin/levels 页面再跑一轮 holistic review, 修三个遗留小 bug
 
 ### 发现 & 修复

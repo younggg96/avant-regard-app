@@ -11,6 +11,7 @@ export const ME_NAV_ITEMS: MeNavItem[] = [
   { href: "/me/favorites", label: "收藏", group: "我的" },
   { href: "/me/wants", label: "愿望单", group: "我的" },
   { href: "/me/follows", label: "关注与粉丝", group: "我的" },
+  { href: "/me/merchant", label: "我的店铺", group: "商家中心" },
   { href: "/me/chats", label: "私信", group: "消息" },
   { href: "/me/notifications", label: "通知", group: "消息" },
   { href: "/settings/profile", label: "编辑资料", group: "设置" },

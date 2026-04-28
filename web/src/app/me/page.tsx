@@ -19,6 +19,7 @@ import { followService } from "@/lib/services/follow";
 import { notificationService } from "@/lib/services/notification";
 import { chatService } from "@/lib/services/chat";
 import { postService } from "@/lib/services/post";
+import { storeMerchantService } from "@/lib/services/store-merchant";
 import { formatCount } from "@/lib/format";
 import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { UserInfo } from "@/lib/types";
@@ -58,6 +59,21 @@ export default function MeOverviewPage() {
     userId ? ["my-posts", userId] : null,
     () => postService.getUserPosts(userId!).catch(() => []),
   );
+
+  const { data: merchantSummary } = useSWR(
+    userId ? ["my-merchants-summary", userId] : null,
+    () =>
+      storeMerchantService
+        .getMyMerchants(1, 50)
+        .catch(() => ({ merchants: [], total: 0 })),
+  );
+  const merchantCount = merchantSummary?.merchants.length ?? 0;
+  const approvedMerchantCount = (merchantSummary?.merchants ?? []).filter(
+    (m) => m.status === "APPROVED",
+  ).length;
+  const merchantDesc = merchantCount
+    ? `${merchantCount} 个申请 · ${approvedMerchantCount} 家已认证`
+    : "店铺 Banner / 公告 / 活动 / 折扣";
 
   const displayName = profile?.username || user?.username || "我";
   const avatar = profile?.avatarUrl || user?.avatar;
@@ -135,6 +151,11 @@ export default function MeOverviewPage() {
           href="/me/follows"
           title="关注与粉丝"
           desc="双向关系一览"
+        />
+        <Tile
+          href="/me/merchant"
+          title="我的店铺"
+          desc={merchantDesc}
         />
         <Tile
           href="/me/chats"
