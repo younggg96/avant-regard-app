@@ -1,6 +1,7 @@
 import { FadeImage } from "@/components/FadeImage";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { isVideoUrl } from "@/lib/media";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 /**
  * Block-based article body renderer.
@@ -73,6 +74,9 @@ export function ArticleBody({ blocks, title }: ArticleBodyProps) {
         }
 
         const isVideo = block.type === "video" || isVideoUrl(block.content);
+        // Skip image blocks with unrenderable srcs (e.g. leftover `file://`
+        // URIs from a mobile draft) rather than letting them crash next/image.
+        if (!isVideo && !isRenderableImage(block.content)) return null;
         const mediaLabel = `${title || "article"} media ${index + 1}`;
 
         return (

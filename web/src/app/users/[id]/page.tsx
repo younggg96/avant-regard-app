@@ -5,14 +5,17 @@ import { notFound } from "next/navigation";
 import { PostCard } from "@/components/PostCard";
 import { FadeImage } from "@/components/FadeImage";
 import { FollowButton } from "@/components/user/FollowButton";
+import { LevelBadge } from "@/components/user/LevelBadge";
 import {
   ApiError,
   getUserFollowerCount,
   getUserFollowingCount,
   getUserInfo,
+  getUserLevel,
   getUserPosts,
 } from "@/lib/api";
 import { formatCount } from "@/lib/format";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export const revalidate = 120;
 
@@ -31,7 +34,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         type: "profile",
         title: `@${user.username} · Avant Regard`,
         description: user.bio || undefined,
-        images: user.avatarUrl ? [{ url: user.avatarUrl }] : undefined,
+        images: isRenderableImage(user.avatarUrl)
+          ? [{ url: user.avatarUrl }]
+          : undefined,
       },
     };
   } catch {
@@ -41,12 +46,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function UserProfilePage({ params }: PageProps) {
   try {
-    const [user, posts, followerCount, followingCount] = await Promise.all([
-      getUserInfo(params.id),
-      getUserPosts(params.id).catch(() => []),
-      getUserFollowerCount(params.id).catch(() => 0),
-      getUserFollowingCount(params.id).catch(() => 0),
-    ]);
+    const [user, posts, followerCount, followingCount, currentLevel] =
+      await Promise.all([
+        getUserInfo(params.id),
+        getUserPosts(params.id).catch(() => []),
+        getUserFollowerCount(params.id).catch(() => 0),
+        getUserFollowingCount(params.id).catch(() => 0),
+        getUserLevel(params.id).catch(() => 0),
+      ]);
 
     return (
       <section className="mx-auto max-w-content px-6 py-12 md:py-16">
@@ -60,7 +67,7 @@ export default async function UserProfilePage({ params }: PageProps) {
                            dark:border-white/[0.08] dark:bg-[#111]">
           {/* Cover — hero, stays clean with no overlapping text. */}
           <div className="relative h-44 w-full bg-[#e8e8e8] dark:bg-[#1a1a1a] md:h-64">
-            {user.coverUrl && (
+            {isRenderableImage(user.coverUrl) && (
               <FadeImage
                 src={user.coverUrl}
                 alt={`${user.username} cover`}
@@ -79,7 +86,7 @@ export default async function UserProfilePage({ params }: PageProps) {
               <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 shadow-card
                               bg-[#e8e8e8] border-[#f9f9f9] dark:bg-[#2a2a2a] dark:border-[#111]
                               md:h-32 md:w-32">
-                {user.avatarUrl && (
+                {isRenderableImage(user.avatarUrl) && (
                   <Image
                     src={user.avatarUrl}
                     alt={user.username}
@@ -98,9 +105,12 @@ export default async function UserProfilePage({ params }: PageProps) {
 
             {/* Identity block — readable column, no cramping around the avatar. */}
             <div className="max-w-2xl">
-              <h1 className="font-serif text-3xl leading-tight text-black dark:text-white md:text-4xl">
-                @{user.username}
-              </h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-serif text-3xl leading-tight text-black dark:text-white md:text-4xl">
+                  @{user.username}
+                </h1>
+                <LevelBadge level={currentLevel} />
+              </div>
               {user.bio && (
                 <p className="mt-3 font-serif text-[15px] leading-relaxed text-black/65 dark:text-white/55">
                   {user.bio}

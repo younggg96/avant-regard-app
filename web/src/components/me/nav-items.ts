@@ -6,6 +6,7 @@ import type { MeNavItem } from "@/components/me/MeNav";
  */
 export const ME_NAV_ITEMS: MeNavItem[] = [
   { href: "/me", label: "个人主页", group: "我的" },
+  { href: "/me/level", label: "我的等级", group: "我的" },
   { href: "/me/likes", label: "点赞", group: "我的" },
   { href: "/me/favorites", label: "收藏", group: "我的" },
   { href: "/me/wants", label: "愿望单", group: "我的" },

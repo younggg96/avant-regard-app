@@ -23,6 +23,7 @@ import {
   type PostComment,
   type CommentReply,
 } from "@/lib/services/comment";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 import { formatRelativeTime } from "@/lib/format";
 
 interface Props {
@@ -326,7 +327,7 @@ function Header({
         className="relative inline-block overflow-hidden rounded-full bg-[var(--canvas-raised)]"
         style={{ width: size, height: size }}
       >
-        {avatar ? (
+        {isRenderableImage(avatar) ? (
           <Image
             src={avatar}
             alt={username}

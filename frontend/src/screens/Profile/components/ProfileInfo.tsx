@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage, Pressable } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
 import { UserInfo, UserProfileInfo } from "../../../services/userInfoService";
+import { LevelBadge } from "../../../components/level";
+import { useLevelStore } from "../../../store/levelStore";
 import { styles } from "../styles";
 
 interface ProfileInfoProps {
@@ -42,7 +44,12 @@ export const ProfileInfo = ({
   onFollowingPress,
   onFollowersPress,
   onAvatarPress,
-}: ProfileInfoProps) => (
+}: ProfileInfoProps) => {
+  const levelStatus = useLevelStore((s) => s.status);
+  const currentLevel = levelStatus?.currentLevel ?? 0;
+  const pendingLevel = levelStatus?.pendingLevel ?? null;
+
+  return (
   <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
     <View style={styles.avatarRow}>
       <View style={styles.avatarWrapper}>
@@ -63,6 +70,15 @@ export const ProfileInfo = ({
         <Pressable style={styles.avatarAddButton} onPress={onEditProfile}>
           <Ionicons name="add" size={14} color="white" />
         </Pressable>
+        {currentLevel > 0 ? (
+          <View style={{ position: "absolute", right: -6, top: -6 }}>
+            <LevelBadge
+              level={currentLevel}
+              size="sm"
+              pendingLevel={pendingLevel}
+            />
+          </View>
+        ) : null}
       </View>
     </View>
 
@@ -108,4 +124,5 @@ export const ProfileInfo = ({
       </View>
     </View>
   </View>
-);
+  );
+};

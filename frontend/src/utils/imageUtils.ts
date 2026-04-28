@@ -31,9 +31,15 @@ import { config } from "../config/env";
  * 图片尺寸预设
  */
 export enum ImageSize {
-  /** 缩略图：用于列表、网格等小图展示 */
+  /** 缩略图：用于真正的小图场景（头像 20-60dp、小标签图） */
   THUMBNAIL = "thumbnail",
-  /** 中等尺寸：用于卡片、详情页预览 */
+  /**
+   * 瀑布流卡片封面：推荐 / 关注 / 个人主页两列瀑布流的 PostCard 封面专用。
+   * 覆盖 @3x DPR 设备上两列布局的物理像素（≈555–645 px），避免用 THUMBNAIL
+   * 导致的放大模糊，也比 MEDIUM 省 ~30% 带宽。
+   */
+  FEED_CARD = "feed_card",
+  /** 中等尺寸：用于单列 feed、评论图、分享图 */
   MEDIUM = "medium",
   /** 大图：用于详情页、全屏查看 */
   LARGE = "large",
@@ -43,7 +49,9 @@ export enum ImageSize {
 
 /**
  * 每个预设对应的转换参数。`width` 对齐常见终端物理像素：
- *  - THUMBNAIL 400px 覆盖 2 列瀑布流卡片（≈180dp × 2x DPR）+ 一点余量
+ *  - THUMBNAIL 400px 覆盖 20-60dp 小图 @3x（头像等），对列表中的小头像远远够用
+ *  - FEED_CARD 640px 覆盖 2 列瀑布流卡片 @3x（≈185–215dp × 3）——
+ *      iPhone 15 Pro / 16 Pro Max 级别都能做到物理像素 1:1，不再放大
  *  - MEDIUM 800px 覆盖单列 feed、评论图、分享图
  *  - LARGE 1440px 覆盖详情页放大预览（不做 zoom 时足够锐利）
  *
@@ -55,6 +63,7 @@ const IMAGE_SIZE_CONFIG: Record<
   { width: number; quality: number }
 > = {
   [ImageSize.THUMBNAIL]: { width: 400, quality: 75 },
+  [ImageSize.FEED_CARD]: { width: 640, quality: 80 },
   [ImageSize.MEDIUM]: { width: 800, quality: 80 },
   [ImageSize.LARGE]: { width: 1440, quality: 85 },
   [ImageSize.ORIGINAL]: { width: 0, quality: 100 },

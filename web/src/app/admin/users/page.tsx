@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usersApi, type AdminUser, type UserTitle } from "@/lib/services/admin";
+import { LEVEL_TITLES } from "@/lib/levels/titles";
 import {
   PageHeader,
   SearchBar,
@@ -15,6 +16,45 @@ import {
   TextInput,
   Button,
 } from "@/components/admin/ui";
+
+
+type UserKind = "ADMIN" | "MERCHANT" | "USER";
+
+/**
+ * 根据后端返回的身份字段判定展示类型.
+ *   - is_admin=True                                 -> ADMIN
+ *   - 在 store_merchants 有 APPROVED 的入驻记录      -> MERCHANT
+ *   - 其它                                          -> USER
+ *
+ * ADMIN 与 MERCHANT 同时成立时优先展示 ADMIN (权限最高, 避免误导).
+ */
+function resolveUserKind(u: AdminUser): UserKind {
+  if (u.isAdmin) return "ADMIN";
+  if (u.merchant?.status === "APPROVED") return "MERCHANT";
+  return "USER";
+}
+
+/**
+ * 三档视觉区分 (不依赖 StatusBadge.variant, 因其已 deprecated / 被忽略):
+ *   ADMIN    — 实心黑底, 最醒目
+ *   MERCHANT — 描边,     次醒目
+ *   USER     — 灰底,     默认
+ */
+const KIND_STYLE: Record<UserKind, { label: string; className: string }> = {
+  ADMIN: {
+    label: "ADMIN",
+    className: "bg-[var(--ink)] text-[var(--canvas)]",
+  },
+  MERCHANT: {
+    label: "商家",
+    className:
+      "border border-[var(--ink)] bg-transparent text-[var(--ink)]",
+  },
+  USER: {
+    label: "USER",
+    className: "bg-[var(--canvas-raised)] text-[color:var(--ink-muted)]",
+  },
+};
 
 
 export default function UsersPage() {
@@ -115,6 +155,7 @@ export default function UsersPage() {
                 <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">用户</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">类型</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">等级</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">头衔</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">数据</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">注册时间</th>
@@ -122,7 +163,12 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {users.map((user) => (
+                {users.map((user) => {
+                  const kind = resolveUserKind(user);
+                  const kindStyle = KIND_STYLE[kind];
+                  const level = user.currentLevel ?? 0;
+                  const levelTitle = LEVEL_TITLES[level];
+                  return (
                   <tr key={user.id} className="hover:bg-[var(--canvas-soft)] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -140,9 +186,23 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge variant={user.isAdmin ? "warning" : "muted"}>
-                        {user.isAdmin ? "管理员" : user.userType || "普通"}
-                      </StatusBadge>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 font-label text-[11px] tracking-[0.08em] ${kindStyle.className}`}
+                      >
+                        {kindStyle.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {level >= 1 && levelTitle ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--ink)] px-2 py-0.5 font-label text-[11px] tracking-[0.1em] text-[var(--canvas)]">
+                          <span className="font-semibold">Lv{level}</span>
+                          <span className="opacity-80">· {levelTitle}</span>
+                        </span>
+                      ) : (
+                        <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
+                          —
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
@@ -174,7 +234,8 @@ export default function UsersPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

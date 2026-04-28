@@ -20,6 +20,9 @@ import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { useAuthStore } from "@/lib/auth/store";
 import { chatService, type Message } from "@/lib/services/chat";
+import { isRenderableImage } from "@/lib/isRenderableImage";
+import { parseSharePayload } from "@/lib/chatShareCards";
+import { ShareCard } from "@/components/chat/ShareCard";
 
 export default function ChatDetailPage() {
   const params = useParams<{ id: string }>();
@@ -123,37 +126,52 @@ export default function ChatDetailPage() {
           </div>
         )}
 
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex items-end gap-2 ${m.isMine ? "flex-row-reverse" : ""}`}
-          >
-            <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
-              {m.senderAvatar && (
-                <Image
-                  src={m.senderAvatar}
-                  alt={m.senderName}
-                  fill
-                  sizes="32px"
-                  className="object-cover"
-                />
-              )}
-            </div>
+        {messages.map((m) => {
+          // Share cards (post/store/brand/show/user) store a JSON payload in
+          // `content` — render them as clickable preview cards instead of raw
+          // JSON. Falls back to the plain-text bubble when parsing fails so a
+          // corrupt payload still shows *something*.
+          const shareCard = m.isDeleted
+            ? null
+            : parseSharePayload(m.messageType, m.content);
+
+          return (
             <div
-              className={`max-w-[68%] rounded px-3 py-2 font-serif text-[14px] leading-snug ${
-                m.isMine
-                  ? "bg-[var(--ink)] text-[var(--canvas)]"
-                  : "bg-[var(--canvas)] text-[var(--ink)] border border-[var(--border)]"
-              }`}
+              key={m.id}
+              className={`flex items-end gap-2 ${m.isMine ? "flex-row-reverse" : ""}`}
             >
-              {m.isDeleted ? (
-                <span className="italic opacity-60">（消息已删除）</span>
+              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
+                {isRenderableImage(m.senderAvatar) && (
+                  <Image
+                    src={m.senderAvatar}
+                    alt={m.senderName}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                  />
+                )}
+              </div>
+
+              {shareCard ? (
+                <ShareCard card={shareCard} isMine={m.isMine} />
               ) : (
-                m.content
+                <div
+                  className={`max-w-[68%] rounded px-3 py-2 font-serif text-[14px] leading-snug ${
+                    m.isMine
+                      ? "bg-[var(--ink)] text-[var(--canvas)]"
+                      : "bg-[var(--canvas)] text-[var(--ink)] border border-[var(--border)]"
+                  }`}
+                >
+                  {m.isDeleted ? (
+                    <span className="italic opacity-60">（消息已删除）</span>
+                  ) : (
+                    m.content
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {sendError && (

@@ -191,6 +191,8 @@ export interface AdminUser {
   followerCount?: number;
   followingCount?: number;
   merchant?: AdminUserMerchant;
+  /** 等级系统 migration 038 引入;  0 表示未达 Lv1. */
+  currentLevel?: number;
 }
 
 export interface AdminUserListResponse {

@@ -5,6 +5,7 @@ import { Marquee } from "@/components/Marquee";
 import { AnimateIn } from "@/components/AnimateIn";
 import { RotatingHeadline } from "@/components/RotatingHeadline";
 import { getFeed } from "@/lib/api";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { Post } from "@/lib/types";
 
 export const revalidate = 60;
@@ -244,7 +245,7 @@ function HeroMockup({ posts }: { posts: Post[] }) {
           <div key={post.id} className="flex gap-3 rounded p-2.5 shadow-soft
                                         bg-white dark:bg-[#1c1c1c] dark:shadow-none dark:ring-1 dark:ring-white/[0.06]">
             <div className="relative h-[68px] w-[68px] flex-shrink-0 overflow-hidden rounded-sm bg-[#f0f0f0] dark:bg-[#2a2a2a]">
-              {post.imageUrls?.[0] && (
+              {isRenderableImage(post.imageUrls?.[0]) && (
                 <Image
                   src={post.imageUrls[0]}
                   alt={post.title}

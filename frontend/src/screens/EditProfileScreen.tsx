@@ -33,6 +33,20 @@ interface BrandOption {
   category: string | null;
 }
 
+/**
+ * ImagePicker gives us a local `file:///var/mobile/.../ImagePicker/xxx.jpg`
+ * URI. We must upload that to CDN first and only persist the returned remote
+ * URL. If the user tries to save before the upload finishes (or if it fails
+ * silently), the local URI would otherwise get written into the DB and then
+ * crash `next/image` on web (hostname "" is not configured).
+ *
+ * This guard is the single chokepoint for profile writes: anything that isn't
+ * a real http(s) URL is treated as "no change" (server keeps its existing
+ * value) instead of being persisted.
+ */
+const isPersistableRemoteUrl = (url: string): boolean =>
+  /^https?:\/\//i.test(url.trim());
+
 // 性别选项
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "MALE", label: "男" },
@@ -262,6 +276,14 @@ const EditProfileScreen = () => {
       return;
     }
 
+    // Block save while an avatar/cover upload is still in-flight. Otherwise
+    // the save payload would carry the local `file://` URI and poison the
+    // stored profile. (See `isPersistableRemoteUrl` for the second defence.)
+    if (uploadingAvatar || uploadingCover) {
+      Alert.show("提示: 图片正在上传，请稍候再保存");
+      return;
+    }
+
     // 验证年龄
     const ageNum = age ? parseInt(age, 10) : 0;
     if (age && (isNaN(ageNum) || ageNum < 0 || ageNum > 150)) {
@@ -271,25 +293,33 @@ const EditProfileScreen = () => {
 
     setLoading(true);
     try {
+      // Only persist avatar / cover if they are real CDN URLs. If the state
+      // still holds a local `file://` URI (e.g. upload failed earlier), skip
+      // the field entirely — backend treats the absence as "no change".
+      const avatarUrlForSave = isPersistableRemoteUrl(avatar)
+        ? avatar
+        : undefined;
+      const coverUrlForSave = isPersistableRemoteUrl(cover) ? cover : undefined;
+
       // 尝试调用 API 更新用户完整资料
       const updatedInfo = await userInfoService.updateUserProfile(user.userId, {
         username: username.trim(),
         bio: bio.trim(),
         location: location,
-        avatarUrl: avatar,
-        coverUrl: cover,
+        avatarUrl: avatarUrlForSave,
+        coverUrl: coverUrlForSave,
         gender: gender,
         age: ageNum,
         preference: preference.trim(),
         followedBrandIds: selectedBrandIds,
       });
 
-      // 更新本地状态
+      // 更新本地状态（仅保留服务端返回的远端 URL，避免把 file:// 写回 store）
       updateProfile({
         username: updatedInfo.username,
         bio: updatedInfo.bio,
         location: updatedInfo.location,
-        avatar: updatedInfo.avatarUrl || avatar,
+        avatar: updatedInfo.avatarUrl || avatarUrlForSave || undefined,
       });
 
       Alert.show("成功: 个人资料已更新", "", 1000);
@@ -310,7 +340,9 @@ const EditProfileScreen = () => {
           username: updatedInfo.username,
           bio: updatedInfo.bio,
           location: updatedInfo.location,
-          avatar: updatedInfo.avatarUrl || avatar,
+          avatar:
+            updatedInfo.avatarUrl ||
+            (isPersistableRemoteUrl(avatar) ? avatar : undefined),
         });
 
         Alert.show("成功: 基本资料已更新", "", 1000);
@@ -489,7 +521,10 @@ const EditProfileScreen = () => {
         showBack={true}
         rightActions={[
           {
-            icon: loading ? "hourglass-outline" : "checkmark",
+            icon:
+              loading || uploadingAvatar || uploadingCover
+                ? "hourglass-outline"
+                : "checkmark",
             onPress: handleSave,
           },
         ]}
@@ -713,7 +748,7 @@ const EditProfileScreen = () => {
 
             {/* 关注的品牌 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>关注的品牌（最多5个）</Text>
+              <Text style={styles.label}>关注的品牌</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setShowBrandModal(true)}
@@ -736,11 +771,6 @@ const EditProfileScreen = () => {
                   color={theme.colors.gray400}
                 />
               </TouchableOpacity>
-              {selectedBrandIds.length > 0 && (
-                <Text style={styles.selectedCount}>
-                  已选择 {selectedBrandIds.length}/5
-                </Text>
-              )}
             </View>
           </View>
 

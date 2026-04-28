@@ -10,6 +10,7 @@ import { ArticleBody, parseArticleBlocks } from "@/components/post/ArticleBody";
 import { ApiError, getPost } from "@/lib/api";
 import { formatRelativeTime, postTypeLabel } from "@/lib/format";
 import { isVideoUrl } from "@/lib/media";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export const revalidate = 60;
 
@@ -33,7 +34,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const description =
       plainText?.slice(0, 140) ||
       `${post.username} 分享的${postTypeLabel(post.postType)}内容。`;
-    const ogImage = post.imageUrls?.find((u) => !isVideoUrl(u));
+    const ogImage = post.imageUrls?.find(
+      (u) => !isVideoUrl(u) && isRenderableImage(u),
+    );
     return {
       title: post.title || `${post.username} 的${postTypeLabel(post.postType)}`,
       description,
@@ -57,9 +60,13 @@ export default async function PostDetailPage({ params }: PageProps) {
     // When the body parses as blocks, embedded media lives inside the blocks
     // and `imageUrls` only holds the cover (see PublishForumPostScreen). Show
     // just the cover once at the top and render the blocks in order.
-    const images = articleBlocks
+    // Drop bogus URLs (e.g. `file://` ImagePicker temps that slipped through
+    // the publish pipeline) before passing to <Image>/<VideoPlayer>; next/image
+    // would otherwise fail the whole SSR.
+    const images = (articleBlocks
       ? post.imageUrls?.slice(0, 1) ?? []
-      : post.imageUrls ?? [];
+      : post.imageUrls ?? []
+    ).filter((src) => isVideoUrl(src) || isRenderableImage(src));
 
     return (
       <article className="mx-auto max-w-3xl px-6 py-12 md:py-20">
@@ -95,7 +102,7 @@ export default async function PostDetailPage({ params }: PageProps) {
                        text-black/70 dark:text-white/60"
           >
             <span className="relative inline-block h-10 w-10 overflow-hidden rounded-full bg-[#f0f0f0] dark:bg-[#2a2a2a]">
-              {post.avatarUrl && (
+              {isRenderableImage(post.avatarUrl) && (
                 <Image
                   src={post.avatarUrl}
                   alt={post.username}

@@ -10,6 +10,7 @@
 import Image from "next/image";
 import useSWR, { mutate } from "swr";
 import { moderationService, type BlockedUser } from "@/lib/services/moderation";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export default function BlockedUsersPage() {
   const { data, isLoading, error } = useSWR<BlockedUser[]>(
@@ -68,7 +69,7 @@ export default function BlockedUsersPage() {
               className="flex items-center gap-4 px-4 py-3"
             >
               <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
-                {u.avatarUrl && (
+                {isRenderableImage(u.avatarUrl) && (
                   <Image
                     src={u.avatarUrl}
                     alt={u.username}

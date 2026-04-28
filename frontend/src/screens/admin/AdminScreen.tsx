@@ -26,6 +26,8 @@ import PostsManagementTab from "./PostsManagementTab";
 import CustomerServiceTab from "./CustomerServiceTab";
 import RecommendConfigTab from "./RecommendConfigTab";
 import MaintenanceTab from "./MaintenanceTab";
+import LevelReviewTab from "./LevelReviewTab";
+import LotteryAdminTab from "./LotteryAdminTab";
 
 type TabType =
   | "pending"
@@ -45,7 +47,9 @@ type TabType =
   | "showManagement"
   | "brandImageReview"
   | "recommendConfig"
-  | "maintenance";
+  | "maintenance"
+  | "levelReview"
+  | "lottery";
 
 interface TabConfig {
   key: TabType;
@@ -71,6 +75,8 @@ const TABS: TabConfig[] = [
   { key: "showManagement", label: "秀场管理" },
   { key: "brandImageReview", label: "图片审核" },
   { key: "recommendConfig", label: "推荐配置" },
+  { key: "levelReview", label: "等级审批" },
+  { key: "lottery", label: "月度抽奖" },
   { key: "maintenance", label: "维护模式" },
 ];
 
@@ -118,6 +124,10 @@ const AdminScreen = () => {
         return <StoreManagementTab />;
       case "recommendConfig":
         return <RecommendConfigTab />;
+      case "levelReview":
+        return <LevelReviewTab />;
+      case "lottery":
+        return <LotteryAdminTab />;
       case "maintenance":
         return <MaintenanceTab />;
       default:

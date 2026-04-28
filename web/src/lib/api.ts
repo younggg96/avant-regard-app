@@ -414,6 +414,20 @@ export async function getUserInfo(userId: number | string): Promise<UserInfo> {
   });
 }
 
+export async function getUserLevel(
+  userId: number | string,
+): Promise<number> {
+  try {
+    const data = await request<{ userId: number; currentLevel: number }>(
+      `/api/levels/users/${userId}/summary`,
+      { revalidate: 120, tags: [`user-level-${userId}`] },
+    );
+    return data.currentLevel ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function getUserFollowerCount(
   userId: number | string,
 ): Promise<number> {

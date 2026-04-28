@@ -21,6 +21,7 @@ import { FadeImage } from "@/components/FadeImage";
 import { VideoCover, VideoBadge } from "@/components/VideoCover";
 import { PostCardLikeBadge } from "@/components/PostCardLikeBadge";
 import { isVideoUrl } from "@/lib/media";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { Post } from "@/lib/types";
 import { formatCount, postTypeLabel } from "@/lib/format";
 
@@ -41,9 +42,13 @@ const clampAspect = (ratio: number) =>
   Math.min(Math.max(ratio, MIN_ASPECT), MAX_ASPECT);
 
 export function PostCard({ post, priority = false, masonry = false }: PostCardProps) {
-  const cover = post.imageUrls?.[0];
+  const rawCover = post.imageUrls?.[0];
   const typeLabel = postTypeLabel(post.postType);
-  const coverIsVideo = isVideoUrl(cover);
+  const coverIsVideo = isVideoUrl(rawCover);
+  // Guard: covers come from user-published posts; stray ImagePicker file://
+  // URIs would otherwise crash next/image in SSR.
+  const cover =
+    coverIsVideo || isRenderableImage(rawCover) ? rawCover : undefined;
 
   // Waterfall feeds replace the fixed `aspect-[3/4]` with a per-card ratio
   // measured once the media has decoded. Start at MIN_ASPECT to reserve the

@@ -20,6 +20,7 @@ import { notificationService } from "@/lib/services/notification";
 import { chatService } from "@/lib/services/chat";
 import { postService } from "@/lib/services/post";
 import { formatCount } from "@/lib/format";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { UserInfo } from "@/lib/types";
 
 export default function MeOverviewPage() {
@@ -65,7 +66,7 @@ export default function MeOverviewPage() {
     <section className="min-w-0">
       <header className="mb-10 flex flex-col gap-6 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-6 md:flex-row md:items-center">
         <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-white bg-[var(--canvas-raised)] dark:border-[#0a0a0a]">
-          {avatar && (
+          {isRenderableImage(avatar) && (
             <Image
               src={avatar}
               alt={displayName}
@@ -118,6 +119,11 @@ export default function MeOverviewPage() {
       </dl>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Tile
+          href="/me/level"
+          title="我的等级"
+          desc="进度 / 权益 / 月度抽奖"
+        />
         <Tile
           href="/me/likes"
           title="点赞"

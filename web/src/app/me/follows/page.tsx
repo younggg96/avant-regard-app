@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { useAuthStore } from "@/lib/auth/store";
 import { followService, type FollowingUser } from "@/lib/services/follow";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 type Tab = "following" | "followers";
 
@@ -80,7 +81,7 @@ function MyFollowsPageInner() {
                 className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--canvas-raised)]"
               >
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
-                  {u.avatar && (
+                  {isRenderableImage(u.avatar) && (
                     <Image
                       src={u.avatar}
                       alt={u.username}

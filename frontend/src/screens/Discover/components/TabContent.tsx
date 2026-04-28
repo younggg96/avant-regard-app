@@ -362,7 +362,10 @@ const TabContentInner: React.FC<TabContentProps> = ({
             onPress={onPostPress}
             onAuthorPress={onAuthorPress}
             onLike={onLike}
-            coverImageSize={ImageSize.THUMBNAIL}
+            // THUMBNAIL(400px) 在 @3x DPR 两列瀑布流（每列 ≈555–645 物理像素）
+            // 上会被放大 ~1.5 倍，肉眼可见地糊。FEED_CARD(640px) 按"真实物理
+            // 像素"下发，取样清晰；比 MEDIUM(800px) 又省 ~30% 流量。
+            coverImageSize={ImageSize.FEED_CARD}
             coverImagePriority={priority}
             showCoverPlaceholder={false}
             coverImageTransition={0}

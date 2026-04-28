@@ -43,6 +43,8 @@ import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
 import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
+import { MonthlyLotteryEntry } from "../../components/level";
+import { useLevelStore } from "../../store/levelStore";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
@@ -50,6 +52,7 @@ const ProfileScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
+  const ownLevel = useLevelStore((s) => s.status?.currentLevel ?? 0);
 
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
   const headerFadeThreshold = COVER_HEIGHT - headerTotalHeight;
@@ -446,6 +449,8 @@ const ProfileScreen = () => {
           onFollowersPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}
           onAvatarPress={() => setAvatarPreviewVisible(true)}
         />
+
+        <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} />
 
         <FollowedBrands
           brands={followedBrands}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FadeImage } from "@/components/FadeImage";
 import { ApiError, getAllBrands, type Brand } from "@/lib/api";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export const revalidate = 300;
 
@@ -16,13 +17,6 @@ function firstLetter(name: string): string {
   const c = name.trim().charAt(0).toUpperCase();
   return /[A-Z]/.test(c) ? c : "#";
 }
-
-// next/image refuses any `src` whose protocol is neither http nor https (or
-// that isn't absolute). Brand cover URLs are scraped from third-party vendor
-// pages and occasionally come back malformed ("", "/foo.jpg", "data:..."),
-// which historically crashed the whole SSR with "Invalid src prop".
-const isRenderableImage = (src?: string): src is string =>
-  !!src && /^https?:\/\//i.test(src);
 
 export default async function BrandsPage() {
   try {

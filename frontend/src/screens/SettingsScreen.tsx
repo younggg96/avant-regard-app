@@ -157,6 +157,12 @@ const SettingsScreen = () => {
           onPress: () => (navigation as any).navigate("EditProfile"),
         },
         {
+          id: "myLevel",
+          label: "我的等级",
+          icon: "trophy-outline",
+          onPress: () => (navigation as any).navigate("MyLevel"),
+        },
+        {
           id: "myTitles",
           label: "我的头衔",
           icon: "ribbon-outline",

@@ -1,5 +1,1367 @@
 # Progress Log
 
+## 2026-04-27: /admin/levels 页面再跑一轮 holistic review, 修三个遗留小 bug
+
+### 发现 & 修复
+
+**Bug 1 · 错误态下计数误导**
+`Lv4 升级待审批 · 0 条` / `全部用户等级 · 共 0 人` 在 catch 里被 reset 为 0,
+但用户看到的是"0 条"+ 红色 "接口异常". 实际上根本不知道真值.
+改成错误态下显示破折号: `Lv4 升级待审批 · —` / `共 — 人`.
+
+**Bug 2 · admin 操作后底表不刷新**
+`doApprove / doReject / doGrant / runBackfill` 之前只调 `load()` (审批队列).
+但这些操作会改 `user_levels.current_level` / `pending_level`, 下面那张
+"全部用户等级" 表却还是旧值, 要用户手动点刷新才能看到.
+在四个成功分支里都补上 `loadLevelUsers()`.
+
+**Bug 3 · loadLevelUsers 竞态**
+快速切换 `FilterChips` (Lv5 → Lv4 → 全部) 时, 慢响应可能覆盖掉快响应,
+UI 就会和当前筛选条件错位. 加了 `levelUsersReqTokenRef` 单调自增 token,
+只认最后一次发起的结果; 过期响应直接 return, 不写 state、不关 loading.
+
+### 影响面 / 红线
+
+- 仍然只是前端展示层改动, 不动后端契约.
+- PostgREST 嵌入式 `users(username)` 全库扫描复查: 还剩一处在
+  `buyer_store_community_service.py:569` 的 `buyer_store_ratings`, 但
+  `buyer_store_ratings` 只有单条 FK 指向 users, 不存在歧义, 保持不动.
+- iOS 侧 `frontend/src/screens/admin/LevelReviewTab.tsx` 用的是同一
+  `UpgradeRequestInfo` 契约 (`username: string | null`), 不受影响.
+- lint 干净.
+
+---
+
+## 2026-04-27: 修掉 /api/admin/levels/upgrade-requests 的 502 "数据服务暂不可用"
+
+### 现象
+
+上线后运营进 `/admin/levels` 稳定触发:
+
+> 接口异常: 数据服务暂不可用, 请稍后重试
+
+同页下方 `/api/admin/levels/users` 一切正常, 说明 Supabase 整体可用,
+只是这一条 `GET /api/admin/levels/upgrade-requests` 挂了.
+
+### 根因
+
+`level_service.list_pending_requests` 用了 PostgREST 嵌入式 select:
+
+```python
+self.db.table("level_upgrade_requests")
+    .select("*, users(username)")
+```
+
+而 `level_upgrade_requests` 向 `users` 有两条外键:
+
+- `user_id       BIGINT NOT NULL REFERENCES users(id)`
+- `reviewed_by   BIGINT REFERENCES users(id) ON DELETE SET NULL`
+
+PostgREST 无法自动决定 `users(username)` 该走哪条 FK, 抛 `PGRST201`
+(embedding ambiguity). 线上 Supabase 前面的 nginx/Kong 偶发会把这种非 200
+响应吞成非 JSON 的 502 HTML 页, `postgrest-py` 随即抛
+`"JSON could not be generated"`, 命中 `is_transient_supabase_error`
+规则, 被 `postgrest_api_error_handler` 翻译成 502 + `_UPSTREAM_UNAVAILABLE_MESSAGE`
+("数据服务暂不可用, 请稍后重试") 回到前端.
+
+### 修复
+
+`backend/app/services/level_service.py`:
+
+- 去掉嵌入式 select, 改成两段查询:
+  1. 显式列出所有业务字段查 `level_upgrade_requests` (status=PENDING).
+  2. 用 `user_id` 去重后, 一次 `in_()` 查 `users(id, username)` 组装 map.
+- `username` 缺失降级为 `None` (schema `Optional[str]`) 而不是整个接口失败,
+  审批本身不依赖它.
+- 与同文件 `list_users_by_level` 的实现风格一致 — 后者当初也因为同类坑
+  刻意避开了 nested select.
+
+### 红线核查 (holistic review)
+
+- 调用方只有 `backend/app/api/routes/level.py:139` 一处, 返回契约
+  `UpgradeRequestInfo(username: Optional[str])` 没有变, 前端 / Web Admin
+  不需要改.
+- `review_upgrade_request` / `admin_grant_level` 等不用这个查询, 不受影响.
+- `buyer_store_community_service.py` 里另有一处 `users(username, ...)` 嵌入,
+  但 `buyer_store_ratings` 只有单条 FK 指向 users, 不存在歧义, 保持原样.
+- 不改 schema / 不加迁移.
+- Web Admin 的错误横条(本条日志上方)仍然保留, 下次再出别的接口异常
+  一样会显性化, 不会被这次修复掩盖.
+
+---
+
+## 2026-04-27: /admin/levels 加接口错误态, 区分"真 0 人" vs "接口挂了"
+
+### 背景
+
+线下验证时 `/admin/levels` 页"全部用户等级"一栏显示"共 0 人 / 没有匹配的用户",
+但数据库里显然有人. 排查后确认 `GET /api/admin/levels/users` 路由是本地未
+部署的新代码, 线上后端返回 404, 前端 catch 里只 `console.warn`, UI 状态与
+"真的没人"完全撞在一起, 肉眼无法区分.
+
+### 修复
+
+`web/src/app/admin/levels/page.tsx`:
+
+1. 抽出模块级工具:
+   - `getErrorMessage(e, fallback)`: 统一收敛 5 处 `e instanceof Error ? ...`
+     重复写法 (DRY).
+   - `ErrorBanner`: 轻量红底横条组件, section 内复用.
+2. 新增 `requestsError` / `levelUsersError` 两个错误态, 拉列表失败时落入
+   catch 并写入状态, 成功时清空.
+3. UI 渲染:
+   - Lv4 待审批区块: 有错误时隐藏 `EmptyState`, 顶部挂 `ErrorBanner`.
+   - 全部用户等级表格: 错误优先于 loading / empty 行, tbody 渲染一条红字
+     提示行, 并在表格上方同时挂 `ErrorBanner` 显示原始 message.
+
+这样下次遇到"数据库里明明有数据但页面空的"情景, 运营一眼能看到
+"接口异常: Not Found / 未提供认证令牌 / 500 ..." 直接知道是后端/部署/鉴权
+问题, 而不是误判为业务为空.
+
+### 红线
+
+- 仅前端展示层变更, 不动后端契约, 不动 `level_service.list_users_by_level`.
+- 仍然保留 `console.warn` 供 DevTools 调试.
+- 现有 `doApprove / doReject / doGrant / runBackfill` 的 alert 文案统一走
+  `getErrorMessage`, 行为等价, 不影响已有测试路径.
+
+---
+
+## 2026-04-27: 修复推荐瀑布流封面图模糊（THUMBNAIL 放大伪影）
+
+### 背景
+
+用户反馈推荐 / 关注瀑布流里有时候会出现图片"掉像素、不清楚"的情况
+(截图可见牛仔外套、show 图在 iPhone 上明显块状模糊).
+
+### 根因
+
+`frontend/src/screens/Discover/components/TabContent.tsx:365` 把 PostCard
+的 `coverImageSize` 显式设为 `ImageSize.THUMBNAIL`（预设 400px 宽 / q=75），
+但:
+
+- 瀑布流两列布局每列逻辑宽度 ≈ 185–215 dp.
+- iPhone 14/15/16 系列普遍 @3x DPR → **每列物理像素 555–645 px**.
+- 下发 400 px 的图需要在客户端被放大 1.4–1.6× → 肉眼可见的像素化 / 糊.
+- 同时 q=75 对牛仔 / 皮革 / 复杂印花纹理的 JPEG 块状伪影特别明显.
+
+`THUMBNAIL` 这个语义的原意是给"真正的小图"（头像 20–60 dp、标签小图）
+用的, 被瀑布流卡片套用是越位 —— 违反 SRP.
+
+### 修复
+
+1. **新增语义化预设** `ImageSize.FEED_CARD`（`frontend/src/utils/imageUtils.ts`）:
+   - `{ width: 640, quality: 80 }`.
+   - 640 px 恰好 1:1 覆盖 @3x 两列瀑布流的物理像素上限（iPhone Pro Max 级），
+     再也不会被客户端放大.
+   - 比 `MEDIUM`(800) 省约 30% 流量; 比 `THUMBNAIL`(400) 消除放大模糊.
+   - 更新枚举注释, 明确 `THUMBNAIL` 只服务 20–60 dp 小图, 避免再被误用.
+
+2. **切换瀑布流封面预设**（`TabContent.tsx`）:
+   - `coverImageSize={ImageSize.THUMBNAIL}` → `coverImageSize={ImageSize.FEED_CARD}`.
+   - 加注释说明选型依据, 防止后人"看到流量大就回退到 THUMBNAIL".
+
+### 影响面核查（holistic review）
+
+- `PostCard` 默认 `coverImageSize=MEDIUM`（单列详情预览用）, 不变.
+- 所有未显式传 `coverImageSize` 的 PostCard 使用点
+  (`Profile/PostsContent`、`FavoritesScreen`、`MyLikesScreen`、
+  `UserProfileScreen`、`SearchScreen`、`CommunityDetailScreen`)
+  仍然走 MEDIUM, 不受影响.
+- `FEED_CARD` 新预设走的还是后端 `/api/files/image?w=640&q=80` 同一条代理路径,
+  后端无须改动; `_transform_bytes` 对未缓存组合会生成新缓存文件, 已有
+  THUMBNAIL 的缓存保留给非 feed 场景继续复用.
+- Web 端 PostCard 用的是 `next/image` + Vercel 自有 sizes/quality 通路, 不走这条
+  代理, 无需改动.
+- 头像等 THUMBNAIL 调用方（`EditProfileScreen`、`PostDetailHeader` 等）不变.
+
+### 验证点
+
+- 重建 feed 首屏后, 推荐 / 关注 tab 首屏卡片封面在 iPhone @3x 设备上
+  应明显更锐利（尤其是深色牛仔、皮革纹理）.
+- 流量: 单张封面约从 30–50 KB 升到 60–90 KB (WebP); 较 `MEDIUM` 仍节省,
+  对 feed 冷启动加载时间影响可忽略.
+- 后端 `/api/files/image` 会新增一组 `w=640&q=80` 的磁盘缓存条目,
+  首次请求产生一次 Pillow 转换.
+
+---
+
+## 2026-04-27: Web Admin 等级审批页新增"全部用户等级"总览表
+
+### 背景
+
+运营侧反馈: Lv4 审批页只看得到"目前卡在 Lv4 审批"的寥寥几人, 没法总览
+所有用户的等级分布. 需求:
+
+> 在 /admin/levels 页面加一个 list table, 展示所有用户的等级, 从高到低排序.
+
+### 设计
+
+1. **后端新增只读端点**, 不复用 `/api/admin/users` — 那个端点不按等级排
+   序, 也不方便按等级过滤. 单独走一条路径语义更清晰, 也不影响用户管理
+   页现有分页/搜索逻辑.
+2. **用"全量 users + user_levels 左连接"而不是仅从 user_levels 分页**.
+   理由:
+   - 老用户回填前没有 `user_levels` 行, 按 `user_levels` 分页会让
+     Lv0 用户永远不出现在第二页之后.
+   - 当前注册用户 ~800 级别, 后端一次拉全 + 内存排序完全可控
+     (MAX_SCAN=10000 兜底, 超过再改分批迭代).
+3. **返回结构与其它 admin 列表一致** (users / total / page / pageSize),
+   Web / App 复用分页控件零成本.
+4. **类型复用 `LEVEL_TITLES`**, 不在页面里再硬编码称号.
+
+### 变更
+
+#### 1. 后端 · `backend/app/services/level_service.py::list_users_by_level`
+
+新增方法, 签名 `(page, page_size, level) -> {users, total, page, pageSize}`.
+
+核心逻辑:
+
+1. 拉全 `users` 表和 `user_levels` 表 (各自限 10000 条), Python 侧合并
+   成 `{user_id, current_level, pending_level, last_level_up_at}` 列表,
+   user_levels 不存在的用户默认 Lv0.
+2. 按 `level` 过滤: `None` 全量, `0` 仅未达 Lv1, `1..5` 精确.
+3. 排序键: 等级 DESC → `last_level_up_at` DESC (NULL 最后) → user_id ASC.
+4. Python 分页切片, 只对本页 20 个 user_id 批量查 `username / avatar_url /
+   store_merchants` (同样沿用 `admin_service` 里"APPROVED 优先"的合并策略,
+   保证一个用户多条 merchant 记录时商家身份不被 REJECTED 覆盖).
+
+#### 2. 后端 · `backend/app/api/routes/level.py`
+
+新增 `GET /api/admin/levels/users?page=&pageSize=&level=`, admin 鉴权,
+直接透传到 `list_users_by_level`.
+
+#### 3. Web · `web/src/lib/services/level.ts`
+
+- 新增类型 `LevelUserRow` / `ListLevelUsersResponse`.
+- `adminLevelApi` 新增 `listUsersByLevel({ page, pageSize, level })`,
+  `level` 为 `null | undefined` 时不带 query, 让后端取默认全量.
+
+#### 4. Web · `web/src/app/admin/levels/page.tsx`
+
+在 Lv4 审批列表下方加一段 `<section>`:
+
+- 头部显示"全部用户等级 · 按等级降序 · 共 N 人" + 刷新按钮.
+- `FilterChips` 等级筛选 (Lv5 / Lv4 / Lv3 / Lv2 / Lv1 / Lv0),
+  编码成 `"L0".."L5"` 传给现有的泛型 `FilterChips<T extends string>`.
+- 表格列: 用户 (头像 · @username · ID) · 类型 (商家 / USER) ·
+  等级 (Lv + 称号徽章, Lv0 显示 —) · 待审核 Lv · 最近升级日期.
+- 底部 `Pagination` 翻页, `page_size = 20`.
+- 筛选切换会 reset `page=1`, 避免落到不存在的页.
+
+### 不动的地方 (Design intent)
+
+- 不复用 `/api/admin/users` 的 `currentLevel` 已有字段. 那个接口按创建
+  时间 / 搜索排序, 不提供按等级排序能力, 同时有 `isActive / titles` 等
+  和等级总览无关的字段, 放一起会让 API 职责不清.
+- 页面 section 与已有 Lv4 审批列表、手动授予、回填并列, 未来要做"按等
+  级筛选出某一批用户再批量操作"时, 可在本 section 的行末加勾选框 + 批
+  量菜单, 不用再重写拉取逻辑.
+
+### 影响面
+
+- Web Admin `/admin/levels` 页面下多一屏 "全部用户等级" 列表, 不影响
+  其它页面.
+- 新端点只读, 不触及任何写入, 回滚成本为零.
+- 移动端 Admin 暂不同步 (当前设计只让 Web 侧承担"全局视角"运营工作).
+
+---
+
+## 2026-04-27: 存量用户等级回填 · 纯 SQL 版本 + `_count` 健壮性加固
+
+### 背景
+
+用户反馈: "所有的用户都没有等级, 用户都已经达到了对应等级要求却没有等级".
+
+chain of thought:
+1. 上一批任务里虽然做了 Python 版本的 `backfill_all`, 但由于本地
+   `.env` 指向了废弃的 Supabase 项目, 本地脚本无法连上 DB; 而线上的
+   Web Admin 回填按钮又没人点过, 导致 `user_levels` 表实际上全是默认
+   Lv0 (`_get_row` 的 lazy create).
+2. 顺便读代码时发现 `_count_real_actions` 里 `.select("id", ...)` 有
+   隐患: 如果某张业务表的主键不叫 `id` (虽然这里都叫, 但万一未来加表
+   时漏配), `except Exception` 会直接吞错, 返回 0, 然后回填的所有计
+   数都会是 0, 静默失败. 这是回填"跑了但没效果"的一类潜在 bug.
+
+### 设计红线
+
+1. **不依赖 Python 运行时**. 给一个纯 SQL 实现, Supabase SQL Editor
+   里粘贴就能跑, 彻底绕开任何本地 / 部署环境问题.
+2. **与服务层版本 1:1 对齐**. SQL 里的阈值 / 字段 / 合并口径必须和
+   `backfill_user` 完全一致, 否则两边语义分岔.
+3. **幂等**. 多次跑 SQL 不会回退等级, 不重复发权益, 不重复建 Lv4
+   PENDING, 不重复入抽奖池.
+4. **只 AUTO 路径**. SQL 只负责 Lv1 → Lv3 的自动升级和 Lv4 的
+   PENDING 入队; Lv5 一律不动, 保持"仅 Admin 手动授予"的红线.
+
+### 变更
+
+#### 1. `backend/app/services/level_service.py::_count_real_actions`
+
+- `_count()` 内部的 `.select("id", count="exact")` 改为
+  `.select(field, count="exact")`. `field` 是作过滤条件的列 (例如
+  `user_id` / `follower_id` / `created_by`), 一定存在, 不会因为表没
+  `id` 列而让 count 静默归零.
+- 异常日志从 `logger.warning` 升级为 `logger.exception`, 带堆栈, 便于
+  在生产环境定位表名 / 列名 / 权限问题.
+
+#### 2. `backend/app/db/migrations/039_backfill_user_levels_once.sql` (新增)
+
+完整的一次性回填脚本, 八个步骤:
+
+1. `_tmp_user_counters` — 为每个 user 从业务表 (posts / community_follows
+   / post_likes / user_follows / post_wants / buyer_store_comments /
+   user_submitted_stores / shows / brand_submissions) 累加真实计数.
+2. `_tmp_user_targets` — 按递进条件 (Lv1 达标才判 Lv2, Lv2 才判 Lv3)
+   算出每个 user 的 AUTO 目标等级 + Lv4 资格 bit.
+3. `UPSERT user_level_progress` — `jsonb_build_object` + `GREATEST`
+   做 max 合并, 不覆盖旧计数.
+4. `INSERT user_levels Lv0` + `UPDATE current_level = GREATEST(...)` —
+   双重保险避开 only-ascent trigger 异常, 只在 target > current 时动.
+5. `INSERT level_upgrade_requests PENDING target=4` — `NOT EXISTS` 去
+   重, 只对 current_level < 4 的建, remark 标 `backfill:
+   archive_uploaded>=3` 方便 Admin 区分.
+6. `INSERT user_level_benefits` — `ON CONFLICT (user_id, benefit_id)
+   DO NOTHING`, 幂等补发 (老的 Lv5 用户能拿到 Lv5/Lv4 权益).
+7. `INSERT lottery_entries` — 当月 OPEN round 存在时把 Lv3+ 推进抽奖
+   池, `ON CONFLICT (round_id, user_id) DO NOTHING` 幂等.
+8. `RAISE NOTICE` — 打印等级分布 + Lv4 PENDING 数摘要.
+
+#### 3. 操作指引
+
+在 Supabase 项目的 **SQL Editor** 里:
+
+```sql
+-- 粘贴 backend/app/db/migrations/039_backfill_user_levels_once.sql 全部内容并执行
+```
+
+执行成功后会在 Messages 面板看到:
+
+```
+[039] User level backfill complete.
+  user_levels rows: 799
+    Lv0  = xxx
+    Lv1  = xxx
+    Lv2  = xxx
+    Lv3  = xxx
+    Lv4  = xxx
+    Lv5  = xxx
+  Lv4 PENDING 审批: xxx
+```
+
+刷新 `/admin/users` 就能看到用户管理表格的 "等级" 列被填满; App 里
+`/admin/users` tab 也会显示 "Lv3 · 探店官" 这样的小徽章.
+
+### 验证要点
+
+- 达到 "发 1 帖 + 关注 1 社区" 的用户都变成了 Lv1.
+- 达到 "点赞 10 + 关注用户 3" 的用户变成了 Lv2.
+- 达到 "我想要 10 + 评论买手店 5" 的用户变成了 Lv3, 并自动进了当月抽奖
+  池 (若当月 round 已开).
+- 档案 >= 3 的用户**没有**升到 Lv4, 而是在 `level_upgrade_requests`
+  里多了一条 PENDING (Web Admin `/admin/levels` 可见).
+- 再跑一次 SQL, 所有 Lv 数字不变, PENDING 不新增, 权益不重发.
+
+### 后续
+
+- 服务层 `backfill_all` 依然保留. 未来新加表时, 优先改服务层 + SQL 两
+  边保持同步; 运营常态用 Web Admin 按钮就行, 冷启动一次性用 SQL.
+
+---
+
+## 2026-04-27: App (RN) Admin 用户管理对齐 · 身份三档 + 等级徽章
+
+### 背景
+
+前一条任务把 Web `/admin/users` 改成了"ADMIN / 商家 / USER + Lv 徽章",
+用户要求 App 端管理员后台的"用户列表" tab (`UsersTab`) 也做同样的视觉对齐.
+
+### 现状痛点 (看截图)
+
+- 卡片里用户类型只展示了一个小 "Admin" 黄底 chip, 且大小写与 Web 端
+  "ADMIN" 不一致.
+- 商家逻辑用了 `item.merchant && ...`, 会把 PENDING / REJECTED 的申请也
+  展示为 "商家审核中", 运营容易误以为是已入驻商家.
+- 完全不展示等级; 回填完也看不出谁是 Lv3 探店官.
+
+### 设计红线
+
+1. **与 Web 端 1:1 对齐**. 文案 (ADMIN / 商家) / 优先级
+   (ADMIN > MERCHANT > USER) / 商家判定 (必须 APPROVED) 都要一致.
+2. **DRY**. 等级称号 map 此前散落在 `LevelBadge.tsx` / `LevelReviewTab.tsx`
+   两处, 借这次抽共享.
+3. **未达 Lv1 用 `—`**. 与 Web 一致, 方便运营扫视时快速判断 "是 Lv0 还是
+   数据缺失".
+4. **商家 "审核中" 仍保留但视觉弱化**. 不挂绿底 "商家" 冒充已入驻, 改为
+   灰底小字 "商家审核中", 只对运营有用, 不误导.
+
+### 变更
+
+#### 共享常量
+
+- `frontend/src/components/level/levelTitles.ts` (新增):
+  - `LEVEL_TITLES` / `getLevelTitle` / `formatLevelLabel` / `LEVEL_OPTIONS`
+    单一事实源, 与 `web/src/lib/levels/titles.ts` 对称.
+- `frontend/src/components/level/LevelBadge.tsx`:
+  - 删除本地 `LEVEL_TITLE` map, 改从 `./levelTitles` import 并 re-export
+    `getLevelTitle` (保持 `components/level/index.ts` 以及
+    `MyLevelScreen` / `LevelUpgradeModal` 的旧 import 路径不破坏).
+- `frontend/src/screens/admin/LevelReviewTab.tsx`:
+  - 删除本地 `LEVEL_OPTIONS`, 改从共享常量 import.
+
+#### 契约
+
+- `frontend/src/services/adminService.ts`:
+  - `AdminUser` 加 `currentLevel?: number` (和 Web 端 `AdminUser` 对齐).
+  - 后端 `admin_service.get_users_admin` 已经在上一条任务附加了
+    `currentLevel` 字段, 所以 RN 端直接拿就行, 不需要后端改动.
+
+#### UI
+
+- `frontend/src/screens/admin/UsersTab.tsx`:
+  - 新增 `resolveUserKind()` / `renderKindChip()` / `renderLevelChip()`
+    3 个模块级 helper. 卡片头部一排小 chip:
+    - `ADMIN` — 黑底白字实心 (最醒目)
+    - `商家`  — 黑色描边 (仅 `merchant.status === 'APPROVED'` 时)
+    - `商家审核中` — 灰底小字 (PENDING 状态的弱提示)
+    - 等级 pill — Lv ≥ 1 显示 "Lv3 · 探店官", Lv 0 显示 "—"
+  - 删掉冗余的 `" · ${item.userType}"` 尾缀 (后端目前统一返回 "USER",
+    显示出来只是噪音).
+  - 样式表把旧 `adminBadge` 拆成 `kindChipSolid / kindChipOutline /
+    kindChipMuted / levelChip / levelChipMuted` 五组, 视觉区分度更高.
+
+### 验证要点
+
+- 管理员账号在卡片里出现黑底 "ADMIN" chip.
+- APPROVED 商家出现黑色描边 "商家" chip; PENDING / REJECTED 只出现灰底
+  "商家审核中" 小字.
+- Lv 0 用户等级位显示 "—"; 跑完存量回填后, Lv1~Lv3 用户应陆续看到黑底
+  "Lv3 · 探店官" chip.
+- 原有的审批 / 头衔 / 删除 / 分页功能无回归 (`LevelReviewTab` 的
+  `LEVEL_OPTIONS` 改为共享来源后, 下拉内容与重构前完全一致).
+
+---
+
+## 2026-04-27: Web Admin 用户管理支持等级展示 + 身份三档 (ADMIN / 商家 / USER)
+
+### 背景
+
+截图反馈: `/admin/users` 表格里:
+1. 看不到用户的当前等级 (Lv1-5 称号系统, migration 038). 没有达到 Lv1 的
+   用户也该显式以 `—` 占位, 而不是留白.
+2. "类型"列所有人都是 `USER`, 没有把 admin / 入驻买手店的商家区分出来.
+   `AdminUser` 契约里其实已经有 `isAdmin` 和 `merchant` 两个字段, 但前端
+   渲染只看了 `isAdmin`, 拿了 `userType` 直接兜底; 同时 `StatusBadge` 的
+   `variant` 属性已被 deprecated / ignored, 旧代码里的 `variant="warning"`
+   其实**视觉上没区别**.
+
+### 设计红线
+
+1. **DRY**. 等级称号 (萌新 / 活跃 / 探店官 / 档案官 / 荣誉官) 在 `LevelBadge`
+   和 admin/levels 各写了一份. 这次一起抽到 `web/src/lib/levels/titles.ts`,
+   未来改文案只改一处.
+2. **身份优先级**. `ADMIN > MERCHANT > USER`. 一个人既是 admin 又入驻了买
+   手店时优先显示 ADMIN (权限更高, 避免误导运营).
+3. **商家判定**. 只有 `store_merchants.status == 'APPROVED'` 才算"商家",
+   PENDING / REJECTED 依然展示 USER. 后端侧, 如果一个用户有多条入驻记录,
+   `merchant_map` 里保留 APPROVED 的那条, 让前端只判一层.
+4. **视觉三档**. 不复用已被忽略的 `StatusBadge.variant`, 直接在 users 页面
+   内联 pill 样式: ADMIN 实心黑底 · 商家 描边 · USER 浅灰底. 区分度够, 无
+   需给 `StatusBadge` 做破坏性升级.
+5. **等级 0 用 `—`**. 不用 `Lv0`, 也不留白. `—` 传达"还没达标", 不会让运
+   营误以为数据缺失.
+
+### 变更
+
+#### 后端
+
+- `backend/app/services/admin_service.py::get_users_admin`:
+  - 新增 `level_map`, 批量 `SELECT user_id, current_level FROM user_levels
+    WHERE user_id IN (...)`, 输出里附加 `currentLevel`.
+  - `merchant_map` 去重逻辑加强: 一个用户多条入驻记录时优先保留 APPROVED
+    的那条, 避免被后来的 REJECTED 覆盖.
+
+#### 共享常量
+
+- `web/src/lib/levels/titles.ts` (新增):
+  - 导出 `LEVEL_TITLES` / `formatLevelLabel` / `LEVEL_OPTIONS`, 成为 Web
+    端所有"Lv{n} · 称号"展示的单一事实源.
+- `web/src/components/user/LevelBadge.tsx`:  改为 `import { LEVEL_TITLES }`.
+- `web/src/app/admin/levels/page.tsx`:  删除本地 `LEVEL_OPTIONS`, 改为从共
+  享常量引入.
+
+#### Web 契约
+
+- `web/src/lib/services/admin.ts`:  `AdminUser` 追加 `currentLevel?: number`
+  (0 表示未达 Lv1).
+
+#### Web UI
+
+- `web/src/app/admin/users/page.tsx`:
+  - 新增 `resolveUserKind()` / `KIND_STYLE`, 三档视觉:
+    ADMIN (黑底白字) / 商家 (描边) / USER (浅灰底灰字).
+  - 表格新增 "等级" 列 (在 "类型" 与 "头衔" 之间).
+    Lv ≥ 1 显示黑底小徽章 "Lv3 · 探店官"; 否则 `—`.
+  - 原 "头衔" 列 (`user.titles`, 运营自定义 tag) 保留, 因为它是一套独立于
+    等级系统的标签, 两者语义不冲突.
+
+### 验证要点
+
+- `/admin/users` 刷新后, 每行 "类型" 列应出现三档中的一档; 之前全是 USER
+  的情况说明后端 `userType` 都返回 "USER", 现在改走 `isAdmin` /
+  `merchant.status` 判定, ADMIN 至少能看到自己.
+- 把某账号作为买手店 APPROVED 合伙人后刷新, 该用户应转为 "商家".
+- 未达标用户 "等级" 列统一显示 `—`; 跑完全量回填后, 应开始出现 Lv1~Lv3
+  徽章.
+- `LevelBadge`  / `/admin/levels` 的下拉 / `/me/level` 依然正常工作 (因为
+  称号文案与迁移前 1:1 一致).
+
+---
+
+## 2026-04-27: 私信分享卡片在 Web 端渲染 (帖子 / 店铺 / 品牌 / 秀场 / 用户)
+
+### 背景
+
+移动端用户可以把帖子 / 买手店 / 品牌 / 秀场 / 用户主页当作"卡片"分享进私信,
+对应 `message_type` 分别是 `post_card / store_card / brand_card / show_card /
+user_card`, `content` 字段存一段 JSON payload (见
+`frontend/src/components/ShareToChatModal.tsx`).
+
+Web 端 `/me/chats/[id]` 当时只做 `{m.content}` 直出, 结果五种卡片在浏览器里
+全部显示成一坨原始 JSON, 会话列表 `/me/chats` 的 `lastMessageText` 也直接暴
+露 JSON. 体验与 App 完全不一致.
+
+### 设计红线 (chain of thought)
+
+1. **Wire format 要与 App 1:1 对齐.** Payload schema / messageType 在三端共享,
+   不能在 Web 端私自改字段名或新增字段, 否则会让 App 那边解析失败或反之.
+2. **Payload 是不受信任输入.** 老数据里已经出现过 `file://` 开头的 avatar /
+   cover URL (上次 `Invalid src prop` 事故), 所以所有 `<Image>` 的 src 必须过
+   `isRenderableImage` 守卫.
+3. **单一事实源.** Parse 逻辑不能散落到 `/me/chats/[id]` 和 `/me/chats` 两处,
+   否则下次再加一种卡片类型得改两个地方. 提成
+   `web/src/lib/chatShareCards.ts` 共享.
+4. **会话列表没有 `lastMessageType`.** 后端 `ConversationResponse` 只暴露了
+   `last_message_text`, 所以 `summarizeSharePayload` 必须能在 `messageType`
+   缺席时通过 payload 形状推断类型 (postId → post_card, storeId → store_card
+   ...). 文案要与 `backend/app/services/chat_service.py`
+   (`format_chat_message_preview`) 以及
+   `frontend/src/screens/ChatList/utils.ts` 完全一致.
+5. **降级不崩.** 如果 payload 损坏 / 类型未知, 必须退化到原有的纯文本气泡,
+   而不是白屏.
+
+### 变更
+
+#### 1. `web/src/lib/chatShareCards.ts` (新增)
+
+- 声明 `PostSharePayload / StoreSharePayload / BrandSharePayload /
+  ShowSharePayload / UserSharePayload` (字段与
+  `frontend/src/components/ShareToChatModal.tsx` 完全一致).
+- `parseSharePayload(messageType, content)` — 按 `message_type` 走 switch, 校
+  验必要字段后返回 `{ kind, payload }` 的判别联合, 失败返回 `null`.
+- `summarizeSharePayload(messageType, content)` — 产出会话列表 / 通知预览用
+  的 `[帖子分享] 标题` 短串. `messageType` 可选: 缺省时按 payload 字段嗅探
+  (`postId` / `storeId` / `brandId` / `showId` / `userId`). Label 映射表与后
+  端 `_CARD_TYPE_LABELS` 一致.
+
+#### 2. `web/src/components/chat/ShareCard.tsx` (新增)
+
+- 单一入口 `<ShareCard card={ParsedShareCard} isMine={boolean} />`, 内部按
+  `card.kind` 分发到 `PostCard / StoreCard / BrandCard / ShowCard / UserCard`.
+- 通用组件: `CardShell` (240px 固定宽 + 圆角 + `<Link>`), `CoverImage`
+  (140px cover, 失败回退到 `placeholderIcon`), `CardFooter` (左侧类型标签 +
+  右侧 "查看 →").
+- 颜色走 `isMine` 双态 —— `mine` 用黑底白字 (dark mode 反相), `other` 用
+  `bg-[var(--canvas)] + border-[var(--border)]`, 与 App 端 `MessageBubble`
+  的 mine/other 区分节奏一致.
+- 所有 user-controlled 图片 src 都过 `isRenderableImage`, `file://` / 空串
+  不会再让 `next/image` 崩.
+- 深链路由:
+  - `post_card` → `/posts/{postId}`
+  - `store_card` → `/stores/{storeId}`
+  - `brand_card` → `/archive/brands/{brandId}`
+  - `show_card` → `/archive/shows/{showId}`
+  - `user_card` → `/users/{userId}`
+
+#### 3. `web/src/app/me/chats/[id]/page.tsx` (改)
+
+- 引入 `parseSharePayload` + `ShareCard`; 对每条消息先 parse, 命中卡片就渲染
+  `<ShareCard>`, 未命中走原纯文本气泡.
+- 已删除消息 (`isDeleted`) 跳过 parse 直接显示"（消息已删除）", 避免给墓碑文
+  案套卡片样式.
+
+#### 4. `web/src/app/me/chats/page.tsx` (改)
+
+- `lastMessageText` 改走 `summarizeSharePayload(null, conv.lastMessageText)`,
+  会话列表不再有成串的 JSON, 和 App `formatLastMessage` 输出一致.
+
+### 回归验证
+
+- `tsc --noEmit`: clean.
+- Lint (ReadLints): no errors.
+- Next.js dev server 对 `/me/chats` 与 `/me/chats/[id]` 完成热编译, 无报错.
+- 逻辑自检: `parseSharePayload` 对坏 JSON / 未知 `messageType` / 缺字段均返回
+  `null`, 上游 fallback 到文本气泡; `summarizeSharePayload` 对纯文本直接原样
+  返回, 对未知 payload 形状也回退到原文.
+
+### 未做 / 后续
+
+- 会话列表预览目前依赖前端嗅探 payload 形状. 如果日后需要把 push 通知 /
+  服务端渲染的会话预览也修掉, 可以给
+  `ConversationResponse` 加 `lastMessageType` 字段, 再在 web summarize 时优
+  先用它.
+- Web 侧尚未实现"发送卡片"入口 (App 有 `SharePickerSheet`). 当前只解决接收
+  端渲染, 发送路径延后.
+
+---
+
+## 2026-04-27: 存量用户等级回填 (backfill)
+
+### 背景
+
+等级系统 (migration 038) 上线时, 老用户的 `user_level_progress.counters`
+是空的. 他们之前的发帖 / 点赞 / 关注 / 评论 / 档案行为不会被规则引擎回溯计
+入, 导致所有老账号停留在 Lv0. 本次交付一次性的存量回填通道, 并补齐"可
+重跑""不双花""不骚扰"的三重幂等保障.
+
+### 设计红线 (chain of thought)
+
+1. `_grant_benefit` 原逻辑对已有 `(user_id, benefit_id)` 记录是 `quota +=`,
+   多次跑回填会把门票翻倍 → 必须走**静默发放**路径 (有则 skip).
+2. `_apply_upgrade` 内部会调 `_notify_level_up` 发站内信; 对存量用户触发会
+   一次涌出成百上千条历史消息 → 必须**静默升级** (不通知, 抽奖池仍 enroll).
+3. Lv4 审批工单的 `UNIQUE (user_id, target_level) WHERE status='PENDING'`
+   需显式捕获重复插入, 避免脚本报错中断.
+4. counters 合并策略取 `max(real_table_count, existing)`: 真实表被删行只会
+   让 counters "不超过"历史值; 等级由 only-ascent 触发器守住不回退.
+5. Lv5 绝不自动触发 — 本次实现明确只走 AUTO / AUDIT 分支.
+
+### 口径对齐: action → 业务表
+
+| action | 数据源 | 过滤 |
+|---|---|---|
+| POST_CREATED | `posts` | `user_id=? AND status='PUBLISHED'` |
+| COMMUNITY_FOLLOWED | `community_follows` | `user_id=?` |
+| POST_LIKED | `post_likes` | `user_id=?` |
+| USER_FOLLOWED | `user_follows` | `follower_id=?` |
+| WANT_CLICKED | `post_wants` | `user_id=?` |
+| STORE_COMMENTED | `buyer_store_comments` | `user_id=? AND parent_id IS NULL` |
+| ARCHIVE_UPLOADED | `user_submitted_stores` / `shows` / `brand_submissions` 三表 `APPROVED` 行数之和 |  |
+
+(口径与 `record_action` 的调用点 1:1 对应, 不重不漏.)
+
+### 变更
+
+#### 1. 后端 · 核心逻辑 (`backend/app/services/level_service.py`)
+
+新增四个方法 + 两个入口:
+
+- `_count_real_actions(user_id)` — 从 7 张业务表按上表口径统计真实累计.
+- `_silent_grant_benefit(user_id, benefit_id, quota)` — 幂等发放 (已存在
+  则跳过, 不累加 quota).
+- `_silent_grant_level_benefits(user_id, level)` — 批量幂等发放某级权益.
+- `_silent_upgrade(user_id, new_level)` — 只写 `current_level`, 调静默发
+  放, Lv3+ 进当月抽奖池, 不发通知.
+- `_ensure_pending_request_silent(user_id, target_level)` — Lv4 去重建
+  PENDING, 不发通知, 捕获 unique 冲突.
+- `backfill_user(user_id, dry_run=False)` — 单用户回填, dry_run 下不调用
+  `_get_row` 的 lazy-create.
+- `backfill_all(dry_run, limit, offset)` — 分页扫描 users 表, 每 500 一页,
+  return 汇总 `{scanned, upgraded, pendingCreated, errors, levelDistribution}`.
+
+#### 2. 后端 · Schema + 路由
+
+- `backend/app/schemas/level.py`:  新增 `AdminBackfillRequest`.
+- `backend/app/api/routes/level.py`:  新增 `POST /api/admin/levels/backfill`,
+  支持 `{userId?, dryRun?, limit?, offset?}`; 走 `get_current_admin_user` 保护.
+
+#### 3. 独立脚本 (`backend/scripts/backfill_user_levels.py`)
+
+- `--dry-run` 预览 / `--user-id` 单人 / `--limit N` / `--offset K` 续跑.
+- 延迟 import, `--help` 不依赖环境变量.
+- 成功 exit 0; 有 error exit 1 (便于脚本编排).
+
+#### 4. Web 管理端 (`web/src/app/admin/levels/page.tsx`)
+
+"等级审批"页面顶部新增 `存量回填` 按钮, 打开 FormDialog:
+
+- Dry Run + 全量执行 两键 (全量执行前 `ConfirmDialog` 二次确认).
+- 单用户输入框 + 一键回填.
+- 结果区按 scope 区分, 显示等级变化 / counters / 汇总 / 分布.
+- 全量跑完自动刷新审批列表, 立即可见新 PENDING.
+
+`web/src/lib/services/level.ts`:  `adminLevelApi.backfillLevels(...)` 对齐
+后端契约, 附 `BackfillResponse | BackfillSummary | BackfillUserResult`.
+
+#### 5. iOS / Android 管理端 (`frontend/src/screens/admin/LevelReviewTab.tsx`)
+
+新增"存量用户等级回填"卡片模块:
+
+- Dry Run / 全量执行 两键 (均 Alert 二次确认).
+- 单用户输入 + 执行.
+- 结果区 scope-aware 展示.
+
+`frontend/src/services/levelService.ts`:  `adminLevelService.backfillLevels(...)`
+与 Web 契约对齐.
+
+### 幂等验证要点
+
+1. 重跑全量 → 已升级用户 `beforeLevel == afterLevel`, 权益记录 quota 不变.
+2. user_levels 触发器 `user_levels_enforce_monotonic` 挡住任何 downgrade.
+3. Lv4 PENDING 受 partial unique index 保护, 重复请求被 except 吞掉.
+4. dry_run 绝不触发任何 insert/update; 含 `_get_row` 的 lazy-create 也被
+   替换为纯读.
+
+### 使用步骤
+
+**推荐**:  直接用线上后端 + Web Admin UI, 运维零本地依赖 ——
+登录 admin → `/admin/levels` → "存量回填" → Dry Run → 执行全量.
+
+**如需本地跑脚本** (需要 Python ≥ 3.10, macOS 自带的 3.9 不够):
+
+```bash
+cd backend
+# 首次:  Homebrew 装新 Python + 建 venv
+brew install python@3.11
+/opt/homebrew/opt/python@3.11/bin/python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 跑脚本 (venv 激活后 python 即 3.11)
+python scripts/backfill_user_levels.py --dry-run          # 预览全量
+python scripts/backfill_user_levels.py --limit 100        # 分批压测
+python scripts/backfill_user_levels.py --user-id 42       # 单用户
+python scripts/backfill_user_levels.py 2>&1 | tee bf.log  # 全量+落盘
+```
+
+iOS 管理端 (`AdminScreen → 等级审批 Tab`) 与 Web 端两侧均调同一
+`/api/admin/levels/backfill` 接口.
+
+---
+
+## 2026-04-27: 修复 next/image 因 `file://` URI 崩溃 SSR
+
+### 问题
+
+Web 用户主页 / 发现 / 私信等页面在 SSR 阶段抛出：
+
+```
+Error: Invalid src prop (file:///var/mobile/Containers/Data/Application/
+DF642701-4C5C-443E-97F1-D29F7578A537/Library/Caches/ImagePicker/
+9225CACB-91C8-4B4E-9E0E-82119D7DC49E.jpg) on `next/image`, hostname ""
+is not configured under images in your `next.config.js`
+```
+
+### 根因（chain of thought）
+
+1. `frontend/src/screens/EditProfileScreen.tsx` 选头像时先 `setAvatar(file:// URI)`
+   作乐观预览，再异步上传到 CDN。
+2. 用户若在上传完成前点保存 —— 或上传静默失败导致状态未回刷 —— 调用
+   `userInfoService.updateUserProfile({ avatarUrl: avatar })` 时 `avatar`
+   仍然是那串本地 `file://` 路径。
+3. 后端 `user_service.update_user_profile` 没做 URL 校验，直接 `update
+   avatar_url = <file://...>` 写进 `user_info`。
+4. Web 侧 `next/image` 只接受绝对 http(s) / public 静态路径，遇到 `file://`
+   会在 SSR 阶段整页 throw，把该用户每一个被引用的头像 / 封面页面全部打成 500。
+
+### 三层防御式修复
+
+#### 1. 移动端 · 源头（`frontend/src/screens/EditProfileScreen.tsx`）
+
+- 新增 `isPersistableRemoteUrl(url)`：仅 http(s) 才算可持久化。
+- `handleSave`：
+  - 若 `uploadingAvatar || uploadingCover`，弹提示并中止保存。
+  - `avatarUrl` / `coverUrl` 走 `isPersistableRemoteUrl` 过滤，非法值不带上
+    payload（后端把缺省字段视为「不更新」，保留现有远端 URL）。
+  - 回退分支与 `updateProfile` 本地 store 同样过滤，不再把 `file://` 回写
+    `authStore`。
+- `ScreenHeader` 的 Save 图标在 `loading || uploadingAvatar || uploadingCover`
+  时显示 `hourglass-outline`，UI 与实际可用状态一致。
+
+#### 2. 后端 · 最后一道闸（`backend/app/services/user_service.py`）
+
+新增模块级 `_sanitize_remote_url(value)`：
+
+- `None` / 非 string / 非 http(s) → 返回 `None`，外层跳过写入（并打 WARN 日志）
+- 空串 → 允许（让用户主动清空头像）
+- 合法 http(s) → 返回 `.strip()` 后的字符串
+
+应用到四个写入点：
+- `update_user_info`（PUT `/user-info/{id}`）—— `avatarUrl` / `coverUrl`
+- `update_user_profile`（PUT `/user-info/{id}/profile`）—— `avatarUrl` / `coverUrl`
+- `upload_avatar`（POST 头像上传成功后）—— 非法值拒绝写入
+- `upload_cover`（POST 封面上传成功后）—— 非法值拒绝写入
+
+即便未来出现别的客户端 bug 或恶意请求直接往这两个字段塞 `file://` / `data:`
+/ `javascript:` 等非法 URL，也不会污染数据库。
+
+#### 3. Web · 渲染期兜底（`web/src/lib/isRenderableImage.ts` · 新建）
+
+抽出单一的 `isRenderableImage(src)` 类型守卫（原本只在
+`app/archive/brands/page.tsx` 本地存在），接受：
+
+- `http://...` / `https://...`（CDN / 上传）
+- `/foo.jpg`（public 静态资源，拒绝协议相对的 `//example.com/...`）
+
+所有渲染用户可控 URL 的 `<Image>` / `<FadeImage>` 调用点统一改为先过守卫：
+
+- `web/src/app/archive/brands/page.tsx` · 改用共享工具（删除本地拷贝）
+- `web/src/app/users/[id]/page.tsx` · avatar / cover / OG metadata
+- `web/src/app/me/page.tsx` · avatar
+- `web/src/app/settings/profile/page.tsx` · avatar preview
+- `web/src/app/settings/blocked/page.tsx` · avatar
+- `web/src/app/me/follows/page.tsx` · avatar
+- `web/src/app/me/chats/page.tsx` · avatar（`other &&` 先收窄再过守卫）
+- `web/src/app/me/chats/[id]/page.tsx` · senderAvatar
+- `web/src/app/me/notifications/page.tsx` · avatar
+- `web/src/components/post/PostCommentSection.tsx` · avatar
+- `web/src/app/posts/[id]/page.tsx` · avatar + body images + OG metadata
+- `web/src/app/page.tsx` · HeroMockup 首屏 `post.imageUrls[0]`
+- `web/src/components/PostCard.tsx` · feed cover（视频保持原样由 `isVideoUrl`
+  识别）
+- `web/src/components/post/ArticleBody.tsx` · 图文正文 block，非法直接跳过
+
+### 验证
+
+- `npx tsc --noEmit -p web` · 通过
+- Next.js dev server 热编译 · 所有路由 `✓ Compiled`，无新增错误
+- 库里已有 `file://` 脏数据的用户：三层防御下，旧页面不再 500（空头像占位），
+  用户下次从移动端重新保存就会彻底清洗（上传成功后写回正确 CDN URL）；即便
+  老客户端继续误传 `file://`，后端也不再写入，从源头根治。
+
+---
+
+## 2026-04-27: Web 端买手店地图全功能移植 (对齐 iOS BuyerMapScreen)
+
+### Context
+
+Web `/stores` 页面原本只是个基础的「地图 + 列表」壳子，缺失了 iOS
+`BuyerMapScreen.tsx` 里已经成熟的一整套交互：
+  - 视口驱动的店铺拉取（避免一次渲染上千个 DOM marker）
+  - 附近模式（浏览器定位 + `/api/buyer-stores/nearby` 100km 半径）
+  - 快速筛选芯片（国家 / 城市按店铺数量降序 + 中英文双语显示）
+  - 高级筛选抽屉（热门品牌、4 组风格分类、仅营业中、有联系电话）
+  - 店铺详情抽屉（导航、收藏、联系电话、风格/品牌标签）
+  - 收藏状态同步（登录用户乐观更新 + 失败回滚）
+
+### 交付范围
+
+#### 1. 客户端服务层 `web/src/lib/services/buyer-store.ts` · 新建
+
+对齐 `frontend/src/services/buyerStoreService.ts`：
+- `getAllStores / getStoresPaginated`：分页拉取（后端 200 条/页硬限）
+- `getStoresInViewport`：POST `/api/buyer-stores/viewport`
+- `getNearbyStores`：POST `/api/buyer-stores/nearby`
+- `getStoreCountries / getStoreCities / getStoreStyles`
+- `favoriteStore / unfavoriteStore / getUserFavoriteStoreIds`
+- `hasValidCoordinates` 工具函数
+
+走 `apiClient`（自动带 Bearer token + 401 刷新），与 SSR 的 `lib/api.ts`
+分开：SSR 用 fetch 缓存，客户端交互用带鉴权的 `apiClient`。
+
+#### 2. 收藏 hook `web/src/lib/hooks/useStoreFavorites.ts` · 新建
+
+1:1 对齐 `frontend/src/hooks/useStoreFavorites.ts` + `storeFavoritesStore.ts`：
+- 模块级 state + `useSyncExternalStore`，跨组件共享
+- 登录后首次访问自动拉 `/api/buyer-stores/favorites/user` 的 id 列表
+- 乐观 toggle：先改本地 Set / Count，API 失败回滚
+- `syncCountsFromStores` 批量同步 `favoriteCount`
+- 登出自动清空缓存
+
+#### 3. StoreMap 组件升级 `web/src/components/stores/StoreMap.tsx`
+
+新增能力（对齐 iOS `<MapView>`）：
+- `onRegionChange(MapRegion)`：pan/zoom 结束后回调，父组件防抖后拉 viewport
+- `filteredIds`：主动匹配的店铺 id 集合，其余 marker 自动置灰（dim）
+- `autoFit`：父组件切视口后主动关闭 auto-fit 避免相机抖动
+- 支持 `selectedId` 驱动的 `flyTo` + 选中态 marker 放大高亮
+- marker 样式按 isOpen / isSelected / isDim 三态组合（对应 iOS markerOuter）
+
+#### 4. StoreFilterSheet `web/src/components/stores/StoreFilterSheet.tsx` · 新建
+
+右侧 440px 抽屉（移动端全屏），对齐 iOS 的 Filter Bottom Sheet：
+- 国家 / 城市按 `countryCounts` / `cityCounts` 降序（chip 上显示店铺数）
+- 热门品牌（10 个预置品牌 chips）
+- 4 组风格分类（设计师 / 复古 / 特色 / 集合店），支持多选
+- 更多选项：仅营业中、有联系电话
+- 底部 "重置 / 查看 N 家店铺" 双按钮
+
+#### 5. StoreDetailSheet `web/src/components/stores/StoreDetailSheet.tsx` · 新建
+
+右侧 440px 抽屉（移动端全屏），对齐 iOS 的 Store Detail Bottom Sheet：
+- 店名 / 国家 / 城市 + 营业状态徽章 + 收藏按钮（需登录）
+- 营业时间 / 地址（点击跳 Google Maps） / 联系电话（点击 tel:）
+- 简介 / 店铺风格 / 主营品牌
+- 底部 "导航 / 查看详情" 双按钮
+
+#### 6. 国际化映射 `web/src/components/stores/storeI18n.ts` · 新建
+
+从 iOS 拆出的国家 / 城市中英文映射 + 热门品牌 + 风格分类常量表，
+多个组件（页面、筛选 sheet、芯片行）复用同一份映射。
+
+#### 7. 页面重写 `web/src/app/stores/page.tsx` · 全量重写
+
+整合所有上述模块：
+- URL 驱动的基础筛选（country / city / brand / q / open）
+- 本地 state 驱动的高级筛选（styles / hasPhone）
+- 顶部搜索栏 + 附近按钮 + 仅营业中 + 清除筛选 + 高级筛选入口（带数字徽章）
+- 双行芯片：国家（始终显示，按店数降序）+ 城市（选中国家后浮出）
+- 地图：基于视口拉店铺，300ms 防抖，filter 变化自动重拉
+- 附近模式：定位授权后自动启用，`/api/buyer-stores/nearby` 失败降级本地 Haversine
+- 侧边店铺列表：显示视口内店铺，与地图 marker 双向联动
+- 收藏角标：列表卡片右上 ♥，详情 sheet 内 "关注/已关注" 按钮
+- 加载失败 → "点击重试" 按钮
+
+### 与移动端一致性校验
+
+| 维度                  | iOS BuyerMapScreen | Web /stores | 一致？ |
+| --------------------- | ------------------ | ----------- | ------ |
+| 视口驱动店铺拉取      | ✅                  | ✅           | ✅     |
+| 附近模式 (100km)      | ✅                  | ✅           | ✅     |
+| 国家/城市按数量降序   | ✅                  | ✅           | ✅     |
+| 中英文双语显示        | ✅                  | ✅           | ✅     |
+| 高级筛选（品牌/风格） | ✅                  | ✅           | ✅     |
+| 仅营业中 + 有电话     | ✅                  | ✅           | ✅     |
+| 店铺详情抽屉          | ✅                  | ✅           | ✅     |
+| 收藏 (乐观 + 回滚)    | ✅                  | ✅           | ✅     |
+| 选中态 marker 高亮    | ✅                  | ✅           | ✅     |
+| 筛选外 marker 置灰    | ✅                  | ✅           | ✅     |
+
+### 验证
+
+- TypeScript strict：`npx tsc --noEmit` ✅
+- ESLint：`npx next lint` 针对新增目录 0 warning ✅
+- 本地 Next.js dev 编译 `/stores`：200 OK，817ms 首次编译 ✅
+
+---
+
+## 2026-04-27: Web 端接入用户等级系统 (用户侧 + Admin 侧)
+
+### Context
+
+移动端 (iOS/Android) 的等级 / 抽奖 / 权益三件套已经落地.
+Web 端 (Next.js App Router) 也需要 **完整对齐** 同一套后端契约,
+确保 PRD 红线在全平台生效:
+  - 用户在 Web 上看得到自己的等级进度 / 权益 / 抽奖;
+  - 运营在 Web admin 上能做 Lv4 审批 / Lv5 授予 / 月度开奖.
+
+### 交付范围
+
+#### 1. API 客户端 (对齐 iOS `levelService.ts`)
+
+`web/src/lib/services/level.ts` · 新建
+
+- `levelApi.*`: `getRules / getMyLevel / getUserLevel / getCurrentLottery / getLotteryHistory / getMyBenefits`
+- `adminLevelApi.*`: `listUpgradeRequests / reviewUpgradeRequest / grantLevel /
+  listRounds / upsertRound / syncEntries / drawRound`
+- TS 类型 100% 与 `frontend/src/services/levelService.ts` 对齐, 后端契约零重复定义
+
+#### 2. SSR 公开接口 (用于他人主页徽章)
+
+`web/src/lib/api.ts` · 新增 `getUserLevel(userId)` —— Next.js fetch cache + `revalidate: 120`.
+失败时兜底返回 0, 确保主页不会因为 level 接口挂掉而 500.
+
+#### 3. LevelBadge 组件
+
+`web/src/components/user/LevelBadge.tsx` · 新建
+
+- 极简黑白, 对齐 Web 端 ink/canvas 主题 (无彩色)
+- `level < 1` 时不渲染, 保持 0 级用户主页干净
+- 支持 `sm / md` 两个尺寸, 可选 `href` 作为跳转链接
+
+#### 4. 他人主页集成徽章
+
+`web/src/app/users/[id]/page.tsx`
+
+- SSR 时并发拉 `getUserLevel`, 用户名右侧渲染徽章
+- `Promise.all` 原子加载: level 拉失败不影响主页其它数据
+
+#### 5. 用户侧「我的等级」页 `/me/level`
+
+`web/src/app/me/level/page.tsx` · 新建
+
+- 客户端 + SWR 拉 `/api/levels/me`, 60s 自动刷新
+- 四段结构: 当前等级 → 下一级进度 → 我的权益 → 月度抽奖(Lv3+) → 全等级时间线
+- **严守红线**: 免费门票只展示状态, **不提供核销按钮**, 必须在事件报名页触发
+- Lv3+ 才渲染月度抽奖卡, 非 Lv3+ 完全隐藏入口
+
+`web/src/app/me/page.tsx` + `web/src/components/me/nav-items.ts`
+- 加 "我的等级" Tile 入口
+- `MeNav` 侧边栏多一条 "我的等级"
+
+#### 6. Admin 等级审批页 `/admin/levels`
+
+`web/src/app/admin/levels/page.tsx` · 新建
+
+- Lv4 升级工单列表: 通过 (`ConfirmDialog`) / 拒绝 (`PromptDialog`, 填 remark)
+- Lv5 手动授予: `FormDialog` 表单, 输入 userId / 选等级 / 填运营备注
+- 所有操作依赖后端 `_lock_for(user_id)` 串行 + audit log (上一轮修复已经保障)
+
+#### 7. Admin 月度抽奖页 `/admin/lottery`
+
+`web/src/app/admin/lottery/page.tsx` · 新建
+
+- 期数列表: 状态 / 参与 / 中奖 / 奖品概览, 24 期历史
+- **建期**: 月份可输入 + prizeConfig 行内编辑
+- **改奖池**: 月份锁死 (editorMode="edit" 时 TextInput disabled), 对应 iOS 同款 Bug B 修复
+- **同步进池**: `ConfirmDialog` 二次确认后批量写入 Lv3+ 用户
+- **开奖** (红线): `ConfirmDialog` 展示奖池总名额 + 参与者数量, 二次确认后随机抽
+- OPEN → DRAWN 后操作按钮自动消失
+
+`web/src/components/admin/AdminNav.tsx`
+- "用户系统" 分组下新增 "等级审批" / "月度抽奖" 两条
+
+### 架构复用与对齐
+
+| 维度 | iOS/Android | Web | 对齐手段 |
+|------|------------|-----|----------|
+| API 契约 | `levelService.ts` | `services/level.ts` | 同名类型 + 同签名方法 |
+| 核销红线 | `EventRegistrationButton` 唯一入口 | `/me/level` 只展示状态 | 两端都拒绝在 "我的等级" 页直接核销 |
+| 改奖池月份锁 | `editorMode==="edit"` | `editorMode==="edit"` | 同一逻辑, 防按 month 查找误写别期 |
+| 运营备注 | `remark` 一直透传 | `remark` 一直透传 | 后端已在上轮修复为 service+audit |
+
+### Lint / 规则复核
+
+全部 `ReadLints` clean. 遵守 user rule:
+1. DRY — 没有复制后端 TS 类型, 两个端都走官方 camelCase 契约
+2. KISS — 复用 `ConfirmDialog / PromptDialog / FormDialog / PageHeader` 等已有 admin UI primitives
+3. 红线落地 — 免费门票核销 / Lv4 审批 / Lv5 授予 / 手动开奖四条红线在 Web 端路径和 iOS 完全一致
+
+### 改动文件清单
+
+```
+新建:
+  web/src/lib/services/level.ts
+  web/src/components/user/LevelBadge.tsx
+  web/src/app/me/level/page.tsx
+  web/src/app/admin/levels/page.tsx
+  web/src/app/admin/lottery/page.tsx
+
+修改:
+  web/src/lib/api.ts                            (+getUserLevel)
+  web/src/app/users/[id]/page.tsx               (集成徽章)
+  web/src/app/me/page.tsx                       (+ "我的等级" Tile)
+  web/src/components/me/nav-items.ts            (+ /me/level)
+  web/src/components/admin/AdminNav.tsx         (+ 等级审批/月度抽奖)
+```
+
+---
+
+## 2026-04-27: AdminScreen 等级管理接入 + 二轮 bug review (2 处关键修复)
+
+### Context
+
+把等级系统的运营入口真正落到 AdminScreen 里 —— PRD 所要求的
+"Lv4 人工审批 / Lv5 人工授予 / 月度抽奖人工开奖" 三条红线必须有 UI 可操作.
+新增完毕后按"契约 × 并发 × 边界 × 红线"四维度立刻做一轮 bug review,
+识别并修复 2 个真 bug.
+
+### 新增功能
+
+#### 1. `LevelReviewTab` —— 等级审批 Tab
+
+`frontend/src/screens/admin/LevelReviewTab.tsx`
+
+- **Lv4 升级工单审批**: 列出所有 `level_upgrade_requests.status=PENDING`,
+  每条展示 用户名 / 目标等级 / 创建时间, 二次 Alert 确认后走 通过 / 拒绝.
+- **Lv5 手动授予**: 输入 user id + 选择等级 + 备注, Alert 确认后调用
+  `POST /api/admin/levels/users/{user_id}/grant`.  等级选择 chip 覆盖 Lv1-5,
+  但默认选 Lv5 (符合"人工授予专通道"的语义).
+- 所有异步操作都用 `actionLoading` 全局锁防重入.
+
+#### 2. `LotteryAdminTab` —— 月度抽奖 Tab
+
+`frontend/src/screens/admin/LotteryAdminTab.tsx`
+
+- **期数列表**: 最近 24 期, 卡片展示 月份 / 状态 / 参与人数 / 中奖数 / 奖品配置;
+  OPEN 期数提供 改奖池 / 同步进池 / 开奖 三枚操作.
+- **建期 / 改奖池 Modal**: `prize_config` 以行内表格方式编辑, 支持 新增 / 删除 行,
+  保存前做本地校验 (prizeId 不为空 / name 不为空 / quota>0 / id 不重复).
+- **开奖红线**: Alert 二次确认后调 `POST /admin/lottery/rounds/{id}/draw`,
+  默认随机抽 (按 prize_config quota); 空奖池 / 无参与者时前置拦截.
+- **同步进池**: 兜底把所有 Lv3+ 用户补录到当期, 已入池的被唯一索引跳过.
+
+#### 3. `AdminScreen` 注册两个新 Tab
+
+`frontend/src/screens/admin/AdminScreen.tsx`
+
+- 新增 `levelReview` / `lottery` 两个 TabType 并插入 `TABS` 数组,
+  位置紧挨 "推荐配置" 与 "维护模式" 之间, 保持导航节奏.
+
+### 二轮 bug review 识别到的 2 处修复
+
+#### Bug A (高) — `admin_grant_level` 丢弃运营备注, 审计链路断裂
+
+**证据**:
+- 前端 `LevelReviewTab` 已经让运营填了 remark (例如 "2026-Q2 线下活动参与者")
+- `AdminGrantLevelRequest.remark` schema 也定义了
+- **但后端路由只传了位置参数**:
+  ```py
+  ok = level_service.admin_grant_level(user_id, request.level, admin_id)
+  ```
+- service 签名 `(user_id, level, reviewer_id)` 压根不收 remark, pydantic 接收后静默丢弃
+- **PRD "高价值权益人工管控" 的核心诉求是可追溯, remark 丢了等于红线破功**
+
+**Fix**:
+- `backend/app/services/level_service.py` · `admin_grant_level` 追加 `remark: str = ""`
+- 赋级成功后向 `level_upgrade_requests` 落一条 `status=APPROVED` 的审计记录
+  (复用已有表, 不扩 schema), 包含 reviewer_id / reviewed_at / remark.
+  remark 为空则记 "Admin manual grant to Lv{level}" 作为默认文本, 保证可追溯.
+- `backend/app/api/routes/level.py` · 路由调用处透传 `request.remark`.
+- 审计记录写入用 try/except 包围, 失败只告警不回滚 ——
+  已经升级的事实不能因为 audit log 失败而撤销.
+
+#### Bug B (高) — `LotteryAdminTab` 改奖池时允许改月份, 会静默写到别期
+
+**证据链**:
+- 后端 `admin_upsert_round(month, prize_config)` 内部是
+  `_get_or_create_round(month)` —— **按 month 查, 不按 id**
+- `lottery_rounds.month` 有 UNIQUE 约束, 表意是 "每月仅一期"
+- 用户流程: 点击期数 A 的 "改奖池" → 编辑器预填 A 的 month →
+  运营误把月份改成 B →  保存 →
+    - B 期不存在: **静默创建 B 期, A 期一点没动** —— 运营以为自己改了 A
+    - B 期已 DRAWN: 报错 (运气好才会露出来)
+
+**Fix**:
+- `frontend/src/screens/admin/LotteryAdminTab.tsx`
+- 新增 `editorMode: "create" | "edit"`, `openEditor(round?)` 时区分分支
+- `editorMode === "edit"` 时 month 输入框 `editable={false}` + 灰底提示
+  "改奖池时期号锁定, 如需换期请回到列表选择对应期数"
+- Modal 标题也区分 "建期" / "改奖池", 避免 UI 语义模糊
+
+### 1 处 "疑似 bug" 经核验不成立
+
+**候选**: Alert 二次确认到 onPress 触发之间的几百 ms 窗口内,
+用户理论上可快速点按钮再弹 Alert, 出现多次 API 请求.
+
+**复核**: `setActionLoading(true)` 确实是在 Alert.onPress 内部才执行,
+但这是**期望行为** —— Alert 的"取消"分支不应该锁 UI.
+并且:
+1. iOS/Android 的 Alert 是模态, 期间无法交互背景按钮;
+2. 即使两次请求穿透, 后端 `_lock_for(user_id)` 会串行化, 不会产生数据异常;
+3. 最坏情况只是多弹一条通知, 不破红线.
+
+**结论**: 判定为误报, 不改.
+
+### 改动文件清单
+
+```
+frontend/src/screens/admin/AdminScreen.tsx        (新增 2 个 tab 路由)
+frontend/src/screens/admin/LevelReviewTab.tsx     (新建)
+frontend/src/screens/admin/LotteryAdminTab.tsx    (新建 + Bug B 修复)
+backend/app/services/level_service.py             (Bug A 修复: remark + audit log)
+backend/app/api/routes/level.py                   (Bug A 修复: 路由透传 remark)
+```
+
+### Lint / 规则复核
+
+所有改动 ReadLints 全部 clean; 遵守 user rule:
+1. DRY — 审计记录复用 `level_upgrade_requests`, 不新增表;
+2. KISS — UI 两个 tab 均沿用 BrandSubmissionsTab 的审批卡片样板, 无新自研 shell;
+3. 红线落地 — 三条 PRD 红线 (Lv4 审批 / Lv5 授予 / 月度开奖)
+   全部映射为明确的 UI 操作, 且后端审计链路完整可溯源.
+
+---
+
+## 2026-04-27: 用户等级系统 · 全量 bug review (4 处关键修复 + 3 处验证通过)
+
+### Context
+
+上一条刚把"等级 + 抽奖 + 免费门票"三件套写完, 立即做一轮系统性 bug review.
+按"契约 × 并发 × 边界 × 红线"四维度交叉核验, 识别出 4 个真实 bug 并就地修复,
+另有 3 处验证通过. 4 个修复全部围绕"数据正确性"和"红线落实"两个主轴.
+
+### 4 处关键修复
+
+#### 1. `levelStore` 首次登录误放全屏升级动画 — 前端
+
+**Bug**: `AsyncStorage.getItem(keyFor(userId))` 读不到值时, 老逻辑把 `lastSeenLevel` 当成 0.
+随后 `refresh()` 拉到真实等级 N>0 就会命中 `next > prev`, 给一个"没升级"的用户放 2 秒庆祝动画.
+触发场景: 老用户换新设备 / 清缓存重登.
+
+**Fix** (`frontend/src/store/levelStore.ts`):
+- 新增 `hasBaselined: boolean` 区分"真实经历过 0 级" vs "本设备从未记录".
+- `hydrate` 返回 `Promise<boolean>`: AsyncStorage 命中才 `hasBaselined=true`.
+- `refresh` 第一次没基线时**只做基线同步, 不触发 `celebrateLevel`**, 并把当前等级写回 storage.
+- `reset()` / `acknowledgeCelebration()` 同步维护 `hasBaselined` 字段.
+
+核心代码:
+```ts
+if (!baselined) {
+  await AsyncStorage.setItem(keyFor(authUserId), String(next));
+  set({ lastSeenLevel: next, hasBaselined: true });
+} else if (next > prev) {
+  set({ celebrateLevel: next });
+}
+```
+
+#### 2. `redeem_free_ticket` 双花竞态 — 后端
+
+**Bug** (`backend/app/services/level_service.py`): 原流程是 `SELECT used` → 判断 → `UPDATE used+1` 三步,
+并非原子. 用户快速双击核销时:
+- 两请求同时读到 `used=0, quota=1`
+- 都写 `used=1` (DB CHECK `used<=quota` 不会阻止, 1≤1 成立)
+- 两条 `benefit_redemptions` 流水落库, 但 `used` 只 +1 —— **实际白嫖 1 张免费门票**
+
+**Fix**: 新增进程内 per-user 串行锁 `_USER_LOCKS` (`defaultdict(threading.Lock)`),
+把"读配额 → 写 used → 写流水"全流程包进 `with _lock_for(user_id):`, 保证单进程内完整串行.
+新增注释明确:"多进程部署时须再叠加 DB 层 `UPDATE ... WHERE used < quota` 原子更新".
+
+#### 3. `record_action` JSONB 计数器丢失更新 — 后端
+
+**Bug**: `ThreadPoolExecutor(max_workers=2)` 允许同一 user 的两次行为并发执行 `_record_action_sync`.
+counters 走的是 Python 侧 read-modify-write:
+- 同时读到 `{post_created: 0}`
+- 各自改一个字段再整对象回写
+- 后写把先写的改动整个覆盖 → 点赞计数丢了
+
+**Fix**: 同一把 `_lock_for(user_id)` 串行 `_record_action_sync` 全流程,
+包括 `_evaluate` 里的升级判定, 防止并发行为同时触发相同升级路径.
+
+同时把 `review_upgrade_request` / `admin_grant_level` 也纳入这把锁, 避免:
+- "record_action 正在写 pending_level=4" 与 "admin 正在写 current_level=5" 交叉导致状态不一致.
+
+#### 4. `MyLevelScreen` 的「立即核销」按钮违反 PRD 红线 — 前端
+
+**Bug** (`frontend/src/screens/MyLevelScreen.tsx:94`): 我的等级页有一个"立即核销"按钮,
+点击后调 `levelService.redeemFreeTicket({ objectId: "demo-event" })`.
+- **硬编码 `demo-event`** —— 核销流水 `redeemed_object_id` 会污染数据.
+- **违反 PRD**: PRD 明确核销入口**只**在活动报名页, 详 `EventRegistrationButton` 的身份识别分支.
+  裸放在个人中心等于诱导用户白白消耗一张票.
+
+**Fix**: 移除按钮 + 相关 state / 样式 (`handleRedeemFreeTicket` / `redeeming` / `redeemBtn*`).
+免费门票行改为纯展示 chip: `b.remaining > 0 ? "报名活动时使用" : "已用完"`, 把核销路径单一锁死在活动报名页.
+
+### 1 处附加加固
+
+**`lottery_service.ensure_user_entered_current_round` 异常类型收窄** —— 原来 `except Exception: pass` 会
+把网络错误一起吞掉. 改为只对 `duplicate / unique / conflict` 类 message 静默忽略,
+其余异常走 `logger.warning` 便于线上排查.
+
+### 验证通过 (无需修改) 的 3 点
+
+| # | 项目 | 核验依据 |
+|---|---|---|
+| 1 | `str, Enum` (`LevelAction`) 作为 JSONB counters 的 dict key | str 子类 hash 等于底层字符串, `d[X.A]=1; d["a"]` 指向同键; json.dumps 输出字符串值 |
+| 2 | `_evaluate` 循环里 `all([])` (Lv5 `tasks=[]`) 是否会错误放行 | `_spec_by_level(5).mode == "MANUAL"`, 直接 `break`, 不会走 `_apply_upgrade` |
+| 3 | `level_upgrade_requests` 并发重入 | `ux_level_upgrade_requests_pending` 条件唯一索引保底; 即使我们的 `_ensure_pending_request` 竞态, DB 层也会挡住第二条 |
+
+### 交叉检查: 四个修复是否冲突 / 引入回归
+
+- **锁粒度**: `_lock_for(user_id)` 只序列化同一用户的写路径, 不同用户完全并行, Executor 吞吐量没塌.
+- **锁层级**: 锁只在 level_service 内部使用; lottery_service 读写与 level 独立, 不会死锁.
+- **前端删按钮**: `EventRegistrationButton` 仍然持有完整核销逻辑, 不受影响.
+- **baseline 同步**: `useLevelWatcher` 原来调用链 `hydrate → refresh` 仍然成立; `hydrate` 返回值未使用, 未破坏 API.
+
+### 文件改动清单
+
+- `backend/app/services/level_service.py` · 新增 per-user 锁, redeem / record_action / review / grant 全部包锁
+- `backend/app/services/lottery_service.py` · 异常类型收窄
+- `frontend/src/store/levelStore.ts` · 新增 hasBaselined 防误触
+- `frontend/src/screens/MyLevelScreen.tsx` · 移除违规核销按钮 + 无用样式
+
+### 后续建议
+
+1. 多进程部署时 `_USER_LOCKS` 保护失效, 应把 redeem 与 counters 更新换成 Supabase RPC / Postgres function 做原子 `UPDATE ... WHERE ...`.
+2. `admin_draw_round` 也可以放在行级事务 / Supabase RPC 里做 status CAS, 保证开奖状态不会被并发 admin 操作撕裂.
+3. `ensure_user_entered_current_round` 的"字符串匹配 duplicate"可以改为捕获 `postgrest.exceptions.APIError` 的 `code=='23505'` 更稳.
+
+---
+
+## 2026-04-27: 用户等级系统 (5 级) · 数据库 + 后端 + 前端全链路落地
+
+### Context
+
+按 PRD 要求, 把"等级 · 月度抽奖 · 免费门票"三件套从 0 到 1 全链路打通. 三条产品红线始终是设计准绳:
+
+1. **只升不降**: 任何路径都不能让 `current_level` 回退.
+2. **极简驱动**: 无积分经济, 无每日打卡, 只对累计行为计数.
+3. **高价值权益人工管控**: Lv4 走审批队列, Lv5 仅 Admin 手动授予, 抽奖严禁系统自动开奖.
+
+### 数据库 Schema (`backend/app/db/migrations/038_user_levels_system.sql`)
+
+新增 8 张表, 与现有 `users / posts / interactions` 解耦:
+
+| # | 表名 | 职责 |
+|---|---|---|
+| A | `user_levels` | 每用户一行 · `current_level` + `pending_level` + `last_level_up_at` |
+| B | `user_level_progress` | 每用户一行 · `counters JSONB` 存所有行为计数 |
+| C | `level_upgrade_requests` | Lv4 审批队列 (PENDING / APPROVED / REJECTED) |
+| D | `lottery_rounds` | 每月一期 · `prize_config JSONB` 灵活配奖 |
+| E | `lottery_entries` | 参与名单 + 中奖状态 + 奖品详情 |
+| F | `level_benefits` | 权益字典表 (benefit_type 唯一) |
+| G | `user_level_benefits` | 用户持有权益 (quota / used) |
+| H | `benefit_redemptions` | 核销流水 (每次使用一行) |
+
+关键约束:
+
+- `user_levels_enforce_monotonic()` PL/pgSQL 触发器强制 `current_level` 只能增不能减, 从数据库层兜底"只升不降".
+- `ux_level_upgrade_requests_pending` 条件唯一索引保证每人每级最多一条 PENDING 申请.
+- `user_level_benefits` 上的 `CHECK (used <= quota)` 把"超发核销"挡在 DB 层.
+
+### 后端服务 & 路由
+
+- **`schemas/level.py`** · 统一 Pydantic 定义 `LevelAction / LevelSpec / UserLevelStatus / LotteryRoundInfo / UserBenefitInfo / UpgradeRequestInfo` 等.
+- **`services/level_service.py`** · 规则引擎单一事实源 `LEVEL_RULES`; 行为经 `ThreadPoolExecutor` 异步入库不阻塞请求; `_evaluate` 从当前等级向上连升 (AUTO→直升, AUDIT→建 PENDING, MANUAL→停手).
+- **`services/lottery_service.py`** · `ensure_user_entered_current_round` 懒进池 + `admin_draw_round` (传 `explicit_winners` 手动指派 / 传 null 按 prize_config 随机); 通知只发给中奖者.
+- **`api/routes/level.py`** · 5 个 router: 用户侧 `/levels` `/lottery` `/benefits`; 运营侧 `/admin/levels` `/admin/lottery`; 全部挂进 `main.py`.
+
+**行为 Hook 接入 (让引擎真正"听得见"用户行为)**:
+
+| 行为 | 接入位置 | 触发条件 |
+|---|---|---|
+| `POST_CREATED` | `post_service.create_post` | `post_status == "PUBLISHED"` |
+| `POST_LIKED` | `post_service.like_post` | 成功点赞 |
+| `WANT_CLICKED` | `post_service.want_post` | "我想要"新增 |
+| `USER_FOLLOWED` | `follow_service.follow_user` | 成功关注 |
+| `COMMUNITY_FOLLOWED` | `community_service.follow_community` | 关注社区 |
+| `STORE_COMMENTED` | `buyer_store_community_service.create_comment` | **仅顶层评论**, 回复不计 (防刷) |
+| `ARCHIVE_UPLOADED` | `show_service.approve_show` / `buyer_store_community_service.review_submission` (APPROVED) / `admin_service.approve_brand_submission` (APPROVED) | **仅 Admin 审核通过后**才计数 (防刷) |
+
+### 前端 (React Native)
+
+新增 `frontend/src/services/levelService.ts` (HTTP 客户端) + `frontend/src/store/levelStore.ts` (全局 Zustand) + `frontend/src/components/level/*` 组件包 + `frontend/src/screens/MyLevelScreen.tsx`.
+
+**核心组件清单**:
+
+- `LevelBadge` · 黑白圆形徽章, `size: sm/md/lg`, `pendingLevel` 有值时右上角白点提示审核中.
+- `LevelProgressBar` · 单任务极简进度条, 黑色填充, 数字在右侧.
+- `MonthlyLotteryEntry` · **严格双条件渲染**: `isOwnProfile && currentLevel >= 3`, 其余场景返回 null.
+- `LevelUpgradeModal` · 全屏黑白升级动画, 总时长正好 2s (fadeIn 400 + hold 1200 + fadeOut 400), 全程只用 `#000/#FFF`, 禁用彩色.
+- `EventRegistrationButton` · Lv4 + 免费门票剩余 → 展示"使用免费门票报名"并直接调核销接口; 否则"支付报名" + `onPay` 回调接管. 集中身份识别, 未来活动页 drop-in 即可.
+- `useLevelWatcher` · 挂在 App 根组件, 登录 / 回前台各拉一次 `/levels/me`.
+
+**单调递增防线 (前端)**:
+
+`levelStore.lastSeenLevel` 持久化到 `AsyncStorage`, key 绑定 userId. `refresh()` 只有在 `newLevel > lastSeenLevel` 时才 set `celebrateLevel` 触发动画. `acknowledgeCelebration()` 播完后写回 storage, 保证同一次升级绝不重复播放 + 即使后端误回较小值前端也不会"降级展示".
+
+**集成点**:
+
+- `App.tsx` · 注册 `MyLevel` 路由; `AppNavigator` 里调用 `useLevelWatcher()` + 全局挂载 `<LevelUpgradeModal />`.
+- `screens/Profile/components/ProfileInfo.tsx` · 头像右上角叠加 `<LevelBadge size="sm" pendingLevel={...} />`.
+- `screens/Profile/index.tsx` · 在 `ProfileInfo` 下插入 `<MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} />`.
+- `screens/UserProfileScreen.tsx` · 独立拉 `levelService.getUserLevel(userId)` 获取他人等级, 在用户名旁展示徽章 (不展示 pending).
+- `screens/SettingsScreen.tsx` · 账户分组新增"我的等级"入口 -> 跳 `MyLevelScreen`.
+
+### 红线落实交叉检查
+
+| 红线 | DB 层 | 服务层 | 前端 |
+|---|---|---|---|
+| 只升不降 | `user_levels_enforce_monotonic` trigger | `admin_grant_level` 拒绝降级 | `lastSeenLevel` + `if (next > prev)` |
+| 极简驱动 | 只有 `counters JSONB`, 不建积分表 | 规则引擎只做"计数 + 阈值比较" | 页面只展示任务进度条, 无签到 UI |
+| 人工管控 Lv4 | `level_upgrade_requests` PENDING 唯一索引 | `_evaluate` 遇 `AUDIT` 仅建 PENDING, 不改 `current_level` | 徽章带 pending dot, 看板显示"审核中" chip |
+| 人工管控 Lv5 | — | 引擎永不触发, 只暴露 `admin_grant_level` | `MyLevelScreen` 展示"仅 Admin 人工授予" |
+| 抽奖红线 | `lottery_rounds.status` OPEN→DRAWN 单向 | `admin_draw_round` 只接 admin 路由; 非中奖者不发通知 | 无自动开奖入口, 仅展示期数状态 |
+
+### 后续建议 (非本次实现)
+
+1. Admin 后台需要三个新页面: 升级审批队列 / 抽奖期数管理 / 权益配置; 接口已完备可以直接对接.
+2. 每月 1 号进池走 `ensure_user_entered_current_round` 的懒加载已够覆盖新升 Lv3 的人, 是否再加一个 cron 做"兜底批量进池"属于运营偏好问题, 不影响红线.
+3. 活动报名页真正落地后, 直接塞 `<EventRegistrationButton eventId={...} onPay={...} />` 即可, 不需要再在业务层复制等级判断逻辑.
+
+---
+
 ## 2026-04-26: 冷启动改动全面 bug review —— 两处修正 + 八处验证通过
 
 ### Context

@@ -12,6 +12,8 @@ import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
 import { chatService, type Conversation } from "@/lib/services/chat";
+import { isRenderableImage } from "@/lib/isRenderableImage";
+import { summarizeSharePayload } from "@/lib/chatShareCards";
 
 export default function ChatsPage() {
   const { data, isLoading, error } = useSWR<Conversation[]>(
@@ -69,7 +71,7 @@ export default function ChatsPage() {
                   className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--canvas-raised)]"
                 >
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
-                    {other?.avatarUrl && (
+                    {other && isRenderableImage(other.avatarUrl) && (
                       <Image
                         src={other.avatarUrl}
                         alt={other.username}
@@ -93,7 +95,7 @@ export default function ChatsPage() {
                     </div>
                     {conv.lastMessageText && (
                       <div className="truncate font-label text-[12px] text-[color:var(--ink-muted)]">
-                        {conv.lastMessageText}
+                        {summarizeSharePayload(null, conv.lastMessageText)}
                       </div>
                     )}
                   </div>

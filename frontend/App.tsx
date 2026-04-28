@@ -83,6 +83,10 @@ import ChatScreen from "./src/screens/ChatScreen";
 import ActivityScreen from "./src/screens/ActivityScreen";
 import StrangerMessagesScreen from "./src/screens/StrangerMessagesScreen";
 
+// Level Screens / Watcher
+import MyLevelScreen from "./src/screens/MyLevelScreen";
+import { LevelUpgradeModal, useLevelWatcher } from "./src/components/level";
+
 // Stores & Services
 import { useChatStore } from "./src/store/chatStore";
 import { useNotificationStore } from "./src/store/notificationStore";
@@ -257,6 +261,9 @@ function AppNavigator() {
 
   // Push notifications
   usePushNotifications();
+
+  // 等级状态监听 (登录后 / 回到前台 触发一次 /levels/me, 用于徽章 & 全屏升级动画)
+  useLevelWatcher();
 
   // Connect chat WebSocket when authenticated
   const { connectWebSocket, disconnectWebSocket, reset: resetChat } = useChatStore();
@@ -546,6 +553,11 @@ function AppNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="MyLevel"
+          component={MyLevelScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="ChangePassword"
           component={ChangePasswordScreen}
           options={{ headerShown: false }}
@@ -581,6 +593,9 @@ function AppNavigator() {
 
       {/* 后台上传进度条 */}
       <UploadProgressBanner />
+
+      {/* 等级升级全屏庆祝 (黑白 2s 动画, 订阅 useLevelStore.celebrateLevel) */}
+      <LevelUpgradeModal />
     </>
   );
 }

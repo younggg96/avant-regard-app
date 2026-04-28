@@ -18,6 +18,8 @@ const ADMIN_NAV: AdminNavItem[] = [
 
   { href: "/admin/users",          label: "用户管理",   group: "用户系统" },
   { href: "/admin/reports",        label: "举报管理",   group: "用户系统" },
+  { href: "/admin/levels",         label: "等级审批",   group: "用户系统" },
+  { href: "/admin/lottery",        label: "月度抽奖",   group: "用户系统" },
 
   { href: "/admin/communities",    label: "社区管理",   group: "社区与品牌" },
   { href: "/admin/brands",         label: "品牌管理",   group: "社区与品牌" },

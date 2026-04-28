@@ -75,6 +75,8 @@ import {
   CONTRIBUTION_PAGE_SIZE,
 } from "../services/buyerStoreService";
 import { ShareToChatModal } from "../components/ShareToChatModal";
+import { LevelBadge } from "../components/level";
+import { levelService } from "../services/levelService";
 
 type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
 
@@ -146,6 +148,7 @@ const UserProfileScreen = () => {
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
   const [showShareToChat, setShowShareToChat] = useState(false);
+  const [otherLevel, setOtherLevel] = useState<number>(0);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -458,6 +461,22 @@ const UserProfileScreen = () => {
       wishlist: { ...initialTabState },
     });
     setContribLoaded(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    levelService
+      .getUserLevel(userId)
+      .then((res) => {
+        if (!cancelled) setOtherLevel(res.currentLevel ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) setOtherLevel(0);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -1213,6 +1232,7 @@ const UserProfileScreen = () => {
           <View style={styles.userNameSection}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <RNText style={styles.userName}>{userInfo?.username || username || "用户"}</RNText>
+              {otherLevel > 0 ? <LevelBadge level={otherLevel} size="sm" /> : null}
               {userInfo?.primaryTitle ? (
                 <View style={styles.primaryTitleBadge}>
                   <RNText style={styles.primaryTitleText}>{userInfo.primaryTitle}</RNText>

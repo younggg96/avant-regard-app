@@ -24,6 +24,65 @@ import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VS
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
+import { LEVEL_TITLES } from "../../components/level/levelTitles";
+
+/**
+ * 三档身份解析 (与 Web 端 /admin/users 对齐):
+ *   isAdmin                              -> ADMIN   (权限最高, 一票制)
+ *   merchant.status === 'APPROVED'       -> 商家    (PENDING / REJECTED 不算)
+ *   其它                                 -> USER    (不单独挂标签, 卡片默认就是用户)
+ */
+type UserKind = "ADMIN" | "MERCHANT" | "USER";
+function resolveUserKind(u: AdminUser): UserKind {
+  if (u.isAdmin) return "ADMIN";
+  if (u.merchant?.status === "APPROVED") return "MERCHANT";
+  return "USER";
+}
+
+/**
+ * 身份 chip · 三档视觉区分:
+ *   ADMIN    — 黑底白字实心
+ *   MERCHANT — 黑色描边 (次醒目)
+ *   USER     — 不挂 (卡片默认就是用户, 减噪)
+ */
+function renderKindChip(u: AdminUser) {
+  const kind = resolveUserKind(u);
+  if (kind === "USER") return null;
+  if (kind === "ADMIN") {
+    return (
+      <Box style={styles.kindChipSolid}>
+        <Text style={styles.kindChipSolidText}>ADMIN</Text>
+      </Box>
+    );
+  }
+  return (
+    <Box style={styles.kindChipOutline}>
+      <Text style={styles.kindChipOutlineText}>商家</Text>
+    </Box>
+  );
+}
+
+/**
+ * 等级 chip:
+ *   Lv ≥ 1  -> 黑底白字 "Lv3 · 探店官"
+ *   Lv 0   -> 灰底灰字 "—"   (与 Web 对齐, 让运营一眼分辨 "未达标" vs "数据缺失")
+ */
+function renderLevelChip(level: number) {
+  if (!level || level < 1) {
+    return (
+      <Box style={styles.levelChipMuted}>
+        <Text style={styles.levelChipMutedText}>—</Text>
+      </Box>
+    );
+  }
+  const title = LEVEL_TITLES[level] ?? "";
+  return (
+    <Box style={styles.levelChip}>
+      <Text style={styles.levelChipText}>Lv{level}</Text>
+      {title ? <Text style={styles.levelChipTitle}> · {title}</Text> : null}
+    </Box>
+  );
+}
 
 type SubTab = "users" | "reports" | "blocks";
 type ReportFilter = "ALL" | "PENDING" | "RESOLVED" | "DISMISSED";
@@ -251,26 +310,20 @@ const UsersSubTab = () => {
             </Box>
           )}
           <Box style={{ marginLeft: theme.spacing.sm, flex: 1 }}>
-            <HStack style={{ alignItems: "center", gap: 6 }}>
+            <HStack style={{ alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <Text style={styles.userName} numberOfLines={1}>
                 {item.username}
               </Text>
-              {item.isAdmin && (
-                <Box style={styles.adminBadge}>
-                  <Text style={styles.adminBadgeText}>Admin</Text>
-                </Box>
-              )}
-              {item.merchant && (
-                <Box style={[styles.adminBadge, { backgroundColor: "#F0FDF4" }]}>
-                  <Text style={[styles.adminBadgeText, { color: "#16A34A" }]}>
-                    {item.merchant.status === "APPROVED" ? "商家" : "商家审核中"}
-                  </Text>
+              {renderKindChip(item)}
+              {renderLevelChip(item.currentLevel ?? 0)}
+              {item.merchant && item.merchant.status !== "APPROVED" && (
+                <Box style={styles.kindChipMuted}>
+                  <Text style={styles.kindChipMutedText}>商家审核中</Text>
                 </Box>
               )}
             </HStack>
             <Text style={styles.userMeta}>
               ID: {item.id}
-              {item.userType !== "USER" ? ` · ${item.userType}` : ""}
             </Text>
           </Box>
         </HStack>
@@ -1182,16 +1235,74 @@ const styles = StyleSheet.create({
   statusTextInactive: {
     color: theme.colors.error,
   },
-  adminBadge: {
+  // 身份 chip (三档) — 与 /admin/users Web 端视觉对齐
+  kindChipSolid: {
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: theme.colors.black,
   },
-  adminBadgeText: {
+  kindChipSolidText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#D97706",
+    color: theme.colors.white,
+    letterSpacing: 0.5,
+  },
+  kindChipOutline: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.black,
+    backgroundColor: "transparent",
+  },
+  kindChipOutlineText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.colors.black,
+  },
+  kindChipMuted: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray100,
+  },
+  kindChipMutedText: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: theme.colors.gray400,
+  },
+  // 等级 chip (Lv ≥ 1 黑底 / Lv 0 占位)
+  levelChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: theme.colors.black,
+  },
+  levelChipText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.colors.white,
+    letterSpacing: 0.5,
+  },
+  levelChipTitle: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: theme.colors.white,
+    opacity: 0.8,
+  },
+  levelChipMuted: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray100,
+  },
+  levelChipMutedText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: theme.colors.gray400,
   },
   statsRow: {
     flexDirection: "row",

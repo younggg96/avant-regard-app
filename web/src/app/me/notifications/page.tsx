@@ -20,6 +20,7 @@ import {
   notificationService,
   type Notification,
 } from "@/lib/services/notification";
+import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function NotificationsPage() {
                 }`}
               >
                 <div className="relative mt-0.5 h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
-                  {n.avatar ? (
+                  {isRenderableImage(n.avatar) ? (
                     <Image
                       src={n.avatar}
                       alt=""
