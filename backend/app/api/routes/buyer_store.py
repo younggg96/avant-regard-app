@@ -251,13 +251,21 @@ async def get_user_store_activity(
 
 @router.get("/{store_id}")
 async def get_store_by_id(store_id: str):
-    """通过 ID 获取买手店详情"""
+    """通过 ID 获取买手店详情.
+
+    回填 `hasMerchant`（是否有 APPROVED 商家入驻）给消费者详情页判断要不要展示
+    "服务承诺" / "官方认证" 徽章. 单条 store 查询只多一次轻量 select,对响应
+    时间影响可以忽略.
+    """
     store = buyer_store_service.get_store_by_id(store_id)
 
     if not store:
         return success(None, message="买手店不存在")
 
-    return success(store.model_dump())
+    payload = store.model_dump()
+    payload["hasMerchant"] = buyer_store_service.has_approved_merchant(store_id)
+
+    return success(payload)
 
 
 # ==================== 管理员接口 ====================

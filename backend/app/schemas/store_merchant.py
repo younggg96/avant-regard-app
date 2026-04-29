@@ -3,10 +3,37 @@
 包含：商家认证、公告、活动、折扣、Banner
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+
+
+# ==================== 通用校验 ====================
+
+def _validate_public_url(v: Optional[str]) -> Optional[str]:
+    """
+    校验图片/文件 URL 必须是 http/https 开头的网络地址。
+
+    历史教训：移动端早期 `MerchantManageScreen.pickImage` 漏掉了上传步骤，
+    直接把 `expo-image-picker` 返回的 `file:///var/mobile/.../ImagePicker/xxx.jpg`
+    这类设备本地沙盒路径塞进了 Banner / Activity / Discount 的 imageUrl /
+    coverImage 字段。落库后在 Web 商家后台或其它设备上打开，<img> 完全
+    解析不到，显示 broken。
+
+    防御式校验放在 schema 层，即便未来又冒出一个新入口忘了走上传，后端
+    也会 400 拦截，不再把脏数据写进 DB。容忍 None / 空串（可选字段 +
+    "清除图片"场景）。
+    """
+    if v is None or v == "":
+        return v
+    lower = v.lower()
+    if not (lower.startswith("http://") or lower.startswith("https://")):
+        raise ValueError(
+            "图片 URL 必须是以 http(s):// 开头的网络地址；"
+            "请先通过 /api/files/upload-image 上传后再提交"
+        )
+    return v
 
 
 # ==================== 枚举类型 ====================
@@ -67,6 +94,11 @@ class StoreMerchantCreate(BaseModel):
     contactEmail: Optional[str] = Field(None, max_length=200, description="联系邮箱")
     businessLicense: Optional[str] = Field(None, description="营业执照图片URL")
 
+    @field_validator("businessLicense")
+    @classmethod
+    def _validate_business_license(cls, v):
+        return _validate_public_url(v)
+
 
 class StoreMerchantUpdate(BaseModel):
     """更新商家信息"""
@@ -74,6 +106,11 @@ class StoreMerchantUpdate(BaseModel):
     contactPhone: Optional[str] = Field(None, max_length=50)
     contactEmail: Optional[str] = Field(None, max_length=200)
     businessLicense: Optional[str] = None
+
+    @field_validator("businessLicense")
+    @classmethod
+    def _validate_business_license(cls, v):
+        return _validate_public_url(v)
 
 
 class StoreMerchantReview(BaseModel):
@@ -199,6 +236,11 @@ class StoreBannerCreate(BaseModel):
     startTime: Optional[str] = Field(None, description="开始时间")
     endTime: Optional[str] = Field(None, description="结束时间")
 
+    @field_validator("imageUrl")
+    @classmethod
+    def _validate_image_url(cls, v):
+        return _validate_public_url(v)
+
 
 class StoreBannerUpdate(BaseModel):
     """更新 Banner"""
@@ -210,6 +252,11 @@ class StoreBannerUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     startTime: Optional[str] = None
     endTime: Optional[str] = None
+
+    @field_validator("imageUrl")
+    @classmethod
+    def _validate_image_url(cls, v):
+        return _validate_public_url(v)
 
 
 class StoreBanner(BaseModel):
@@ -247,6 +294,20 @@ class StoreActivityCreate(BaseModel):
     needRegistration: bool = Field(default=False, description="是否需要报名")
     registrationLimit: Optional[int] = Field(None, description="报名人数限制")
 
+    @field_validator("coverImage")
+    @classmethod
+    def _validate_cover_image(cls, v):
+        return _validate_public_url(v)
+
+    @field_validator("images")
+    @classmethod
+    def _validate_images(cls, v):
+        if not v:
+            return v
+        for url in v:
+            _validate_public_url(url)
+        return v
+
 
 class StoreActivityUpdate(BaseModel):
     """更新活动"""
@@ -261,6 +322,20 @@ class StoreActivityUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     needRegistration: Optional[bool] = None
     registrationLimit: Optional[int] = None
+
+    @field_validator("coverImage")
+    @classmethod
+    def _validate_cover_image(cls, v):
+        return _validate_public_url(v)
+
+    @field_validator("images")
+    @classmethod
+    def _validate_images(cls, v):
+        if not v:
+            return v
+        for url in v:
+            _validate_public_url(url)
+        return v
 
 
 class StoreActivity(BaseModel):
@@ -303,6 +378,11 @@ class StoreDiscountCreate(BaseModel):
     needCode: bool = Field(default=False, description="是否需要优惠码")
     discountCode: Optional[str] = Field(None, max_length=50, description="优惠码")
 
+    @field_validator("coverImage")
+    @classmethod
+    def _validate_cover_image(cls, v):
+        return _validate_public_url(v)
+
 
 class StoreDiscountUpdate(BaseModel):
     """更新折扣"""
@@ -320,6 +400,11 @@ class StoreDiscountUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     needCode: Optional[bool] = None
     discountCode: Optional[str] = Field(None, max_length=50)
+
+    @field_validator("coverImage")
+    @classmethod
+    def _validate_cover_image(cls, v):
+        return _validate_public_url(v)
 
 
 class StoreDiscount(BaseModel):

@@ -327,6 +327,27 @@ class BuyerStoreService:
 
         return self._format_store(result.data[0])
 
+    def has_approved_merchant(self, store_id: str) -> bool:
+        """判断该 store 是否已有认证商家入驻。
+
+        用于详情页 / 返回单条 store 时回填 `hasMerchant` 字段；比起拉全量
+        APPROVED 列表，这里针对单 store 只查一条 row，更省.
+        """
+        try:
+            result = (
+                self.db.table("store_merchants")
+                .select("id")
+                .eq("store_id", store_id)
+                .eq("status", "APPROVED")
+                .limit(1)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception as e:
+            # 失败时降级为 False —— 不影响用户查看店铺，仅 UI 少一个"已入驻"徽章.
+            print(f"[buyer_stores] has_approved_merchant({store_id}) failed: {e}")
+            return False
+
     def create_store(self, store: BuyerStoreCreate) -> BuyerStore:
         """创建买手店"""
         data = self._to_db_format(store)
