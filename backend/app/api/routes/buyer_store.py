@@ -38,6 +38,17 @@ def _enrich_stores_with_favorite_count(stores) -> list:
     return store_dicts
 
 
+def _enrich_dicts_with_favorite_count(store_dicts: list) -> list:
+    """给已是 dict 的店铺列表附加 favoriteCount（入驻优先路径用）。"""
+    if not store_dicts:
+        return []
+    store_ids = [d.get("id") for d in store_dicts if d.get("id")]
+    counts = buyer_store_community_service.get_batch_favorite_counts(store_ids)
+    for d in store_dicts:
+        d["favoriteCount"] = counts.get(d.get("id"), 0)
+    return store_dicts
+
+
 @router.get("")
 async def get_stores(
     country: Optional[str] = Query(None, description="国家筛选"),
@@ -48,8 +59,34 @@ async def get_stores(
     searchQuery: Optional[str] = Query(None, description="搜索关键词"),
     page: int = Query(1, ge=1, description="页码"),
     pageSize: int = Query(50, ge=1, le=200, description="每页数量"),
+    withMerchantFirst: bool = Query(
+        False, description="是否把已入驻商家店铺排在前面（买手店 Tab 顶部选择条用）",
+    ),
 ):
-    """获取买手店列表"""
+    """获取买手店列表。
+
+    - withMerchantFirst=false（默认）：沿用原有排序 (city, name)。
+    - withMerchantFirst=true        ：已入驻商家店铺排在前，后续按城市/名称；
+                                      每条店铺返回 hasMerchant 字段供 UI 标注。
+    """
+    if withMerchantFirst:
+        enriched, total, _ = buyer_store_service.get_stores_with_merchant_priority(
+            country=country,
+            city=city,
+            brand=brand,
+            style=style,
+            open_only=openOnly,
+            search_query=searchQuery,
+            page=page,
+            page_size=pageSize,
+        )
+        return success({
+            "stores": _enrich_dicts_with_favorite_count(enriched),
+            "total": total,
+            "page": page,
+            "pageSize": pageSize,
+        })
+
     stores, total = buyer_store_service.get_all_stores(
         country=country,
         city=city,
@@ -63,6 +100,36 @@ async def get_stores(
 
     return success({
         "stores": _enrich_stores_with_favorite_count(stores),
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+@router.get("/all")
+async def get_all_buyer_stores(
+    country: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    brand: Optional[str] = Query(None),
+    style: Optional[str] = Query(None),
+    openOnly: Optional[bool] = Query(None),
+    searchQuery: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(30, ge=1, le=100, description="每页数量；全部页默认 30"),
+):
+    """"查看全部买手店" 页专用。入驻商家永远排前，hasMerchant 标识回填。"""
+    enriched, total, _ = buyer_store_service.get_stores_with_merchant_priority(
+        country=country,
+        city=city,
+        brand=brand,
+        style=style,
+        open_only=openOnly,
+        search_query=searchQuery,
+        page=page,
+        page_size=pageSize,
+    )
+    return success({
+        "stores": _enrich_dicts_with_favorite_count(enriched),
         "total": total,
         "page": page,
         "pageSize": pageSize,

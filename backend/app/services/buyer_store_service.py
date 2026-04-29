@@ -154,6 +154,164 @@ class BuyerStoreService:
 
         return stores, total
 
+    # ------------------------------------------------------------------
+    # 入驻商家优先排序（买手店 Tab 顶部选择条 & "查看全部"页）
+    # ------------------------------------------------------------------
+
+    def _list_approved_merchant_store_ids(self) -> List[str]:
+        """一次性读出所有 APPROVED 商家关联的 store_id 列表。
+
+        数量一般是百量级（商家总数 << 店铺总数），一次查询即可全量载入，
+        避免对每条店铺都去 join 一次。
+        """
+        try:
+            result = (
+                self.db.table("store_merchants")
+                .select("store_id")
+                .eq("status", "APPROVED")
+                .execute()
+            )
+        except Exception as e:
+            # 失败时降级：视为无商家入驻，保持普通排序，不阻塞用户浏览。
+            print(f"[buyer_stores] list approved merchants failed: {e}")
+            return []
+        seen: set[str] = set()
+        ordered: List[str] = []
+        for row in result.data or []:
+            sid = row.get("store_id")
+            if sid and sid not in seen:
+                seen.add(sid)
+                ordered.append(sid)
+        return ordered
+
+    def _enrich_with_merchant_flag(
+        self, stores: List[BuyerStore], merchant_store_ids: set[str]
+    ) -> List[dict]:
+        """把 store 列表转成 dict 并附加 hasMerchant 标记。"""
+        out: List[dict] = []
+        for store in stores:
+            d = store.model_dump() if hasattr(store, "model_dump") else store
+            d["hasMerchant"] = d.get("id") in merchant_store_ids
+            out.append(d)
+        return out
+
+    def get_stores_with_merchant_priority(
+        self,
+        *,
+        country: Optional[str] = None,
+        city: Optional[str] = None,
+        brand: Optional[str] = None,
+        style: Optional[str] = None,
+        open_only: Optional[bool] = None,
+        search_query: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Tuple[List[dict], int, set[str]]:
+        """入驻商家优先 + 内部仍用 favoriteCount 排序后备的分页方法。
+
+        策略：
+          - Step A: 一次拿 APPROVED 商家的 store_ids（小集合 M）
+          - Step B: 分两段查 buyer_stores：
+              · Group A = 命中 M 的店铺（按 name 排序；当前 schema 没有 favorite
+                列，favorite_count 由应用层合成，不能直接 ORDER BY）
+              · Group B = 未命中 M 的店铺
+          - Step C: 按全局偏移量从 Group A/B 的有序序列取 page_size 条
+
+        返回 (dict 列表（带 hasMerchant）, total, merchant_store_ids 集合)
+        —— 调用方可以用 set 给别的字段做进一步批量标注。
+        """
+        merchant_ids = self._list_approved_merchant_store_ids()
+        merchant_set = set(merchant_ids)
+        offset = (page - 1) * page_size
+
+        # --- Group A: 入驻商家店铺 ---
+        group_a_stores: List[BuyerStore] = []
+        group_a_total = 0
+        if merchant_ids:
+            q_a = self.db.table("buyer_stores").select("*", count="planned")
+            q_a = q_a.in_("id", merchant_ids)
+            q_a = self._apply_filters(
+                q_a, country=country, city=city, brand=brand, style=style,
+                open_only=open_only, search_query=search_query,
+            )
+            q_a = q_a.order("name").range(0, 999)  # 入驻集小，整体拉回内存即可
+            res_a = execute_with_retry(
+                lambda: q_a.execute(), label="buyer_stores.priority.group_a"
+            )
+            group_a_total = res_a.count or 0
+            group_a_stores = [self._format_store(s) for s in (res_a.data or [])]
+
+        # --- Group B: 非入驻商家店铺 ---
+        q_b = self.db.table("buyer_stores").select("*", count="planned")
+        if merchant_ids:
+            # 不能用 `.not_.in_(...)` 因为 Supabase Python SDK 对 not_.in_
+            # 某些版本表现不稳定；统一使用 PostgREST 操作符
+            quoted_ids = ",".join([f'"{sid}"' for sid in merchant_ids])
+            q_b = q_b.filter("id", "not.in", f"({quoted_ids})")
+        q_b = self._apply_filters(
+            q_b, country=country, city=city, brand=brand, style=style,
+            open_only=open_only, search_query=search_query,
+        )
+        q_b = q_b.order("city").order("name")
+        # 偏移量是"跨 Group A/B 全局"的；Group B 的起始偏移 = 全局 offset - 已全部
+        # 塞进 Group A 的条数。最多再拉 page_size 条就够合并。
+        group_b_offset_in_page = max(0, offset - group_a_total)
+        q_b = q_b.range(
+            group_b_offset_in_page,
+            group_b_offset_in_page + page_size - 1,
+        )
+        res_b = execute_with_retry(
+            lambda: q_b.execute(), label="buyer_stores.priority.group_b"
+        )
+        group_b_total = res_b.count or 0
+        group_b_stores = [self._format_store(s) for s in (res_b.data or [])]
+
+        # --- 按全局偏移量合成本页 ---
+        # Group A 的全局区间 [0, group_a_total)；offset 落在哪里决定从哪开始拿。
+        # （不要命名成 `page`，会和函数参数同名遮蔽。）
+        combined: List[BuyerStore] = []
+        a_start = min(offset, group_a_total)
+        a_end = min(offset + page_size, group_a_total)
+        if a_start < a_end:
+            combined.extend(group_a_stores[a_start:a_end])
+        need = page_size - len(combined)
+        if need > 0 and group_b_stores:
+            combined.extend(group_b_stores[:need])
+
+        total = group_a_total + group_b_total
+        enriched = self._enrich_with_merchant_flag(combined, merchant_set)
+        return enriched, total, merchant_set
+
+    def _apply_filters(
+        self,
+        query,
+        *,
+        country: Optional[str] = None,
+        city: Optional[str] = None,
+        brand: Optional[str] = None,
+        style: Optional[str] = None,
+        open_only: Optional[bool] = None,
+        search_query: Optional[str] = None,
+    ):
+        """把通用过滤条件集中应用一次，避免在多个分支重复写。"""
+        if country:
+            query = query.eq("country", country)
+        if city:
+            query = query.eq("city", city)
+        if open_only:
+            query = query.eq("is_open", True)
+        if brand:
+            query = query.contains("brands", [brand])
+        if style:
+            query = query.contains("style", [style])
+        if search_query:
+            query = query.or_(
+                f"name.ilike.%{search_query}%,"
+                f"city.ilike.%{search_query}%,"
+                f"address.ilike.%{search_query}%"
+            )
+        return query
+
     def get_store_by_id(self, store_id: str) -> Optional[BuyerStore]:
         """通过 ID 获取买手店"""
         result = execute_with_retry(
