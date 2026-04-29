@@ -612,6 +612,139 @@ CREATE TABLE IF NOT EXISTS store_activity_registrations (
 
 
 -- =====================================================
+-- 11.1 商家商品系统 & 店铺主页可配置项（migration 040）
+-- =====================================================
+
+-- 店铺主页卡片配置（StoreProfileCard 数据源）
+CREATE TABLE IF NOT EXISTS store_profile_configs (
+    store_id VARCHAR(100) PRIMARY KEY REFERENCES buyer_stores(id) ON DELETE CASCADE,
+    merchant_id BIGINT REFERENCES store_merchants(id) ON DELETE SET NULL,
+    logo_image TEXT,
+    cover_image TEXT,
+    short_description TEXT,
+    long_description TEXT,
+    tags TEXT[] DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 入口卡片（CategoryCards 数据源；card_type ∈ CLASSIFICATION/DISCOUNT/EVENT/NEW_ARRIVAL）
+CREATE TABLE IF NOT EXISTS store_entry_cards (
+    id BIGSERIAL PRIMARY KEY,
+    store_id VARCHAR(100) NOT NULL REFERENCES buyer_stores(id) ON DELETE CASCADE,
+    merchant_id BIGINT REFERENCES store_merchants(id) ON DELETE CASCADE,
+    card_type VARCHAR(20) NOT NULL,
+    label VARCHAR(50) NOT NULL,
+    label_en VARCHAR(50),
+    image_url TEXT NOT NULL,
+    target_category_id BIGINT,
+    sort_order INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'PUBLISHED',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_store_entry_cards_store ON store_entry_cards(store_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_store_entry_cards_published
+    ON store_entry_cards(store_id) WHERE status = 'PUBLISHED';
+
+-- 商家自定义商品分类
+CREATE TABLE IF NOT EXISTS store_product_categories (
+    id BIGSERIAL PRIMARY KEY,
+    store_id VARCHAR(100) NOT NULL REFERENCES buyer_stores(id) ON DELETE CASCADE,
+    merchant_id BIGINT REFERENCES store_merchants(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    cover_image TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(store_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_store_product_categories_store
+    ON store_product_categories(store_id, sort_order);
+
+-- entry_cards.target_category_id 外键延迟挂（要等 categories 表建完）
+ALTER TABLE store_entry_cards
+    DROP CONSTRAINT IF EXISTS fk_store_entry_cards_target_category;
+ALTER TABLE store_entry_cards
+    ADD CONSTRAINT fk_store_entry_cards_target_category
+    FOREIGN KEY (target_category_id)
+    REFERENCES store_product_categories(id)
+    ON DELETE SET NULL;
+
+-- 商品（价格单位为整数分，避免浮点坑）
+CREATE TABLE IF NOT EXISTS store_products (
+    id BIGSERIAL PRIMARY KEY,
+    store_id VARCHAR(100) NOT NULL REFERENCES buyer_stores(id) ON DELETE CASCADE,
+    merchant_id BIGINT REFERENCES store_merchants(id) ON DELETE CASCADE,
+    category_id BIGINT REFERENCES store_product_categories(id) ON DELETE SET NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    brand VARCHAR(200),
+    images TEXT[] DEFAULT '{}',
+    price_cents BIGINT NOT NULL CHECK (price_cents >= 0),
+    currency VARCHAR(10) DEFAULT 'CNY',
+    discount_price_cents BIGINT CHECK (discount_price_cents IS NULL OR discount_price_cents >= 0),
+    has_discount BOOLEAN GENERATED ALWAYS AS (discount_price_cents IS NOT NULL) STORED,
+    is_new BOOLEAN DEFAULT FALSE,
+    tags TEXT[] DEFAULT '{}',
+    like_count INTEGER DEFAULT 0,
+    comment_count INTEGER DEFAULT 0,
+    view_count INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'PUBLISHED',
+    published_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_store_products_store_status
+    ON store_products(store_id, status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_store_products_category
+    ON store_products(category_id) WHERE category_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_store_products_is_new
+    ON store_products(store_id, published_at DESC)
+    WHERE is_new = TRUE AND status = 'PUBLISHED';
+CREATE INDEX IF NOT EXISTS idx_store_products_discount
+    ON store_products(store_id, published_at DESC)
+    WHERE has_discount = TRUE AND status = 'PUBLISHED';
+
+-- 用户"喜欢"商品
+CREATE TABLE IF NOT EXISTS store_product_likes (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES store_products(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(product_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_store_product_likes_user
+    ON store_product_likes(user_id, created_at DESC);
+
+-- 商品评论（结构镜像 buyer_store_comments）
+CREATE TABLE IF NOT EXISTS store_product_comments (
+    id BIGSERIAL PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES store_products(id) ON DELETE CASCADE,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    parent_id BIGINT REFERENCES store_product_comments(id) ON DELETE CASCADE,
+    reply_to_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    like_count INTEGER DEFAULT 0,
+    reply_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_store_product_comments_product
+    ON store_product_comments(product_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_store_product_comments_parent
+    ON store_product_comments(parent_id) WHERE parent_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS store_product_comment_likes (
+    id BIGSERIAL PRIMARY KEY,
+    comment_id BIGINT NOT NULL REFERENCES store_product_comments(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(comment_id, user_id)
+);
+
+
+-- =====================================================
 -- 12. Banner 轮播图表
 -- =====================================================
 
@@ -1035,97 +1168,98 @@ $$ LANGUAGE plpgsql;
 
 
 -- =====================================================
--- 17. 默认数据
+-- 17. Default seed data
 -- =====================================================
 
--- 迁移旧数据：将 brands.cover_image 非空记录插入 brand_images（status=APPROVED, is_selected=TRUE）
+-- Legacy migration: copy non-empty brands.cover_image into brand_images
+-- (status=APPROVED, is_selected=TRUE) so the new media pipeline can take over.
 INSERT INTO brand_images (brand_id, image_url, sort_order, status, is_selected)
 SELECT id, cover_image, 0, 'APPROVED', TRUE
 FROM brands
 WHERE cover_image IS NOT NULL AND cover_image != ''
 ON CONFLICT DO NOTHING;
 
--- 默认 Banner 数据
+-- Default banners
 INSERT INTO banners (title, subtitle, image_url, link_type, link_value, sort_order, is_active)
 VALUES
-    ('CHANEL', '2024 秋冬高定系列', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800', 'BRAND', 'CHANEL', 1, true),
-    ('DIOR', '探索最新时装系列', 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800', 'BRAND', 'DIOR', 2, true),
-    ('LOUIS VUITTON', '经典与创新的完美融合', 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800', 'BRAND', 'LOUIS VUITTON', 3, true);
+    ('CHANEL', 'Fall/Winter 2024 Haute Couture Collection', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800', 'BRAND', 'CHANEL', 1, true),
+    ('DIOR', 'Explore the latest collections', 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800', 'BRAND', 'DIOR', 2, true),
+    ('LOUIS VUITTON', 'Where heritage meets innovation', 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800', 'BRAND', 'LOUIS VUITTON', 3, true);
 
--- 默认社区数据
+-- Default communities
 INSERT INTO communities (name, slug, description, category, is_official, sort_order)
 SELECT * FROM (VALUES
-    ('时尚穿搭', 'fashion-outfit', '分享你的日常穿搭灵感', 'FASHION', TRUE, 100),
-    ('品牌讨论', 'brand-talk', '讨论各大时尚品牌的最新动态', 'FASHION', TRUE, 90),
-    ('秀场评论', 'runway-review', '点评时装周和秀场精彩瞬间', 'FASHION', TRUE, 80),
-    ('美妆护肤', 'beauty-skincare', '美妆护肤心得分享', 'BEAUTY', TRUE, 70),
-    ('生活方式', 'lifestyle', '分享精致生活的点滴', 'LIFESTYLE', TRUE, 60)
+    ('Fashion Outfits', 'fashion-outfit', 'Share your daily outfit inspiration', 'FASHION', TRUE, 100),
+    ('Brand Talk', 'brand-talk', 'Discuss the latest news from fashion brands', 'FASHION', TRUE, 90),
+    ('Runway Reviews', 'runway-review', 'Review fashion week highlights and runway shows', 'FASHION', TRUE, 80),
+    ('Beauty & Skincare', 'beauty-skincare', 'Share beauty and skincare tips', 'BEAUTY', TRUE, 70),
+    ('Lifestyle', 'lifestyle', 'Share moments of refined living', 'LIFESTYLE', TRUE, 60)
 ) AS v(name, slug, description, category, is_official, sort_order)
 WHERE NOT EXISTS (SELECT 1 FROM communities WHERE slug = v.slug);
 
 
 -- =====================================================
--- 18. 表注释
+-- 18. Table and column comments
 -- =====================================================
 
-COMMENT ON TABLE buyer_stores IS '买手店信息表';
-COMMENT ON COLUMN buyer_stores.id IS '店铺ID，格式：城市缩写-序号，如 bj-001';
-COMMENT ON COLUMN buyer_stores.name IS '店铺名称';
-COMMENT ON COLUMN buyer_stores.address IS '详细地址';
-COMMENT ON COLUMN buyer_stores.city IS '所在城市';
-COMMENT ON COLUMN buyer_stores.country IS '所在国家';
-COMMENT ON COLUMN buyer_stores.latitude IS '纬度';
-COMMENT ON COLUMN buyer_stores.longitude IS '经度';
-COMMENT ON COLUMN buyer_stores.brands IS '销售品牌列表';
-COMMENT ON COLUMN buyer_stores.style IS '风格标签列表';
-COMMENT ON COLUMN buyer_stores.is_open IS '是否营业（非预约制）';
-COMMENT ON COLUMN buyer_stores.phone IS '联系电话列表';
-COMMENT ON COLUMN buyer_stores.hours IS '营业时间';
-COMMENT ON COLUMN buyer_stores.rating IS '评分';
-COMMENT ON COLUMN buyer_stores.description IS '店铺描述';
-COMMENT ON COLUMN buyer_stores.images IS '店铺图片列表';
-COMMENT ON COLUMN buyer_stores.rest IS '休息日信息';
+COMMENT ON TABLE buyer_stores IS 'Buyer stores (multi-brand boutique) registry';
+COMMENT ON COLUMN buyer_stores.id IS 'Store ID; format: <city code>-<sequence>, e.g. bj-001';
+COMMENT ON COLUMN buyer_stores.name IS 'Store display name';
+COMMENT ON COLUMN buyer_stores.address IS 'Full street address';
+COMMENT ON COLUMN buyer_stores.city IS 'City';
+COMMENT ON COLUMN buyer_stores.country IS 'Country';
+COMMENT ON COLUMN buyer_stores.latitude IS 'Latitude';
+COMMENT ON COLUMN buyer_stores.longitude IS 'Longitude';
+COMMENT ON COLUMN buyer_stores.brands IS 'List of brands carried by the store';
+COMMENT ON COLUMN buyer_stores.style IS 'Style tags';
+COMMENT ON COLUMN buyer_stores.is_open IS 'True if walk-ins are accepted; false means appointment only';
+COMMENT ON COLUMN buyer_stores.phone IS 'Contact phone numbers';
+COMMENT ON COLUMN buyer_stores.hours IS 'Business hours';
+COMMENT ON COLUMN buyer_stores.rating IS 'Aggregate rating';
+COMMENT ON COLUMN buyer_stores.description IS 'Free-form store description';
+COMMENT ON COLUMN buyer_stores.images IS 'Store photo URLs';
+COMMENT ON COLUMN buyer_stores.rest IS 'Rest day or seasonal closure info';
 
-COMMENT ON TABLE store_merchants IS '商家认证表';
-COMMENT ON TABLE store_announcements IS '商家公告表';
-COMMENT ON TABLE store_banners IS '商家Banner表';
-COMMENT ON TABLE store_activities IS '商家活动表';
-COMMENT ON TABLE store_discounts IS '商家折扣表';
-COMMENT ON TABLE store_activity_registrations IS '活动报名表';
+COMMENT ON TABLE store_merchants IS 'Merchant verification records';
+COMMENT ON TABLE store_announcements IS 'Merchant announcements';
+COMMENT ON TABLE store_banners IS 'Merchant promotional banners';
+COMMENT ON TABLE store_activities IS 'Merchant-hosted events / activities';
+COMMENT ON TABLE store_discounts IS 'Merchant discounts and promotions';
+COMMENT ON TABLE store_activity_registrations IS 'User registrations for merchant activities';
 
--- [已废弃] user_favorite_brands 注释
--- COMMENT ON TABLE user_favorite_brands IS '用户喜欢的品牌关联表';
--- COMMENT ON COLUMN user_favorite_brands.user_id IS '用户ID';
--- COMMENT ON COLUMN user_favorite_brands.brand_id IS '品牌ID';
+-- [DEPRECATED] user_favorite_brands comments (table superseded by brand_follows)
+-- COMMENT ON TABLE user_favorite_brands IS 'User-to-brand favorite relation';
+-- COMMENT ON COLUMN user_favorite_brands.user_id IS 'User ID';
+-- COMMENT ON COLUMN user_favorite_brands.brand_id IS 'Brand ID';
 
-COMMENT ON COLUMN user_info.cover_url IS '用户封面图片URL';
-COMMENT ON COLUMN user_info.hide_following IS '是否隐藏关注列表';
-COMMENT ON COLUMN user_info.hide_followers IS '是否隐藏粉丝列表';
-COMMENT ON COLUMN user_info.hide_likes IS '是否隐藏点赞列表';
-COMMENT ON COLUMN user_info.profile_completed IS '用户是否已完善个人资料';
+COMMENT ON COLUMN user_info.cover_url IS 'User profile cover photo URL';
+COMMENT ON COLUMN user_info.hide_following IS 'Hide following list from other users';
+COMMENT ON COLUMN user_info.hide_followers IS 'Hide followers list from other users';
+COMMENT ON COLUMN user_info.hide_likes IS 'Hide liked-posts list from other users';
+COMMENT ON COLUMN user_info.profile_completed IS 'Whether the user has completed their profile';
 
 COMMENT ON COLUMN posts.brand_ids IS 'Array of brand IDs associated with this post';
 
-COMMENT ON TABLE brand_images IS '品牌图片表（用户上传 + 管理员审核）';
-COMMENT ON COLUMN brand_images.brand_id IS '关联品牌ID';
-COMMENT ON COLUMN brand_images.image_url IS '图片URL';
-COMMENT ON COLUMN brand_images.sort_order IS '排序顺序';
-COMMENT ON COLUMN brand_images.status IS '审核状态：PENDING/APPROVED/REJECTED';
-COMMENT ON COLUMN brand_images.is_selected IS '是否被管理员选为品牌展示图';
-COMMENT ON COLUMN brand_images.uploaded_by IS '上传用户ID';
+COMMENT ON TABLE brand_images IS 'Brand image gallery (user-uploaded, admin-reviewed)';
+COMMENT ON COLUMN brand_images.brand_id IS 'Associated brand ID';
+COMMENT ON COLUMN brand_images.image_url IS 'Image URL';
+COMMENT ON COLUMN brand_images.sort_order IS 'Display sort order';
+COMMENT ON COLUMN brand_images.status IS 'Review status: PENDING / APPROVED / REJECTED';
+COMMENT ON COLUMN brand_images.is_selected IS 'Whether admin selected this as the brand cover image';
+COMMENT ON COLUMN brand_images.uploaded_by IS 'Uploader user ID';
 
-COMMENT ON TABLE brand_submissions IS '用户提交的品牌（待管理员审核）';
-COMMENT ON COLUMN brand_submissions.status IS '审核状态：PENDING/APPROVED/REJECTED';
-COMMENT ON COLUMN brand_submissions.reject_reason IS '驳回原因';
-COMMENT ON COLUMN brand_submissions.reviewed_at IS '审核时间';
+COMMENT ON TABLE brand_submissions IS 'User-submitted brands awaiting admin review';
+COMMENT ON COLUMN brand_submissions.status IS 'Review status: PENDING / APPROVED / REJECTED';
+COMMENT ON COLUMN brand_submissions.reject_reason IS 'Reason for rejection';
+COMMENT ON COLUMN brand_submissions.reviewed_at IS 'When the submission was reviewed';
 
-COMMENT ON COLUMN shows.description IS '秀场描述';
-COMMENT ON COLUMN shows.designer IS '设计师名称';
-COMMENT ON COLUMN shows.created_by IS '创建者（用户上传时的用户ID）';
-COMMENT ON COLUMN shows.status IS '审核状态：APPROVED/PENDING/REJECTED';
-COMMENT ON COLUMN shows.reject_reason IS '驳回原因';
+COMMENT ON COLUMN shows.description IS 'Runway show description';
+COMMENT ON COLUMN shows.designer IS 'Designer name';
+COMMENT ON COLUMN shows.created_by IS 'Creator user ID (for user-uploaded shows)';
+COMMENT ON COLUMN shows.status IS 'Review status: APPROVED / PENDING / REJECTED';
+COMMENT ON COLUMN shows.reject_reason IS 'Reason for rejection';
 
 
 -- =====================================================
--- 完成！所有表、索引、触发器、函数、默认数据已创建
+-- Done. All tables, indexes, triggers, functions, and seed data are in place.
 -- =====================================================

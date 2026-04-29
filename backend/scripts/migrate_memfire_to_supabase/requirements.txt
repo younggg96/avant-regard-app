@@ -1,0 +1,3 @@
+# Extra deps for the migration toolkit. The main backend `requirements.txt`
+# already installs supabase and httpx, so only python-dotenv is added here.
+python-dotenv>=1.0.0
