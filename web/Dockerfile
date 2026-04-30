@@ -16,7 +16,10 @@
 # --- Stage 1: install production + dev deps from lockfile ---------------------
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+# `.npmrc` carries `legacy-peer-deps=true`, which is required for `npm ci` to
+# match the lock file (the lock file was generated under that flag inherited
+# from the monorepo root `.npmrc`, which is NOT in this build context).
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci --no-audit --no-fund --prefer-offline
 
 # --- Stage 2: compile Next.js --------------------------------------------------
