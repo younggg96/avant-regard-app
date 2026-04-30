@@ -5,6 +5,7 @@ import { TabType } from "../types";
 const DISCOVER_TABS: { id: TabType; label: string }[] = [
   { id: "forum", label: "论坛" },
   { id: "recommend", label: "推荐" },
+  { id: "buyer", label: "买手店" },
   { id: "following", label: "关注" },
 ];
 

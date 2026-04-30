@@ -23,14 +23,28 @@ import { DisplayPost, TabType } from "../types";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
 import { BrandSection } from "./BrandSection";
+import { BuyerTabContent } from "./BuyerTab";
+import type { BuyerStoreProduct } from "./BuyerTab/types";
 import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
 import { ImageSize } from "../../../utils/imageUtils";
 
 type RenderablePost = Post & { renderKey?: string };
 
 
-interface TabContentProps {
-  tab: TabType;
+/**
+ * 所有 Tab 都会用到的共用 props（滚动联动、激活标记）。
+ */
+interface TabContentBaseProps {
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  isActive?: boolean;
+}
+
+/**
+ * Posts 型 Tab (forum / recommend / following) 的 props。瀑布流 / 列表渲染
+ * 需要的所有字段都在这里；买手店 Tab 用不到就不让它们进入类型系统。
+ */
+export interface PostsTabContentProps extends TabContentBaseProps {
+  tab: "forum" | "recommend" | "following";
   tabPosts: DisplayPost[];
   banners: Banner[];
   communities: CommunityListResponse | null;
@@ -39,12 +53,10 @@ interface TabContentProps {
   tabLoading: boolean;
   tabLoaded: boolean;
   onRefresh: () => void;
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   onPostPress: (post: Post) => void;
   onAuthorPress: (authorId: string) => void;
   onLike: (postId: string) => void;
   onBannerPress: (banner: Banner) => void;
-  isActive?: boolean;
   /**
    * 无限滚动：触底加载下一页（仅推荐 Tab 使用；不传则关闭）。
    */
@@ -63,6 +75,41 @@ interface TabContentProps {
    */
   scrollToTopSignal?: number;
 }
+
+/**
+ * 买手店 Tab 透过 `<TabContent>` 调用时必须带上的 props。所有交互回调
+ * 都在这里；`tabPosts` / `banners` / `onLike` 等 Posts 系字段对它都无意义，
+ * 因此不在这个分支上出现。
+ *
+ * 命名用 `BuyerTabSlotProps` 避免和 `./BuyerTab/index.tsx` 里的
+ * `BuyerTabContentProps`（那是子组件自己的 props 类型、不含 `tab` 判别
+ * 字段）撞名。
+ */
+export interface BuyerTabSlotProps extends TabContentBaseProps {
+  tab: "buyer";
+  onSearchPress: () => void;
+  onStorePress: (storeId: string) => void;
+  onProductPress: (product: BuyerStoreProduct) => void;
+  /** 点击顶部"查看全部"入口时触发；上游决定跳哪个屏。 */
+  onOpenAllStores: () => void;
+  /**
+   * Phase 4：入口卡片（分类 / 折扣 / 新品）→ 商品列表屏的分流回调。
+   * 语义与 `BuyerTab/index.tsx` 的 `OpenProductListPayload` 一致。
+   */
+  onOpenProductList: (payload: {
+    storeId: string;
+    storeName?: string;
+    mode: "ALL" | "CLASSIFICATION" | "DISCOUNT" | "NEW_ARRIVAL";
+    categoryId?: number | null;
+  }) => void;
+}
+
+/**
+ * Discriminated union —— 通过 `tab` 字段让 TypeScript 在父组件调用处
+ * 强制检查：tab="buyer" 时必须传买手店回调、Posts 系字段不接受；反之亦然。
+ * 两种 Tab 共用同一个 `<TabContent />` 调用点，但内部实现完全解耦。
+ */
+type TabContentProps = PostsTabContentProps | BuyerTabSlotProps;
 
 const GifLoading: React.FC = () => (
   <View style={loadingStyles.container}>
@@ -279,9 +326,14 @@ const withStableRenderKeys = (posts: Post[]): RenderablePost[] => {
 };
 
 /**
- * Tab 内容组件 — 使用 MasonryFlashList 实现高性能瀑布流
+ * Posts 型 Tab (forum / recommend / following) 的渲染实现。
+ *
+ * 这里集中所有 hooks 与 MasonryFlashList / FlatList 组装逻辑；买手店
+ * Tab 由于数据模型完全不同，走独立的 `BuyerTabContent` 分支，不会进入
+ * 这个函数——所以这里可以安全地把每一个 hook 放在函数顶层，符合
+ * React `rules-of-hooks`。
  */
-const TabContentInner: React.FC<TabContentProps> = ({
+const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   tab,
   tabPosts,
   banners,
@@ -610,23 +662,69 @@ const TabContentInner: React.FC<TabContentProps> = ({
   );
 };
 
-TabContentInner.displayName = "TabContent";
+PostsTabContentInner.displayName = "PostsTabContent";
 
 /**
- * Memoize `TabContent` so unrelated DiscoverScreen state churn (unread-count
+ * Memoize the Posts Tab so unrelated DiscoverScreen state churn (unread-count
  * polling, focus refresh, current-user-info fetch, scroll-to-top signal for
  * *another* tab) does not re-execute the function body of all three tab
  * instances. With the callback-stability work upstream (stable `onLike`,
  * `onRefresh`, `onPostPress`, `onAuthorPress`, `onScroll`, `onEndReached`)
  * all shallow-equal props reliably land memo hits on those re-renders.
- *
- * NOTE: Historical `TabContent.displayName = "TabContent"` + `export default
- * TabContent` pattern tripped a `react-refresh/babel` ×
- * `@babel/plugin-transform-typescript` scope-tracker interaction that produced
- * `ReferenceError: Property 'TabContent' doesn't exist` at runtime. Keeping
- * the displayName on the inner function and exposing only the named export
- * avoids that transform bug.
  */
+const PostsTabContent = React.memo(PostsTabContentInner);
+
+/**
+ * `TabContent` —— Discover 页 4 个 Tab 的统一入口（dispatcher）。
+ *
+ * 为什么这里只做 dispatcher、不把所有逻辑塞进一个函数：
+ *   - Posts 型 Tab 的实现里挂了十几个 hook（useRef / useMemo / useCallback /
+ *     useEffect），而 "买手店" Tab 的数据模型与之毫无交集；
+ *   - 把两套逻辑放进同一个函数，要么强行共享 hook（破坏 SRP），要么用
+ *     `if (tab === "buyer") return ...` 提前 return 再调 hook —— 后者
+ *     违反 React `rules-of-hooks` (hook 必须出现在每次 render 的同一顺序)；
+ *   - 拆成两个子组件（PostsTabContent / BuyerTabContent）之后，dispatcher
+ *     只负责 3 行路由逻辑，两个子组件各自在自己的函数体顶层调 hook，
+ *     eslint + React 运行时双重意义上的干净。
+ *
+ * Discriminated union (`props.tab` 做判别字段) 让上游调用点在写
+ * `<TabContent tab="buyer" .../>` 时，TS 会强制要求必须传买手店回调、
+ * 同时不接受 `tabPosts` 等 Posts 系字段；反之 `tab="recommend"` 也不接受
+ * `onSearchPress` 等买手店系字段。
+ *
+ * NOTE — 这个 dispatcher 故意命名成 `TabContentInner`：
+ *   react-refresh/babel 会把"被 React.memo 包裹的那个函数" 视作本文件的
+ *   "primary component"，并通过 `$RefreshReg$(TabContentInner, ...)` 在 HMR
+ *   注册表里长期驻留这个识别符。如果我们历次重构时这个识别符变来变去
+ *   （比如 `TabContentInner` → `TabContentDispatcher`），Fast Refresh 在
+ *   iOS Hermes 下会因为旧 bundle 的注册表还指着老名字而抛
+ *   `ReferenceError: Property 'TabContentInner' doesn't exist`。
+ *
+ *   对外导出名 `TabContent` 没动；displayName 也保留在这个内部函数上，
+ *   而不要放到 `React.memo(...)` 的返回值上 —— `react-refresh/babel` ×
+ *   `@babel/plugin-transform-typescript` 的 scope-tracker 交互会把加在
+ *   memo 结果上的 displayName 错误擦除，在 iOS Hermes 下产生
+ *   `ReferenceError: Property 'TabContent' doesn't exist`。
+ */
+const TabContentInner: React.FC<TabContentProps> = (props) => {
+  if (props.tab === "buyer") {
+    return (
+      <BuyerTabContent
+        isActive={props.isActive ?? false}
+        onScroll={props.onScroll}
+        onSearchPress={props.onSearchPress}
+        onStorePress={props.onStorePress}
+        onProductPress={props.onProductPress}
+        onOpenAllStores={props.onOpenAllStores}
+        onOpenProductList={props.onOpenProductList}
+      />
+    );
+  }
+  return <PostsTabContent {...props} />;
+};
+
+TabContentInner.displayName = "TabContent";
+
 export const TabContent = React.memo(TabContentInner);
 
 const masonryItemStyles = StyleSheet.create({

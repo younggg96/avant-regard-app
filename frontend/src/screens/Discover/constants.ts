@@ -3,10 +3,12 @@ import { Dimensions } from "react-native";
 export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Tab 索引映射
+// buyer 位于 recommend 与 following 之间，顺序与 DiscoverTabBar 视觉顺序保持一致。
 export const TAB_INDEX_MAP = {
   forum: 0,
   recommend: 1,
-  following: 2,
+  buyer: 2,
+  following: 3,
 } as const;
 
 // Header 动画配置

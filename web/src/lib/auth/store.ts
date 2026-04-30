@@ -20,6 +20,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import { refreshToken as refreshTokenApi, type LoginResponse } from "./service";
+import { config } from "../config";
 
 export interface AuthUser {
   id: string;
@@ -116,6 +117,30 @@ const browserStorage: StateStorage = {
   },
 };
 
+/**
+ * Fire-and-forget profile fetch to populate avatar after login / rehydration.
+ * Uses plain fetch to avoid circular dependency with apiClient.
+ */
+async function hydrateProfile(userId: number, token: string) {
+  try {
+    const res = await fetch(
+      `${config.apiBaseUrl}/api/user-info/${userId}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) return;
+    const envelope = await res.json();
+    const data = envelope?.data ?? envelope;
+    if (data?.avatarUrl) {
+      const state = useAuthStore.getState();
+      if (state.user && state.user.userId === userId) {
+        state.updateUser({ avatar: data.avatarUrl });
+      }
+    }
+  } catch {
+    /* best effort — avatar will show initial instead */
+  }
+}
+
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
@@ -159,6 +184,10 @@ export const useAuthStore = create<AuthStore>()(
         });
 
         get().startAutoRefresh();
+
+        if (!user.avatar) {
+          hydrateProfile(response.userId, response.accessToken);
+        }
       },
 
       logout: () => {
@@ -313,6 +342,9 @@ export const useAuthStore = create<AuthStore>()(
               store.refreshTokens();
             } else {
               store.startAutoRefresh();
+            }
+            if (!store.user?.avatar && store.user?.userId && store.tokens?.accessToken) {
+              hydrateProfile(store.user.userId, store.tokens.accessToken);
             }
           }, 500);
         }

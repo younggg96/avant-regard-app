@@ -1,5 +1,1453 @@
 # Progress Log
 
+## 2026-04-29: 修复 UserMenu 头像不显示
+
+### 问题现象
+
+Web 端 Header UserMenu 组件中，已登录用户始终只显示首字母而非头像图片。
+
+### 根因
+
+`LoginResponse` 不包含 `avatarUrl` 字段，而 `loginWithResponse` 构造 `AuthUser` 时设 `avatar: currentUser?.avatar`——首次登录 `currentUser` 为 `null`，所以 avatar 永远是 `undefined`。localStorage 持久化了这个 `null` 状态，后续页面刷新也无法自动恢复。
+
+### 修复
+
+在 `web/src/lib/auth/store.ts` 中新增 `hydrateProfile` 辅助函数：
+- 登录成功后，若 avatar 为空，fire-and-forget 调用 `/api/user-info/:userId` 取回 `avatarUrl` 并 `updateUser({ avatar })`。
+- `onRehydrateStorage` 中同理，若持久化数据中 avatar 缺失也触发补全。
+- 使用 plain `fetch` 避免与 `apiClient` 循环依赖。
+
+---
+
+## 2026-04-29: 修复买手店审核通过生成的 store id 含中文 / 格式不一致
+
+### 问题现象
+
+Web 端访问 `http://localhost:3100/stores/user-%E4%B8%8A%E6%B5%B7-1777296718133`（解码后 `/stores/user-上海-1777296718133`）持续 404. 后端 `GET /api/buyer-stores/user-上海-1777296718133` 返回 `data: null` —— `buyer_stores` 表里虽然确有这个 id 的记录, 但这一类 id 从设计上就不应该长这样：
+
+- 主键里塞中文, URL 被 encode 成一串 `%E4%B8%8A%E6%B5%B7` 又丑又难分享；
+- 和原有 Excel 导入的 `sh-037` / `bj-001` 以及后端 `_generate_store_id` 自己生成的 `u-citySlug-{submissionId}` 三种格式并存, 无一致性；
+- 前缀 `user-` 和迁移 018 注释里写的约定 (`u-{city}-{timestamp}`) 也对不上.
+
+### 根因
+
+`frontend/src/screens/StoreReviewScreen.tsx` 第 216-217 行, 管理员**单条审核通过**按钮里客户端自拼 storeId：
+
+```typescript
+const cityCode = submission.city.slice(0, 2).toLowerCase();
+const storeId = `user-${cityCode}-${Date.now()}`;
+await reviewSubmission(submission.id, { status: "APPROVED", storeId });
+```
+
+- `submission.city = "上海"` → `slice(0, 2)` 按 UTF-16 code unit 切, 中文 BMP 字符各占 1 unit, 结果 `cityCode = "上海"` 原样保留；`toLowerCase()` 对中文不起作用.
+- `Date.now()` 作为"唯一性"依据 —— 不是稳定的 `submission.id`, 点两次会出两个不同 id（本次没触发只是因为 PENDING→APPROVED 只跳变一次）.
+- 后端 `review_submission` 对 `data.storeId` 零校验, `data.storeId or self._generate_store_id(...)` 直接采信, 中文就一路落到 `buyer_stores.id`.
+
+批量审核走 `batch_review_submissions → review_submission(single_req without storeId)`, 走的是后端 `_generate_store_id` 兜底, 因此历史脏数据只出现在"单条点通过"这条路径.
+
+### 修复
+
+选型（和用户对齐）：**只改新生成的, 存量不动；采用 `u-<10 位 hex>` 短 UUID；前端不再自拼 storeId**.
+
+#### 1. `backend/app/services/buyer_store_community_service.py`
+
+- `_generate_store_id(city, submission_id)` → `_generate_store_id()`, 改为 `return f"u-{uuid.uuid4().hex[:10]}"`. 16^10 ≈ 1.1 × 10^12 种可能, 可预见数据量内碰撞概率可忽略；即便撞车, `buyer_stores.id` 主键会直接抛错向上冒.
+- `review_submission` 加一层防御式校验：`client_store_id` 必须匹配 `^[a-z0-9\-]{1,100}$` 才接受, 否则忽略走服务端兜底. 正则沉淀为模块级常量 `_STORE_ID_SAFE_RE` 复用.
+- 这层校验同时防未来别的客户端再犯同样的错 —— 即便有人又传中文 / 特殊字符, DB 主键也不会再被污染.
+
+#### 2. `frontend/src/screens/StoreReviewScreen.tsx`
+
+- 删掉 `handleApprove` 里 `cityCode` / `storeId` 两行, `reviewSubmission` 不再带 `storeId` 字段. 完全交给后端生成, 保持前后端唯一真相源单一（SSOT: 后端的 `_generate_store_id`）.
+
+### 验证点（代码侧）
+
+- 新审核一条买手店提交, 检查 `buyer_stores.id` 形如 `u-a7c4f1b2e9`, 纯 ASCII 短 id；访问 `/stores/<id>` SSR 正常.
+- 用改之前的客户端（理论上传 `user-<中文>-<ts>`）测试, 后端应忽略非法 id, 回落到 `u-<10hex>`, 不再产生脏数据.
+
+### 补充：存量数据一并清理 (`041_normalize_buyer_store_ids.sql`)
+
+代码侧止血只解决**新增**的脏数据, 已经落到 DB 的 `user-上海-1777196193596` 这类历史记录依然在, 对应的 `/stores/<dirty-id>` SSR 也依然 404. 用户确认"每张表都继续修改", 本迁移在事务内一次性原子重命名.
+
+#### 涉及表（13 张 + 1 个 VIEW 自动跟随）
+
+| 有显式 FK | 仅 VARCHAR(100) 隐式关联 |
+| --- | --- |
+| `store_profile_configs.store_id` (PK) | `user_submitted_stores.approved_store_id` |
+| `store_entry_cards.store_id` | `buyer_store_comments.store_id` |
+| `store_product_categories.store_id` | `buyer_store_ratings.store_id` |
+| `store_products.store_id` | `buyer_store_favorites.store_id` |
+| | `store_merchants.store_id` |
+| | `store_announcements.store_id` |
+| | `store_banners.store_id` |
+| | `store_activities.store_id` |
+| | `store_discounts.store_id` |
+
+`buyer_store_rating_stats` 是 VIEW, 从 `buyer_store_ratings` 聚合, 数据跟随自动更新.
+
+#### 迁移流程（全部包在 BEGIN … COMMIT 里）
+
+1. **建临时 `store_id_remap`**：只挑 id 含非 `[a-z0-9-]` 字符的行（正则 `[^a-z0-9\-]`），`sh-037` / `bj-001` / `u-*` 等合法历史 id 一律保留不动.
+2. **新 id 生成**：`'u-' || substring(replace(gen_random_uuid()::text, '-', ''), 1, 10)`. 每行独立评估, 16^10 ≈ 1.1T 种可能, 碰撞概率可忽略; 仍做自撞 + 与既有合法 id 撞车的双重断言, 撞了直接抛错 rollback 不留痕.
+3. **动态 drop 所有引用 `buyer_stores` 的 FK**：不假设 `{table}_{col}_fkey` 默认命名, 从 `pg_constraint` 反查 `confrelid = 'buyer_stores'::regclass AND contype = 'f'`, 逐个 `ALTER TABLE … DROP CONSTRAINT`. 这样即便将来有人手动改过约束名也不会留孤儿约束.
+4. **`UPDATE` 主表 + 13 张关联表**：主表先改, 再用 `FROM store_id_remap r WHERE t.store_id = r.old_id` 逐张刷新关联表.
+5. **重建 4 个 FK**：按标准命名 `{table}_store_id_fkey` 重建, 并**顺手加上 `ON UPDATE CASCADE`**. 未来再改 `buyer_stores.id` 时, 4 张有 FK 的表会自动跟随, 省掉下一次迁移的 drop/update/add 轮回; `ON DELETE CASCADE` 原行为保持不变.
+6. **最终断言**：`SELECT COUNT(*) FROM buyer_stores WHERE id ~ '[^a-z0-9\-]'` 必须为 0, 否则抛错 rollback.
+7. **刷 COMMENT**：`buyer_stores.id` 的 COMMENT 改为 `管理员导入: {cityCode}-{seq}; 用户提交审核通过: u-<10 位 hex>`, 和迁移 018 里已经过期的老注释 (`u-{city}-{timestamp}`) 保持一致性.
+
+#### 刻意不做
+
+- **不迁移合法的历史 id** (`sh-037` / `bj-001` / `u-shanghai-42` / `u-a7c4f1b2e9` 等)：这些 id 对应的分享链接、收藏、评论、评分都仍然有效, 强行改会造成既有分享链接大面积失效.
+- **不删 `ReviewSubmissionRequest.storeId` 字段**：保留 Optional 入参 + 代码侧的 `_STORE_ID_SAFE_RE` 校验层, 老客户端升级前仍能通过; 任何非法格式都会在代码层静默替换.
+- **不改 `buyer_stores.id` 的 VARCHAR(100) → UUID 列类型**：保守不动, 13 张表全改列类型风险太大, 且 `u-<10 位 hex>` 本就满足 VARCHAR, 没必要.
+
+#### 如何运行
+
+SQL 文件为独立原子事务, 直接复制到 Supabase SQL Editor（或连上 psql）一次性运行即可. 建议在生产跑之前:
+
+1. 在 staging 上 dry-run 一遍, 确认 `store_id_remap` 只命中预期的脏 id;
+2. 备份 `buyer_stores` 表（`CREATE TABLE buyer_stores_backup_041 AS TABLE buyer_stores;` 这种 Supabase 也可接受）;
+3. 然后再在生产事务内跑 `041_normalize_buyer_store_ids.sql`.
+
+#### 验证点（数据侧）
+
+- 运行后 `SELECT id FROM buyer_stores WHERE id ~ '[^a-z0-9\-]'` 应返回 0 行;
+- 挑一条从 `user-*` 被重命名的新 id, 依次查 `buyer_store_favorites / buyer_store_comments / buyer_store_ratings / store_products / …` 里对应 store_id 是否全部切到新值（不再有 `user-*` 引用）;
+- 访问 `/stores/<new-id>` SSR 正常返回店铺详情；原来的 `/stores/user-%E4%B8%8A%E6%B5%B7-*` URL 由 `StoreDetailPage` 的 `notFound()` 兜底 404, 如需平滑 redirect 可后续单起一张 `store_id_alias(old_id PK, new_id)` 表.
+
+---
+
+## 2026-04-29: 修复后端 Docker 部署 `context deadline exceeded` 失败
+
+### 问题现象
+
+部署日志：
+
+```
+#9 DONE 332.0s                       # pip install 耗时 5.5 分钟
+#10 [6/6] COPY . .  DONE 6.3s
+#11 exporting to oci image format
+#11 exporting layers 14.8s done
+#11 ERROR: no active session for sq2ltb38cqfacksr0x80ttms0: context deadline exceeded
+🔴 Build Failed: build image: build failed: failed to solve: DeadlineExceeded
+```
+
+### 根因
+
+1. **`backend/.dockerignore` 漏掉了实际的虚拟环境目录名**：写的是 `.venv`（带点），但项目里真实的虚拟环境叫 `venv`（不带点，约 140 MB）. 结果 `COPY . .` 把整个 venv 塞进镜像，再加上 `backend/scripts/migrate_memfire_to_supabase/`、`.env` 等也没被忽略，导致最终镜像体积异常，远程 BuildKit 导出层到 registry 时会话超时.
+2. **Dockerfile 是单阶段构建**，`gcc` / `libpq-dev` / `build-essential` 全部留在运行时镜像里；`pip install --no-cache-dir` 每次都要下载 + 编译 Pillow / cryptography / bcrypt / pydantic-core 等 wheel，pip install 单步就要 332s，无任何跨构建缓存可复用.
+
+### 修复
+
+#### 1. `backend/.dockerignore` 重写
+
+- 补上真实的 `venv/` / `env/` / `ENV/`；
+- 排除 `scripts/migrate_memfire_to_supabase/`（一次性迁移脚本，不应进生产镜像）；
+- 排除 `.env` / `.env copy` / 各类 `.env.local`，只保留 `.env.example`；
+- 排除 `Dockerfile*` / `docker-compose*.yml` / `*.md` / `run.py` 等镜像内不需要的文件；
+- 用 `**/__pycache__` 兜底所有层级的缓存目录.
+
+#### 2. `backend/Dockerfile` 改为多阶段构建 + BuildKit 缓存
+
+Stage 1 `builder`：装 `gcc` / `libpq-dev` / `build-essential`，`pip wheel` 把所有依赖（含传递依赖）预编译成 wheel 放 `/build/wheels`，并挂 `--mount=type=cache,target=/root/.cache/pip` 复用 pip 下载缓存.
+
+Stage 2 `runtime`：基于 `python:3.11-slim`，只装 `libpq5` + `curl`（HEALTHCHECK 要用），用 `pip install --no-index --find-links=/wheels` 从前一阶段的 wheel 直接安装，不再联网不再编译；装完删掉 `/wheels`. 新增 `app` 非 root 用户运行.
+
+预期收益：
+
+- 冷构建：gcc 等构建依赖不再进最终镜像，运行时体积显著下降；
+- 热构建（redeploy 命中 pip 缓存）：pip install 从 ~332s → ~20s 级；
+- 导出 OCI 镜像的层体积下降后，远程 builder 不再触发 session 超时.
+
+#### 3. `backend/docker-compose.yml` 顺手修
+
+healthcheck 里的 URL 从 `http://localhost:8000/health` 改为 `8080/health`，和 Dockerfile / `SERVER_PORT` 对齐（本地 compose 才会用到，不影响云部署）.
+
+### 验证点
+
+- 重新触发部署，关注 `#9` pip wheel 步骤耗时（冷构建应 <3 分钟，二次部署 <30 秒）；
+- 镜像 pull 下来后 `docker images` 看体积，应从原来的几 GB 级降到 ~500 MB 左右；
+- 容器启动后 `curl http://<host>:8080/health` 走通，HEALTHCHECK 转 `healthy`.
+
+---
+
+## 2026-04-29: Web 消费者侧重构 —— Phase 6（`/stores` Tab 切换 + `/stores/[id]` 接入商品系统）
+
+> Phase 6 补齐 Phase 5 规划里 "Web 消费者侧同构" 的坑：`/stores` 页加上「买手店列表 / 买手店地图」Tab 切换；`/stores/[id]` 从单张门店信息页重构为对齐移动端 BuyerTab 的店铺首页（顶部横向快切条 + Profile + 入口卡片 + 3 主 Tab + 商品网格），并新增 `/stores/[id]/products/[productId]` 商品详情页（图片轮播 + 点赞 + 评论）. 至此 Phase 1 铺的 4 组商品系统 API（profile-config / entry-cards / categories / products）在 Web 端形成了完整闭环：商家后台发布（Phase 5）→ 消费者 Web 浏览（Phase 6）.
+
+### Part A: `/stores` 页 Tab 切换
+
+#### 1. `web/src/lib/services/buyer-store.ts`
+
+- `BuyerStore.hasMerchant?: boolean` —— 和移动端 / 后端对齐，供列表 Tab 在卡片左上角打「已入驻」徽章；
+- `BuyerStoreFilterParams` 新增 `withMerchantFirst?: boolean`；
+- `getAllStores` 默认启用 `withMerchantFirst=true`，让地图底部 aside 也把已入驻店排前面；
+- `getAllBuyerStores(filters)` 新增，走 `/api/buyer-stores/all` —— 后端永远入驻优先、每条带 `hasMerchant`，列表 Tab 用这个端点.
+
+#### 2. `web/src/components/stores/StoresListView.tsx`（新增）
+
+- 对齐移动端 `AllBuyerStoresScreen`：2/3/4 列响应式网格，卡片 = 封面 + 店名 + 已入驻徽章 + 国家·城市 + 品牌前 3；
+- 分页：下方"加载更多"按钮（剩余数提示），简单可靠；
+- 过滤器 prop 稳定 key：`JSON.stringify(filters)` 作为 useEffect 依赖，避免对象引用导致的空重拉；
+- 点击卡片直接走 Next `<Link>` 跳 `/stores/[id]` —— 列表 Tab 没有"保留视口"的诉求，直接 push 更顺；
+- isFavorited 通过函数 prop 从父页面透传（`useStoreFavorites()` 的 `isFavorited`），不再构造 Set.
+
+#### 3. `web/src/app/stores/page.tsx`
+
+- 顶部新增 Tab 行：`买手店列表`（默认）| `买手店地图`；
+- `view` 参数放 URL search params，`view=list` 默认省略保持 URL 干净；
+- 搜索 / 地区 chip / 高级筛选 / 收藏 / 详情抽屉 在两个 Tab 间共享；
+- 地图 Tab 的状态栏（附近、视口计数）条件渲染；
+- 标题从「买手店地图」改为「买手店」，副标题和整体结构保持不变.
+
+### Part B: `/stores/[id]` 重构（BuyerTab Web 镜像）
+
+#### 1. `web/src/lib/services/store-product.ts` 扩展公开端点
+
+Phase 5 只铺了商家后台用得到的端点；消费者侧还需要 3 组公开入口：
+
+- `listPublicEntryCards(storeId)` → `/store/{id}/entry-cards`（只返 PUBLISHED）
+- `listPublicProducts(storeId, {categoryId/isNew/hasDiscount/searchQuery})` → `/store/{id}/products`
+- `ProductComment` 类型 + `listProductComments` / `createProductComment` / `deleteProductComment` / `likeProductComment` / `unlikeProductComment`
+- `likeProduct` / `unlikeProduct` / `checkProductLiked`
+
+`StoreProduct` 接口补 `likedByMe?: boolean | null` 字段，对齐后端 schema.
+
+#### 2. `web/src/lib/hooks/useStoreProfileConfigMap.ts`（新增）
+
+顶部店铺切换条需要同时显示多家店的 `logoImage`，一个"批量拉 N 个 profile-config"的 hook：
+
+- 内部按字典序排序 + join 出稳定 key，SWR 自动去重；
+- `dedupingInterval: 60_000` 缓存一分钟，切换不同店铺时不重复请求；
+- 单条失败不影响整批（逐条 try/catch）.
+
+后端没有批量 profile-config 端点，现阶段这是最简单的客户端合并方案；如果入驻店变很多（50+）再考虑服务端批量 API.
+
+#### 3. `web/src/components/stores/StoreTopSwitcher.tsx`（新增，对齐截图 1 顶部那一行）
+
+- 数据源：`getAllBuyerStores({pageSize: 30})` 取 `hasMerchant === true` 的前 12 家；
+- 若当前 storeId 不在前 12 里，把它顺手塞到第一位，避免"高亮丢失"；
+- logo 优先 profile-config.logoImage，其次 store.images[0]，再不济用店铺名前两个字.
+
+#### 4. `web/src/components/stores/StoreProfileBlock.tsx`（新增）
+
+- 左列：圆形 logo (132px) + 店名 + 认证勾 + shortDescription + 地点 + 3 列统计（关注 / 粉丝 / 获赞与收藏，后两格目前 "—" 占位）+ "关注" 按钮（走 useStoreFavorites，乐观更新）；
+- 右列：coverImage 4:3；
+- 下方跨 2 列：longDescription（whitespace-pre-wrap）+ tags chips（最多 6 个）；
+- 数据合并策略 profile-config 优先、store 基础信息兜底；未配置时自动拆 `store.description` 首行作 short、余下作 long.
+
+粉丝 / 获赞统计暂缺后端聚合端点，保持 `—` 占位；等后端有 `/stores/{id}/stats` 再接入.
+
+#### 5. `web/src/components/stores/StoreCategoryCards.tsx`（新增）
+
+- 公开端点 `/store/{id}/entry-cards` 拉 PUBLISHED 卡片；
+- 未配置时 fallback 到 3 张硬编码「全部商品 / 近期上新 / 折扣专区」，和移动端 "mock 兜底" 同样策略；
+- 点击事件委托给父页面：通过 `onNavigate({type, targetCategoryId, label})` 解耦卡片 UI 和导航逻辑 —— CLASSIFICATION/DISCOUNT/NEW_ARRIVAL/EVENT 分别对应不同的 Tab 切换；
+- EVENT 卡片点击弹 toast "活动入口尚未开放"，Phase 7+ 做.
+
+#### 6. `web/src/components/stores/StoreProductGrid.tsx`（新增）
+
+一个组件复用 3 个场景：
+
+- 店铺首页 「近期上新」区块：`preview={pageSize: 8, title, viewAllHref}` + `filters={isNew: true}` + `columns="dense"`（4 列铺满），右上角带「查看全部 →」；
+- 全部商品 Tab：全量分页，接受 `categoryId` / `hasDiscount` filter；
+- 上新 Tab：全量分页 + `isNew: true`.
+
+所有商品卡点击跳 `/stores/[storeId]/products/[productId]`.
+
+#### 7. `web/src/app/stores/[id]/page.tsx` + `view.tsx`（拆分重构）
+
+拆成两个文件：
+
+- `page.tsx`（服务端）：`generateMetadata` + 404 + OG images，提供 SEO；
+- `view.tsx`（客户端）：组合上面 4 个组件 + Tab 切换.
+
+3 个主 Tab：`home`（店铺首页）/ `all`（全部商品）/ `new`（上新），`tab` 走 URL `?tab=`，默认 home 省略不写；`categoryId` / `discount` 也走 URL 便于分享 `?tab=all&categoryId=5&discount=1`.
+
+入口卡片点击 → 切 Tab + 设置 filter（`CLASSIFICATION` 跳 all+categoryId、`DISCOUNT` 跳 all+discount=1、`NEW_ARRIVAL` 跳 new tab）.
+
+### Part C: `/stores/[id]/products/[productId]` 商品详情页
+
+#### 1. `page.tsx` + `view.tsx`（新增）
+
+同样拆 server/client：
+
+- `page.tsx`：独立 `fetchProduct` 用原生 `fetch`（不复用 `@/lib/api#request` 因它未 export，不复用 `apiClient` 因它绑 zustand）；`generateMetadata` 拿 title / description / OG image；未找到 404.
+- `view.tsx`：
+  - 左列：图片轮播（左右按钮 + 指示点 + 缩略图行），NEW / SALE 徽章；
+  - 右列：分类 / 标题 / 品牌 / 价格（折扣价红色 + 原价划线） / tags / 点赞按钮 / 评论数 / 浏览数 / 描述；
+  - 下方：评论区（拉公开评论 + 登录发 / 删 / 点赞），无限加载更多.
+- 点赞走乐观更新：本地先改 `likedByMe` / `likeCount`，请求失败自动回滚；评论删除 / 点赞同策略.
+
+### 涉及到的所有文件
+
+**新增**：
+
+- `web/src/components/stores/StoresListView.tsx`
+- `web/src/components/stores/StoreTopSwitcher.tsx`
+- `web/src/components/stores/StoreProfileBlock.tsx`
+- `web/src/components/stores/StoreCategoryCards.tsx`
+- `web/src/components/stores/StoreProductGrid.tsx`
+- `web/src/lib/hooks/useStoreProfileConfigMap.ts`
+- `web/src/app/stores/[id]/view.tsx`
+- `web/src/app/stores/[id]/products/[productId]/page.tsx`
+- `web/src/app/stores/[id]/products/[productId]/view.tsx`
+
+**修改**：
+
+- `web/src/lib/api.ts`：`BuyerStore` 加 `hasMerchant?: boolean`；
+- `web/src/lib/services/buyer-store.ts`：`withMerchantFirst` 参数、`getAllBuyerStores` 函数、`getAllStores` 默认启用入驻优先；
+- `web/src/lib/services/store-product.ts`：公开端点 + `ProductComment` 类型 + `StoreProduct.likedByMe`；
+- `web/src/app/stores/page.tsx`：Tab 切换 + 条件渲染 ListView / MapView；
+- `web/src/app/stores/[id]/page.tsx`：拆分 server 壳 + 客户端 view.
+
+### 影响面与回归验证
+
+- `tsc --noEmit`：0 错误；
+- `eslint`：Phase 6 涉及的全部文件 0 报错 0 警告；
+- 无后端改动；无移动端改动（Phase 1-4 行为保持）；
+- SEO：`/stores/[id]` / `/stores/[id]/products/[productId]` 的 `generateMetadata` 都正常输出 OG 图片 / title / description.
+
+### 补完（同日，基于用户"继续完成 store detail page"要求）
+
+原 Phase 6 按"minimal 首页"策略省掉了截图 1 里的**3 张服务承诺卡**和**品牌故事大卡**；用户实际访问 `/stores/[id]` 后希望补齐到截图完整度，因此做了以下延伸：
+
+**新增 Web 组件**：
+
+- `web/src/components/stores/StoreServiceCards.tsx` —— 3 张服务承诺（全球直采 / 正品保障 / 私人档案服务），仅 `hasMerchant === true` 时展示；通过 `profile.tags` 含特定关键词（如"全球直采"/"正品保障"/"私人档案"）对应卡片高亮，让商家可以通过 tag 控制哪些"亮起".
+- `web/src/components/stores/StoreBrandStoryCard.tsx` —— 品牌故事大卡（双列：左文案 + 右视觉图）；仅 `shortDescription` 或 `longDescription` 至少一项存在时渲染，避免空壳；视觉图优先 `profile.coverImage`，其次 `store.images[1]`（避免和 Profile 的 cover 撞图）.
+
+**拆分**：`StoreProfileBlock` 里原先下方的 `longDescription` + `tags` 渲染被移除，现在这两项统一由 `StoreBrandStoryCard` 承担；Profile 区块更聚焦于"身份 + 地点 + 统计"三件事，视觉更干净.
+
+**后端小改动** —— 让详情页的 `hasMerchant` 能准确回填：
+
+- `backend/app/services/buyer_store_service.py#has_approved_merchant(store_id)` 新增单条 store 的 merchant 判断（查 `store_merchants where store_id=? and status=APPROVED limit 1`）；
+- `backend/app/api/routes/buyer_store.py` 的 `GET /{store_id}` 响应里额外回填 `hasMerchant` 字段. 这样 `/stores/[id]` SSR 拿到的 `initialStore` 就带 `hasMerchant`，`StoreServiceCards` 能第一帧正确渲染.
+
+**兜底**：
+
+- 普通用户提交的店（`hasMerchant=false`）：不展示服务承诺卡；Profile / BrandStoryCard 按 `store.description` 自动拆首行作 short、余下作 long 兜底（已在 Phase 6 实现）；CategoryCards / 近期上新走 fallback / 空占位. 整页结构完整不塌缩.
+- 已入驻商家店：Profile → 服务承诺 → 品牌故事 → 3 Tab → 商品网格 —— 整体视觉对齐截图 1.
+
+### 下一步（Phase 7 预告）
+
+- 活动卡片 EVENT 落地：需要后端活动商品数据模型 + 前端活动列表页；
+- 商品详情页评论的"@回复"功能：现在只做了 flat 评论，和移动端 flat 体验对齐；需要 nested 时再迭代；
+- 店铺统计数据（粉丝 / 获赞与收藏）等后端聚合端点就绪后替换占位符.
+
+---
+
+## 2026-04-29: 买手店 Tab 去 Mock —— 改为纯真实数据消费
+
+### 背景
+
+早期买手店 Tab 为了设计稿完成度提前接入，前端 hook `useBuyerTabData` 内嵌了大量 Mock：8 张 Unsplash 商品图池、8 条「{brand} 24SS Bauhaus Flight 皮质夹克」文案模板、4 张兜底入口卡片、4 条特色 Banner 季度文案、hash 合成的粉丝/关注/帖子数、3 个硬编码促销标签（「包邮 / 官方认证 / 全球采购」），以及店铺封面 / 长短介绍的 Unsplash 兜底。随着 Phase 5 商家商品系统（Web SaaS）落地和商家 Banner 数据真正进入 DB（见同日 `file://` 图片 bugfix），这些 Mock 已经与真实数据并存，互相掩盖，给用户造成"这店有很多粉丝、很多 NEW/SALE 单品"的假象。用户此时明确要求「不需要 mockdata 了」，把 BuyerTab 全面改回真实数据。
+
+### 改动范围
+
+#### 1. `frontend/src/screens/Discover/components/BuyerTab/hooks/useBuyerTabData.ts`
+
+删除的 Mock：
+
+- `MOCK_PRODUCT_IMAGES` / `PRODUCT_TITLE_TEMPLATES` / `PRODUCT_BADGES` / `FALLBACK_BRANDS` / `BASE_PRICE_CENTS_TABLE` —— 合成 Mock 商品的 4 件套；
+- `buildMockProducts` —— 基于 hash 给每家店合成 8 条 Mock 单品的函数；
+- `FEATURE_BANNER_PALETTE` + `pickBanner` —— 4 条季度 Banner 兜底池；
+- `FALLBACK_ENTRY_CARDS` + `@deprecated CATEGORY_CARDS` —— 4 张入口卡片 Mock；
+- `FALLBACK_LONG_DESCRIPTION` / `FALLBACK_COVER_IMAGE` —— 长简介 + 封面兜底；
+- `hashStoreSeed` —— 上述所有"伪稳定数字"的 hash 种子，Mock 撤掉后不再有消费者。
+
+新增 / 改造：
+
+- 新增 `bannersMap: Record<string, StoreBanner[]>` 状态；`loadStoreConfig` 从并发 3 路升为 4 路，追加 `getStoreBanners(storeId)`，失败回空数组，不阻塞其它资源；
+- 新增纯函数 `buildFeatureBanner(banners)`：按 `PUBLISHED + http(s) URL` 过滤、按 `sortOrder + id` 升序，返回第一条适配成 `BuyerStoreFeatureBanner`；没有可展示的真实 banner 就返回 `null`，UI 侧 `{banner && <NewArrivalBanner />}` 自动跳过；
+- `products` memo 直接读 `productsMap[storeId]`，为空即返回 `[]`；由 ProductGrid 渲染「暂无匹配的单品」空态；
+- `entryCards` memo 直接返回 `buildEntryCardsView(remote)`，空数组时由 `CategoryCards` 的 `if (!hasCards) return null` 隐藏整段；
+- `banner` memo 从 `bannersMap` 读真实 banner；
+- `buildProfileView` 精简：
+  - 粉丝数走真实 `store.favoriteCount ?? 0`；"关注 / 帖子"两列走 `"0"`，注释说明真实接口出来后替换，而不是用 hash 伪造；
+  - `tags` 优先级：`config.tags` > `store.style` > `[]`（两者都是真实数据，不再补 "包邮 / 官方认证 / 全球采购"）；
+  - `shortDescription` / `longDescription`：无配置时返回空串（原先硬编码"专注引荐全球独立设计师品牌..."）；
+  - `coverImage` 从 `string` 收窄到 `string | undefined`，无配置时返回 `undefined`，UI 侧已支持灰块占位（StoreProfileCard L134-136）；
+- `buildProductsFromRemote` 去掉"无首图时回退 Unsplash"的分支，改为空串让 `OptimizedImage` 走自家灰块占位，避免「真实商品卡 + 无关素材图」的割裂。
+
+#### 2. `frontend/src/screens/Discover/components/BuyerTab/types.ts`
+
+- `BuyerStoreProduct.realProductId: number`（去掉 optional —— 去 mock 后一定有真实 id）；
+- `BuyerStoreProduct.image` 注释改为"商家没上图时空串"；
+- `BuyerStoreFeatureBanner` 改成：`{ bannerId: number; image: string; title?: string; subtitle?: string; cta?: string; linkUrl?: string }` —— 只保证 `bannerId` + `image`，其余条件渲染；
+- `BuyerStoreProfileView.coverImage?: string` —— optional，UI 支持空态；
+- 文件顶部 docstring 重写，说明 4 组资源的真实后端来源。
+
+#### 3. `frontend/src/screens/Discover/components/BuyerTab/NewArrivalBanner.tsx`
+
+- 把原本硬渲 3 段文案（subtitle / title / cta）改成条件渲染：商家没配任何文案时整块左侧文案区折叠，图片撑满整条 banner（新增 `imageFull` style）；
+- CTA 文案：商家没配时默认显示「查看详情」，让用户始终感知到"可点"；
+- 文件顶部 docstring 同步说明数据源是 `StoreBanner`。
+
+#### 4. `frontend/src/screens/Discover/components/BuyerTab/index.tsx`
+
+- `handleBannerPress` 接入 `recordBannerClick(bannerId)` 埋点（fire-and-forget，失败只打 warn），然后仍落到店铺详情页 —— 真实 banner 的点击统计现在会回流到后端 `store_banners.click_count`。
+
+#### 5. `frontend/src/screens/Discover/index.tsx`
+
+- `handleBuyerProductPress` 简化：去掉"Mock 单品（realProductId 缺省）→ 落到 BrandDetail"的 fallback 分支。类型收紧到 `{ realProductId: number }`，逻辑直连 StoreProductDetail。
+
+#### 6. `frontend/src/screens/Discover/components/BuyerTab/CategoryCards.tsx`
+
+- Docstring 里关于 `FALLBACK_ENTRY_CARDS` 的说明删除，改为"商家未配置 → 隐藏整段"。
+
+### 影响面
+
+- 商家还没在商家管理页 / Web SaaS 配过内容的店铺，用户切过去看到的是：
+  - 上方店铺简介：真名 + 真地址 + 真粉丝数（0 或 favoriteCount），无促销标签、无长简介、无封面（灰块），logo 走首字母；
+  - 中间入口卡片：完全隐藏（以前是 4 张 Unsplash 假卡）；
+  - 特色 Banner：不渲染（以前是 4 条季度文案池之一）；
+  - 商品网格：「暂无匹配的单品 · 敬请期待买手店上新」（以前是 8 条 Mock）。
+- 已经在 Phase 5 配过内容的店铺（比如用户的 `es-003`，配了真实 banner "店里上新" + Phase 5 商品），用户会直接看到自己上的东西，无 Mock 干扰。
+- 商家真实 banner 点击会被 `/api/store-merchants/banners/{bannerId}/click` 记录到 `click_count`，给后台商家数据看板提供真实指标。
+- 配合同日 schema 层 URL 校验 bugfix：`buildFeatureBanner` 对 URL 做了 `http(s)://` 过滤兜底，即便 DB 里有历史 `file://` 脏数据，买手店 Tab 也不会把 broken 图塞进 `NewArrivalBanner`。
+
+### 受影响文件
+
+- `frontend/src/screens/Discover/components/BuyerTab/hooks/useBuyerTabData.ts`
+- `frontend/src/screens/Discover/components/BuyerTab/types.ts`
+- `frontend/src/screens/Discover/components/BuyerTab/NewArrivalBanner.tsx`
+- `frontend/src/screens/Discover/components/BuyerTab/index.tsx`
+- `frontend/src/screens/Discover/components/BuyerTab/CategoryCards.tsx`
+- `frontend/src/screens/Discover/index.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-29: Bugfix —— 商家 Banner / 活动 / 折扣 图片在 Web 后台显示 broken
+
+### 现象
+
+Web 商家后台 `/me/merchant/[merchantId]` → Banner Tab 里，由 iOS 客户端发布的 banner 缩略图渲染为 broken 图标。数据库里的 `image_url` 是 `file:///var/mobile/Containers/Data/Application/<uuid>/Library/Caches/ImagePicker/<uuid>.jpg` 这种 iOS 沙盒本地路径——换一台设备或在浏览器里根本访问不到。
+
+### 根因（chain-of-thought）
+
+追踪到 `frontend/src/screens/MerchantManageScreen.tsx` 的 `pickImage`：选图后直接把 `expo-image-picker` 返回的 `result.assets[0].uri` 塞进 `formData[fieldName]`，然后 `createBanner / createActivity / createDiscount` 把它当 `imageUrl / coverImage` 发到后端。对照 admin 侧 `BannersTab.tsx` 正确走的是 `pickAndUploadImage → /api/files/upload-image → Storage https URL`。Merchant 商家后台这条路径漏掉了"上传"一步。Banner、活动封面、折扣封面三种场景全部同病。
+
+后端 schema 对 URL 也没做任何 scheme 校验，`file://` 一路畅通入库；Web 展示层拿着脏数据直接塞 `<img src>`，浏览器 404。
+
+### 修复（holistic）
+
+- `frontend/src/screens/MerchantManageScreen.tsx`
+  - 引入 `uploadImageFromUri`（`./admin/adminUtils` 现成的上传 helper）。
+  - 重写 `pickImage`：选图 → `POST /api/files/upload-image` → 拿到 Supabase Storage URL → 再写入 `formData`。
+  - 加 `uploadingField` 状态：上传期间对应缩略图区域显示 `ActivityIndicator + "上传中..."`，同时 `disabled` 防重入。上传失败弹 Alert。
+  - Banner / 活动 / 折扣三处 `Pressable` 都接入新状态机，表现一致。
+
+- `backend/app/schemas/store_merchant.py`
+  - 新增 `_validate_public_url` 私有 helper：对非空字符串必须以 `http://` 或 `https://` 开头，否则 `ValueError`。允许 None / 空串用于"可选字段 / 清除图片"场景。
+  - 挂 `field_validator` 到所有图片字段：`StoreBannerCreate.imageUrl` / `StoreBannerUpdate.imageUrl` / `StoreActivityCreate.coverImage` + `images[]` / `StoreActivityUpdate.coverImage` + `images[]` / `StoreDiscountCreate.coverImage` / `StoreDiscountUpdate.coverImage` / `StoreMerchantCreate.businessLicense` / `StoreMerchantUpdate.businessLicense`。即使未来又冒出一个新入口漏了上传步骤，后端也会 400 拦截。
+
+- `web/src/app/me/merchant/[merchantId]/page.tsx`
+  - 新增 `isDisplayableUrl()` + `<MerchantThumb />` 两个本地工具。对现存于 DB 的 `file://` 脏数据不再硬塞给浏览器；检测不可显示的 URL 时渲染虚线占位框 + "图片不可用 / 请重新上传" 文案，引导用户进入编辑弹窗重新选图。
+  - Banner / 活动 / 折扣三处列表项全部换用 `MerchantThumb`。
+
+### 影响面
+
+- 新写入：移动端 + 后端双保险，再也不会有 `file://` 之类 non-http URL 落库。
+- 旧数据：DB 里遗留的脏行不会自动清理（缺标题 / 链接等语义信息由用户来决定要不要保留），但 Web 后台不再渲染破图，用户点"编辑"重新选图 → 新上传流程会把 URL 更正。
+- 兼容性：`_validate_public_url` 对 None / 空串放行，不影响已有"可选封面 / 清除图片"的 PUT 请求。
+- Mobile 同屏体验：该脏数据在创建这张 banner 的 iOS 原机上由于本地 cache 还在，依旧能显示——这不是需要修的 case；修它反而会让数据所有者更困惑（看不到自己刚才发的 banner）。
+
+### 受影响文件
+
+- `frontend/src/screens/MerchantManageScreen.tsx`
+- `backend/app/schemas/store_merchant.py`
+- `web/src/app/me/merchant/[merchantId]/page.tsx`
+- `PROGRESS_LOG.md`
+
+---
+
+## 2026-04-29: 商家商品系统 —— Phase 5（Web SaaS 商家后台 —— 商品 / 分类 / 入口卡片 / 主页配置）
+
+> Phase 5 把 Phase 1 铺好的 4 组后端资源（`store_profile_configs` / `store_entry_cards` / `store_product_categories` / `store_products`）搬到 Web SaaS 商家后台 (`/me/merchant/[merchantId]/*`)。移动端只负责消费展示（Phase 2-4 已完成），所有 CRUD 入口只在 Web 端开。用户诉求"商家商品系统只做 web，不做移动端"在 Phase 5 完成闭环。
+
+### 改动范围（自底向上）
+
+#### 1. `web/src/lib/services/store-product.ts`（新增）
+
+1:1 对齐 `backend/app/api/routes/store_product.py` 的 27 个端点，覆盖 4 组资源：
+
+- `StoreProfileConfig`：`getProfileConfig` / `upsertProfileConfig`
+- `StoreEntryCard`：`listMerchantEntryCards` / `createEntryCard` / `updateEntryCard` / `deleteEntryCard`
+- `StoreProductCategory`：`listCategories` / `createCategory` / `updateCategory` / `deleteCategory`
+- `StoreProduct`：`listMerchantProducts` / `getProduct` / `createProduct` / `updateProduct` / `deleteProduct`
+
+和现有 `store-merchant.ts` 并列拆分而不是合并，理由：`store-merchant` 已 420 行、语义聚焦"入驻 / Banner / 公告 / 活动 / 折扣"；Phase 5 的 4 组资源属于"商品系统"正交维度，移动端 `storeProductService.ts` 也按同样边界拆出，Web 跟齐。
+
+顺手暴露两枚金额工具：
+
+- `formatPriceCents(cents, currency)`：整数元 → `¥ 5,890`、带小数 → `¥ 58.90`，和 `ProductCard.tsx` 的展示约定完全一致；
+- `parsePriceYuanToCents(input)`：表单元值 → 分，统一处理空串 / 非数字 / 负数等边界，避免各表单自己实现。
+
+#### 2. `web/src/components/merchant/shared.tsx`（新增）
+
+Phase 5 落了 4 个子页；要么每个子页自带一份 ImagePicker / ChipEditor，要么抽到共享文件。按 DRY 选后者：
+
+- `ImagePicker`：从现有 `/me/merchant/[id]/page.tsx` 抽出来的单图上传器；Phase 5 扩展了可选 `hint` 文案（例如"建议 1:1 正方形"）；
+- `MultiImagePicker`：Phase 5 新增，供商品卡最多 9 图；支持多选上传、删除、前后移（用于确定封面顺序，第 1 张即 `images[0]` 作为列表封面）；单张失败继续下一张，失败名字向用户暴露；
+- `ChipEditor`：标签列表编辑器，可选 `max` 上限；用于 profile tags（上限 6）、商品 tags（上限 10）、已有 InfoTab 的"销售品牌 / 风格标签"；
+- `ChipPicker<T>`：枚举单选 chip；
+- `SubPageBackLink` / `SubPageHeader`：4 个子页共享的返回链接 + 标题栏；保持视觉一致。
+
+同步把 `/me/merchant/[id]/page.tsx` 里原先 inline 的 `ImagePicker` / `ChipEditor` / `ChipPicker`（~180 行）删除，改为从 shared 导入。主页面直接减 180 行，并且以后改 UX 只改一处。
+
+#### 3. `web/src/app/me/merchant/[merchantId]/profile/page.tsx`（新增）
+
+店铺主页卡片配置——单例表单页（不走 list + dialog）：
+
+- 进入时 `GET /store/{storeId}/profile-config`（公开接口，登录态下也可用）；若返回 `null` 代表"从未配置"，表单走"新建"路径，保存时命中 upsert；
+- `PUT /{merchantId}/profile-config` 统一 upsert；
+- 字段：`logoImage`（1:1）/ `coverImage`（4:3）/ `shortDescription` / `longDescription` / `tags[]`（上限 6，对齐移动端 StoreProfileCard 只渲染前 6 个的约定）；
+- 保存成功回显 `savedAt` 时间戳，表示"已保存"状态，体验上比全局 Toast 更低成本；
+- 右侧 aside 放"预览提示"说明 Mock 兜底和 6 个 tag 上限的前端约束，防止用户误改后出现预期外的 UI。
+
+#### 4. `web/src/app/me/merchant/[merchantId]/entry-cards/page.tsx`（新增）
+
+入口卡片 CRUD（对齐移动端 `CategoryCards.tsx`）：
+
+- 列表：`GET /{merchantId}/entry-cards`（含 HIDDEN，方便商家预览已隐藏项）；表单里需要"关联分类"所以还会并发拉 `GET /store/{storeId}/product-categories`；
+- 新建 / 编辑 dialog：
+  - `cardType` 四选一：`CLASSIFICATION` / `DISCOUNT` / `NEW_ARRIVAL` / `EVENT`；切换非 CLASSIFICATION 类型时把 `targetCategoryId` 置空，避免后端拿到和语义不匹配的字段；
+  - `CLASSIFICATION` 类型下显示"关联分类"chip：「全部单品」+ 每个已有分类；`null` 表示全部，这条语义后端 schema 已定义；
+  - 标签（中文 `label` + 可选英文 `labelEn`）、背景图（必填）、发布 / 隐藏 toggle；
+- 排序：相邻两项上下移按钮；点一下乐观交换本地顺序再向后端发两条 `updateEntryCard(sortOrder)`。PATCH 失败后 `mutate()` 回拉，避免顺序和 DB 错位；
+- 删除走 `ConfirmDialog`，删除后 `mutate()` 刷新。
+
+#### 5. `web/src/app/me/merchant/[merchantId]/categories/page.tsx`（新增）
+
+商品分类 CRUD：
+
+- 列表：`GET /store/{storeId}/product-categories?withCount=true` —— 顺带拿 `productCount` 徽标；
+- 字段：`name`（必填，店铺内唯一，后端 unique violation 会被翻译成 400）、`coverImage`（可选）、`sortOrder`；
+- 排序：与 entry-cards 相同的相邻交换 + 乐观更新；
+- 删除提示：若 `productCount > 0` 明确告诉用户"该分类下仍有 N 件商品，删除后它们会变为未分类但不会下架"—— 后端删除实现是置空商品的 `category_id`，这个 UX 文案避免用户误以为删除分类 = 删除商品。
+
+#### 6. `web/src/app/me/merchant/[merchantId]/products/page.tsx`（新增，Phase 5 核心）
+
+商品编辑面板：
+
+- 列表：`GET /{merchantId}/products?status=&categoryId=&page=&pageSize=20`（含 DRAFT / HIDDEN / SOLD_OUT）；
+- 过滤器：
+  - 状态 chips（全部 / 已上架 / 草稿 / 已下架 / 已售罄）；
+  - 分类 chips（需要已创建分类，否则这一行不渲染）；
+  - 搜索框：按 `title` / `brand` **本地** 过滤当前页结果，目的是避开后端搜索接口新增的成本；对于大店铺想全局搜时，目前可以先翻页定位，后续 Phase 6+ 再看要不要加服务端搜索；
+- 商品卡（`ProductCard`）：封面图 + NEW / SALE 徽标 + 标题 + 品牌 / 分类名 + 折扣价（划线原价）+ 互动三联（♥ 💬 👁）+ "编辑 / 上下架 / 删除"三连按钮；
+- "上下架"按钮只在 `PUBLISHED ↔ HIDDEN` 间切换，其它 DRAFT / SOLD_OUT 要进编辑弹窗改。减少误操作面；
+- 新建 / 编辑 dialog（`wide` 宽弹窗）：
+  - `MultiImagePicker`（必填，至少 1 张）；
+  - 标题（必填）/ 品牌 / 分类 / 原价（元，必填）/ 折扣价（可选 toggle；后端支持 `discountPriceCents=null` 表示取消折扣）/ 描述 / 标签（上限 10）/ 是否新品 toggle / 状态 chip；
+  - 前端价格校验：原价非负数、折扣价 ≤ 原价。后端 schema 也有 `field_validator` 把关，这里做一层防抖；
+- 删除提示明确说明"评论 / 点赞 / 浏览数据一并清除，建议改为'已下架'状态替代硬删"，降低不可逆操作带来的损失。
+
+#### 7. `web/src/app/me/merchant/[merchantId]/page.tsx`（修改）
+
+顶部新增 `ProductSystemNav`：一行 4 张卡片，分别跳 profile / entry-cards / categories / products。
+
+为什么不把这 4 个做成 Tab：
+
+- 原页面已有 5 个 Tab（店铺信息 / Banner / 公告 / 活动 / 折扣），再加 4 个到 9 个会溢出；
+- "入驻 / Banner / 公告 / 活动 / 折扣"属于"店铺运营内容"，"profile / entry-cards / categories / products"属于"商品系统"，两条主线语义正交，做成独立子路由比强行 Tab 化更清晰；
+- 子路由让 URL 可分享、浏览器前进 / 后退自然工作，而 Tab 只是 UI 层状态。
+
+顺手把主页原来 inline 的 `ImagePicker` / `ChipEditor` / `ChipPicker`（共 3 个组件 ~180 行）删除，改从 `@/components/merchant/shared` 导入。主页从 1743 行瘦身到约 1563 行。
+
+### 涉及到的所有文件
+
+新增：
+
+- `web/src/lib/services/store-product.ts`
+- `web/src/components/merchant/shared.tsx`
+- `web/src/app/me/merchant/[merchantId]/profile/page.tsx`
+- `web/src/app/me/merchant/[merchantId]/entry-cards/page.tsx`
+- `web/src/app/me/merchant/[merchantId]/categories/page.tsx`
+- `web/src/app/me/merchant/[merchantId]/products/page.tsx`
+
+修改：
+
+- `web/src/app/me/merchant/[merchantId]/page.tsx`：顶部插入 `ProductSystemNav`；inline 组件抽到 shared，主页从 1743 → ~1563 行。
+
+### 影响面与回归验证
+
+- `tsc --noEmit`：通过（Phase 5 引入的全部文件 0 错误）；
+- `eslint`：4 个子页 + shared.tsx + store-product.ts 全部 0 报错 0 警告（已修复 `react/no-unescaped-entities` 的中文引号、`react-hooks/exhaustive-deps` 的 productsAll 依赖警告）；
+- 移动端不受影响：本阶段只动 Web，移动端 App.tsx / Discover / BuyerTab 全部保持 Phase 4 现状；
+- 后端不动：27 个端点在 Phase 1 已经就位，Phase 5 只是把它们用起来。
+
+### 下一步（Phase 6 预告，视需求安排）
+
+- 管理员侧：`/admin` 面板下增加商家商品系统的审核视图（举报商品、违规下架、商品榜单）；
+- Web 消费者侧：`/stores/[id]` 公开店铺页接入 BuyerTab 同样的 profile-config / entry-cards / products，形成 Web ↔ Mobile 同构展示；
+- 搜索：店内全局搜索走后端新增 `q=` 参数；活动商品（EVENT 卡片当前仍降级到 StoreDetail）补齐数据模型与跳转；
+- 国际化：Web 端英文文案（目前 Phase 1-5 均先中文）。
+
+---
+
+## 2026-04-29: 商家商品系统 —— Phase 4（移动端商品列表屏 / 详情屏 + BuyerTab 真实商品）
+
+> Phase 4 把消费者侧"分类 / 折扣 / 新品"入口真正落地：两个新屏 `StoreProductListScreen` 和 `StoreProductDetailScreen` 上线，Buyer Tab 首屏 2 列单品网格也从 Mock 升级为"真实商品优先 + Mock 兜底"，入口卡片点击不再是 StoreDetail 占位。EVENT 类型暂时继续复用 StoreDetail，等活动列表独立接口上线再迁。
+
+### 改动范围（自底向上）
+
+#### 1. `BuyerTab/types.ts`：单品视图模型升级
+
+`BuyerStoreProduct` 接口同时承载"真实后端商品"和"Mock 兜底商品"两类数据源：
+
+- 新增可选字段 `realProductId?: number` —— 真实商品带 `store_products.id`，点击跳 `StoreProductDetail`；Mock 商品缺省该字段，点击回退到 BrandDetail；
+- `price: number` → `priceCents: number`：和后端 `store_products.price_cents` 对齐，彻底免去浮点精度坑；
+- 新增 `discountPriceCents?: number`：存在即代表 `has_discount`，UI 层据此把原价划线。
+
+#### 2. `ProductCard.tsx`：折扣划线 + 金额适配
+
+- 新增 `formatPriceCents`：整数元金额走千分位（`¥ 5,890`）、含小数走 2 位小数（`¥ 58.90`），单一函数覆盖两种主流场景；
+- 折扣商品：`discountPriceCents < priceCents` 触发双行价格渲染 —— 折扣价红色加粗 + 原价灰色 strike-through 小字；
+- 旧 `price: number` 消费者（Mock 生成器）一并迁移到 `priceCents`，Mock 价表 `5890` → `589000`，视觉与 Phase 3 完全一致。
+
+#### 3. `hooks/useBuyerTabData.ts`：拉真实商品 + Mock 兜底
+
+沿用 Phase 3 的"按 storeId 缓存 + Promise.allSettled 并发拉"框架，扩展出第三条并发通道：
+
+- 新增 state `productsMap: Record<storeId, StoreProduct[]>`，三态语义：`undefined` = 未拉过、`[]` = 拉过但商家无商品（走 Mock）、有值 = 真实商品；
+- `loadStoreConfig` 现在一次并发拉 **3 条**接口（profile + entry-cards + products），任一失败都落 `[]`/`null`，不污染主流程；
+- 新增 `buildProductsFromRemote(StoreProduct[]) → BuyerStoreProduct[]`：把后端商品映射成 UI 视图；badge 自动派生（`hasDiscount → SALE` > `isNew → NEW` > 无），`brand` 空值回退到 `categoryName`；
+- `products` memo 新增分支：有真实数据就用真实的，**不做"真实不足就混合 Mock"的融合** —— 那样 UI 会出现"真实尖货 + 无关 Unsplash 图"的割裂感，宁少勿错；
+- `buildMockProducts` 全面迁到 `priceCents`（旧 5890 元 → 589000 分），保证 Mock 下视觉零偏差。
+
+#### 4. 新屏 `frontend/src/screens/StoreProductListScreen.tsx`（约 500 行）
+
+四合一商品列表屏，由 `mode` 路由参数区分：
+
+- **CLASSIFICATION**：带 `categoryId` 时直达该分类；未带 → 顶部展示横向"分类 Chip 条"供用户切换（调用 `getStoreProductCategories(withCount=true)` 带商品数）；
+- **DISCOUNT** / **NEW_ARRIVAL**：对应 `hasDiscount=true` / `isNew=true` 查询，无分类 Tab；
+- **ALL**：兜底路径，不带任何筛选，用于未来从 Tab 其他位置跳转时复用；
+- 所有 mode 共用：搜索框（`searchQuery` 直传后端，不单独写搜索 API）、下拉刷新、`onEndReached` 分页、错误屏 + 重试。
+
+为什么不为每种 mode 拆成 4 个屏：后端 `/store/{id}/products` 已经用 querystring 统一了筛选语义，前端再拆 4 份几乎相同的 UI 就是纯复制。一个 `mode` 分发 + 条件渲染几十行代码，胜过 4 份 400 行。
+
+#### 5. 新屏 `frontend/src/screens/StoreProductDetailScreen.tsx`（约 700 行）
+
+商品详情页，**不复用 PostDetail 全家桶**：
+
+- 顶部轮播：横向 `ScrollView + pagingEnabled`，底部自定义圆点指示器（不走 `FullscreenImageViewer`，它耦合 `isVideoUrl` 等 posts 逻辑，商品暂时纯图片，后续有视频再扩）；
+- 信息块：NEW / SALE / 分类三类 badge 行 + 标题 + 品牌 + 价格（折扣划线同 ProductCard）+ 标签列表 + 长描述；
+- 评论区：**扁平展示顶级评论**，不接入 `CommentsSection` 的嵌套回复树 —— 商品评论量级和 UX 需求都比 posts 简单，扁平+"@回复"就够；回复仍然按后端语义提交（`parentId` + `replyToUserId`），新评论直接 unshift 到列表顶部即时可见；
+- 底部 bar：点赞按钮 + 评论输入框；乐观态点赞（失败回滚 + toast）、键盘焦点切换 + `@回复` 提示条；
+- 登录态校验：未登录点赞/评论弹 toast "请先登录"；
+- 乐观点赞 + 评论：任何网络错误都回滚本地状态 + toast，保证 UI 一致性。
+
+#### 6. `BuyerTab/index.tsx` + `TabContent.tsx` + `Discover/index.tsx`：分流路由接线
+
+- `BuyerTab` 新增 props `onOpenProductList(payload)`：完整 payload 直接对齐 `StoreProductList` 的 RouteParams（`storeId` / `storeName` / `mode` / `categoryId`），BuyerTab 做语义翻译、Discover 只做 `navigate(name, payload)` 转发；
+- `handleCategoryPress` 由"四种 case 统一落 StoreDetail 占位"升级为真实分流：CLASSIFICATION / DISCOUNT / NEW_ARRIVAL → `StoreProductList`，EVENT 保留 StoreDetail（活动独立接口是 Phase 5+）；
+- `handleBuyerProductPress` 在 `Discover/index.tsx` 改为"优先走 realProductId → StoreProductDetail"，Mock 商品继续回退到 BrandDetail —— 商家一旦上真商品，Mock 分支自然不会再触发；
+- `TabContent.tsx` 的 discriminated union `BuyerTabSlotProps` 同步加 `onOpenProductList` 字段，TypeScript 强制要求上游 Discover 传入。
+
+#### 7. `App.tsx`：注册新路由
+
+`StoreProductList` 和 `StoreProductDetail` 两个 `Stack.Screen`，均 `headerShown: false`（两屏都在内部用 `SafeAreaView` + 自己的 Header 风格组件），插在 `AllBuyerStores` 之后保持买手店相关路由的区块集中。
+
+### 设计决策摘录
+
+- **一屏覆盖四种 mode**：后端 API 已统一，前端再拆 4 个屏就是纯复制；`mode` 分发一次到底；
+- **Detail 不复用 PostDetail**：PostDetail 条件分支已经覆盖 4 种 PostType，再塞 product 会让那条路径不可读；独立屏反而更清晰且边界干净；
+- **评论扁平化（暂）**：商品评论量级和 UX 需求都远低于 posts，扁平+@ 回复足够 Phase 4 需要；回复树 Phase 5 按业务需求再扩；
+- **Mock fallback 策略连贯**：Phase 3 建立的"无配置 → Mock 兜底"在 Phase 4 延续到商品——商家没上商品也能看到示例卡片，但点击走 BrandDetail 而不是"商品不存在"的错误页；
+- **Optimistic UI 全覆盖**：点赞（商品 + 评论）、评论提交都是先改本地再发请求，失败回滚 + toast，让用户感觉如丝般顺滑；
+- **`onOpenProductList` payload 直连 RouteParams**：BuyerTab 做一次语义翻译（`cardType` → `mode` + `categoryId`），Discover 的 handler 只负责 `navigate` 转发，参数结构不做二次改造，减少层层翻译成本。
+
+### 影响面验证
+
+- `ReadLints` 通过全部 6 个修改/新增文件：types / hook / ProductCard / BuyerTab index / TabContent / Discover index / App / 两个新屏；
+- Mock 兜底回归：商家没上商品时，`products` memo 自动走 `buildMockProducts`，网格视觉与 Phase 3 一致；
+- 真实路径回归：有商品的店 → 网格展示真实商品 → 点击 → `StoreProductDetail` → 点赞 / 评论都能吃到后端 API。
+
+### 后续（Phase 5 预告）
+
+- Web SaaS：商家登录 → 我的店铺 → 商家商品管理中心（CRUD products / categories / entry-cards / profile-config 全部落在 Web）；
+- 活动（EVENT）独立列表屏：后端新增 `store_events` 表 + `/store/{id}/events` 接口后，把 BuyerTab 里 EVENT case 从 StoreDetail 迁到独立屏；
+- "我喜欢的商品" Profile Tab：消费 `listMyLikedStoreProducts`；
+- 商品评论回复树：如果 Phase 4 后用户真的需要多级回复，再把扁平评论升级为嵌套树（参考 CommentsSection 的做法）。
+
+---
+
+## 2026-04-29: 商家商品系统 —— Phase 3（移动端消费后端配置 + Mock 兜底）
+
+> Phase 3 专注把 Phase 1 上线的 4 组新接口（`profile-config` / `entry-cards` / `product-categories` / `products` 及衍生点赞评论）接入移动端买手店 Tab，让 `StoreProfileCard` 与入口卡片组 `CategoryCards` 从硬编码切换到"后端优先 + Mock 兜底"。商家商品管理 CRUD 不在移动端出现（由 Web SaaS 负责），本期只包装消费者侧 API。
+
+### 改动范围（自底向上）
+
+#### 1. 新增 `frontend/src/services/storeProductService.ts`
+
+统一封装商家商品系统消费者侧全部接口：
+
+- `formatPrice(priceCents, currency)`：约定移动端永远按两位小数展示（`¥ 58.90`），和后端 `price_cents` 整数存储对齐；
+- Profile 配置：`getStoreProfileConfig(storeId)` —— 未配置时后端返回 null，原样透传给调用方决定是否走 Mock 兜底；
+- 入口卡片：`getStoreEntryCards(storeId)` —— 只返回 PUBLISHED 且按 sort_order；
+- 商品分类：`getStoreProductCategories(storeId, withCount?)` —— Phase 4 分类商品屏用；
+- 商品：`getStoreProducts(params)` 一个接口覆盖 4 种消费者列表（全部 / 分类 / 折扣 / 新品）—— 后端统一走 `/store/{id}/products` + querystring 过滤，避免前端分散 4 个函数重复描述同一资源；
+- 商品详情：`getStoreProductDetail(productId)`；
+- 点赞：`likeStoreProduct` / `unlikeStoreProduct` / `checkStoreProductLiked` / `listMyLikedStoreProducts`（"我喜欢的"页 Phase 4 用）；
+- 商品评论：`getStoreProductComments` / `createStoreProductComment` / `deleteStoreProductComment` / `getStoreProductCommentReplies` / `likeStoreProductComment` / `unlikeStoreProductComment`，mirror `buyer_store_comments` 的结构。
+
+刻意不封装商家管理侧（创建/更新/删除 profile / entry-cards / categories / products）—— 避免 App 里混入 admin 逻辑，后续做清理时也好找。
+
+#### 2. `BuyerTab/types.ts`：View 模型扩展
+
+- 新增 `EntryCardKey`（复用后端 `EntryCardType`）：`CLASSIFICATION` / `DISCOUNT` / `EVENT` / `NEW_ARRIVAL`；
+- 新增 `StoreEntryCardView`：UI 层的统一入口卡片 View 模型，不管数据来自后端还是 Mock 兜底都先转成这个 shape 喂给 `CategoryCards`，组件完全感知不到两者差异；
+- 新增 `ProductCategoryView`（Phase 4 分类屏用）；
+- `BuyerStoreProfileView` 增加 `logoImage?` 和 `longDescription`、`isRemote`；
+- 保留 `CategoryCardConfig` 作为 `StoreEntryCardView` 的 `@deprecated` 别名，避免一次性大面积 rename —— 旧消费方 import 不断，长期再逐步迁。
+
+#### 3. `hooks/useBuyerTabData.ts`：并发拉配置 + 缓存 + Mock 合并
+
+核心改造：
+
+- 老的 `CATEGORY_CARDS` 静态常量改名为 `FALLBACK_ENTRY_CARDS`，卡片类型由旧的「单品/折扣/活动/介绍」切到新的「CLASSIFICATION/DISCOUNT/EVENT/NEW_ARRIVAL」（"介绍"让位给"新品"，更贴合用户需求；旧常量名保留为 `@deprecated` 别名）；
+- 新增 `profileConfigMap` / `entryCardsMap` 两个 state：按 `storeId` 缓存配置数据，同会话内切店来回切不重复打接口。**关键语义区分**：`undefined` = "尚未拉过"；`null` = "拉过了但后端说未配置"——这两种状态必须区分，否则 UI 会分不清"还在 loading"和"明确回退到 Mock"；
+- 新增 `loadStoreConfig(storeId, {force?})`：被 `useEffect([selectedStoreId])` 触发，用 `Promise.allSettled` 并发拉 profile + entry-cards；任一失败都静默吞掉（配置不是阻塞性数据，UI 走 Mock 兜底即可），只打 `console.warn` 便于排查；失败也写入 `null` 而非保持 `undefined`，防止无限重试；
+- `configInFlightRef`：per-storeId 的正在请求集合，避免 effect 重入造成重复请求；
+- `buildProfileView(store, config?)`：签名变化，合并策略为"配置字段有值就覆盖 Mock 兜底"；`tags` 必须非空数组才覆盖，防止商家只清空没重填导致一片空；
+- `buildEntryCardsView(remote)`：空数组返回 Mock 兜底副本（深拷贝，不外泄引用）；非空数组 defensive sort by `sort_order, id`；
+- `refresh()`：下拉刷新时同时强刷当前店的配置（`force: true`），反映 Web SaaS 新提交的改动；
+- Hook 新增 return `entryCards: StoreEntryCardView[]`，由 `CategoryCards` 直接消费。
+
+#### 4. `StoreProfileCard.tsx`：真实 logo + 长介绍
+
+- 新增 `logoImage` 分支：配了就用 `OptimizedImage(THUMBNAIL)` 渲染圆形 logo，没配就落回老的首字母占位；
+- 底部硬编码的"专注引荐全球独立设计师品牌……"一段替换为 `longDescription` 字段，配置缺失时 hook 仍给一句兜底文案；
+- `logoWrapper` 补 `overflow: hidden` 保证图片被圆形裁剪；新增 `logoImage` 样式 `{ width: "100%", height: "100%" }`。
+
+#### 5. `CategoryCards.tsx`：动态卡片 + 横向滚动
+
+- 入参改为 `cards: StoreEntryCardView[]`（不再 import `CATEGORY_CARDS` 常量）；
+- 布局根据 `cards.length` 自动切换：
+  - ≤ 4 张：`HStack` + 每项 `flex: 1`，视觉与 Phase 2 完全一致（Phase 2 时就是 4 等宽）；
+  - \> 4 张：`ScrollView horizontal`，单卡固定宽 = 4 等宽时的单卡宽度（`SCREEN_WIDTH - 32 - 3×8 / 4`），滑动节奏与 4 等宽时的单卡保持一致；
+- `onPress` 回调带上整张卡片 View（含 `cardType` 和 `targetCategoryId`），父组件按 `cardType` 分流，本组件不再知道"路由"这一层；
+- 不再渲染"key === 'about'" 这种业务语义分支，`CardItem` 只关心 label / labelEn / image / arrow。
+
+#### 6. `BuyerTab/index.tsx`：按 cardType 分流（占位 → Phase 4 替换）
+
+- 从 hook 多解构出 `entryCards`；
+- `handleCategoryPress` 签名由 `(key) => void` 改为 `(card: StoreEntryCardView) => void`；
+- `switch(card.cardType)` 四个分支（CLASSIFICATION / DISCOUNT / EVENT / NEW_ARRIVAL）在 Phase 3 统一落到 `onStorePress(storeId)`（StoreDetail 内部已有「单品 / 折扣 / 活动 / 介绍」本地 Tab，保证前端没有跳空入口）；每个 case 上方注释预留了 Phase 4 的目标路由调用，**Phase 4 只需替换 case 主体，不需再动调用方**；
+- `__DEV__` 下打 log 带上 `[remote]` / `[mock]` 标签，便于手动回归区分真实与兜底数据。
+
+### 设计决策摘录
+
+- **"后端优先 + Mock 兜底" 而不是"后端空 = 空态"**：当前商家端（Web SaaS）Phase 5 才上线，此前移动端如果走空态体验会非常割裂。Mock 兜底保留的是"配置没做"时的可用视觉，做了再自动切到真实数据，平滑过渡。
+- **缓存按 storeId 而非全局**：不同店的 profile / entry-cards 差异很大，全局缓存没意义；按 storeId 缓存刚好覆盖"用户来回切店"的主场景。
+- **配置失败不上报到 Tab 级 error**：configuration 是渐进增强数据，不是阻塞数据；失败不应影响主流程，只打 warn 即可。
+- **Promise.allSettled 而非 Promise.all**：profile 和 entry-cards 独立失败互不影响，allSettled 能让两个都有成功机会。
+- **`_deprecated` 别名保留**：避免本期一次性大 rename；Phase 4 继续迁移完成后可删。
+
+### 影响面验证
+
+- `ReadLints` 通过全部 6 个核心文件：service / types / hook / StoreProfileCard / CategoryCards / BuyerTab index；
+- Grep 全库确认 `CategoryCardConfig` 只剩 2 处消费（hook 内部常量标注 + types.ts 别名定义），其余已迁到 `StoreEntryCardView`；
+- 行为等价性：商家没任何配置时，StoreProfileCard 与 CategoryCards 显示与 Phase 2 完全一致（Mock 兜底等于老硬编码）。
+
+### 后续（Phase 4 预告）
+
+- 新屏 `StoreProductListScreen`：消费 `getStoreProducts`（支持 category / isNew / hasDiscount / searchQuery 过滤）；
+- 新屏 `StoreProductDetailScreen`：扩展 PostDetail/* 现有 UI 组件（`ImageGrid` / `CommentsSection`），塞入商品专有属性（brand / price / discount / 分类）+ 商品点赞/评论接口；
+- `BuyerTab/index.tsx` 把 Phase 3 的 `onStorePress` 占位替换为对应新屏 `navigate()`；
+- "我喜欢的商品" Profile Tab 消费 `listMyLikedStoreProducts`。
+
+---
+
+## 2026-04-29: 商家商品系统 —— Phase 2（移动端：买手店入驻优先 + 全部买手店页）
+
+> Phase 2 专注移动端消费 Phase 1 的后端能力：买手店选择条把已入驻商家排前，末尾新增"查看全部"入口，并落一个全新的 `AllBuyerStoresScreen` 网格页带"已入驻"徽章。
+
+### 改动范围（自底向上）
+
+#### 1. `frontend/src/services/buyerStoreService.ts`
+
+- `BuyerStore` 接口新增可选 `hasMerchant?: boolean`。只有 `withMerchantFirst=true` 路径 和 `/buyer-stores/all` 路径会回填，其他接口保持沉默，渲染侧一律按 `hasMerchant === true` 判断。
+- `BuyerStoreFilterParams` 新增 `withMerchantFirst?: boolean`。
+- `getStoresPaginated` 把 `withMerchantFirst` 透到 query string（对齐后端新增的查询参数）。
+- 新增 `getAllBuyerStores(filters)` —— 包装 `GET /api/buyer-stores/all`，默认 `pageSize=30`，语义上"永远走入驻优先"，不需要 caller 再记 `withMerchantFirst`。
+
+#### 2. `useBuyerTabData.ts`：顶部选择条走入驻优先
+
+`loadStores` 里的 `getStoresPaginated` 调用加 `withMerchantFirst: true`。这是顶部横向选择条的唯一加载点，一次改动即覆盖冷启动 / 下拉刷新 / 重试三条路径。JSDoc 补充说明为什么这里必须走优先排序（买手店 Tab 首屏直观度）。
+
+#### 3. `StoreSelector.tsx`：末尾追加"查看全部"cell
+
+原本 FlatList 只渲染真实店铺 shortcut；现在：
+
+- 新增 `onOpenAll?: () => void` 可选 prop（传入才渲染尾部 cell，未传则完全不渲染，保证其他场景复用 StoreSelector 不受影响）；
+- 用 discriminated union `SelectorItem = { kind: "store" | "all", ... }` 把"查看全部"作为一个普通 FlatList item 渲染，**不走 `ListFooterComponent`** —— footer 不会跟着同步 snap，体感像"被截在末尾的额外按钮"，作为 item 才能和前面店铺一起流畅滑动；
+- 哨兵 id `__ALL__` 避免和真实 store id 撞车；
+- 视觉：圆环用普通 idle 样式 + 黑底圆形内圆 + 白色箭头 icon + "查看全部" 文案，和现有店铺 cell 高度/宽度严格对齐。
+
+#### 4. 新屏 `frontend/src/screens/AllBuyerStoresScreen.tsx`
+
+从零落的页面（734 行的 `StoreListScreen` 是为"买手地图"场景设计的单列 + sheet 详情，UX 不合适本场景）：
+
+- 数据源：`getAllBuyerStores`（入驻优先 + `hasMerchant` 回填）；
+- 布局：2 列网格，卡片宽度 `(SCREEN_WIDTH - 32 - 12) / 2`，与买手店 Tab 内部网格的视觉节奏一致；
+- `MerchantBadge`：只有 `store.hasMerchant === true` 才渲染"✓ 已入驻"徽章（左上角黑底白字），让用户一眼看到哪些店是合作商家；
+- 搜索框：顶部圆角条，`onSubmitEditing` 触发搜索，支持清空回 initial；
+- 分页：`onEndReached` + `hasMore` 控制，独立 `loading/refreshing/loading-more` 三态；
+- 错误/空态：统一 `ScreenHeader` + 居中 Ionicons + 重试按钮，和其他列表屏一致；
+- `mountedRef` 防 unmount-then-setState 警告。
+
+#### 5. 导航 & callback 链路
+
+四层串联（自上而下）：
+
+- `App.tsx`：引入 `AllBuyerStoresScreen`，注册 `Stack.Screen name="AllBuyerStores"`。
+- `Discover/index.tsx`：新增 `handleOpenAllBuyerStores`（跳 `AllBuyerStores`），在 `<TabContent tab="buyer" .../>` 新增 `onOpenAllStores={handleOpenAllBuyerStores}`。
+- `Discover/components/TabContent.tsx`：`BuyerTabSlotProps` 加 `onOpenAllStores: () => void` 必填字段；dispatcher 透传给 `<BuyerTabContent>`。
+- `BuyerTab/index.tsx`：`BuyerTabContentProps` 加 `onOpenAllStores`；传给 `<StoreSelector onOpenAll=...>`。
+
+为什么在 `BuyerTabSlotProps` 里是**必填**而非 optional：这样编译器会强制所有 `<TabContent tab="buyer" .../>` 的调用点提供这个回调，避免新增了 UI 入口、某个调用点忘了传导致运行时 undefined。
+
+### 为什么做成独立屏 + 端到端 callback 透传
+
+| 替代方案 | 为什么不选 |
+|---|---|
+| 改造 `StoreListScreen` 复用 | 它是买手地图场景的 sheet-based UX，再加"入驻优先 + badge + 2 列网格"等于重写，反而更脏 |
+| 直接在 StoreSelector 内部拿 navigation 跳转 | BuyerTab 里其他任何组件都不感知 navigation，保持这个边界能让子组件在未来也可以被拿到别的 Screen 里复用（例如商家后台 preview） |
+| 用 ListFooterComponent 渲染"查看全部" | footer 不随横向滑动 snap，视觉体感是"粘在右侧"的额外按钮；作为 item 更自然 |
+
+### 验收
+
+- 前端 `tsc --noEmit` 对我改动过的文件 0 错（仅有预置的无关历史类型错误）；
+- 所有 lint 通过；
+- 后端 `smoke import` 正常（Phase 1 已验证）；
+- 手动 UX 路径：进入 Discover → 切"买手店" Tab → 顶部选择条最右有圆形箭头 "查看全部" → 点击跳 AllBuyerStores 页 → 看到 2 列网格、入驻店铺前置、"已入驻" 徽章、可搜索、可分页。
+
+### 未在本 Phase 落地（后续 Phase）
+
+| Phase | 内容 |
+|---|---|
+| Phase 3 | `StoreProfileCard` / `CategoryCards` 切换成读后端 `profile-config` / `entry-cards` 接口（Mock 兜底保留） |
+| Phase 4 | 4 个商品列表屏 + 商品详情页（复用 `components/PostDetail/*`） |
+| Phase 5 | Web 商家 SaaS |
+| Phase 6 | 清理 Mock 硬编码 |
+
+---
+
+## 2026-04-29: 商家商品系统 & 店铺主页可配置项 —— Phase 1（后端基础设施）
+
+> 为"商家 SaaS + 买手店商品化"铺底：新增 5 张表 & 20+ API，前端/Web 后台尚未接入。本阶段只动后端，不影响现有 Mock 链路。
+
+### 整体目标（分阶段推进）
+
+用户提出了涵盖移动端、后端、商家 Web SaaS 的一整套需求：
+
+1. 买手店列表把已入驻商家排前，新增"查看全部"入口；
+2. `StoreProfileCard` 的内容（logo / cover / 介绍 / tags）改由商家后台配置；
+3. `CategoryCards` 的每张卡片类型（分类 / 折扣 / 活动 / 新品）、背景图、排序都由商家自定义；
+4. 商家可自定义商品分类（上衣 / 裤子 / 男 / 女 ...）；
+5. 新增商品体系（图片 / title / 分类 / 品牌 / 价格 / 折扣 / 新品 / 用户点喜欢），商品详情页复用 `PostDetailScreen` 一整套 UI，并叠加商品属性；
+6. 折扣 / 活动列表页直接复用现有 `store_discounts` / `store_activities` API；
+7. 商家管理系统只做 Web 端，独立 `/merchant/*` 子系统。
+
+决策对齐后拆成 6 个 Phase，本次落地 Phase 1。
+
+### Phase 1 改动（纯后端 + DB，holistic）
+
+#### 1. 新表（migration 040_store_products_and_profile.sql + 同步到 `memfiredb_full_schema.sql`）
+
+| 表 | 用途 |
+|---|---|
+| `store_profile_configs` | `StoreProfileCard` 数据源（logo/cover/tags/长短介绍），store_id 一行 |
+| `store_entry_cards` | `CategoryCards` 数据源，支持多张、排序、换背景图；`card_type` ∈ CLASSIFICATION/DISCOUNT/EVENT/NEW_ARRIVAL |
+| `store_product_categories` | 商家自定义商品分类 |
+| `store_products` | 商品（price 统一存 `price_cents` 整数分；`has_discount` 为 GENERATED STORED 便于部分索引） |
+| `store_product_likes` | 用户"喜欢"商品 |
+| `store_product_comments` | 商品评论（结构镜像 `buyer_store_comments`） |
+| `store_product_comment_likes` | 评论点赞 |
+
+关键索引：
+- `idx_store_products_store_status (store_id, status, published_at DESC)` — 列表页基线；
+- `idx_store_products_is_new` / `idx_store_products_discount` 用部分索引只收 `is_new=TRUE` / `has_discount=TRUE` 的行；
+- `idx_store_product_likes_user` 支持"我点过喜欢的"列表；
+- `store_entry_cards.target_category_id` 外键延迟挂到 `store_product_categories`，避开建表顺序依赖。
+
+#### 2. 新 Schemas（`backend/app/schemas/store_product.py`）
+
+枚举：`ProductStatus` / `EntryCardType` / `EntryCardStatus`。
+模型：`StoreProduct[Create|Update]`、`StoreProductCategory[Create|Update]`、`StoreEntryCard[Create|Update]`、`StoreProfileConfig[Upsert]`、`ProductComment[Create]`。
+
+边界校验：
+- `discountPriceCents` 字段校验器 —— 不能高于 `priceCents`（create & update 场景都覆盖）；
+- `tags` 校验器 —— 数组长度上限 20，去空白 & 过滤空串。
+
+#### 3. 新 Services
+
+**`backend/app/services/store_profile_service.py`**：主页卡片 upsert + 入口卡片 CRUD + 分类 CRUD（含可选 `productCount` 回填，一次批查，避免 N+1）。
+
+**`backend/app/services/store_product_service.py`**：
+- 商品 CRUD；update 场景显式校验新折扣价 ≤ 新/旧原价；
+- 商品列表支持 `category_id` / `is_new` / `has_discount` / 搜索 / 分页；登录态下批量回填 `likedByMe`；
+- 点赞：`like_product` / `unlike_product` / `check_product_liked` + 批量 `_check_products_liked_bulk`；
+- `list_user_liked_products`（登录用户喜欢过的商品列表）；
+- 评论：`create_comment` / `list_comments`（顶层） / `list_comment_replies` / `delete_comment` / `like_comment` / `unlike_comment`。
+
+`like_count` / `comment_count` / `reply_count` 使用"读-改-写"维护：已有的 `increment_post_like_count` RPC 是绑在 posts 表上不能复用；商品写入 QPS 远低于 posts，用简单实现，失败仅 log 不抛错，避免阻塞用户交互。
+
+#### 4. 新路由（`backend/app/api/routes/store_product.py`）
+
+挂在已有 `/api/store-merchants` prefix 下（和 `store_merchant.py` 并列），单独开文件避免后者继续膨胀。共 27 条路由：
+
+- 店铺主页配置：`GET /store/{store_id}/profile-config`（公开）、`PUT /{merchant_id}/profile-config`（商家）
+- 入口卡片：公开 list + 商家 list/create/update/delete
+- 分类：公开 list（可选 productCount） + 商家 create/update/delete
+- 商品：公开 list/detail + 商家 list/create/update/delete
+- 点赞：`POST|DELETE /products/{id}/like`、`GET .../like/check`、`GET /user/liked-products`
+- 评论：list / create / delete / replies / like / unlike
+
+权限模型：
+- 公开接口（匿名可访问）：主页配置读、入口卡片读、分类读、商品读、评论读；
+- 登录用户：点赞 + 评论；
+- 商家本人（APPROVED）：自家店铺下资源的增删改，通过 `_assert_merchant_owns` / `_resolve_merchant_by_product` 两个内部工具统一校验。
+
+注册到 `main.py` 的 include_router 序列末尾。
+
+#### 5. 扩展：买手店列表入驻优先排序（`buyer_store_service.py` + 路由）
+
+**新方法 `get_stores_with_merchant_priority`**：
+- 一次拉取 APPROVED 商家的 `store_id` 小集合 M；
+- 分两段查：Group A = 命中 M（按 name）、Group B = 未命中 M（按 city, name）；
+- 按"全局偏移量"合并这两段（单页可能跨段），返回带 `hasMerchant` 标记的 dict 列表。
+- `total = group_a_total + group_b_total`，且 count 只在 `page==1` 用 planned 估算，和原实现一致。
+- 用 `_apply_filters` 抽出公共过滤逻辑，避免在两个分支重复写。
+
+**路由变化**：
+- `GET /api/buyer-stores` 新增 `withMerchantFirst` 查询参数（默认 false，向后兼容）；
+- 新增 `GET /api/buyer-stores/all` 专门给"查看全部"页，永远走优先排序。
+- 新增辅助 `_enrich_dicts_with_favorite_count` —— 对已是 dict 的优先排序结果附加 `favoriteCount`，保持两条路径返回结构一致。
+
+### 为什么这样切分
+
+- **独立 `store_products` 实体而不是 `PostType.STORE_PRODUCT`**：商品的价格 / 折扣 / 库存 / 上下架生命周期和社区 post 的发布/审核完全不同，硬揉进 posts 会污染 feed 推荐。Phase 4 前端可把 `PostDetail/*` 纯 UI 组件复用过来；数据模型各走各的。
+- **商品评论独立建表**：post_comments 没有"subject_type"列，改成通用评论意味着要动所有现成的 post 评论代码。新表镜像 `buyer_store_comments` 的结构，API 形态完全一致，前端 `CommentsSection` 只需换 service。
+- **价格存 `price_cents`**：前端展示两位小数，后端必须整数避免浮点传染。
+- **`has_discount` 用 GENERATED STORED 列**：避免在部分索引里反复写 `WHERE discount_price_cents IS NOT NULL`。
+- **入驻优先排序不做 DB JOIN**：PostgREST 的嵌套排序能力受限，两段查询 + 应用层合并反而更直观，M 集合小到可以全量载入。
+
+### 未在本 Phase 落地（后续 Phase）
+
+| Phase | 内容 |
+|---|---|
+| Phase 2 | 移动端消费 `withMerchantFirst` + `AllBuyerStoresScreen` + StoreSelector 尾部"查看全部" |
+| Phase 3 | 移动端 `StoreProfileCard` / `CategoryCards` 切换成读后端配置（Mock 兜底保留） |
+| Phase 4 | 移动端商品 4 个列表屏 + 商品详情页（复用 `components/PostDetail/*`） |
+| Phase 5 | Web `/merchant/*` 商家 SaaS 后台 |
+| Phase 6 | 清理 Mock 硬编码 / 补文档 |
+
+### 验收
+
+启动后端 smoke import 成功，新挂 27 条路由全部可见（`/api/store-merchants/...`）：主页配置、入口卡片、分类、商品、点赞、评论 6 个资源齐全。现有功能接口 (`/api/buyer-stores`, `/api/store-merchants/*`) 保持向后兼容。
+
+---
+
+## 2026-04-29: 买手店 Tab 移除品牌筛选条（BrandFilterTabs）
+
+### 动机
+
+设计稿原先让"分类入口卡片（单品/折扣/活动/介绍）"和"上新 Banner"中间夹一条横向品牌筛选 tabs。上线后评估：
+
+- 分类卡片已经把"单品/折扣/活动/介绍"分流清楚，再加一层品牌筛选是重复导航；
+- 品牌筛选条只作用于下方单品网格，但当前单品本身还是 Mock 数据，过滤交互的价值本就很薄；
+- 视觉上 CategoryCards 和 Banner 之间多一层"tab 栏 + 下划线"反而割裂，挤压整屏节奏。
+
+评估后决定把 `BrandFilterTabs` 彻底摘掉，下面顺手把与之相关的一整条数据 / 回调链从 hook 到 DiscoverScreen 清一遍，避免留死代码。
+
+### 改动范围（holistic cleanup，从底层到外层）
+
+- **删除** `frontend/src/screens/Discover/components/BuyerTab/BrandFilterTabs.tsx`（整个组件不再需要）。
+- `frontend/src/screens/Discover/components/BuyerTab/types.ts`：移除 `BrandFilterOption` 接口（仅 BrandFilterTabs 和 hook 使用过）。
+- `frontend/src/screens/Discover/components/BuyerTab/hooks/useBuyerTabData.ts`：
+  - 删 `buildBrandFilters` 工具；
+  - 删 `selectedBrand` state / `setSelectedBrand` callback / 切店重置 `selectedBrand` 的 useEffect；
+  - 删 `brandFilters` memo；
+  - 简化 `products` memo —— 不再按品牌过滤，直接 `buildMockProducts` 全量；
+  - 同步从 `UseBuyerTabDataReturn` 接口、hook 返回对象中摘掉 `brandFilters` / `selectedBrand` / `setSelectedBrand`；
+  - 文件顶部 JSDoc 更新，删掉"管理品牌筛选"职责描述。
+- `frontend/src/screens/Discover/components/BuyerTab/index.tsx`：
+  - 删 `BrandFilterTabs` import 和 JSX 块；
+  - 删 `handleBrandSelect` / `handleOpenBrandGrid` 两个 callback；
+  - 删 `onBrandPress` 从 `BuyerTabContentProps`；
+  - 清掉 `ProductGrid` 的 `onBrandPress` / `selectedBrand` 两个 props；
+  - ProductGrid 空态原先针对"按品牌过滤后无结果"给出"查看 XX 品牌页"出口 —— 没有筛选就没有这个分支，空态简化为单条"敬请期待买手店上新"；
+  - 移除 `handleClearFilter` 回调（仅空态分支下用过）；
+  - layout：`<CategoryCards>` 之后直接跟 `<NewArrivalBanner>`，少一层 `<Box>` 竖向间距自然收紧。
+- `frontend/src/screens/Discover/components/TabContent.tsx`：`BuyerTabSlotProps` 去掉 `onBrandPress`；dispatcher 里对应转发行也删。
+- `frontend/src/screens/Discover/index.tsx`：删 `handleBuyerBrandPress` useCallback、以及 `<TabContent tab="buyer" onBrandPress={...}>` 这个 prop 传递。
+
+### 为什么要从外层一起清
+
+用户规则明确要求"所有依赖必须同步更新 —— 无遗漏、无冗余"。`onBrandPress` 穿过 5 层（ProductGrid → BuyerTabContent → TabContent dispatcher → Discover screen → navigation），只删 UI 组件不删回调链就会留"谁都不调用、但 TypeScript 还在检查"的 dead prop。一次摘干净。
+
+`handleBuyerProductPress` 已经把"单品点击 → BrandDetail"这个路径做好了（product 点击时 navigate 到 `BrandDetail` 并带 `product.brand`），所以没有 `onBrandPress` 也没有任何品牌详情页的入口丢失。
+
+### 影响面
+
+- TypeScript 编译：`tsc --noEmit` 未新增任何错误（原有 5 处 pre-existing 报错和本次改动无关）。
+- Lint：0 告警。
+- 运行时：BuyerTab 渲染顺序现在为 StoreSelector → StoreProfileCard → CategoryCards → NewArrivalBanner → ProductGrid；单品始终展示所选店铺的全 8 条 Mock。
+
+## 2026-04-28: Schema 默认数据 & 表注释全量英文化
+
+### 动机
+
+项目正在迁到海外 Supabase（`kuyzesxjdlqaldiidhua.supabase.co`），团队里可能加入非中文用户。`memfiredb_full_schema.sql` 里的默认 seed 数据和 `COMMENT ON TABLE/COLUMN` 都是中文，会出现在：
+
+- 客户端看到的默认 Banner / 社区列表
+- Supabase Dashboard 的 Table Editor（悬停列名显示注释）
+- 生成的 API 文档 / OpenAPI spec
+- `psql \d+` 等运维工具
+
+统一英文能消除"国内产品 + 英文界面"的混搭感，也符合项目规则"所有代码必须英文"。
+
+### 改动范围
+
+`backend/app/db/memfiredb_full_schema.sql` 两段：
+
+**Section 17 默认数据**
+- 3 条 `banners`：subtitle 中文 → 英文（CHANEL/DIOR/LV 的副标题）
+- 5 条 `communities`：name + description 中文 → 英文（时尚穿搭 → Fashion Outfits，等等）
+- slug 保持不变（`fashion-outfit` / `brand-talk` / `runway-review` / `beauty-skincare` / `lifestyle`），避免破坏任何以 slug 为 key 的前后端引用
+- 节标题和所有行内注释也同步英文化
+
+**Section 18 表/列注释**
+- `buyer_stores` 17 个 COMMENT（表 + 16 个列）
+- `store_*` 6 个表的 COMMENT
+- `user_info` / `brand_images` / `brand_submissions` / `shows` 的列 COMMENT
+- 已废弃 `user_favorite_brands` 的 COMMENT 保留占位，标签换成 `[DEPRECATED]`
+- 闭尾注释 "完成！..." → "Done. All tables, indexes, triggers, functions, and seed data are in place."
+
+### 同步新 Supabase 上已经落地的数据
+
+因为 `Section 17` 的 INSERT 在之前 schema apply 时已经执行过，新 Supabase 里现在有 **中文** 的 banners 和 communities。通过 Supabase SDK 直接 UPDATE：
+
+- `banners` 用 `title` 作为 key（English 不变）UPDATE subtitle
+- `communities` 用 `slug` 作为 key UPDATE name + description
+
+总共更新 8 行，全部成功，SELECT 回来逐行验证过。
+
+`Section 18` 的 COMMENT ON 是 DDL，PostgREST API 不允许执行，留给用户在 SQL Editor 里跑一遍（COMMENT 每次执行都是覆盖，幂等安全）。脚本把这段内容自动拷到剪贴板。
+
+### 为什么 slug 不翻译
+
+Slug 是 URL-safe 的稳定标识，被客户端和后端的路由、筛选逻辑（类似 `posts.community_slug = 'fashion-outfit'`）直接消费。翻译 slug = 改 URL = 坏旧链接。只有展示层（name/description）翻译即可。
+
+### 影响面
+
+- schema 文件：只动了 section 17 和 18，其他 1000+ 行零改动
+- 新 Supabase：8 行数据已同步，其他表依然是空库
+- MemFire 生产：**完全没动**（中文内容依然工作）
+- 前端/后端代码：零改动 —— 展示层消费的是字符串，翻不翻都能渲染
+
+---
+
+## 2026-04-28: MemFire → Supabase 结构迁移工具包（仅迁结构，不迁数据）
+
+### 动机
+
+当前后端走 MemFire Cloud（`*.baseapi.memfiredb.com`），机房只在中国大陆。面向海外用户时的三堵墙：
+
+1. **延迟**：欧美访问国内机房普遍 300-600ms。
+2. **合规**：跨境数据存放受《数据安全法》/《个人信息保护法》双向约束，叠加 GDPR/CCPA 风险更高。
+3. **审核**：App Store 审核机器在美国，调中国机房可能被判"服务不稳定"拒审。
+
+项目从一开始就是标准 Supabase SDK（[`backend/app/db/supabase.py`](backend/app/db/supabase.py)），MemFire 只是提供兼容端点。换到官方 Supabase（新加坡/美东）**业务代码一行不动**。
+
+### 范围：只迁结构
+
+这一版**只复制"空壳"到新项目**：
+
+| 迁 | 不迁 |
+|---|---|
+| 37 张业务表 | 业务数据（posts / users 等表的行） |
+| 索引、触发器、函数、扩展 | auth.users 里的用户账号 |
+| Storage bucket 的名字 / public / 限额 / MIME 白名单 | bucket 里的文件 |
+
+目标是得到一个**结构完整、干净空库**的新 Supabase 项目，方便做海外开发/预发环境或为后续分区部署打底。数据迁移留作后续独立工作。
+
+### 新增脚本目录
+
+`backend/scripts/migrate_memfire_to_supabase/`：
+
+| 文件 | 职责 |
+|---|---|
+| `migrate.py` | CLI 入口：`schema \| storage \| all` |
+| `config.py` | 双端点配置加载，支持 `.env`；防呆校验 source ≠ target |
+| `migrate_schema.py` | 优先 `psql -f memfiredb_full_schema.sql`；没 `TARGET_POSTGRES_URL` 时提示走 SQL Editor |
+| `migrate_storage.py` | 列源 bucket → 目标建同名 bucket，保留 `public`/`file_size_limit`/`allowed_mime_types` |
+| `.env.example` | 四个 URL/KEY + `DRY_RUN` 开关 |
+| `README.md` | 完整 runbook |
+
+### 关键设计决策
+
+**为什么只迁结构？**
+用户当前需求是先把"基础设施"搬到海外，数据保持在 MemFire。这样可以：先搭起来海外开发/测试环境，等稳定后再决定数据怎么处理（可能是保持分区，也可能后补一个数据迁移脚本）。范围收窄 → 代码量减 60%，出错面也小。
+
+**为什么不用 pg_dump 整体 dump？**
+两个原因：(a) MemFire 不一定对外暴露裸 Postgres 连接；(b) 直接 dump 会把数据一起带过去，和当前诉求矛盾。项目维护的 [`memfiredb_full_schema.sql`](backend/app/db/memfiredb_full_schema.sql) 已经是 `CREATE TABLE IF NOT EXISTS` 风格的完整 DDL，直接 `psql -f` 就能干净上车，天然幂等。
+
+**为什么要读源 bucket 列表而不是在代码里硬编码？**
+[`backend/app/services/file_service.py`](backend/app/services/file_service.py) 现在只用 `images` 一个 bucket，但 `_ensure_bucket_exists` 支持运行时动态建 bucket。未来加 `avatars`/`covers` 这种都会先出现在源上，脚本读源列表可以自动跟进，不需要每次改代码。
+
+**幂等性**
+- Schema：SQL 全是 `CREATE ... IF NOT EXISTS`，重跑零副作用。
+- Storage：每建 bucket 前先查目标，存在就 skip。
+
+中断随时重跑，没有数据所以没有冲突风险。
+
+### 自检
+
+- `venv/bin/python -m py_compile` 过 5 个 .py 文件
+- `migrate.py --help` 显示 `{schema,storage,all}` 三个子命令
+- `ReadLints` 零错误
+
+### 实际落地结果（target: `kuyzesxjdlqaldiidhua.supabase.co`，新加坡节点）
+
+- **Storage**：脚本自动发现源端 2 个 bucket（`images`、`videos`，都是 public），在目标项目全部重建。
+- **Schema**：走方案 B（SQL Editor 手动粘贴 `memfiredb_full_schema.sql`）。
+  方案 A（`TARGET_POSTGRES_URL` + psql）尝试两次密码认证失败 ——
+  分别试了 Supabase "Connection string" 显示的占位示例和重置后的真密码，
+  判断可能是刚重置后的传播延迟或 IPv6 路由问题。方案 B 一次 Run 通过，
+  1131 行 DDL 全部生效。
+- **校验**：遍历 schema 里所有 `CREATE TABLE`，对每张表 `HEAD count=exact`，
+  结果 **37/37 表存在**，两张默认 seed 生效（`banners` 3 行 / `communities` 5 行）。
+
+### 踩的坑 / 经验
+
+- **方案 A 失败说明自动化走 psql 在首次建项目时并不稳定**：新密码/
+  Connection string 配置有窗口期，且 Supabase pooler/direct 两个端点行为
+  不一致。生产标准流程推荐方案 B（SQL Editor），哪怕比较"手动"，
+  可观测性更强（粘贴 → Run → 立刻看到 Success/Error 行号）。
+- README 已同时保留两条路径，默认建议 A，失败回退 B。
+- **Supabase 新旧 key 命名要分清**：`sb_publishable_xxx` = 旧 `anon` key，
+  放客户端；`sb_secret_xxx` = 旧 `service_role`，只能服务端用。迁移脚本
+  必须 service_role，否则会被 RLS 拦住建不了 bucket。
+
+### 影响面
+
+- 只新增一个脚本目录，**没动任何业务代码、schema、依赖**。
+- 实际切流由后续独立步骤完成（改 `.env` + 重启）。
+
+### 后续扩展
+
+如果之后要补数据迁移，按 `README.md` 的"后续扩展"一节加四个文件即可（`migrate_data.py` / `tables.py` / `migration_helpers.sql` / CLI 里加 `data` 子命令），本次的分层已经为扩展留好了位置。
+
+---
+
+## 2026-04-28: TabContent dispatcher 命名 hotfix —— 保留 `TabContentInner` 标识符
+
+### 现象
+
+上一条 "TabContent → dispatcher 模式" 落地后，iOS Hermes 真机 Fast Refresh 时爆：
+
+```
+ERROR [CrashGuard][global] ReferenceError: Property 'TabContentInner' doesn't exist
+at anonymous (.../TabContent.bundle:793:3)
+at metroHotUpdateModule
+...
+```
+
+### 根因
+
+`react-refresh/babel` 在每个文件里把 "被 `React.memo(...)` 包的那个函数"
+视作 primary component，并发射 `$RefreshReg$(TabContentInner, ...)` 把
+这个识别符写进全局 HMR 注册表。上一版本 bundle 里已经注册过这个名字；
+我重构时把那个函数改名成 `TabContentDispatcher`，Fast Refresh 增量应用
+新模块时沿着旧注册表查 `TabContentInner` —— 没了，所以 ReferenceError。
+
+只改过一次名字还能忍（full reload 就好），但两次重构把名字换来换去会
+持续踩这个雷。这是我在之前那条 commit 里就用注释警告过的坑，但没
+意识到"dispatcher 模式"落地时又踩了一遍。
+
+### 修复 (1 行改名)
+
+把 dispatcher 从 `TabContentDispatcher` 改回 `TabContentInner`；Posts 渲
+染器保留 `PostsTabContentInner`（对 Fast Refresh 而言它是**新增**符号，
+没有旧注册冲突）。导出名 `TabContent` 没动，外部调用点零影响。
+
+补了大段注释说明：以后再重构 TabContent 时，**被 `React.memo` 包装的
+那个函数的名字必须保持 `TabContentInner` 不变**。任何 rename 都要通过
+拆子组件 + 导入来实现。
+
+### 影响面
+
+- 代码只改一个标识符名 + 加注释，0 逻辑变化；
+- Fast Refresh 对改动文件恢复正常；
+- `tsc --noEmit` / ESLint 0 告警。
+
+---
+
+## 2026-04-28: 把买手店 Tab 也统一走 `<TabContent>` 入口 (dispatcher 模式)
+
+### 背景
+
+上一轮把买手店 Tab 接入时，为了快速落地直接在 `Discover/index.tsx` 里
+塞了一个 `<BuyerTabContent />` 和三个 `<TabContent tab="..." />` 并排。
+调用风格不一致：
+- Posts 三个 Tab 共用一套 props 结构；
+- 买手店自己一套完全不同的 props。
+
+为了父层一致性，改成 4 个 Tab 都写 `<TabContent tab="..." />`。
+
+### 实现 (KISS + SRP)
+
+**1 · `TabContent.tsx` 拆成 dispatcher + PostsTabContent**
+
+- 把原来 ~400 行的 `TabContentInner` 改名成 `PostsTabContentInner`，
+  只负责 forum / recommend / following 三个 Posts 型 Tab 的渲染；里面
+  所有 hooks（`useRef / useMemo / useCallback / useEffect`）原样保留、
+  没有任何逻辑变化。
+- 新增极薄的 `TabContentDispatcher`：
+
+```ts
+if (props.tab === "buyer") {
+  return <BuyerTabContent .../>;
+}
+return <PostsTabContent {...props} />;
+```
+
+- `export const TabContent = React.memo(TabContentDispatcher)`；
+  `PostsTabContent` 也 memoize 一次，Posts Tab 本身的 memo 语义不变。
+- 为什么不把 "if buyer return" 直接塞进原函数？——那会违反 React
+  `rules-of-hooks`：早 return 之后跟着十几个 hook 调用，eslint 会警告、
+  而且如果某个 buyer 实例因 StrictMode 重挂载错序就会触发 runtime
+  "Rendered fewer hooks than expected"。拆子组件是教科书做法。
+
+**2 · Props 用 Discriminated Union**
+
+```ts
+type TabContentProps =
+  | PostsTabContentProps   // tab: "forum" | "recommend" | "following"
+  | BuyerTabSlotProps;     // tab: "buyer"
+```
+
+- 写 `<TabContent tab="buyer" />` 时 TS 强制要求买手店回调、同时拒绝
+  Posts 系字段；反之亦然。上游再也不会误传 `tabPosts={[]} banners={[]}`
+  这种填空 props。
+- `BuyerTabSlotProps` 故意没叫 `BuyerTabContentProps`，避免和
+  `./BuyerTab/index.tsx` 里的同名 props 撞车（后者是子组件自身的 props
+  shape、不含 `tab` 判别字段）。
+
+**3 · `Discover/index.tsx` 统一调用**
+
+- 删掉直接从 `./components/BuyerTab` 拉 `BuyerTabContent` 的 import；
+- 买手店 Tab 的挂载点由 `<BuyerTabContent ... />` 改为
+  `<TabContent tab="buyer" isActive={...} onScroll={...} onSearchPress
+  {...} onStorePress={...} onBrandPress={...} onProductPress={...} />`；
+- 4 个 Tab 现在在同一块 JSX 里看起来结构一致，review 时很容易一眼
+  看到 "哦 buyer 多一组专属回调"。
+
+**4 · 运行时坑 —— `ReferenceError: Property 'getAllStores'` 小结**
+
+Fast Refresh 在 import 重命名瞬间的热替换边缘 case：旧闭包引用了已被
+HMR 摘掉的符号。`r` 一次全量 reload 即可；不是代码 bug，也不会在生产
+构建出现。为了避免再遇到，下面两条守则写进了记忆：
+- 在 Discover 页 hot-path 上改 import 时尽量做一次 full reload 再继续
+  调试；
+- `TabContent` 的 `displayName` 保留在被 `React.memo` 包装的内部函数上，
+  不要放到 memo 结果本身——以前就因为这个踩过 `Property 'TabContent'
+  doesn't exist` 的坑，本次保持这条约定。
+
+### 影响面
+
+- Posts Tab (forum / recommend / following) 行为 0 变化：`PostsTabContentInner`
+  的每一行都没动；只是被从 `TabContent` 改名为 `PostsTabContent` 并重
+  memoize；
+- 买手店 Tab 行为 0 变化：`BuyerTabContent` 组件本身没动，只是调用处
+  多套了一层 dispatcher；
+- 上游调用点更干净：4 个 `<TabContent tab="..." />`，不再有 1/4
+  特殊写法；
+- `tsc --noEmit` / ESLint 在改动文件上 0 告警。
+
+---
+
+## 2026-04-28: 买手店 Tab 冷启动拖垮推荐 Feed 的 bug 修复
+
+### 现象
+
+iOS 真机跑 `npx expo run:ios` 冷启动后终端连刷两条：
+
+```
+LOG  request https://api.avantregard.com/api/buyer-stores?page=1&pageSize=200
+LOG  request https://api.avantregard.com/api/buyer-stores?page=2&pageSize=200
+...
+LOG  [http] transient 0 on /buyer-stores?page=1&pageSize=200; retry 1/2 in 400ms
+...
+ERROR  Error filtering stores: [ApiError: 请求超时 (15000ms)]
+ERROR  Error loading stores: [ApiError: 请求超时 (15000ms)]
+```
+
+### 根因 (Chain-of-thought)
+
+1. 新的 BuyerTab `useBuyerTabData` hook 在挂载瞬间就 `useEffect(() =>
+   loadStores('initial'))`，没有走 `loadTabData` 的懒加载门。于是和
+   推荐 Feed、following-brands、levels/me、Expo Push 等一起在冷启动的
+   同一窗口排队去抢 HTTP 下载槽。
+2. `loadStores` 调的是 `getAllStores({ pageSize: 20 })`。但
+   `buyerStoreService.getAllStores` 内部把 `PAGE_SIZE` 硬编码成 `200`
+   并**忽略 caller 的 pageSize**，然后一直 `while (hasMore)` 循环
+   翻页。原本只想要 20 条数据做顶部选择条，实际上会把整张买手店目录
+   抽干。
+3. 网络一抖动，两个 `pageSize=200` 请求同时卡 15s timeout，http 层的
+   `retry 1/2 → retry 2/2` 又各自放大 400 + 800ms，最终这一组请求
+   独吞了 ~30s 冷启动时间，把其它请求 (`buyer-stores/viewport`、
+   `notifications`) 也拖成 `TypeError: Network request failed`。
+
+### 修复 (三处，holistic review)
+
+**1 · 换 API：`getAllStores` → `getStoresPaginated`**
+
+`frontend/src/screens/Discover/components/BuyerTab/hooks/useBuyerTabData.ts`
+里顶部选择条改成调 `getStoresPaginated({ pageSize: 20 })`，只拉 1 页。
+常量 `STORE_SHORTCUT_PAGE_SIZE = 20` 抽出来命名，后续调条数不用再翻
+代码里的魔数。
+
+**2 · 改成懒加载：新增 `enabled` 参数**
+
+- `useBuyerTabData({ enabled })` 参数化；`enabled === false` 时 hook
+  保持 idle (isLoading 初值也改成 false)。
+- 内部 `hasLoadedRef` 保证 `enabled` 首次翻 true 才 kickoff 一次，
+  后续 toggle 不会触发重复请求；pull-to-refresh / "点击重试" 会同时
+  把 `hasLoadedRef` 置 true，防止后到的 effect 再来一发。
+- `BuyerTabContent` 新增 `isActive: boolean` prop，向上透传给 hook。
+- `Discover/index.tsx` 传 `isActive={activeTab === "buyer"}`，和 forum
+  / following 两个 Tab 通过 `loadTabData` 懒加载的语义对齐。
+- 组件层新增 "idle" 分支：tab 尚未被激活过时 (`!isActive && stores.length
+  === 0 && !isLoading && !error`) 返回空白占位，避免"暂无买手店数据"
+  的骨架/空态误导用户。
+
+**3 · 给 `getAllStores` 顶部补坑点注释**
+
+`frontend/src/services/buyerStoreService.ts` 的 `getAllStores` 顶上
+加了大段警告：**内部硬编码 `pageSize: 200` 并循环到拉完整张目录**、
+首屏"前 N 条"场景请改用 `getStoresPaginated`，只在真的要全量缓存
+/ 批处理时才用。阻止下一个同学掉同样的坑。
+
+### 影响面
+
+- 冷启动 HTTP 下载槽压力 ↓：买手店的 2 个 200-page 请求消失，只有
+  用户真的切到"买手店" Tab 时才发 1 个 `pageSize=20` 请求。
+- 推荐 Feed 首屏 Posts 冷启动窗口得以独享，不再被买手店拖慢。
+- 已有的 `BuyerMapScreen` / `StoreListScreen` 还在用 `getAllStores`
+  （两者确实需要全量数据，没改它们）—— 但 `getAllStores` 的 JSDoc 现
+  在足够吓人，避免新增代码再误用。
+- `tsc --noEmit` / ESLint 无新增告警。
+
+---
+
+## 2026-04-28: Discover 页新增「买手店」Tab (前端 Only)
+
+### 背景
+
+Discover 页原先只有 `论坛 / 推荐 / 关注` 三个 Tab，全部是 posts 瀑布流。
+产品设计稿增加了一个完整的「买手店」Tab，页面结构和现有 posts 流完全
+不同：顶部店铺选择条、二级搜索框、店铺简介卡、分类入口、品牌筛选、本季
+Banner、两列单品网格。本期只改前端，后端新接口 (单品 / Banner /
+店铺 follow) 另行跟进。
+
+### 实现
+
+**1 · 类型 / 常量 / Tab 栏**
+
+- `frontend/src/screens/Discover/types.ts` `TabType` 增加 `"buyer"`
+- `frontend/src/screens/Discover/constants.ts` `TAB_INDEX_MAP` 改为
+  `{ forum: 0, recommend: 1, buyer: 2, following: 3 }`，顺序与设计稿
+  视觉顺序一致 (推荐 · 买手店 · 关注)
+- `DiscoverTabBar` 在 `DISCOVER_TABS` 里按上面顺序插入一项 `{ id: "buyer",
+  label: "买手店" }`，`CenteredTabBar` 组件四个 Tab 仍居中排列，`iPhone
+  SE` 以上宽度均可容纳
+
+**2 · `useDiscoverData` 非侵入式扩展**
+
+- `TabLoadingState / TabLoadedState` 各补一个 `buyer` 字段；
+- `loadTabData('buyer')` 不触发任何 HTTP 请求，只翻转 `tabLoaded.buyer
+  = true`，避免父层骨架屏 / 空态逻辑错误地把"买手店"当成空帖子 Tab；
+- `handleRefresh('buyer')` 直接 `return` 短路 —— 买手店的下拉刷新在
+  子组件 `useBuyerTabData` 内部以自己的 `isRefreshing` 状态管理，父
+  层的 `refreshing` 不能被短暂置 true 又立即 false，否则其它三个 Tab
+  的 `refreshControl` 会闪动。
+
+**3 · 新文件夹 `components/BuyerTab/`**
+
+子组件全部 `React.memo` 包装，配合 `useCallback` 稳定回调，确保店铺
+切换 / 品牌筛选只会重渲染真正变化的子树。
+
+- `types.ts` —— 新类型：`BuyerStoreProduct / BuyerStoreShortcut /
+  BrandFilterOption / BuyerStoreFeatureBanner / BuyerStoreProfileView /
+  CategoryCardConfig / ProductBadge`
+- `hooks/useBuyerTabData.ts` —— 统一管理：
+  - 真实买手店列表 (调既有 `getAllStores({ pageSize: 20 })`)
+  - 当前选中 storeId / 当前品牌过滤 / 已关注店铺集合 /
+    已收藏单品集合
+  - `BuyerStoreProfileView` 合成 (粉丝数取后端 `favoriteCount`，
+    关注数 / 帖子数暂由 storeId hash 稳定 Mock)
+  - 基于所选店铺 `brands` + 预置素材池合成的 Mock 单品 (`buildMockProducts`)，
+    Banner 配色 (`pickBanner`) 也按 storeId hash 固定，避免切 Tab 时
+    图片抖动
+- `StoreSelector.tsx` —— 顶部横向店铺条，选中圆环粗边 + 文字加粗；
+  空列表、加载中均有单独占位态
+- `SearchBar.tsx` —— 次级搜索入口，按下复用 DiscoverHeader 的 `Search` 路由
+- `StoreProfileCard.tsx` —— 简介卡：左侧 logo + 名称 + "买手店" 徽标 +
+  简介 + 标签 chip；右侧店铺封面 + overlay 关注 / 更多按钮；下方
+  `粉丝 · 关注 · 帖子` 三栏统计；最底部长简介
+- `CategoryCards.tsx` —— 单品 / 折扣 / 活动 / 介绍 四宫格入口，配置
+  放在 `useBuyerTabData.CATEGORY_CARDS` 以便未来替换图片素材 / 文案
+- `BrandFilterTabs.tsx` —— 横向品牌筛选条，首项固定"全部"(`brand = null`)；
+  右侧 grid 按钮目前转跳 StoreDetail，占位待后端上线"全部品牌矩阵"页
+- `NewArrivalBanner.tsx` —— SPRING / SUMMER NEW ARRIVAL 横幅，数据
+  驱动 (title / subtitle / cta / image)，待后端 Banner 接口上线后直接
+  换数据源
+- `ProductCard.tsx` —— 单品卡：角标 NEW / SALE / EVENT 三种配色、价格
+  千分位、心形收藏开关，点击单品 / 心形分别独立回调，父层用 `stopPropagation`
+  防止心形冒泡到整卡
+- `index.tsx` (`BuyerTabContent`) —— 顶层组合，单个外层 `ScrollView`
+  + `RefreshControl`，向下透传 5 个回调 (onScroll / onSearchPress /
+  onStorePress / onBrandPress / onProductPress)；网格部分手写 2 列
+  row 而非嵌套 FlatList，避免 RN "VirtualizedList in ScrollView" 警告
+
+**4 · `Discover/index.tsx` 接入**
+
+- 新增 3 个 useCallback：`handleBuyerStorePress` → `StoreDetail`、
+  `handleBuyerBrandPress` → `BrandDetail`、`handleBuyerProductPress`
+  暂时也跳 `BrandDetail` (后端单品详情页未上线)
+- 横向分页 `RNScrollView` 在 `recommend` 与 `following` 中间插入
+  `<BuyerTabContent />`，滚动事件复用 `handleVerticalScroll` 以保留
+  Header 折叠联动
+- `handleScrollEnd` 用 `TAB_INDEX_MAP` 顺序映射：0 forum · 1 recommend
+  · 2 buyer · 3 following
+- 初始化滚动从硬编码 `SCREEN_WIDTH` 改为 `TAB_INDEX_MAP.recommend *
+  SCREEN_WIDTH`，以后再插入 / 重排 Tab 时不用再改两个地方
+
+### 红线 / 影响面
+
+- **Backend 零改动** —— 仅消费既有 `/api/buyer-stores`；Mock 数据
+  (单品 / Banner / 关注 count) 集中在 `useBuyerTabData` 一个文件里，
+  待新接口上线后单点替换即可
+- **既有三个 Tab 行为不变** —— `useDiscoverData` 只对 `buyer` 分支做了
+  早返；recommend / forum / following 的分页、刷新、点赞、回跳顶部、
+  Feed v2.1 缓存、骨架屏等原有路径未受影响
+- **无 props drilling 爆炸** —— BuyerTabContent 对外只暴露 5 个回调；
+  其余 selectedStoreId / 已关注集合 / 品牌筛选 / 已收藏单品 等状态全部
+  驻留在 `useBuyerTabData` 内，不污染 DiscoverScreen 顶层
+- **React 规则** —— 所有 hooks 均在任何条件 return 之前声明 (ProductGrid
+  里 `useMemo` + `useCallback` 都在 `if (products.length === 0)` 之前)，
+  避免 "Rendered more hooks than during the previous render"
+- **Lint / tsc** —— `tsc --noEmit` 在本次新增/修改的文件上 0 错误 (仓
+  库其它模块的历史红线不在本次范围)；Discover 目录 ESLint 无新增告警
+
+---
+
 ## 2026-04-27: 把 App 商家中心 / 我的店铺 全量移植到 Web `/me/merchant`
 
 ### 背景

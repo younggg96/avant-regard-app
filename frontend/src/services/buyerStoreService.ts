@@ -35,6 +35,12 @@ export interface BuyerStore {
   rest?: string;
   distance?: number;
   favoriteCount?: number;
+  /**
+   * 是否有认证商家入驻 —— 由后端 `withMerchantFirst=true` 路径 / `/buyer-stores/all`
+   * 路径回填。其他接口不保证这个字段，因此标记为可选；渲染侧一律当成
+   * `hasMerchant === true` 才视为已入驻。
+   */
+  hasMerchant?: boolean;
 }
 
 export function hasValidCoordinates(
@@ -67,6 +73,12 @@ export interface BuyerStoreFilterParams {
   searchQuery?: string;
   page?: number;
   pageSize?: number;
+  /**
+   * 是否把已入驻商家店铺排在前面。
+   * 仅 `/api/buyer-stores` 路径支持；`/buyer-stores/all` 永远走优先排序，
+   * 对 caller 透明。
+   */
+  withMerchantFirst?: boolean;
 }
 
 // 品牌推荐响应
@@ -92,7 +104,18 @@ export interface ViewportStoreParams {
 }
 
 /**
- * 获取所有买手店（自动分页获取全部数据）
+ * 获取所有买手店（自动分页，拉满整张目录后返回）。
+ *
+ * 注意 / 坑点：
+ * - 这个函数会**忽略 caller 传入的 `pageSize`**，内部硬编码 `PAGE_SIZE = 200`
+ *   并循环拉取直到 `result.stores.length < PAGE_SIZE` 才停手。也就是说
+ *   "我只要前 N 家" 这种用例用 `getAllStores({ pageSize: N })` 是达不到
+ *   目的的，反而会触发 `page=1&pageSize=200` + `page=2&pageSize=200` +…
+ *   的连续请求。冷启动网络拥塞时极易把下载槽全占完。
+ * - 只需要一页数据（比如首屏的"店铺选择条" / "Home 精选" 这种） 请直接
+ *   使用 `getStoresPaginated({ page: 1, pageSize: 20 })`，不要用这个函数。
+ * - 仅在真正需要"离线全量缓存 / 地图视口外兜底 / 批处理"时才用这个函数。
+ *
  * GET /api/buyer-stores
  */
 export const getAllStores = async (
@@ -176,6 +199,7 @@ export const getStoresPaginated = async (
   if (filters.style) queryParams.append("style", filters.style);
   if (filters.openOnly) queryParams.append("openOnly", "true");
   if (filters.searchQuery) queryParams.append("searchQuery", filters.searchQuery);
+  if (filters.withMerchantFirst) queryParams.append("withMerchantFirst", "true");
   queryParams.append("page", (filters.page || 1).toString());
   queryParams.append("pageSize", (filters.pageSize || 20).toString());
 
@@ -185,6 +209,31 @@ export const getStoresPaginated = async (
   return request<BuyerStoreListResponse>(endpoint, {
     method: "GET",
   });
+};
+
+/**
+ * "查看全部买手店" 页专用：永远走入驻优先排序。
+ * GET /api/buyer-stores/all
+ *
+ * 和 `getStoresPaginated({ withMerchantFirst: true })` 的语义一致，
+ * 但返回的每个 store 一定带 `hasMerchant` 字段，可用于 UI 打徽章。
+ */
+export const getAllBuyerStores = async (
+  filters: BuyerStoreFilterParams = {}
+): Promise<BuyerStoreListResponse> => {
+  const queryParams = new URLSearchParams();
+
+  if (filters.country) queryParams.append("country", filters.country);
+  if (filters.city) queryParams.append("city", filters.city);
+  if (filters.brand) queryParams.append("brand", filters.brand);
+  if (filters.style) queryParams.append("style", filters.style);
+  if (filters.openOnly) queryParams.append("openOnly", "true");
+  if (filters.searchQuery) queryParams.append("searchQuery", filters.searchQuery);
+  queryParams.append("page", (filters.page || 1).toString());
+  queryParams.append("pageSize", (filters.pageSize || 30).toString());
+
+  const endpoint = `/api/buyer-stores/all?${queryParams.toString()}`;
+  return request<BuyerStoreListResponse>(endpoint, { method: "GET" });
 };
 
 /**

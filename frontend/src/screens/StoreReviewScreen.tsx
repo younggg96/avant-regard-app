@@ -213,11 +213,11 @@ const StoreReviewScreen = () => {
                     onPress: async () => {
                         try {
                             setIsSubmitting(true);
-                            const cityCode = submission.city.slice(0, 2).toLowerCase();
-                            const storeId = `user-${cityCode}-${Date.now()}`;
+                            // storeId 完全交由后端生成 (`u-<10 位 hex>`),
+                            // 避免前端按 `user-${city.slice(0,2)}-${Date.now()}`
+                            // 拼出带中文的 id,污染主键 / URL.
                             await reviewSubmission(submission.id, {
                                 status: "APPROVED",
-                                storeId,
                             });
                             Alert.alert("成功", "审核已通过");
                             setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));

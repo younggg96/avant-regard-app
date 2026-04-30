@@ -23,6 +23,11 @@ export interface BuyerStoreFilterParams {
   searchQuery?: string;
   page?: number;
   pageSize?: number;
+  /**
+   * 是否把已入驻商家店铺排在前面；仅 `/api/buyer-stores` 接受，
+   * `/buyer-stores/all` 永远走入驻优先，对 caller 透明.
+   */
+  withMerchantFirst?: boolean;
 }
 
 export interface BuyerStoreListResponse {
@@ -68,6 +73,7 @@ function cleanFilters(
   if (params.searchQuery) out.searchQuery = params.searchQuery;
   if (params.page) out.page = params.page;
   if (params.pageSize) out.pageSize = params.pageSize;
+  if (params.withMerchantFirst) out.withMerchantFirst = true;
   return out;
 }
 
@@ -83,13 +89,18 @@ export async function getStoresPaginated(
 
 /**
  * 拉完所有匹配的门店。用于全量过滤（不需要视口）。后端 `/api/buyer-stores`
- * 单次最多返回 200 条，需要循环分页。
+ * 单次最多返回 200 条，需要循环分页.
+ *
+ * 默认启用 `withMerchantFirst=true` —— 让地图底部卡片和列表都把已入驻商家店铺
+ * 排在前面，并在 store 上带回 `hasMerchant` 字段给 UI 打徽章.
  */
 export async function getAllStores(
   filters: BuyerStoreFilterParams = {},
 ): Promise<BuyerStore[]> {
+  const withMerchantFirst = filters.withMerchantFirst ?? true;
   const first = await getStoresPaginated({
     ...filters,
+    withMerchantFirst,
     page: 1,
     pageSize: STORE_PAGE_MAX,
   });
@@ -99,6 +110,7 @@ export async function getAllStores(
   for (let page = 2; all.length < total; page++) {
     const next = await getStoresPaginated({
       ...filters,
+      withMerchantFirst,
       page,
       pageSize: STORE_PAGE_MAX,
     });
@@ -107,6 +119,22 @@ export async function getAllStores(
     if (next.stores.length < STORE_PAGE_MAX) break;
   }
   return all;
+}
+
+/**
+ * "查看全部买手店"专用：走 `/api/buyer-stores/all` —— 后端永远入驻优先 +
+ * 每条带 `hasMerchant`，给 list 视图打"已入驻"徽章.
+ *
+ * 对齐 `frontend/src/services/buyerStoreService.ts#getAllBuyerStores`.
+ */
+export async function getAllBuyerStores(
+  filters: BuyerStoreFilterParams = {},
+): Promise<BuyerStoreListResponse> {
+  return apiClient.get<BuyerStoreListResponse>("/api/buyer-stores/all", {
+    ...cleanFilters(filters),
+    page: filters.page ?? 1,
+    pageSize: Math.min(filters.pageSize ?? 30, STORE_PAGE_MAX),
+  });
 }
 
 export async function getStoresInViewport(

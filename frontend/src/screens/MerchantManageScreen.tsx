@@ -61,6 +61,7 @@ import {
   ActivityType,
   DiscountType,
 } from "../services/storeMerchantService";
+import { uploadImageFromUri } from "./admin/adminUtils";
 
 type RouteParams = {
   MerchantManage: {
@@ -144,6 +145,11 @@ const MerchantManageScreen = () => {
 
   // 表单数据
   const [formData, setFormData] = useState<any>({});
+
+  // 正在上传的图片字段名，用于在 pickImage 并发期间反馈 UI loading。
+  // 之所以用 string 而不是 boolean，是因为 Banner / 活动 / 折扣三种表单
+  // 可能复用同一个组件结构——记录字段名才能在正确的缩略图区域显示"上传中"。
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   // 加载商家信息
   const loadMerchant = useCallback(async () => {
@@ -359,20 +365,46 @@ const MerchantManageScreen = () => {
     setFormData({});
   };
 
-  // 选择图片
+  // 选择图片并上传到后端
+  //
+  // 历史 bug：此处早期直接把 `expo-image-picker` 返回的 `file://...` 本地
+  // 沙盒 URI 写入表单，然后跟随 createBanner / createActivity / createDiscount
+  // 落库。结果就是换一台手机或在 Web 商家后台里看这条 banner 时，<img> 的
+  // src 还是原机器的本地路径——浏览器 / 其它设备根本访问不到，图片呈
+  // broken。
+  //
+  // 正确路径：选图后先走 `/api/files/upload-image`（admin 侧同款上传端点），
+  // 拿到 Supabase Storage 公网 URL 再写回表单。这样所有客户端（web / 其它
+  // 设备 / 同一台手机重装后）都能解析出同一张图。
+  //
+  // UX：上传期间通过 `uploadingField` 给对应的缩略图区域回显"上传中..."
+  // 并禁掉二次点击，避免用户重复提交。
   const pickImage = async (fieldName: string = "imageUrl") => {
+    if (uploadingField) return; // 防重入：上一次上传还在跑时拒绝再次触发
+
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { Alert.alert("权限不足", "需要相册权限才能选择图片"); return; }
+    if (status !== "granted") {
+      Alert.alert("权限不足", "需要相册权限才能选择图片");
+      return;
+    }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: fieldName === "coverImage" ? [16, 9] : [16, 9],
+      aspect: [16, 9],
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setFormData({ ...formData, [fieldName]: result.assets[0].uri });
+    if (result.canceled || !result.assets[0]) return;
+
+    try {
+      setUploadingField(fieldName);
+      const url = await uploadImageFromUri(result.assets[0].uri);
+      setFormData((prev: any) => ({ ...prev, [fieldName]: url }));
+    } catch (error: any) {
+      Alert.alert("上传失败", error?.message || "请稍后重试");
+    } finally {
+      setUploadingField(null);
     }
   };
 
@@ -1600,8 +1632,16 @@ const MerchantManageScreen = () => {
                 alignItems="center"
                 overflow="hidden"
                 onPress={() => pickImage("imageUrl")}
+                disabled={uploadingField === "imageUrl"}
               >
-                {formData.imageUrl ? (
+                {uploadingField === "imageUrl" ? (
+                  <VStack alignItems="center">
+                    <ActivityIndicator color={theme.colors.black} />
+                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                      上传中...
+                    </Text>
+                  </VStack>
+                ) : formData.imageUrl ? (
                   <OptimizedImage
                     uri={formData.imageUrl}
                     size={ImageSize.MEDIUM}
@@ -1722,8 +1762,16 @@ const MerchantManageScreen = () => {
                 alignItems="center"
                 overflow="hidden"
                 onPress={() => pickImage("coverImage")}
+                disabled={uploadingField === "coverImage"}
               >
-                {formData.coverImage ? (
+                {uploadingField === "coverImage" ? (
+                  <VStack alignItems="center">
+                    <ActivityIndicator color={theme.colors.black} />
+                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                      上传中...
+                    </Text>
+                  </VStack>
+                ) : formData.coverImage ? (
                   <OptimizedImage
                     uri={formData.coverImage}
                     size={ImageSize.MEDIUM}
@@ -1875,8 +1923,16 @@ const MerchantManageScreen = () => {
                 alignItems="center"
                 overflow="hidden"
                 onPress={() => pickImage("coverImage")}
+                disabled={uploadingField === "coverImage"}
               >
-                {formData.coverImage ? (
+                {uploadingField === "coverImage" ? (
+                  <VStack alignItems="center">
+                    <ActivityIndicator color={theme.colors.black} />
+                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                      上传中...
+                    </Text>
+                  </VStack>
+                ) : formData.coverImage ? (
                   <OptimizedImage
                     uri={formData.coverImage}
                     size={ImageSize.MEDIUM}

@@ -52,7 +52,10 @@ import BrandFollowersScreen from "./src/screens/BrandFollowersScreen";
 import AdminScreen from "./src/screens/admin/AdminScreen";
 import SubmitStoreScreen from "./src/screens/SubmitStoreScreen";
 import StoreDetailScreen from "./src/screens/StoreDetailScreen";
+import AllBuyerStoresScreen from "./src/screens/AllBuyerStoresScreen";
 import StoreReviewScreen from "./src/screens/StoreReviewScreen";
+import StoreProductListScreen from "./src/screens/StoreProductListScreen";
+import StoreProductDetailScreen from "./src/screens/StoreProductDetailScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
@@ -451,6 +454,21 @@ function AppNavigator() {
         <Stack.Screen
           name="StoreDetail"
           component={StoreDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AllBuyerStores"
+          component={AllBuyerStoresScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StoreProductList"
+          component={StoreProductListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="StoreProductDetail"
+          component={StoreProductDetailScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

@@ -18,9 +18,12 @@ import { Alert } from "../../../utils/Alert";
 import { useFeedRecommendation } from "./useFeedRecommendation";
 
 // 每个 Tab 的加载状态
+// 买手店 Tab 的实际数据获取由 BuyerTabContent 内部 `useBuyerTabData` 自行负责；
+// 这里仅保留字段以便 `loadTabData` / `handleRefresh` 的开关仍然类型完备。
 interface TabLoadingState {
   forum: boolean;
   recommend: boolean;
+  buyer: boolean;
   following: boolean;
 }
 
@@ -28,6 +31,7 @@ interface TabLoadingState {
 interface TabLoadedState {
   forum: boolean;
   recommend: boolean;
+  buyer: boolean;
   following: boolean;
 }
 
@@ -90,6 +94,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   const [tabLoading, setTabLoading] = useState<TabLoadingState>({
     forum: false,
     recommend: false,
+    buyer: false,
     following: false,
   });
 
@@ -97,6 +102,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   const [tabLoaded, setTabLoaded] = useState<TabLoadedState>({
     forum: false,
     recommend: false,
+    buyer: false,
     following: false,
   });
 
@@ -439,6 +445,8 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         } else if (tab === "following") {
           await fetchFollowingPosts();
         }
+        // "buyer" tab 的数据由 BuyerTabContent 内部自行获取，这里只翻转加载标记，
+        // 避免 CenteredTabBar 切到买手店时触发父层骨架屏 / 空态分支。
         setTabLoaded((prev) => ({ ...prev, [tab]: true }));
       } catch (err) {
         console.error(`加载 ${tab} tab 数据失败:`, err);
@@ -492,13 +500,18 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    */
   const handleRefresh = useCallback(
     async (activeTab: TabType) => {
+      // 买手店 Tab 自己的下拉刷新走子组件里的 `useBuyerTabData.refresh`，
+      // 这里直接短路：不真正发请求、也不清空父级 refreshing 状态。
+      if (activeTab === "buyer") {
+        return;
+      }
       setRefreshing(true);
       try {
         if (activeTab === "forum") {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
         } else if (activeTab === "recommend") {
           await fetchRecommendPosts();
-        } else {
+        } else if (activeTab === "following") {
           await fetchFollowingPosts();
         }
         setTabLoaded((prev) => ({ ...prev, [activeTab]: true }));

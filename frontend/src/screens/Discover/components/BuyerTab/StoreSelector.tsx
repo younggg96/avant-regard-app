@@ -1,0 +1,262 @@
+/**
+ * 顶部横向买手店选择条。
+ *
+ * 视觉对齐设计稿：圆形 logo + 店铺名，选中态用黑色圆环描边。
+ * 点击单元 → 触发 `onSelect(storeId)`，所有后续状态更新由 `useBuyerTabData`
+ * 接管，这里保持无状态，便于和 React.memo 配合。
+ */
+import React, { useCallback } from "react";
+import { FlatList, ListRenderItem, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Box, Pressable, Text } from "../../../../components/ui";
+import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../../utils/imageUtils";
+import { theme } from "../../../../theme";
+import { BuyerStoreShortcut } from "./types";
+
+interface StoreSelectorProps {
+  stores: BuyerStoreShortcut[];
+  selectedStoreId: string | null;
+  onSelect: (storeId: string) => void;
+  /**
+   * 尾部"查看全部 →"入口的点击回调。未传则不渲染该尾部 cell
+   * （保持向后兼容，便于其他场景独立复用 StoreSelector）。
+   */
+  onOpenAll?: () => void;
+  isLoading?: boolean;
+}
+
+const LOGO_SIZE = 56;
+
+// 尾部 "查看全部" 的哨兵 id，和任何真实 store id 区分开。
+const ALL_SHORTCUT_ID = "__ALL__";
+
+/**
+ * FlatList 渲染项：真实店铺 shortcut 或尾部"查看全部"入口。
+ * 用一个 discriminated union 让 renderItem 可以统一处理两种 item，
+ * 避免把尾部 cell 写成 ListFooterComponent（那样它就不会跟着其他店铺
+ * 一起横向 snap，体感上像是被截在末尾的额外按钮）。
+ */
+type SelectorItem =
+  | ({ kind: "store" } & BuyerStoreShortcut)
+  | { kind: "all"; storeId: typeof ALL_SHORTCUT_ID };
+
+const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
+  stores,
+  selectedStoreId,
+  onSelect,
+  onOpenAll,
+  isLoading,
+}) => {
+  const items: SelectorItem[] = React.useMemo(() => {
+    const base: SelectorItem[] = stores.map((s) => ({ kind: "store" as const, ...s }));
+    if (onOpenAll && stores.length > 0) {
+      base.push({ kind: "all" as const, storeId: ALL_SHORTCUT_ID });
+    }
+    return base;
+  }, [stores, onOpenAll]);
+
+  const renderItem = useCallback<ListRenderItem<SelectorItem>>(
+    ({ item }) => {
+      if (item.kind === "all") {
+        return (
+          <Pressable
+            onPress={onOpenAll}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            style={styles.item}
+          >
+            <View style={[styles.logoRing, styles.logoRingIdle]}>
+              <View style={[styles.logoInner, styles.allLogoInner]}>
+                <Ionicons
+                  name="arrow-forward"
+                  size={20}
+                  color={theme.colors.white}
+                />
+              </View>
+            </View>
+            <Text numberOfLines={1} style={[styles.name, styles.nameIdle]}>
+              查看全部
+            </Text>
+          </Pressable>
+        );
+      }
+
+      const isSelected = item.storeId === selectedStoreId;
+      const firstLetter = (item.name?.charAt(0) || "S").toUpperCase();
+      return (
+        <Pressable
+          onPress={() => onSelect(item.storeId)}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          style={styles.item}
+        >
+          <View
+            style={[
+              styles.logoRing,
+              isSelected ? styles.logoRingSelected : styles.logoRingIdle,
+            ]}
+          >
+            <View style={styles.logoInner}>
+              {item.coverImage ? (
+                <OptimizedImage
+                  uri={item.coverImage}
+                  size={ImageSize.THUMBNAIL}
+                  style={styles.logoImage}
+                  contentFit="cover"
+                  lazy
+                />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Text style={styles.logoPlaceholderText}>{firstLetter}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.name,
+              isSelected ? styles.nameSelected : styles.nameIdle,
+            ]}
+          >
+            {item.name}
+          </Text>
+        </Pressable>
+      );
+    },
+    [onSelect, onOpenAll, selectedStoreId]
+  );
+
+  if (isLoading && stores.length === 0) {
+    return (
+      <Box py="$sm">
+        <View style={styles.skeletonRow}>
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <View key={idx} style={styles.skeletonCell}>
+              <View style={styles.skeletonLogo} />
+              <View style={styles.skeletonLabel} />
+            </View>
+          ))}
+        </View>
+      </Box>
+    );
+  }
+
+  if (stores.length === 0) {
+    return (
+      <Box py="$md" alignItems="center">
+        <Ionicons name="storefront-outline" size={24} color={theme.colors.gray300} />
+        <Text fontSize="$xs" color="$gray400" mt="$xs">
+          暂无买手店数据
+        </Text>
+      </Box>
+    );
+  }
+
+  return (
+    <FlatList
+      data={items}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyExtractor={(item) => item.storeId}
+      renderItem={renderItem}
+      contentContainerStyle={styles.listContent}
+    />
+  );
+};
+
+export const StoreSelector = React.memo(StoreSelectorImpl);
+
+const styles = StyleSheet.create({
+  listContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 14,
+  },
+  item: {
+    alignItems: "center",
+    width: 64,
+  },
+  logoRing: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: LOGO_SIZE / 2,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 3,
+  },
+  logoRingIdle: {
+    backgroundColor: theme.colors.white,
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+  },
+  logoRingSelected: {
+    backgroundColor: theme.colors.white,
+    borderWidth: 2,
+    borderColor: theme.colors.black,
+  },
+  logoInner: {
+    flex: 1,
+    width: "100%",
+    borderRadius: LOGO_SIZE / 2,
+    overflow: "hidden",
+    backgroundColor: theme.colors.gray100,
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
+  },
+  logoPlaceholder: {
+    flex: 1,
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  allLogoInner: {
+    backgroundColor: theme.colors.black,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoPlaceholderText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  name: {
+    marginTop: 6,
+    fontSize: 11,
+    textAlign: "center",
+    maxWidth: 64,
+  },
+  nameIdle: {
+    color: theme.colors.gray300,
+    fontWeight: "500",
+  },
+  nameSelected: {
+    color: theme.colors.black,
+    fontWeight: "700",
+  },
+  skeletonRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    gap: 14,
+  },
+  skeletonCell: {
+    alignItems: "center",
+    width: 64,
+  },
+  skeletonLogo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
+    borderRadius: LOGO_SIZE / 2,
+    backgroundColor: theme.colors.gray100,
+  },
+  skeletonLabel: {
+    marginTop: 6,
+    width: 40,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: theme.colors.gray100,
+  },
+});
+
+export default StoreSelector;

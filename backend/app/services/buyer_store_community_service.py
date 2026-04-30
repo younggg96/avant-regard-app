@@ -2,10 +2,18 @@
 买手店社区服务 - 处理用户提交、评论、评分、收藏功能
 """
 
+import re
+import uuid
 from typing import Optional, List, Tuple
 from datetime import datetime
 
 from app.db.supabase import get_supabase, get_supabase_admin, execute_with_retry
+
+# 合法的 buyer_stores.id 字符集——所有由本服务新生成的 id 都走
+# `u-<10 位 hex>`，历史导入数据形如 `sh-037` / `bj-001` 也满足这个正则.
+# 防御式校验用这一条挡住客户端上传的带中文 / 特殊字符的 id, 避免再出现
+# `user-上海-1777296718133` 这类 URL-encode 后极丑且不一致的主键.
+_STORE_ID_SAFE_RE = re.compile(r"^[a-z0-9\-]{1,100}$")
 from app.schemas.buyer_store import (
     UserSubmittedStoreCreate,
     UserSubmittedStore,
@@ -173,12 +181,17 @@ class BuyerStoreCommunityService:
         ).execute()
         return True
 
-    def _generate_store_id(self, city: str, submission_id: int) -> str:
-        """为用户提交的买手店生成唯一ID，格式: u-{city}-{submission_id}"""
-        import re
-        # 保留英文字母和数字，中文转拼音首字母太复杂，直接用submission_id保证唯一
-        city_slug = re.sub(r'[^a-zA-Z0-9]', '', city.lower())[:10] or "city"
-        return f"u-{city_slug}-{submission_id}"
+    def _generate_store_id(self) -> str:
+        """生成买手店唯一 ID, 格式: `u-<10 位 hex>` (示例: `u-a7c4f1b2e9`).
+
+        - 保留 `u-` 前缀,一眼能看出是"用户提交审核通过后"产生的店铺,
+          和历史 Excel 导入的 `sh-037` / `bj-001` 风格相容又不冲突.
+        - 使用 `uuid4().hex[:10]` —— 16^10 ≈ 1.1 × 10^12 种可能,
+          在可预见数据量内碰撞概率可忽略;万一撞车,`buyer_stores.id`
+          有 PRIMARY KEY 会直接抛错,上层会作为 Exception 冒出来.
+        - 纯 ASCII + 全小写 + 短长度,URL 友好无需 encode.
+        """
+        return f"u-{uuid.uuid4().hex[:10]}"
 
     def _build_buyer_store_from_submission(self, submission: dict, store_id: str) -> dict:
         """从user_submitted_stores行构建buyer_stores插入数据"""
@@ -229,9 +242,13 @@ class BuyerStoreCommunityService:
             update_data["reject_reason"] = data.rejectReason
 
         elif data.status == "APPROVED":
-            store_id = data.storeId or self._generate_store_id(
-                submission["city"], submission_id
-            )
+            # 防御式校验:只接受合法字符集的客户端 storeId;其它一律忽略,
+            # 走服务端统一生成.这样即使未来有客户端又犯同样的错传中文 id,
+            # DB 里也不会再被污染.
+            client_store_id = data.storeId
+            if client_store_id and not _STORE_ID_SAFE_RE.match(client_store_id):
+                client_store_id = None
+            store_id = client_store_id or self._generate_store_id()
             update_data["approved_store_id"] = store_id
 
             buyer_store_data = self._build_buyer_store_from_submission(

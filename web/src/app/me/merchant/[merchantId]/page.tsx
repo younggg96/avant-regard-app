@@ -41,7 +41,11 @@ import {
   TextInput,
   Toggle,
 } from "@/components/admin/ui";
-import { uploadImage } from "@/lib/services/admin";
+import {
+  ChipEditor,
+  ChipPicker,
+  ImagePicker,
+} from "@/components/merchant/shared";
 import {
   storeMerchantService,
   ACTIVITY_TYPE_LABEL,
@@ -56,6 +60,49 @@ import {
   type ActivityType,
   type DiscountType,
 } from "@/lib/services/store-merchant";
+
+// ───────────────────────────── 图片兜底工具 ─────────────────────────────
+//
+// 历史脏数据：早期 iOS 客户端走 `MerchantManageScreen.pickImage` 时漏掉
+// 了上传步骤，把 `file:///var/mobile/...ImagePicker/xxx.jpg` 这种设备本
+// 地路径直接落进了 Banner.imageUrl / Activity.coverImage 等字段。浏览器
+// 根本访问不到 file://，结果商家后台列表里就是一堆 broken 小图标（见
+// PROGRESS_LOG 2026-04-29 bugfix）。
+//
+// 主因已经在移动端 + 后端 schema 两侧修好（以后不会再写入），但 DB 里
+// 残留的脏数据还是会触发 broken。这里统一一个"能显示吗?"的判断 + 缩略
+// 图占位组件，把脏数据静默降级为"图片不可用，请点击编辑重新上传"的文
+// 案，避免用户看到破碎图标困惑。
+
+function isDisplayableUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.startsWith("http://") || lower.startsWith("https://");
+}
+
+function MerchantThumb({
+  url,
+  alt,
+  className,
+}: {
+  url: string | null | undefined;
+  alt: string;
+  className: string;
+}) {
+  if (isDisplayableUrl(url)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url!} alt={alt} className={className} />;
+  }
+  return (
+    <div
+      className={`${className} flex items-center justify-center border border-dashed border-[var(--border)] bg-[var(--canvas)] text-center font-label text-[10px] leading-tight text-[color:var(--ink-muted)]`}
+    >
+      图片不可用
+      <br />
+      请重新上传
+    </div>
+  );
+}
 
 // ───────────────────────────── Tab 配置 ─────────────────────────────
 
@@ -153,6 +200,8 @@ export default function MerchantManagePage() {
         <StatusBadge active>已认证</StatusBadge>
       </header>
 
+      <ProductSystemNav merchantId={merchant.id} />
+
       <TabBar active={activeTab} onChange={setActiveTab} />
 
       <div className="mt-6">
@@ -165,6 +214,66 @@ export default function MerchantManagePage() {
         {activeTab === "discount" && <DiscountTab merchant={merchant} />}
       </div>
     </section>
+  );
+}
+
+// ───────────────────────── 商品系统子页导航 ─────────────────────────
+//
+// 商品系统 (Phase 5) 的 4 组资源和当前页面的 5 个 Tab 是正交关系（入驻
+// 认证 vs 商品发布），如果再把它们塞成 Tab 会让当前页扛 9 个 Tab，视觉
+// 和代码上都不友好。所以这里把它们做成独立子路由，在主管理页首屏放一
+// 行"卡片导航"，clarity > cleverness.
+
+function ProductSystemNav({ merchantId }: { merchantId: number }) {
+  const items = [
+    {
+      href: `/me/merchant/${merchantId}/profile`,
+      title: "店铺主页配置",
+      desc: "Logo / 封面 / 介绍 / 标签",
+    },
+    {
+      href: `/me/merchant/${merchantId}/entry-cards`,
+      title: "入口卡片",
+      desc: "首页分类 / 折扣 / 活动 / 新品 四种入口",
+    },
+    {
+      href: `/me/merchant/${merchantId}/categories`,
+      title: "商品分类",
+      desc: "上衣 / 裤子 / 男装 / 女装 …",
+    },
+    {
+      href: `/me/merchant/${merchantId}/products`,
+      title: "商品管理",
+      desc: "新品 / 折扣 / 草稿 / 下架",
+    },
+  ];
+  return (
+    <div className="mb-6">
+      <div className="mb-2 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
+        商品系统
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((it) => (
+          <Link
+            key={it.href}
+            href={it.href}
+            className="group block rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-4 transition-colors hover:border-[var(--ink-muted)]"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-serif text-[15px] text-[var(--ink)]">
+                {it.title}
+              </span>
+              <span className="font-label text-[14px] text-[color:var(--ink-muted)] transition-colors group-hover:text-[var(--ink)]">
+                →
+              </span>
+            </div>
+            <div className="mt-1 font-label text-[12px] text-[color:var(--ink-muted)]">
+              {it.desc}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -644,9 +753,8 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
               className="flex items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-3"
             >
               {b.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={b.imageUrl}
+                <MerchantThumb
+                  url={b.imageUrl}
                   alt={b.title || ""}
                   className="h-16 w-28 shrink-0 rounded object-cover"
                 />
@@ -1036,9 +1144,8 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
             >
               <div className="flex items-start gap-4">
                 {a.coverImage && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={a.coverImage}
+                  <MerchantThumb
+                    url={a.coverImage}
                     alt={a.title}
                     className="h-20 w-28 shrink-0 rounded object-cover"
                   />
@@ -1316,9 +1423,8 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
             >
               <div className="flex items-start gap-4">
                 {d.coverImage && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={d.coverImage}
+                  <MerchantThumb
+                    url={d.coverImage}
                     alt={d.title}
                     className="h-20 w-28 shrink-0 rounded object-cover"
                   />
@@ -1559,172 +1665,6 @@ function RowActions({
       >
         删除
       </button>
-    </div>
-  );
-}
-
-function ChipEditor({
-  label,
-  placeholder,
-  draft,
-  onDraftChange,
-  items,
-  onAdd,
-  onRemove,
-}: {
-  label: string;
-  placeholder?: string;
-  draft: string;
-  onDraftChange: (v: string) => void;
-  items: string[];
-  onAdd: (v: string) => void;
-  onRemove: (idx: number) => void;
-}) {
-  const commit = () => {
-    const v = draft.trim();
-    if (!v) return;
-    onAdd(v);
-    onDraftChange("");
-  };
-
-  return (
-    <FormField label={label}>
-      <div className="flex items-center gap-2">
-        <div className="flex-1">
-          <TextInput
-            value={draft}
-            onChange={onDraftChange}
-            placeholder={placeholder}
-          />
-        </div>
-        <Button variant="secondary" size="sm" onClick={commit}>
-          添加
-        </Button>
-      </div>
-      {items.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {items.map((it, idx) => (
-            <span
-              key={`${it}-${idx}`}
-              className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-0.5 font-label text-[12px] text-[var(--ink)]"
-            >
-              {it}
-              <button
-                onClick={() => onRemove(idx)}
-                className="text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
-                aria-label="移除"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </FormField>
-  );
-}
-
-function ChipPicker<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={`rounded-full border px-3 py-1 font-label text-[12px] transition-colors ${
-            value === o.value
-              ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--canvas)]"
-              : "border-[var(--border)] text-[color:var(--ink-muted)] hover:border-[var(--ink-muted)]"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ImagePicker({
-  value,
-  onChange,
-  height = 120,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  height?: number;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const handleClick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      setUploading(true);
-      setErr(null);
-      try {
-        const url = await uploadImage(file);
-        onChange(url);
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : "上传失败");
-      } finally {
-        setUploading(false);
-      }
-    };
-    input.click();
-  };
-
-  return (
-    <div>
-      <div
-        onClick={handleClick}
-        className="flex cursor-pointer items-center justify-center overflow-hidden rounded border border-dashed border-[var(--border)] bg-[var(--canvas)] hover:border-[var(--ink-muted)]"
-        style={{ height }}
-      >
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={value}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-            {uploading ? "上传中…" : "点击选择图片"}
-          </div>
-        )}
-      </div>
-      {value && (
-        <div className="mt-2 flex items-center gap-2 font-label text-[11px] text-[color:var(--ink-muted)]">
-          <button
-            onClick={handleClick}
-            className="underline-offset-2 hover:underline"
-          >
-            更换
-          </button>
-          <span>·</span>
-          <button
-            onClick={() => onChange("")}
-            className="underline-offset-2 hover:underline"
-          >
-            清除
-          </button>
-        </div>
-      )}
-      {err && (
-        <div className="mt-1 font-label text-[11px] text-red-600">{err}</div>
-      )}
     </div>
   );
 }

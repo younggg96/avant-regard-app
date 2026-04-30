@@ -248,13 +248,14 @@ const DiscoverScreen: React.FC = () => {
     }, [fetchUnreadCount])
   );
 
-  // 初始化时滚动到推荐 tab（index 1）
+  // 初始化时滚动到推荐 tab —— 用 TAB_INDEX_MAP 而不是字面量 1，避免
+  // 以后再调整 Tab 顺序（比如把买手店挪到最左侧）时这里忘记同步更新。
   useEffect(() => {
     if (isInitialized && !hasInitialScrolled.current) {
       hasInitialScrolled.current = true;
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
-          x: SCREEN_WIDTH, // recommend tab 在 index 1
+          x: TAB_INDEX_MAP.recommend * SCREEN_WIDTH,
           animated: false,
         });
       }, 0);
@@ -320,8 +321,15 @@ const DiscoverScreen: React.FC = () => {
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x;
       const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
+      // 顺序与 TAB_INDEX_MAP 保持严格一致：0 forum / 1 recommend / 2 buyer / 3 following。
       const newTab: TabType =
-        pageIndex === 0 ? "forum" : pageIndex === 1 ? "recommend" : "following";
+        pageIndex === 0
+          ? "forum"
+          : pageIndex === 1
+          ? "recommend"
+          : pageIndex === 2
+          ? "buyer"
+          : "following";
 
       if (newTab !== activeTab) {
         setActiveTab(newTab);
@@ -375,6 +383,46 @@ const DiscoverScreen: React.FC = () => {
       });
     },
     [navigation, userInfoCache]
+  );
+
+  // 买手店 Tab 专用导航：选中的店铺卡片 / 分类入口 / 单品全部走 navigation
+  const handleBuyerStorePress = useCallback(
+    (storeId: string) => {
+      (navigation.navigate as any)("StoreDetail", { storeId });
+    },
+    [navigation]
+  );
+
+  // 顶部横向选择条末尾"查看全部"入口：跳到 AllBuyerStoresScreen。
+  // 这个回调独立出来的目的是让 BuyerTab 内部不感知具体路由名，只认
+  // "我要看全部"这个语义，后续如果换成 Modal/BottomSheet 也能原地替换。
+  const handleOpenAllBuyerStores = useCallback(() => {
+    (navigation.navigate as any)("AllBuyerStores");
+  }, [navigation]);
+
+  // Phase 4：入口卡片（分类 / 折扣 / 新品）分流到 StoreProductList。
+  // 这里单纯做一次 `navigate(name, params)` 转发，业务语义（mode /
+  // categoryId）已经在 BuyerTab 里解释完毕，不再二次翻译。
+  const handleOpenProductList = useCallback(
+    (payload: {
+      storeId: string;
+      storeName?: string;
+      mode: "ALL" | "CLASSIFICATION" | "DISCOUNT" | "NEW_ARRIVAL";
+      categoryId?: number | null;
+    }) => {
+      (navigation.navigate as any)("StoreProductList", payload);
+    },
+    [navigation]
+  );
+
+  const handleBuyerProductPress = useCallback(
+    (product: { realProductId: number }) => {
+      // 买手店 Tab 现在只展示商家真实上架的单品（去 mock 后），必定有 realProductId。
+      (navigation.navigate as any)("StoreProductDetail", {
+        productId: product.realProductId,
+      });
+    },
+    [navigation]
   );
 
   // 处理 Banner 点击
@@ -520,6 +568,19 @@ const DiscoverScreen: React.FC = () => {
           onEndReached={loadMoreRecommend}
           loadingMore={recommendLoadingMore}
           scrollToTopSignal={recommendScrollToTopSignal}
+        />
+        {/* 买手店 Tab —— 统一走 <TabContent tab="buyer" />，内部 dispatcher
+            会 delegate 到 BuyerTabContent 子组件。`isActive` 是懒加载开关，
+            避免冷启动瞬间和推荐 Feed 抢同一批 HTTP slot。 */}
+        <TabContent
+          tab="buyer"
+          isActive={activeTab === "buyer"}
+          onScroll={handleVerticalScroll}
+          onSearchPress={handleSearchPress}
+          onStorePress={handleBuyerStorePress}
+          onProductPress={handleBuyerProductPress}
+          onOpenAllStores={handleOpenAllBuyerStores}
+          onOpenProductList={handleOpenProductList}
         />
         <TabContent
           tab="following"

@@ -41,7 +41,7 @@ export interface DisplayPost {
   communityName?: string;
 }
 
-export type TabType = "forum" | "recommend" | "following";
+export type TabType = "forum" | "recommend" | "buyer" | "following";
 
 // 用户信息缓存类型
 export type UserInfoCache = Map<number, UserInfo>;

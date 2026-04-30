@@ -336,6 +336,11 @@ export interface BuyerStore {
   images?: string[];
   rest?: string;
   favoriteCount?: number;
+  /**
+   * 该店铺是否已有认证商家入驻 —— 仅 `withMerchantFirst=true` / `/buyer-stores/all`
+   * 路径回填；其它端点保持 undefined，渲染侧一律当 `=== true` 才视为已入驻.
+   */
+  hasMerchant?: boolean;
 }
 
 interface StoreListResponse {

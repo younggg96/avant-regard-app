@@ -1,24 +1,27 @@
 "use client";
 
 /**
- * /stores — 买手店地图。
+ * /stores — 买手店.
  *
- * 设计目标：把 iOS BuyerMapScreen 的全部功能移植到 Web：
- *   1. 视口驱动的店铺渲染：pan / zoom 后用 `/api/buyer-stores/viewport` 只拉
- *      当前可视范围内的店铺，避免一次渲染上千个 DOM marker。
- *   2. 附近模式：浏览器定位 + `/api/buyer-stores/nearby` 100km 半径。
- *   3. 快速筛选 chip 行：国家 / 城市按店铺数量降序；选中国家后自动浮出城市。
- *   4. 高级筛选抽屉：热门品牌、4 组风格、仅营业中、有联系电话。
- *   5. 店铺详情抽屉：点击标记 / 底部卡片后弹出，带导航 / 收藏 / 联系电话。
- *   6. 底部横向卡片轮播：视口内的店铺，与地图 marker 双向高亮。
- *   7. URL 同步：country / city / brand / q / open 放 search params，分享友好。
+ * 两个 Tab：
+ *   1. 列表（默认）：2 / 3 / 4 列响应式网格；走 `/api/buyer-stores/all`（入驻
+ *      优先 + 每条带 `hasMerchant` 徽章）；点击卡片跳 `/stores/[id]`.
+ *   2. 地图：视口驱动渲染 marker + 底部 aside 同步高亮，和 iOS BuyerMapScreen
+ *      功能对齐 —— pan / zoom 触发 `/api/buyer-stores/viewport`，"附近"走
+ *      `/api/buyer-stores/nearby`.
+ *
+ * 共享层：
+ *   - URL filter  (country / city / brand / q / open / view) —— Tab 切换也走 URL,
+ *     分享 / 刷新友好；
+ *   - 高级筛选（styles / hasPhone）/ filterSheet / detailSheet；
+ *   - 收藏 hook —— 两个 Tab 都需要显示 ♥ 徽章.
  *
  * 状态分区：
- *   - URL state (sp): country / city / brand / q / open
+ *   - URL state (sp): country / city / brand / q / open / view
  *   - Local state:   advanced filters（styles / hasPhone）/ nearbyMode /
  *                     selectedStore / regionRef
- *   - Remote state:  countries, cities, filteredStores (统计/聚合用) +
- *                     viewportStores（地图 + 底部卡片） + favorites
+ *   - Remote state:  countries, cities, 全量 stores（仅 map 兜底用）+
+ *                     viewportStores（地图 + 底部卡片） + favorites.
  */
 
 import {
@@ -42,6 +45,7 @@ import {
   type StoreFilters,
 } from "@/components/stores/StoreFilterSheet";
 import { StoreDetailSheet } from "@/components/stores/StoreDetailSheet";
+import { StoresListView } from "@/components/stores/StoresListView";
 import {
   getCityDisplayName,
   getCountryDisplayName,
@@ -56,6 +60,36 @@ import {
   type BuyerStore,
 } from "@/lib/services/buyer-store";
 import { useStoreFavorites } from "@/lib/hooks/useStoreFavorites";
+
+type ViewMode = "list" | "map";
+
+/**
+ * 顶部 Tab 按钮 —— 定义在 `StoresPageInner` 之前，规避 Next dev HMR 下
+ * function declaration 不会被及时 hoist 的边缘情况.
+ */
+function TabButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`-mb-px border-b-2 px-4 py-2 transition-colors ${
+        active
+          ? "border-[var(--ink)] text-[var(--ink)]"
+          : "border-transparent text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
 const NEARBY_RADIUS_KM = 100;
 const VIEWPORT_DEBOUNCE_MS = 300;
@@ -91,6 +125,9 @@ function StoresPageInner() {
     }),
     [sp],
   );
+
+  // 视图模式：list 默认，map 走地图. view 也放 URL，刷新 / 分享都保留.
+  const view: ViewMode = sp.get("view") === "map" ? "map" : "list";
 
   // ---------- Local advanced filters (too numerous for URL) ----------
   const [styles, setStyles] = useState<string[]>([]);
@@ -500,13 +537,21 @@ function StoresPageInner() {
     setNearbyMode((v) => !v);
   }, [userPos, geoStatus]);
 
+  const setView = useCallback(
+    (next: ViewMode) => {
+      // `list` 是默认值，用 clear 代替显式 ?view=list 保持 URL 更干净.
+      patchUrl({ view: next === "map" ? "map" : "" });
+    },
+    [patchUrl],
+  );
+
   // ---------- Render ----------
   return (
     <section className="mx-auto max-w-content px-6 py-8 md:py-10">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-4xl tracking-tight text-black dark:text-white md:text-5xl">
-            买手店地图
+            买手店
           </h1>
           <p className="mt-2 font-serif text-[15px] text-black/60 dark:text-white/50">
             探索全球收录的独立买手店，按地区 · 品牌 · 风格筛选。
@@ -642,34 +687,59 @@ function StoresPageInner() {
         </div>
       )}
 
-      {/* ----- Status line ----- */}
-      <div className="mb-3 flex flex-wrap items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
-        {isLoadingStores && <span>加载中…</span>}
-        {storesError && (
-          <button
-            type="button"
-            onClick={() => reloadStores()}
-            className="text-red-600 underline-offset-4 hover:underline"
-          >
-            加载失败，点击重试
-          </button>
-        )}
-        {nearbyMode && (
-          <span>
-            附近模式：{NEARBY_RADIUS_KM}km 范围内 {nearbyStores.length} 家店铺
-            {isNearbyLoading && "…"}
-          </span>
-        )}
-        {!nearbyMode && hasActiveFilters && (
-          <span>按筛选条件匹配 {filteredStores.length} 家门店</span>
-        )}
-        {geoStatus === "pending" && <span>正在获取当前位置…</span>}
-        {geoStatus === "denied" && !nearbyMode && (
-          <span>定位未开启 / 被拒绝</span>
-        )}
+      {/* ----- View switcher (list / map) ----- */}
+      <div className="mb-4 flex items-center gap-1 border-b border-[var(--border)] font-label text-[13px]">
+        <TabButton
+          active={view === "list"}
+          onClick={() => setView("list")}
+          label="买手店列表"
+        />
+        <TabButton
+          active={view === "map"}
+          onClick={() => setView("map")}
+          label="买手店地图"
+        />
       </div>
 
-      {/* ----- Main layout: map + sidebar list ----- */}
+      {/* ----- Status line (map-specific hints) ----- */}
+      {view === "map" && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
+          {isLoadingStores && <span>加载中…</span>}
+          {storesError && (
+            <button
+              type="button"
+              onClick={() => reloadStores()}
+              className="text-red-600 underline-offset-4 hover:underline"
+            >
+              加载失败，点击重试
+            </button>
+          )}
+          {nearbyMode && (
+            <span>
+              附近模式：{NEARBY_RADIUS_KM}km 范围内 {nearbyStores.length} 家店铺
+              {isNearbyLoading && "…"}
+            </span>
+          )}
+          {!nearbyMode && hasActiveFilters && (
+            <span>按筛选条件匹配 {filteredStores.length} 家门店</span>
+          )}
+          {geoStatus === "pending" && <span>正在获取当前位置…</span>}
+          {geoStatus === "denied" && !nearbyMode && (
+            <span>定位未开启 / 被拒绝</span>
+          )}
+        </div>
+      )}
+
+      {/* ----- List view ----- */}
+      {view === "list" && (
+        <StoresListView
+          filters={urlFilters}
+          isFavorited={isFavorited}
+        />
+      )}
+
+      {/* ----- Map view: map + sidebar list ----- */}
+      {view === "map" && (
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="relative">
           <StoreMap
@@ -751,6 +821,7 @@ function StoresPageInner() {
           </ul>
         </aside>
       </div>
+      )}
 
       {/* ----- Filter sheet ----- */}
       <StoreFilterSheet
