@@ -16,10 +16,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { followService } from "@/lib/services/follow";
 
 export function FollowButton({ targetUserId }: { targetUserId: number }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const currentUserId = useAuthStore((s) => s.user?.userId);
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
@@ -73,7 +75,7 @@ export function FollowButton({ targetUserId }: { targetUserId: number }) {
           : "bg-[var(--ink)] text-[var(--canvas)] hover:opacity-85"
       }`}
     >
-      {isFollowing ? "已关注" : "+ 关注"}
+      {isFollowing ? t("user.followed") : t("user.follow")}
     </button>
   );
 }

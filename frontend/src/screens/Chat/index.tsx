@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { Box, Text } from "../../components/ui";
@@ -37,11 +38,12 @@ type ReportTarget =
   | { type: "USER"; userId: number };
 
 const ChatScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<ChatRouteParams, "Chat">>();
   const {
     conversationId,
-    otherUserName = "聊天",
+    otherUserName = t("chat.title"),
     otherUserAvatar,
     otherUserId,
   } = route.params;
@@ -271,8 +273,8 @@ const ChatScreen = () => {
                 />
                 <Text style={styles.restrictionBannerText}>
                   {sendRestricted
-                    ? "已发送一条消息，等待对方回复后才能继续发送"
-                    : "对方还未回复前，仅可发送一条消息"}
+                    ? t("chat.sendRestricted")
+                    : t("chat.firstMessageHint")}
                 </Text>
               </View>
             ) : null
@@ -303,7 +305,7 @@ const ChatScreen = () => {
                   />
                 </Box>
                 <Text style={styles.emptyChatText}>
-                  发送消息开始聊天吧
+                  {t("chat.emptyHint")}
                 </Text>
               </View>
             ) : null

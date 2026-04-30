@@ -14,6 +14,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
@@ -37,38 +38,43 @@ interface PlatformConfig {
   bgColor: string;
 }
 
-const SHARE_PLATFORMS: PlatformConfig[] = [
+const SHARE_PLATFORMS: (PlatformConfig & { i18nKey: string })[] = [
   {
     id: "wechat",
-    name: "微信好友",
+    name: "",
+    i18nKey: "shareTo.wechatFriend",
     icon: "chatbubble-ellipses",
     iconColor: "#fff",
     bgColor: "#07C160",
   },
   {
     id: "wechat_moments",
-    name: "朋友圈",
+    name: "",
+    i18nKey: "shareTo.moments",
     icon: "aperture",
     iconColor: "#fff",
     bgColor: "#07C160",
   },
   {
     id: "weibo",
-    name: "微博",
+    name: "",
+    i18nKey: "shareTo.weibo",
     icon: "logo-rss",
     iconColor: "#fff",
     bgColor: "#E6162D",
   },
   {
     id: "copy",
-    name: "复制链接",
+    name: "",
+    i18nKey: "shareTo.copyLink",
     icon: "link",
     iconColor: theme.colors.gray700,
     bgColor: theme.colors.gray100,
   },
   {
     id: "more",
-    name: "更多",
+    name: "",
+    i18nKey: "shareTo.more",
     icon: "share-outline",
     iconColor: theme.colors.gray700,
     bgColor: theme.colors.gray100,
@@ -88,6 +94,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   onClose,
   onShareComplete,
 }) => {
+  const { t } = useTranslation();
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
   const [fadeAnim] = useState(new Animated.Value(0));
   const [isSharing, setIsSharing] = useState(false);
@@ -193,7 +200,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           textAlign="center"
           mb="$md"
         >
-          分享到
+          {t("shareTo.title")}
         </Text>
 
         {/* 分享内容预览卡片 */}
@@ -264,7 +271,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   mt="$xs"
                   textAlign="center"
                 >
-                  {platform.name}
+                  {t(platform.i18nKey)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -279,7 +286,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           activeOpacity={0.7}
         >
           <Text fontSize="$md" fontWeight="$medium" color="$gray600">
-            取消
+            {t("common.cancel")}
           </Text>
         </TouchableOpacity>
       </Animated.View>

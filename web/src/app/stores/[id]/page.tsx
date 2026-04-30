@@ -12,6 +12,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getStoreById } from "@/lib/api";
+import { getServerT } from "@/lib/i18n/server";
 import { StoreDetailView } from "./view";
 
 export const revalidate = 300;
@@ -21,11 +22,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const t = getServerT();
   const { id } = await params;
   const store = await getStoreById(id);
-  if (!store) return { title: "买手店 | Avant Regard" };
+  if (!store) return { title: t("storeMeta.fallbackTitle") };
   return {
-    title: `${store.name} · 买手店 | Avant Regard`,
+    title: t("storeMeta.titleTemplate", { name: store.name }),
     description: store.description ?? `${store.name} · ${store.city}`,
     openGraph: {
       title: store.name,

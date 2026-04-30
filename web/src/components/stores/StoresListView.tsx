@@ -21,6 +21,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getAllBuyerStores,
   type BuyerStore,
@@ -44,6 +45,7 @@ interface Props {
 }
 
 export function StoresListView({ filters, isFavorited }: Props) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<BuyerStore[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -72,7 +74,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
         setTotal(res.total ?? 0);
         setPage(targetPage);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "加载失败");
+        setError(e instanceof Error ? e.message : t("common.loadFailed"));
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -94,7 +96,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
   if (isLoading) {
     return (
       <div className="grid place-items-center py-20 font-label text-[13px] text-[color:var(--ink-muted)]">
-        加载中…
+        {t("common.loadingEllipsis")}
       </div>
     );
   }
@@ -107,7 +109,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
           onClick={() => loadPage(1, { append: false })}
           className="rounded border border-[var(--border)] px-3 py-1 text-[var(--ink)] hover:border-[var(--ink)]"
         >
-          点击重试
+          {t("common.clickRetry")}
         </button>
       </div>
     );
@@ -116,7 +118,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
   if (items.length === 0) {
     return (
       <div className="grid place-items-center py-20 font-label text-[13px] text-[color:var(--ink-muted)]">
-        没有匹配的门店。
+        {t("store.noMatchStore")}
       </div>
     );
   }
@@ -124,7 +126,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
   return (
     <div>
       <div className="mb-3 font-label text-[12px] text-[color:var(--ink-muted)]">
-        共 {total} 家门店
+        {t("store.totalStores", { count: total })}
       </div>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((s) => (
@@ -143,7 +145,7 @@ export function StoresListView({ filters, isFavorited }: Props) {
             disabled={isLoadingMore}
             className="rounded border border-[var(--border)] bg-[var(--canvas)] px-5 py-2 font-label text-[13px] text-[var(--ink)] transition-colors hover:border-[var(--ink)] disabled:opacity-50"
           >
-            {isLoadingMore ? "加载中…" : `加载更多（剩余 ${total - items.length}）`}
+            {isLoadingMore ? t("common.loadingEllipsis") : t("store.loadMore", { remaining: total - items.length })}
           </button>
         </div>
       )}
@@ -158,6 +160,7 @@ function StoreCard({
   store: BuyerStore;
   isFavorited: boolean;
 }) {
+  const { t } = useTranslation();
   const cover = store.images?.[0];
   return (
     <li>
@@ -182,12 +185,12 @@ function StoreCard({
           <div className="absolute left-2 top-2 flex flex-wrap gap-1">
             {store.hasMerchant && (
               <span className="rounded bg-[var(--ink)] px-2 py-0.5 font-label text-[10px] uppercase tracking-widest text-[var(--canvas)]">
-                已入驻
+                {t("store.verified")}
               </span>
             )}
             {store.isOpen && (
               <span className="rounded bg-green-600 px-2 py-0.5 font-label text-[10px] uppercase tracking-widest text-white">
-                营业中
+                {t("store.open")}
               </span>
             )}
           </div>

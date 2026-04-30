@@ -54,6 +54,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { AnimateIn } from "@/components/AnimateIn";
 import { PostCard } from "@/components/PostCard";
 import { useAuthStore } from "@/lib/auth/store";
@@ -67,11 +68,6 @@ interface DiscoverFeedProps {
   /** SSR error from the first-page fetch; surfaced only on the 推荐 pane. */
   initialError: string | null;
 }
-
-const TABS: Array<{ id: TabId; label: string; subtitle: string }> = [
-  { id: "recommend", label: "推荐", subtitle: "Featured" },
-  { id: "following", label: "关注", subtitle: "Following" },
-];
 
 const PAGE_SIZE = 30;
 const EXCLUDE_IDS_MAX = 200;
@@ -88,13 +84,6 @@ const BREAKPOINTS: Array<{ minWidth: number; columns: number }> = [
   { minWidth: 640, columns: 2 },
   { minWidth: 0, columns: 1 },
 ];
-
-const EMPTY_RECOMMEND =
-  "暂无内容。社区正在成长中，敬请期待最新的先锋穿搭与单品测评。";
-const EMPTY_FOLLOWING =
-  "你还没有关注的人发布新内容。去社区或他人主页关注感兴趣的创作者吧。";
-const LOGIN_CTA =
-  "登录后可以查看你关注的创作者发布的最新穿搭、测评与日常分享。";
 
 /** Extract the exclude-ID list for a page of `FeedItem`s (+post / −show). */
 function extractExcludeIds(items: FeedItem[]): number[] {
@@ -146,7 +135,13 @@ function useColumnCount(): number {
 }
 
 export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabId>("recommend");
+
+  const TABS: Array<{ id: TabId; label: string; subtitle: string }> = [
+    { id: "recommend", label: t("discover.recommend"), subtitle: t("discover.recommendSubtitle") },
+    { id: "following", label: t("discover.following"), subtitle: t("discover.followingSubtitle") },
+  ];
 
   const hydrated = useAuthStore((s) => s.hydrated);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -172,12 +167,12 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
       recommendExcludeIdsRef.current = extractExcludeIds(resp.items);
       setRecommendHasMore(resp.items.length > 0);
     } catch (err) {
-      setRecommendError(err instanceof Error ? err.message : "无法加载 Discover");
+      setRecommendError(err instanceof Error ? err.message : t("discover.cannotLoadDiscover"));
     } finally {
       setRecommendLoadingMore(false);
       recommendInFlightRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   const loadMoreRecommend = useCallback(async () => {
     if (recommendInFlightRef.current) return;
@@ -212,13 +207,13 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
         setRecommendHasMore(newPostCount >= PAGE_SIZE);
       }
     } catch (err) {
-      setRecommendError(err instanceof Error ? err.message : "加载更多失败");
+      setRecommendError(err instanceof Error ? err.message : t("discover.loadMoreFailed"));
       setRecommendHasMore(false);
     } finally {
       setRecommendLoadingMore(false);
       recommendInFlightRef.current = false;
     }
-  }, [recommendHasMore]);
+  }, [recommendHasMore, t]);
 
   // ---- 关注 tab state (single authenticated fetch; backend has no skip) --
   const [followingPosts, setFollowingPosts] = useState<Post[] | null>(null);
@@ -241,7 +236,7 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setFollowingError(err instanceof Error ? err.message : "无法加载关注内容");
+          setFollowingError(err instanceof Error ? err.message : t("discover.cannotLoadFollowing"));
         }
       })
       .finally(() => {
@@ -335,13 +330,13 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
         aria-label="Discover tabs"
         className="mb-10 flex items-end gap-8 border-b border-black/[0.08] dark:border-white/[0.08]"
       >
-        {TABS.map((t) => {
-          const active = tab === t.id;
+        {TABS.map((tabItem) => {
+          const active = tab === tabItem.id;
           return (
             <button
-              key={t.id}
+              key={tabItem.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tabItem.id)}
               aria-pressed={active}
               className={`group relative -mb-px pb-3 pt-1 text-left transition-colors duration-200 ${
                 active
@@ -350,10 +345,10 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
               }`}
             >
               <span className="block font-serif text-lg leading-tight md:text-xl">
-                {t.label}
+                {tabItem.label}
               </span>
               <span className="mt-0.5 block font-label text-[10px] uppercase tracking-[0.2em] text-current opacity-60">
-                {t.subtitle}
+                {tabItem.subtitle}
               </span>
               <span
                 aria-hidden
@@ -375,14 +370,14 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
                        border-black/[0.08] bg-[#f9f9f9] text-black/50
                        dark:border-white/[0.08] dark:bg-[#111] dark:text-white/40"
           >
-            <p>暂时无法加载内容（{activeError}）。请稍后重试。</p>
+            <p>{t("discover.loadError")}（{activeError}）{t("discover.pleaseRetry")}</p>
             {tab === "recommend" && (
               <button
                 type="button"
                 onClick={retryRecommend}
                 className="rounded-full bg-black px-4 py-1.5 font-label text-[11px] uppercase tracking-[0.2em] text-white hover:opacity-85 dark:bg-white dark:text-black"
               >
-                重试
+                {t("common.retry")}
               </button>
             )}
           </div>
@@ -396,12 +391,12 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
                        border-black/[0.08] bg-[#f9f9f9] text-black/60
                        dark:border-white/[0.08] dark:bg-[#111] dark:text-white/50"
           >
-            <p>{LOGIN_CTA}</p>
+            <p>{t("discover.loginCta")}</p>
             <Link
               href="/auth/login?next=/discover"
               className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-2 font-label text-[11px] uppercase tracking-[0.2em] text-white transition-opacity hover:opacity-85 dark:bg-white dark:text-black"
             >
-              登录
+              {t("auth.login")}
             </Link>
           </div>
         </AnimateIn>
@@ -409,7 +404,7 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
 
       {pane === "loading" && (
         <div className="font-label text-[12px] uppercase tracking-widest text-black/40 dark:text-white/40">
-          加载中…
+          {t("common.loading")}
         </div>
       )}
 
@@ -420,7 +415,7 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
                        border-black/[0.08] bg-[#f9f9f9] text-black/50
                        dark:border-white/[0.08] dark:bg-[#111] dark:text-white/40"
           >
-            {tab === "recommend" ? EMPTY_RECOMMEND : EMPTY_FOLLOWING}
+            {tab === "recommend" ? t("discover.emptyRecommend") : t("discover.emptyFollowing")}
           </div>
         </AnimateIn>
       )}
@@ -507,6 +502,8 @@ function InfiniteScrollFooter({
   sentinelRef: React.RefObject<HTMLDivElement>;
   onRetry: () => void;
 }): ReactNode {
+  const { t } = useTranslation();
+
   if (hasMore) {
     return (
       <div className="pt-10">
@@ -518,18 +515,18 @@ function InfiniteScrollFooter({
         {loading && (
           <div className="flex items-center justify-center gap-3 py-4 font-label text-[11px] uppercase tracking-[0.2em] text-black/40 dark:text-white/40">
             <LoadingDot />
-            加载更多
+            {t("discover.loadMore")}
           </div>
         )}
         {error && !loading && (
           <div className="flex flex-col items-center gap-2 py-4 font-serif text-xs text-black/50 dark:text-white/40">
-            <span>加载更多失败（{error}）</span>
+            <span>{t("discover.loadMoreFailed")}（{error}）</span>
             <button
               type="button"
               onClick={onRetry}
               className="rounded-full border border-black/20 px-4 py-1 font-label text-[10px] uppercase tracking-[0.2em] hover:bg-black hover:text-white dark:border-white/20 dark:hover:bg-white dark:hover:text-black"
             >
-              重试
+              {t("common.retry")}
             </button>
           </div>
         )}
@@ -541,7 +538,7 @@ function InfiniteScrollFooter({
     <div className="mt-14 flex items-center gap-4 pb-2">
       <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
       <span className="font-label text-[10px] uppercase tracking-[0.2em] text-black/40 dark:text-white/40">
-        已经没有更多帖子
+        {t("discover.noMorePosts")}
       </span>
       <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
     </div>
@@ -549,11 +546,12 @@ function InfiniteScrollFooter({
 }
 
 function FollowingEndFooter(): ReactNode {
+  const { t } = useTranslation();
   return (
     <div className="mt-14 flex items-center gap-4 pb-2">
       <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
       <span className="font-label text-[10px] uppercase tracking-[0.2em] text-black/40 dark:text-white/40">
-        你关注的全部更新
+        {t("discover.allFollowingUpdates")}
       </span>
       <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
     </div>

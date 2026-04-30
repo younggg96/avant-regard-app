@@ -53,6 +53,7 @@ import {
   formatPrice,
 } from "../services/storeProductService";
 import { SCREEN_WIDTH } from "./Discover/constants";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 20;
 const GRID_HORIZONTAL_PADDING = 16;
@@ -97,15 +98,17 @@ const ALL_CATEGORIES_SENTINEL = -1;
 const titleForMode = (
   mode: StoreProductListMode,
   storeName?: string,
-  categoryName?: string
+  categoryName?: string,
+  t?: (key: string) => string
 ): string => {
-  if (mode === "DISCOUNT") return `${storeName ?? ""} · 折扣`;
-  if (mode === "NEW_ARRIVAL") return `${storeName ?? ""} · 新品`;
+  if (mode === "DISCOUNT") return `${storeName ?? ""} · ${t?.("store.discount") ?? ""}`;
+  if (mode === "NEW_ARRIVAL") return `${storeName ?? ""} · ${t?.("store.newArrival") ?? ""}`;
   if (mode === "CLASSIFICATION" && categoryName) return categoryName;
-  return storeName || "单品";
+  return storeName || t?.("store.products") || "";
 };
 
 const StoreProductListScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const {
@@ -217,7 +220,7 @@ const StoreProductListScreen: React.FC = () => {
       } catch (e) {
         console.error("[StoreProductList] load failed:", e);
         if (!mountedRef.current) return;
-        setError(e instanceof Error ? e.message : "加载失败");
+        setError(e instanceof Error ? e.message : t("store.loadFailed"));
       } finally {
         if (!mountedRef.current) return;
         if (loadMode === "initial") setIsLoading(false);
@@ -268,11 +271,11 @@ const StoreProductListScreen: React.FC = () => {
   // ---------------------- 渲染辅助 -----------------------------------------
   const activeCategoryName = useMemo(() => {
     if (!needCategoryTabs) return undefined;
-    if (activeCategoryId === ALL_CATEGORIES_SENTINEL) return "全部";
+    if (activeCategoryId === ALL_CATEGORIES_SENTINEL) return t("common.all");
     return categories.find((c) => c.id === activeCategoryId)?.name;
-  }, [needCategoryTabs, activeCategoryId, categories]);
+  }, [needCategoryTabs, activeCategoryId, categories, t]);
 
-  const headerTitle = titleForMode(mode, storeName, activeCategoryName);
+  const headerTitle = titleForMode(mode, storeName, activeCategoryName, t);
 
   const renderItem = useCallback<ListRenderItem<StoreProduct>>(
     ({ item }) => <ProductCardItem product={item} onPress={handleProductPress} />,
@@ -307,7 +310,7 @@ const StoreProductListScreen: React.FC = () => {
             color={theme.colors.gray300}
           />
           <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
-            加载失败
+            {t("store.loadFailed")}
           </Text>
           <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
             {error}
@@ -321,7 +324,7 @@ const StoreProductListScreen: React.FC = () => {
             rounded="$md"
           >
             <Text color="$white" fontWeight="$semibold" fontSize="$sm">
-              点击重试
+              {t("store.tapRetry")}
             </Text>
           </Pressable>
         </View>
@@ -333,7 +336,7 @@ const StoreProductListScreen: React.FC = () => {
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScreenHeader
         title={headerTitle}
-        subtitle={total > 0 ? `共 ${total} 件` : undefined}
+        subtitle={total > 0 ? t("store.totalCount", { count: total }) : undefined}
         showBack
       />
 
@@ -345,7 +348,7 @@ const StoreProductListScreen: React.FC = () => {
             ref={searchInputRef}
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="搜索商品"
+            placeholder={t("store.searchProducts")}
             placeholderTextColor={theme.colors.gray300}
             returnKeyType="search"
             onSubmitEditing={handleSearchSubmit}
@@ -371,7 +374,7 @@ const StoreProductListScreen: React.FC = () => {
           contentContainerStyle={styles.categoryBar}
         >
           <CategoryChip
-            label="全部"
+            label={t("common.all")}
             active={activeCategoryId === ALL_CATEGORIES_SENTINEL}
             onPress={() => handleCategoryChange(ALL_CATEGORIES_SENTINEL)}
           />
@@ -417,7 +420,7 @@ const StoreProductListScreen: React.FC = () => {
           ) : !hasMore && products.length > 0 ? (
             <View style={styles.footerEnd}>
               <Text fontSize="$xs" color="$gray300">
-                — 已经到底啦 —
+                {t("store.noMoreData")}
               </Text>
             </View>
           ) : null
@@ -431,7 +434,7 @@ const StoreProductListScreen: React.FC = () => {
                 color={theme.colors.gray300}
               />
               <Text fontSize="$sm" color="$gray300" mt="$sm">
-                {activeQuery ? "没有匹配的商品" : "暂无商品"}
+                {activeQuery ? t("store.noMatchProducts") : t("store.noProducts")}
               </Text>
             </Box>
           ) : null

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
@@ -26,6 +27,7 @@ import {
   CommunityGuidelinesContent,
   MinorProtectionContent,
 } from "./Auth/components";
+import { setStoredLanguage, type SupportedLanguage } from "../i18n";
 
 interface SettingItem {
   id: string;
@@ -41,7 +43,17 @@ interface SettingItem {
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuthStore();
+
+  // Language modal
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const currentLang = (i18n.language?.startsWith("zh") ? "zh" : "en") as SupportedLanguage;
+
+  const handleLanguageChange = async (lang: SupportedLanguage) => {
+    await setStoredLanguage(lang);
+    setShowLanguageModal(false);
+  };
 
   // 隐私设置状态
   const [privacySettings, setPrivacySettings] =
@@ -106,7 +118,7 @@ const SettingsScreen = () => {
       setPrivacySettings((prev) =>
         prev ? { ...prev, [key]: !value } : null
       );
-      Alert.show("更新失败，请重试");
+      Alert.show(t("privacy.updateFailed"));
     } finally {
       setUpdatingPrivacy(null);
     }
@@ -116,7 +128,7 @@ const SettingsScreen = () => {
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleLogout = () => {
-    Alert.show("正在退出...");
+    Alert.show(t("settings.loggingOut"));
     setTimeout(() => {
       logout();
     }, 500);
@@ -132,62 +144,68 @@ const SettingsScreen = () => {
     try {
       await userInfoService.deleteAccount(user.userId);
       setShowDeleteAccountModal(false);
-      Alert.show("账户已永久删除");
+      Alert.show(t("deleteAccount.success"));
       setTimeout(() => {
         logout();
       }, 1000);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "删除账户失败，请稍后重试";
+        error instanceof Error ? error.message : t("deleteAccount.failed");
       Alert.show(message);
     } finally {
       setDeletingAccount(false);
     }
   };
 
-  // 基础设置项
   const baseSections: { title: string; items: SettingItem[] }[] = [
     {
-      title: "账户",
+      title: t("settings.account"),
       items: [
         {
           id: "profile",
-          label: "编辑个人资料",
+          label: t("settings.editProfile"),
           icon: "person-outline",
           onPress: () => (navigation as any).navigate("EditProfile"),
         },
         {
           id: "myLevel",
-          label: "我的等级",
+          label: t("settings.myLevel"),
           icon: "trophy-outline",
           onPress: () => (navigation as any).navigate("MyLevel"),
         },
         {
           id: "myTitles",
-          label: "我的头衔",
+          label: t("settings.myTitles"),
           icon: "ribbon-outline",
           onPress: () => (navigation as any).navigate("MyTitles"),
         },
         {
           id: "myComments",
-          label: "我的评论",
+          label: t("settings.myComments"),
           icon: "chatbubble-ellipses-outline",
           onPress: () => (navigation as any).navigate("MyComments"),
         },
         {
           id: "myLikes",
-          label: "我的点赞",
+          label: t("settings.myLikes"),
           icon: "heart-outline",
           onPress: () => (navigation as any).navigate("MyLikes"),
+        },
+        {
+          id: "language",
+          label: t("settings.language"),
+          icon: "language-outline",
+          onPress: () => setShowLanguageModal(true),
+          rightText: currentLang === "zh" ? "中文" : "English",
         },
       ],
     },
     {
-      title: "隐私设置",
+      title: t("settings.privacy"),
       items: [
         {
           id: "hideFollowing",
-          label: "隐藏关注列表",
+          label: t("settings.hideFollowing"),
           icon: "eye-off-outline",
           toggle: true,
           value: privacySettings?.hideFollowing ?? false,
@@ -195,7 +213,7 @@ const SettingsScreen = () => {
         },
         {
           id: "hideFollowers",
-          label: "隐藏粉丝列表",
+          label: t("settings.hideFollowers"),
           icon: "eye-off-outline",
           toggle: true,
           value: privacySettings?.hideFollowers ?? false,
@@ -203,7 +221,7 @@ const SettingsScreen = () => {
         },
         {
           id: "hideLikes",
-          label: "隐藏点赞列表",
+          label: t("settings.hideLikes"),
           icon: "eye-off-outline",
           toggle: true,
           value: privacySettings?.hideLikes ?? false,
@@ -211,7 +229,7 @@ const SettingsScreen = () => {
         },
         {
           id: "hideWishlist",
-          label: "隐藏愿望单",
+          label: t("settings.hideWishlist"),
           icon: "eye-off-outline",
           toggle: true,
           value: privacySettings?.hideWishlist ?? false,
@@ -219,90 +237,89 @@ const SettingsScreen = () => {
         },
         {
           id: "blockedUsers",
-          label: "屏蔽用户管理",
+          label: t("settings.blockedUsers"),
           icon: "ban-outline",
           onPress: () => (navigation as any).navigate("BlockedUsers"),
         },
         {
           id: "myReports",
-          label: "我的举报",
+          label: t("settings.myReports"),
           icon: "flag-outline",
           onPress: () => (navigation as any).navigate("MyReports"),
         },
       ],
     },
     {
-      title: "商家中心",
+      title: t("settings.merchantCenter"),
       items: [
         {
           id: "merchant",
-          label: "我的店铺",
+          label: t("settings.myStores"),
           icon: "storefront-outline",
           onPress: () => (navigation as any).navigate("MyMerchantStores"),
-          rightText: "商家入口",
+          rightText: t("settings.merchantEntry"),
           rightColor: "#F57C00",
         },
       ],
     },
     {
-      title: "支持",
+      title: t("settings.support"),
       items: [
         {
           id: "terms",
-          label: "软件许可服务协议",
+          label: t("settings.termsOfService"),
           icon: "document-text-outline",
           onPress: () => showAgreement("terms"),
         },
         {
           id: "privacy",
-          label: "隐私政策",
+          label: t("settings.privacyPolicy"),
           icon: "shield-outline",
           onPress: () => showAgreement("privacy"),
         },
         {
           id: "guidelines",
-          label: "平台自律公约",
+          label: t("settings.communityGuidelines"),
           icon: "megaphone-outline",
           onPress: () => showAgreement("guidelines"),
         },
         {
           id: "minor",
-          label: "未成年人个人信息保护规则",
+          label: t("settings.minorProtection"),
           icon: "people-outline",
           onPress: () => showAgreement("minor"),
         },
       ],
     },
     {
-      title: "账户管理",
+      title: t("settings.accountManagement"),
       items: [
         {
           id: "changePassword",
-          label: "修改密码",
+          label: t("settings.changePassword"),
           icon: "lock-closed-outline",
           onPress: () => (navigation as any).navigate("ChangePassword"),
         },
         {
           id: "deleteAccount",
-          label: "注销账户",
+          label: t("settings.deleteAccount"),
           icon: "trash-outline",
           onPress: handleDeleteAccount,
-          rightText: "永久删除",
+          rightText: t("settings.permanentDelete"),
           rightColor: theme.colors.error,
         },
       ],
     },
   ];
 
-  // 如果用户是管理员，添加管理员设置项
   const settingSections = user?.is_admin
     ? [
       {
-        title: "管理员",
+        title: t("settings.admin"),
         items: [
           {
             id: "admin",
-            label: "管理员后台",
+            label: t("settings.adminPanel"),
             icon: "shield-checkmark-outline",
             onPress: () => (navigation as any).navigate("Admin"),
             rightText: "Admin",
@@ -316,7 +333,7 @@ const SettingsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="设置" showBack={true} />
+      <ScreenHeader title={t("settings.title")} showBack={true} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
           <View key={section.title} style={styles.section}>
@@ -368,10 +385,9 @@ const SettingsScreen = () => {
           </View>
         ))}
 
-        {/* 退出登录按钮 */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-          <Text style={styles.logoutText}>退出登录</Text>
+          <Text style={styles.logoutText}>{t("settings.logout")}</Text>
         </TouchableOpacity>
 
         <View style={styles.footer}>
@@ -395,9 +411,9 @@ const SettingsScreen = () => {
               color={theme.colors.error}
               style={{ alignSelf: "center", marginBottom: 12 }}
             />
-            <Text style={styles.deleteTitle}>确认注销账户</Text>
+            <Text style={styles.deleteTitle}>{t("deleteAccount.title")}</Text>
             <Text style={styles.deleteMessage}>
-              此操作不可撤销。您的所有数据（包括发布的内容、评论、关注关系等）将被永久删除，且无法恢复。
+              {t("deleteAccount.message")}
             </Text>
             <View style={styles.deleteActions}>
               <TouchableOpacity
@@ -405,7 +421,7 @@ const SettingsScreen = () => {
                 onPress={() => setShowDeleteAccountModal(false)}
                 disabled={deletingAccount}
               >
-                <Text style={styles.deleteCancelText}>取消</Text>
+                <Text style={styles.deleteCancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.deleteConfirmButton, deletingAccount && { opacity: 0.6 }]}
@@ -415,7 +431,7 @@ const SettingsScreen = () => {
                 {deletingAccount ? (
                   <ActivityIndicator size="small" color={theme.colors.white} />
                 ) : (
-                  <Text style={styles.deleteConfirmText}>确认注销</Text>
+                  <Text style={styles.deleteConfirmText}>{t("deleteAccount.confirm")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -423,7 +439,62 @@ const SettingsScreen = () => {
         </View>
       </Modal>
 
-      {/* 用户协议和隐私政策 Modal */}
+      {/* Language selector modal */}
+      <Modal
+        visible={showLanguageModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <View style={styles.deleteOverlay}>
+          <View style={styles.deleteDialog}>
+            <Text style={styles.deleteTitle}>{t("settings.selectLanguage")}</Text>
+            <View style={{ gap: 8 }}>
+              <TouchableOpacity
+                style={[
+                  styles.languageOption,
+                  currentLang === "zh" && styles.languageOptionActive,
+                ]}
+                onPress={() => handleLanguageChange("zh")}
+              >
+                <Text style={[
+                  styles.languageOptionText,
+                  currentLang === "zh" && styles.languageOptionTextActive,
+                ]}>
+                  中文
+                </Text>
+                {currentLang === "zh" && (
+                  <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.languageOption,
+                  currentLang === "en" && styles.languageOptionActive,
+                ]}
+                onPress={() => handleLanguageChange("en")}
+              >
+                <Text style={[
+                  styles.languageOptionText,
+                  currentLang === "en" && styles.languageOptionTextActive,
+                ]}>
+                  English
+                </Text>
+                {currentLang === "en" && (
+                  <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.deleteCancelButton, { marginTop: 16 }]}
+              onPress={() => setShowLanguageModal(false)}
+            >
+              <Text style={styles.deleteCancelText}>{t("common.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showAgreementModal}
         animationType="fade"
@@ -440,12 +511,12 @@ const SettingsScreen = () => {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
               {agreementType === "terms"
-                ? "软件许可服务协议"
+                ? t("settings.termsOfService")
                 : agreementType === "privacy"
-                ? "隐私政策"
+                ? t("settings.privacyPolicy")
                 : agreementType === "guidelines"
-                ? "平台自律公约"
-                : "未成年人个人信息保护规则"}
+                ? t("settings.communityGuidelines")
+                : t("settings.minorProtection")}
             </Text>
             <View style={styles.modalCloseButton} />
           </View>
@@ -624,6 +695,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: theme.colors.white,
+  },
+  languageOption: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+  },
+  languageOptionActive: {
+    borderColor: theme.colors.accent,
+    backgroundColor: theme.colors.gray100,
+  },
+  languageOptionText: {
+    fontSize: 16,
+    color: theme.colors.black,
+  },
+  languageOptionTextActive: {
+    fontWeight: "600" as const,
   },
 });
 

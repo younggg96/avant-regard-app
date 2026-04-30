@@ -9,6 +9,7 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search, X, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 // ─── Page header ─────────────────────────────────────────────────────────────
 
@@ -39,12 +40,14 @@ export function PageHeader({
 export function SearchBar({
   value,
   onChange,
-  placeholder = "搜索…",
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder || t("admin.search");
   return (
     <div className="relative">
       <Search
@@ -55,7 +58,7 @@ export function SearchBar({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className="h-9 w-full rounded border border-[var(--border)] bg-[var(--canvas)] pl-9 pr-8
                    font-label text-[13px] text-[var(--ink)] placeholder:text-[color:var(--ink-muted)]
                    outline-none transition-colors focus:border-[var(--ink-muted)]"
@@ -79,13 +82,15 @@ export function FilterChips<T extends string>({
   options,
   value,
   onChange,
-  allLabel = "全部",
+  allLabel,
 }: {
   options: { value: T; label: string }[];
   value: T | undefined;
   onChange: (v: T | undefined) => void;
   allLabel?: string;
 }) {
+  const { t } = useTranslation();
+  const resolvedAllLabel = allLabel || t("admin.all");
   return (
     <div className="flex flex-wrap gap-1.5 font-label text-[12px]">
       <button
@@ -96,7 +101,7 @@ export function FilterChips<T extends string>({
             : "border-[var(--border)] text-[color:var(--ink-muted)] hover:border-[var(--ink-muted)]"
         }`}
       >
-        {allLabel}
+        {resolvedAllLabel}
       </button>
       {options.map((opt) => (
         <button
@@ -185,8 +190,8 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "确认",
-  cancelLabel = "取消",
+  confirmLabel,
+  cancelLabel,
   loading = false,
   onConfirm,
   onCancel,
@@ -201,6 +206,9 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
+  const resolvedConfirmLabel = confirmLabel || t("admin.confirm");
+  const resolvedCancelLabel = cancelLabel || t("admin.cancel");
   if (!open) return null;
 
   return (
@@ -220,7 +228,7 @@ export function ConfirmDialog({
             className="rounded border border-[var(--border)] px-4 py-2 transition-colors
                        hover:bg-[var(--canvas-raised)] disabled:opacity-50"
           >
-            {cancelLabel}
+            {resolvedCancelLabel}
           </button>
           <button
             onClick={onConfirm}
@@ -229,7 +237,7 @@ export function ConfirmDialog({
                        text-[var(--canvas)] transition-colors hover:opacity-80 disabled:opacity-50"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>
@@ -430,10 +438,11 @@ export function Button({
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
-export function EmptyState({ message = "暂无数据" }: { message?: string }) {
+export function EmptyState({ message }: { message?: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex h-40 items-center justify-center font-label text-[13px] text-[color:var(--ink-muted)]">
-      {message}
+      {message || t("admin.noData")}
     </div>
   );
 }
@@ -454,7 +463,7 @@ export function PromptDialog({
   open,
   title,
   placeholder,
-  confirmLabel = "确认",
+  confirmLabel,
   loading = false,
   onConfirm,
   onCancel,
@@ -467,6 +476,8 @@ export function PromptDialog({
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
+  const resolvedConfirmLabel = confirmLabel || t("admin.confirm");
   const [value, setValue] = useState("");
 
   if (!open) return null;
@@ -492,7 +503,7 @@ export function PromptDialog({
             disabled={loading}
             className="rounded border border-[var(--border)] px-4 py-2 transition-colors hover:bg-[var(--canvas-raised)]"
           >
-            取消
+            {t("admin.cancel")}
           </button>
           <button
             onClick={() => { onConfirm(value); setValue(""); }}
@@ -501,7 +512,7 @@ export function PromptDialog({
                        text-[var(--canvas)] transition-colors hover:opacity-80 disabled:opacity-50"
           >
             {loading && <Loader2 size={14} className="animate-spin" />}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>

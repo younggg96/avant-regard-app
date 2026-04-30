@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack } from "../ui";
 import { theme } from "../../theme";
@@ -69,9 +70,11 @@ export const WantPopup: React.FC<WantPopupProps> = ({
     setTimeout(handleDismiss, 600);
   };
 
+  const { t } = useTranslation();
+
   if (!visible) return null;
 
-  const label = isWanted ? "已想要" : "我想要";
+  const label = isWanted ? t("postDetail.wanted") : t("postDetail.want");
   const iconName = isWanted ? "bag-check" : "bag-handle-outline";
   const accentColor = isWanted ? "#D4AF37" : theme.colors.black;
 
@@ -108,7 +111,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
             )}
             {!brandName && !productName && (
               <Text fontSize="$sm" fontWeight="$medium">
-                想要这件单品？
+                {t("postDetail.wantThisItem")}
               </Text>
             )}
           </View>

@@ -9,6 +9,7 @@ import {
   ScrollView as RNScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import {
   BuyerStore,
@@ -57,6 +58,7 @@ const EMPTY_CREATE_FORM: BuyerStoreCreateParams = {
 };
 
 const StoreManagementTab = () => {
+  const { t } = useTranslation();
   const [stores, setStores] = useState<BuyerStore[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -131,10 +133,10 @@ const StoreManagementTab = () => {
         setTotal(result.total);
         setPage(result.page);
       } catch (error) {
-        console.error("获取店铺列表失败:", error);
+        console.error("fetchStores error:", error);
         Alert.alert(
-          "错误",
-          error instanceof Error ? error.message : "获取店铺列表失败"
+          t("admin.error"),
+          error instanceof Error ? error.message : t("admin.fetchStoresFailed")
         );
       } finally {
         setLoading(false);
@@ -162,7 +164,7 @@ const StoreManagementTab = () => {
 
   const handleCreate = async () => {
     if (!createForm.id.trim() || !createForm.name.trim()) {
-      Alert.alert("提示", "店铺 ID 和名称为必填项");
+      Alert.alert(t("admin.hint"), t("admin.storeIdNameRequired"));
       return;
     }
     if (
@@ -170,7 +172,7 @@ const StoreManagementTab = () => {
       !createForm.city.trim() ||
       !createForm.country.trim()
     ) {
-      Alert.alert("提示", "地址、城市、国家为必填项");
+      Alert.alert(t("admin.hint"), t("admin.storeAddressRequired"));
       return;
     }
     try {
@@ -183,13 +185,13 @@ const StoreManagementTab = () => {
         images: Array.isArray(createForm.images) ? createForm.images : [],
       };
       await createStore(payload);
-      Alert.alert("成功", "买手店创建成功");
+      Alert.alert(t("common.success"), t("admin.storeCreated"));
       setCreateModalVisible(false);
       fetchStores(1);
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "创建失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.createFailed")
       );
     } finally {
       setActionLoading(false);
@@ -239,13 +241,13 @@ const StoreManagementTab = () => {
         images: Array.isArray(editForm.images) ? editForm.images : [],
       };
       await updateStore(editingStore.id, payload);
-      Alert.alert("成功", "买手店信息已更新");
+      Alert.alert(t("common.success"), t("admin.storeUpdated"));
       setEditModalVisible(false);
       fetchStores(page);
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "更新失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.updateFailed")
       );
     } finally {
       setActionLoading(false);
@@ -256,23 +258,23 @@ const StoreManagementTab = () => {
 
   const handleDelete = (store: BuyerStore) => {
     Alert.alert(
-      "确认删除",
+      t("admin.confirmDelete"),
       `确定要删除买手店「${store.name}」吗？此操作不可撤销。`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               setActionLoading(true);
               await deleteStore(store.id);
-              Alert.alert("已删除", `买手店「${store.name}」已删除`);
+              Alert.alert(t("admin.deleted"), `${store.name}`);
               fetchStores(page);
             } catch (error) {
               Alert.alert(
-                "错误",
-                error instanceof Error ? error.message : "删除失败"
+                t("admin.error"),
+                error instanceof Error ? error.message : t("admin.deleteFailed")
               );
             } finally {
               setActionLoading(false);
@@ -294,8 +296,8 @@ const StoreManagementTab = () => {
       }
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "上传失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.uploadFailed")
       );
     } finally {
       setImageUploading(false);
@@ -321,8 +323,8 @@ const StoreManagementTab = () => {
       }
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "上传失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.uploadFailed")
       );
     } finally {
       setImageUploading(false);
@@ -443,7 +445,7 @@ const StoreManagementTab = () => {
         <HStack space="sm" style={styles.topRow}>
           <Input
             style={styles.searchInput}
-            placeholder="搜索店铺名称..."
+            placeholder={t("admin.searchStorePlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
@@ -473,7 +475,7 @@ const StoreManagementTab = () => {
           </Pressable>
           <Button size="sm" onPress={handleOpenCreate} style={styles.createButton}>
             <Ionicons name="add" size={18} color={theme.colors.white} />
-            <ButtonText style={styles.createButtonText}>新增</ButtonText>
+            <ButtonText style={styles.createButtonText}>{t("admin.add")}</ButtonText>
           </Button>
         </HStack>
 
@@ -481,7 +483,7 @@ const StoreManagementTab = () => {
         {showFilter && (
           <VStack style={styles.filterPanel}>
             <Box style={styles.filterRow}>
-              <Text style={styles.filterLabel}>国家</Text>
+              <Text style={styles.filterLabel}>{t("admin.country")}</Text>
               <RNScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -492,7 +494,7 @@ const StoreManagementTab = () => {
                   onPress={() => setFilterCountry("")}
                 >
                   <Text style={[styles.filterChipText, !filterCountry && styles.filterChipTextActive]}>
-                    全部
+                    {t("common.all")}
                   </Text>
                 </Pressable>
                 {countries.map((c) => (
@@ -510,7 +512,7 @@ const StoreManagementTab = () => {
             </Box>
             {filterCountry && cities.length > 0 && (
               <Box style={styles.filterRow}>
-                <Text style={styles.filterLabel}>城市</Text>
+                <Text style={styles.filterLabel}>{t("admin.city")}</Text>
                 <RNScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -521,7 +523,7 @@ const StoreManagementTab = () => {
                     onPress={() => setFilterCity("")}
                   >
                     <Text style={[styles.filterChipText, !filterCity && styles.filterChipTextActive]}>
-                      全部
+                      {t("common.all")}
                     </Text>
                   </Pressable>
                   {cities.map((c) => (
@@ -541,18 +543,18 @@ const StoreManagementTab = () => {
           </VStack>
         )}
 
-        <Text style={styles.totalText}>共 {total} 家买手店</Text>
+        <Text style={styles.totalText}>{t("admin.totalStores", { count: total })}</Text>
 
         {/* Store List */}
         {loading ? (
           <VStack style={sharedStyles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.black} />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </VStack>
         ) : stores.length === 0 ? (
           <VStack style={sharedStyles.emptyContainer}>
             <Ionicons name="storefront-outline" size={48} color={theme.colors.gray200} />
-            <Text style={sharedStyles.emptyText}>暂无买手店数据</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noStores")}</Text>
           </VStack>
         ) : (
           stores.map((store) => (
@@ -584,7 +586,7 @@ const StoreManagementTab = () => {
                       },
                     ]}
                   >
-                    {store.isOpen ? "营业中" : "休息中"}
+                    {store.isOpen ? t("admin.open") : t("admin.closed")}
                   </Text>
                 </HStack>
               </HStack>
@@ -632,7 +634,7 @@ const StoreManagementTab = () => {
 
               {store.brands && store.brands.length > 0 && (
                 <Text style={styles.brandsText} numberOfLines={2}>
-                  品牌: {store.brands.join(", ")}
+                  {t("admin.brands")}: {store.brands.join(", ")}
                 </Text>
               )}
 
@@ -649,7 +651,7 @@ const StoreManagementTab = () => {
                   style={styles.editButton}
                 >
                   <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-                    编辑
+                    {t("common.edit")}
                   </ButtonText>
                 </Button>
                 <Button
@@ -661,7 +663,7 @@ const StoreManagementTab = () => {
                     <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
                   }
                 >
-                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -707,21 +709,21 @@ const StoreManagementTab = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={sharedStyles.modalTitle}>新增买手店</Text>
+              <Text style={sharedStyles.modalTitle}>{t("admin.createStore")}</Text>
 
-              {renderFormField("店铺 ID", createForm.id, (v) =>
+              {renderFormField(t("admin.storeId"), createForm.id, (v) =>
                 setCreateForm((f) => ({ ...f, id: v })),
                 { placeholder: "唯一标识，如 bj-001", required: true, autoCapitalize: "none" }
               )}
 
-              {renderFormField("店铺名称", createForm.name, (v) =>
+              {renderFormField(t("admin.storeName"), createForm.name, (v) =>
                 setCreateForm((f) => ({ ...f, name: v })),
                 { required: true }
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>国家 *</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.country")} *</Text>
                   <Input
                     value={createForm.country}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, country: v }))}
@@ -732,7 +734,7 @@ const StoreManagementTab = () => {
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>城市 *</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.city")} *</Text>
                   <Input
                     value={createForm.city}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, city: v }))}
@@ -744,14 +746,14 @@ const StoreManagementTab = () => {
                 </VStack>
               </HStack>
 
-              {renderFormField("详细地址", createForm.address, (v) =>
+              {renderFormField(t("admin.address"), createForm.address, (v) =>
                 setCreateForm((f) => ({ ...f, address: v })),
                 { required: true, multiline: true }
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>纬度</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.latitude")}</Text>
                   <Input
                     value={String(createForm.coordinates.latitude || "")}
                     onChangeText={(v) =>
@@ -768,7 +770,7 @@ const StoreManagementTab = () => {
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>经度</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.longitude")}</Text>
                   <Input
                     value={String(createForm.coordinates.longitude || "")}
                     onChangeText={(v) =>
@@ -787,14 +789,14 @@ const StoreManagementTab = () => {
               </HStack>
 
               {renderFormField(
-                "品牌",
+                t("admin.brands"),
                 toEditableString(createForm.brands),
                 (v) => setCreateForm((f) => ({ ...f, brands: v as any })),
                 { placeholder: "用逗号分隔，如: Rick Owens, Maison Margiela" }
               )}
 
               {renderFormField(
-                "风格标签",
+                t("admin.styleTags"),
                 toEditableString(createForm.style),
                 (v) => setCreateForm((f) => ({ ...f, style: v as any })),
                 { placeholder: "用逗号分隔，如: 先锋, 暗黑" }
@@ -802,7 +804,7 @@ const StoreManagementTab = () => {
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>电话</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.phone")}</Text>
                   <Input
                     value={toEditableString(createForm.phone)}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, phone: v as any }))}
@@ -813,7 +815,7 @@ const StoreManagementTab = () => {
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>营业时间</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.hours")}</Text>
                   <Input
                     value={createForm.hours || ""}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, hours: v }))}
@@ -826,7 +828,7 @@ const StoreManagementTab = () => {
               </HStack>
 
               {renderFormField(
-                "描述",
+                t("admin.description"),
                 createForm.description || "",
                 (v) => setCreateForm((f) => ({ ...f, description: v })),
                 { multiline: true }
@@ -834,7 +836,7 @@ const StoreManagementTab = () => {
 
               <VStack space="xs" style={{ marginTop: theme.spacing.sm }}>
                 <Text style={sharedStyles.formLabel}>
-                  店铺图片（{(createForm.images || []).length} 张）
+                  {t("admin.storeImages")}（{(createForm.images || []).length}）
                 </Text>
                 {renderImageGrid(
                   createForm.images || [],
@@ -844,7 +846,7 @@ const StoreManagementTab = () => {
               </VStack>
 
               <HStack justifyContent="between" style={styles.switchRow}>
-                <Text style={sharedStyles.formLabel}>营业状态</Text>
+                <Text style={sharedStyles.formLabel}>{t("admin.businessStatus")}</Text>
                 <Switch
                   value={createForm.isOpen}
                   onValueChange={(v) => setCreateForm((f) => ({ ...f, isOpen: v }))}
@@ -858,7 +860,7 @@ const StoreManagementTab = () => {
                   size="sm"
                   onPress={() => setCreateModalVisible(false)}
                 >
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -866,7 +868,7 @@ const StoreManagementTab = () => {
                   disabled={actionLoading}
                   isLoading={actionLoading}
                 >
-                  <ButtonText>创建</ButtonText>
+                  <ButtonText>{t("admin.create")}</ButtonText>
                 </Button>
               </HStack>
             </RNScrollView>
@@ -887,30 +889,30 @@ const StoreManagementTab = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={sharedStyles.modalTitle}>编辑买手店</Text>
+              <Text style={sharedStyles.modalTitle}>{t("admin.editStore")}</Text>
 
-              {renderFormField("店铺名称", editForm.name || "", (v) =>
+              {renderFormField(t("admin.storeName"), editForm.name || "", (v) =>
                 setEditForm((f) => ({ ...f, name: v }))
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>国家</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.country")}</Text>
                   <Input
                     value={editForm.country || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, country: v }))}
-                    placeholder="国家"
+                    placeholder={t("admin.country")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>城市</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.city")}</Text>
                   <Input
                     value={editForm.city || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, city: v }))}
-                    placeholder="城市"
+                    placeholder={t("admin.city")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -918,14 +920,14 @@ const StoreManagementTab = () => {
                 </VStack>
               </HStack>
 
-              {renderFormField("详细地址", editForm.address || "", (v) =>
+              {renderFormField(t("admin.address"), editForm.address || "", (v) =>
                 setEditForm((f) => ({ ...f, address: v })),
                 { multiline: true }
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>纬度</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.latitude")}</Text>
                   <Input
                     value={String(editForm.coordinates?.latitude || "")}
                     onChangeText={(v) =>
@@ -945,7 +947,7 @@ const StoreManagementTab = () => {
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>经度</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.longitude")}</Text>
                   <Input
                     value={String(editForm.coordinates?.longitude || "")}
                     onChangeText={(v) =>
@@ -967,7 +969,7 @@ const StoreManagementTab = () => {
               </HStack>
 
               {renderFormField(
-                "品牌",
+                t("admin.brands"),
                 typeof editForm.brands === "string"
                   ? editForm.brands
                   : toEditableString(editForm.brands),
@@ -976,7 +978,7 @@ const StoreManagementTab = () => {
               )}
 
               {renderFormField(
-                "风格标签",
+                t("admin.styleTags"),
                 typeof editForm.style === "string"
                   ? editForm.style
                   : toEditableString(editForm.style),
@@ -986,7 +988,7 @@ const StoreManagementTab = () => {
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>电话</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.phone")}</Text>
                   <Input
                     value={
                       typeof editForm.phone === "string"
@@ -1001,7 +1003,7 @@ const StoreManagementTab = () => {
                   />
                 </VStack>
                 <VStack space="xs" style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>营业时间</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.hours")}</Text>
                   <Input
                     value={editForm.hours || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, hours: v }))}
@@ -1013,21 +1015,19 @@ const StoreManagementTab = () => {
                 </VStack>
               </HStack>
 
-              {renderFormField("休息日", editForm.rest || "", (v) =>
+              {renderFormField(t("admin.restDay"), editForm.rest || "", (v) =>
                 setEditForm((f) => ({ ...f, rest: v })),
                 { placeholder: "如: 周一" }
               )}
 
-              {renderFormField("描述", editForm.description || "", (v) =>
+              {renderFormField(t("admin.description"), editForm.description || "", (v) =>
                 setEditForm((f) => ({ ...f, description: v })),
                 { multiline: true }
               )}
 
               <VStack space="xs" style={{ marginTop: theme.spacing.sm }}>
                 <Text style={sharedStyles.formLabel}>
-                  店铺图片（
-                  {(Array.isArray(editForm.images) ? editForm.images : []).length}{" "}
-                  张）
+                  {t("admin.storeImages")}（{(Array.isArray(editForm.images) ? editForm.images : []).length}）
                 </Text>
                 {renderImageGrid(
                   Array.isArray(editForm.images) ? editForm.images : [],
@@ -1037,7 +1037,7 @@ const StoreManagementTab = () => {
               </VStack>
 
               <HStack justifyContent="between" style={styles.switchRow}>
-                <Text style={sharedStyles.formLabel}>营业状态</Text>
+                <Text style={sharedStyles.formLabel}>{t("admin.businessStatus")}</Text>
                 <Switch
                   value={editForm.isOpen ?? true}
                   onValueChange={(v) => setEditForm((f) => ({ ...f, isOpen: v }))}
@@ -1051,7 +1051,7 @@ const StoreManagementTab = () => {
                   size="sm"
                   onPress={() => setEditModalVisible(false)}
                 >
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -1059,7 +1059,7 @@ const StoreManagementTab = () => {
                   disabled={actionLoading}
                   isLoading={actionLoading}
                 >
-                  <ButtonText>保存修改</ButtonText>
+                  <ButtonText>{t("admin.saveChanges")}</ButtonText>
                 </Button>
               </HStack>
             </RNScrollView>

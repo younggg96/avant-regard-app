@@ -9,6 +9,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../theme";
 
@@ -46,10 +47,12 @@ const ANIMATION_DURATION = 250;
 export const ActionSheet = ({
   visible,
   onClose,
-  cancelLabel = "取消",
+  cancelLabel,
   footerRight,
   ...rest
 }: ActionSheetProps) => {
+  const { t } = useTranslation();
+  const resolvedCancelLabel = cancelLabel ?? t("common.cancel");
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
@@ -129,13 +132,13 @@ export const ActionSheet = ({
         {footerRight ? (
           <View style={s.footerRow}>
             <TouchableOpacity style={s.cancelBtnHalf} onPress={onClose} activeOpacity={0.6}>
-              <Text style={s.cancelText}>{cancelLabel}</Text>
+              <Text style={s.cancelText}>{resolvedCancelLabel}</Text>
             </TouchableOpacity>
             {footerRight}
           </View>
         ) : (
           <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.6}>
-            <Text style={s.cancelText}>{cancelLabel}</Text>
+            <Text style={s.cancelText}>{resolvedCancelLabel}</Text>
           </TouchableOpacity>
         )}
       </Animated.View>

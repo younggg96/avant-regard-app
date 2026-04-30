@@ -8,6 +8,7 @@ import {
   FlatList,
   Pressable,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { AuthMode, LoginMethod, FormData, CountryCode } from "../types";
@@ -98,6 +99,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   handlePasswordSubmit,
   handleConfirmPasswordSubmit,
 }) => {
+  const { t } = useTranslation();
   const [showCountryPicker, setShowCountryPicker] = useState(false);
 
   const handleSelectCountry = (country: CountryCode) => {
@@ -139,7 +141,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onPress={(e) => e.stopPropagation()}
           >
             <View style={styles.countryModalHeader}>
-              <Text style={styles.countryModalTitle}>选择国家/地区</Text>
+              <Text style={styles.countryModalTitle}>{t("auth.selectCountry")}</Text>
               <TouchableOpacity
                 onPress={() => setShowCountryPicker(false)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -173,7 +175,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               loginMethod === "phone" && styles.methodTabTextActive,
             ]}
           >
-            手机号
+            {t("auth.phone")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -189,7 +191,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               loginMethod === "email" && styles.methodTabTextActive,
             ]}
           >
-            邮箱
+            {t("auth.email")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -197,7 +199,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       {/* 手机号输入 */}
       {loginMethod === "phone" && (
         <View style={styles.inputContainer} onLayout={handleInputLayout("phone")}>
-          <Text style={styles.inputLabel}>手机号</Text>
+          <Text style={styles.inputLabel}>{t("auth.phone")}</Text>
           <View style={styles.inputWrapper}>
             <TouchableOpacity
               style={styles.countryCodeButton}
@@ -215,7 +217,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <TextInput
               ref={phoneInputRef}
               style={styles.phoneInput}
-              placeholder="请输入手机号"
+              placeholder={t("auth.phonePlaceholder")}
               value={formData.phone}
               onChangeText={(text) => setFormData({ ...formData, phone: text })}
               keyboardType="phone-pad"
@@ -234,11 +236,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       {/* 邮箱输入 */}
       {loginMethod === "email" && (
         <View style={styles.inputContainer} onLayout={handleInputLayout("email")}>
-          <Text style={styles.inputLabel}>邮箱</Text>
+          <Text style={styles.inputLabel}>{t("auth.email")}</Text>
           <TextInput
             ref={emailInputRef}
             style={styles.input}
-            placeholder="请输入邮箱地址"
+            placeholder={t("auth.emailPlaceholder")}
             value={formData.email}
             onChangeText={(text) => setFormData({ ...formData, email: text })}
             keyboardType="email-address"
@@ -263,12 +265,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           style={styles.inputContainer}
           onLayout={handleInputLayout("verificationCode")}
         >
-          <Text style={styles.inputLabel}>验证码</Text>
+          <Text style={styles.inputLabel}>{t("auth.verificationCode")}</Text>
           <View style={styles.verificationContainer}>
             <TextInput
               ref={verificationCodeInputRef}
               style={[styles.input, styles.verificationInput]}
-              placeholder="请输入验证码"
+              placeholder={t("auth.codePlaceholder")}
               value={formData.verificationCode}
               onChangeText={(text) =>
                 setFormData({ ...formData, verificationCode: text })
@@ -296,7 +298,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                   countdown > 0 && styles.sendCodeTextDisabled,
                 ]}
               >
-                {countdown > 0 ? `${countdown}s` : "发送验证码"}
+                {countdown > 0 ? `${countdown}s` : t("auth.sendCode")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -309,11 +311,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           style={styles.inputContainer}
           onLayout={handleInputLayout("username")}
         >
-          <Text style={styles.inputLabel}>用户名</Text>
+          <Text style={styles.inputLabel}>{t("auth.username")}</Text>
           <TextInput
             ref={usernameInputRef}
             style={styles.input}
-            placeholder="请输入用户名"
+            placeholder={t("auth.usernamePlaceholder")}
             value={formData.username}
             onChangeText={(text) =>
               setFormData({ ...formData, username: text })
@@ -339,14 +341,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           onLayout={handleInputLayout("password")}
         >
           <Text style={styles.inputLabel}>
-            {mode === "forgotPassword" ? "新密码" : "密码"}
+            {mode === "forgotPassword" ? t("changePassword.newPassword") : t("auth.password")}
           </Text>
           <View style={styles.passwordContainer}>
             <TextInput
               ref={passwordInputRef}
               style={styles.passwordInput}
               placeholder={
-                mode === "forgotPassword" ? "请输入新密码" : "请输入密码"
+                mode === "forgotPassword" ? t("auth.newPasswordPlaceholder") : t("auth.passwordPlaceholder")
               }
               value={formData.password}
               onChangeText={(text) =>
@@ -384,11 +386,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           style={styles.inputContainer}
           onLayout={handleInputLayout("confirmPassword")}
         >
-          <Text style={styles.inputLabel}>确认密码</Text>
+          <Text style={styles.inputLabel}>{t("auth.confirmPassword")}</Text>
           <TextInput
             ref={confirmPasswordInputRef}
             style={styles.input}
-            placeholder="请再次输入密码"
+            placeholder={t("auth.confirmPasswordPlaceholder")}
             value={formData.confirmPassword}
             onChangeText={(text) =>
               setFormData({ ...formData, confirmPassword: text })

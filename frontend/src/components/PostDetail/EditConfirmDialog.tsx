@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
 import { theme } from "../../theme";
@@ -21,6 +22,7 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -88,7 +90,7 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
                     textAlign: "center",
                   }}
                 >
-                  编辑帖子
+                  {t("postDetail.editPostTitle")}
                 </Text>
                 <Text
                   style={{
@@ -99,7 +101,7 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
                     lineHeight: 20,
                   }}
                 >
-                  编辑后帖子将重新进入审核状态，审核通过后才能被其他用户看到。确定要编辑吗？
+                  {t("postDetail.editPostMessage")}
                 </Text>
               </View>
 
@@ -131,7 +133,7 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
                       color: theme.colors.gray600,
                     }}
                   >
-                    取消
+                    {t("common.cancel")}
                   </Text>
                 </TouchableOpacity>
 
@@ -153,7 +155,7 @@ export const EditConfirmDialog: React.FC<EditConfirmDialogProps> = ({
                       color: theme.colors.black,
                     }}
                   >
-                    确认编辑
+                    {t("postDetail.confirmEdit")}
                   </Text>
                 </TouchableOpacity>
               </View>

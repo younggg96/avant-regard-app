@@ -13,6 +13,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { postService } from "@/lib/services/post";
 
@@ -23,6 +24,7 @@ export function PostCardLikeBadge({
   postId: number;
   initialLiked?: boolean;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => s.user?.userId);
@@ -56,7 +58,7 @@ export function PostCardLikeBadge({
     <button
       type="button"
       onClick={onClick}
-      aria-label={liked ? "取消点赞" : "点赞"}
+      aria-label={liked ? t("post.unlikeAriaLabel") : t("post.likeAriaLabel")}
       aria-pressed={liked}
       className={`absolute right-2.5 top-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur transition-all duration-300
         ${

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { broadcastApi, type BroadcastResult } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -13,6 +14,7 @@ import {
 type LinkMode = "none" | "page" | "external";
 
 export default function BroadcastPage() {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [linkMode, setLinkMode] = useState<LinkMode>("none");
@@ -59,32 +61,32 @@ export default function BroadcastPage() {
 
   return (
     <div>
-      <PageHeader title="广播通知" description="向所有用户发送推送通知" />
+      <PageHeader title={t("admin.broadcast")} description={t("admin.broadcastDesc")} />
 
       {result ? (
         <div className="mx-auto max-w-md rounded-lg border border-[var(--border)] p-6 text-center">
           <div className="mx-auto text-[28px] text-[color:var(--ink-muted)]">✓</div>
-          <h3 className="mt-3 font-label text-sm font-semibold">发送完成</h3>
+          <h3 className="mt-3 font-label text-sm font-semibold">{t("admin.sendComplete")}</h3>
           <div className="mt-2 space-y-1 font-label text-[13px] text-[color:var(--ink-muted)]">
-            <div>成功: {result.successCount}</div>
-            <div>失败: {result.failCount}</div>
-            <div>目标用户: {result.totalUsers}</div>
+            <div>{t("admin.successCount", { count: result.successCount })}</div>
+            <div>{t("admin.failCount", { count: result.failCount })}</div>
+            <div>{t("admin.targetUsers", { count: result.totalUsers })}</div>
           </div>
           <Button variant="secondary" onClick={reset} size="sm">
-            再发一条
+            {t("admin.sendAnother")}
           </Button>
         </div>
       ) : (
         <div className="mx-auto max-w-lg space-y-4">
-          <FormField label="通知标题" required>
-            <TextInput value={title} onChange={setTitle} placeholder="输入通知标题" />
+          <FormField label={t("admin.notifTitle")} required>
+            <TextInput value={title} onChange={setTitle} placeholder={t("admin.notifTitlePlaceholder")} />
           </FormField>
 
-          <FormField label="通知内容" required>
-            <TextInput value={message} onChange={setMessage} placeholder="输入通知内容" multiline rows={4} />
+          <FormField label={t("admin.notifContent")} required>
+            <TextInput value={message} onChange={setMessage} placeholder={t("admin.notifContentPlaceholder")} multiline rows={4} />
           </FormField>
 
-          <FormField label="跳转链接">
+          <FormField label={t("admin.linkLabel")}>
             <div className="flex gap-2 mb-2">
               {(["none", "page", "external"] as const).map((m) => (
                 <button
@@ -96,14 +98,14 @@ export default function BroadcastPage() {
                       : "border-[var(--border)] text-[color:var(--ink-muted)]"
                   }`}
                 >
-                  {m === "none" ? "无" : m === "page" ? "App 页面" : "外部链接"}
+                  {m === "none" ? t("admin.linkNone") : m === "page" ? t("admin.linkPage") : t("admin.linkExternal")}
                 </button>
               ))}
             </div>
             {linkMode === "page" && (
               <div className="space-y-2">
-                <TextInput value={navigateTo} onChange={setNavigateTo} placeholder="页面名称 如 PostDetail" />
-                <TextInput value={navigateParams} onChange={setNavigateParams} placeholder='参数 JSON 如 {"postId": 123}' />
+                <TextInput value={navigateTo} onChange={setNavigateTo} placeholder={t("admin.pageName")} />
+                <TextInput value={navigateParams} onChange={setNavigateParams} placeholder={t("admin.pageParams")} />
               </div>
             )}
             {linkMode === "external" && (
@@ -113,17 +115,17 @@ export default function BroadcastPage() {
 
           {(title || message) && (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-4">
-              <div className="font-label text-[11px] uppercase tracking-wider text-[color:var(--ink-muted)]">预览</div>
+              <div className="font-label text-[11px] uppercase tracking-wider text-[color:var(--ink-muted)]">{t("admin.preview")}</div>
               <div className="mt-2 font-label">
-                <div className="text-[14px] font-semibold">{title || "标题"}</div>
-                <div className="mt-1 text-[13px] text-[color:var(--ink-muted)]">{message || "内容"}</div>
+                <div className="text-[14px] font-semibold">{title || t("admin.titleDefault")}</div>
+                <div className="mt-1 text-[13px] text-[color:var(--ink-muted)]">{message || t("admin.contentDefault")}</div>
               </div>
             </div>
           )}
 
           <div className="pt-2">
             <Button onClick={handleSend} loading={sending} disabled={!title.trim() || !message.trim()}>
-              发送广播
+              {t("admin.sendBroadcast")}
             </Button>
           </div>
         </div>

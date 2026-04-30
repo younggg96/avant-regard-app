@@ -31,6 +31,7 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { BuyerStore, getAllBuyerStores } from "../services/buyerStoreService";
 import { SCREEN_WIDTH } from "./Discover/constants";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 30;
 const GRID_HORIZONTAL_PADDING = 16;
@@ -43,6 +44,7 @@ type NavigationProp = {
 };
 
 const AllBuyerStoresScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
 
   const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -95,7 +97,7 @@ const AllBuyerStoresScreen: React.FC = () => {
       } catch (e) {
         console.error("加载全部买手店失败:", e);
         if (!mountedRef.current) return;
-        setError(e instanceof Error ? e.message : "加载失败");
+        setError(e instanceof Error ? e.message : t("store.loadFailed"));
       } finally {
         if (!mountedRef.current) return;
         if (mode === "initial") setIsLoading(false);
@@ -153,7 +155,7 @@ const AllBuyerStoresScreen: React.FC = () => {
   if (isLoading && stores.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <ScreenHeader title="全部买手店" showBack />
+        <ScreenHeader title={t("store.allStores")} showBack />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.black} />
         </View>
@@ -164,11 +166,11 @@ const AllBuyerStoresScreen: React.FC = () => {
   if (error && stores.length === 0) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <ScreenHeader title="全部买手店" showBack />
+        <ScreenHeader title={t("store.allStores")} showBack />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
           <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
-            加载失败
+            {t("store.loadFailed")}
           </Text>
           <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
             {error}
@@ -182,7 +184,7 @@ const AllBuyerStoresScreen: React.FC = () => {
             rounded="$md"
           >
             <Text color="$white" fontWeight="$semibold" fontSize="$sm">
-              点击重试
+              {t("store.tapRetry")}
             </Text>
           </Pressable>
         </View>
@@ -193,7 +195,7 @@ const AllBuyerStoresScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScreenHeader
-        title="全部买手店"
+        title={t("store.allStores")}
         subtitle={total > 0 ? `共 ${total} 家` : undefined}
         showBack
       />
@@ -210,7 +212,7 @@ const AllBuyerStoresScreen: React.FC = () => {
             ref={searchInputRef}
             value={searchInput}
             onChangeText={setSearchInput}
-            placeholder="搜索店铺 / 城市 / 地址"
+            placeholder={t("store.searchPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             returnKeyType="search"
             onSubmitEditing={handleSearchSubmit}
@@ -253,7 +255,7 @@ const AllBuyerStoresScreen: React.FC = () => {
           ) : !hasMore && stores.length > 0 ? (
             <View style={styles.footerEnd}>
               <Text fontSize="$xs" color="$gray300">
-                — 已经到底啦 —
+                {t("store.noMoreData")}
               </Text>
             </View>
           ) : null
@@ -263,7 +265,7 @@ const AllBuyerStoresScreen: React.FC = () => {
             <Box py="$xl" alignItems="center">
               <Ionicons name="storefront-outline" size={32} color={theme.colors.gray300} />
               <Text fontSize="$sm" color="$gray300" mt="$sm">
-                {activeQuery ? "没有匹配的买手店" : "暂无买手店"}
+                {activeQuery ? t("store.noMatchStores") : t("store.noStores")}
               </Text>
             </Box>
           ) : null
@@ -283,6 +285,7 @@ interface StoreCardProps {
 }
 
 const StoreCardImpl: React.FC<StoreCardProps> = ({ store, onPress }) => {
+  const { t } = useTranslation();
   const cover = store.images?.[0];
   const location = [store.city, store.country].filter(Boolean).join(" · ");
 
@@ -307,7 +310,7 @@ const StoreCardImpl: React.FC<StoreCardProps> = ({ store, onPress }) => {
         {store.hasMerchant && (
           <View style={styles.merchantBadge}>
             <Ionicons name="checkmark-circle" size={11} color={theme.colors.white} />
-            <Text style={styles.merchantBadgeText}>已入驻</Text>
+            <Text style={styles.merchantBadgeText}>{t("store.verified")}</Text>
           </View>
         )}
       </View>

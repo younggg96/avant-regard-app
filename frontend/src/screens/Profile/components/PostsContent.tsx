@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text as RNText, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import {
@@ -59,10 +60,11 @@ const ContributionContent = ({
   onBrandSubmissionPress,
   onStoreCardPress,
 }: Pick<PostsContentProps, 'contribSubTab' | 'setContribSubTab' | 'contribLoading' | 'myShows' | 'myBrands' | 'myStores' | 'user' | 'onShowPress' | 'onBrandSubmissionPress' | 'onStoreCardPress'>) => {
+  const { t } = useTranslation();
   const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
-    { id: "show", label: "秀场", count: myShows.length },
-    { id: "brand", label: "品牌", count: myBrands.length },
-    { id: "store", label: "买手店", count: myStores.length },
+    { id: "show", label: t("profileContrib.show"), count: myShows.length },
+    { id: "brand", label: t("profileContrib.brand"), count: myBrands.length },
+    { id: "store", label: t("profileContrib.store"), count: myStores.length },
   ];
 
   const getData = () => {
@@ -80,9 +82,9 @@ const ContributionContent = ({
     store: "storefront-outline",
   };
   const emptyTexts: Record<ContribSubTab, string> = {
-    show: "暂无秀场贡献",
-    brand: "暂无品牌贡献",
-    store: "暂无买手店贡献",
+    show: t("profileContrib.noShowContrib"),
+    brand: t("profileContrib.noBrandContrib"),
+    store: t("profileContrib.noStoreContrib"),
   };
 
   // Build a displayable post + its press handler for a contribution item.
@@ -144,7 +146,7 @@ const ContributionContent = ({
       {contribLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
         </VStack>
       ) : data.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
@@ -215,10 +217,11 @@ const StoreActivityContent = ({
   storeActivityLoading: boolean;
   onStoreActivityPress: (storeId: string) => void;
 }) => {
+  const { t } = useTranslation();
   const subTabs: { id: StoreActivitySubTab; label: string; count: number }[] = [
-    { id: "favorites", label: "收藏", count: storeActivity?.favoritesTotal ?? 0 },
-    { id: "comments", label: "评论", count: storeActivity?.commentsTotal ?? 0 },
-    { id: "ratings", label: "评分", count: storeActivity?.ratingsTotal ?? 0 },
+    { id: "favorites", label: t("profileStoreActivity.favorites"), count: storeActivity?.favoritesTotal ?? 0 },
+    { id: "comments", label: t("profileStoreActivity.comments"), count: storeActivity?.commentsTotal ?? 0 },
+    { id: "ratings", label: t("profileStoreActivity.ratings"), count: storeActivity?.ratingsTotal ?? 0 },
   ];
 
   const renderFavorite = (item: UserFavoritedStore) => (
@@ -269,9 +272,9 @@ const StoreActivityContent = ({
 
   const getEmptyInfo = (): { icon: string; text: string } => {
     switch (storeActivitySubTab) {
-      case "favorites": return { icon: "heart-outline", text: "还没有收藏的买手店" };
-      case "comments": return { icon: "chatbubble-outline", text: "还没有评论买手店" };
-      case "ratings": return { icon: "star-outline", text: "还没有评分买手店" };
+      case "favorites": return { icon: "heart-outline", text: t("profileStoreActivity.noFavorites") };
+      case "comments": return { icon: "chatbubble-outline", text: t("profileStoreActivity.noComments") };
+      case "ratings": return { icon: "star-outline", text: t("profileStoreActivity.noRatings") };
     }
   };
 
@@ -359,6 +362,7 @@ export const PostsContent = ({
   onStoreActivityPress,
   onLike,
 }: PostsContentProps) => {
+  const { t } = useTranslation();
   if (activeTab === "storeActivity") {
     return (
       <StoreActivityContent
@@ -470,13 +474,13 @@ export const PostsContent = ({
           color={theme.colors.gray300}
         />
         <Text color="$gray400" mt="$md">
-          {activeTab === "published" && "还没有发布内容"}
-          {activeTab === "pending" && "没有待审核的帖子"}
-          {activeTab === "draft" && "还没有草稿"}
-          {activeTab === "saved" && "还没有收藏帖子"}
-          {activeTab === "liked" && "还没有点赞帖子"}
-          {activeTab === "forum" && "还没有论坛帖子"}
-          {activeTab === "wishlist" && "还没有想要的单品"}
+          {activeTab === "published" && t("profile.noPublishedPosts")}
+          {activeTab === "pending" && t("profile.noPendingPosts")}
+          {activeTab === "draft" && t("profile.noDrafts")}
+          {activeTab === "saved" && t("profile.noSavedPosts")}
+          {activeTab === "liked" && t("profile.noLikedPosts")}
+          {activeTab === "forum" && t("profile.noForumPosts")}
+          {activeTab === "wishlist" && t("profile.noWishlist")}
         </Text>
       </VStack>
     );

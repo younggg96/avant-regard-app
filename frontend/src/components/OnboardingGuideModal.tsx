@@ -10,6 +10,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../theme";
@@ -71,6 +72,7 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
   visible,
   onComplete,
 }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -149,13 +151,13 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
             activeOpacity={0.8}
           >
             <Text style={styles.actionButtonText}>
-              {isLastSlide ? "开始体验" : "下一步"}
+              {isLastSlide ? t("onboarding.startExperience") : t("onboarding.nextStep")}
             </Text>
           </TouchableOpacity>
 
           {!isLastSlide && (
             <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-              <Text style={styles.skipText}>跳过</Text>
+              <Text style={styles.skipText}>{t("onboarding.skip")}</Text>
             </TouchableOpacity>
           )}
         </View>

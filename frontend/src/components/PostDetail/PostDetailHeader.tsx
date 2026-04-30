@@ -1,5 +1,6 @@
 import React from "react";
 import { View, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack, Box } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
@@ -38,6 +39,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   onShowOptionsMenu,
   onShowReportMenu,
 }) => {
+  const { t } = useTranslation();
   return (
     <HStack
       px="$md"
@@ -120,7 +122,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               rounded="$md"
             >
               <Text fontSize="$xs" fontWeight="$semibold" color="$white">
-                继续修改
+                {t("postDetail.continueEdit")}
               </Text>
             </Pressable>
             {isOwnPost && (
@@ -145,7 +147,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               }}
             >
               <Text fontSize="$xs" fontWeight="$semibold" color="$white">
-                审核中
+                {t("postDetail.pending")}
               </Text>
             </View>
             {isOwnPost && (
@@ -186,7 +188,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                     fontWeight="$semibold"
                     color={isFollowing ? "$gray600" : "$white"}
                   >
-                    {isFollowing ? "已关注" : "关注"}
+                    {isFollowing ? t("postDetail.followed") : t("postDetail.follow")}
                   </Text>
                 )}
               </Pressable>

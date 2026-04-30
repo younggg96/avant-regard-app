@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { showsApi, type AdminShow } from "@/lib/services/admin";
 import {
   PageHeader,
-  StatusBadge,
   EmptyState,
   LoadingState,
   PromptDialog,
@@ -13,6 +13,7 @@ import {
 
 
 export default function ShowReviewPage() {
+  const { t } = useTranslation();
   const [shows, setShows] = useState<AdminShow[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<AdminShow | null>(null);
@@ -52,12 +53,12 @@ export default function ShowReviewPage() {
 
   return (
     <div>
-      <PageHeader title="秀场审核" description={`${shows.length} 场待审核`} />
+      <PageHeader title={t("admin.showReview")} description={t("admin.showReviewDesc", { count: shows.length })} />
 
       {loading ? (
         <LoadingState />
       ) : shows.length === 0 ? (
-        <EmptyState message="暂无待审核秀场" />
+        <EmptyState message={t("admin.noPendingShows")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {shows.map((s) => (
@@ -66,17 +67,17 @@ export default function ShowReviewPage() {
               <div className="p-4 font-label">
                 <h3 className="text-[14px] font-semibold">{s.brandName}</h3>
                 <div className="mt-1 text-[12px] text-[color:var(--ink-muted)]">
-                  <div>季节: {s.season}</div>
-                  {s.category && <div>分类: {s.category}</div>}
-                  {s.submitterName && <div>提交人: @{s.submitterName}</div>}
-                  <div>图片: {s.imageCount ?? 0} 张</div>
+                  <div>{t("admin.seasonLabel", { season: s.season })}</div>
+                  {s.category && <div>{t("admin.categoryLabel", { category: s.category })}</div>}
+                  {s.submitterName && <div>{t("admin.submitter", { name: s.submitterName })}</div>}
+                  <div>{t("admin.imageCount", { count: s.imageCount ?? 0 })}</div>
                 </div>
                 <div className="mt-3 flex gap-2 border-t border-[var(--border)] pt-3">
                   <Button size="sm" onClick={() => handleApprove(s.id)} loading={acting === s.id}>
-                    通过
+                    {t("admin.approve")}
                   </Button>
                   <Button variant="secondary" size="sm" onClick={() => setRejectTarget(s)}>
-                    拒绝
+                    {t("admin.reject")}
                   </Button>
                 </div>
               </div>
@@ -87,9 +88,9 @@ export default function ShowReviewPage() {
 
       <PromptDialog
         open={!!rejectTarget}
-        title="拒绝原因"
-        placeholder="请输入拒绝原因（可选）"
-        confirmLabel="拒绝"
+        title={t("admin.rejectReason")}
+        placeholder={t("admin.rejectReasonPlaceholder")}
+        confirmLabel={t("admin.reject")}
         loading={!!acting}
         onConfirm={(reason) => rejectTarget && handleReject(rejectTarget.id, reason)}
         onCancel={() => setRejectTarget(null)}

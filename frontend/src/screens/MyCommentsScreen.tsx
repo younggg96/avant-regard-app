@@ -10,6 +10,7 @@ import {
     Image as RNImage,
     StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,6 +35,7 @@ import {
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const MyCommentsScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const [comments, setComments] = useState<PostComment[]>([]);
@@ -232,10 +234,10 @@ const MyCommentsScreen = () => {
                 color={theme.colors.gray200}
             />
             <Text color="$gray400" mt="$md" fontSize="$md">
-                还没有发表过评论
+                {t("myComments.noComments")}
             </Text>
             <Text color="$gray300" mt="$xs" fontSize="$sm">
-                去发现页浏览内容并留下你的想法吧
+                {t("myComments.emptyHint")}
             </Text>
         </VStack>
     );
@@ -245,7 +247,7 @@ const MyCommentsScreen = () => {
             style={{ flex: 1, backgroundColor: theme.colors.white }}
             edges={["top"]}
         >
-            <ScreenHeader title="我的评论" showBack={true} />
+            <ScreenHeader title={t("myComments.title")} showBack={true} />
 
             {isLoading ? (
                 <VStack alignItems="center" justifyContent="center" flex={1}>

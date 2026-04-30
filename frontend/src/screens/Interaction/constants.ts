@@ -6,6 +6,11 @@ export const CS_DISPLAY_NAME = "Avant Regard 客服";
 
 export type SubTab = "messages" | "map";
 
+export const SUB_TAB_KEYS: Record<SubTab, string> = {
+  messages: "interaction.messages",
+  map: "map.title",
+};
+
 export const SUB_TABS: { id: SubTab; label: string }[] = [
   { id: "messages", label: "消息" },
   { id: "map", label: "地图" },

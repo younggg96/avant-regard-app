@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { Gender } from "../../../services/userInfoService";
@@ -56,6 +57,8 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   onBrandSearchSubmit,
   onLoadMoreBrands,
 }) => {
+  const { t } = useTranslation();
+
   // 切换品牌选择
   const handleToggleBrand = (brandId: number) => {
     const currentIds = formData.followedBrandIds || [];
@@ -90,16 +93,16 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
       <View style={styles.profileHintContainer}>
         <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
         <Text style={styles.profileHintText}>
-          以下信息均为选填，您可以随时在设置中修改
+          {t("auth.profileHint")}
         </Text>
       </View>
 
       {/* 个人简介 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>个人简介</Text>
+        <Text style={styles.inputLabel}>{t("editProfile.bio")}</Text>
         <TextInput
           style={[styles.input, styles.bioInput]}
-          placeholder="介绍一下自己..."
+          placeholder={t("auth.bioPlaceholder")}
           placeholderTextColor={theme.colors.gray400}
           value={formData.bio}
           onChangeText={(text) =>
@@ -115,7 +118,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 所在地选择 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>所在地</Text>
+        <Text style={styles.inputLabel}>{t("editProfile.location")}</Text>
         <TouchableOpacity
           style={styles.pickerButton}
           onPress={() => setShowLocationPicker(!showLocationPicker)}
@@ -125,7 +128,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               formData.location ? styles.pickerText : styles.pickerPlaceholder
             }
           >
-            {formData.location || "请选择您的所在地"}
+            {formData.location || t("auth.locationPlaceholder")}
           </Text>
           <Ionicons
             name={showLocationPicker ? "chevron-up" : "chevron-down"}
@@ -167,12 +170,12 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 性别选择 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>性别</Text>
+        <Text style={styles.inputLabel}>{t("auth.selectGender")}</Text>
         <View style={styles.genderContainer}>
           {[
-            { value: "MALE" as Gender, label: "男" },
-            { value: "FEMALE" as Gender, label: "女" },
-            { value: "OTHER" as Gender, label: "其他" },
+            { value: "MALE" as Gender, label: t("auth.male") },
+            { value: "FEMALE" as Gender, label: t("auth.female") },
+            { value: "OTHER" as Gender, label: t("auth.other") },
           ].map((gender) => (
             <TouchableOpacity
               key={gender.value}
@@ -201,7 +204,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 年龄段选择 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>年龄段</Text>
+        <Text style={styles.inputLabel}>{t("auth.selectAge")}</Text>
         <TouchableOpacity
           style={styles.pickerButton}
           onPress={() => setShowAgePicker(!showAgePicker)}
@@ -211,7 +214,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               formData.age ? styles.pickerText : styles.pickerPlaceholder
             }
           >
-            {formData.age || "请选择您的年龄段"}
+            {formData.age || t("auth.agePlaceholder")}
           </Text>
           <Ionicons
             name={showAgePicker ? "chevron-up" : "chevron-down"}
@@ -251,10 +254,10 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 时尚偏好 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>时尚偏好</Text>
+        <Text style={styles.inputLabel}>{t("auth.selectPreference")}</Text>
         <TextInput
           style={[styles.input, styles.preferenceInput]}
-          placeholder="例如：极简主义、街头风格、复古..."
+          placeholder={t("auth.preferencePlaceholder")}
           placeholderTextColor={theme.colors.gray400}
           value={formData.preference}
           onChangeText={(text) =>
@@ -267,7 +270,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* 关注的品牌 */}
       <View style={styles.inputContainer}>
-        <Text style={styles.inputLabel}>关注的品牌（最多5个）</Text>
+        <Text style={styles.inputLabel}>{t("auth.selectFavBrands")}</Text>
         <TouchableOpacity
           style={styles.pickerButton}
           onPress={() => setShowBrandPicker(true)}
@@ -282,13 +285,13 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           >
             {formData.followedBrandIds?.length > 0
               ? getSelectedBrandNames()
-              : "选择您想关注的品牌"}
+              : t("auth.brandPlaceholder")}
           </Text>
           <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
         </TouchableOpacity>
         {formData.followedBrandIds?.length > 0 && (
           <Text style={styles.brandSelectedCount}>
-            已选择 {formData.followedBrandIds.length}/5
+            {t("auth.brandSelected", { count: formData.followedBrandIds.length })}
           </Text>
         )}
       </View>
@@ -303,7 +306,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         <View style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
-              选择关注的品牌（{formData.followedBrandIds?.length || 0}/5）
+              {t("auth.selectFavBrands")}（{formData.followedBrandIds?.length || 0}/5）
             </Text>
             <TouchableOpacity
               onPress={() => setShowBrandPicker(false)}
@@ -318,7 +321,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             <Ionicons name="search" size={18} color={theme.colors.gray400} />
             <TextInput
               style={styles.brandSearchInput}
-              placeholder="搜索品牌..."
+              placeholder={t("auth.searchBrandPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               value={brandSearchKeyword}
               onChangeText={onBrandSearch}
@@ -388,7 +391,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
               ListEmptyComponent={
                 <View style={styles.brandEmptyList}>
                   <Text style={styles.brandEmptyText}>
-                    {brandSearchKeyword ? "没有找到匹配的品牌" : "暂无品牌"}
+                    {brandSearchKeyword ? t("auth.noBrandMatch") : t("auth.noBrands")}
                   </Text>
                 </View>
               }
@@ -396,15 +399,15 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                 loadingMoreBrands ? (
                   <View style={styles.brandLoadMoreContainer}>
                     <ActivityIndicator size="small" color={theme.colors.black} />
-                    <Text style={styles.brandLoadMoreText}>加载更多...</Text>
+                    <Text style={styles.brandLoadMoreText}>{t("common.loadMore")}...</Text>
                   </View>
                 ) : hasMoreBrands && brandOptions.length > 0 ? (
                   <View style={styles.brandLoadMoreContainer}>
-                    <Text style={styles.brandLoadMoreHint}>上滑加载更多</Text>
+                    <Text style={styles.brandLoadMoreHint}>{t("auth.scrollForMore")}</Text>
                   </View>
                 ) : brandOptions.length > 0 ? (
                   <View style={styles.brandLoadMoreContainer}>
-                    <Text style={styles.brandLoadMoreHint}>已加载全部品牌</Text>
+                    <Text style={styles.brandLoadMoreHint}>{t("auth.allBrandsLoaded")}</Text>
                   </View>
                 ) : null
               }
@@ -415,7 +418,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             style={styles.brandConfirmButton}
             onPress={() => setShowBrandPicker(false)}
           >
-            <Text style={styles.brandConfirmButtonText}>确定</Text>
+            <Text style={styles.brandConfirmButtonText}>{t("common.confirm")}</Text>
           </TouchableOpacity>
         </View>
       </Modal>

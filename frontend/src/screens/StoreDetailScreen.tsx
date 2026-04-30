@@ -68,6 +68,7 @@ import {
 import HalfStarRating from "../components/HalfStarRating";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 
 type RouteParams = {
   StoreDetail: {
@@ -85,6 +86,7 @@ const DEFAULT_SUGGESTIONS = [
 ];
 
 const StoreDetailScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
@@ -154,17 +156,17 @@ const StoreDetailScreen = () => {
       console.error("Store detail load error:", error);
       if (error.message?.includes("404") || error.message?.includes("不存在")) {
         Alert.alert(
-          "店铺不存在",
-          "该店铺可能已被删除或暂时不可用",
+          t("store.storeNotExist"),
+          t("store.storeNotExistDesc"),
           [
             {
-              text: "返回",
+              text: t("store.alertBack"),
               onPress: () => navigation.goBack(),
             },
           ]
         );
       } else {
-        Alert.alert("加载失败", error.message || "请稍后重试");
+        Alert.alert(t("store.alertLoadFailed"), error.message || t("store.alertRetryLater"));
       }
     } finally {
       setIsLoading(false);
@@ -259,7 +261,7 @@ const StoreDetailScreen = () => {
   // 格式化日期
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
+    return t("store.dateFormat", { month: date.getMonth() + 1, day: date.getDate() });
   };
 
   // 检查折扣是否有效
@@ -288,12 +290,11 @@ const StoreDetailScreen = () => {
   // 打开商家申请弹窗
   const openMerchantApplyModal = () => {
     if (!user) {
-      Alert.alert("提示", "请先登录");
+      Alert.alert(t("store.alertHint"), t("store.alertLoginFirst"));
       return;
     }
-    // 如果已有认证商家，提示
     if (merchantContent?.isMerchant) {
-      Alert.alert("提示", "该店铺已有认证商家");
+      Alert.alert(t("store.alertHint"), t("store.alertAlreadyHasMerchant"));
       return;
     }
     setShowMerchantApplyModal(true);
@@ -324,7 +325,7 @@ const StoreDetailScreen = () => {
   // 选择营业执照图片
   const pickBusinessLicense = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { Alert.alert("权限不足", "需要相册权限才能选择图片"); return; }
+    if (status !== "granted") { Alert.alert(t("store.alertNoPermission"), t("store.alertNeedPhotoPermission")); return; }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -346,11 +347,11 @@ const StoreDetailScreen = () => {
     if (!user) return;
 
     if (!applyFormData.contactName.trim()) {
-      Alert.alert("提示", "请填写联系人姓名");
+      Alert.alert(t("store.alertHint"), t("store.alertFillContactName"));
       return;
     }
     if (!applyFormData.contactPhone.trim()) {
-      Alert.alert("提示", "请填写联系电话");
+      Alert.alert(t("store.alertHint"), t("store.alertFillContactPhone"));
       return;
     }
 
@@ -364,10 +365,10 @@ const StoreDetailScreen = () => {
         businessLicense: applyFormData.businessLicense || undefined,
       });
       closeMerchantApplyModal();
-      Alert.alert("申请成功", "您的商家入驻申请已提交，请等待审核");
+      Alert.alert(t("store.alertApplySuccess"), t("store.alertApplySuccessMsg"));
       checkMerchantStatus();
     } catch (error: any) {
-      Alert.alert("申请失败", error.message || "请稍后重试");
+      Alert.alert(t("store.alertApplyFailed"), error.message || t("store.alertRetryLater"));
     } finally {
       setIsSubmittingApply(false);
     }
@@ -376,7 +377,7 @@ const StoreDetailScreen = () => {
   // 收藏/取消收藏
   const handleToggleFavorite = async () => {
     if (!user) {
-      Alert.alert("提示", "请先登录");
+      Alert.alert(t("store.alertHint"), t("store.alertLoginFirst"));
       return;
     }
     if (!store) return;
@@ -402,14 +403,14 @@ const StoreDetailScreen = () => {
         syncFromDetail(storeId, true, newCount);
       }
     } catch (error: any) {
-      Alert.alert("操作失败", error.message || "请稍后重试");
+      Alert.alert(t("store.alertOperationFailed"), error.message || t("store.alertRetryLater"));
     }
   };
 
   // 打开评分弹窗
   const openRatingModal = () => {
     if (!user) {
-      Alert.alert("提示", "请先登录");
+      Alert.alert(t("store.alertHint"), t("store.alertLoginFirst"));
       return;
     }
     setShowRatingModal(true);
@@ -439,9 +440,9 @@ const StoreDetailScreen = () => {
       // 刷新店铺详情获取新的平均评分
       await loadStoreDetail();
       closeRatingModal();
-      Alert.alert("评分成功", "感谢您的评价！");
+      Alert.alert(t("store.alertRatingSuccess"), t("store.alertRatingSuccessMsg"));
     } catch (error: any) {
-      Alert.alert("评分失败", error.message || "请稍后重试");
+      Alert.alert(t("store.alertRatingFailed"), error.message || t("store.alertRetryLater"));
     } finally {
       setIsSubmittingRating(false);
     }
@@ -450,7 +451,7 @@ const StoreDetailScreen = () => {
   // 打开评论输入
   const openCommentInput = (replyToComment?: { id: number; username: string }) => {
     if (!user) {
-      Alert.alert("提示", "请先登录");
+      Alert.alert(t("store.alertHint"), t("store.alertLoginFirst"));
       return;
     }
     if (replyToComment) {
@@ -502,7 +503,7 @@ const StoreDetailScreen = () => {
         prev ? { ...prev, commentCount: prev.commentCount + 1 } : null
       );
     } catch (error: any) {
-      Alert.alert("评论失败", error.message || "请稍后重试");
+      Alert.alert(t("store.alertCommentFailed"), error.message || t("store.alertRetryLater"));
     } finally {
       setIsSubmittingComment(false);
     }
@@ -517,10 +518,10 @@ const StoreDetailScreen = () => {
   const handleDeleteComment = (commentId: number) => {
     if (!user) return;
 
-    Alert.alert("删除评论", "确定要删除这条评论吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("store.alertDeleteComment"), t("store.alertDeleteCommentConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -530,7 +531,7 @@ const StoreDetailScreen = () => {
               prev ? { ...prev, commentCount: prev.commentCount - 1 } : null
             );
           } catch (error: any) {
-            Alert.alert("删除失败", error.message || "请稍后重试");
+            Alert.alert(t("store.alertDeleteFailed"), error.message || t("store.alertRetryLater"));
           }
         },
       },
@@ -605,7 +606,7 @@ const StoreDetailScreen = () => {
                 color={theme.colors.gray300}
               />
               <Text fontSize="$xs" color="$gray300" ml="$xs" style={styles.textRegular}>
-                回复{item.replyCount > 0 ? ` ${item.replyCount}` : ""}
+                {t("store.reply")}{item.replyCount > 0 ? ` ${item.replyCount}` : ""}
               </Text>
             </Pressable>
             <HStack alignItems="center">
@@ -617,7 +618,7 @@ const StoreDetailScreen = () => {
             {user && item.userId === Number(user.id) && (
               <Pressable onPress={() => handleDeleteComment(item.id)}>
                 <Text fontSize="$xs" color="$error" style={styles.textRegular}>
-                  删除
+                  {t("common.delete")}
                 </Text>
               </Pressable>
             )}
@@ -637,7 +638,7 @@ const StoreDetailScreen = () => {
                 <Text fontWeight="$semibold" style={styles.textBold}>{reply.username}</Text>
                 {reply.replyToUsername && (
                   <Text color="$gray300" style={styles.textRegular}>
-                    {" "}回复 <Text fontWeight="$medium" style={styles.textRegular}>{reply.replyToUsername}</Text>
+                    {" "}{t("store.reply")} <Text fontWeight="$medium" style={styles.textRegular}>{reply.replyToUsername}</Text>
                   </Text>
                 )}
                 : {reply.content}
@@ -647,7 +648,7 @@ const StoreDetailScreen = () => {
           {item.replyCount > item.replies.length && (
             <Pressable mt="$xs">
               <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                查看全部 {item.replyCount} 条回复
+                {t("store.viewAllReplies", { count: item.replyCount })}
               </Text>
             </Pressable>
           )}
@@ -660,14 +661,14 @@ const StoreDetailScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="店铺详情"
+          title={t("store.storeDetail")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator color={theme.colors.black} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            加载中...
+            {t("common.loading")}
           </Text>
         </VStack>
       </SafeAreaView>
@@ -678,14 +679,14 @@ const StoreDetailScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="店铺详情"
+          title={t("store.storeDetail")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <Ionicons name="storefront-outline" size={64} color={theme.colors.gray200} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            店铺不存在
+            {t("store.storeNotExist")}
           </Text>
         </VStack>
       </SafeAreaView>
@@ -737,7 +738,7 @@ const StoreDetailScreen = () => {
                 <HStack alignItems="center" gap="$sm">
                   {store.favoriteCount > 0 && (
                     <Text fontSize={11} color="$gray300">
-                      {store.favoriteCount}人已关注
+                      {t("store.followersCount", { count: store.favoriteCount })}
                     </Text>
                   )}
                   <Pressable
@@ -754,7 +755,7 @@ const StoreDetailScreen = () => {
                       fontWeight="$bold"
                       color={store.isFavorited ? "$white" : "$black"}
                     >
-                      {store.isFavorited ? "已关注" : "关注"}
+                      {store.isFavorited ? t("store.followed") : t("store.follow")}
                     </Text>
                   </Pressable>
                   <Box
@@ -769,7 +770,7 @@ const StoreDetailScreen = () => {
                       color={store.isOpen ? "#27AE60" : "$gray300"}
                       style={styles.textBold}
                     >
-                      {store.isOpen ? "营业中" : "休息"}
+                      {store.isOpen ? t("store.open") : t("store.closed")}
                     </Text>
                   </Box>
                 </HStack>
@@ -788,7 +789,7 @@ const StoreDetailScreen = () => {
                 >
                   <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    由 {store.contributorName} 用户上传的买手店
+                    {t("store.contributedBy", { name: store.contributorName })}
                   </Text>
                 </HStack>
               )}
@@ -814,7 +815,7 @@ const StoreDetailScreen = () => {
                     </Text>
                   </HStack>
                   <Text fontSize="$xs" color="$black" style={styles.textRegular}>
-                    {store.ratingCount} 人评分
+                    {t("store.ratingCount", { count: store.ratingCount })}
                   </Text>
                 </Pressable>
 
@@ -827,7 +828,7 @@ const StoreDetailScreen = () => {
                     color={theme.colors.black}
                   />
                   <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
-                    {store.commentCount} 条评价
+                    {t("store.commentCount", { count: store.commentCount })}
                   </Text>
                 </Pressable>
 
@@ -840,7 +841,7 @@ const StoreDetailScreen = () => {
                     color={theme.colors.black}
                   />
                   <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
-                    {store.favoriteCount}人关注
+                    {t("store.followCount", { count: store.favoriteCount })}
                   </Text>
                 </Pressable>
               </HStack>
@@ -892,7 +893,7 @@ const StoreDetailScreen = () => {
                       </Text>
                       <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
                         <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold" style={styles.textBold}>
-                          拨打
+                          {t("store.call")}
                         </Text>
                       </Box>
                     </Pressable>
@@ -904,7 +905,7 @@ const StoreDetailScreen = () => {
               {store.style.length > 0 && (
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    店铺风格
+                    {t("store.storeStyle")}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {store.style.map((s, idx) => (
@@ -922,7 +923,7 @@ const StoreDetailScreen = () => {
               {store.brands.length > 0 && (
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    主营品牌
+                    {t("store.mainBrands")}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {store.brands.map((brand, idx) => (
@@ -940,7 +941,7 @@ const StoreDetailScreen = () => {
               {!!store.description && (
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    店铺介绍
+                    {t("store.storeIntro")}
                   </Text>
                   <Box bg="$gray50" rounded="$sm" p="$md">
                     <Text fontSize="$sm" color="$black" lineHeight={22} style={styles.textRegular}>
@@ -954,7 +955,7 @@ const StoreDetailScreen = () => {
               {(store.images?.length ?? 0) > 0 && (
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    店铺图片
+                    {t("store.storeImages")}
                   </Text>
                   <ScrollView
                     horizontal
@@ -977,7 +978,7 @@ const StoreDetailScreen = () => {
 
               {/* 商家入驻入口 - 如果还没有认证商家 */}
               <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" style={styles.textBold}>
-                商家信息
+                {t("store.merchantInfo")}
               </Text>
               {!merchantContent?.isMerchant && (
                 <Pressable
@@ -1003,10 +1004,10 @@ const StoreDetailScreen = () => {
                     </Box>
                     <VStack>
                       <Text fontSize="$sm" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                        我是店铺商家
+                        {t("store.iAmMerchant")}
                       </Text>
                       <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                        申请入驻管理此店铺
+                        {t("store.applyManage")}
                       </Text>
                     </VStack>
                   </HStack>
@@ -1082,7 +1083,7 @@ const StoreDetailScreen = () => {
                 {merchantContent.announcements.length > 0 && (
                   <Box bg="$white" mb="$sm" rounded="$sm">
                     <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                      店铺公告
+                      {t("store.storeAnnouncement")}
                     </Text>
                     {merchantContent.announcements.map((announcement) => (
                       <Box
@@ -1096,7 +1097,7 @@ const StoreDetailScreen = () => {
                           {announcement.isPinned && (
                             <Box bg="$error" px="$xs" py={2} rounded="$xs">
                               <Text fontSize={10} color="$white" style={styles.textBold}>
-                                置顶
+                                {t("store.pinned")}
                               </Text>
                             </Box>
                           )}
@@ -1130,7 +1131,7 @@ const StoreDetailScreen = () => {
                     <HStack alignItems="center" gap="$sm" mb="$sm">
                       <Ionicons name="calendar" size={18} color="#1976D2" />
                       <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
-                        近期活动
+                        {t("store.recentActivities")}
                       </Text>
                     </HStack>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1170,7 +1171,7 @@ const StoreDetailScreen = () => {
                             {activity.needRegistration && (
                               <Box bg="#E3F2FD" px="$xs" py={2} rounded="$xs" alignSelf="flex-start" mt="$xs">
                                 <Text fontSize={10} color="#1976D2" style={styles.textRegular}>
-                                  需报名 {activity.registrationLimit ? `(${activity.registrationCount}/${activity.registrationLimit})` : ""}
+                                  {t("store.needRegistration")} {activity.registrationLimit ? `(${activity.registrationCount}/${activity.registrationLimit})` : ""}
                                 </Text>
                               </Box>
                             )}
@@ -1187,7 +1188,7 @@ const StoreDetailScreen = () => {
                     <HStack alignItems="center" gap="$sm" mb="$sm">
                       <Ionicons name="pricetag" size={18} color="#E65100" />
                       <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
-                        优惠活动
+                        {t("store.promotions")}
                       </Text>
                     </HStack>
                     {merchantContent.discounts.map((discount) => (
@@ -1242,7 +1243,7 @@ const StoreDetailScreen = () => {
                           {discount.needCode && discount.discountCode && (
                             <Box bg="$white" px="$sm" py="$xs" rounded="$sm" borderWidth={1} borderColor="#E65100" borderStyle="dashed">
                               <Text fontSize="$xs" color="#E65100" style={styles.textBold}>
-                                码: {discount.discountCode}
+                                {t("store.discountCode")}: {discount.discountCode}
                               </Text>
                             </Box>
                           )}
@@ -1264,7 +1265,7 @@ const StoreDetailScreen = () => {
               borderTopColor="$gray50"
             >
               <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
-                用户评价 ({commentsTotal})
+                {t("store.userReviews")} ({commentsTotal})
               </Text>
               <Pressable
                 flexDirection="row"
@@ -1273,7 +1274,7 @@ const StoreDetailScreen = () => {
               >
                 <Ionicons name="create-outline" size={18} color={theme.colors.black} />
                 <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs" style={styles.textRegular}>
-                  写评价
+                  {t("store.writeReview")}
                 </Text>
               </Pressable>
             </HStack>
@@ -1287,7 +1288,7 @@ const StoreDetailScreen = () => {
               color={theme.colors.gray200}
             />
             <Text color="$gray300" mt="$md" style={styles.textRegular}>
-              暂无评价，快来写下第一条吧！
+              {t("store.noReviewsYet")}
             </Text>
             <Pressable
               mt="$md"
@@ -1298,7 +1299,7 @@ const StoreDetailScreen = () => {
               onPress={() => openCommentInput()}
             >
               <Text color="$white" fontWeight="$medium" style={styles.textRegular}>
-                写评价
+                {t("store.writeReview")}
               </Text>
             </Pressable>
           </VStack>
@@ -1346,7 +1347,7 @@ const StoreDetailScreen = () => {
           >
             <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$lg" />
             <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$md" style={styles.textBold}>
-              为这家店打分
+              {t("store.rateThisStore")}
             </Text>
             <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
               {store.name}
@@ -1367,16 +1368,16 @@ const StoreDetailScreen = () => {
 
             <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$xl" style={styles.textRegular}>
               {selectedRating === 0
-                ? "点击星星进行评分"
+                ? t("store.tapToRate")
                 : selectedRating >= 4.5
-                  ? "太棒了！"
+                  ? t("store.ratingExcellent")
                   : selectedRating >= 3.5
-                    ? "很不错"
+                    ? t("store.ratingGood")
                     : selectedRating >= 2.5
-                      ? "还可以"
+                      ? t("store.ratingOkay")
                       : selectedRating >= 1.5
-                        ? "一般般"
-                        : "不太满意"}
+                        ? t("store.ratingFair")
+                        : t("store.ratingPoor")}
               {selectedRating > 0 && ` (${selectedRating % 1 === 0 ? `${selectedRating}.0` : selectedRating.toFixed(1)})`}
             </Text>
 
@@ -1393,7 +1394,7 @@ const StoreDetailScreen = () => {
                 <ActivityIndicator color={theme.colors.white} />
               ) : (
                 <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
-                  提交评分
+                  {t("store.submitRating")}
                 </Text>
               )}
             </Pressable>
@@ -1445,7 +1446,7 @@ const StoreDetailScreen = () => {
                   justifyContent="between"
                 >
                   <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
-                    回复 <Text fontWeight="$medium" color="$black" style={styles.textRegular}>{replyTo.username}</Text>
+                    {t("store.reply")} <Text fontWeight="$medium" color="$black" style={styles.textRegular}>{replyTo.username}</Text>
                   </Text>
                   <Pressable onPress={() => setReplyTo(null)}>
                     <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
@@ -1455,7 +1456,7 @@ const StoreDetailScreen = () => {
 
               {/* 评论建议 */}
               <Text fontSize="$sm" color="$gray300" mb="$sm" style={styles.textRegular}>
-                评论建议
+                {t("store.commentSuggestions")}
               </Text>
               <ScrollView
                 horizontal
@@ -1490,7 +1491,7 @@ const StoreDetailScreen = () => {
                 <TextInput
                   ref={inputRef}
                   style={styles.commentInput}
-                  placeholder="分享你对这家店的评价..."
+                  placeholder={t("store.commentPlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={commentText}
                   onChangeText={setCommentText}
@@ -1517,7 +1518,7 @@ const StoreDetailScreen = () => {
                     <ActivityIndicator color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
-                      发布
+                      {t("store.publish")}
                     </Text>
                   )}
                 </Pressable>
@@ -1549,7 +1550,7 @@ const StoreDetailScreen = () => {
           >
             <Ionicons name="star-outline" size={18} color={theme.colors.black} />
             <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm" style={styles.textBold}>
-              {store.userRating ? `已评 ${store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1)} 星` : "评分"}
+              {store.userRating ? t("store.rated", { rating: store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1) }) : t("store.rateStore")}
             </Text>
           </Pressable>
 
@@ -1565,7 +1566,7 @@ const StoreDetailScreen = () => {
           >
             <Ionicons name="chatbubble-outline" size={18} color={theme.colors.white} />
             <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm" style={styles.textBold}>
-              写评价
+              {t("store.writeReview")}
             </Text>
           </Pressable>
         </HStack>
@@ -1603,21 +1604,21 @@ const StoreDetailScreen = () => {
               <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
 
               <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$xs" style={styles.textBold}>
-                商家入驻申请
+                {t("store.merchantApplyTitle")}
               </Text>
               <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
-                申请成为 "{store.name}" 的认证商家
+                {t("store.applyToBeMerchant", { name: store.name })}
               </Text>
 
               <ScrollView showsVerticalScrollIndicator={false}>
                 {/* 联系人姓名 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                    联系人姓名 *
+                    {t("store.contactNameLabel")}
                   </Text>
                   <TextInput
                     style={styles.applyInput}
-                    placeholder="请输入联系人姓名"
+                    placeholder={t("store.contactNameLabel")}
                     placeholderTextColor={theme.colors.gray200}
                     value={applyFormData.contactName}
                     onChangeText={(text) =>
@@ -1629,11 +1630,11 @@ const StoreDetailScreen = () => {
                 {/* 联系电话 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                    联系电话 *
+                    {t("store.contactPhoneLabel")}
                   </Text>
                   <TextInput
                     style={styles.applyInput}
-                    placeholder="请输入联系电话"
+                    placeholder={t("store.contactPhoneLabel")}
                     placeholderTextColor={theme.colors.gray200}
                     value={applyFormData.contactPhone}
                     onChangeText={(text) =>
@@ -1646,11 +1647,11 @@ const StoreDetailScreen = () => {
                 {/* 联系邮箱 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                    联系邮箱
+                    {t("store.contactEmailLabel")}
                   </Text>
                   <TextInput
                     style={styles.applyInput}
-                    placeholder="请输入联系邮箱（选填）"
+                    placeholder={t("store.contactEmailLabel")}
                     placeholderTextColor={theme.colors.gray200}
                     value={applyFormData.contactEmail}
                     onChangeText={(text) =>
@@ -1664,7 +1665,7 @@ const StoreDetailScreen = () => {
                 {/* 营业执照 */}
                 <VStack mb="$lg">
                   <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                    营业执照 / 证明材料
+                    {t("store.businessLicenseLabel")}
                   </Text>
                   <Pressable
                     h={120}
@@ -1690,10 +1691,10 @@ const StoreDetailScreen = () => {
                       <VStack alignItems="center">
                         <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.gray300} />
                         <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                          点击上传证明材料
+                          {t("store.uploadProof")}
                         </Text>
                         <Text fontSize="$xs" color="$gray200" mt="$xs" style={styles.textRegular}>
-                          支持营业执照、授权书等
+                          {t("store.supportedDocs")}
                         </Text>
                       </VStack>
                     )}
@@ -1706,8 +1707,7 @@ const StoreDetailScreen = () => {
                     <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray300} />
                     <VStack flex={1}>
                       <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                        提交申请后，我们将在 1-3 个工作日内审核您的资料。
-                        审核通过后，您将可以管理店铺的公告、活动、折扣等信息。
+                        {t("store.applyNote")}
                       </Text>
                     </VStack>
                   </HStack>
@@ -1727,7 +1727,7 @@ const StoreDetailScreen = () => {
                     <ActivityIndicator color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
-                      提交申请
+                      {t("store.submitApply")}
                     </Text>
                   )}
                 </Pressable>

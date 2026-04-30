@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
@@ -47,6 +48,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   visible,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const { user, setProfileCompleted, updateLastProfileReminderTime } = useAuthStore();
 
   // 表单状态
@@ -150,7 +152,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
       setFollowedBrandIds(followedBrandIds.filter((id) => id !== brandId));
     } else {
       if (followedBrandIds.length >= 5) {
-        Alert.show("提示: 最多选择 5 个品牌");
+        Alert.show(t("profileReminder.maxBrandsHint"));
         return;
       }
       setFollowedBrandIds([...followedBrandIds, brandId]);
@@ -174,7 +176,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   // 提交资料
   const handleSubmit = async () => {
     if (!user?.userId) {
-      Alert.show("错误: 用户未登录");
+      Alert.show(t("profileReminder.notLoggedIn"));
       return;
     }
 
@@ -219,11 +221,11 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
       // 同步更新本地状态
       setProfileCompleted(true);
-      Alert.show("资料已保存", "", 1000);
+      Alert.show(t("profileReminder.saved"), "", 1000);
       onClose();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "保存失败，请重试";
-      Alert.show("保存失败: " + message);
+      const message = error instanceof Error ? error.message : t("profileReminder.saveFailed");
+      Alert.show(message);
     } finally {
       setLoading(false);
     }
@@ -249,24 +251,24 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
           >
             {/* 头部 */}
             <View style={styles.header}>
-              <Text style={styles.title}>完善个人资料</Text>
-              <Text style={styles.subtitle}>让我们更好地了解您</Text>
+              <Text style={styles.title}>{t("profileReminder.title")}</Text>
+              <Text style={styles.subtitle}>{t("profileReminder.subtitle")}</Text>
             </View>
 
             {/* 提示文字 */}
             <View style={styles.hintContainer}>
               <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
               <Text style={styles.hintText}>
-                以下信息均为选填，您可以随时在设置中修改
+                {t("profileReminder.hint")}
               </Text>
             </View>
 
             {/* 个人简介 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>个人简介</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.bio")}</Text>
               <TextInput
                 style={[styles.input, styles.bioInput]}
-                placeholder="介绍一下自己..."
+                placeholder={t("profileReminder.bioPlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 value={bio}
                 onChangeText={setBio}
@@ -280,13 +282,13 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
             {/* 所在地选择 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>所在地</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.location")}</Text>
               <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowLocationPicker(!showLocationPicker)}
               >
                 <Text style={location ? styles.pickerText : styles.pickerPlaceholder}>
-                  {location || "请选择您的所在地"}
+                  {location || t("profileReminder.locationPlaceholder")}
                 </Text>
                 <Ionicons
                   name={showLocationPicker ? "chevron-up" : "chevron-down"}
@@ -326,12 +328,12 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
             {/* 性别选择 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>性别</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.gender")}</Text>
               <View style={styles.genderContainer}>
                 {[
-                  { value: "MALE" as Gender, label: "男" },
-                  { value: "FEMALE" as Gender, label: "女" },
-                  { value: "OTHER" as Gender, label: "其他" },
+                  { value: "MALE" as Gender, label: t("profileReminder.male") },
+                  { value: "FEMALE" as Gender, label: t("profileReminder.female") },
+                  { value: "OTHER" as Gender, label: t("profileReminder.other") },
                 ].map((g) => (
                   <TouchableOpacity
                     key={g.value}
@@ -356,13 +358,13 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
             {/* 年龄段选择 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>年龄段</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.ageRange")}</Text>
               <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowAgePicker(!showAgePicker)}
               >
                 <Text style={age ? styles.pickerText : styles.pickerPlaceholder}>
-                  {age ? `${age}岁` : "请选择您的年龄段"}
+                  {age ? `${age}${t("profileReminder.ageUnit")}` : t("profileReminder.agePlaceholder")}
                 </Text>
                 <Ionicons
                   name={showAgePicker ? "chevron-up" : "chevron-down"}
@@ -388,7 +390,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
                             age === a && styles.pickerOptionTextSelected,
                           ]}
                         >
-                          {a}岁
+                          {a}{t("profileReminder.ageUnit")}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -399,10 +401,10 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
             {/* 时尚偏好 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>时尚偏好</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.fashionPreference")}</Text>
               <TextInput
                 style={[styles.input, styles.preferenceInput]}
-                placeholder="例如：极简主义、街头风格、复古..."
+                placeholder={t("profileReminder.preferencePlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 value={preference}
                 onChangeText={setPreference}
@@ -413,7 +415,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
 
             {/* 关注的品牌 */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>关注的品牌（最多5个）</Text>
+              <Text style={styles.inputLabel}>{t("profileReminder.followedBrands")}</Text>
               <TouchableOpacity
                 style={styles.pickerButton}
                 onPress={() => setShowBrandPicker(true)}
@@ -424,12 +426,12 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
                   }
                   numberOfLines={2}
                 >
-                  {followedBrandIds.length > 0 ? getSelectedBrandNames() : "选择您想关注的品牌"}
+                  {followedBrandIds.length > 0 ? getSelectedBrandNames() : t("profileReminder.selectBrands")}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
               </TouchableOpacity>
               {followedBrandIds.length > 0 && (
-                <Text style={styles.selectedCount}>已选择 {followedBrandIds.length}/5</Text>
+                <Text style={styles.selectedCount}>{t("profileReminder.selectedCount", { count: followedBrandIds.length })}</Text>
               )}
             </View>
 
@@ -443,12 +445,12 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
                 {loading ? (
                   <ActivityIndicator size="small" color={theme.colors.white} />
                 ) : (
-                  <Text style={styles.mainButtonText}>保存</Text>
+                  <Text style={styles.mainButtonText}>{t("profileReminder.save")}</Text>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.laterButton} onPress={handleLater}>
-                <Text style={styles.laterButtonText}>稍后填写</Text>
+                <Text style={styles.laterButtonText}>{t("profileReminder.fillLater")}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -465,7 +467,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         <View style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
-              选择关注的品牌（{followedBrandIds.length}/5）
+              {t("profileReminder.selectBrandsTitle", { count: followedBrandIds.length })}
             </Text>
             <TouchableOpacity
               onPress={() => setShowBrandPicker(false)}
@@ -480,7 +482,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
             <Ionicons name="search" size={18} color={theme.colors.gray400} />
             <TextInput
               style={styles.brandSearchInput}
-              placeholder="搜索品牌..."
+              placeholder={t("profileReminder.searchBrands")}
               placeholderTextColor={theme.colors.gray400}
               value={brandSearchKeyword}
               onChangeText={handleBrandSearch}
@@ -499,7 +501,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
           {loadingBrands ? (
             <View style={styles.brandLoadingContainer}>
               <ActivityIndicator size="small" color={theme.colors.black} />
-              <Text style={styles.brandLoadingText}>加载中...</Text>
+              <Text style={styles.brandLoadingText}>{t("common.loading")}</Text>
             </View>
           ) : (
             <FlatList
@@ -536,7 +538,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
               ListEmptyComponent={
                 <View style={styles.brandEmptyList}>
                   <Text style={styles.brandEmptyText}>
-                    {brandSearchKeyword ? "没有找到匹配的品牌" : "暂无品牌"}
+                    {brandSearchKeyword ? t("profileReminder.noMatchingBrands") : t("profileReminder.noBrands")}
                   </Text>
                 </View>
               }
@@ -554,7 +556,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
             style={styles.brandConfirmButton}
             onPress={() => setShowBrandPicker(false)}
           >
-            <Text style={styles.brandConfirmButtonText}>确定</Text>
+            <Text style={styles.brandConfirmButtonText}>{t("profileReminder.confirm")}</Text>
           </TouchableOpacity>
         </View>
       </Modal>

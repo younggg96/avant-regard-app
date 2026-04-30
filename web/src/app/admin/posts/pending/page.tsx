@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { postsApi, type AdminPost } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -13,6 +14,7 @@ import {
 } from "@/components/admin/ui";
 
 export default function PendingPostsPage() {
+  const { t } = useTranslation();
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionTarget, setActionTarget] = useState<{ post: AdminPost; action: "approve" | "delete" } | null>(null);
@@ -72,9 +74,14 @@ export default function PendingPostsPage() {
     load();
   };
 
-  const postTypeName = (t: string) => {
-    const map: Record<string, string> = { OUTFIT: "穿搭", REVIEW: "测评", LOOKBOOK: "Lookbook", FORUM: "论坛" };
-    return map[t] || t;
+  const postTypeName = (tp: string) => {
+    const map: Record<string, string> = {
+      OUTFIT: t("admin.postTypeDailyShare"),
+      REVIEW: t("admin.postTypeReview"),
+      LOOKBOOK: "Lookbook",
+      FORUM: t("admin.postTypeForum"),
+    };
+    return map[tp] || tp;
   };
 
   if (loading) return <LoadingState />;
@@ -82,22 +89,22 @@ export default function PendingPostsPage() {
   return (
     <div>
       <PageHeader
-        title="待审核帖子"
-        description={`${posts.length} 条待审核`}
+        title={t("admin.pendingPosts")}
+        description={t("admin.pendingPostsDesc", { count: posts.length })}
         actions={
           <div className="flex gap-2">
             {selected.size > 0 && (
               <Button onClick={handleBatchApprove} size="sm">
-                批量通过 ({selected.size})
+                {t("admin.batchApprove")} ({selected.size})
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={load}>刷新</Button>
+            <Button variant="ghost" size="sm" onClick={load}>{t("admin.refresh")}</Button>
           </div>
         }
       />
 
       {posts.length === 0 ? (
-        <EmptyState message="暂无待审核帖子" />
+        <EmptyState message={t("admin.noPendingPosts")} />
       ) : (
         <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
           {posts.map((post) => (
@@ -118,11 +125,11 @@ export default function PendingPostsPage() {
               )}
 
               <div className="min-w-0 flex-1 font-label">
-                <div className="truncate text-[13px]">{post.title || "无标题"}</div>
+                <div className="truncate text-[13px]">{post.title || t("admin.noTitle")}</div>
                 <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[color:var(--ink-muted)]">
                   <span>@{post.username}</span>
                   <StatusBadge>{postTypeName(post.postType)}</StatusBadge>
-                  <span>{new Date(post.createdAt).toLocaleDateString("zh-CN")}</span>
+                  <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
 
@@ -131,19 +138,19 @@ export default function PendingPostsPage() {
                   onClick={() => setActionTarget({ post, action: "approve" })}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  通过
+                  {t("admin.approve")}
                 </button>
                 <button
                   onClick={() => setRejectTarget(post)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  拒绝
+                  {t("admin.reject")}
                 </button>
                 <button
                   onClick={() => setActionTarget({ post, action: "delete" })}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  删除
+                  {t("admin.delete")}
                 </button>
               </div>
             </div>
@@ -153,9 +160,9 @@ export default function PendingPostsPage() {
 
       <ConfirmDialog
         open={!!actionTarget}
-        title={actionTarget?.action === "approve" ? "确认通过审核？" : "确认删除帖子？"}
+        title={actionTarget?.action === "approve" ? t("admin.confirmApprovePost") : t("admin.confirmDeletePost")}
         message={actionTarget?.post.title}
-        confirmLabel={actionTarget?.action === "approve" ? "通过" : "删除"}
+        confirmLabel={actionTarget?.action === "approve" ? t("admin.approve") : t("admin.delete")}
         loading={actionLoading}
         onConfirm={() => {
           if (!actionTarget) return;
@@ -167,9 +174,9 @@ export default function PendingPostsPage() {
 
       <PromptDialog
         open={!!rejectTarget}
-        title="拒绝原因"
-        placeholder="请输入拒绝原因（可选）"
-        confirmLabel="拒绝"
+        title={t("admin.rejectReason")}
+        placeholder={t("admin.rejectReasonPlaceholder")}
+        confirmLabel={t("admin.reject")}
         loading={actionLoading}
         onConfirm={(reason) => rejectTarget && handleReject(rejectTarget.id, reason)}
         onCancel={() => setRejectTarget(null)}

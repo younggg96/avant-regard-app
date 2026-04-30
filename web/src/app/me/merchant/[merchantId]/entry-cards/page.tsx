@@ -24,6 +24,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -78,6 +79,7 @@ const EMPTY_FORM: CardForm = {
 };
 
 export default function EntryCardsPage() {
+  const { t } = useTranslation();
   const params = useParams<{ merchantId: string }>();
   const merchantId = Number(params?.merchantId);
 
@@ -174,7 +176,7 @@ export default function EntryCardsPage() {
       closeDialog();
       await mutate();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -219,11 +221,11 @@ export default function EntryCardsPage() {
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <SubPageHeader
-        title="入口卡片"
-        description="管理「买手店 Tab」StoreProfileCard 下方的 CategoryCards；支持分类 / 折扣 / 新品 / 活动 4 种卡片."
+        title={t("merchant.entryCardsTitle")}
+        description={t("merchant.entryCardsDesc")}
         actions={
           <Button size="sm" onClick={openCreate}>
-            + 新建卡片
+            {t("merchant.newEntryCard")}
           </Button>
         }
       />
@@ -231,7 +233,7 @@ export default function EntryCardsPage() {
       {loadingCards ? (
         <LoadingState />
       ) : cards.length === 0 ? (
-        <EmptyState message="暂无入口卡片，点击右上角新建." />
+        <EmptyState message={t("merchant.noEntryCards")} />
       ) : (
         <ul className="grid gap-3">
           {cards.map((c, idx) => (
@@ -256,7 +258,7 @@ export default function EntryCardsPage() {
                     </span>
                   )}
                   <StatusBadge active={c.status === "PUBLISHED"}>
-                    {c.status === "PUBLISHED" ? "已发布" : "已隐藏"}
+                    {c.status === "PUBLISHED" ? t("merchant.published") : t("merchant.hidden")}
                   </StatusBadge>
                 </div>
                 <div className="mt-0.5 text-[12px] text-[color:var(--ink-muted)]">
@@ -264,13 +266,13 @@ export default function EntryCardsPage() {
                   {c.cardType === "CLASSIFICATION" &&
                     c.targetCategoryId != null && (
                       <>
-                        {" · 绑定分类: "}
+                        {t("merchant.bindCategory")}
                         {categories.find((cat) => cat.id === c.targetCategoryId)?.name ??
                           `#${c.targetCategoryId}`}
                       </>
                     )}
                   {c.cardType === "CLASSIFICATION" &&
-                    c.targetCategoryId == null && " · 全部单品"}
+                    c.targetCategoryId == null && ` · ${t("merchant.allProducts")}`}
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-0.5 font-label text-[11px]">
@@ -294,13 +296,13 @@ export default function EntryCardsPage() {
                   onClick={() => openEdit(c)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  编辑
+                  {t("common.edit")}
                 </button>
                 <button
                   onClick={() => setDeleteTarget(c)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  删除
+                  {t("common.delete")}
                 </button>
               </div>
             </li>
@@ -310,12 +312,12 @@ export default function EntryCardsPage() {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑入口卡片" : "新建入口卡片"}
+        title={editing ? t("merchant.editEntryCard") : t("merchant.createEntryCard")}
         onClose={closeDialog}
         wide
       >
         <div className="grid gap-4">
-          <FormField label="卡片类型" required>
+          <FormField label={t("merchant.cardType")} required>
             <ChipPicker
               options={CARD_TYPE_OPTIONS}
               value={form.cardType}
@@ -330,34 +332,34 @@ export default function EntryCardsPage() {
             />
           </FormField>
 
-          <FormField label="背景图" required>
+          <FormField label={t("merchant.cardImage")} required>
             <ImagePicker
               value={form.imageUrl}
               onChange={(v) => setForm({ ...form, imageUrl: v })}
               height={150}
-              hint="CategoryCards 卡片背景；建议深色底，保证 label 文字可读."
+              hint={t("merchant.cardImageHint")}
             />
           </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="标签（中文）" required>
+            <FormField label={t("merchant.cardLabelZh")} required>
               <TextInput
                 value={form.label}
                 onChange={(v) => setForm({ ...form, label: v })}
-                placeholder="如: 女装, 折扣专区"
+                placeholder={t("merchant.cardLabelZhPlaceholder")}
               />
             </FormField>
-            <FormField label="标签（英文/副标）">
+            <FormField label={t("merchant.cardLabelEn")}>
               <TextInput
                 value={form.labelEn}
                 onChange={(v) => setForm({ ...form, labelEn: v })}
-                placeholder="如: WOMEN, SALE"
+                placeholder={t("merchant.cardLabelEnPlaceholder")}
               />
             </FormField>
           </div>
 
           {form.cardType === "CLASSIFICATION" && (
-            <FormField label="关联分类">
+            <FormField label={t("merchant.relatedCategory")}>
               <CategorySelect
                 value={form.targetCategoryId}
                 options={categories.map((c) => ({ id: c.id, name: c.name }))}
@@ -371,7 +373,7 @@ export default function EntryCardsPage() {
             onChange={(v) =>
               setForm({ ...form, status: v ? "PUBLISHED" : "HIDDEN" })
             }
-            label="立即发布（关闭后用户侧不会看到）"
+            label={t("merchant.publishNow")}
           />
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
@@ -379,14 +381,14 @@ export default function EntryCardsPage() {
               <span className="font-label text-[12px] text-red-600">{err}</span>
             )}
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
               loading={saving}
               disabled={!form.imageUrl || !form.label.trim()}
             >
-              {editing ? "保存" : "发布"}
+              {editing ? t("common.save") : t("merchant.publish")}
             </Button>
           </div>
         </div>
@@ -394,9 +396,9 @@ export default function EntryCardsPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除该入口卡片?"
-        message="删除后买手店 Tab 将不再展示它，无法恢复."
-        confirmLabel="删除"
+        title={t("merchant.deleteEntryCard")}
+        message={t("merchant.deleteEntryCardMsg")}
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -414,13 +416,14 @@ function CategorySelect({
   options: { id: number; name: string }[];
   onChange: (v: number | null) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap gap-1.5">
       <button
         onClick={() => onChange(null)}
         className={chipClass(value == null)}
       >
-        全部单品
+        {t("merchant.allProducts")}
       </button>
       {options.map((o) => (
         <button
@@ -433,7 +436,7 @@ function CategorySelect({
       ))}
       {options.length === 0 && (
         <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          还没有创建任何分类，仅可选「全部单品」。前往「商品分类」页创建.
+          {t("merchant.noCategoryHint")}
         </span>
       )}
     </div>
@@ -449,15 +452,16 @@ function chipClass(active: boolean) {
 }
 
 function NoAccess({ merchantId }: { merchantId: number }) {
+  const { t } = useTranslation();
   return (
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
         <div className="font-serif text-[17px] text-[var(--ink)]">
-          无权限访问该页面
+          {t("common.noPermission")}
         </div>
         <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          商家 ID 不匹配或尚未通过审核.
+          {t("common.merchantIdMismatch")}
         </div>
       </div>
     </section>

@@ -13,6 +13,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import { useAuthStore } from "@/lib/auth/store";
 import {
@@ -23,6 +24,7 @@ import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { UserInfo } from "@/lib/types";
 
 export default function ProfileSettingsPage() {
+  const { t } = useTranslation();
   const storeUser = useAuthStore((s) => s.user);
   const updateStoreUser = useAuthStore((s) => s.updateUser);
   const userId = storeUser?.userId;
@@ -77,7 +79,7 @@ export default function ProfileSettingsPage() {
       await refreshProfile(next, { revalidate: false });
       setOk(true);
     } catch (error) {
-      setErr(error instanceof Error ? error.message : "保存失败");
+      setErr(error instanceof Error ? error.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -87,10 +89,10 @@ export default function ProfileSettingsPage() {
     <section className="min-w-0">
       <header className="mb-8 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          编辑资料
+          {t("settings.editProfile")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          修改你的公开展示信息。修改头像 / 封面可以粘贴任意图片 URL。
+          {t("settings.editProfileDesc")}
         </p>
       </header>
 
@@ -110,7 +112,7 @@ export default function ProfileSettingsPage() {
           </div>
           <div className="flex-1">
             <Field
-              label="头像 URL"
+              label={t("settings.avatarUrl")}
               value={form.avatarUrl ?? ""}
               onChange={onChange("avatarUrl")}
               placeholder="https://..."
@@ -119,21 +121,21 @@ export default function ProfileSettingsPage() {
         </div>
 
         <Field
-          label="封面 URL"
+          label={t("settings.coverUrl")}
           value={form.coverUrl ?? ""}
           onChange={onChange("coverUrl")}
           placeholder="https://..."
         />
 
         <Field
-          label="用户名"
+          label={t("settings.username")}
           value={form.username ?? ""}
           onChange={onChange("username")}
           required
         />
 
         <Field
-          label="所在地"
+          label={t("settings.location")}
           value={form.location ?? ""}
           onChange={onChange("location")}
           placeholder="Shanghai · 上海"
@@ -141,7 +143,7 @@ export default function ProfileSettingsPage() {
 
         <div>
           <label className="mb-1.5 block font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            简介
+            {t("settings.bio")}
           </label>
           <textarea
             value={form.bio ?? ""}
@@ -162,7 +164,7 @@ export default function ProfileSettingsPage() {
         )}
         {ok && (
           <div className="font-label text-[13px] text-green-700 dark:text-green-400">
-            已保存
+            {t("common.saved")}
           </div>
         )}
 
@@ -172,7 +174,7 @@ export default function ProfileSettingsPage() {
             disabled={saving}
             className="rounded bg-[var(--ink)] px-6 py-2 font-label text-[13px] text-[var(--canvas)] transition-opacity disabled:opacity-40"
           >
-            {saving ? "保存中…" : "保存"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </form>

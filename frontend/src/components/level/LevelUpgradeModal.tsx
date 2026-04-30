@@ -22,6 +22,7 @@ import {
   Dimensions,
   StatusBar,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -43,6 +44,7 @@ const HOLD_MS = 1200;
 const FADE_OUT_MS = 400;
 
 export const LevelUpgradeModal: React.FC = () => {
+  const { t } = useTranslation();
   const celebrateLevel = useLevelStore((s) => s.celebrateLevel);
   const acknowledge = useLevelStore((s) => s.acknowledgeCelebration);
 
@@ -103,7 +105,7 @@ export const LevelUpgradeModal: React.FC = () => {
       <StatusBar barStyle="light-content" />
       <Animated.View style={[styles.overlay, containerStyle]}>
         <Animated.View style={[styles.content, contentStyle]}>
-          <Text style={styles.congrats}>恭喜升级</Text>
+          <Text style={styles.congrats}>{t("level.congratsUpgrade")}</Text>
 
           <LevelBadge level={celebrateLevel} size="lg" style={styles.badge} />
 

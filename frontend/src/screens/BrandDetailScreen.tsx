@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../theme";
@@ -51,6 +52,7 @@ interface RouteParams {
 }
 
 const BrandDetailScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -113,7 +115,7 @@ const BrandDetailScreen = () => {
       }
 
       if (!loadedBrand) {
-        setError("未找到品牌信息");
+        setError(t("brand.notFound"));
         return;
       }
 
@@ -140,7 +142,7 @@ const BrandDetailScreen = () => {
       loadBrandPosts(loadedBrand.id);
     } catch (err) {
       console.error("Failed to load brand data:", err);
-      setError("加载数据失败");
+      setError(t("common.networkError"));
     } finally {
       setIsLoading(false);
     }
@@ -234,10 +236,10 @@ const BrandDetailScreen = () => {
       const url = await pickAndUploadImage([3, 4]);
       if (url) {
         await brandService.uploadBrandImage(brand.id, url);
-        Alert.alert("提交成功", "图片已提交，等待管理员审核通过后展示。");
+        Alert.alert(t("brand.imageSubmitSuccess"), t("brand.imageSubmitPending"));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "上传失败");
+      Alert.alert(t("common.failed"), error instanceof Error ? error.message : t("brand.uploadFailed"));
     } finally {
       setUploadingBrandImage(false);
     }
@@ -280,7 +282,7 @@ const BrandDetailScreen = () => {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.black} />
-          <Text style={styles.loadingText}>加载中...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -300,9 +302,9 @@ const BrandDetailScreen = () => {
             size={24}
             color={theme.colors.gray400}
           />
-          <Text style={styles.errorText}>{error || "未找到设计师信息"}</Text>
+          <Text style={styles.errorText}>{error || t("brand.notFound")}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadData}>
-            <Text style={styles.retryButtonText}>重试</Text>
+            <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -398,7 +400,7 @@ const BrandDetailScreen = () => {
           <View style={styles.contributorContainer}>
             <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
             <Text style={styles.contributorText}>
-              由 {brand.contributorName} 用户贡献的品牌
+              {t("brand.contributedBy", { name: brand.contributorName })}
             </Text>
           </View>
         )}
@@ -424,7 +426,7 @@ const BrandDetailScreen = () => {
                   size={16}
                   color={theme.colors.gray400}
                 />
-                <Text style={styles.infoText}>创立于 {brand.foundedYear}</Text>
+                <Text style={styles.infoText}>{t("brand.foundedIn", { year: brand.foundedYear })}</Text>
               </View>
             )}
             {brand.category && (
@@ -456,7 +458,7 @@ const BrandDetailScreen = () => {
               <Text style={styles.followersCount}>
                 {formatFollowerCount(followersCount)}
               </Text>
-              <Text style={styles.followersLabel}>关注者</Text>
+              <Text style={styles.followersLabel}>{t("brand.followers")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -485,7 +487,7 @@ const BrandDetailScreen = () => {
                       isFollowing && styles.followButtonTextFollowing,
                     ]}
                   >
-                    {isFollowing ? "已关注" : "关注"}
+                    {isFollowing ? t("brand.following") : t("brand.follow")}
                   </Text>
                 </>
               )}
@@ -495,7 +497,7 @@ const BrandDetailScreen = () => {
           {/* Founder */}
           {brand.founder && (
             <View style={styles.founderSection}>
-              <Text style={styles.sectionLabel}>创始人/设计师</Text>
+              <Text style={styles.sectionLabel}>{t("brand.founder")}</Text>
               <Text style={styles.founderName}>{brand.founder}</Text>
             </View>
           )}
@@ -512,7 +514,7 @@ const BrandDetailScreen = () => {
                   size={18}
                   color={theme.colors.black}
                 />
-                <Text style={styles.linkText}>官方网站</Text>
+                <Text style={styles.linkText}>{t("brand.website")}</Text>
                 <Ionicons
                   name="open-outline"
                   size={16}
@@ -530,7 +532,7 @@ const BrandDetailScreen = () => {
                   size={18}
                   color={theme.colors.black}
                 />
-                <Text style={styles.linkText}>Vogue 专页</Text>
+                <Text style={styles.linkText}>{t("brand.voguePage")}</Text>
                 <Ionicons
                   name="open-outline"
                   size={16}
@@ -552,7 +554,7 @@ const BrandDetailScreen = () => {
             ) : (
               <>
                 <Ionicons name="camera-outline" size={18} color={theme.colors.black} />
-                <Text style={styles.uploadBrandImageText}>上传品牌图片</Text>
+                <Text style={styles.uploadBrandImageText}>{t("brand.uploadImage")}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -570,7 +572,7 @@ const BrandDetailScreen = () => {
                 activeTab === "posts" && styles.tabTextActive,
               ]}
             >
-              帖子
+              {t("brand.posts")}
             </Text>
             <Text style={styles.tabCount}>{brandPosts.length}</Text>
           </TouchableOpacity>
@@ -584,7 +586,7 @@ const BrandDetailScreen = () => {
                 activeTab === "shows" && styles.tabTextActive,
               ]}
             >
-              秀场
+              {t("brand.shows")}
             </Text>
             <Text style={styles.tabCount}>{brandShows.length}</Text>
           </TouchableOpacity>
@@ -596,7 +598,7 @@ const BrandDetailScreen = () => {
             {isLoadingPosts ? (
               <View style={styles.loadingPosts}>
                 <ActivityIndicator size="small" color={theme.colors.black} />
-                <Text style={styles.loadingText}>加载中...</Text>
+                <Text style={styles.loadingText}>{t("common.loading")}</Text>
               </View>
             ) : brandPosts.length > 0 ? (
               <View style={styles.postsSection}>
@@ -663,7 +665,7 @@ const BrandDetailScreen = () => {
                   size={48}
                   color={theme.colors.gray200}
                 />
-                <Text style={styles.emptyText}>暂无相关帖子</Text>
+                <Text style={styles.emptyText}>{t("brand.noPosts")}</Text>
               </View>
             )}
           </>
@@ -679,7 +681,7 @@ const BrandDetailScreen = () => {
               activeOpacity={0.7}
             >
               <Ionicons name="add-circle-outline" size={20} color={theme.colors.black} />
-              <Text style={styles.uploadShowButtonText}>上传秀场</Text>
+              <Text style={styles.uploadShowButtonText}>{t("brand.uploadShow")}</Text>
             </TouchableOpacity>
             {brandShows.length > 0 ? (
               <View style={styles.showsSection}>
@@ -733,7 +735,7 @@ const BrandDetailScreen = () => {
                   size={48}
                   color={theme.colors.gray200}
                 />
-                <Text style={styles.emptyText}>暂无时装秀数据</Text>
+                <Text style={styles.emptyText}>{t("brand.noShows")}</Text>
               </View>
             )}
           </>

@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,7 @@ import { Alert } from "../utils/Alert";
 const MIN_PASSWORD_LENGTH = 6;
 
 const ChangePasswordScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
@@ -42,17 +44,17 @@ const ChangePasswordScreen = () => {
     if (!user?.userId) return;
 
     if (newPassword !== confirmPassword) {
-      Alert.show("两次输入的新密码不一致");
+      Alert.show(t("changePassword.mismatch"));
       return;
     }
 
     if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      Alert.show(`密码长度不能少于${MIN_PASSWORD_LENGTH}位`);
+      Alert.show(t("changePassword.tooShort"));
       return;
     }
 
     if (oldPassword === newPassword) {
-      Alert.show("新密码不能与当前密码相同");
+      Alert.show(t("changePassword.sameAsOld"));
       return;
     }
 
@@ -63,11 +65,11 @@ const ChangePasswordScreen = () => {
         oldPassword,
         newPassword,
       });
-      Alert.show("密码修改成功");
+      Alert.show(t("changePassword.success"));
       navigation.goBack();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "密码修改失败，请稍后重试";
+        error instanceof Error ? error.message : t("changePassword.failed");
       Alert.show(message);
     } finally {
       setLoading(false);
@@ -76,7 +78,7 @@ const ChangePasswordScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="修改密码" showBack={true} />
+      <ScreenHeader title={t("changePassword.title")} showBack={true} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -88,17 +90,17 @@ const ChangePasswordScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.description}>
-            请输入当前密码以验证身份，然后设置新密码。
+            {t("changePassword.description")}
           </Text>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>当前密码</Text>
+            <Text style={styles.label}>{t("changePassword.currentPassword")}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
                 value={oldPassword}
                 onChangeText={setOldPassword}
-                placeholder="请输入当前密码"
+                placeholder={t("changePassword.currentPasswordPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 secureTextEntry={!showOldPassword}
                 autoCapitalize="none"
@@ -118,13 +120,13 @@ const ChangePasswordScreen = () => {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>新密码</Text>
+            <Text style={styles.label}>{t("changePassword.newPassword")}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
                 value={newPassword}
                 onChangeText={setNewPassword}
-                placeholder={`请输入新密码（至少${MIN_PASSWORD_LENGTH}位）`}
+                placeholder={t("changePassword.newPasswordPlaceholder", { min: MIN_PASSWORD_LENGTH })}
                 placeholderTextColor={theme.colors.gray200}
                 secureTextEntry={!showNewPassword}
                 autoCapitalize="none"
@@ -144,13 +146,13 @@ const ChangePasswordScreen = () => {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>确认新密码</Text>
+            <Text style={styles.label}>{t("changePassword.confirmNewPassword")}</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="请再次输入新密码"
+                placeholder={t("changePassword.confirmNewPasswordPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 secureTextEntry={!showConfirmPassword}
                 autoCapitalize="none"
@@ -170,7 +172,7 @@ const ChangePasswordScreen = () => {
               </TouchableOpacity>
             </View>
             {confirmPassword.length > 0 && confirmPassword !== newPassword && (
-              <Text style={styles.errorHint}>两次输入的密码不一致</Text>
+              <Text style={styles.errorHint}>{t("changePassword.mismatch")}</Text>
             )}
           </View>
 
@@ -185,7 +187,7 @@ const ChangePasswordScreen = () => {
             {loading ? (
               <ActivityIndicator size="small" color={theme.colors.white} />
             ) : (
-              <Text style={styles.submitButtonText}>确认修改</Text>
+              <Text style={styles.submitButtonText}>{t("changePassword.submit")}</Text>
             )}
           </TouchableOpacity>
         </ScrollView>

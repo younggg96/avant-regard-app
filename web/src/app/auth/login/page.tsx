@@ -31,6 +31,7 @@ import {
   sendSms,
   sendEmailOtp,
 } from "@/lib/auth/service";
+import { useTranslation } from "react-i18next";
 
 type Credential = "password" | "otp";
 
@@ -41,6 +42,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // bailout during prerender. Keeping the form in an inner component lets the
 // default export stay a thin Suspense wrapper.
 function LoginPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const nextPath = params.get("next") || "/discover";
@@ -65,7 +67,7 @@ function LoginPageInner() {
       if (method === "phone") await sendSms({ phone: identifier });
       else await sendEmailOtp({ email: identifier });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "发送失败");
+      setError(e instanceof Error ? e.message : t("auth.sendFailed"));
       throw e;
     }
   };
@@ -75,15 +77,15 @@ function LoginPageInner() {
     setError(null);
 
     if (!identifierValid) {
-      setError(method === "phone" ? "请输入 11 位手机号" : "邮箱格式不正确");
+      setError(method === "phone" ? t("auth.invalidPhone") : t("auth.invalidEmail"));
       return;
     }
     if (credential === "password" && password.length < 6) {
-      setError("密码至少 6 位");
+      setError(t("auth.passwordMin"));
       return;
     }
     if (credential === "otp" && code.length < 4) {
-      setError("请输入验证码");
+      setError(t("auth.enterOtp"));
       return;
     }
 
@@ -103,7 +105,7 @@ function LoginPageInner() {
       loginWithResponse(response);
       router.replace(nextPath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "登录失败");
+      setError(err instanceof Error ? err.message : t("auth.loginFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -112,9 +114,9 @@ function LoginPageInner() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] tracking-tight">欢迎回来</h1>
+        <h1 className="font-serif text-[28px] tracking-tight">{t("auth.welcomeBack")}</h1>
         <p className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          登录以点赞、收藏、关注并参与评论。
+          {t("auth.loginSubtitle")}
         </p>
       </div>
 
@@ -122,20 +124,20 @@ function LoginPageInner() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextField
-          label={method === "phone" ? "手机号" : "邮箱"}
+          label={method === "phone" ? t("auth.phone") : t("auth.email")}
           type={method === "phone" ? "tel" : "email"}
           autoComplete={method === "phone" ? "tel" : "email"}
-          placeholder={method === "phone" ? "11 位手机号" : "you@example.com"}
+          placeholder={method === "phone" ? t("auth.phonePlaceholder") : "you@example.com"}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value.trim())}
         />
 
         {credential === "password" ? (
           <TextField
-            label="密码"
+            label={t("auth.password")}
             type="password"
             autoComplete="current-password"
-            placeholder="至少 6 位"
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -150,7 +152,7 @@ function LoginPageInner() {
 
         <FormError message={error} />
 
-        <SubmitButton loading={submitting}>登录</SubmitButton>
+        <SubmitButton loading={submitting}>{t("auth.login")}</SubmitButton>
 
         <div className="flex items-center justify-between font-label text-[12px]">
           <button
@@ -160,21 +162,21 @@ function LoginPageInner() {
             }
             className="link-muted"
           >
-            {credential === "password" ? "改用验证码登录" : "改用密码登录"}
+            {credential === "password" ? t("auth.switchToOtp") : t("auth.switchToPassword")}
           </button>
           <Link href="/auth/forgot" className="link-muted">
-            忘记密码？
+            {t("auth.forgotPassword")}
           </Link>
         </div>
       </form>
 
       <div className="border-t border-[var(--border)] pt-5 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-        还没有账号？{" "}
+        {t("auth.noAccount")}{" "}
         <Link
           href={`/auth/register${nextPath !== "/discover" ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
           className="text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          创建账号
+          {t("auth.createAccount")}
         </Link>
       </div>
     </div>

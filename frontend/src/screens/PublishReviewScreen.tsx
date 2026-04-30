@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Text,
@@ -45,6 +46,7 @@ type PublishReviewRouteParams = {
 };
 
 const PublishReviewScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishReviewRouteParams }, "params">>();
   const { user } = useAuthStore();
@@ -152,7 +154,7 @@ const PublishReviewScreen = () => {
     } catch (error) {
       console.error("Failed to load shows:", error);
       if (reset) {
-        Alert.show("加载秀场数据失败");
+        Alert.show(t("publish.loadShowsFailed"));
       }
     } finally {
       setIsLoadingShows(false);
@@ -248,17 +250,15 @@ const PublishReviewScreen = () => {
     loadShows(true);
   }, []);
 
-  // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
     if (selectedBrands.length >= MAX_BRANDS) {
-      Alert.show("提示: 最多只能关联" + MAX_BRANDS + "个品牌");
+      Alert.show(t("publish.maxBrandsReached", { count: MAX_BRANDS }));
       return;
     }
 
-    // 检查是否已添加
     const isDuplicate = selectedBrands.some((item) => item.id === brand.id);
     if (isDuplicate) {
-      Alert.show("提示: 该品牌已经添加过了");
+      Alert.show(t("publish.brandAlreadyAdded"));
       return;
     }
 
@@ -272,14 +272,13 @@ const PublishReviewScreen = () => {
 
     setSelectedBrands([...selectedBrands, selectedBrand]);
     setShowBrandSelector(false);
-    Alert.show("已关联品牌", "", 1500);
+    Alert.show(t("publish.brandLinked"), "", 1500);
   };
 
-  // 移除品牌
   const handleRemoveBrand = (index: number) => {
     const newBrands = selectedBrands.filter((_, i) => i !== index);
     setSelectedBrands(newBrands);
-    Alert.show("已取消关联");
+    Alert.show(t("publish.brandUnlinked"));
   };
 
   // 编辑模式：初始化草稿数据
@@ -335,36 +334,33 @@ const PublishReviewScreen = () => {
     return allShows;
   }, [allShows, searchQuery, searchResults]);
 
-  // 选择秀场
   const handleSelectShow = (show: Show) => {
     if (selectedShows.length >= MAX_SHOWS) {
-      Alert.show("提示: 最多只能关联" + MAX_SHOWS + "个秀场");
+      Alert.show(t("publish.maxShowsReached", { count: MAX_SHOWS }));
       return;
     }
 
-    // 检查是否已经添加过相同的秀
     const isDuplicate = selectedShows.some(
       (item) => item.brand === show.brand && item.season === show.season
     );
 
     if (isDuplicate) {
-      Alert.show("提示: 该秀场已经添加过了");
+      Alert.show(t("publish.showAlreadyAdded"));
       return;
     }
 
-    // 将 Show 转换为 SelectedShow 格式
     const selectedShow: SelectedShow = {
-      id: 0, // 本地数据没有数据库 ID，使用 0
+      id: 0,
       brand: show.brand,
       season: show.season,
       imageUrl: show.cover_image,
-      showId: show.show_id, // 数据库秀场 ID，用于关联帖子
-      showUrl: show.cover_image, // 仅用于按钮点击跳转链接
+      showId: show.show_id,
+      showUrl: show.cover_image,
     };
 
     setSelectedShows([...selectedShows, selectedShow]);
     setShowSelector(false);
-    Alert.show("已关联秀场", "", 1500);
+    Alert.show(t("publish.showLinked"), "", 1500);
   };
 
   // 检查是否满足发布标准
@@ -398,12 +394,12 @@ const PublishReviewScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress("上传中 0%");
+      setUploadProgress(t("publish.uploadingPercent", { percent: 0 }));
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
         undefined,
         (percent) => {
-          setUploadProgress(`上传中 ${percent}%`);
+          setUploadProgress(t("publish.uploadingPercent", { percent }));
         }
       );
     }
@@ -425,18 +421,18 @@ const PublishReviewScreen = () => {
 
   const handlePublish = async () => {
     if (!canPublish()) {
-      Alert.show("提示: 请完成所有必填项");
+      Alert.show(t("publish.completeRequiredFields"));
       return;
     }
 
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
     const existingTask = useUploadStore.getState().currentTask;
     if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
-      Alert.show("有内容正在上传中，请稍后再试");
+      Alert.show(t("publish.uploadInProgress"));
       return;
     }
 
@@ -520,18 +516,17 @@ const PublishReviewScreen = () => {
 
   const handleSaveDraft = async () => {
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
-    // 验证是否有内容可以保存
     if (
       !title &&
       !productName &&
       images.length === 0 &&
       selectedShows.length === 0
     ) {
-      Alert.show("提示: 请至少填写一些内容再保存草稿");
+      Alert.show(t("publish.draftNeedsContent"));
       return;
     }
 
@@ -551,8 +546,7 @@ const PublishReviewScreen = () => {
       // 获取所有关联品牌的 brandIds
       const brandIds = selectedBrands.map((brand) => brand.id);
 
-      // 保存草稿
-      setUploadProgress("正在保存...");
+      setUploadProgress(t("publish.saving"));
 
       const coverDims = await resolveCoverDimensions(images[0] || null);
 
@@ -561,7 +555,7 @@ const PublishReviewScreen = () => {
           userId: user.userId,
           postType: "ITEM_REVIEW",
           status: "DRAFT",
-          title: title.trim() || "单品评价草稿",
+          title: title.trim() || t("publish.reviewDraft"),
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -580,7 +574,7 @@ const PublishReviewScreen = () => {
           userId: user.userId,
           postType: "ITEM_REVIEW",
           postStatus: "DRAFT",
-          title: title.trim() || "单品评价草稿",
+          title: title.trim() || t("publish.reviewDraft"),
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -597,10 +591,10 @@ const PublishReviewScreen = () => {
       }
 
       setUploadProgress(null);
-      Alert.show("草稿已保存", "", 1500);
+      Alert.show(t("publish.draftSaved"), "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+      Alert.show(error instanceof Error ? error.message : t("publish.saveFailed"));
     } finally {
       setIsSavingDraft(false);
       setUploadProgress(null);
@@ -621,7 +615,7 @@ const PublishReviewScreen = () => {
 
   const handleAddImage = () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "个媒体文件");
+      Alert.show(t("publish.maxMediaReached", { count: MAX_IMAGES }));
       return;
     }
     setShowImagePicker(true);
@@ -633,10 +627,10 @@ const PublishReviewScreen = () => {
     try {
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
+        if (status !== "granted") { Alert.show(t("publish.cameraPermissionRequired")); return; }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+        if (status !== "granted") { Alert.show(t("publish.galleryPermissionRequired")); return; }
       }
 
       const result = source === "camera"
@@ -657,7 +651,7 @@ const PublishReviewScreen = () => {
       }
     } catch (error) {
       console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -667,7 +661,7 @@ const PublishReviewScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.show("需要相册权限才能选择图片");
+        Alert.show(t("publish.galleryPermissionRequired"));
         return;
       }
 
@@ -686,7 +680,7 @@ const PublishReviewScreen = () => {
       }
     } catch (error) {
       console.error("Multi image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -697,7 +691,7 @@ const PublishReviewScreen = () => {
     const newImages = [...images, ...croppedUris];
     setImages(newImages);
 
-    Alert.show(`已添加 ${croppedUris.length} 张图片`, "", 1500);
+    Alert.show(t("publish.imagesAdded", { count: croppedUris.length }), "", 1500);
   };
 
   const handleBatchCropCancel = () => {
@@ -708,14 +702,14 @@ const PublishReviewScreen = () => {
   const handleRemoveImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
-    Alert.show("图片已移除");
+    Alert.show(t("publish.imageRemoved"));
   };
 
   const handleCropDone = (croppedUri: string) => {
     setShowImageCropper(false);
     const newImages = [...images, croppedUri];
     setImages(newImages);
-    Alert.show("图片已添加", "", 1500);
+    Alert.show(t("publish.imageAdded"), "", 1500);
     setCropperImageUri(null);
   };
 
@@ -727,7 +721,7 @@ const PublishReviewScreen = () => {
   const handleRemoveShow = (index: number) => {
     const newShows = selectedShows.filter((_, i) => i !== index);
     setSelectedShows(newShows);
-    Alert.show("已取消关联");
+    Alert.show(t("publish.showUnlinked"));
   };
 
   if (showBatchCropper && batchCropperUris.length > 0) {
@@ -755,7 +749,7 @@ const PublishReviewScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={editMode ? "编辑单品评价" : "单品评价"}
+        title={editMode ? t("publish.editReview") : t("publish.typeReviewTitle")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -766,7 +760,7 @@ const PublishReviewScreen = () => {
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
             <Text color="$white" fontSize="$sm" flex={1}>
-              编辑后帖子将重新进入审核状态
+              {t("publish.reAuditWarning")}
             </Text>
           </HStack>
         </Box>
@@ -786,7 +780,7 @@ const PublishReviewScreen = () => {
           <Box mx="$md" mb="$md" mt="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                标题
+                {t("publish.titleLabel")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -795,7 +789,7 @@ const PublishReviewScreen = () => {
             <Input
               value={title}
               onChangeText={setTitle}
-              placeholder="为这个单品写一个标题"
+              placeholder={t("publish.reviewTitlePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="outline"
               sx={{
@@ -818,14 +812,14 @@ const PublishReviewScreen = () => {
             onRemoveImage={handleRemoveImage}
             onAddImage={handleAddImage}
             maxImages={MAX_IMAGES}
-            label="产品图片"
+            label={t("publish.productImages")}
             required
           />
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                产品名称
+                {t("publish.productNameLabel")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -834,7 +828,7 @@ const PublishReviewScreen = () => {
             <Input
               value={productName}
               onChangeText={setProductName}
-              placeholder="输入产品名称"
+              placeholder={t("publish.productNamePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="outline"
               sx={{
@@ -854,10 +848,9 @@ const PublishReviewScreen = () => {
             onRemoveBrand={handleRemoveBrand}
             onAddBrand={() => setShowBrandSelector(true)}
             maxBrands={MAX_BRANDS}
-            label="关联品牌"
+            label={t("publish.linkBrand")}
           />
 
-          {/* 关联秀场 */}
           <ShowGridSelector
             selectedShows={selectedShows}
             onShowPress={(show) => {
@@ -867,17 +860,16 @@ const PublishReviewScreen = () => {
             onRemoveShow={handleRemoveShow}
             onAddShow={() => setShowSelector(true)}
             maxShows={MAX_SHOWS}
-            label="关联秀场"
+            label={t("publish.linkShow")}
           />
 
-          {/* 单品信息（可选） */}
           <ProductInfoSection value={productInfo} onChange={setProductInfo} />
 
           {/* 评价内容 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                评价内容
+                {t("publish.reviewContentLabel")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -886,7 +878,7 @@ const PublishReviewScreen = () => {
             <Input
               value={reviewText}
               onChangeText={setReviewText}
-              placeholder="请输入评价内容（至少10字，最多500字）"
+              placeholder={t("publish.reviewContentPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               multiline
               variant="outline"
@@ -913,7 +905,7 @@ const PublishReviewScreen = () => {
             >
               {reviewText.trim().length}/500
               {reviewText.trim().length > 0 && reviewText.trim().length < 10
-                ? " (至少需要10字)"
+                ? ` (${t("publish.minCharsRequired", { count: 10 })})`
                 : ""}
             </Text>
           </Box>
@@ -925,10 +917,10 @@ const PublishReviewScreen = () => {
           publishDisabled={!canPublish() || isPublishing || isSavingDraft}
           draftDisabled={isPublishing || isSavingDraft}
           publishButtonText={
-            isPublishing ? uploadProgress || "发布中..." : "发布"
+            isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")
           }
           draftButtonText={
-            isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+            isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")
           }
         />
       </KeyboardAvoidingView>
@@ -941,7 +933,7 @@ const PublishReviewScreen = () => {
         onSelectMultipleGallery={handleMultiImageSelection}
         showMultiSelectOption={images.length < MAX_IMAGES}
         showVideoOption={false}
-        title="添加图片"
+        title={t("publish.addImages")}
       />
 
       <ImagePreviewModal

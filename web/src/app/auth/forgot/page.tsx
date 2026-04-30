@@ -28,11 +28,13 @@ import {
   sendSms,
   sendEmailOtp,
 } from "@/lib/auth/service";
+import { useTranslation } from "react-i18next";
 
 const PHONE_RE = /^1[3-9]\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [method, setMethod] = useState<AuthMethod>("phone");
   const [identifier, setIdentifier] = useState("");
@@ -56,7 +58,7 @@ export default function ForgotPage() {
       if (method === "phone") await sendSms({ phone: identifier });
       else await sendEmailOtp({ email: identifier });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "发送失败");
+      setError(e instanceof Error ? e.message : t("auth.sendFailed"));
       throw e;
     }
   };
@@ -66,15 +68,15 @@ export default function ForgotPage() {
     setError(null);
 
     if (!identifierValid) {
-      setError(method === "phone" ? "请输入 11 位手机号" : "邮箱格式不正确");
+      setError(method === "phone" ? t("auth.invalidPhone") : t("auth.invalidEmail"));
       return;
     }
     if (password.length < 6) {
-      setError("新密码至少 6 位");
+      setError(t("auth.newPasswordMin"));
       return;
     }
     if (code.length < 4) {
-      setError("请输入验证码");
+      setError(t("auth.enterOtp"));
       return;
     }
 
@@ -88,7 +90,7 @@ export default function ForgotPage() {
       setSuccess(true);
       setTimeout(() => router.replace("/auth/login"), 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "重置失败");
+      setError(err instanceof Error ? err.message : t("auth.resetFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -97,9 +99,9 @@ export default function ForgotPage() {
   if (success) {
     return (
       <div className="space-y-4 text-center">
-        <h1 className="font-serif text-[26px] tracking-tight">密码已重置</h1>
+        <h1 className="font-serif text-[26px] tracking-tight">{t("auth.passwordResetSuccess")}</h1>
         <p className="font-label text-[13px] text-[color:var(--ink-muted)]">
-          即将跳转到登录页…
+          {t("auth.redirectingToLogin")}
         </p>
       </div>
     );
@@ -108,9 +110,9 @@ export default function ForgotPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] tracking-tight">重置密码</h1>
+        <h1 className="font-serif text-[28px] tracking-tight">{t("auth.resetPassword")}</h1>
         <p className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          输入账号并通过验证码设置新密码。
+          {t("auth.resetSubtitle")}
         </p>
       </div>
 
@@ -118,19 +120,19 @@ export default function ForgotPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextField
-          label={method === "phone" ? "手机号" : "邮箱"}
+          label={method === "phone" ? t("auth.phone") : t("auth.email")}
           type={method === "phone" ? "tel" : "email"}
           autoComplete={method === "phone" ? "tel" : "email"}
-          placeholder={method === "phone" ? "11 位手机号" : "you@example.com"}
+          placeholder={method === "phone" ? t("auth.phonePlaceholder") : "you@example.com"}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value.trim())}
         />
 
         <TextField
-          label="新密码"
+          label={t("auth.newPassword")}
           type="password"
           autoComplete="new-password"
-          placeholder="至少 6 位"
+          placeholder={t("auth.passwordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -144,16 +146,16 @@ export default function ForgotPage() {
 
         <FormError message={error} />
 
-        <SubmitButton loading={submitting}>重置密码</SubmitButton>
+        <SubmitButton loading={submitting}>{t("auth.resetPassword")}</SubmitButton>
       </form>
 
       <div className="border-t border-[var(--border)] pt-5 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-        想起密码了？{" "}
+        {t("auth.rememberPassword")}{" "}
         <Link
           href="/auth/login"
           className="text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          返回登录
+          {t("auth.backToLogin")}
         </Link>
       </div>
     </div>

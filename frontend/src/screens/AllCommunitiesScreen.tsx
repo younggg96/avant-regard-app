@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Box,
@@ -35,6 +36,7 @@ import { useAuthStore } from "../store/authStore";
 type TabType = "following" | "all";
 
 const AllCommunitiesScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [allCommunities, setAllCommunities] = useState<Community[]>([]);
@@ -151,7 +153,7 @@ const AllCommunitiesScreen = () => {
         }
       } catch (err) {
         console.error("关注操作失败:", err);
-        alert("关注操作失败，请稍后重试");
+        alert(t("community.followFailed"));
       }
     },
     [user, navigation]
@@ -199,10 +201,10 @@ const AllCommunitiesScreen = () => {
             )}
           </HStack>
           <Text fontSize="$sm" color="$gray500" numberOfLines={1}>
-            {community.description || "暂无简介"}
+            {community.description || t("community.noDescription")}
           </Text>
           <Text fontSize="$xs" color="$gray400" mt="$xs">
-            {community.memberCount} 成员 · {community.postCount} 帖子
+            {community.memberCount} {t("community.members")} · {community.postCount} {t("community.posts")}
           </Text>
         </VStack>
         <Pressable
@@ -220,7 +222,7 @@ const AllCommunitiesScreen = () => {
             color={community.isFollowing ? "$black" : "$white"}
             fontWeight="$medium"
           >
-            {community.isFollowing ? "已关注" : "关注"}
+            {community.isFollowing ? t("community.joined") : t("community.join")}
           </Text>
         </Pressable>
       </HStack>
@@ -231,12 +233,12 @@ const AllCommunitiesScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <ScreenHeader
-          title="全部社区"
+          title={t("community.allCommunities")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <Text color="$gray400">加载中...</Text>
+          <Text color="$gray400">{t("common.loading")}</Text>
         </VStack>
       </SafeAreaView>
     );
@@ -263,7 +265,7 @@ const AllCommunitiesScreen = () => {
           <Ionicons name="search" size={18} color={theme.colors.gray400} />
           <TextInput
             style={styles.searchInput}
-            placeholder="搜索社区"
+            placeholder={t("community.searchPlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -290,7 +292,7 @@ const AllCommunitiesScreen = () => {
             fontWeight={activeTab === "following" ? "$semibold" : "$regular"}
             color={activeTab === "following" ? "$black" : "$gray400"}
           >
-            我关注的
+            {t("community.joinedCommunities")}
           </Text>
         </Pressable>
         <Pressable
@@ -305,7 +307,7 @@ const AllCommunitiesScreen = () => {
             fontWeight={activeTab === "all" ? "$semibold" : "$regular"}
             color={activeTab === "all" ? "$black" : "$gray400"}
           >
-            全部社区
+            {t("community.allCommunities")}
           </Text>
         </Pressable>
       </HStack>
@@ -337,7 +339,7 @@ const AllCommunitiesScreen = () => {
               mt="$md"
               textAlign="center"
             >
-              {activeTab === "following" && !searchQuery ? "还没有关注社区" : "未找到社区"}
+              {activeTab === "following" && !searchQuery ? t("community.noJoined") : t("community.notFound")}
             </Text>
             <Text color="$gray400" textAlign="center">
               {searchQuery

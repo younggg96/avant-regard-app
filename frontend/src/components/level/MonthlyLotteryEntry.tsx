@@ -15,6 +15,7 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { theme } from "../../theme";
@@ -34,6 +35,7 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   isOwnProfile,
   currentLevel,
 }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const [data, setData] = useState<CurrentLotteryPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,15 +65,15 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   const entry = data?.entry;
 
   const statusText = (() => {
-    if (loading && !data) return "加载中...";
+    if (loading && !data) return t("level.loading");
     if (!round) return "--";
     if (round.status === "DRAWN") {
       return entry?.isWinner
-        ? `已中奖: ${entry.prizeName ?? ""}`
-        : "本期已开奖";
+        ? t("level.won", { prize: entry.prizeName ?? "" })
+        : t("level.drawn");
     }
-    if (round.status === "CLOSED") return "本期已结束";
-    return entry?.entered ? "已进入本期奖池" : "Lv3+ 自动进池";
+    if (round.status === "CLOSED") return t("level.closed");
+    return entry?.entered ? t("level.entered") : t("level.autoEnter");
   })();
 
   return (
@@ -85,7 +87,7 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
         <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
       </View>
       <View style={styles.middle}>
-        <Text style={styles.title}>本月抽奖 · {round?.month ?? "--"}</Text>
+        <Text style={styles.title}>{t("level.monthlyLottery")} · {round?.month ?? "--"}</Text>
         <Text style={styles.subtitle} numberOfLines={1}>
           {statusText}
         </Text>

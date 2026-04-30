@@ -11,11 +11,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { chatService, type Conversation } from "@/lib/services/chat";
 import { isRenderableImage } from "@/lib/isRenderableImage";
 import { summarizeSharePayload } from "@/lib/chatShareCards";
 
 export default function ChatsPage() {
+  const { t } = useTranslation();
   const { data, isLoading, error } = useSWR<Conversation[]>(
     ["chat-conversations"],
     () => chatService.getConversations(),
@@ -26,28 +28,28 @@ export default function ChatsPage() {
     <section className="min-w-0">
       <header className="mb-6 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          私信
+          {t("chat.title")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          与其他 Avant Regard 用户的一对一对话。
+          {t("chat.subtitle")}
         </p>
       </header>
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loading")}
         </div>
       )}
 
       {error && (
         <div className="rounded border border-red-500/20 bg-red-500/5 p-4 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("me.loadFailed")}：{(error as Error).message}
         </div>
       )}
 
       {!isLoading && !error && (!data || data.length === 0) && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-8 font-serif text-sm text-[color:var(--ink-muted)]">
-          还没有任何会话。访问某位用户主页，点「私信」即可开始聊天。
+          {t("chat.noConversations")}
         </div>
       )}
 
@@ -85,7 +87,7 @@ export default function ChatsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-serif text-[15px] text-black dark:text-white">
-                        {other?.username ?? `会话 #${conv.id}`}
+                        {other?.username ?? t("chat.conversationId", { id: conv.id })}
                       </span>
                       {conv.unreadCount > 0 && (
                         <span className="rounded-full bg-[var(--ink)] px-2 py-0.5 font-label text-[10px] text-[var(--canvas)]">

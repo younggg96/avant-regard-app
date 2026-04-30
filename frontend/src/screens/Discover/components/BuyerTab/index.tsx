@@ -25,6 +25,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
 import { theme } from "../../../../theme";
@@ -87,6 +88,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   onOpenAllStores,
   onOpenProductList,
 }) => {
+  const { t } = useTranslation();
   const {
     stores,
     selectedStoreId,
@@ -161,12 +163,12 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
 
   const handleFollowToggle = useCallback(() => {
     toggleFollow();
-    Alert.show(isFollowed ? "已取消关注" : "关注成功");
-  }, [toggleFollow, isFollowed]);
+    Alert.show(isFollowed ? t("discover.buyerUnfollowed") : t("discover.buyerFollowSuccess"));
+  }, [toggleFollow, isFollowed, t]);
 
   const handleMorePress = useCallback(() => {
-    Alert.show("更多功能敬请期待");
-  }, []);
+    Alert.show(t("discover.buyerMoreComingSoon"));
+  }, [t]);
 
   // 点击 Banner 时异步打埋点（失败静默），再落到店铺详情页。埋点走 fire-&-forget
   // 的原因：商家 banner 的点击/曝光统计是后端的业务指标，对前端用户体验来说
@@ -231,14 +233,14 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
       <View style={styles.centerPadded}>
         <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
         <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
-          加载买手店失败
+          {t("discover.buyerLoadFailed")}
         </Text>
         <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
           {error}
         </Text>
         <Pressable onPress={refresh} px="$lg" py="$sm" mt="$md" bg="$black" rounded="$md">
           <Text color="$white" fontWeight="$semibold" fontSize="$sm">
-            点击重试
+            {t("discover.buyerTapRetry")}
           </Text>
         </Pressable>
       </View>
@@ -314,6 +316,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   onProductPress,
   onFavoriteToggle,
 }) => {
+  const { t } = useTranslation();
   // 两列等宽，FlatList 在 ScrollView 里嵌套会报警，所以手写 2 列 row。
   const rows = useMemo(() => {
     const grouped: BuyerStoreProduct[][] = [];
@@ -328,10 +331,10 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
       <Box mx="$md" mb="$lg" py="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} borderColor="$gray100" rounded="$lg">
         <Ionicons name="bag-handle-outline" size={28} color={theme.colors.gray300} />
         <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm">
-          暂无匹配的单品
+          {t("discover.buyerNoProducts")}
         </Text>
         <Text fontSize="$xs" color="$gray300" mt="$xs">
-          敬请期待买手店上新
+          {t("discover.buyerStayTuned")}
         </Text>
       </Box>
     );

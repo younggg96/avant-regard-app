@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { showService, Show } from "../../services/showService";
 import { sharedStyles } from "./adminStyles";
@@ -14,6 +15,7 @@ import { Box, HStack, VStack, Text, Input, Button, ButtonText, ScrollView, Optim
 import { ImageSize } from "../../utils/imageUtils";
 
 const ShowReviewTab = () => {
+  const { t } = useTranslation();
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,8 +30,8 @@ const ShowReviewTab = () => {
       const result = await showService.getPendingShows();
       setShows(result.shows);
     } catch (error) {
-      console.error("获取待审核秀场失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取待审核秀场失败");
+      console.error("fetchPendingShows error:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchPendingShowsFailed"));
     } finally {
       setLoading(false);
     }
@@ -46,18 +48,18 @@ const ShowReviewTab = () => {
   }, [fetchPendingShows]);
 
   const handleApprove = async (showId: string) => {
-    Alert.alert("确认审核", "确定要通过这个秀场吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmReview"), t("admin.confirmApproveShow"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确认通过",
+        text: t("admin.confirmApprove"),
         onPress: async () => {
           try {
             setActionLoading(true);
             await showService.approveShow(showId);
-            Alert.alert("成功", "秀场已审核通过");
+            Alert.alert(t("common.success"), t("admin.showApproved"));
             setShows((prev) => prev.filter((s) => s.id !== showId));
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -77,11 +79,11 @@ const ShowReviewTab = () => {
     try {
       setActionLoading(true);
       await showService.rejectShow(selectedShowId, rejectReason || undefined);
-      Alert.alert("已拒绝", "秀场已被拒绝");
+      Alert.alert(t("admin.rejected"), t("admin.showRejected"));
       setRejectModalVisible(false);
       setShows((prev) => prev.filter((s) => s.id !== selectedShowId));
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -97,12 +99,12 @@ const ShowReviewTab = () => {
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : shows.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
-            <Text style={sharedStyles.emptyText}>暂无待审核的秀场</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noPendingShows")}</Text>
           </Box>
         ) : (
           shows.map((show) => (
@@ -126,26 +128,26 @@ const ShowReviewTab = () => {
 
               <VStack style={styles.metaSection}>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>品牌</Text>
+                  <Text style={styles.metaLabel}>{t("admin.brand")}</Text>
                   <Text style={styles.metaValue}>{show.brand}</Text>
                 </HStack>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>年份</Text>
+                  <Text style={styles.metaLabel}>{t("admin.year")}</Text>
                   <Text style={styles.metaValue}>{show.year}</Text>
                 </HStack>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>季度</Text>
+                  <Text style={styles.metaLabel}>{t("admin.season")}</Text>
                   <Text style={styles.metaValue}>{show.season}</Text>
                 </HStack>
                 {show.category && (
                   <HStack style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>类别</Text>
+                    <Text style={styles.metaLabel}>{t("admin.category")}</Text>
                     <Text style={styles.metaValue}>{show.category}</Text>
                   </HStack>
                 )}
                 {show.designer && (
                   <HStack style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>设计师</Text>
+                    <Text style={styles.metaLabel}>{t("admin.designer")}</Text>
                     <Text style={styles.metaValue}>{show.designer}</Text>
                   </HStack>
                 )}
@@ -163,7 +165,7 @@ const ShowReviewTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -172,7 +174,7 @@ const ShowReviewTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="close-circle-outline" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -184,11 +186,11 @@ const ShowReviewTab = () => {
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
-            <Text style={sharedStyles.modalTitle}>拒绝原因</Text>
+            <Text style={sharedStyles.modalTitle}>{t("admin.rejectReason")}</Text>
             <Input
               variant="outline"
               size="md"
-              placeholder="请输入拒绝原因（可选）"
+              placeholder={t("admin.rejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={rejectReason}
               onChangeText={setRejectReason}
@@ -197,10 +199,10 @@ const ShowReviewTab = () => {
             />
             <HStack style={sharedStyles.modalButtons}>
               <Button variant="outline" size="sm" onPress={() => setRejectModalVisible(false)}>
-                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
               </Button>
               <Button size="sm" onPress={handleConfirmReject} disabled={actionLoading} isLoading={actionLoading}>
-                <ButtonText>确认拒绝</ButtonText>
+                <ButtonText>{t("admin.confirmReject")}</ButtonText>
               </Button>
             </HStack>
           </Box>

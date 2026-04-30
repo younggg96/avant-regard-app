@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   adminLevelApi,
   type LotteryPrize,
@@ -40,6 +41,7 @@ function currentMonth(): string {
 }
 
 export default function AdminLotteryPage() {
+  const { t } = useTranslation();
   const [rounds, setRounds] = useState<LotteryRoundInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -122,7 +124,7 @@ export default function AdminLotteryPage() {
   const saveEditor = async () => {
     const monthPattern = /^\d{4}-\d{2}$/;
     if (!monthPattern.test(editorMonth.trim())) {
-      alert("月份格式必须为 YYYY-MM");
+      alert(t("admin.monthFormatError"));
       return;
     }
     const cleaned: LotteryPrize[] = editorPrizes
@@ -137,13 +139,13 @@ export default function AdminLotteryPage() {
       })
       .filter((p) => p.prizeId && p.name && p.quota > 0);
     if (cleaned.length === 0) {
-      alert("至少需要一条有效奖品 (prizeId / name / quota > 0)");
+      alert(t("admin.atLeastOnePrize"));
       return;
     }
     const ids = new Set<string>();
     for (const p of cleaned) {
       if (ids.has(p.prizeId)) {
-        alert(`奖品 ID 重复: ${p.prizeId}`);
+        alert(t("admin.duplicatePrizeId", { id: p.prizeId }));
         return;
       }
       ids.add(p.prizeId);
@@ -158,7 +160,7 @@ export default function AdminLotteryPage() {
       alert(
         e instanceof Error
           ? e.message
-          : "保存失败 (可能该期已开奖)",
+          : t("admin.saveFailed"),
       );
     } finally {
       setActionLoading(false);
@@ -171,11 +173,11 @@ export default function AdminLotteryPage() {
     setActionLoading(true);
     try {
       const res = await adminLevelApi.syncEntries(syncTarget.id);
-      alert(`同步完成, 新增 ${res.added} 位参与者`);
+      alert(t("admin.syncComplete", { count: res.added }));
       setSyncTarget(null);
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "同步失败");
+      alert(e instanceof Error ? e.message : t("admin.syncFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -187,11 +189,11 @@ export default function AdminLotteryPage() {
     setActionLoading(true);
     try {
       const res = await adminLevelApi.drawRound(drawTarget.id, null);
-      alert(`已开奖, 共产生 ${res.winners} 位中奖者`);
+      alert(t("admin.drawComplete", { count: res.winners }));
       setDrawTarget(null);
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "开奖失败");
+      alert(e instanceof Error ? e.message : t("admin.drawFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -202,22 +204,22 @@ export default function AdminLotteryPage() {
   return (
     <div>
       <PageHeader
-        title="月度抽奖"
-        description="1 号建期 · 25 号开奖 · 奖池 JSONB 灵活配置"
+        title={t("admin.lottery")}
+        description={t("admin.lotteryDesc")}
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => openEditor()}>
-              建期
+              {t("admin.createRound")}
             </Button>
             <Button variant="ghost" size="sm" onClick={load}>
-              刷新
+              {t("admin.refresh")}
             </Button>
           </div>
         }
       />
 
       {rounds.length === 0 ? (
-        <EmptyState message="暂无期数" />
+        <EmptyState message={t("admin.noRounds")} />
       ) : (
         <div className="space-y-3">
           {rounds.map((r) => {
@@ -234,10 +236,10 @@ export default function AdminLotteryPage() {
                     </div>
                     <StatusBadge active={isOpen}>
                       {r.status === "OPEN"
-                        ? "进行中"
+                        ? t("admin.statusOpen")
                         : r.status === "DRAWN"
-                        ? "已开奖"
-                        : "已关闭"}
+                        ? t("admin.statusDrawn")
+                        : t("admin.statusClosed")}
                     </StatusBadge>
                   </div>
                   {isOpen && (
@@ -246,33 +248,33 @@ export default function AdminLotteryPage() {
                         onClick={() => openEditor(r)}
                         className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                       >
-                        改奖池
+                        {t("admin.editPrize")}
                       </button>
                       <button
                         onClick={() => setSyncTarget(r)}
                         className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                       >
-                        同步进池
+                        {t("admin.syncEntries")}
                       </button>
                       <button
                         onClick={() => setDrawTarget(r)}
                         className="rounded bg-[var(--ink)] px-2 py-1 text-[var(--canvas)] transition-opacity hover:opacity-80"
                       >
-                        开奖
+                        {t("admin.draw")}
                       </button>
                     </div>
                   )}
                 </div>
 
                 <dl className="mt-4 grid grid-cols-4 gap-4 border-y border-[var(--border)] py-3 font-label text-[12px]">
-                  <Cell label="参与" value={r.totalEntries} />
-                  <Cell label="中奖" value={r.totalWinners} />
-                  <Cell label="奖品" value={r.prizeConfig.length} />
+                  <Cell label={t("admin.participation")} value={r.totalEntries} />
+                  <Cell label={t("admin.winners")} value={r.totalWinners} />
+                  <Cell label={t("admin.prizes")} value={r.prizeConfig.length} />
                   <Cell
-                    label="开奖于"
+                    label={t("admin.drawnAt")}
                     value={
                       r.drawnAt
-                        ? new Date(r.drawnAt).toLocaleDateString("zh-CN")
+                        ? new Date(r.drawnAt).toLocaleDateString()
                         : "—"
                     }
                   />
@@ -299,7 +301,7 @@ export default function AdminLotteryPage() {
                   </ul>
                 ) : (
                   <div className="mt-3 font-label text-[12px] italic text-[color:var(--ink-muted)]">
-                    奖池尚未配置
+                    {t("admin.prizeNotConfigured")}
                   </div>
                 )}
               </div>
@@ -311,26 +313,26 @@ export default function AdminLotteryPage() {
       {/* 编辑器 */}
       <FormDialog
         open={editorOpen}
-        title={editorMode === "edit" ? "改奖池" : "建期"}
+        title={editorMode === "edit" ? t("admin.editPrize") : t("admin.createRound")}
         onClose={() => setEditorOpen(false)}
         wide
       >
         <div className="space-y-4">
-          <FormField label="期号 (YYYY-MM)" required>
+          <FormField label={t("admin.roundLabel")} required>
             <TextInput
               value={editorMonth}
               onChange={setEditorMonth}
-              placeholder="例如 2026-04"
+              placeholder={t("admin.roundPlaceholder")}
               disabled={editorMode === "edit"}
             />
             <p className="mt-1 font-label text-[11px] text-[color:var(--ink-muted)]">
               {editorMode === "edit"
-                ? "改奖池时期号锁定, 如需换期请回到列表选择对应期数."
-                : "已 DRAWN 的期数不能再改奖池."}
+                ? t("admin.roundEditNote")
+                : t("admin.roundCreateNote")}
             </p>
           </FormField>
 
-          <FormField label="奖品列表">
+          <FormField label={t("admin.prizeList")}>
             <div className="space-y-2">
               {editorPrizes.map((p, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -343,13 +345,13 @@ export default function AdminLotteryPage() {
                   <input
                     value={p.name}
                     onChange={(e) => updatePrize(idx, "name", e.target.value)}
-                    placeholder="奖品名称"
+                    placeholder={t("admin.prizeName")}
                     className="h-9 flex-1 rounded border border-[var(--border)] bg-[var(--canvas)] px-2 font-label text-[12px] outline-none focus:border-[var(--ink-muted)]"
                   />
                   <input
                     value={p.quota}
                     onChange={(e) => updatePrize(idx, "quota", e.target.value)}
-                    placeholder="名额"
+                    placeholder={t("admin.prizeQuota")}
                     inputMode="numeric"
                     className="h-9 w-20 rounded border border-[var(--border)] bg-[var(--canvas)] px-2 text-right font-label text-[12px] tabular-nums outline-none focus:border-[var(--ink-muted)]"
                   />
@@ -366,7 +368,7 @@ export default function AdminLotteryPage() {
                 onClick={addPrizeRow}
                 className="w-full rounded border border-dashed border-[var(--border)] py-2 font-label text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
               >
-                + 新增一行
+                {t("admin.addRow")}
               </button>
             </div>
           </FormField>
@@ -377,10 +379,10 @@ export default function AdminLotteryPage() {
               size="sm"
               onClick={() => setEditorOpen(false)}
             >
-              取消
+              {t("admin.cancel")}
             </Button>
             <Button size="sm" onClick={saveEditor} loading={actionLoading}>
-              保存
+              {t("admin.save")}
             </Button>
           </div>
         </div>
@@ -388,13 +390,13 @@ export default function AdminLotteryPage() {
 
       <ConfirmDialog
         open={!!syncTarget}
-        title="同步 Lv3+ 用户进池"
+        title={t("admin.syncTitle")}
         message={
           syncTarget
-            ? `把所有 Lv3+ 用户批量拉入 ${syncTarget.month} 期. 已在池中的用户会跳过.`
+            ? t("admin.syncMsg", { month: syncTarget.month })
             : undefined
         }
-        confirmLabel="开始同步"
+        confirmLabel={t("admin.startSync")}
         loading={actionLoading}
         onConfirm={doSync}
         onCancel={() => setSyncTarget(null)}
@@ -402,16 +404,19 @@ export default function AdminLotteryPage() {
 
       <ConfirmDialog
         open={!!drawTarget}
-        title={`开奖 · ${drawTarget?.month ?? ""}`}
+        title={t("admin.drawTitle", { month: drawTarget?.month ?? "" })}
         message={
           drawTarget
-            ? `按奖池随机抽取 ${drawTarget.prizeConfig.reduce(
-                (s, p) => s + (Number(p.quota) || 0),
-                0,
-              )} 个名额, 来自 ${drawTarget.totalEntries} 位参与者. 开奖后不可撤销.`
+            ? t("admin.drawMsg", {
+                quota: drawTarget.prizeConfig.reduce(
+                  (s, p) => s + (Number(p.quota) || 0),
+                  0,
+                ),
+                entries: drawTarget.totalEntries,
+              })
             : undefined
         }
-        confirmLabel="确认开奖"
+        confirmLabel={t("admin.confirmDraw")}
         loading={actionLoading}
         onConfirm={doDraw}
         onCancel={() => setDrawTarget(null)}

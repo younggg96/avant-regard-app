@@ -5,6 +5,7 @@ import {
   View,
   StatusBar,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import Animated, {
@@ -49,6 +50,7 @@ import { useLevelStore } from "../../store/levelStore";
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
 const ProfileScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
@@ -105,15 +107,15 @@ const ProfileScreen = () => {
   } = useProfileData();
 
   const tabs = [
-    { id: "published" as TabType, label: "已发布", count: tabsData.published.count },
-    { id: "pending" as TabType, label: "待审核", count: tabsData.pending.count },
-    { id: "forum" as TabType, label: "论坛", count: tabsData.forum.count },
-    { id: "liked" as TabType, label: "我喜欢的", count: tabsData.liked.count },
-    { id: "saved" as TabType, label: "我收藏的", count: tabsData.saved.count },
-    { id: "wishlist" as TabType, label: "愿望单", count: tabsData.wishlist.count },
-    { id: "storeActivity" as TabType, label: "买手店" },
-    { id: "draft" as TabType, label: "草稿", count: tabsData.draft.count },
-    { id: "archive" as TabType, label: "贡献" },
+    { id: "published" as TabType, label: t("profile.published"), count: tabsData.published.count },
+    { id: "pending" as TabType, label: t("profile.pending"), count: tabsData.pending.count },
+    { id: "forum" as TabType, label: t("profile.forum"), count: tabsData.forum.count },
+    { id: "liked" as TabType, label: t("profile.liked"), count: tabsData.liked.count },
+    { id: "saved" as TabType, label: t("profile.saved"), count: tabsData.saved.count },
+    { id: "wishlist" as TabType, label: t("profile.wishlist"), count: tabsData.wishlist.count },
+    { id: "storeActivity" as TabType, label: t("profile.storeActivity") },
+    { id: "draft" as TabType, label: t("profile.draft"), count: tabsData.draft.count },
+    { id: "archive" as TabType, label: t("profile.contributions") },
   ];
 
   useEffect(() => {
@@ -315,7 +317,7 @@ const ProfileScreen = () => {
 
   const handleConfirmDelete = async () => {
     if (!postToDelete || !user?.userId) {
-      Alert.show("错误", "缺少必要的参数");
+      Alert.show(t("common.failed"), t("common.unknownError"));
       setShowDeleteDialog(false);
       setPostToDelete(null);
       return;
@@ -330,23 +332,23 @@ const ProfileScreen = () => {
 
       await postService.deletePost(postId, user.userId);
       setShowDeleteDialog(false);
-      Alert.show("成功", "帖子已删除");
+      Alert.show(t("common.success"), t("profile.deleteSuccess"));
 
       // Handled via fetchTabData refresh
       fetchTabData(activeTab, true);
     } catch (error) {
       console.error("删除帖子时出错:", error);
-      let errorMessage = "请稍后重试";
+      let errorMessage = t("profile.deleteFailed");
       if (error instanceof Error) {
         if (error.message.includes("网络") || error.message.includes("Network")) {
-          errorMessage = "网络连接失败，请检查网络后重试";
+          errorMessage = t("common.networkError");
         } else if (error.message.includes("权限") || error.message.includes("Permission")) {
-          errorMessage = "没有删除权限";
+          errorMessage = error.message;
         } else {
           errorMessage = error.message;
         }
       }
-      Alert.show("删除失败", errorMessage);
+      Alert.show(t("profile.deleteFailed"), errorMessage);
     } finally {
       setIsDeleting(false);
       setPostToDelete(null);

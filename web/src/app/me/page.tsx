@@ -13,6 +13,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { apiClient } from "@/lib/api-client";
 import { followService } from "@/lib/services/follow";
@@ -25,6 +26,7 @@ import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { UserInfo } from "@/lib/types";
 
 export default function MeOverviewPage() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const userId = user?.userId;
 
@@ -72,10 +74,10 @@ export default function MeOverviewPage() {
     (m) => m.status === "APPROVED",
   ).length;
   const merchantDesc = merchantCount
-    ? `${merchantCount} 个申请 · ${approvedMerchantCount} 家已认证`
-    : "店铺 Banner / 公告 / 活动 / 折扣";
+    ? t("me.storeDescCount", { count: merchantCount, approved: approvedMerchantCount })
+    : t("me.storeDescDefault");
 
-  const displayName = profile?.username || user?.username || "我";
+  const displayName = profile?.username || user?.username || t("me.fallbackName");
   const avatar = profile?.avatarUrl || user?.avatar;
 
   return (
@@ -111,24 +113,24 @@ export default function MeOverviewPage() {
           href={`/users/${userId ?? ""}`}
           className="inline-flex items-center gap-1 font-label text-[13px] text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          查看公开主页 →
+          {t("me.viewPublicProfile")}
         </Link>
       </header>
 
       <dl className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="发布" value={formatCount(myPosts?.length ?? 0)} href="/me" />
+        <Stat label={t("me.published")} value={formatCount(myPosts?.length ?? 0)} href="/me" />
         <Stat
-          label="关注中"
+          label={t("me.followingLabel")}
           value={formatCount(followingCount ?? 0)}
           href="/me/follows?tab=following"
         />
         <Stat
-          label="粉丝"
+          label={t("me.fans")}
           value={formatCount(followerCount ?? 0)}
           href="/me/follows?tab=followers"
         />
         <Stat
-          label="待读"
+          label={t("me.unread")}
           value={formatCount((unreadMsgs ?? 0) + (unreadNotifs ?? 0))}
           href="/me/notifications"
         />
@@ -137,35 +139,35 @@ export default function MeOverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Tile
           href="/me/level"
-          title="我的等级"
-          desc="进度 / 权益 / 月度抽奖"
+          title={t("me.myLevel")}
+          desc={t("me.levelDesc")}
         />
         <Tile
           href="/me/likes"
-          title="点赞"
-          desc="我点过赞的帖子"
+          title={t("me.likes")}
+          desc={t("me.likesDesc")}
         />
-        <Tile href="/me/favorites" title="收藏" desc="我的私人典藏" />
-        <Tile href="/me/wants" title="愿望单" desc="标记为「想要」的物件" />
+        <Tile href="/me/favorites" title={t("me.favorites")} desc={t("me.favoritesDesc")} />
+        <Tile href="/me/wants" title={t("me.wants")} desc={t("me.wantsDesc")} />
         <Tile
           href="/me/follows"
-          title="关注与粉丝"
-          desc="双向关系一览"
+          title={t("me.followsAndFans")}
+          desc={t("me.followsDesc")}
         />
         <Tile
           href="/me/merchant"
-          title="我的店铺"
+          title={t("me.myStore")}
           desc={merchantDesc}
         />
         <Tile
           href="/me/chats"
-          title="私信"
-          desc={unreadMsgs ? `${unreadMsgs} 条未读` : "所有会话"}
+          title={t("me.messages")}
+          desc={unreadMsgs ? t("me.messagesUnread", { count: unreadMsgs }) : t("me.messagesDefault")}
         />
         <Tile
           href="/me/notifications"
-          title="通知"
-          desc={unreadNotifs ? `${unreadNotifs} 条未读` : "系统通知"}
+          title={t("me.notifications")}
+          desc={unreadNotifs ? t("me.notifsUnread", { count: unreadNotifs }) : t("me.notifsDefault")}
         />
       </div>
     </section>
@@ -203,6 +205,7 @@ function Tile({
   title: string;
   desc: string;
 }) {
+  const { t } = useTranslation();
   return (
     <Link
       href={href}
@@ -215,7 +218,7 @@ function Tile({
         {desc}
       </div>
       <div className="mt-auto font-label text-[11px] text-[color:var(--ink)] opacity-0 transition-opacity group-hover:opacity-100">
-        打开 →
+        {t("common.open")}
       </div>
     </Link>
   );

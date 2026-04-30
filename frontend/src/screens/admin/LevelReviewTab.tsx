@@ -16,6 +16,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { theme } from "../../theme";
 import {
@@ -38,6 +39,7 @@ import { Modal } from "../../components/ui/modal";
 import { LEVEL_OPTIONS } from "../../components/level/levelTitles";
 
 const LevelReviewTab: React.FC = () => {
+  const { t } = useTranslation();
   const [items, setItems] = useState<UpgradeRequestInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,8 +71,8 @@ const LevelReviewTab: React.FC = () => {
       setItems(data);
     } catch (e) {
       Alert.alert(
-        "错误",
-        e instanceof Error ? e.message : "获取审批列表失败"
+        t("admin.error"),
+        e instanceof Error ? e.message : t("admin.fetchLevelRequestsFailed")
       );
     } finally {
       setLoading(false);
@@ -91,22 +93,22 @@ const LevelReviewTab: React.FC = () => {
 
   const handleApprove = (item: UpgradeRequestInfo) => {
     Alert.alert(
-      "确认通过",
+      t("admin.confirmApprove"),
       `确认授予 @${item.username ?? item.userId} 升级到 Lv${item.targetLevel}?  \n通过后将自动发放对应权益(Lv4 -> 1 张免费门票), 不可撤销.`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "确认通过",
+          text: t("admin.confirmApprove"),
           onPress: async () => {
             try {
               setActionLoading(true);
               await adminLevelService.reviewUpgradeRequest(item.id, true);
-              Alert.alert("已通过", "用户等级已升级, 权益已发放");
+              Alert.alert(t("admin.approved"), t("admin.levelUpgraded"));
               fetchPending();
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "审批失败"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.levelReviewFailed")
               );
             } finally {
               setActionLoading(false);
@@ -134,10 +136,10 @@ const LevelReviewTab: React.FC = () => {
       );
       setRejectVisible(false);
       setRejectingId(null);
-      Alert.alert("已驳回", "已通知用户");
+      Alert.alert(t("admin.levelRejected"), t("admin.userNotified"));
       fetchPending();
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -148,32 +150,32 @@ const LevelReviewTab: React.FC = () => {
   const handleGrant = () => {
     const uid = parseInt(grantUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      Alert.alert("错误", "请输入合法的用户 ID");
+      Alert.alert(t("admin.error"), "请输入合法的用户 ID");
       return;
     }
     if (grantLevel < 1 || grantLevel > 5) {
-      Alert.alert("错误", "等级必须在 1-5 之间");
+      Alert.alert(t("admin.error"), "等级必须在 1-5 之间");
       return;
     }
     Alert.alert(
-      "确认授予",
+      t("admin.confirmGrant"),
       `将直接把 user #${uid} 的等级设为 Lv${grantLevel}. \n受"只升不降"约束, 若该用户当前等级 >= Lv${grantLevel} 将被拒绝.`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "确认授予",
+          text: t("admin.confirmGrant"),
           onPress: async () => {
             try {
               setActionLoading(true);
               await adminLevelService.grantLevel(uid, grantLevel, grantRemark);
-              Alert.alert("成功", "等级已授予, 相关权益已发放");
+              Alert.alert(t("common.success"), t("admin.levelGranted"));
               setGrantUserId("");
               setGrantRemark("");
               fetchPending();
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "授予失败 (可能该用户已达此级)"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.grantFailed")
               );
             } finally {
               setActionLoading(false);
@@ -200,8 +202,8 @@ const LevelReviewTab: React.FC = () => {
       }
     } catch (e) {
       Alert.alert(
-        "错误",
-        e instanceof Error ? e.message : "回填失败"
+        t("admin.error"),
+        e instanceof Error ? e.message : t("admin.backfillFailed")
       );
     } finally {
       setBackfillLoading(false);
@@ -215,9 +217,9 @@ const LevelReviewTab: React.FC = () => {
         ? "将对所有用户做等级回溯计算, 但不写库. 仅用于预览."
         : "将对所有用户做等级回溯计算并写库. 操作幂等, 不会重复发福利 / 不会发通知. 建议先 Dry Run.",
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: dryRun ? "Dry Run" : "立即执行",
+          text: dryRun ? "Dry Run" : t("admin.execute"),
           onPress: () => runBackfill({ dryRun }),
         },
       ]
@@ -227,7 +229,7 @@ const LevelReviewTab: React.FC = () => {
   const handleBackfillSingle = () => {
     const uid = parseInt(backfillUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      Alert.alert("错误", "请输入合法用户 ID");
+      Alert.alert(t("admin.error"), "请输入合法用户 ID");
       return;
     }
     runBackfill({ dryRun: false, userId: uid });
@@ -245,15 +247,15 @@ const LevelReviewTab: React.FC = () => {
         }
       >
         {/* ====== 模块 1: 待审批工单 ====== */}
-        <Text style={styles.sectionTitle}>Lv4 升级待审批</Text>
+        <Text style={styles.sectionTitle}>{t("admin.levelPendingTitle")}</Text>
         <Text style={styles.sectionHint}>
-          用户上传 3 份档案后进入此队列. 通过后自动赠送 1 张免费门票权益.
+          {t("admin.levelPendingHint")}
         </Text>
 
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : items.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
@@ -262,7 +264,7 @@ const LevelReviewTab: React.FC = () => {
               size={40}
               color={theme.colors.gray200}
             />
-            <Text style={sharedStyles.emptyText}>暂无待审批工单</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noLevelRequests")}</Text>
           </Box>
         ) : (
           items.map((it) => (
@@ -299,7 +301,7 @@ const LevelReviewTab: React.FC = () => {
                     />
                   }
                 >
-                  <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -314,7 +316,7 @@ const LevelReviewTab: React.FC = () => {
                     />
                   }
                 >
-                  <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -330,13 +332,13 @@ const LevelReviewTab: React.FC = () => {
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.sectionTitle}>手动授予等级</Text>
+            <Text style={styles.sectionTitle}>{t("admin.grantLevelTitle")}</Text>
           </HStack>
           <Text style={styles.sectionHint}>
-            Lv5 荣誉官的唯一通道. Lv1/2/3 建议交给规则引擎自动升, 仅在特殊情况补偿时使用.
+            {t("admin.grantLevelHint")}
           </Text>
 
-          <Text style={sharedStyles.formLabel}>用户 ID</Text>
+          <Text style={sharedStyles.formLabel}>{t("admin.userId")}</Text>
           <Input
             variant="outline"
             size="md"
@@ -347,7 +349,7 @@ const LevelReviewTab: React.FC = () => {
             keyboardType="number-pad"
           />
 
-          <Text style={sharedStyles.formLabel}>目标等级</Text>
+          <Text style={sharedStyles.formLabel}>{t("admin.targetLevel")}</Text>
           <Box style={styles.levelRow}>
             {LEVEL_OPTIONS.map((opt) => {
               const active = grantLevel === opt.value;
@@ -373,7 +375,7 @@ const LevelReviewTab: React.FC = () => {
             })}
           </Box>
 
-          <Text style={sharedStyles.formLabel}>备注 (可选)</Text>
+          <Text style={sharedStyles.formLabel}>{t("admin.remarkOptional")}</Text>
           <Input
             variant="outline"
             size="md"
@@ -390,7 +392,7 @@ const LevelReviewTab: React.FC = () => {
             isLoading={actionLoading}
             style={{ marginTop: theme.spacing.md }}
           >
-            <ButtonText>确认授予</ButtonText>
+            <ButtonText>{t("admin.confirmGrant")}</ButtonText>
           </Button>
         </Box>
 
@@ -403,10 +405,10 @@ const LevelReviewTab: React.FC = () => {
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.sectionTitle}>存量用户等级回填</Text>
+            <Text style={styles.sectionTitle}>{t("admin.backfillTitle")}</Text>
           </HStack>
           <Text style={styles.sectionHint}>
-            从业务表统计老用户的真实行为累计数并静默升级 (Lv1-3 自动; Lv4 仅入审核队列; Lv5 不触发). 操作幂等, 不会重发权益 / 不发站内信.
+            {t("admin.backfillHint")}
           </Text>
 
           <HStack style={{ gap: 8, marginTop: 4 }}>
@@ -427,12 +429,12 @@ const LevelReviewTab: React.FC = () => {
               isLoading={backfillLoading}
               style={{ flex: 1 }}
             >
-              <ButtonText style={{ fontSize: 12 }}>全量执行</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.backfillExecute")}</ButtonText>
             </Button>
           </HStack>
 
           <Text style={[sharedStyles.formLabel, { marginTop: theme.spacing.md }]}>
-            单用户回填
+            {t("admin.backfillSingle")}
           </Text>
           <HStack style={{ gap: 8, alignItems: "center" }}>
             <Box style={{ flex: 1 }}>
@@ -452,7 +454,7 @@ const LevelReviewTab: React.FC = () => {
               disabled={backfillLoading}
               isLoading={backfillLoading}
             >
-              <ButtonText style={{ fontSize: 12 }}>执行</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.execute")}</ButtonText>
             </Button>
           </HStack>
 
@@ -511,9 +513,9 @@ const LevelReviewTab: React.FC = () => {
       >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
-            <Text style={sharedStyles.modalTitle}>填写拒绝原因</Text>
+            <Text style={sharedStyles.modalTitle}>{t("admin.levelRejectTitle")}</Text>
             <Text style={styles.sectionHint}>
-              拒绝后用户收到站内信, remark 会作为消息正文.
+              {t("admin.levelRejectHint")}
             </Text>
             <Input
               variant="outline"
@@ -532,7 +534,7 @@ const LevelReviewTab: React.FC = () => {
                 onPress={() => setRejectVisible(false)}
               >
                 <ButtonText style={{ color: theme.colors.gray400 }}>
-                  取消
+                  {t("common.cancel")}
                 </ButtonText>
               </Button>
               <Button
@@ -542,7 +544,7 @@ const LevelReviewTab: React.FC = () => {
                 disabled={actionLoading}
                 isLoading={actionLoading}
               >
-                <ButtonText>确认拒绝</ButtonText>
+                <ButtonText>{t("admin.confirmReject")}</ButtonText>
               </Button>
             </HStack>
           </Box>

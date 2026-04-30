@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, AdminComment } from "../../services/adminService";
@@ -14,6 +15,7 @@ import { formatDate } from "./adminUtils";
 import { Box, HStack, Text, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 
 const CommentsTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [comments, setComments] = useState<AdminComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,8 +34,8 @@ const CommentsTab = () => {
       setTotalPages(result.totalPages);
       setTotal(result.total);
     } catch (error) {
-      console.error("获取评论列表失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取评论列表失败");
+      console.error("fetchComments failed:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchCommentsFailed"));
     } finally {
       setLoading(false);
     }
@@ -50,20 +52,20 @@ const CommentsTab = () => {
   }, [fetchComments]);
 
   const handleDeleteComment = async (commentId: number) => {
-    Alert.alert("确认删除", "确定要删除这条评论吗？此操作不可撤销。", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteComment"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deleteComment(commentId);
-            Alert.alert("成功", "评论已删除");
+            Alert.alert(t("common.success"), t("admin.commentDeleted"));
             setComments((prev) => prev.filter((c) => c.id !== commentId));
             setTotal((prev) => prev - 1);
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除评论失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteCommentFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -91,7 +93,7 @@ const CommentsTab = () => {
       <HStack style={styles.commentPostInfo}>
         <Ionicons name="document-text-outline" size={16} color={theme.colors.gray300} />
         <Text style={styles.commentPostTitle} numberOfLines={1}>
-          帖子: {comment.postTitle || `#${comment.postId}`}
+          {t("admin.post")} {comment.postTitle || `#${comment.postId}`}
         </Text>
       </HStack>
 
@@ -112,7 +114,7 @@ const CommentsTab = () => {
           disabled={actionLoading}
           leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
         >
-          <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
         </Button>
         <Button
           size="sm"
@@ -120,7 +122,7 @@ const CommentsTab = () => {
           onPress={() => (navigation as any).navigate("PostDetail", { postId: comment.postId })}
           leftIcon={<Ionicons name="eye-outline" size={16} color={theme.colors.white} />}
         >
-          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>查看帖子</ButtonText>
+          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.viewPost")}</ButtonText>
         </Button>
       </HStack>
     </Box>
@@ -134,17 +136,17 @@ const CommentsTab = () => {
       {loading && comments.length === 0 ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : comments.length === 0 ? (
         <Box style={sharedStyles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={48} color={theme.colors.gray300} />
-          <Text style={sharedStyles.emptyText}>暂无评论</Text>
+          <Text style={sharedStyles.emptyText}>{t("admin.noComments")}</Text>
         </Box>
       ) : (
         <>
           <Box style={styles.commentsHeader}>
-            <Text style={styles.commentsHeaderText}>共 {total} 条评论</Text>
+            <Text style={styles.commentsHeaderText}>{t("admin.totalComments", { count: total })}</Text>
           </Box>
           {comments.map(renderCommentCard)}
 
@@ -157,7 +159,7 @@ const CommentsTab = () => {
               >
                 <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
               </Pressable>
-              <Text style={styles.paginationText}>第 {page} 页 / 共 {totalPages} 页</Text>
+              <Text style={styles.paginationText}>{t("admin.pagination", { page, total: totalPages })}</Text>
               <Pressable
                 disabled={page >= totalPages}
                 onPress={() => page < totalPages && fetchComments(page + 1)}

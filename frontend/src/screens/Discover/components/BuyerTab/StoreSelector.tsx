@@ -7,6 +7,7 @@
  */
 import React, { useCallback } from "react";
 import { FlatList, ListRenderItem, StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
@@ -48,6 +49,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
   onOpenAll,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   const items: SelectorItem[] = React.useMemo(() => {
     const base: SelectorItem[] = stores.map((s) => ({ kind: "store" as const, ...s }));
     if (onOpenAll && stores.length > 0) {
@@ -75,7 +77,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
               </View>
             </View>
             <Text numberOfLines={1} style={[styles.name, styles.nameIdle]}>
-              查看全部
+              {t("discover.buyerViewAll")}
             </Text>
           </Pressable>
         );
@@ -146,7 +148,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
       <Box py="$md" alignItems="center">
         <Ionicons name="storefront-outline" size={24} color={theme.colors.gray300} />
         <Text fontSize="$xs" color="$gray400" mt="$xs">
-          暂无买手店数据
+          {t("discover.buyerNoStoreData")}
         </Text>
       </Box>
     );

@@ -22,6 +22,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -54,6 +55,7 @@ interface CategoryForm {
 const EMPTY_FORM: CategoryForm = { name: "", coverImage: "", sortOrder: 0 };
 
 export default function ProductCategoriesPage() {
+  const { t } = useTranslation();
   const params = useParams<{ merchantId: string }>();
   const merchantId = Number(params?.merchantId);
 
@@ -134,7 +136,7 @@ export default function ProductCategoriesPage() {
       closeDialog();
       await mutate();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -174,11 +176,11 @@ export default function ProductCategoriesPage() {
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <SubPageHeader
-        title="商品分类"
-        description="管理店铺下的商品分类；分类可被「入口卡片」绑定为一级入口，也用于商品上架时归类."
+        title={t("merchant.categoriesTitle")}
+        description={t("merchant.categoriesDesc")}
         actions={
           <Button size="sm" onClick={openCreate}>
-            + 新建分类
+            {t("merchant.newCategory")}
           </Button>
         }
       />
@@ -186,7 +188,7 @@ export default function ProductCategoriesPage() {
       {loadingCats ? (
         <LoadingState />
       ) : categories.length === 0 ? (
-        <EmptyState message="暂无分类，点击右上角新建." />
+        <EmptyState message={t("merchant.noCategories")} />
       ) : (
         <ul className="grid gap-3">
           {categories.map((c, idx) => (
@@ -203,7 +205,7 @@ export default function ProductCategoriesPage() {
                 />
               ) : (
                 <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded border border-dashed border-[var(--border)] font-label text-[10px] text-[color:var(--ink-muted)]">
-                  无封面
+                  {t("merchant.noCover")}
                 </div>
               )}
               <div className="min-w-0 flex-1 font-label">
@@ -212,7 +214,7 @@ export default function ProductCategoriesPage() {
                     {c.name}
                   </span>
                   <StatusBadge active={(c.productCount ?? 0) > 0}>
-                    {c.productCount ?? 0} 件商品
+                    {t("merchant.productCount", { count: c.productCount ?? 0 })}
                   </StatusBadge>
                 </div>
                 <div className="mt-0.5 text-[12px] text-[color:var(--ink-muted)]">
@@ -240,13 +242,13 @@ export default function ProductCategoriesPage() {
                   onClick={() => openEdit(c)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  编辑
+                  {t("common.edit")}
                 </button>
                 <button
                   onClick={() => setDeleteTarget(c)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  删除
+                  {t("common.delete")}
                 </button>
               </div>
             </li>
@@ -256,26 +258,26 @@ export default function ProductCategoriesPage() {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑分类" : "新建分类"}
+        title={editing ? t("merchant.editCategory") : t("merchant.createCategory")}
         onClose={closeDialog}
       >
         <div className="grid gap-4">
-          <FormField label="分类名称" required>
+          <FormField label={t("merchant.categoryName")} required>
             <TextInput
               value={form.name}
               onChange={(v) => setForm({ ...form, name: v })}
-              placeholder="如: 上衣, 外套, 女装"
+              placeholder={t("merchant.categoryNamePlaceholder")}
             />
           </FormField>
-          <FormField label="封面图（可选）">
+          <FormField label={t("merchant.categoryCover")}>
             <ImagePicker
               value={form.coverImage}
               onChange={(v) => setForm({ ...form, coverImage: v })}
               height={120}
-              hint="部分入口场景下会使用分类封面图."
+              hint={t("merchant.categoryCoverHint")}
             />
           </FormField>
-          <FormField label="排序">
+          <FormField label={t("merchant.bannerSort")}>
             <TextInput
               type="number"
               value={String(form.sortOrder)}
@@ -289,14 +291,14 @@ export default function ProductCategoriesPage() {
               <span className="font-label text-[12px] text-red-600">{err}</span>
             )}
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
               loading={saving}
               disabled={!form.name.trim()}
             >
-              {editing ? "保存" : "创建"}
+              {editing ? t("common.save") : t("merchant.create")}
             </Button>
           </div>
         </div>
@@ -304,13 +306,13 @@ export default function ProductCategoriesPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除该分类?"
+        title={t("merchant.deleteCategory")}
         message={
           deleteTarget && (deleteTarget.productCount ?? 0) > 0
-            ? `该分类下仍有 ${deleteTarget.productCount} 件商品，删除后它们会变为"未分类"，但不会被下架.`
-            : "删除后无法恢复."
+            ? t("merchant.deleteCategoryWithProducts", { count: deleteTarget.productCount })
+            : t("merchant.deleteCategoryEmpty")
         }
-        confirmLabel="删除"
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -320,15 +322,16 @@ export default function ProductCategoriesPage() {
 }
 
 function NoAccess({ merchantId }: { merchantId: number }) {
+  const { t } = useTranslation();
   return (
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
         <div className="font-serif text-[17px] text-[var(--ink)]">
-          无权限访问该页面
+          {t("common.noPermission")}
         </div>
         <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          商家 ID 不匹配或尚未通过审核.
+          {t("common.merchantIdMismatch")}
         </div>
       </div>
     </section>

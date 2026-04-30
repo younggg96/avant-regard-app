@@ -17,6 +17,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import {
   commentService,
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function PostCommentSection({ postId }: Props) {
+  const { t } = useTranslation();
   const userId = useAuthStore((s) => s.user?.userId);
   const key = ["post-comments", postId, userId] as const;
   const {
@@ -45,7 +47,7 @@ export function PostCommentSection({ postId }: Props) {
   return (
     <section className="mt-14 border-t pt-10 border-black/[0.06] dark:border-white/[0.08]">
       <h2 className="font-label text-xs uppercase tracking-[0.18em] text-black/40 dark:text-white/35">
-        评论 {comments ? `· ${comments.length}` : ""}
+        {t("post.comments")} {comments ? `· ${comments.length}` : ""}
       </h2>
 
       <div className="mt-6">
@@ -58,15 +60,15 @@ export function PostCommentSection({ postId }: Props) {
       <div className="mt-10 space-y-8">
         {isLoading && (
           <p className="font-label text-sm text-[color:var(--ink-muted)]">
-            加载中…
+            {t("common.loading")}
           </p>
         )}
         {error && (
-          <p className="font-label text-sm text-red-500">评论加载失败</p>
+          <p className="font-label text-sm text-red-500">{t("post.commentLoadFailed")}</p>
         )}
         {comments?.length === 0 && !isLoading && (
           <p className="font-label text-sm text-[color:var(--ink-muted)]">
-            暂无评论，做第一个。
+            {t("post.noComments")}
           </p>
         )}
         {comments?.map((c) => (
@@ -101,6 +103,7 @@ function CommentComposer({
   autoFocus?: boolean;
   onCancel?: () => void;
 }) {
+  const { t } = useTranslation();
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => s.user?.userId);
   const [text, setText] = useState("");
@@ -114,19 +117,19 @@ function CommentComposer({
         : "/";
     return (
       <div className="rounded-md border border-[var(--border)] bg-[var(--canvas-soft)] px-4 py-3 font-label text-[13px] text-[color:var(--ink-muted)]">
-        想参与讨论？{" "}
+        {t("post.joinDiscussion")}{" "}
         <Link
           href={`/auth/login?next=${encodeURIComponent(next)}`}
           className="text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          登录
+          {t("auth.login")}
         </Link>{" "}
-        或{" "}
+        {t("post.or")}{" "}
         <Link
           href={`/auth/register?next=${encodeURIComponent(next)}`}
           className="text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          注册
+          {t("auth.register")}
         </Link>
         。
       </div>
@@ -150,7 +153,7 @@ function CommentComposer({
       onSubmitted();
       onCancel?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "评论失败");
+      setError(err instanceof Error ? err.message : t("post.commentFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +167,7 @@ function CommentComposer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={
-            replyToUsername ? `回复 @${replyToUsername}` : "友善发言，共建社区"
+            replyToUsername ? t("post.replyTo", { username: replyToUsername }) : t("post.composerPlaceholder")
           }
           rows={parentId ? 2 : 3}
           maxLength={1000}
@@ -182,7 +185,7 @@ function CommentComposer({
               onClick={onCancel}
               className="rounded px-3 py-1.5 font-label text-[12px] text-[color:var(--ink-muted)] hover:bg-[var(--canvas-raised)]"
             >
-              取消
+              {t("common.cancel")}
             </button>
           )}
           <button
@@ -190,7 +193,7 @@ function CommentComposer({
             disabled={submitting || !text.trim()}
             className="btn-primary px-4 py-1.5 text-[12px] disabled:opacity-60"
           >
-            {submitting ? "发布中…" : "发布"}
+            {submitting ? t("post.publishing") : t("post.publish")}
           </button>
         </div>
       </div>
@@ -212,6 +215,7 @@ function CommentItem({
   postId: number;
   onMutated: () => void;
 }) {
+  const { t } = useTranslation();
   const [showReply, setShowReply] = useState(false);
   const [showReplies, setShowReplies] = useState(comment.replyCount <= 2);
 
@@ -237,7 +241,7 @@ function CommentItem({
           onClick={() => setShowReply((v) => !v)}
           className="hover:text-[var(--ink)]"
         >
-          回复
+          {t("post.reply")}
         </button>
         {comment.replyCount > 0 && (
           <button
@@ -245,7 +249,7 @@ function CommentItem({
             onClick={() => setShowReplies((v) => !v)}
             className="hover:text-[var(--ink)]"
           >
-            {showReplies ? "收起" : `展开 ${comment.replyCount} 条回复`}
+            {showReplies ? t("post.collapse") : t("post.expandReplies", { count: comment.replyCount })}
           </button>
         )}
       </div>
@@ -278,6 +282,7 @@ function CommentItem({
 }
 
 function ReplyItem({ reply }: { reply: CommentReply }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-2">
       <Header
@@ -290,7 +295,7 @@ function ReplyItem({ reply }: { reply: CommentReply }) {
       <p className="whitespace-pre-wrap font-serif text-[14px] leading-relaxed text-[var(--ink)]">
         {reply.replyToUsername && (
           <span className="text-[color:var(--ink-muted)]">
-            回复 @{reply.replyToUsername}：
+            {t("post.replyPrefix", { username: reply.replyToUsername })}
           </span>
         )}
         {reply.content}
@@ -319,6 +324,7 @@ function Header({
   createdAt: string;
   small?: boolean;
 }) {
+  const { t } = useTranslation();
   const size = small ? 28 : 36;
   return (
     <div className="flex items-center gap-3">
@@ -349,7 +355,7 @@ function Header({
           @{username}
         </Link>
         <time className="font-label text-[11px] text-[color:var(--ink-muted)]">
-          {formatRelativeTime(createdAt)}
+          {formatRelativeTime(createdAt, t)}
         </time>
       </div>
     </div>

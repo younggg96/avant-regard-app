@@ -61,6 +61,7 @@ import {
 } from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { formatTimestamp } from "../components/PostDetail/types";
+import { useTranslation } from "react-i18next";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -85,6 +86,7 @@ interface ReplyTarget {
 }
 
 const StoreProductDetailScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { productId } = route.params ?? ({} as RouteParams);
@@ -140,7 +142,7 @@ const StoreProductDetailScreen: React.FC = () => {
     } catch (e) {
       console.error("[StoreProductDetail] load product failed:", e);
       if (!mountedRef.current) return;
-      setError(e instanceof Error ? e.message : "加载商品失败");
+      setError(e instanceof Error ? e.message : t("store.loadFailed"));
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
@@ -201,7 +203,7 @@ const StoreProductDetailScreen: React.FC = () => {
   const handleToggleLike = useCallback(async () => {
     if (likePending) return;
     if (!currentUser) {
-      Alert.show("请先登录");
+      Alert.show(t("common.pleaseLogin"));
       return;
     }
     const nextLiked = !isLiked;
@@ -215,7 +217,7 @@ const StoreProductDetailScreen: React.FC = () => {
       // 回滚乐观态
       setIsLiked(!nextLiked);
       setLikeCount((n) => Math.max(0, n + (nextLiked ? -1 : 1)));
-      Alert.show(e instanceof Error ? e.message : "操作失败");
+      Alert.show(e instanceof Error ? e.message : t("store.operationFailed"));
     } finally {
       if (mountedRef.current) setLikePending(false);
     }
@@ -241,7 +243,7 @@ const StoreProductDetailScreen: React.FC = () => {
     const text = commentInput.trim();
     if (!text) return;
     if (!currentUser) {
-      Alert.show("请先登录");
+      Alert.show(t("common.pleaseLogin"));
       return;
     }
     if (isSubmittingComment) return;
@@ -259,7 +261,7 @@ const StoreProductDetailScreen: React.FC = () => {
       setReplyTarget(null);
       Keyboard.dismiss();
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "发布失败");
+      Alert.show(e instanceof Error ? e.message : t("store.publishFailed"));
     } finally {
       if (mountedRef.current) setIsSubmittingComment(false);
     }
@@ -279,7 +281,7 @@ const StoreProductDetailScreen: React.FC = () => {
         setComments((prev) => prev.filter((c) => c.id !== commentId));
         setCommentsTotal((n) => Math.max(0, n - 1));
       } catch (e) {
-        Alert.show(e instanceof Error ? e.message : "删除失败");
+        Alert.show(e instanceof Error ? e.message : t("store.deleteFailed"));
       }
     },
     []
@@ -318,7 +320,7 @@ const StoreProductDetailScreen: React.FC = () => {
               : it
           )
         );
-        Alert.show(e instanceof Error ? e.message : "点赞失败");
+        Alert.show(e instanceof Error ? e.message : t("store.likeFailed"));
       }
     },
     []
@@ -352,7 +354,7 @@ const StoreProductDetailScreen: React.FC = () => {
   if (isLoading && !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header title="商品详情" onBack={navigation.goBack} />
+        <Header title={t("store.productDetail")} onBack={navigation.goBack} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.black} />
         </View>
@@ -363,18 +365,18 @@ const StoreProductDetailScreen: React.FC = () => {
   if (error || !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header title="商品详情" onBack={navigation.goBack} />
+        <Header title={t("store.productDetail")} onBack={navigation.goBack} />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
           <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
-            加载失败
+            {t("store.loadFailed")}
           </Text>
           <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
-            {error ?? "商品不存在"}
+            {error ?? t("store.productNotFound")}
           </Text>
           <Pressable onPress={loadProduct} px="$lg" py="$sm" mt="$md" bg="$black" rounded="$md">
             <Text color="$white" fontWeight="$semibold" fontSize="$sm">
-              点击重试
+              {t("store.tapRetry")}
             </Text>
           </Pressable>
         </View>
@@ -384,7 +386,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
-      <Header title="商品详情" onBack={navigation.goBack} />
+      <Header title={t("store.productDetail")} onBack={navigation.goBack} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -473,7 +475,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
             {!!product.brand && (
               <Text fontSize={13} color="$gray600">
-                品牌：{product.brand}
+                {t("store.brandLabel")}{product.brand}
               </Text>
             )}
 
@@ -499,9 +501,9 @@ const StoreProductDetailScreen: React.FC = () => {
 
             {product.tags && product.tags.length > 0 && (
               <HStack gap={6} flexWrap="wrap">
-                {product.tags.map((t) => (
+                {product.tags.map((tag) => (
                   <Box
-                    key={t}
+                    key={tag}
                     bg="$gray50"
                     px={10}
                     py={4}
@@ -510,7 +512,7 @@ const StoreProductDetailScreen: React.FC = () => {
                     borderColor="$gray100"
                   >
                     <Text fontSize={11} color="$gray700">
-                      {t}
+                      {tag}
                     </Text>
                   </Box>
                 ))}
@@ -527,7 +529,7 @@ const StoreProductDetailScreen: React.FC = () => {
           {/* 评论区 */}
           <View style={styles.commentsSection}>
             <Text fontSize={16} fontWeight="$semibold" color="$black">
-              评论 ({commentsTotal})
+              {t("store.comments")} ({commentsTotal})
             </Text>
 
             {commentsLoading && comments.length === 0 && (
@@ -540,7 +542,7 @@ const StoreProductDetailScreen: React.FC = () => {
               <View style={styles.commentsEmpty}>
                 <Ionicons name="chatbubble-outline" size={28} color={theme.colors.gray300} />
                 <Text fontSize={13} color="$gray400" mt={8}>
-                  暂无评论，快来发表第一条吧
+                  {t("store.noComments")}
                 </Text>
               </View>
             )}
@@ -563,7 +565,7 @@ const StoreProductDetailScreen: React.FC = () => {
                 alignItems="center"
               >
                 <Text fontSize={12} color="$gray400">
-                  加载更多评论
+                  {t("store.loadMoreComments")}
                 </Text>
               </Pressable>
             )}
@@ -587,7 +589,7 @@ const StoreProductDetailScreen: React.FC = () => {
             {replyTarget && (
               <View style={styles.replyHint}>
                 <Text fontSize={11} color="$gray600">
-                  回复 <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
+                  {t("store.reply")} <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
                 </Text>
                 <TouchableOpacity onPress={handleCancelReply} hitSlop={8}>
                   <Ionicons name="close-circle" size={16} color={theme.colors.gray400} />
@@ -600,7 +602,7 @@ const StoreProductDetailScreen: React.FC = () => {
                 value={commentInput}
                 onChangeText={setCommentInput}
                 placeholder={
-                  replyTarget ? `回复 @${replyTarget.userName}` : "写评论..."
+                  replyTarget ? `${t("store.reply")} @${replyTarget.userName}` : t("store.writeComment")
                 }
                 placeholderTextColor={theme.colors.gray400}
                 style={styles.input}
@@ -668,6 +670,7 @@ const CommentItemImpl: React.FC<{
   onDelete: () => void;
   onLike: () => void;
 }> = ({ comment, currentUserId, onReply, onDelete, onLike }) => {
+  const { t } = useTranslation();
   const isMine = currentUserId != null && comment.userId === currentUserId;
   const timestamp = comment.createdAt
     ? formatTimestamp(comment.createdAt)
@@ -688,7 +691,7 @@ const CommentItemImpl: React.FC<{
       <VStack flex={1} gap={4}>
         <HStack gap={6} alignItems="center" flexWrap="wrap">
           <Text fontSize={13} fontWeight="$semibold" color="$black">
-            {comment.username || "匿名用户"}
+            {comment.username || t("store.anonymous")}
           </Text>
           {comment.replyToUsername && (
             <>
@@ -731,13 +734,13 @@ const CommentItemImpl: React.FC<{
           </Pressable>
           <Pressable onPress={onReply}>
             <Text fontSize={11} color="$gray500">
-              回复
+              {t("store.reply")}
             </Text>
           </Pressable>
           {isMine && (
             <Pressable onPress={onDelete}>
               <Text fontSize={11} color="$error">
-                删除
+                {t("common.delete")}
               </Text>
             </Pressable>
           )}

@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack } from "../ui";
 import { theme } from "../../theme";
@@ -93,6 +94,8 @@ export const CommentInputBar = forwardRef<
       }, 100);
     }, [onInputFocus]);
 
+    const { t } = useTranslation();
+
     const handleTextChange = useCallback(
       (text: string) => {
         const singleLineText = text.replace(/[\r\n]/g, "");
@@ -102,8 +105,8 @@ export const CommentInputBar = forwardRef<
     );
 
     const placeholderText = replyTarget
-      ? `回复 @${replyTarget.userName}...`
-      : "写评论...";
+      ? t("postDetail.replyTo", { name: replyTarget.userName })
+      : t("postDetail.writeComment");
 
     return (
       <View style={[styles.bottomBar, isFocused && styles.bottomBarExpanded]}>
@@ -114,7 +117,7 @@ export const CommentInputBar = forwardRef<
             {replyTarget && (
               <View style={styles.replyHint}>
                 <Text style={styles.replyHintText}>
-                  正在回复 <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
+                  {t("postDetail.replyingTo")} <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.replyHintClose}

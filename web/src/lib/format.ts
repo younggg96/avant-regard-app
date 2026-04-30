@@ -13,12 +13,33 @@ export function formatCount(n: number | undefined | null): string {
   return String(value);
 }
 
-export function formatRelativeTime(iso?: string): string {
+type RelativeTimeT = (
+  key: string,
+  options?: Record<string, string | number>,
+) => string;
+
+/**
+ * Relative time for feed timestamps. Pass `t` from `useTranslation()` for
+ * localized strings; when omitted, falls back to Chinese (legacy callers).
+ */
+export function formatRelativeTime(iso?: string, t?: RelativeTimeT): string {
   if (!iso) return "";
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diff = Date.now() - then;
   const minutes = Math.floor(diff / 60_000);
+  if (t) {
+    if (minutes < 1) return t("timeRelative.justNow");
+    if (minutes < 60) return t("timeRelative.minutesAgo", { count: minutes });
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t("timeRelative.hoursAgo", { count: hours });
+    const days = Math.floor(hours / 24);
+    if (days < 30) return t("timeRelative.daysAgo", { count: days });
+    const months = Math.floor(days / 30);
+    if (months < 12) return t("timeRelative.monthsAgo", { count: months });
+    const years = Math.floor(months / 12);
+    return t("timeRelative.yearsAgo", { count: years });
+  }
   if (minutes < 1) return "刚刚";
   if (minutes < 60) return `${minutes} 分钟前`;
   const hours = Math.floor(minutes / 60);

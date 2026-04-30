@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
@@ -41,6 +42,7 @@ interface AllCommentsParams {
 }
 
 const AllCommentsScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as AllCommentsParams;
@@ -154,7 +156,7 @@ const AllCommentsScreen = () => {
 
   const handleSubmitComment = () => {
     if (newCommentText.trim().length < 10) {
-      Alert.show("提示", "评论内容至少需要10个字符");
+      Alert.show(t("post.commentMinLength"));
       return;
     }
 
@@ -170,7 +172,7 @@ const AllCommentsScreen = () => {
     setNewCommentText("");
     setNewCommentRating(5);
     setIsWritingComment(false);
-    Alert.show("成功", "评论发布成功！");
+    Alert.show(t("post.commentSuccess"));
   };
 
   const onRefresh = async () => {
@@ -228,7 +230,7 @@ const AllCommentsScreen = () => {
             size={20}
             color={theme.colors.gray600}
           />
-          <Text style={styles.writeCommentButtonText}>写评论...</Text>
+          <Text style={styles.writeCommentButtonText}>{t("post.writeComment")}</Text>
         </TouchableOpacity>
       );
     }
@@ -236,7 +238,7 @@ const AllCommentsScreen = () => {
     return (
       <View style={styles.writeCommentExpanded}>
         <View style={styles.ratingSection}>
-          <Text style={styles.ratingLabel}>评分:</Text>
+          <Text style={styles.ratingLabel}>{t("post.rating")}:</Text>
           <View style={styles.writingStars}>
             {renderWritingStars(newCommentRating)}
           </View>
@@ -244,7 +246,7 @@ const AllCommentsScreen = () => {
 
         <TextInput
           style={styles.commentInput}
-          placeholder="分享你的看法..."
+          placeholder={t("post.commentPlaceholder")}
           multiline
           numberOfLines={3}
           value={newCommentText}
@@ -262,14 +264,14 @@ const AllCommentsScreen = () => {
               setNewCommentRating(5);
             }}
           >
-            <Text style={styles.cancelSubmitButtonText}>取消</Text>
+            <Text style={styles.cancelSubmitButtonText}>{t("common.cancel")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.submitButton}
             onPress={handleSubmitComment}
           >
-            <Text style={styles.submitButtonText}>发布</Text>
+            <Text style={styles.submitButtonText}>{t("common.submit")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -285,7 +287,7 @@ const AllCommentsScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>所有评论 ({comments.length})</Text>
+        <Text style={styles.headerTitle}>{t("post.comments")} ({comments.length})</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -324,8 +326,8 @@ const AllCommentsScreen = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text style={styles.emptyText}>暂无评论</Text>
-            <Text style={styles.emptySubtext}>成为第一个评论的人吧！</Text>
+            <Text style={styles.emptyText}>{t("post.noComments")}</Text>
+            <Text style={styles.emptySubtext}>{t("post.beFirstComment")}</Text>
           </View>
         }
       />

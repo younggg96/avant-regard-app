@@ -4,6 +4,7 @@ import {
   Modal,
   TouchableOpacity,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, HStack } from "../../../components/ui";
 import { theme } from "../../../theme";
 
@@ -27,6 +28,7 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
   selectedValue,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const hasActive = selectedValue !== "all";
 
   return (
@@ -39,7 +41,7 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e: any) => e.stopPropagation()}>
           <Box style={styles.handle} />
-          <Text style={styles.title}>筛选类别</Text>
+          <Text style={styles.title}>{t("archive.filterCategory")}</Text>
 
           <HStack style={styles.grid}>
             {filters.map((filter) => (
@@ -76,7 +78,7 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
               }}
               activeOpacity={0.7}
             >
-              <Text style={styles.resetText}>重置筛选</Text>
+              <Text style={styles.resetText}>{t("archive.resetFilter")}</Text>
             </TouchableOpacity>
           )}
         </Pressable>

@@ -25,6 +25,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -45,6 +46,7 @@ import {
 } from "../services/levelService";
 
 const MyLevelScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
   const status = useLevelStore((s) => s.status);
@@ -83,9 +85,9 @@ const MyLevelScreen: React.FC = () => {
   if (!user?.userId) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <ScreenHeader title="我的等级" showBack />
+        <ScreenHeader title={t("myLevel.title")} showBack />
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>请先登录查看等级</Text>
+          <Text style={styles.emptyText}>{t("myLevel.loginRequired")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -97,7 +99,7 @@ const MyLevelScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="我的等级" showBack />
+      <ScreenHeader title={t("myLevel.title")} showBack />
 
       <ScrollView
         style={styles.scroll}

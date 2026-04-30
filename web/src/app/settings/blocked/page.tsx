@@ -8,11 +8,13 @@
  */
 
 import Image from "next/image";
+import { useTranslation } from "react-i18next";
 import useSWR, { mutate } from "swr";
 import { moderationService, type BlockedUser } from "@/lib/services/moderation";
 import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export default function BlockedUsersPage() {
+  const { t } = useTranslation();
   const { data, isLoading, error } = useSWR<BlockedUser[]>(
     ["blocked-users"],
     () => moderationService.getBlockedUsers(),
@@ -29,7 +31,7 @@ export default function BlockedUsersPage() {
       await moderationService.unblockUser(u.userId);
     } catch (err) {
       mutate<BlockedUser[]>(["blocked-users"], prev, { revalidate: false });
-      alert(err instanceof Error ? err.message : "取消屏蔽失败");
+      alert(err instanceof Error ? err.message : t("settings.unblockFailed"));
     }
   };
 
@@ -37,27 +39,27 @@ export default function BlockedUsersPage() {
     <section className="min-w-0">
       <header className="mb-8 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          屏蔽用户
+          {t("settings.blockedUsers")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          你屏蔽的用户，其内容、评论和私信都不会再出现。
+          {t("settings.blockedUsersDesc")}
         </p>
       </header>
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loadingEllipsis")}
         </div>
       )}
       {error && (
         <div className="rounded border border-red-500/20 bg-red-500/5 p-4 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("common.loadFailed")}：{(error as Error).message}
         </div>
       )}
 
       {!isLoading && !error && (!data || data.length === 0) && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-8 font-serif text-sm text-[color:var(--ink-muted)]">
-          没有屏蔽任何用户。
+          {t("settings.noBlockedUsers")}
         </div>
       )}
 
@@ -87,7 +89,7 @@ export default function BlockedUsersPage() {
                 onClick={() => onUnblock(u)}
                 className="shrink-0 rounded border border-[var(--border)] px-3 py-1.5 font-label text-[12px] text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
               >
-                取消屏蔽
+                {t("settings.unblock")}
               </button>
             </li>
           ))}

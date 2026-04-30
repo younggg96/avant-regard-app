@@ -22,6 +22,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { theme } from "../../theme";
 import {
@@ -50,25 +51,26 @@ function currentMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function statusLabel(status: LotteryRoundInfo["status"]): {
-  text: string;
-  color: string;
-} {
-  switch (status) {
-    case "OPEN":
-      return { text: "进行中", color: theme.colors.success };
-    case "DRAWN":
-      return { text: "已开奖", color: theme.colors.black };
-    case "CLOSED":
-      return { text: "已关闭", color: theme.colors.gray300 };
-    default:
-      return { text: status, color: theme.colors.gray300 };
-  }
-}
-
 // ---------------- 组件 ----------------
 
 const LotteryAdminTab: React.FC = () => {
+  const { t } = useTranslation();
+
+  const statusLabel = (status: LotteryRoundInfo["status"]): {
+    text: string;
+    color: string;
+  } => {
+    switch (status) {
+      case "OPEN":
+        return { text: t("admin.lotteryOpen"), color: theme.colors.success };
+      case "DRAWN":
+        return { text: t("admin.lotteryDrawn"), color: theme.colors.black };
+      case "CLOSED":
+        return { text: t("admin.lotteryClosed"), color: theme.colors.gray300 };
+      default:
+        return { text: status, color: theme.colors.gray300 };
+    }
+  };
   const [rounds, setRounds] = useState<LotteryRoundInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,7 +95,7 @@ const LotteryAdminTab: React.FC = () => {
       const data = await adminLevelService.listRounds(24);
       setRounds(data);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "获取期数失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchRoundsFailed"));
     } finally {
       setLoading(false);
     }
@@ -164,7 +166,7 @@ const LotteryAdminTab: React.FC = () => {
   const saveEditor = async () => {
     const monthPattern = /^\d{4}-\d{2}$/;
     if (!monthPattern.test(editorMonth.trim())) {
-      Alert.alert("错误", "月份格式必须为 YYYY-MM, 例如 2026-04");
+      Alert.alert(t("admin.error"), t("admin.lotteryMonthFormat"));
       return;
     }
     const cleaned: LotteryPrize[] = editorPrizes
@@ -177,13 +179,13 @@ const LotteryAdminTab: React.FC = () => {
       .filter((p) => p.prizeId && p.name && p.quota > 0);
 
     if (cleaned.length === 0) {
-      Alert.alert("错误", "至少需要一条有效奖品 (prizeId / name / quota > 0)");
+      Alert.alert(t("admin.error"), t("admin.lotteryMinPrize"));
       return;
     }
     const idSet = new Set<string>();
     for (const p of cleaned) {
       if (idSet.has(p.prizeId)) {
-        Alert.alert("错误", `奖品 ID 重复: ${p.prizeId}`);
+        Alert.alert(t("admin.error"), t("admin.lotteryDuplicateId") + `: ${p.prizeId}`);
         return;
       }
       idSet.add(p.prizeId);
@@ -193,12 +195,12 @@ const LotteryAdminTab: React.FC = () => {
       setActionLoading(true);
       await adminLevelService.upsertRound(editorMonth.trim(), cleaned);
       setEditorVisible(false);
-      Alert.alert("成功", "奖池已更新");
+      Alert.alert(t("common.success"), t("admin.lotteryPrizesUpdated"));
       fetchRounds();
     } catch (e) {
       Alert.alert(
-        "错误",
-        e instanceof Error ? e.message : "保存失败 (可能该期已开奖)"
+        t("admin.error"),
+        e instanceof Error ? e.message : t("admin.lotteryPrizeSaveFailed")
       );
     } finally {
       setActionLoading(false);
@@ -209,22 +211,22 @@ const LotteryAdminTab: React.FC = () => {
 
   const handleSyncEntries = (round: LotteryRoundInfo) => {
     Alert.alert(
-      "同步进池",
+      t("admin.lotterySyncEntries"),
       `把所有 Lv3+ 用户批量拉入 ${round.month} 期. 已在池的用户会被自动跳过.`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "开始同步",
+          text: t("admin.lotterySyncStart"),
           onPress: async () => {
             try {
               setActionLoading(true);
               const res = await adminLevelService.syncEntries(round.id);
-              Alert.alert("同步完成", `新增 ${res.added} 位参与者`);
+              Alert.alert(t("admin.lotterySyncDone"), `新增 ${res.added} 位参与者`);
               fetchRounds();
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "同步失败"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.operationFailed")
               );
             } finally {
               setActionLoading(false);
@@ -239,15 +241,15 @@ const LotteryAdminTab: React.FC = () => {
 
   const handleDraw = (round: LotteryRoundInfo) => {
     if (round.status !== "OPEN") {
-      Alert.alert("提示", "该期已开奖或已关闭");
+      Alert.alert(t("admin.hint"), t("admin.lotteryAlreadyDrawn"));
       return;
     }
     if (round.prizeConfig.length === 0) {
-      Alert.alert("奖池为空", "请先配置奖品再开奖");
+      Alert.alert(t("admin.lotteryEmptyPrizes"), t("admin.lotteryNoPrizes"));
       return;
     }
     if (round.totalEntries === 0) {
-      Alert.alert("无人参与", "当前无参与者, 无法开奖");
+      Alert.alert(t("admin.lotteryNoEntries"), t("admin.lotteryNoEntries"));
       return;
     }
 
@@ -262,20 +264,20 @@ const LotteryAdminTab: React.FC = () => {
         .map((p) => `  · ${p.name} × ${p.quota}`)
         .join("\n")}\n\n共 ${totalQuota} 个名额, 从 ${round.totalEntries} 位参与者中抽取.\n开奖后期数状态会锁定为 DRAWN, 不可撤销.`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "确认开奖",
+          text: t("admin.lotteryConfirmDraw"),
           style: "destructive",
           onPress: async () => {
             try {
               setActionLoading(true);
               const res = await adminLevelService.drawRound(round.id, null);
-              Alert.alert("已开奖", `共产生 ${res.winners} 位中奖者`);
+              Alert.alert(t("admin.lotteryDrawnResult"), `共产生 ${res.winners} 位中奖者`);
               fetchRounds();
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "开奖失败"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.operationFailed")
               );
             } finally {
               setActionLoading(false);
@@ -304,7 +306,7 @@ const LotteryAdminTab: React.FC = () => {
             marginBottom: 6,
           }}
         >
-          <Text style={styles.sectionTitle}>月度抽奖期数</Text>
+          <Text style={styles.sectionTitle}>{t("admin.lotteryRounds")}</Text>
           <Button
             size="sm"
             onPress={() => openEditor()}
@@ -316,17 +318,17 @@ const LotteryAdminTab: React.FC = () => {
               />
             }
           >
-            <ButtonText style={{ fontSize: 12 }}>建期 / 改奖池</ButtonText>
+            <ButtonText style={{ fontSize: 12 }}>{t("admin.lotteryCreateEdit")}</ButtonText>
           </Button>
         </HStack>
         <Text style={styles.sectionHint}>
-          1 号建期 · 25 号开奖. 严禁自动开奖, 必须由本页手动触发. 奖品支持灵活 JSONB 配置.
+          {t("admin.lotteryHint")}
         </Text>
 
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : rounds.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
@@ -335,7 +337,7 @@ const LotteryAdminTab: React.FC = () => {
               size={40}
               color={theme.colors.gray200}
             />
-            <Text style={sharedStyles.emptyText}>暂无期数</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noRounds")}</Text>
             <Text style={sharedStyles.emptySubtext}>
               点右上 "建期 / 改奖池" 开始
             </Text>
@@ -360,21 +362,21 @@ const LotteryAdminTab: React.FC = () => {
 
                 <HStack style={styles.statRow}>
                   <VStack style={styles.statCell}>
-                    <Text style={styles.statLabel}>参与</Text>
+                    <Text style={styles.statLabel}>{t("admin.lotteryEntries")}</Text>
                     <Text style={styles.statValue}>{r.totalEntries}</Text>
                   </VStack>
                   <VStack style={styles.statCell}>
-                    <Text style={styles.statLabel}>中奖</Text>
+                    <Text style={styles.statLabel}>{t("admin.lotteryWinners")}</Text>
                     <Text style={styles.statValue}>{r.totalWinners}</Text>
                   </VStack>
                   <VStack style={styles.statCell}>
-                    <Text style={styles.statLabel}>奖品</Text>
+                    <Text style={styles.statLabel}>{t("admin.lotteryPrizes")}</Text>
                     <Text style={styles.statValue}>
                       {r.prizeConfig.length}
                     </Text>
                   </VStack>
                   <VStack style={styles.statCell}>
-                    <Text style={styles.statLabel}>开奖于</Text>
+                    <Text style={styles.statLabel}>{t("admin.lotteryDrawnAt")}</Text>
                     <Text style={styles.statValue}>
                       {r.drawnAt
                         ? new Date(r.drawnAt).toLocaleDateString("zh-CN")
@@ -396,7 +398,7 @@ const LotteryAdminTab: React.FC = () => {
                     ))}
                   </VStack>
                 ) : (
-                  <Text style={styles.emptyPrizeText}>奖池尚未配置</Text>
+                  <Text style={styles.emptyPrizeText}>{t("admin.lotteryNoPrizes")}</Text>
                 )}
 
                 <HStack style={sharedStyles.actionButtons}>
@@ -413,7 +415,7 @@ const LotteryAdminTab: React.FC = () => {
                           color: theme.colors.black,
                         }}
                       >
-                        改奖池
+                        {t("admin.lotteryEditPrizes")}
                       </ButtonText>
                     </Button>
                   )}
@@ -430,7 +432,7 @@ const LotteryAdminTab: React.FC = () => {
                           color: theme.colors.black,
                         }}
                       >
-                        同步进池
+                        {t("admin.lotterySyncEntries")}
                       </ButtonText>
                     </Button>
                   )}
@@ -448,7 +450,7 @@ const LotteryAdminTab: React.FC = () => {
                         />
                       }
                     >
-                      <ButtonText style={{ fontSize: 12 }}>开奖</ButtonText>
+                      <ButtonText style={{ fontSize: 12 }}>{t("admin.lotteryDraw")}</ButtonText>
                     </Button>
                   )}
                 </HStack>
@@ -472,10 +474,10 @@ const LotteryAdminTab: React.FC = () => {
             style={[sharedStyles.modalContent, { maxHeight: "85%" }]}
           >
             <Text style={sharedStyles.modalTitle}>
-              {editorMode === "edit" ? "改奖池" : "建期"}
+              {editorMode === "edit" ? t("admin.lotteryEditPrizes") : t("admin.lotteryCreateRound")}
             </Text>
 
-            <Text style={sharedStyles.formLabel}>期号 (YYYY-MM)</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.lotteryMonth")}</Text>
             <Input
               variant="outline"
               size="md"
@@ -496,7 +498,7 @@ const LotteryAdminTab: React.FC = () => {
                 : "已 DRAWN 的期数不能再改奖池."}
             </Text>
 
-            <Text style={sharedStyles.formLabel}>奖品列表</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.lotteryPrizeList")}</Text>
             <ScrollView
               style={{ maxHeight: 260 }}
               showsVerticalScrollIndicator={false}
@@ -554,7 +556,7 @@ const LotteryAdminTab: React.FC = () => {
                 color={theme.colors.black}
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.addRowText}>新增一行</Text>
+              <Text style={styles.addRowText}>{t("admin.lotteryAddRow")}</Text>
             </Pressable>
 
             <HStack style={sharedStyles.modalButtons}>
@@ -564,7 +566,7 @@ const LotteryAdminTab: React.FC = () => {
                 onPress={() => setEditorVisible(false)}
               >
                 <ButtonText style={{ color: theme.colors.gray400 }}>
-                  取消
+                  {t("common.cancel")}
                 </ButtonText>
               </Button>
               <Button
@@ -573,7 +575,7 @@ const LotteryAdminTab: React.FC = () => {
                 disabled={actionLoading}
                 isLoading={actionLoading}
               >
-                <ButtonText>保存</ButtonText>
+                <ButtonText>{t("common.save")}</ButtonText>
               </Button>
             </HStack>
           </Box>

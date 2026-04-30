@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { brandSubmissionsApi, type AdminBrandSubmission } from "@/lib/services/admin";
 import {
   PageHeader,
-  StatusBadge,
   EmptyState,
   LoadingState,
   PromptDialog,
@@ -13,6 +13,7 @@ import {
 
 
 export default function BrandSubmissionsPage() {
+  const { t } = useTranslation();
   const [submissions, setSubmissions] = useState<AdminBrandSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<AdminBrandSubmission | null>(null);
@@ -52,12 +53,12 @@ export default function BrandSubmissionsPage() {
 
   return (
     <div>
-      <PageHeader title="品牌审核" description={`${submissions.length} 条待审核`} />
+      <PageHeader title={t("admin.brandSubmissions")} description={t("admin.brandSubmissionsDesc", { count: submissions.length })} />
 
       {loading ? (
         <LoadingState />
       ) : submissions.length === 0 ? (
-        <EmptyState message="暂无待审核品牌提交" />
+        <EmptyState message={t("admin.noPendingBrands")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {submissions.map((s) => (
@@ -68,18 +69,18 @@ export default function BrandSubmissionsPage() {
               <div className="p-4 font-label">
                 <h3 className="text-[14px] font-semibold">{s.name}</h3>
                 <div className="mt-1 space-y-0.5 text-[12px] text-[color:var(--ink-muted)]">
-                  <div>提交人: @{s.username}</div>
-                  {s.category && <div>分类: {s.category}</div>}
-                  {s.country && <div>国家: {s.country}</div>}
-                  {s.founder && <div>创始人: {s.founder}</div>}
-                  {s.foundedYear && <div>创立: {s.foundedYear}</div>}
+                  <div>{t("admin.submitterLabel", { name: s.username })}</div>
+                  {s.category && <div>{t("admin.categoryLabelBrand", { category: s.category })}</div>}
+                  {s.country && <div>{t("admin.countryLabel", { country: s.country })}</div>}
+                  {s.founder && <div>{t("admin.founderLabelBrand", { founder: s.founder })}</div>}
+                  {s.foundedYear && <div>{t("admin.foundedLabel", { year: s.foundedYear })}</div>}
                 </div>
                 <div className="mt-3 flex gap-2 border-t border-[var(--border)] pt-3">
                   <Button size="sm" onClick={() => handleApprove(s.id)} loading={acting === s.id}>
-                    通过
+                    {t("admin.approve")}
                   </Button>
                   <Button variant="secondary" size="sm" onClick={() => setRejectTarget(s)}>
-                    拒绝
+                    {t("admin.reject")}
                   </Button>
                 </div>
               </div>
@@ -90,9 +91,9 @@ export default function BrandSubmissionsPage() {
 
       <PromptDialog
         open={!!rejectTarget}
-        title="拒绝原因"
-        placeholder="请输入拒绝原因（可选）"
-        confirmLabel="拒绝"
+        title={t("admin.rejectReason")}
+        placeholder={t("admin.rejectReasonPlaceholder")}
+        confirmLabel={t("admin.reject")}
         loading={!!acting}
         onConfirm={(reason) => rejectTarget && handleReject(rejectTarget.id, reason)}
         onCancel={() => setRejectTarget(null)}

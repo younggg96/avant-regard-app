@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +32,7 @@ interface FavoriteItem {
 }
 
 const FavoritesScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -266,24 +268,22 @@ const FavoritesScreen = () => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="heart-outline" size={64} color={theme.colors.gray300} />
-      <Text style={styles.emptyTitle}>暂无收藏</Text>
+      <Text style={styles.emptyTitle}>{t("favorites.noFavorites")}</Text>
       <Text style={styles.emptySubtitle}>
-        {activeTab === "all"
-          ? "开始收藏您喜欢的内容吧"
-          : `暂无收藏的${tabs.find((t) => t.key === activeTab)?.label}`}
+        {t("favorites.startCollecting")}
       </Text>
       <TouchableOpacity
         style={styles.exploreButton}
         onPress={() => (navigation as any).navigate("Home")}
       >
-        <Text style={styles.exploreButtonText}>去探索</Text>
+        <Text style={styles.exploreButtonText}>{t("favorites.explore")}</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="我的收藏" showBack={true} />
+      <ScreenHeader title={t("favorites.title")} showBack={true} />
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>

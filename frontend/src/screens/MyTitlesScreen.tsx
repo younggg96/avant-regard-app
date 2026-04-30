@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -20,6 +21,7 @@ import {
 } from "../services/userInfoService";
 
 const MyTitlesScreen = () => {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const [titles, setTitles] = useState<UserTitle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ const MyTitlesScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="我的头衔" showBack={true} />
+      <ScreenHeader title={t("myTitles.title")} showBack={true} />
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -89,16 +91,16 @@ const MyTitlesScreen = () => {
               size={48}
               color={theme.colors.gray200}
             />
-            <Text style={styles.emptyText}>暂无头衔</Text>
+            <Text style={styles.emptyText}>{t("myTitles.noTitles")}</Text>
             <Text style={styles.emptySubText}>
-              头衔由管理员授予，获得头衔后可在此设置展示
+              {t("myTitles.emptyHint")}
             </Text>
           </View>
         ) : (
           <>
             {primaryTitle && (
               <View style={styles.primarySection}>
-                <Text style={styles.sectionTitle}>当前展示头衔</Text>
+                <Text style={styles.sectionTitle}>{t("myTitles.current")}</Text>
                 <View style={styles.primaryCard}>
                   <View style={styles.primaryContent}>
                     <Ionicons name="star" size={18} color="#D97706" />
@@ -111,16 +113,16 @@ const MyTitlesScreen = () => {
                     disabled={updating}
                     style={styles.clearButton}
                   >
-                    <Text style={styles.clearButtonText}>取消展示</Text>
+                    <Text style={styles.clearButtonText}>{t("myTitles.unequip")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
             <View style={styles.allSection}>
-              <Text style={styles.sectionTitle}>全部头衔</Text>
+              <Text style={styles.sectionTitle}>{t("myTitles.allTitles")}</Text>
               <Text style={styles.sectionHint}>
-                点击头衔可设为主头衔，主头衔将展示在帖子、评论和聊天中
+                {t("myTitles.allTitlesHint")}
               </Text>
               {titles.map((title) => (
                 <TouchableOpacity
@@ -152,10 +154,10 @@ const MyTitlesScreen = () => {
                   </View>
                   {title.isPrimary ? (
                     <View style={styles.primaryBadge}>
-                      <Text style={styles.primaryBadgeText}>主头衔</Text>
+                      <Text style={styles.primaryBadgeText}>{t("myTitles.primary")}</Text>
                     </View>
                   ) : (
-                    <Text style={styles.setAsText}>设为主头衔</Text>
+                    <Text style={styles.setAsText}>{t("myTitles.equip")}</Text>
                   )}
                 </TouchableOpacity>
               ))}

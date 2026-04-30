@@ -18,10 +18,12 @@ import {
   getStoresPaginated,
 } from "../services/buyerStoreService";
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 20;
 
 const StoreSearchScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
 
@@ -147,7 +149,7 @@ const StoreSearchScreen = () => {
           <HStack alignItems="center" gap="$sm">
             {getFavoriteCount(store.id) > 0 && (
               <Text fontSize={11} color="$gray300">
-                {getFavoriteCount(store.id)}人已关注
+                {t("store.followersCount", { count: getFavoriteCount(store.id) })}
               </Text>
             )}
             <Pressable
@@ -165,7 +167,7 @@ const StoreSearchScreen = () => {
                 fontWeight="$bold"
                 color={isFavorited(store.id) ? "$white" : "$black"}
               >
-                {isFavorited(store.id) ? "已关注" : "关注"}
+                {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
               </Text>
             </Pressable>
             <Box
@@ -179,7 +181,7 @@ const StoreSearchScreen = () => {
                 fontWeight="$bold"
                 color={store.isOpen ? "#27AE60" : "$gray300"}
               >
-                {store.isOpen ? "营业中" : "休息"}
+                {store.isOpen ? t("store.open") : t("store.closed")}
               </Text>
             </Box>
           </HStack>
@@ -229,7 +231,7 @@ const StoreSearchScreen = () => {
       <Box py="$lg" alignItems="center">
         <ActivityIndicator color={theme.colors.black} />
         <Text color="$gray300" fontSize="$sm" mt="$sm">
-          加载更多...
+          {t("common.loadMore")}
         </Text>
       </Box>
     );
@@ -243,10 +245,10 @@ const StoreSearchScreen = () => {
         <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
           <Ionicons name="search-outline" size={64} color={theme.colors.gray300} />
           <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
-            搜索店铺
+            {t("store.searchStores")}
           </Text>
           <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
-            输入店铺名称、城市或品牌进行搜索
+            {t("store.searchHint")}
           </Text>
         </VStack>
       );
@@ -256,10 +258,10 @@ const StoreSearchScreen = () => {
       <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
         <Ionicons name="storefront-outline" size={64} color={theme.colors.gray300} />
         <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
-          未找到相关店铺
+          {t("store.noSearchResults")}
         </Text>
         <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
-          试试其他关键词吧
+          {t("store.tryOtherKeywords")}
         </Text>
       </VStack>
     );
@@ -297,7 +299,7 @@ const StoreSearchScreen = () => {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="搜索店铺名称、城市或品牌..."
+            placeholder={t("store.searchPlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -314,7 +316,7 @@ const StoreSearchScreen = () => {
 
         <Pressable onPress={handleSearch} px="$lg" py="$sm" bg="$black" rounded="$sm">
           <Text color="$white" fontSize="$sm" fontWeight="$semibold">
-            搜索
+            {t("common.search")}
           </Text>
         </Pressable>
       </HStack>
@@ -324,18 +326,14 @@ const StoreSearchScreen = () => {
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator size="small" color={theme.colors.black} />
           <Text fontSize="$md" color="$gray600" mt="$md">
-            搜索中...
+            {t("store.searching")}
           </Text>
         </VStack>
       ) : isSearching && stores.length > 0 ? (
         <Box flex={1} bg="$gray50">
           <HStack px="$md" py="$md" alignItems="center">
             <Text fontSize="$md" color="$gray600">
-              找到{" "}
-              <Text fontWeight="$semibold" color="$black">
-                {totalStores}
-              </Text>{" "}
-              家店铺
+              {t("store.foundStores", { count: totalStores })}
             </Text>
           </HStack>
           <FlatList

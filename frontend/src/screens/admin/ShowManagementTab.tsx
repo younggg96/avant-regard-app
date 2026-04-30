@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import {
   showService,
@@ -32,13 +33,6 @@ const CATEGORIES = [
   "Co-Ed", "Accessories", "Beauty", "Bridal", "Kids Wear",
 ];
 
-const STATUS_OPTIONS = [
-  { key: "", label: "全部" },
-  { key: "APPROVED", label: "已通过" },
-  { key: "PENDING", label: "待审核" },
-  { key: "REJECTED", label: "已拒绝" },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   APPROVED: theme.colors.success,
   PENDING: "#F59E0B",
@@ -57,6 +51,15 @@ const EMPTY_FORM: CreateShowParams = {
 };
 
 const ShowManagementTab = () => {
+  const { t } = useTranslation();
+
+  const STATUS_OPTIONS = [
+    { key: "", label: t("common.all") },
+    { key: "APPROVED", label: t("admin.approved") },
+    { key: "PENDING", label: t("admin.pendingReview") },
+    { key: "REJECTED", label: t("admin.rejected") },
+  ];
+
   const [shows, setShows] = useState<Show[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -91,10 +94,10 @@ const ShowManagementTab = () => {
         setTotal(result.total);
         setPage(result.page);
       } catch (error) {
-        console.error("获取秀场列表失败:", error);
+        console.error("fetchShows error:", error);
         Alert.alert(
-          "错误",
-          error instanceof Error ? error.message : "获取秀场列表失败"
+          t("admin.error"),
+          error instanceof Error ? error.message : t("admin.fetchShowsFailed")
         );
       } finally {
         setLoading(false);
@@ -125,19 +128,19 @@ const ShowManagementTab = () => {
 
   const handleCreate = async () => {
     if (!createForm.brand.trim() || !createForm.title.trim() || !createForm.season.trim()) {
-      Alert.alert("提示", "品牌、标题和季度为必填项");
+      Alert.alert(t("admin.hint"), t("admin.showRequiredFields"));
       return;
     }
     try {
       setActionLoading(true);
       await showService.adminCreateShow(createForm);
-      Alert.alert("成功", "秀场已创建");
+      Alert.alert(t("common.success"), t("admin.showCreated"));
       setCreateModalVisible(false);
       fetchShows(1, keyword, statusFilter);
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "创建失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.createFailed")
       );
     } finally {
       setActionLoading(false);
@@ -165,13 +168,13 @@ const ShowManagementTab = () => {
     try {
       setActionLoading(true);
       await showService.adminUpdateShow(String(editingShow.id), editForm);
-      Alert.alert("成功", "秀场已更新");
+      Alert.alert(t("common.success"), t("admin.showUpdated"));
       setEditModalVisible(false);
       fetchShows(page, keyword, statusFilter);
     } catch (error) {
       Alert.alert(
-        "错误",
-        error instanceof Error ? error.message : "更新失败"
+        t("admin.error"),
+        error instanceof Error ? error.message : t("admin.updateFailed")
       );
     } finally {
       setActionLoading(false);
@@ -180,23 +183,23 @@ const ShowManagementTab = () => {
 
   const handleDelete = (show: Show) => {
     Alert.alert(
-      "确认删除",
+      t("admin.confirmDelete"),
       `确定要删除秀场「${show.title || show.brand + " " + show.season}」吗？此操作不可撤销。`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               setActionLoading(true);
               await showService.adminDeleteShow(String(show.id));
-              Alert.alert("已删除", "秀场已删除");
+              Alert.alert(t("admin.deleted"), t("admin.showDeleted"));
               fetchShows(page, keyword, statusFilter);
             } catch (error) {
               Alert.alert(
-                "错误",
-                error instanceof Error ? error.message : "删除失败"
+                t("admin.error"),
+                error instanceof Error ? error.message : t("admin.deleteFailed")
               );
             } finally {
               setActionLoading(false);
@@ -219,7 +222,7 @@ const ShowManagementTab = () => {
         setForm((f: any) => ({ ...f, coverImage: url }));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "图片上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
@@ -231,7 +234,7 @@ const ShowManagementTab = () => {
     isEdit: boolean
   ) => (
     <>
-      <Text style={sharedStyles.formLabel}>品牌名称 *</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.brandNameRequired")}</Text>
       <Input
         variant="outline"
         size="md"
@@ -241,7 +244,7 @@ const ShowManagementTab = () => {
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, brand: v }))}
       />
 
-      <Text style={sharedStyles.formLabel}>封面图</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.coverImage")}</Text>
       {form.coverImage ? (
         <OptimizedImage
           uri={form.coverImage}
@@ -266,13 +269,13 @@ const ShowManagementTab = () => {
           <>
             <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
             <Text style={sharedStyles.uploadImageButtonText}>
-              {form.coverImage ? "更换封面" : "上传封面"}
+              {form.coverImage ? t("admin.changeCover") : t("admin.uploadCover")}
             </Text>
           </>
         )}
       </Pressable>
 
-      <Text style={sharedStyles.formLabel}>秀场标题 *</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.showTitleRequired")}</Text>
       <Input
         variant="outline"
         size="md"
@@ -282,7 +285,7 @@ const ShowManagementTab = () => {
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, title: v }))}
       />
 
-      <Text style={sharedStyles.formLabel}>年份 *</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.yearRequired")}</Text>
       <Input
         variant="outline"
         size="md"
@@ -299,7 +302,7 @@ const ShowManagementTab = () => {
         maxLength={4}
       />
 
-      <Text style={sharedStyles.formLabel}>季度 *</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.seasonRequired")}</Text>
       <Box style={sharedStyles.linkTypeContainer}>
         {SEASONS.map((s) => (
           <Pressable
@@ -322,7 +325,7 @@ const ShowManagementTab = () => {
         ))}
       </Box>
 
-      <Text style={sharedStyles.formLabel}>类别</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.category")}</Text>
       <Box style={sharedStyles.linkTypeContainer}>
         {CATEGORIES.map((c) => (
           <Pressable
@@ -350,22 +353,22 @@ const ShowManagementTab = () => {
         ))}
       </Box>
 
-      <Text style={sharedStyles.formLabel}>主设计师</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.chiefDesigner")}</Text>
       <Input
         variant="outline"
         size="md"
-        placeholder="选填"
+        placeholder={t("admin.optional")}
         placeholderTextColor={theme.colors.gray300}
         value={form.designer || ""}
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, designer: v }))}
       />
 
-      <Text style={sharedStyles.formLabel}>秀场介绍</Text>
+      <Text style={sharedStyles.formLabel}>{t("admin.showDescription")}</Text>
       <Input
         variant="outline"
         size="md"
         style={{ minHeight: 80 }}
-        placeholder="选填，介绍秀场的亮点、主题等"
+        placeholder={t("admin.optional")}
         placeholderTextColor={theme.colors.gray300}
         value={form.description || ""}
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, description: v }))}
@@ -376,7 +379,7 @@ const ShowManagementTab = () => {
 
       {isEdit && (
         <>
-          <Text style={sharedStyles.formLabel}>状态</Text>
+          <Text style={sharedStyles.formLabel}>{t("admin.status")}</Text>
           <HStack style={styles.statusChips}>
             {["APPROVED", "PENDING", "REJECTED"].map((s) => (
               <Pressable
@@ -397,10 +400,10 @@ const ShowManagementTab = () => {
                   ]}
                 >
                   {s === "APPROVED"
-                    ? "已通过"
+                    ? t("admin.approved")
                     : s === "PENDING"
-                      ? "待审核"
-                      : "已拒绝"}
+                      ? t("admin.pendingReview")
+                      : t("admin.rejected")}
                 </Text>
               </Pressable>
             ))}
@@ -423,7 +426,7 @@ const ShowManagementTab = () => {
         <HStack space="sm" style={styles.searchRow}>
           <Input
             style={styles.searchInput}
-            placeholder="搜索品牌、标题、设计师..."
+            placeholder={t("admin.searchShowPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
@@ -469,12 +472,12 @@ const ShowManagementTab = () => {
           </Pressable>
         </HStack>
 
-        <Text style={styles.totalText}>共 {total} 个秀场</Text>
+        <Text style={styles.totalText}>{t("admin.totalShows", { count: total })}</Text>
 
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.black} />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : shows.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
@@ -483,7 +486,7 @@ const ShowManagementTab = () => {
               size={48}
               color={theme.colors.gray200}
             />
-            <Text style={sharedStyles.emptyText}>暂无秀场数据</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noShows")}</Text>
           </Box>
         ) : (
           shows.map((show) => (
@@ -510,12 +513,12 @@ const ShowManagementTab = () => {
                     ]}
                   >
                     {show.status === "APPROVED"
-                      ? "已通过"
+                      ? t("admin.approved")
                       : show.status === "PENDING"
-                        ? "待审核"
+                        ? t("admin.pendingReview")
                         : show.status === "REJECTED"
-                          ? "已拒绝"
-                          : "已通过"}
+                          ? t("admin.rejected")
+                          : t("admin.approved")}
                   </Text>
                 </Box>
               </HStack>
@@ -532,32 +535,32 @@ const ShowManagementTab = () => {
 
               <VStack style={styles.metaSection}>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>品牌</Text>
+                  <Text style={styles.metaLabel}>{t("admin.brand")}</Text>
                   <Text style={styles.metaValue}>{show.brand}</Text>
                 </HStack>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>年份</Text>
+                  <Text style={styles.metaLabel}>{t("admin.year")}</Text>
                   <Text style={styles.metaValue}>{show.year}</Text>
                 </HStack>
                 <HStack style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>季度</Text>
+                  <Text style={styles.metaLabel}>{t("admin.season")}</Text>
                   <Text style={styles.metaValue}>{show.season}</Text>
                 </HStack>
                 {show.category && (
                   <HStack style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>类别</Text>
+                    <Text style={styles.metaLabel}>{t("admin.category")}</Text>
                     <Text style={styles.metaValue}>{show.category}</Text>
                   </HStack>
                 )}
                 {show.designer && (
                   <HStack style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>设计师</Text>
+                    <Text style={styles.metaLabel}>{t("admin.designer")}</Text>
                     <Text style={styles.metaValue}>{show.designer}</Text>
                   </HStack>
                 )}
                 {show.contributorName && (
                   <HStack style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>贡献者</Text>
+                    <Text style={styles.metaLabel}>{t("admin.contributor")}</Text>
                     <Text style={styles.metaValue}>
                       {show.contributorName}
                     </Text>
@@ -579,7 +582,7 @@ const ShowManagementTab = () => {
                   leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.white} />}
                   style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>编辑</ButtonText>
+                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("common.edit")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -588,7 +591,7 @@ const ShowManagementTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -642,14 +645,14 @@ const ShowManagementTab = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={sharedStyles.modalTitle}>新建秀场</Text>
+              <Text style={sharedStyles.modalTitle}>{t("admin.createShow")}</Text>
               {renderShowFormFields(createForm, setCreateForm, false)}
               <HStack style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setCreateModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button size="sm" onPress={handleCreate} disabled={actionLoading} isLoading={actionLoading}>
-                  <ButtonText>创建</ButtonText>
+                  <ButtonText>{t("admin.create")}</ButtonText>
                 </Button>
               </HStack>
             </ScrollView>
@@ -670,14 +673,14 @@ const ShowManagementTab = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={sharedStyles.modalTitle}>编辑秀场</Text>
+              <Text style={sharedStyles.modalTitle}>{t("admin.editShow")}</Text>
               {renderShowFormFields(editForm, setEditForm, true)}
               <HStack style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setEditModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button size="sm" onPress={handleSave} disabled={actionLoading} isLoading={actionLoading}>
-                  <ButtonText>保存修改</ButtonText>
+                  <ButtonText>{t("admin.saveChanges")}</ButtonText>
                 </Button>
               </HStack>
             </ScrollView>

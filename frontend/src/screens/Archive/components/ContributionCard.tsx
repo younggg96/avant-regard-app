@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Dimensions, TouchableOpacity, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, VStack, HStack, Pressable } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
@@ -43,6 +44,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   onPress,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   const ss = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
   const hasValidImage = imageUri && imageUri.trim().length > 0;
   const isRejected = status === "REJECTED";
@@ -50,13 +52,13 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   const handlePress = () => {
     if (isRejected) {
       Alert.alert(
-        "审核未通过",
-        rejectReason ? `拒绝原因：${rejectReason}` : "未提供拒绝原因",
+        t("archive.reviewFailed"),
+        rejectReason ? t("archive.rejectReasonLabel", { reason: rejectReason }) : t("archive.noRejectReason"),
         [
           ...(onDelete
-            ? [{ text: "删除", style: "destructive" as const, onPress: onDelete }]
+            ? [{ text: t("common.delete"), style: "destructive" as const, onPress: onDelete }]
             : []),
-          { text: "关闭", style: "cancel" as const },
+          { text: t("common.close"), style: "cancel" as const },
         ]
       );
       return;
@@ -86,7 +88,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
               size={36}
               color={theme.colors.gray300}
             />
-            <Text style={styles.placeholderText}>暂无图片</Text>
+            <Text style={styles.placeholderText}>{t("archive.noImage")}</Text>
           </Box>
         )}
         {isRejected && onDelete && (
@@ -102,9 +104,9 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
             alignItems="center"
             onPress={(e: any) => {
               e.stopPropagation?.();
-              Alert.alert("确认删除", `确定要删除「${title}」吗？`, [
-                { text: "取消", style: "cancel" },
-                { text: "删除", style: "destructive", onPress: onDelete },
+              Alert.alert(t("archive.confirmDelete"), t("archive.confirmDeleteMsg", { title }), [
+                { text: t("common.cancel"), style: "cancel" },
+                { text: t("common.delete"), style: "destructive", onPress: onDelete },
               ]);
             }}
           >
@@ -134,7 +136,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
         <HStack justifyContent="between" mt={6}>
           <Box style={[styles.statusBadge, { backgroundColor: ss.bg }]}>
             <Text style={[styles.statusText, { color: ss.color }]}>
-              {ss.label}
+              {t(ss.labelKey)}
             </Text>
           </Box>
           <Text style={styles.dateText}>{formatDate(date)}</Text>

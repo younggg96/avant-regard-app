@@ -13,6 +13,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { followService, type FollowingUser } from "@/lib/services/follow";
 import { isRenderableImage } from "@/lib/isRenderableImage";
@@ -22,6 +23,7 @@ type Tab = "following" | "followers";
 // `useSearchParams()` needs a <Suspense> boundary so `next build` can
 // prerender the outer shell; inner component owns the hooks.
 function MyFollowsPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const sp = useSearchParams();
   const user = useAuthStore((s) => s.user);
@@ -47,28 +49,28 @@ function MyFollowsPageInner() {
     <section className="min-w-0">
       <header className="mb-6 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          关注与粉丝
+          {t("follows.title")}
         </h1>
       </header>
 
       <div className="mb-6 inline-flex gap-2 rounded-full bg-[var(--canvas-raised)] p-1">
         <TabBtn active={tab === "following"} onClick={() => onTab("following")}>
-          关注中
+          {t("follows.following")}
         </TabBtn>
         <TabBtn active={tab === "followers"} onClick={() => onTab("followers")}>
-          粉丝
+          {t("follows.followers")}
         </TabBtn>
       </div>
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loading")}
         </div>
       )}
 
       {!isLoading && (!data || data.length === 0) && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-8 font-serif text-sm text-[color:var(--ink-muted)]">
-          {tab === "following" ? "还没有关注任何人。" : "还没有粉丝。"}
+          {tab === "following" ? t("follows.noFollowing") : t("follows.noFollowers")}
         </div>
       )}
 

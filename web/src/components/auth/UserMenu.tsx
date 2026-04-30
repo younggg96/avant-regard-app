@@ -1,23 +1,15 @@
 "use client";
 
-/**
- * Header user menu.
- *
- * Anonymous state → "登录 / 注册" link.
- * Authenticated state → avatar + dropdown (我的 / 设置 / 登出).
- *
- * Uses a native `<details>` for zero-dependency outside-click + keyboard-escape
- * behaviour; styled via CSS so it feels like a Figma-designed dropdown.
- */
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { logout as logoutApi } from "@/lib/auth/service";
 
 export function UserMenu() {
   const router = useRouter();
+  const { t } = useTranslation();
   const hydrated = useAuthStore((s) => s.hydrated);
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
@@ -54,13 +46,13 @@ export function UserMenu() {
     return (
       <div className="flex items-center gap-3 font-label text-[13px]">
         <Link href="/auth/login" className="link-muted hidden sm:inline">
-          登录
+          {t("auth.login")}
         </Link>
         <Link
           href="/auth/register"
           className="rounded border border-[var(--ink)] px-3 py-1.5 text-[var(--ink)] transition-colors hover:bg-[var(--ink)] hover:text-[var(--canvas)]"
         >
-          注册
+          {t("auth.register")}
         </Link>
       </div>
     );
@@ -121,20 +113,20 @@ export function UserMenu() {
           </div>
           <nav className="flex flex-col py-1 font-label text-[13px]">
             <MenuItem href="/me" onSelect={() => setOpen(false)}>
-              我的
+              {t("userMenu.me")}
             </MenuItem>
             <MenuItem href="/me/chats" onSelect={() => setOpen(false)}>
-              私信
+              {t("userMenu.messages")}
             </MenuItem>
             <MenuItem href="/me/notifications" onSelect={() => setOpen(false)}>
-              通知
+              {t("userMenu.notifications")}
             </MenuItem>
             <MenuItem href="/settings" onSelect={() => setOpen(false)}>
-              设置
+              {t("userMenu.settings")}
             </MenuItem>
             {user.is_admin && (
               <MenuItem href="/admin" onSelect={() => setOpen(false)}>
-                管理后台
+                {t("userMenu.admin")}
               </MenuItem>
             )}
             <button
@@ -143,7 +135,7 @@ export function UserMenu() {
               onClick={handleLogout}
               className="border-t border-[var(--border)] px-3 py-2 text-left text-red-600 transition-colors hover:bg-[var(--canvas-raised)] dark:text-red-400"
             >
-              登出
+              {t("userMenu.logout")}
             </button>
           </nav>
         </div>

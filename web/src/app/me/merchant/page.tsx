@@ -17,6 +17,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { apiClient } from "@/lib/api-client";
 import {
@@ -32,6 +33,7 @@ interface MerchantWithStore extends StoreMerchant {
 }
 
 export default function MyMerchantListPage() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const userId = user?.userId;
 
@@ -69,38 +71,38 @@ export default function MyMerchantListPage() {
     <section className="min-w-0">
       <header className="mb-8 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          我的店铺
+          {t("me.merchantTitle")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          管理你的商家入驻申请; 认证通过后即可发布 Banner / 公告 / 活动 / 折扣.
+          {t("me.merchantSubtitle")}
         </p>
       </header>
 
       {isLoading && (
         <div className="flex h-40 items-center justify-center font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loading")}
         </div>
       )}
 
       {!isLoading && error && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-6 font-label text-[13px] text-[color:var(--ink-muted)]">
-          加载失败: {error instanceof Error ? error.message : "请稍后重试"}
+          {t("me.loadFailed")}: {error instanceof Error ? error.message : t("me.retryHint")}
         </div>
       )}
 
       {!isLoading && !error && merchants.length === 0 && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
           <div className="font-serif text-[17px] text-[var(--ink)]">
-            你还没有申请入驻任何店铺
+            {t("me.merchantEmpty")}
           </div>
           <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-            在 App 的店铺详情页点击「我是商家」发起申请; 认证通过后即可在这里管理店铺.
+            {t("me.merchantEmptyHint")}
           </div>
           <Link
             href="/stores"
             className="mt-5 inline-flex rounded bg-[var(--ink)] px-5 py-2 font-label text-[13px] text-[var(--canvas)] transition-opacity hover:opacity-80"
           >
-            浏览买手店
+            {t("me.browseStores")}
           </Link>
         </div>
       )}
@@ -119,6 +121,7 @@ export default function MyMerchantListPage() {
 // ───────────────────────────── 子组件 ─────────────────────────────
 
 function MerchantCard({ merchant }: { merchant: MerchantWithStore }) {
+  const { t } = useTranslation();
   const approved = merchant.status === "APPROVED";
   const storeName = merchant.store?.name || merchant.storeId;
   const storeLocation = merchant.store
@@ -145,15 +148,15 @@ function MerchantCard({ merchant }: { merchant: MerchantWithStore }) {
       </div>
 
       <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-3">
-        <Info label="联系人" value={merchant.contactName} />
-        <Info label="联系电话" value={merchant.contactPhone} />
-        <Info label="联系邮箱" value={merchant.contactEmail} />
+        <Info label={t("me.contactLabel")} value={merchant.contactName} />
+        <Info label={t("me.contactPhone")} value={merchant.contactPhone} />
+        <Info label={t("me.contactEmail")} value={merchant.contactEmail} />
       </dl>
 
       {merchant.status === "REJECTED" && merchant.rejectReason && (
         <div className="mt-4 rounded border border-[var(--border)] bg-[var(--canvas-raised)] p-3">
           <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            拒绝原因
+            {t("me.rejectReason")}
           </div>
           <div className="mt-1 font-serif text-[13px] text-[var(--ink)]">
             {merchant.rejectReason}
@@ -164,27 +167,27 @@ function MerchantCard({ merchant }: { merchant: MerchantWithStore }) {
       {approved && (
         <div className="mt-4 flex flex-wrap gap-1.5 font-label text-[11px]">
           {merchant.canPostBanner && <Pill>Banner</Pill>}
-          {merchant.canPostAnnouncement && <Pill>公告</Pill>}
-          {merchant.canPostActivity && <Pill>活动</Pill>}
-          {merchant.canPostDiscount && <Pill>折扣</Pill>}
+          {merchant.canPostAnnouncement && <Pill>{t("me.announcement")}</Pill>}
+          {merchant.canPostActivity && <Pill>{t("me.activity")}</Pill>}
+          {merchant.canPostDiscount && <Pill>{t("me.discount")}</Pill>}
         </div>
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
         <div className="font-label text-[11px] text-[color:var(--ink-muted)]">
-          申请时间: {new Date(merchant.createdAt).toLocaleDateString("zh-CN")}
+          {t("me.applyTime")}: {new Date(merchant.createdAt).toLocaleDateString("zh-CN")}
         </div>
         {approved ? (
           <Link
             href={`/me/merchant/${merchant.id}`}
             className="rounded bg-[var(--ink)] px-4 py-1.5 font-label text-[12px] text-[var(--canvas)] transition-opacity hover:opacity-80"
           >
-            管理店铺 →
+            {t("me.manageStore")}
           </Link>
         ) : (
           <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-            {merchant.status === "PENDING" && "等待管理员审核"}
-            {merchant.status === "SUSPENDED" && "账号已暂停, 请联系管理员"}
+            {merchant.status === "PENDING" && t("me.pendingReview")}
+            {merchant.status === "SUSPENDED" && t("me.suspended")}
           </span>
         )}
       </div>

@@ -7,6 +7,7 @@ import {
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import {
   RecommendConfig,
@@ -17,13 +18,6 @@ import { Box, HStack, VStack, Text, Pressable, ScrollView } from "../../componen
 
 const ALL_GRADES = ["A", "B", "C", "D"];
 
-const GRADE_DESCRIPTIONS: Record<string, string> = {
-  A: "深度内容",
-  B: "单品介绍",
-  C: "日常分享",
-  D: "无关联",
-};
-
 const DEFAULT_CONFIG: RecommendConfig = {
   pool_ratios: { core: 0.5, discovery: 0.3, random: 0.2 },
   core_pool: { grades: ["A", "B", "C"] },
@@ -33,6 +27,15 @@ const DEFAULT_CONFIG: RecommendConfig = {
 };
 
 const RecommendConfigTab = () => {
+  const { t } = useTranslation();
+
+  const GRADE_DESCRIPTIONS: Record<string, string> = {
+    A: t("admin.gradeA"),
+    B: t("admin.gradeB"),
+    C: t("admin.gradeC"),
+    D: t("admin.gradeD"),
+  };
+
   const [config, setConfig] = useState<RecommendConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +57,7 @@ const RecommendConfigTab = () => {
       setDaysInput(String(data.cold_start.days));
       setDirty(false);
     } catch (e) {
-      Alert.alert("错误", "加载推荐配置失败");
+      Alert.alert(t("admin.error"), t("admin.fetchRecommendFailed"));
     } finally {
       setLoading(false);
     }
@@ -116,19 +119,19 @@ const RecommendConfigTab = () => {
   const handleSave = async () => {
     const sum = ratioSum();
     if (sum !== 100) {
-      Alert.alert("比例错误", `三个池的比例之和必须为 100%，当前为 ${sum}%`);
+      Alert.alert(t("admin.recommendRatioError"), `${t("admin.recommendRatioHint")} (${sum}%)`);
       return;
     }
     if (config.core_pool.grades.length === 0) {
-      Alert.alert("配置错误", "核心池至少选择一个评级");
+      Alert.alert(t("admin.recommendConfigError"), t("admin.recommendCoreMin"));
       return;
     }
     if (config.random_pool.grades.length === 0) {
-      Alert.alert("配置错误", "随机池至少选择一个评级");
+      Alert.alert(t("admin.recommendConfigError"), t("admin.recommendRandomMin"));
       return;
     }
     if (config.cold_start.grades.length === 0) {
-      Alert.alert("配置错误", "冷启动至少选择一个评级");
+      Alert.alert(t("admin.recommendConfigError"), t("admin.recommendColdMin"));
       return;
     }
 
@@ -155,9 +158,9 @@ const RecommendConfigTab = () => {
       setDiscoveryInput(String(Math.round(saved.pool_ratios.discovery * 100)));
       setRandomInput(String(Math.round(saved.pool_ratios.random * 100)));
       setDirty(false);
-      Alert.alert("保存成功", "推荐算法配置已更新");
+      Alert.alert(t("admin.saveSuccess"), t("admin.recommendUpdated"));
     } catch (e) {
-      Alert.alert("保存失败", e instanceof Error ? e.message : "请重试");
+      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : "请重试");
     } finally {
       setSaving(false);
     }
@@ -167,7 +170,7 @@ const RecommendConfigTab = () => {
     return (
       <Box style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.black} />
-        <Text style={styles.loadingText}>加载推荐配置...</Text>
+        <Text style={styles.loadingText}>{t("admin.loadingRecommend")}</Text>
       </Box>
     );
   }
@@ -183,9 +186,9 @@ const RecommendConfigTab = () => {
     >
       <VStack style={styles.header}>
         <Ionicons name="analytics" size={32} color={theme.colors.black} />
-        <Text style={styles.headerTitle}>推荐算法配置</Text>
+        <Text style={styles.headerTitle}>{t("admin.recommendTitle")}</Text>
         <Text style={styles.headerSubtitle}>
-          调整推荐页内容分发比例、评级筛选和冷启动策略
+          {t("admin.recommendSubtitle")}
         </Text>
       </VStack>
 
@@ -193,17 +196,17 @@ const RecommendConfigTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="pie-chart-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>内容池分发比例</Text>
+          <Text style={styles.sectionTitle}>{t("admin.recommendPoolRatios")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
-          三个池的比例之和必须为 100%
+          {t("admin.recommendRatioHint")}
         </Text>
 
         <VStack style={styles.ratioRow}>
           {([
-            { label: "核心池", key: "core" as const, input: coreInput, setInput: setCoreInput, desc: "关注品牌的帖子" },
-            { label: "发现池", key: "discovery" as const, input: discoveryInput, setInput: setDiscoveryInput, desc: "同品类其他品牌" },
-            { label: "随机池", key: "random" as const, input: randomInput, setInput: setRandomInput, desc: "全站优质帖子" },
+            { label: t("admin.recommendCorePool"), key: "core" as const, input: coreInput, setInput: setCoreInput, desc: t("admin.recommendCoreDesc") },
+            { label: t("admin.recommendDiscoveryPool"), key: "discovery" as const, input: discoveryInput, setInput: setDiscoveryInput, desc: t("admin.recommendDiscoveryDesc") },
+            { label: t("admin.recommendRandomPool"), key: "random" as const, input: randomInput, setInput: setRandomInput, desc: t("admin.recommendRandomDesc") },
           ]).map((item) => (
             <HStack key={item.key} style={styles.ratioItem}>
               <VStack style={styles.ratioLabelGroup}>
@@ -244,10 +247,10 @@ const RecommendConfigTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="star-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>核心池评级筛选</Text>
+          <Text style={styles.sectionTitle}>{t("admin.recommendCoreGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
-          选择哪些评级的帖子可以进入核心池
+          {t("admin.recommendCoreGradesHint")}
         </Text>
         <HStack style={styles.gradeRow}>
           {ALL_GRADES.map((g) => {
@@ -274,13 +277,13 @@ const RecommendConfigTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="compass-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>发现池</Text>
+          <Text style={styles.sectionTitle}>{t("admin.recommendDiscoveryPool")}</Text>
         </HStack>
         <HStack style={styles.toggleRow}>
           <VStack style={{ flex: 1 }}>
-            <Text style={styles.toggleLabel}>启用发现池</Text>
+            <Text style={styles.toggleLabel}>{t("admin.recommendEnableDiscovery")}</Text>
             <Text style={styles.toggleDesc}>
-              关闭后推荐页不再展示同品类其他品牌的帖子
+              {t("admin.recommendDisableDiscoveryHint")}
             </Text>
           </VStack>
           <Switch
@@ -296,10 +299,10 @@ const RecommendConfigTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="shuffle-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>随机池评级筛选</Text>
+          <Text style={styles.sectionTitle}>{t("admin.recommendRandomGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
-          选择哪些评级的帖子可以进入随机池
+          {t("admin.recommendRandomGradesHint")}
         </Text>
         <HStack style={styles.gradeRow}>
           {ALL_GRADES.map((g) => {
@@ -326,14 +329,14 @@ const RecommendConfigTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="snow-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>冷启动策略</Text>
+          <Text style={styles.sectionTitle}>{t("admin.recommendColdStart")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
-          新用户（无关注数据）的推荐规则
+          {t("admin.recommendColdStartHint")}
         </Text>
 
         <HStack style={styles.coldStartDaysRow}>
-          <Text style={styles.coldStartDaysLabel}>时间窗口</Text>
+          <Text style={styles.coldStartDaysLabel}>{t("admin.recommendTimeWindow")}</Text>
           <HStack style={styles.ratioInputGroup}>
             <TextInput
               style={styles.ratioInput}
@@ -346,11 +349,11 @@ const RecommendConfigTab = () => {
               keyboardType="number-pad"
               maxLength={2}
             />
-            <Text style={styles.ratioPercent}>天</Text>
+            <Text style={styles.ratioPercent}>{t("admin.recommendDays")}</Text>
           </HStack>
         </HStack>
 
-        <Text style={styles.gradeSelectLabel}>评级筛选</Text>
+        <Text style={styles.gradeSelectLabel}>{t("admin.recommendGradeFilter")}</Text>
         <HStack style={styles.gradeRow}>
           {ALL_GRADES.map((g) => {
             const active = config.cold_start.grades.includes(g);
@@ -387,7 +390,7 @@ const RecommendConfigTab = () => {
           <>
             <Ionicons name="save-outline" size={20} color={theme.colors.white} />
             <Text style={styles.saveButtonText}>
-              {dirty ? "保存配置" : "无修改"}
+              {dirty ? t("admin.saveConfig") : t("admin.noChanges")}
             </Text>
           </>
         )}
@@ -400,7 +403,7 @@ const RecommendConfigTab = () => {
           color={theme.colors.gray400}
         />
         <Text style={styles.tipsText}>
-          配置修改后立即生效，无需重启服务。冷启动仅对无品牌关注数据的用户生效。
+          {t("admin.recommendTips")}
         </Text>
       </HStack>
 

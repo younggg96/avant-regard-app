@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { View, Text as RNText, Pressable, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage } from "./ui";
 import { PostCoverMedia } from "./PostCoverMedia";
@@ -94,6 +95,7 @@ const PostCardInner = ({
   showCoverPlaceholder = true,
   coverImageTransition,
 }: PostCardProps) => {
+  const { t } = useTranslation();
   if (!post || !post.id || !post.author) {
     return null;
   }
@@ -156,7 +158,7 @@ const PostCardInner = ({
 
           {isPending && (
             <View style={styles.pendingBadge}>
-              <RNText style={styles.badgeText}>审核中</RNText>
+              <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
             </View>
           )}
           {!isPending && post.communityName && (

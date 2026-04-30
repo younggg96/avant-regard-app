@@ -7,6 +7,7 @@ import {
   GestureResponderEvent,
   TextInput,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
@@ -52,6 +53,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
   onClose,
   onLoadMore,
 }) => {
+  const { t } = useTranslation();
   const showWidth = (screenWidth - 48) / 2;
 
   const handleEndReached = () => {
@@ -83,7 +85,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
                 <Text fontSize="$lg" color="$black" fontWeight="$medium">
-                  选择相关秀场
+                  {t("showSelector.title")}
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
                   <Ionicons
@@ -99,7 +101,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                     value={searchQuery}
                     onChangeText={onSearchChange}
                     onSubmitEditing={onSearch}
-                    placeholder="搜索品牌、设计师、季度、类别、年份..."
+                    placeholder={t("showSelector.searchPlaceholder")}
                     placeholderTextColor={theme.colors.gray400}
                     variant="outline"
                     returnKeyType="search"
@@ -111,7 +113,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                 </Box>
                 <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
                   <Text color="$white" fontSize="$sm" fontWeight="$semibold">
-                    搜索
+                    {t("showSelector.search")}
                   </Text>
                 </Pressable>
               </HStack>
@@ -162,7 +164,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                 isLoading && shows.length > 0 ? (
                   <Box py="$md" alignItems="center">
                     <Text color="$gray400" fontSize="$sm">
-                      加载中...
+                      {t("showSelector.loading")}
                     </Text>
                   </Box>
                 ) : null
@@ -181,7 +183,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray400" mt="$md">
-                    {isLoading ? "加载中..." : "未找到相关秀场"}
+                    {isLoading ? t("showSelector.loading") : t("showSelector.noResults")}
                   </Text>
                 </Box>
               }

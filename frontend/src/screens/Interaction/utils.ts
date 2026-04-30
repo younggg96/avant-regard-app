@@ -1,3 +1,4 @@
+import i18next from "i18next";
 import { Notification } from "../../services/notificationService";
 import { Conversation } from "../../services/chatService";
 import { CS_USER_ID } from "./constants";
@@ -10,26 +11,26 @@ export function formatTime(iso: string | null): string {
   const min = Math.floor(ms / 60000);
   const hrs = Math.floor(min / 60);
   const days = Math.floor(hrs / 24);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min}分钟前`;
-  if (hrs < 24) return `${hrs}小时前`;
-  if (days < 7) return `${days}天前`;
-  return d.toLocaleDateString("zh-CN");
+  if (min < 1) return i18next.t("time.justNow");
+  if (min < 60) return i18next.t("time.minutesAgo", { count: min });
+  if (hrs < 24) return i18next.t("time.hoursAgo", { count: hrs });
+  if (days < 7) return i18next.t("time.daysAgo", { count: days });
+  return d.toLocaleDateString(i18next.language === "zh" ? "zh-CN" : "en-US");
 }
 
 export function formatLastMessage(text: string | null): string {
-  if (!text) return "暂无消息";
+  if (!text) return i18next.t("interaction.noMessages");
   const trimmed = text.trimStart();
   if (trimmed.startsWith("{")) {
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object") {
-        if (typeof parsed.postId === "string") return "[帖子分享]";
-        if (typeof parsed.storeId === "string") return "[店铺分享]";
-        if (typeof parsed.brandId === "number") return "[品牌分享]";
-        if (typeof parsed.showId === "string") return "[秀场分享]";
+        if (typeof parsed.postId === "string") return i18next.t("chat.sharePost");
+        if (typeof parsed.storeId === "string") return i18next.t("chat.shareStore");
+        if (typeof parsed.brandId === "number") return i18next.t("chat.shareBrand");
+        if (typeof parsed.showId === "string") return i18next.t("chat.shareShow");
         if (typeof parsed.userId === "number" && typeof parsed.username === "string") {
-          return "[名片分享]";
+          return i18next.t("chat.shareUser");
         }
       }
     } catch {

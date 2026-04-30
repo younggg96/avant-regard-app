@@ -6,6 +6,7 @@ import {
   View,
   Text,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUploadStore, UploadStatus } from "../store/uploadStore";
@@ -15,15 +16,16 @@ import { VideoThumbnailView } from "./VideoThumbnailView";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 
-const STATUS_CONFIG: Record<UploadStatus, { label: string; hint: string; color: string }> = {
-  idle: { label: "", hint: "", color: "transparent" },
-  uploading: { label: "正在上传中", hint: "上传完成后将提交审核", color: theme.colors.black },
-  publishing: { label: "正在提交...", hint: "即将完成", color: theme.colors.black },
-  success: { label: "提交成功", hint: "审核通过后将自动发布", color: theme.colors.success },
-  error: { label: "提交失败", hint: "点击重试", color: theme.colors.error },
+const STATUS_CONFIG_KEYS: Record<UploadStatus, { labelKey: string; hintKey: string; color: string }> = {
+  idle: { labelKey: "", hintKey: "", color: "transparent" },
+  uploading: { labelKey: "upload.uploading", hintKey: "upload.uploadingHint", color: theme.colors.black },
+  publishing: { labelKey: "upload.publishing", hintKey: "upload.publishingHint", color: theme.colors.black },
+  success: { labelKey: "upload.success", hintKey: "upload.successHint", color: theme.colors.success },
+  error: { labelKey: "upload.error", hintKey: "upload.errorHint", color: theme.colors.error },
 };
 
 export default function UploadProgressBanner() {
+  const { t } = useTranslation();
   const task = useUploadStore((s) => s.currentTask);
   const dismissTask = useUploadStore((s) => s.dismissTask);
   const retryUpload = useUploadStore((s) => s.retryUpload);
@@ -64,7 +66,12 @@ export default function UploadProgressBanner() {
 
   if (!task) return null;
 
-  const config = STATUS_CONFIG[task.status];
+  const configKeys = STATUS_CONFIG_KEYS[task.status];
+  const config = {
+    label: configKeys.labelKey ? t(configKeys.labelKey) : "",
+    hint: configKeys.hintKey ? t(configKeys.hintKey) : "",
+    color: configKeys.color,
+  };
 
   const handlePress = () => {
     if (task.status === "error") {

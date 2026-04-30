@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text as RNText } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage, Pressable } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
@@ -45,6 +46,7 @@ export const ProfileInfo = ({
   onFollowersPress,
   onAvatarPress,
 }: ProfileInfoProps) => {
+  const { t } = useTranslation();
   const levelStatus = useLevelStore((s) => s.status);
   const currentLevel = levelStatus?.currentLevel ?? 0;
   const pendingLevel = levelStatus?.pendingLevel ?? null;
@@ -83,16 +85,16 @@ export const ProfileInfo = ({
     </View>
 
     <View style={styles.userNameSection}>
-      <RNText style={styles.userName}>{userInfo?.username || username || "用户"}</RNText>
+      <RNText style={styles.userName}>{userInfo?.username || username || t("profile.user")}</RNText>
       <RNText style={styles.bio} numberOfLines={2}>
-        {userInfo?.bio || "点击编辑个人简介..."}
+        {userInfo?.bio || t("profile.editBioPlaceholder")}
       </RNText>
     </View>
 
     <View style={styles.tagsContainer}>
       {userProfile?.age != null && userProfile.age > 0 && (
         <View style={styles.tag}>
-          <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}岁</RNText>
+          <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}{t("profile.ageUnit")}</RNText>
         </View>
       )}
       {userInfo?.location && (
@@ -110,17 +112,17 @@ export const ProfileInfo = ({
     <View style={styles.statsContainer}>
       <Pressable style={styles.statItem} onPress={onFollowingPress}>
         <RNText style={styles.statNumber}>{followingUsersCount}</RNText>
-        <RNText style={styles.statLabel}>关注</RNText>
+        <RNText style={styles.statLabel}>{t("profile.following")}</RNText>
       </Pressable>
       <Pressable style={styles.statItem} onPress={onFollowersPress}>
         <RNText style={styles.statNumber}>{followersCount}</RNText>
-        <RNText style={styles.statLabel}>粉丝</RNText>
+        <RNText style={styles.statLabel}>{t("profile.followers")}</RNText>
       </Pressable>
       <View style={styles.statItem}>
         <RNText style={styles.statNumber}>
           {publishedCount > 0 ? publishedCount : userId ? "0" : "-"}
         </RNText>
-        <RNText style={styles.statLabel}>获赞与收藏</RNText>
+        <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
       </View>
     </View>
   </View>

@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 /** Sun icon – light mode indicator */
 const SunIcon = () => (
@@ -47,6 +48,7 @@ const MoonIcon = () => (
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch – render nothing until client-side
@@ -62,8 +64,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      aria-label={isDark ? "切换到浅色模式" : "切换到深色模式"}
-      title={isDark ? "切换到浅色模式" : "切换到深色模式"}
+      aria-label={isDark ? t("user.switchToLight") : t("user.switchToDark")}
+      title={isDark ? t("user.switchToLight") : t("user.switchToDark")}
       className="flex h-8 w-8 items-center justify-center rounded border text-black/70 transition-colors duration-200
                  border-black/[0.08] hover:bg-black/[0.04] hover:text-black
                  dark:border-white/[0.10] dark:text-white/70 dark:hover:bg-white/[0.06] dark:hover:text-white"

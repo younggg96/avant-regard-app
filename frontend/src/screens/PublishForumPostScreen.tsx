@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Text,
@@ -94,6 +95,7 @@ const MediaBlockPreview: React.FC<{ uri: string }> = ({ uri }) => {
 };
 
 const PublishForumPostScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishForumPostRouteParams }, "params">>();
   const { user } = useAuthStore();
@@ -208,11 +210,11 @@ const PublishForumPostScreen = () => {
 
   const validateForm = (): boolean => {
     if (!title.trim()) {
-      Alert.show("提示: 请填写标题");
+      Alert.show(t("publish.titleRequired"));
       return false;
     }
     if (!selectedCommunity) {
-      Alert.show("提示: 请选择发布的社区");
+      Alert.show(t("publish.communityRequired"));
       return false;
     }
     return true;
@@ -278,10 +280,10 @@ const PublishForumPostScreen = () => {
     try {
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
+        if (status !== "granted") { Alert.show(t("publish.cameraPermissionRequired")); return; }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+        if (status !== "granted") { Alert.show(t("publish.galleryPermissionRequired")); return; }
       }
 
       const result = source === "camera"
@@ -317,7 +319,7 @@ const PublishForumPostScreen = () => {
       }
     } catch (error) {
       console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -325,7 +327,7 @@ const PublishForumPostScreen = () => {
     setShowImagePicker(false);
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+      if (status !== "granted") { Alert.show(t("publish.videoPermissionRequired")); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
@@ -355,11 +357,11 @@ const PublishForumPostScreen = () => {
           }
         }
 
-        Alert.show("视频已添加", "", 1500);
+        Alert.show(t("publish.videoAdded"), "", 1500);
       }
     } catch (error) {
       console.error("Video selection error:", error);
-      Alert.show("错误: 视频选择失败，请重试");
+      Alert.show(t("publish.videoSelectionFailed"));
     }
   };
 
@@ -386,13 +388,13 @@ const PublishForumPostScreen = () => {
     }
 
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
     const existingTask = useUploadStore.getState().currentTask;
     if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
-      Alert.show("有内容正在上传中，请稍后再试");
+      Alert.show(t("publish.uploadInProgress"));
       return;
     }
 
@@ -459,16 +461,15 @@ const PublishForumPostScreen = () => {
 
   const handleSaveDraft = async () => {
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
-    // 草稿至少需要有标题或内容
     const hasContent = contentBlocks.some(
       (block) => block.content.trim().length > 0
     );
     if (!title.trim() && !hasContent) {
-      Alert.show("请至少填写标题或内容");
+      Alert.show(t("publish.draftNeedsContent"));
       return;
     }
 
@@ -489,7 +490,7 @@ const PublishForumPostScreen = () => {
           const localIndex = localUris.indexOf(imageUri);
           const uploadedUrl = await postService.uploadMedia(imageUri, (filePercent) => {
             const overall = Math.round(((localIndex * 100 + filePercent) / totalLocal));
-            setUploadProgress(`上传中 ${Math.min(overall, 99)}%`);
+            setUploadProgress(t("publish.uploadingPercent", { percent: Math.min(overall, 99) }));
           });
           uploadedUrls.push(uploadedUrl);
           imageMapping[imageUri] = uploadedUrl;
@@ -503,7 +504,7 @@ const PublishForumPostScreen = () => {
         return block;
       });
 
-      setUploadProgress("正在保存...");
+      setUploadProgress(t("publish.saving"));
 
       const contentText = JSON.stringify(updatedBlocks);
       const finalCoverImage = coverImage ? imageMapping[coverImage] || coverImage : null;
@@ -514,7 +515,7 @@ const PublishForumPostScreen = () => {
           userId: user.userId,
           postType: "ARTICLES",
           status: "DRAFT",
-          title: title.trim() || "论坛草稿",
+          title: title.trim() || t("publish.forumDraft"),
           contentText,
           imageUrls: finalCoverImage ? [finalCoverImage] : [],
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -525,7 +526,7 @@ const PublishForumPostScreen = () => {
           userId: user.userId,
           postType: "ARTICLES",
           postStatus: "DRAFT",
-          title: title.trim() || "论坛草稿",
+          title: title.trim() || t("publish.forumDraft"),
           contentText,
           imageUrls: finalCoverImage ? [finalCoverImage] : [],
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -534,10 +535,10 @@ const PublishForumPostScreen = () => {
       }
 
       setUploadProgress(null);
-      Alert.show("草稿已保存", "", 1500);
+      Alert.show(t("publish.draftSaved"), "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+      Alert.show(error instanceof Error ? error.message : t("publish.saveFailed"));
     } finally {
       setIsSavingDraft(false);
       setUploadProgress(null);
@@ -569,7 +570,7 @@ const PublishForumPostScreen = () => {
           <TextInput
             value={block.content}
             onChangeText={(text) => updateBlockContent(block.id, text)}
-            placeholder={isFirst ? "开始写下你的想法..." : "继续写..."}
+            placeholder={isFirst ? t("publish.forumStartWriting") : t("publish.forumContinueWriting")}
             placeholderTextColor={theme.colors.gray400}
             multiline
             textAlignVertical="top"
@@ -641,7 +642,7 @@ const PublishForumPostScreen = () => {
                   <Ionicons name="text" size={20} color={theme.colors.accent} />
                 </Box>
                 <Text fontSize="$xs" color="$gray600" mt="$xs">
-                  文字
+                  {t("publish.blockText")}
                 </Text>
               </TouchableOpacity>
 
@@ -662,7 +663,7 @@ const PublishForumPostScreen = () => {
                   <Ionicons name="image" size={20} color={theme.colors.accent} />
                 </Box>
                 <Text fontSize="$xs" color="$gray600" mt="$xs">
-                  图片
+                  {t("publish.blockImage")}
                 </Text>
               </TouchableOpacity>
             </HStack>
@@ -672,7 +673,6 @@ const PublishForumPostScreen = () => {
     );
   };
 
-  // 渲染图片块
   const renderImageBlock = (block: ContentBlock, index: number) => {
     return (
       <Box key={block.id} mx="$md" mb="$sm">
@@ -703,7 +703,7 @@ const PublishForumPostScreen = () => {
           >
             <Ionicons name="add" size={16} color={theme.colors.gray500} />
             <Text fontSize="$xs" color="$gray500" ml="$xs">
-              添加内容
+              {t("publish.addContent")}
             </Text>
           </TouchableOpacity>
         </HStack>
@@ -744,7 +744,7 @@ const PublishForumPostScreen = () => {
                   <Ionicons name="text" size={20} color={theme.colors.accent} />
                 </Box>
                 <Text fontSize="$xs" color="$gray600" mt="$xs">
-                  文字
+                  {t("publish.blockText")}
                 </Text>
               </TouchableOpacity>
 
@@ -765,7 +765,7 @@ const PublishForumPostScreen = () => {
                   <Ionicons name="image" size={20} color={theme.colors.accent} />
                 </Box>
                 <Text fontSize="$xs" color="$gray600" mt="$xs">
-                  图片
+                  {t("publish.blockImage")}
                 </Text>
               </TouchableOpacity>
             </HStack>
@@ -775,7 +775,6 @@ const PublishForumPostScreen = () => {
     );
   };
 
-  // 渲染内容块
   const renderContentBlock = (block: ContentBlock, index: number) => {
     if (block.type === "text") {
       return renderTextBlock(block, index);
@@ -802,7 +801,7 @@ const PublishForumPostScreen = () => {
             borderBottomColor="$gray100"
           >
             <Text fontSize="$lg" fontWeight="$semibold" color="$black">
-              选择社区
+              {t("publish.selectCommunity")}
             </Text>
             <Pressable onPress={() => setShowCommunityPicker(false)}>
               <Ionicons name="close" size={24} color={theme.colors.black} />
@@ -811,11 +810,11 @@ const PublishForumPostScreen = () => {
           <RNScrollView style={styles.communityList}>
             {isLoadingCommunities ? (
               <Box py="$xl" alignItems="center" justifyContent="center">
-                <Text color="$gray500" fontSize="$sm">加载中...</Text>
+                <Text color="$gray500" fontSize="$sm">{t("publish.loading")}</Text>
               </Box>
             ) : communities.length === 0 ? (
               <Box py="$xl" alignItems="center" justifyContent="center">
-                <Text color="$gray500" fontSize="$sm">暂无社区</Text>
+                <Text color="$gray500" fontSize="$sm">{t("publish.noCommunities")}</Text>
               </Box>
             ) : (
               communities.map((community) => (
@@ -854,7 +853,7 @@ const PublishForumPostScreen = () => {
                         {community.name}
                       </Text>
                       <Text fontSize="$xs" color="$gray500">
-                        {community.memberCount} 成员
+                        {community.memberCount} {t("publish.members")}
                       </Text>
                     </VStack>
                     {selectedCommunity?.id === community.id && (
@@ -877,7 +876,7 @@ const PublishForumPostScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={editMode ? "编辑帖子" : "用户论坛"}
+        title={editMode ? t("publish.editPost") : t("publish.typeForumTitle")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -888,7 +887,7 @@ const PublishForumPostScreen = () => {
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
             <Text color="$white" fontSize="$sm" flex={1}>
-              编辑后帖子将重新进入审核状态
+              {t("publish.reAuditWarning")}
             </Text>
           </HStack>
         </Box>
@@ -950,7 +949,7 @@ const PublishForumPostScreen = () => {
                       color={theme.colors.gray400}
                     />
                     <Text fontSize="$sm" color="$gray400" flex={1}>
-                      选择发布的社区
+                      {t("publish.selectCommunityPlaceholder")}
                     </Text>
                   </>
                 )}
@@ -968,8 +967,8 @@ const PublishForumPostScreen = () => {
             imageUri={coverImage}
             onImageSelected={setCoverImage}
             onImageRemoved={() => setCoverImage(null)}
-            placeholder="添加封面图（可选）"
-            subtitle="支持自由裁剪、1:1、4:3、16:9、9:16"
+            placeholder={t("publish.coverImagePlaceholder")}
+            subtitle={t("publish.coverImageSubtitle")}
             height={300}
             enableCropper={true}
             defaultCropAspect="free"
@@ -979,7 +978,7 @@ const PublishForumPostScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                标题
+                {t("publish.titleLabel")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -988,7 +987,7 @@ const PublishForumPostScreen = () => {
             <Input
               value={title}
               onChangeText={setTitle}
-              placeholder="帖子标题，支持长标题"
+              placeholder={t("publish.forumTitlePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               multiline
               variant="filled"
@@ -1013,7 +1012,7 @@ const PublishForumPostScreen = () => {
             <HStack alignItems="center" gap="$sm">
               <Ionicons name="bulb-outline" size={18} color={theme.colors.gray500} />
               <Text color="$gray500" fontSize="$xs" flex={1}>
-                点击文本框下方的 + 按钮可以添加更多文字或图片
+                {t("publish.forumAddHint")}
               </Text>
             </HStack>
           </Box>
@@ -1026,8 +1025,8 @@ const PublishForumPostScreen = () => {
         onPublish={handlePublish}
         publishDisabled={!canPublish() || isPublishing || isSavingDraft}
         draftDisabled={isPublishing || isSavingDraft}
-        publishButtonText={isPublishing ? uploadProgress || "发布中..." : "发布"}
-        draftButtonText={isSavingDraft ? uploadProgress || "保存中..." : "存草稿"}
+        publishButtonText={isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")}
+        draftButtonText={isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")}
       />
 
       {/* Image Picker Modal */}
@@ -1041,7 +1040,7 @@ const PublishForumPostScreen = () => {
         onSelectGallery={() => handleImageSelection("gallery")}
         onSelectVideo={handleVideoSelection}
         showVideoOption={true}
-        title="添加媒体"
+        title={t("publish.addMedia")}
       />
 
       {/* Community Picker */}

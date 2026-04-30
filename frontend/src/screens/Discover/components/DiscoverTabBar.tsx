@@ -1,13 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { CenteredTabBar } from "../../../components/CenteredTabBar";
 import { TabType } from "../types";
-
-const DISCOVER_TABS: { id: TabType; label: string }[] = [
-  { id: "forum", label: "论坛" },
-  { id: "recommend", label: "推荐" },
-  { id: "buyer", label: "买手店" },
-  { id: "following", label: "关注" },
-];
 
 interface DiscoverTabBarProps {
   activeTab: TabType;
@@ -17,12 +11,26 @@ interface DiscoverTabBarProps {
 export const DiscoverTabBar: React.FC<DiscoverTabBarProps> = ({
   activeTab,
   onTabChange,
-}) => (
-  <CenteredTabBar
-    tabs={DISCOVER_TABS}
-    activeTab={activeTab}
-    onTabChange={onTabChange}
-  />
-);
+}) => {
+  const { t } = useTranslation();
+
+  const tabs = useMemo<{ id: TabType; label: string }[]>(
+    () => [
+      { id: "forum", label: t("discover.forum") },
+      { id: "recommend", label: t("discover.recommend") },
+      { id: "buyer", label: t("discover.buyer") },
+      { id: "following", label: t("discover.follow") },
+    ],
+    [t]
+  );
+
+  return (
+    <CenteredTabBar
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+    />
+  );
+};
 
 export default DiscoverTabBar;

@@ -1,4 +1,232 @@
-# Progress Log
+## 2026-04-30: PublishForumPostScreen 重复声明导致无 default export
+
+### Summary
+`PublishForumPostScreen.tsx` 中 `renderContentBlock`、`renderImageBlock` 各多了一行重复的 `const ... =` 声明，文件无法解析，TypeScript 报「无 default export」。
+
+### Change
+- 删除重复行，恢复单一函数声明。
+
+---
+修复 `next build` 因 ESLint **Error** 失败：`StoreCategoryCards` 在 `isLoading` 早退之后调用 `useFallbackCards()`，违反 Rules of Hooks。
+
+### Change
+- `web/src/components/stores/StoreCategoryCards.tsx`：将 `useFallbackCards()` 移到 `if (isLoading) return …` 之前；移除父组件未使用的 `useTranslation()`。
+
+---
+
+### Summary
+为 Next.js 服务端组件和所有 Metadata 实现多语言支持。
+
+### 技术方案
+- 创建 `web/src/lib/i18n/server.ts` — 服务端 i18n 工具，通过读取 cookie (`app_language`) 确定语言
+- `getServerLanguage()` — 获取服务端当前语言
+- `getServerT()` — 返回服务端翻译函数 `t(key)`
+- 客户端 `setLanguage()` 新增设置 cookie（1年有效期），确保服务端能感知语言切换
+
+### 改造的页面
+- `web/src/app/layout.tsx` — 静态 `metadata` → `generateMetadata()` 动态生成；`<html lang>` 动态设置
+- `web/src/app/page.tsx` — 拆分为 server(数据获取) + `HomeView.tsx`(客户端渲染+翻译)
+- `web/src/app/discover/page.tsx` — 拆分为 server(数据+metadata) + `discover/view.tsx`(客户端渲染)
+
+### 新增文件（首批）
+- `web/src/lib/i18n/server.ts` — 服务端翻译工具
+- `web/src/app/HomeView.tsx` — 首页客户端渲染组件
+- `web/src/app/discover/view.tsx` — Discover 页客户端渲染组件
+
+### 改造扩展（后续批次）
+- `archive/*`、`communities/*`、`posts/[id]`、`users/[id]`、`/app`（iOS 落地页）等全部采用同上模式；`postTypes`、`timeRelative`、`metaTitleSuffix` 等键补全
+- 帖子相对时间：`formatRelativeTime` 支持传入 `t()`；评论区 Header 同步使用
+
+### 模式说明
+对于需要同时支持 SSR 数据获取 + i18n 的页面，采用 **Server/Client 分离模式**：
+- `page.tsx`（Server Component）— 负责 `generateMetadata` + async 数据获取
+- `view.tsx`（Client Component "use client"）— 负责渲染 + `useTranslation()`
+
+---
+
+## 2026-04-29: 全面国际化 — 所有 App 屏幕 + Web 页面
+
+### Summary
+将项目中所有 130+ 个 React Native 屏幕文件、47 个共享组件、以及 75+ 个 Next.js 页面/组件全面国际化为中英双语。
+
+### 处理范围
+| 区域 | 文件数 | 状态 |
+|------|--------|------|
+| App - Profile 屏幕 | 6 | ✅ |
+| App - Discover & Archive | 15 | ✅ |
+| App - Auth & 用户管理 | 17 | ✅ |
+| App - Store & Publish | 17 | ✅ |
+| App - Chat/Interaction/杂项 | 21+ | ✅ |
+| App - 共享组件 | 17 | ✅ |
+| App - Admin 屏幕 | 15 | ✅ |
+| Web - Store/Merchant/Settings | 22 | ✅ |
+| Web - Auth/Discover/Community/Me | 36+ | ✅ |
+| Web - Admin 页面 | 24 | ✅ |
+
+### 技术细节
+- 所有组件使用 `useTranslation()` hook + `t("key")` 调用
+- 翻译文件结构化为 20+ 个 namespace（profile, auth, store, publish, chat, admin 等）
+- 静态常量数组重构为 hooks 内动态生成（确保语言切换时即时更新）
+- 非组件代码（hooks、utils）使用 `i18n.t()` 直接调用
+
+### 未处理项（需后续工作）
+- **法律文本**（TermsContent、PrivacyContent 等完整协议文本）— 体量极大，建议以 Markdown 文件按语言加载
+- **ToastProvider 中的 GIF 匹配正则** — 需架构调整（改为事件类型匹配）
+
+### 已补充（2026-04-30）
+- 全部 Next.js **服务端异步页面**已采用 server `generateMetadata` + `getServerT()` + 客户端 `view.tsx` 模式完成文案与 SEO metadata 多语言
+- 覆盖：`/app`、`/archive/*`、`/communities/*`、`/posts/[id]`、`/users/[id]`、`/discover`、`stores` 商品/店铺 metadata、`admin/layout` 等
+- `formatRelativeTime(iso, t)` 与 `postTypes.*` 键支持帖文时间、类型在英文界面展示
+
+---
+
+## 2026-04-29: Auth & User Management 屏幕国际化
+
+### Summary
+将 Auth（认证流程）和 User Management（用户管理）共 17 个 React Native 组件文件全面国际化，用 `t()` 替换所有硬编码中文字符串。
+
+### 修改文件
+
+**Auth 组件:**
+- `frontend/src/screens/Auth/components/AuthForm.tsx` — 表单 labels、placeholders、按钮文字
+- `frontend/src/screens/Auth/components/AuthTitle.tsx` — 标题/副标题映射改为 i18n key
+- `frontend/src/screens/Auth/components/ProfileForm.tsx` — 个人信息表单 labels、品牌选择
+- `frontend/src/screens/Auth/components/AgreementModal.tsx` — 协议弹窗标题、tab、按钮
+
+**User Management 屏幕:**
+- `frontend/src/screens/ChangePasswordScreen.tsx` — 修改密码表单、Alert 消息
+- `frontend/src/screens/EditProfileScreen.tsx` — 编辑资料表单 labels、性别选项
+- `frontend/src/screens/FavoritesScreen.tsx` — 收藏列表空态
+- `frontend/src/screens/FollowingUsersScreen.tsx` — 关注列表 tabs、空态
+- `frontend/src/screens/FollowersScreen.tsx` — 粉丝列表空态
+- `frontend/src/screens/BrandFollowersScreen.tsx` — 品牌关注者
+- `frontend/src/screens/BlockedUsersScreen.tsx` — 屏蔽用户管理
+- `frontend/src/screens/MyCommentsScreen.tsx` — 我的评论空态
+- `frontend/src/screens/MyLikesScreen.tsx` — 我的点赞 tabs、空态
+- `frontend/src/screens/MyReportsScreen.tsx` — 我的举报空态
+- `frontend/src/screens/MyTitlesScreen.tsx` — 头衔管理操作标签
+- `frontend/src/screens/MyLevelScreen.tsx` — 等级信息
+- `frontend/src/screens/UserProfileScreen.tsx` — 用户主页 tabs、关注按钮、空态
+
+**翻译文件:**
+- `frontend/src/i18n/locales/zh.json` — 新增/更新 ~60 个 key（auth.*, changePassword.*, editProfile.*, favorites.*, followingUsers.*, followersScreen.*, blockedUsers.*, myComments.*, myLikes.*, myReports.*, myTitles.*, myLevel.*, profile.*）
+- `frontend/src/i18n/locales/en.json` — 同步新增全部英文翻译
+
+---
+
+## 2026-04-29: Web 全站页面国际化（第二批）
+
+### Summary
+为 Next.js web 端的所有客户端组件完成中英文国际化，替换所有硬编码中文字符串为 `t()` 调用。
+
+### 修改文件（20+ 客户端组件）
+
+**Auth (5 files):**
+- `web/src/app/auth/login/page.tsx`
+- `web/src/app/auth/register/page.tsx`
+- `web/src/app/auth/forgot/page.tsx`
+- `web/src/components/auth/AuthForm.tsx`
+- `web/src/components/auth/AuthRequired.tsx`
+
+**Discover & Post (3 files):**
+- `web/src/components/discover/DiscoverFeed.tsx`
+- `web/src/components/post/PostCommentSection.tsx`
+- `web/src/components/post/PostInteractionBar.tsx`
+
+**Me pages (10 files):**
+- `web/src/app/me/page.tsx`
+- `web/src/app/me/merchant/page.tsx`
+- `web/src/app/me/chats/page.tsx`
+- `web/src/app/me/chats/[id]/page.tsx`
+- `web/src/app/me/notifications/page.tsx`
+- `web/src/app/me/follows/page.tsx`
+- `web/src/app/me/level/page.tsx`
+- `web/src/app/me/favorites/page.tsx`
+- `web/src/app/me/likes/page.tsx`
+- `web/src/app/me/wants/page.tsx`
+
+**Misc (7 files):**
+- `web/src/app/not-found.tsx`
+- `web/src/app/error.tsx`
+- `web/src/components/user/FollowButton.tsx`
+- `web/src/components/ThemeToggle.tsx`
+- `web/src/components/RotatingHeadline.tsx`
+- `web/src/components/chat/ShareCard.tsx`
+- `web/src/components/PostCardLikeBadge.tsx`
+
+**翻译文件:**
+- `web/src/lib/i18n/locales/zh.json` — 新增 discover/post/community/archive/user/me/chat/notification/follows/level/error/marketing 命名空间
+- `web/src/lib/i18n/locales/en.json` — 同步新增全部英文翻译
+
+### 未修改（服务端组件，需后续架构调整）
+- `discover/page.tsx`, `posts/[id]/page.tsx`, `communities/page.tsx`, `communities/[slug]/page.tsx`
+- `archive/brands/page.tsx`, `archive/brands/[id]/page.tsx`, `archive/shows/page.tsx`, `archive/shows/[id]/page.tsx`
+- `users/[id]/page.tsx`, `page.tsx` (首页), `app/page.tsx`
+- 原因：async server components 使用 `await` 获取数据，无法使用 React hooks；需拆分为 server + client 组件对
+
+---
+
+## 2026-04-29: Profile 屏幕国际化
+
+### Summary
+将 Profile 相关的 6 个 React Native 组件文件全面国际化，用 `t()` 替换所有硬编码中文字符串。
+
+### 修改文件
+- `frontend/src/screens/Profile/index.tsx` — tab 标签、删除确认 Alert 消息
+- `frontend/src/screens/Profile/components/ProfileInfo.tsx` — 用户名占位、简介占位、年龄后缀、统计标签（关注/粉丝/获赞与收藏）
+- `frontend/src/screens/Profile/components/PostsContent.tsx` — 贡献子 tab（秀场/品牌/买手店）、空状态文案、买手店活动 tab 及空状态
+- `frontend/src/screens/Profile/components/DeletePostDialog.tsx` — 对话框标题、正文、按钮文案
+- `frontend/src/screens/Profile/components/FollowedBrands.tsx` — 标题「关注的品牌」
+- `frontend/src/screens/Profile/components/CoverSection.tsx` — 无中文文本，无需改动
+
+### 使用的翻译 key 命名空间
+- `profile.*` — tab 标签、统计、空状态
+- `profileContrib.*` — 贡献内容子 tab 及空状态
+- `profileStoreActivity.*` — 买手店活动子 tab 及空状态
+- `common.*` — 通用文案（loading、cancel、delete、success 等）
+
+---
+
+## 2026-04-29: 多语言国际化（i18n）支持
+
+### Summary
+为 React Native app 和 Next.js web 同时添加中英文多语言支持。
+
+### 技术方案
+- **App (React Native)**: `i18next` + `react-i18next` + `expo-localization`
+- **Web (Next.js)**: `i18next` + `react-i18next` + `i18next-browser-languagedetector`
+- **语言检测逻辑**: 优先使用用户保存的语言偏好；首次使用时检测设备语言，若非中/英则默认英语
+- **持久化**: App 使用 AsyncStorage，Web 使用 localStorage
+
+### 新增文件
+- `frontend/src/i18n/index.ts` — App i18n 初始化、语言存取
+- `frontend/src/i18n/locales/zh.json` — App 中文翻译
+- `frontend/src/i18n/locales/en.json` — App 英文翻译
+- `web/src/lib/i18n/index.ts` — Web i18n 初始化、语言设置
+- `web/src/lib/i18n/I18nProvider.tsx` — Web i18n Provider（客户端组件）
+- `web/src/lib/i18n/locales/zh.json` — Web 中文翻译
+- `web/src/lib/i18n/locales/en.json` — Web 英文翻译
+- `web/src/app/settings/language/page.tsx` — Web 语言设置页面
+
+### 修改文件
+- `frontend/App.tsx` — 集成 i18n 初始化，tab 标签使用翻译
+- `frontend/src/screens/SettingsScreen.tsx` — 全面国际化 + 语言选择 Modal
+- `web/src/app/layout.tsx` — 引入 I18nProvider
+- `web/src/components/SiteHeader.tsx` — 导航链接国际化
+- `web/src/components/SiteFooter.tsx` — 页脚内容国际化
+- `web/src/components/auth/UserMenu.tsx` — 菜单项国际化
+- `web/src/components/me/MeNav.tsx` — 支持 labelKey/groupKey 翻译
+- `web/src/components/me/nav-items.ts` — 添加翻译 key + 语言设置入口
+
+### 语言选择 UI
+- **App**: 设置页面新增「语言」选项，点击弹出 Modal 选择中文/English，即时切换并持久化
+- **Web**: `/settings/language` 页面，点选即保存，同步更新 html lang 属性
+
+### 新增依赖
+- `frontend/`: `i18next`, `react-i18next`, `expo-localization`
+- `web/`: `i18next`, `react-i18next`, `i18next-browser-languagedetector`
+
+---
 
 ## 2026-04-29: 修复 UserMenu 头像不显示
 
@@ -6224,4 +6452,262 @@ Root cause: `RefreshControl` 回弹动画产生的 `contentOffset.y` 波动会�
 - 首次安装 / 缓存清空时行为完全不变（向后兼容）
 - 缓存大小可控（≤30 条，~150KB），AsyncStorage 读取耗时约 10–30ms
 
+---
+
+## i18n: SubmitStoreScreen + BuyerMapScreen 国际化
+
+### Summary
+对 `SubmitStoreScreen.tsx` 和 `BuyerMapScreen.tsx` 两个页面完成 i18n 改造，所有硬编码中文 UI 字符串替换为 `t()` 调用。
+
+### Changes
+- **`frontend/src/screens/SubmitStoreScreen.tsx`**
+  - 添加 `useTranslation` import 和 hook
+  - 替换所有 UI 字符串（标题、标签、placeholder、Alert 消息）为 `t("storeSubmit.*")` 调用
+- **`frontend/src/screens/BuyerMapScreen.tsx`**
+  - 添加 `useTranslation` import 和 hook
+  - 替换所有 UI 字符串为 `t("map.*")` / `t("store.*")` / `t("common.*")` 调用
+- **`frontend/src/i18n/locales/zh.json`** — 新增 ~40 个 key
+- **`frontend/src/i18n/locales/en.json`** — 新增 ~40 个对应英文 key
+
+---
+
+## 2026-04-29: i18n — Web 杂项文件国际化 (Batch 10)
+
+### Summary
+对 Web 端 7 个客户端组件/页面完成国际化，添加 `useTranslation` hook 并将硬编码中文替换为 `t()` 调用。3 个 Server 组件（`users/[id]/page.tsx`、根 `page.tsx`、`app/page.tsx`）因无法使用 hooks 而跳过。
+
+### Changes
+
+- **`web/src/app/not-found.tsx`** — 添加 `"use client"` + `useTranslation`，替换 404 标题/描述/按钮文案
+- **`web/src/app/error.tsx`** — 添加 `useTranslation`，替换错误标题/描述/重试/返回首页
+- **`web/src/components/user/FollowButton.tsx`** — 替换"已关注"/"+ 关注"
+- **`web/src/components/ThemeToggle.tsx`** — 替换 aria-label / title 切换模式文案
+- **`web/src/components/RotatingHeadline.tsx`** — 将 `PHRASES` 静态数组改为组件内 `phrases` 动态数组，通过 `t()` 获取翻译
+- **`web/src/components/chat/ShareCard.tsx`** — 在 `CardFooter`、`PostCard`、`StoreCard`、`BrandCard`、`ShowCard`、`UserCard` 6 个子组件中添加 `useTranslation`，替换"查看"和各 label
+- **`web/src/components/PostCardLikeBadge.tsx`** — 替换 aria-label 点赞/取消点赞
+
+### i18n Keys Used (already in locale files)
+`error.*`, `user.followed`, `user.follow`, `user.switchToLight`, `user.switchToDark`, `marketing.rotatingPhrase*`, `chat.view`, `chat.sharePost`, `chat.shareStore`, `chat.shareBrand`, `chat.shareShow`, `chat.shareUser`, `post.unlikeAriaLabel`, `post.likeAriaLabel`, `post.sharePost`, `post.postShare`
+
+---
+
+## 2026-04-29: i18n — Web Discover Feed & Post Components 国际化
+
+### Summary
+将 Web 端 Discover Feed 和 Post 详情页的客户端组件中所有硬编码中文文本替换为 `t()` 调用，接入已有的 i18next 国际化系统。
+
+### Changes
+
+- **`web/src/components/discover/DiscoverFeed.tsx`**
+  - 添加 `useTranslation` import + hook
+  - TABS 数组从模块级常量移入组件内部，使用 `t("discover.recommend")` 等
+  - 删除 `EMPTY_RECOMMEND`/`EMPTY_FOLLOWING`/`LOGIN_CTA` 常量，改用 inline `t()` 调用
+  - 替换所有错误文案、加载文案、空态文案、按钮文字
+  - `InfiniteScrollFooter` 和 `FollowingEndFooter` 子组件各自添加 `useTranslation`
+  - 修复 `.map((t) =>` 变量名冲突为 `tabItem`
+
+- **`web/src/components/post/PostCommentSection.tsx`**
+  - `PostCommentSection`、`CommentComposer`、`CommentItem`、`ReplyItem` 四个函数组件均添加 `useTranslation`
+  - 评论标题、加载/错误/空态文案、登录 CTA、发布按钮、回复按钮、展开/收起、placeholder 全部使用 `t()`
+
+- **`web/src/components/post/PostInteractionBar.tsx`**
+  - `PostInteractionBar` 和 `ActionButton` 添加 `useTranslation`
+  - 点赞/收藏/想要 label、评论标签、操作失败错误均使用 `t()`
+
+### Notes
+- `web/src/app/discover/page.tsx` 和 `web/src/app/posts/[id]/page.tsx` 为 async server components，不做转换
+- 所有需要的 i18n key 已存在于 `web/src/lib/i18n/locales/en.json` 和 `zh.json` 中
+
+---
+
+## 2026-04-29: i18n — Discover & Archive 屏幕国际化
+
+### Summary
+将 Discover（发现页）和 Archive（档案页）两个主要屏幕的所有硬编码中文文本替换为 `t()` 调用，接入已有的 i18next 国际化系统。
+
+### Changes
+
+- **`frontend/src/i18n/locales/zh.json` & `en.json`**
+  - `discover` 命名空间新增 14 个 key（buyerSearchPlaceholder, buyerLoadFailed, buyerTapRetry, buyerNoProducts 等）
+  - `archive` 命名空间新增 20 个 key（subtitle, contributionBoard, contributionCount, filterCategory, resetFilter 等）
+
+- **Discover 屏幕组件**（添加 `useTranslation` + `t()` 替换中文）
+  - `DiscoverHeader.tsx` — 搜索占位符
+  - `DiscoverTabBar.tsx` — 4 个 tab 标签
+  - `PopularCommunities.tsx` — "热门社区"、"查看全部"
+  - `BrandSection.tsx` — "关注的品牌"、follower count、"已关注"
+  - `BuyerTab/index.tsx` — 错误态/空态文案、关注/取关提示
+  - `BuyerTab/SearchBar.tsx` — 搜索占位符
+  - `BuyerTab/StoreSelector.tsx` — "查看全部"、空态
+  - `BuyerTab/NewArrivalBanner.tsx` — "查看详情" fallback CTA
+  - `ArchiveLeaderboard.tsx` — 标题、贡献数、用户名 fallback
+
+- **Archive 屏幕组件**
+  - `types.ts` — `MAIN_TABS` → `MAIN_TAB_IDS` + `MAIN_TAB_KEYS`；`STATUS_STYLES.label` → `labelKey`
+  - `ArchiveScreen.tsx` — tab 标签动态翻译、subtitle
+  - `CategoryFilterModal.tsx` — "筛选类别"、"重置筛选"
+  - `ContributionCard.tsx` — Alert 对话框、状态标签
+  - `MyContributionTab.tsx` — 登录提示、删除失败、空态、sub-tab 标签
+
+- **Web /me 页面 i18n**（10 个文件，全部使用 `useTranslation` + `t()` 替换中文）
+  - `page.tsx` (overview) — 统计标签、Tile 标题/描述、"查看公开主页"、"打开→"
+  - `merchant/page.tsx` — 标题/副标题、加载/空态文案、MerchantCard 联系人/状态
+  - `chats/page.tsx` — 标题/副标题、加载/空态文案
+  - `chats/[id]/page.tsx` — 导航、占位符、发送按钮、删除消息提示
+  - `notifications/page.tsx` — 标题、未读计数、标记已读、删除
+  - `follows/page.tsx` — 标题、tab 标签、空态文案
+  - `level/page.tsx` — 当前等级/下一级/权益/抽奖/路线图全部子组件；修复 `t` 变量名冲突 → `task`
+  - `favorites/page.tsx` — title/description/emptyCopy
+  - `likes/page.tsx` — title/description/emptyCopy
+  - `wants/page.tsx` — title/description/emptyCopy
+
+- **Frontend (React Native) Chat / Interaction / 其他屏幕 i18n**（21+ 文件，全部使用 `useTranslation` + `t()` 替换中文）
+  - `Interaction/index.tsx` — tab 标签动态翻译，新增 `SUB_TAB_KEYS`
+  - `Interaction/components/MessagesContent.tsx` — 空态、长按菜单、Alert
+  - `Interaction/components/ConversationRow.tsx` — 未知用户 fallback
+  - `Interaction/components/SystemEntry.tsx` — 系统消息标签
+  - `Interaction/constants.ts` — 新增 `SUB_TAB_KEYS` 映射
+  - `Interaction/utils.ts` — 相对时间格式、消息类型标签（用 `i18next.t()`）
+  - `NotificationsScreen.tsx` — 标题、空态
+  - `StrangerMessagesScreen.tsx` — 标题、管理/全选/删除、Alert 对话框
+  - `Activity/index.tsx` — 标题、FilterChip 标签、空态
+  - `Activity/constants.ts` — `FILTER_TABS` 改为 `labelKey`
+  - `Chat/index.tsx` — 默认聊天名、消息限制提示、空态
+  - `Chat/components/ChatHeader.tsx` — Alert、菜单项、屏蔽确认弹窗
+  - `Chat/components/MessageInput.tsx` — placeholder、发送按钮、禁用提示
+  - `Chat/components/MessageBubble.tsx` — 举报菜单、分享卡片标签
+  - `Chat/components/ShareContentPickerModal.tsx` — 类别标题/搜索、tab 标签、空态
+  - `PostDetailScreen.tsx` — 帖子不存在
+  - `AllCommentsScreen.tsx` — 评论头、输入框、Alert、空态
+  - `BrandDetailScreen.tsx` — 品牌详情全部标签（关注/创始人/网站/上传/tab/空态）
+  - `CollectionDetailScreen.tsx` — 贡献者、图片数、网站链接、相关帖子
+  - `SearchScreen.tsx` — 错误提示 Alert、tab 标签
+  - `CommunityDetailScreen.tsx` — 相对时间、匿名用户、错误消息
+  - `AllCommunitiesScreen.tsx` — 搜索、tab、空态、关注按钮
+  - `ChatList/components/ConversationItem.tsx` — 未知用户 fallback
+  - 新增翻译 key：`time.*`、`post.notFound/commentMinLength/commentPlaceholder/rating/beFirstComment`、`search.unavailable/serverBusy/failed/networkError/loginRequired`、`collection.contributedBy/imageCount/viewWebsite/relatedPosts/noPosts/loadPostsFailed` 等
+
+- **i18n: 发布相关 5 个页面国际化**
+  - `PublishTypeScreen.tsx` — 发布类型选择页面所有 UI 字符串
+  - `PublishLookbookScreen.tsx` — Lookbook 发布/编辑页面所有 Alert、表单标签、提示文字
+  - `PublishOutfitScreen.tsx` — 搭配分享页面所有 Alert、表单标签、提示文字
+  - `PublishReviewScreen.tsx` — 单品评价页面所有 Alert、表单标签、提示文字
+  - `PublishForumPostScreen.tsx` — 论坛帖子发布页面所有 Alert、表单标签、提示文字
+  - 新增约 70+ 个 `publish.*` 翻译 key（类型标题/描述、表单标签、权限提示、操作反馈等）
+
+- **i18n: 共享组件 (`frontend/src/components/`) 全量国际化**
+  - `ShowSelectorModal.tsx` — 秀场选择器标题、搜索、加载、空态
+  - `ShowGridSelector.tsx` — 关联秀场标签、添加秀场按钮
+  - `OnboardingGuideModal.tsx` — 开始体验、下一步、跳过
+  - `MaintenanceOverlay.tsx` — 维护标题
+  - `ui/ActionSheet.tsx` — 默认取消标签改为 i18n
+  - `BrandSelectorModal.tsx` — 品牌选择器标题、搜索、加载、空态
+  - `level/LevelUpgradeModal.tsx` — "恭喜升级"
+  - `level/MonthlyLotteryEntry.tsx` — 抽奖状态文字（已中奖/已开奖/已结束/已进池/自动进池）
+  - `level/EventRegistrationButton.tsx` — 免费门票/支付报名、报名成功/核销失败
+  - `level/LevelBadge.tsx` — accessibility label
+  - `PostDetail/LookbookContent.tsx` — "品牌"、"系列" 标签
+  - `PostDetail/types.ts` — `formatTimestamp` 相对时间改为 `i18n.t()`
+  - `PostDetail/hooks/usePostActions.ts` — 删除/编辑帖子的所有 Alert 消息
+  - `PostDetail/hooks/useEngagement.ts` — 点赞/收藏/关注的 Alert 消息
+  - `PostDetail/hooks/useComments.ts` — 评论/回复的删除确认、发布成功/失败
+  - `PostDetail/hooks/usePostDetail.ts` — 加载错误消息
+  - `ShareToChatModal.tsx` — `resolvePreview` 中的 fallback 字符串
+  - 新增翻译 key：`postActions.*`、`engagement.*`、`comments.*`、`postDetail.series`
+
+### Web i18n — 全部页面及组件国际化 (2026-04-29)
+
+完成 Web 端所有指定页面和组件的国际化工作，涵盖 22 个文件：
+
+**Store 组件 (5 个):**
+- `StoreProfileBlock.tsx` — 关注/粉丝/认证等
+- `StoreServiceCards.tsx` — 服务承诺标签
+- `StoreProductGrid.tsx` — 加载/空态/加载更多
+- `StoreCategoryCards.tsx` — fallback 卡片标签
+- `StoresListView.tsx` — 列表加载/筛选/门店徽章
+
+**Merchant shared (1 个):**
+- `merchant/shared.tsx` — ImagePicker/MultiImagePicker/ChipEditor/SubPageBackLink
+
+**App pages — Stores (3 个):**
+- `stores/page.tsx` — 店铺列表页
+- `stores/[id]/view.tsx` — 店铺详情视图
+- `stores/[id]/products/[productId]/view.tsx` — 商品详情视图
+
+**App pages — Settings (4 个):**
+- `settings/profile/page.tsx` — 编辑资料
+- `settings/password/page.tsx` — 修改密码
+- `settings/blocked/page.tsx` — 屏蔽用户
+- `settings/reports/page.tsx` — 我的举报
+
+**App pages — Merchant (5 个):**
+- `me/merchant/[merchantId]/page.tsx` — 商家管理中心 (Banner/公告/活动/折扣 4 个 Tab)
+- `me/merchant/[merchantId]/categories/page.tsx` — 商品分类管理
+- `me/merchant/[merchantId]/entry-cards/page.tsx` — 入口卡片管理
+- `me/merchant/[merchantId]/products/page.tsx` — 商品 CRUD
+- `me/merchant/[merchantId]/profile/page.tsx` — 店铺主页配置
+
+**翻译文件更新:**
+- `web/src/lib/i18n/locales/zh.json` — 新增 `store`、`product`、`merchant`、`reports` 4 个 section，扩展 `common`、`settings`
+- `web/src/lib/i18n/locales/en.json` — 同步英文翻译
+
+**跳过 (无需处理):**
+- `StoreBrandStoryCard.tsx` — 无硬编码中文 UI 文本
+- `StoreTopSwitcher.tsx` — 无硬编码中文 UI 文本
+- `stores/[id]/page.tsx` — 服务端 metadata，不可转 client
+- `stores/[id]/products/[productId]/page.tsx` — 同上
+
+---
+
+## 2026-04-29 — Frontend Admin Screens i18n (React Native)
+
+**完成: 15 个 admin 页面国际化**
+
+已处理文件:
+- `AdminScreen.tsx` — TABS 移入组件并用 useMemo 包裹
+- `UsersTab.tsx` — 常量 map 改为 pattern-based t() 调用
+- `PendingTab.tsx` — Alert/按钮/标签/Modal 全部替换
+- `PostsManagementTab.tsx` — STATUS/AUDIT/GRADE/REPORT 常量改 pattern-based
+- `CommentsTab.tsx` — Alert/分页/空状态
+- `BroadcastTab.tsx` — PAGE_OPTIONS 移入组件, 表单/Alert/链接描述
+- `BrandSubmissionsTab.tsx` — Alert/meta/按钮/Modal
+- `BrandImageReviewTab.tsx` — Alert/按钮
+- `ShowManagementTab.tsx` — STATUS_OPTIONS 移入组件, 表单/Modal/Alert
+- `ShowReviewTab.tsx` — 审核确认/拒绝 Modal/空状态
+- `StoreManagementTab.tsx` — 筛选/表单/Modal/Alert
+- `LotteryAdminTab.tsx` — statusLabel 移入组件, 同步/开奖 Alert
+- `LevelReviewTab.tsx` — 审批/授予/回填 Alert/Modal
+- `MaintenanceTab.tsx` — 开关标签/消息区/保存/提示
+- `RecommendConfigTab.tsx` — GRADE_DESCRIPTIONS 移入组件, 比例/策略/保存
+
+**翻译文件更新:**
+- `frontend/src/i18n/locales/zh.json` — admin section 扩展 ~200 keys (含 pattern-based 动态 key)
+- `frontend/src/i18n/locales/en.json` — 同步英文翻译
+
+**Pattern-based 动态 key 补充:**
+- `admin.reportStatus_{PENDING|REVIEWED|RESOLVED|DISMISSED}`
+- `admin.reason_{SPAM|HARASSMENT|INAPPROPRIATE|VIOLENCE|...}`
+- `admin.targetType_{POST|COMMENT|MESSAGE|USER}`
+- `admin.status_{ALL|PUBLISHED|DRAFT|HIDDEN}`
+- `admin.audit_{ALL|PENDING|APPROVED|REJECTED|AUTO_APPROVED|AUTO_REJECTED}`
+- `admin.grade_{ALL|A|B|C|D|F|NONE}`
+- `admin.gender_{MALE|FEMALE}`
+- `admin.ageYears`
+
+**备注:** 部分文件仍保留中文注释和占位符示例文本 (如 "例如 2026-04"), 属开发指引不纳入翻译。
+
+---
+
+### 2026-04-29 — Web Admin 页面国际化 (补全)
+
+**完成:**
+- `web/src/app/admin/levels/page.tsx` — 审批/授予/回填对话框、结果渲染函数、FilterChips 全部 i18n 化
+- `web/src/app/admin/lottery/page.tsx` — 全部 UI 字符串（页头/状态/编辑器/二次确认弹窗/alert 消息）已用 `t()` 替换
+- 对齐两页中使用的 translation keys 与 `web/src/lib/i18n/locales/{en,zh}.json` 中已存在的 key
+- 新增 locale keys: `admin.lv0NotReached`, `admin.executeBackfill`, `admin.editPrizePool`
+
+**所有 24 个 admin 文件均已完成国际化处理:**
+- 20 个 page 文件 (`/admin/**/*.tsx`) 全部含 `useTranslation` 并使用 `t()` 调用
+- 3 个组件文件 (`AdminNav.tsx`, `ui.tsx`, `AdminRequired.tsx`) 已处理
+- 1 个 layout 文件 (`layout.tsx`) — metadata 为 server component SEO 数据，保持原状
 

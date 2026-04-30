@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
     Box,
     Text,
@@ -29,41 +30,41 @@ import {
 } from "../services/storeMerchantService";
 import { getStoreById, BuyerStore } from "../services/buyerStoreService";
 
-// 商家状态配置
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
-    PENDING: {
-        label: "审核中",
-        color: "#F57C00",
-        bgColor: "#FFF3E0",
-        icon: "time-outline",
-    },
-    APPROVED: {
-        label: "已认证",
-        color: "#27AE60",
-        bgColor: "#E8F5E9",
-        icon: "checkmark-circle-outline",
-    },
-    REJECTED: {
-        label: "已拒绝",
-        color: "#E53935",
-        bgColor: "#FFEBEE",
-        icon: "close-circle-outline",
-    },
-    SUSPENDED: {
-        label: "已暂停",
-        color: "#757575",
-        bgColor: "#F5F5F5",
-        icon: "pause-circle-outline",
-    },
-};
-
 interface MerchantWithStore extends StoreMerchant {
     storeInfo?: BuyerStore | null;
 }
 
 const MyMerchantStoresScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
+
+    const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
+        PENDING: {
+            label: t("merchant.pendingReview"),
+            color: "#F57C00",
+            bgColor: "#FFF3E0",
+            icon: "time-outline",
+        },
+        APPROVED: {
+            label: t("merchant.approved"),
+            color: "#27AE60",
+            bgColor: "#E8F5E9",
+            icon: "checkmark-circle-outline",
+        },
+        REJECTED: {
+            label: t("merchant.rejected"),
+            color: "#E53935",
+            bgColor: "#FFEBEE",
+            icon: "close-circle-outline",
+        },
+        SUSPENDED: {
+            label: t("merchant.suspended"),
+            color: "#757575",
+            bgColor: "#F5F5F5",
+            icon: "pause-circle-outline",
+        },
+    };
 
     const [merchants, setMerchants] = useState<MerchantWithStore[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +104,7 @@ const MyMerchantStoresScreen = () => {
             setTotal(result.total);
             setPage(pageNum);
         } catch (error: any) {
-            Alert.alert("加载失败", error.message || "请稍后重试");
+            Alert.alert(t("common.loadFailed"), error.message || t("common.retryLater"));
         } finally {
             setIsLoading(false);
         }
@@ -130,7 +131,7 @@ const MyMerchantStoresScreen = () => {
     // 跳转到商家管理页面
     const goToMerchantManage = (merchant: MerchantWithStore) => {
         if (merchant.status !== "APPROVED") {
-            Alert.alert("提示", "只有认证通过的商家才能管理店铺内容");
+            Alert.alert(t("common.hint"), t("merchant.onlyApprovedCanManage"));
             return;
         }
         (navigation as any).navigate("MerchantManage", { merchantId: merchant.id });
@@ -233,7 +234,7 @@ const MyMerchantStoresScreen = () => {
                             <Ionicons name="alert-circle-outline" size={16} color="#E53935" />
                             <VStack flex={1}>
                                 <Text fontSize="$xs" fontWeight="$semibold" color="#E53935" style={styles.textBold}>
-                                    拒绝原因
+                                    {t("merchant.rejectReason")}
                                 </Text>
                                 <Text fontSize="$xs" color="#E53935" mt="$xs" style={styles.textRegular}>
                                     {item.rejectReason}
@@ -246,7 +247,7 @@ const MyMerchantStoresScreen = () => {
                 {/* 申请时间 */}
                 <HStack justifyContent="between" alignItems="center" mt="$xs">
                     <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
-                        申请时间: {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+                        {t("merchant.applyTime")} {new Date(item.createdAt).toLocaleDateString("zh-CN")}
                     </Text>
 
                     {/* 操作按钮 */}
@@ -262,7 +263,7 @@ const MyMerchantStoresScreen = () => {
                         >
                             <Ionicons name="settings-outline" size={14} color={theme.colors.white} />
                             <Text fontSize="$xs" fontWeight="$semibold" color="$white" ml="$xs" style={styles.textBold}>
-                                管理店铺
+                                {t("merchant.manage")}
                             </Text>
                         </Pressable>
                     )}
@@ -272,34 +273,34 @@ const MyMerchantStoresScreen = () => {
                 {item.status === "APPROVED" && (
                     <Box mt="$sm" pt="$sm" borderTopWidth={1} borderTopColor="$gray100">
                         <Text fontSize="$xs" color="$gray300" mb="$xs" style={styles.textRegular}>
-                            商家权益
+                            {t("merchant.privileges")}
                         </Text>
                         <HStack flexWrap="wrap" gap="$xs">
                             {item.canPostBanner && (
                                 <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
                                     <Text fontSize={10} color="$gray400" style={styles.textRegular}>
-                                        Banner 发布
+                                        {t("merchant.bannerPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostAnnouncement && (
                                 <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
                                     <Text fontSize={10} color="$gray400" style={styles.textRegular}>
-                                        公告发布
+                                        {t("merchant.announcementPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostActivity && (
                                 <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
                                     <Text fontSize={10} color="$gray400" style={styles.textRegular}>
-                                        活动发布
+                                        {t("merchant.activityPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostDiscount && (
                                 <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
                                     <Text fontSize={10} color="$gray400" style={styles.textRegular}>
-                                        折扣发布
+                                        {t("merchant.discountPublish")}
                                     </Text>
                                 </Box>
                             )}
@@ -321,7 +322,7 @@ const MyMerchantStoresScreen = () => {
                 textAlign="center"
                 style={styles.textRegular}
             >
-                您还没有申请入驻任何店铺
+                {t("merchant.noStoresApplied")}
             </Text>
             <Text
                 fontSize="$sm"
@@ -330,7 +331,7 @@ const MyMerchantStoresScreen = () => {
                 textAlign="center"
                 style={styles.textRegular}
             >
-                在店铺详情页点击"我是商家"申请入驻
+                {t("merchant.applyHint")}
             </Text>
             <Pressable
                 mt="$md"
@@ -341,7 +342,7 @@ const MyMerchantStoresScreen = () => {
                 onPress={() => (navigation as any).navigate("Main", { screen: "Map" })}
             >
                 <Text fontSize="$sm" fontWeight="$semibold" color="$white" style={styles.textBold}>
-                    浏览买手店
+                    {t("merchant.browseStores")}
                 </Text>
             </Pressable>
         </VStack>
@@ -351,14 +352,14 @@ const MyMerchantStoresScreen = () => {
         return (
             <SafeAreaView style={styles.container} edges={["top"]}>
                 <ScreenHeader
-                    title="我的店铺"
+                    title={t("merchant.myStores")}
                     showBackButton
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator  color={theme.colors.black} />
                     <Text color="$gray300" mt="$md" style={styles.textRegular}>
-                        加载中...
+                        {t("common.loading")}
                     </Text>
                 </VStack>
             </SafeAreaView>
@@ -368,7 +369,7 @@ const MyMerchantStoresScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <ScreenHeader
-                title="我的店铺"
+                title={t("merchant.myStores")}
                 showBackButton
                 onBackPress={() => navigation.goBack()}
             />
@@ -404,7 +405,7 @@ const MyMerchantStoresScreen = () => {
                     <HStack alignItems="center" gap="$xs">
                         <Ionicons name="information-circle-outline" size={14} color={theme.colors.gray300} />
                         <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                            点击店铺名称可查看店铺详情，认证通过后可管理店铺内容
+                            {t("merchant.infoHint")}
                         </Text>
                     </HStack>
                 </Box>

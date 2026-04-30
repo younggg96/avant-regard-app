@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService } from "../../services/adminService";
@@ -20,6 +21,7 @@ import { ImageSize } from "../../utils/imageUtils";
 import HalfStarRating from "../../components/HalfStarRating";
 
 const PendingTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,8 +43,8 @@ const PendingTab = () => {
       const posts = await adminService.getPendingPosts();
       setPendingPosts(posts);
     } catch (error) {
-      console.error("获取待审核帖子失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取待审核帖子失败");
+      console.error("fetchPendingPosts failed:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchPendingFailed"));
     } finally {
       setLoading(false);
     }
@@ -59,18 +61,18 @@ const PendingTab = () => {
   }, [fetchPendingPosts]);
 
   const handleApprove = async (postId: number) => {
-    Alert.alert("确认通过", "确定要通过这篇帖子吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmApprove"), t("admin.confirmApprovePost"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确定",
+        text: t("common.confirm"),
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.approvePost(postId);
-            Alert.alert("成功", "帖子已通过审核");
+            Alert.alert(t("common.success"), t("admin.postApproved"));
             setPendingPosts((prev) => prev.filter((p) => p.id !== postId));
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -90,11 +92,11 @@ const PendingTab = () => {
     try {
       setActionLoading(true);
       await adminService.rejectPost(selectedPostId, rejectReason || undefined);
-      Alert.alert("成功", "帖子已被拒绝");
+      Alert.alert(t("common.success"), t("admin.postRejected"));
       setPendingPosts((prev) => prev.filter((p) => p.id !== selectedPostId));
       setRejectModalVisible(false);
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -124,13 +126,13 @@ const PendingTab = () => {
 
   const handleBatchApprove = async () => {
     if (selectedPostIds.size === 0) {
-      Alert.alert("提示", "请先选择要通过的帖子");
+      Alert.alert(t("admin.hint"), t("admin.selectPostsToApprove"));
       return;
     }
-    Alert.alert("批量通过", `确定要通过选中的 ${selectedPostIds.size} 篇帖子吗？`, [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.batchApprove"), t("admin.batchApprove") + ` (${selectedPostIds.size})`, [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确定",
+        text: t("common.confirm"),
         onPress: async () => {
           try {
             setActionLoading(true);
@@ -148,13 +150,13 @@ const PendingTab = () => {
             setPendingPosts((prev) => prev.filter((p) => !selectedPostIds.has(p.id) || failCount > 0));
             setSelectedPostIds(new Set());
             if (failCount > 0) {
-              Alert.alert("完成", `成功通过 ${successCount} 篇，失败 ${failCount} 篇`);
+              Alert.alert(t("admin.done"), t("admin.batchApproveResult", { success: successCount, fail: failCount }));
               fetchPendingPosts();
             } else {
-              Alert.alert("成功", `已通过 ${successCount} 篇帖子`);
+              Alert.alert(t("common.success"), t("admin.batchApproveSuccess", { count: successCount }));
             }
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -165,7 +167,7 @@ const PendingTab = () => {
 
   const handleOpenBatchRejectModal = () => {
     if (selectedPostIds.size === 0) {
-      Alert.alert("提示", "请先选择要拒绝的帖子");
+      Alert.alert(t("admin.hint"), t("admin.selectPostsToReject"));
       return;
     }
     setBatchRejectReason("");
@@ -190,32 +192,32 @@ const PendingTab = () => {
       setSelectedPostIds(new Set());
       setBatchRejectModalVisible(false);
       if (failCount > 0) {
-        Alert.alert("完成", `成功拒绝 ${successCount} 篇，失败 ${failCount} 篇`);
+        Alert.alert(t("admin.done"), t("admin.batchRejectResult", { success: successCount, fail: failCount }));
         fetchPendingPosts();
       } else {
-        Alert.alert("成功", `已拒绝 ${successCount} 篇帖子`);
+        Alert.alert(t("common.success"), t("admin.batchRejectSuccess", { count: successCount }));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDeletePost = async (postId: number) => {
-    Alert.alert("确认删除", "确定要删除这篇帖子吗？此操作不可撤销。", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeletePost"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deletePost(postId);
-            Alert.alert("成功", "帖子已删除");
+            Alert.alert(t("common.success"), t("admin.postDeleted"));
             setPendingPosts((prev) => prev.filter((p) => p.id !== postId));
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除帖子失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deletePostFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -287,11 +289,11 @@ const PendingTab = () => {
 
         {post.postType === "ITEM_REVIEW" && (
           <Box style={styles.reviewInfo}>
-            {post.brandName && <Text style={styles.reviewText}>品牌: {post.brandName}</Text>}
-            {post.productName && <Text style={styles.reviewText}>产品: {post.productName}</Text>}
+            {post.brandName && <Text style={styles.reviewText}>{t("admin.brand")} {post.brandName}</Text>}
+            {post.productName && <Text style={styles.reviewText}>{t("admin.product")} {post.productName}</Text>}
             {post.rating !== undefined && (
               <HStack style={styles.ratingContainer}>
-                <Text style={styles.reviewText}>评分: </Text>
+                <Text style={styles.reviewText}>{t("admin.rating")} </Text>
                 <HalfStarRating
                   rating={post.rating || 0}
                   size={14}
@@ -312,7 +314,7 @@ const PendingTab = () => {
               disabled={actionLoading}
               leftIcon={<Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
             </Button>
             <Button
               size="sm"
@@ -321,7 +323,7 @@ const PendingTab = () => {
               disabled={actionLoading}
               leftIcon={<Ionicons name="close-circle" size={18} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
             </Button>
             <Button
               size="sm"
@@ -330,7 +332,7 @@ const PendingTab = () => {
               disabled={actionLoading}
               leftIcon={<Ionicons name="trash-outline" size={18} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
             </Button>
             <Button
               size="sm"
@@ -338,7 +340,7 @@ const PendingTab = () => {
               onPress={() => (navigation as any).navigate("PostDetail", { postId: post.id })}
               leftIcon={<Ionicons name="eye-outline" size={18} color={theme.colors.white} />}
             >
-              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>查看</ButtonText>
+              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.view")}</ButtonText>
             </Button>
           </HStack>
         )}
@@ -360,7 +362,7 @@ const PendingTab = () => {
               color={batchMode ? theme.colors.white : theme.colors.black}
             />
             <Text style={[styles.batchModeButtonText, batchMode && styles.batchModeButtonTextActive]}>
-              {batchMode ? "取消" : "批量操作"}
+              {batchMode ? t("common.cancel") : t("admin.batchOperation")}
             </Text>
           </Pressable>
 
@@ -373,7 +375,7 @@ const PendingTab = () => {
                   color={theme.colors.black}
                 />
                 <Text style={styles.selectAllText}>
-                  {selectedPostIds.size === pendingPosts.length ? "取消全选" : "全选"}
+                  {selectedPostIds.size === pendingPosts.length ? t("admin.deselectAll") : t("admin.selectAll")}
                 </Text>
               </Pressable>
 
@@ -388,7 +390,7 @@ const PendingTab = () => {
                   ) : (
                     <>
                       <Ionicons name="checkmark-circle" size={16} color={theme.colors.white} />
-                      <Text style={styles.batchActionText}>通过({selectedPostIds.size})</Text>
+                      <Text style={styles.batchActionText}>{t("admin.approve")}({selectedPostIds.size})</Text>
                     </>
                   )}
                 </Pressable>
@@ -398,7 +400,7 @@ const PendingTab = () => {
                   disabled={actionLoading || selectedPostIds.size === 0}
                 >
                   <Ionicons name="close-circle" size={16} color={theme.colors.white} />
-                  <Text style={styles.batchActionText}>拒绝({selectedPostIds.size})</Text>
+                  <Text style={styles.batchActionText}>{t("admin.batchReject", { count: selectedPostIds.size })}</Text>
                 </Pressable>
               </HStack>
             </>
@@ -414,14 +416,14 @@ const PendingTab = () => {
         {loading && !refreshing ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : pendingPosts.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="checkmark-done-circle-outline" size={64} color={theme.colors.gray200} />
-            <Text style={sharedStyles.emptyText}>暂无待审核帖子</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noPendingPosts")}</Text>
             <Text style={{ ...theme.typography.caption, color: theme.colors.gray300, marginTop: 4, textAlign: "center" }}>
-              已启用自动审核：F级以上自动通过，F级自动驳回
+              {t("admin.autoReviewEnabled")}
             </Text>
           </Box>
         ) : (
@@ -435,10 +437,10 @@ const PendingTab = () => {
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
-            <Text style={sharedStyles.modalTitle}>拒绝原因</Text>
+            <Text style={sharedStyles.modalTitle}>{t("admin.rejectReason")}</Text>
             <Input
               style={sharedStyles.modalInput}
-              placeholder="请输入拒绝原因（可选）"
+              placeholder={t("admin.rejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={rejectReason}
               onChangeText={setRejectReason}
@@ -449,10 +451,10 @@ const PendingTab = () => {
             />
             <HStack style={sharedStyles.modalButtons}>
               <Button variant="outline" size="sm" onPress={() => setRejectModalVisible(false)}>
-                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
               </Button>
               <Button size="sm" onPress={handleConfirmReject} disabled={actionLoading} isLoading={actionLoading}>
-                <ButtonText>确认拒绝</ButtonText>
+                <ButtonText>{t("admin.confirmReject")}</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -462,10 +464,10 @@ const PendingTab = () => {
       <Modal visible={batchRejectModalVisible} transparent animationType="fade" onRequestClose={() => setBatchRejectModalVisible(false)}>
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
-            <Text style={sharedStyles.modalTitle}>批量拒绝 ({selectedPostIds.size} 篇)</Text>
+            <Text style={sharedStyles.modalTitle}>{t("admin.batchReject", { count: selectedPostIds.size })}</Text>
             <Input
               style={sharedStyles.modalInput}
-              placeholder="请输入拒绝原因（可选，将应用于所有选中帖子）"
+              placeholder={t("admin.batchRejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={batchRejectReason}
               onChangeText={setBatchRejectReason}
@@ -476,10 +478,10 @@ const PendingTab = () => {
             />
             <HStack style={sharedStyles.modalButtons}>
               <Button variant="outline" size="sm" onPress={() => setBatchRejectModalVisible(false)}>
-                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
               </Button>
               <Button size="sm" onPress={handleConfirmBatchReject} disabled={actionLoading} isLoading={actionLoading}>
-                <ButtonText>确认拒绝</ButtonText>
+                <ButtonText>{t("admin.confirmReject")}</ButtonText>
               </Button>
             </HStack>
           </Box>

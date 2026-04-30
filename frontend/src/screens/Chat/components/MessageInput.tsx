@@ -1,6 +1,7 @@
 import React from "react";
 import { View, TextInput, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { styles } from "../styles";
 
@@ -27,13 +28,15 @@ export const MessageInput = ({
   onSend,
   onToggleSharePicker,
 }: MessageInputProps) => {
+  const { t } = useTranslation();
+
   if (disabled) {
     return (
       <View style={styles.inputContainer}>
         <View style={styles.disabledInputContainer}>
           <Ionicons name="lock-closed-outline" size={16} color={theme.colors.gray200} />
           <Text style={styles.disabledInputText}>
-            等待对方回复后才能继续发送
+            {t("chat.sendRestricted")}
           </Text>
         </View>
       </View>
@@ -71,7 +74,7 @@ export const MessageInput = ({
             onPress={onStartWriting}
             activeOpacity={0.7}
           >
-            <Text style={styles.writeMessagePlaceholder}>输入消息...</Text>
+            <Text style={styles.writeMessagePlaceholder}>{t("chat.inputPlaceholder")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -81,7 +84,7 @@ export const MessageInput = ({
             style={styles.expandedTextInput}
             value={inputText}
             onChangeText={onChangeText}
-            placeholder="输入消息..."
+            placeholder={t("chat.inputPlaceholder")}
             placeholderTextColor={theme.colors.gray200}
             multiline
             scrollEnabled
@@ -103,7 +106,7 @@ export const MessageInput = ({
                   !inputText.trim() && styles.sendButtonTextDisabled,
                 ]}
               >
-                发送
+                {t("chat.send")}
               </Text>
             </TouchableOpacity>
           </View>

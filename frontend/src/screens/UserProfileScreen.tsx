@@ -12,6 +12,7 @@ import {
   Text as RNText,
   Image as RNImage,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   useNavigation,
@@ -111,6 +112,7 @@ const TAB_BAR_HEIGHT = 44; // Tab栏高度
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
 const UserProfileScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -183,12 +185,12 @@ const UserProfileScreen = () => {
   );
 
   const allTabs: { id: TabType; label: string }[] = [
-    { id: "posts", label: "笔记" },
-    { id: "forum", label: "论坛" },
-    { id: "saved", label: "收藏" },
-    { id: "liked", label: "赞过" },
-    { id: "wishlist", label: "愿望单" },
-    { id: "archive", label: "贡献" },
+    { id: "posts", label: t("profile.published") },
+    { id: "forum", label: t("profile.forum") },
+    { id: "saved", label: t("profile.saved") },
+    { id: "liked", label: t("profile.liked") },
+    { id: "wishlist", label: t("profile.wishlist") },
+    { id: "archive", label: t("profile.contributions") },
   ];
 
   const tabs = isCurrentUser
@@ -986,11 +988,11 @@ const UserProfileScreen = () => {
             color={theme.colors.gray300}
           />
           <Text color="$gray400" mt="$md">
-            {activeTab === "posts" && "还没有发布内容"}
-            {activeTab === "forum" && "还没有论坛帖子"}
-            {activeTab === "saved" && "还没有收藏帖子"}
-            {activeTab === "liked" && "还没有点赞帖子"}
-            {activeTab === "wishlist" && "还没有想要的单品"}
+            {activeTab === "posts" && t("profile.noPublishedPosts")}
+            {activeTab === "forum" && t("profile.noForumPosts")}
+            {activeTab === "saved" && t("profile.noSavedPosts")}
+            {activeTab === "liked" && t("profile.noLikedPosts")}
+            {activeTab === "wishlist" && t("profile.noWishlist")}
           </Text>
         </VStack>
       );
@@ -1056,7 +1058,7 @@ const UserProfileScreen = () => {
                     <ActivityIndicator color="white" size="small" />
                   ) : (
                     <RNText style={styles.followButtonTextSmall}>
-                      {isFollowing ? "已关注" : "关注"}
+                      {isFollowing ? t("profile.unfollow") : t("profile.followUser")}
                     </RNText>
                   )}
                 </Pressable>
@@ -1196,7 +1198,7 @@ const UserProfileScreen = () => {
                       <ActivityIndicator color={isFollowing ? theme.colors.gray600 : "white"} size="small" />
                     ) : (
                       <RNText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
-                        {isFollowing ? (isMutual ? "互相关注" : "已关注") : "关注"}
+                        {isFollowing ? (isMutual ? t("profile.mutual") : t("profile.unfollow")) : t("profile.followUser")}
                       </RNText>
                     )}
                   </Pressable>
@@ -1215,7 +1217,7 @@ const UserProfileScreen = () => {
                     }}
                   >
                     <Ionicons name="chatbubble-outline" size={16} color={theme.colors.black} />
-                    <RNText style={styles.chatButtonText}>发消息</RNText>
+                    <RNText style={styles.chatButtonText}>{t("profile.sendMessage")}</RNText>
                   </Pressable>
                 </>
               ) : (
@@ -1223,7 +1225,7 @@ const UserProfileScreen = () => {
                   style={styles.editProfileButton}
                   onPress={() => (navigation as any).navigate("EditProfile")}
                 >
-                  <RNText style={styles.editProfileText}>编辑资料</RNText>
+                  <RNText style={styles.editProfileText}>{t("profile.editProfile")}</RNText>
                 </Pressable>
               )}
             </View>
@@ -1239,7 +1241,7 @@ const UserProfileScreen = () => {
                 </View>
               ) : null}
             </View>
-            <RNText style={styles.bio} numberOfLines={2}>{userInfo?.bio || "暂无简介"}</RNText>
+            <RNText style={styles.bio} numberOfLines={2}>{userInfo?.bio || t("profile.editBioPlaceholder")}</RNText>
           </View>
 
           <View style={styles.tagsContainer}>
@@ -1260,31 +1262,31 @@ const UserProfileScreen = () => {
               style={styles.statItem}
               onPress={() => {
                 if (!isCurrentUser && privacySettings?.hideFollowing) {
-                  Alert.show("该用户已隐藏关注列表");
+                  Alert.show(t("followingUsers.privateList"));
                   return;
                 }
                 (navigation as any).navigate("FollowingUsers", { userId });
               }}
             >
               <RNText style={styles.statNumber}>{followingCount}</RNText>
-              <RNText style={styles.statLabel}>关注</RNText>
+              <RNText style={styles.statLabel}>{t("profile.following")}</RNText>
             </Pressable>
             <Pressable
               style={styles.statItem}
               onPress={() => {
                 if (!isCurrentUser && privacySettings?.hideFollowers) {
-                  Alert.show("该用户已隐藏粉丝列表");
+                  Alert.show(t("followersScreen.privateList"));
                   return;
                 }
                 (navigation as any).navigate("Followers", { userId });
               }}
             >
               <RNText style={styles.statNumber}>{followersCount}</RNText>
-              <RNText style={styles.statLabel}>粉丝</RNText>
+              <RNText style={styles.statLabel}>{t("profile.followers")}</RNText>
             </Pressable>
             <View style={styles.statItem}>
               <RNText style={styles.statNumber}>{tabsData.posts.hasLoaded ? getTotalLikes() : "-"}</RNText>
-              <RNText style={styles.statLabel}>获赞与收藏</RNText>
+              <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
             </View>
           </View>
         </View>
@@ -1293,7 +1295,7 @@ const UserProfileScreen = () => {
         {followedBrands.length > 0 && (
           <View style={styles.followedBrandsSection}>
             <View style={styles.followedBrandsHeader}>
-              <RNText style={styles.followedBrandsTitle}>关注的品牌</RNText>
+              <RNText style={styles.followedBrandsTitle}>{t("profile.followedBrands")}</RNText>
               <RNText style={styles.followedBrandsCount}>{followedBrands.length}</RNText>
             </View>
             <FlatList
@@ -1335,7 +1337,7 @@ const UserProfileScreen = () => {
         {userTitles.length > 0 && (
           <View style={styles.followedBrandsSection}>
             <View style={styles.followedBrandsHeader}>
-              <RNText style={styles.followedBrandsTitle}>头衔</RNText>
+              <RNText style={styles.followedBrandsTitle}>{t("myTitles.title")}</RNText>
               <RNText style={styles.followedBrandsCount}>{userTitles.length}</RNText>
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8 }}>

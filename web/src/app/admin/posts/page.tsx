@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { postsApi, type AllPostsParams, type AdminPost } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -15,27 +16,29 @@ import {
   Button,
 } from "@/components/admin/ui";
 
-const POST_TYPES = [
-  { value: "OUTFIT", label: "Lookbook" },
-  { value: "DAILY_SHARE", label: "穿搭" },
-  { value: "ITEM_REVIEW", label: "测评" },
-  { value: "ARTICLES", label: "论坛" },
-] as const;
-
-const AUDIT_STATUSES = [
-  { value: "PENDING", label: "待审核" },
-  { value: "APPROVED", label: "已通过" },
-  { value: "REJECTED", label: "已拒绝" },
-] as const;
-
-type PostType = (typeof POST_TYPES)[number]["value"];
-type AuditStatus = (typeof AUDIT_STATUSES)[number]["value"];
-
-const POST_TYPE_LABEL: Record<string, string> = {
-  OUTFIT: "Lookbook", DAILY_SHARE: "穿搭", ITEM_REVIEW: "测评", ARTICLES: "论坛",
-};
-
 export default function PostsManagementPage() {
+  const { t } = useTranslation();
+
+  const POST_TYPES = [
+    { value: "OUTFIT", label: "Lookbook" },
+    { value: "DAILY_SHARE", label: t("admin.postTypeDailyShare") },
+    { value: "ITEM_REVIEW", label: t("admin.postTypeReview") },
+    { value: "ARTICLES", label: t("admin.postTypeForum") },
+  ] as const;
+
+  const AUDIT_STATUSES = [
+    { value: "PENDING", label: t("admin.statusPending") },
+    { value: "APPROVED", label: t("admin.statusApproved") },
+    { value: "REJECTED", label: t("admin.statusRejected") },
+  ] as const;
+
+  type PostType = (typeof POST_TYPES)[number]["value"];
+  type AuditStatus = (typeof AUDIT_STATUSES)[number]["value"];
+
+  const POST_TYPE_LABEL: Record<string, string> = {
+    OUTFIT: "Lookbook", DAILY_SHARE: t("admin.postTypeDailyShare"), ITEM_REVIEW: t("admin.postTypeReview"), ARTICLES: t("admin.postTypeForum"),
+  };
+
   const [posts, setPosts] = useState<AdminPost[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -95,7 +98,7 @@ export default function PostsManagementPage() {
     setRegrading(true);
     try {
       const result = await postsApi.batchRegrade(undefined, true);
-      alert(`已触发 ${result.triggered} 条帖子重新评级`);
+      alert(t("admin.batchTriggered", { count: result.triggered }));
     } finally {
       setRegrading(false);
     }
@@ -104,22 +107,22 @@ export default function PostsManagementPage() {
   return (
     <div>
       <PageHeader
-        title="帖子管理"
-        description={`共 ${total} 条`}
+        title={t("admin.postsManagement")}
+        description={t("admin.postTotal", { count: total })}
         actions={
           <Button variant="secondary" size="sm" onClick={handleBatchRegrade} loading={regrading}>
-            全量重新评级
+            {t("admin.batchRegrade")}
           </Button>
         }
       />
 
       <div className="mb-4 space-y-3">
         <div className="max-w-sm">
-          <SearchBar value={keyword} onChange={setKeyword} placeholder="搜索标题、用户名…" />
+          <SearchBar value={keyword} onChange={setKeyword} placeholder={t("admin.searchPost")} />
         </div>
         <div className="flex flex-wrap gap-4">
-          <FilterChips options={[...POST_TYPES]} value={postType} onChange={setPostType} allLabel="全部类型" />
-          <FilterChips options={[...AUDIT_STATUSES]} value={auditStatus} onChange={setAuditStatus} allLabel="全部状态" />
+          <FilterChips options={[...POST_TYPES]} value={postType} onChange={setPostType} allLabel={t("admin.allType")} />
+          <FilterChips options={[...AUDIT_STATUSES]} value={auditStatus} onChange={setAuditStatus} allLabel={t("admin.allStatus")} />
         </div>
       </div>
 
@@ -133,13 +136,13 @@ export default function PostsManagementPage() {
             <table className="w-full font-label text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--border)] text-[color:var(--ink-muted)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">帖子</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">类型</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">评级</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">审核</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">互动</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">时间</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider">操作</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colPost")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colType")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colGrade")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colAudit")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colInteraction")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider">{t("admin.colTime")}</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider">{t("admin.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -151,7 +154,7 @@ export default function PostsManagementPage() {
                           <img src={post.coverImage} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
                         )}
                         <div className="min-w-0">
-                          <div className="max-w-[200px] truncate">{post.title || "无标题"}</div>
+                          <div className="max-w-[200px] truncate">{post.title || t("admin.noTitle")}</div>
                           <div className="text-[12px] text-[color:var(--ink-muted)]">@{post.username}</div>
                         </div>
                       </div>
@@ -166,15 +169,15 @@ export default function PostsManagementPage() {
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge active={post.auditStatus === "APPROVED"}>
-                        {post.auditStatus === "APPROVED" ? "通过" :
-                         post.auditStatus === "REJECTED" ? "拒绝" : "待审"}
+                        {post.auditStatus === "APPROVED" ? t("admin.auditApproved") :
+                         post.auditStatus === "REJECTED" ? t("admin.auditRejected") : t("admin.auditPending")}
                       </StatusBadge>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)] tabular-nums">
-                      {post.likeCount} 赞 · {post.commentCount} 评论
+                      {t("admin.likesCount", { count: post.likeCount })} · {t("admin.commentCount", { count: post.commentCount })}
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)] tabular-nums">
-                      {new Date(post.createdAt).toLocaleDateString("zh-CN")}
+                      {new Date(post.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1 text-[12px]">
@@ -182,25 +185,25 @@ export default function PostsManagementPage() {
                           onClick={() => setActionTarget({ post, action: "approve" })}
                           className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          通过
+                          {t("admin.approve")}
                         </button>
                         <button
                           onClick={() => setRejectTarget(post)}
                           className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          拒绝
+                          {t("admin.reject")}
                         </button>
                         <button
                           onClick={async () => { await postsApi.regrade(post.id); load(); }}
                           className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          评级
+                          {t("admin.regrade")}
                         </button>
                         <button
                           onClick={() => setActionTarget({ post, action: "delete" })}
                           className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          删除
+                          {t("admin.delete")}
                         </button>
                       </div>
                     </td>
@@ -215,9 +218,9 @@ export default function PostsManagementPage() {
 
       <ConfirmDialog
         open={!!actionTarget}
-        title={actionTarget?.action === "approve" ? "确认通过审核？" : "确认删除帖子？"}
+        title={actionTarget?.action === "approve" ? t("admin.confirmApprovePost") : t("admin.confirmDeletePost")}
         message={actionTarget?.post.title}
-        confirmLabel={actionTarget?.action === "approve" ? "通过" : "删除"}
+        confirmLabel={actionTarget?.action === "approve" ? t("admin.approve") : t("admin.delete")}
         loading={actionLoading}
         onConfirm={handleAction}
         onCancel={() => setActionTarget(null)}
@@ -225,9 +228,9 @@ export default function PostsManagementPage() {
 
       <PromptDialog
         open={!!rejectTarget}
-        title="拒绝原因"
-        placeholder="请输入拒绝原因（可选）"
-        confirmLabel="拒绝"
+        title={t("admin.rejectReason")}
+        placeholder={t("admin.rejectReasonPlaceholder")}
+        confirmLabel={t("admin.reject")}
         loading={actionLoading}
         onConfirm={handleReject}
         onCancel={() => setRejectTarget(null)}

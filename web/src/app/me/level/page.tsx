@@ -14,6 +14,7 @@
  */
 
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import {
   levelApi,
@@ -24,6 +25,7 @@ import {
 import { LevelBadge } from "@/components/user/LevelBadge";
 
 export default function MyLevelPage() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const userId = user?.userId;
 
@@ -50,10 +52,10 @@ export default function MyLevelPage() {
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl text-black dark:text-white md:text-3xl">
-            我的等级
+            {t("level.title")}
           </h1>
           <p className="mt-1 font-label text-[12px] text-[color:var(--ink-muted)]">
-            只升不降, 保护你的每一步付出
+            {t("level.subtitle")}
           </p>
         </div>
         <LevelBadge level={currentLevel} />
@@ -61,7 +63,7 @@ export default function MyLevelPage() {
 
       {loadingStatus || !status ? (
         <div className="rounded border border-[var(--border)] p-8 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-          正在载入…
+          {t("level.loadingLevel")}
         </div>
       ) : (
         <>
@@ -79,28 +81,29 @@ export default function MyLevelPage() {
 // ───────────────────────────── 子组件 ─────────────────────────────
 
 function CurrentLevelCard({ status }: { status: UserLevelStatus }) {
+  const { t } = useTranslation();
   const pending = status.pendingLevel;
   return (
     <div className="mb-6 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-6">
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          当前等级
+          {t("level.currentLevel")}
         </span>
         <LevelBadge level={status.currentLevel || 0} />
         {status.currentLevel === 0 && (
           <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-            (尚未开始)
+            {t("level.notStarted")}
           </span>
         )}
       </div>
       {status.lastLevelUpAt && (
         <p className="mt-2 font-label text-[11px] text-[color:var(--ink-muted)]">
-          上次升级于 {new Date(status.lastLevelUpAt).toLocaleString("zh-CN")}
+          {t("level.lastLevelUp")} {new Date(status.lastLevelUpAt).toLocaleString("zh-CN")}
         </p>
       )}
       {pending && pending === 4 && (
         <p className="mt-3 rounded border border-[var(--border)] bg-[var(--canvas)] px-3 py-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-          Lv4 档案已达标, 正在等待运营审核.
+          {t("level.lv4Pending")}
         </p>
       )}
     </div>
@@ -108,10 +111,11 @@ function CurrentLevelCard({ status }: { status: UserLevelStatus }) {
 }
 
 function NextLevelProgress({ status }: { status: UserLevelStatus }) {
+  const { t } = useTranslation();
   if (!status.nextLevel || status.nextTasks.length === 0) {
     return (
       <div className="mb-6 rounded border border-[var(--border)] p-6 font-label text-[13px] text-[color:var(--ink-muted)]">
-        已达到顶级 Lv5, 感谢你的持续参与.
+        {t("level.topLevel")}
       </div>
     );
   }
@@ -121,7 +125,7 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            下一级
+            {t("level.nextLevel")}
           </div>
           <div className="mt-1 font-serif text-lg text-black dark:text-white">
             Lv{status.nextLevel} · {status.nextLevelTitle ?? ""}
@@ -129,21 +133,21 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
         </div>
         {status.nextLevelBenefit && (
           <div className="max-w-[60%] text-right font-label text-[12px] text-[color:var(--ink-muted)]">
-            解锁: {status.nextLevelBenefit}
+            {t("level.unlock")}: {status.nextLevelBenefit}
           </div>
         )}
       </div>
       <ul className="space-y-3">
-        {status.nextTasks.map((t) => {
-          const pct = Math.min(100, (t.progress / Math.max(1, t.target)) * 100);
+        {status.nextTasks.map((task) => {
+          const pct = Math.min(100, (task.progress / Math.max(1, task.target)) * 100);
           return (
-            <li key={t.action}>
+            <li key={task.action}>
               <div className="mb-1 flex items-center justify-between font-label text-[12px]">
-                <span className={t.completed ? "text-[var(--ink)]" : "text-[color:var(--ink-muted)]"}>
-                  {t.label}
+                <span className={task.completed ? "text-[var(--ink)]" : "text-[color:var(--ink-muted)]"}>
+                  {task.label}
                 </span>
                 <span className="tabular-nums text-[color:var(--ink-muted)]">
-                  {t.progress} / {t.target}
+                  {task.progress} / {task.target}
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded bg-[var(--canvas-raised)]">
@@ -161,10 +165,11 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
 }
 
 function BenefitsSection({ status }: { status: UserLevelStatus }) {
+  const { t } = useTranslation();
   if (status.benefits.length === 0) {
     return (
       <div className="mb-6 rounded border border-[var(--border)] p-6 font-label text-[13px] text-[color:var(--ink-muted)]">
-        完成相应等级后, 权益会出现在这里.
+        {t("level.noBenefits")}
       </div>
     );
   }
@@ -172,7 +177,7 @@ function BenefitsSection({ status }: { status: UserLevelStatus }) {
   return (
     <div className="mb-6 rounded border border-[var(--border)] p-6">
       <div className="mb-3 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-        我的权益
+        {t("level.myBenefits")}
       </div>
       <ul className="space-y-3">
         {status.benefits.map((b) => {
@@ -192,12 +197,12 @@ function BenefitsSection({ status }: { status: UserLevelStatus }) {
                 )}
                 {isFreeTicket && (
                   <div className="mt-2 font-label text-[11px] text-[color:var(--ink-muted)]">
-                    {exhausted ? "已用完" : "在活动报名页点「使用免费门票」核销"}
+                    {exhausted ? t("level.exhausted") : t("level.freeTicketHint")}
                   </div>
                 )}
               </div>
               <div className="shrink-0 font-label text-[12px] tabular-nums text-[color:var(--ink-muted)]">
-                剩余 {b.remaining} / {b.quota}
+                {t("level.remaining", { remaining: b.remaining, quota: b.quota })}
               </div>
             </li>
           );
@@ -212,10 +217,11 @@ function LotterySection({
 }: {
   data: CurrentLotteryPayload | undefined;
 }) {
+  const { t } = useTranslation();
   if (!data) {
     return (
       <div className="mb-6 rounded border border-[var(--border)] p-6 font-label text-[13px] text-[color:var(--ink-muted)]">
-        正在同步月度抽奖信息…
+        {t("level.syncingLottery")}
       </div>
     );
   }
@@ -228,7 +234,7 @@ function LotterySection({
       <div className="mb-3 flex items-center justify-between">
         <div>
           <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            月度抽奖
+            {t("level.lottery")}
           </div>
           <div className="mt-1 font-serif text-lg text-black dark:text-white">
             {round.month}
@@ -241,33 +247,33 @@ function LotterySection({
               : "bg-[var(--ink)] text-[var(--canvas)]"
           }`}
         >
-          {drawn ? "已开奖" : "进行中"}
+          {drawn ? t("level.lotteryDrawn") : t("level.lotteryActive")}
         </span>
       </div>
 
       <div className="mb-4 font-label text-[12px] text-[color:var(--ink-muted)]">
         {entry.entered
-          ? `你已在本期抽奖池中 (参与人数 ${round.totalEntries})`
-          : "你目前尚未进入本期抽奖池 (下次访问将自动加入)"}
+          ? t("level.lotteryEntered", { count: round.totalEntries })
+          : t("level.lotteryNotEntered")}
       </div>
 
       {entry.isWinner ? (
         <div className="rounded border border-[var(--ink)] p-4">
           <div className="font-label text-[11px] uppercase tracking-widest text-[var(--ink)]">
-            中奖
+            {t("level.lotteryWin")}
           </div>
           <div className="mt-1 font-serif text-[16px] text-black dark:text-white">
-            {entry.prizeName ?? "请联系运营领取"}
+            {entry.prizeName ?? t("level.lotteryPrizeDefault")}
           </div>
         </div>
       ) : drawn ? (
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          本期开奖于 {round.drawnAt ? new Date(round.drawnAt).toLocaleString("zh-CN") : "--"},
-          未中奖. 下月继续.
+          {t("level.lotteryDrawDate")} {round.drawnAt ? new Date(round.drawnAt).toLocaleString("zh-CN") : "--"},
+          {t("level.lotteryNotWon")}
         </div>
       ) : (
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          本月 25 日由运营手动开奖, 中奖者会收到站内通知.
+          {t("level.lotteryNextDraw")}
         </div>
       )}
     </div>
@@ -281,10 +287,11 @@ function LevelTimeline({
   rules: LevelSpec[];
   current: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded border border-[var(--border)] p-6">
       <div className="mb-4 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-        等级路线
+        {t("level.levelRoadmap")}
       </div>
       <ol className="space-y-4">
         {rules.map((r) => {
@@ -309,10 +316,10 @@ function LevelTimeline({
                 </div>
                 <span className="font-label text-[10px] uppercase tracking-widest text-[color:var(--ink-muted)]">
                   {r.mode === "AUTO"
-                    ? "自动升级"
+                    ? t("level.autoUpgrade")
                     : r.mode === "AUDIT"
-                    ? "运营审核"
-                    : "人工授予"}
+                    ? t("level.auditUpgrade")
+                    : t("level.manualUpgrade")}
                 </span>
               </div>
               <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
@@ -320,16 +327,16 @@ function LevelTimeline({
               </div>
               {r.tasks.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 font-label text-[12px] text-[color:var(--ink-muted)]">
-                  {r.tasks.map((t) => (
-                    <li key={t.action}>
-                      {t.label} · 达标 {t.target}
+                  {r.tasks.map((task) => (
+                    <li key={task.action}>
+                      {task.label} · {t("level.taskTarget", { target: task.target })}
                     </li>
                   ))}
                 </ul>
               )}
               {r.benefit && (
                 <div className="mt-2 font-label text-[12px] text-[var(--ink)]">
-                  权益: {r.benefit}
+                  {t("level.benefit")}: {r.benefit}
                 </div>
               )}
             </li>

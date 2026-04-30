@@ -11,6 +11,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { config } from "./gluestack.config";
 
+// i18n
+import { initI18n } from "./src/i18n";
+import { useTranslation } from "react-i18next";
+
 // Push Notifications
 import { usePushNotifications } from "./src/hooks/usePushNotifications";
 
@@ -140,6 +144,7 @@ function AuthNavigator() {
 }
 
 function TabNavigator() {
+  const { t } = useTranslation();
   const { totalUnread } = useChatStore();
   // 统一从 notificationStore 读未读数。当页面内调用 markRead / markAllRead 时，
   // tab 角标会立刻更新，不用等 30 秒 polling。polling 仍保留作为兜底，覆盖
@@ -190,7 +195,7 @@ function TabNavigator() {
         name="Home"
         component={DiscoverScreen}
         options={{
-          tabBarLabel: "首页",
+          tabBarLabel: t("tabs.home"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="home" color={color} focused={focused} />
           ),
@@ -200,7 +205,7 @@ function TabNavigator() {
         name="Archive"
         component={ArchiveScreen}
         options={{
-          tabBarLabel: "Archive档案",
+          tabBarLabel: t("tabs.archive"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="archive" color={color} focused={focused} />
           ),
@@ -224,7 +229,7 @@ function TabNavigator() {
         name="Interaction"
         component={InteractionScreen}
         options={{
-          tabBarLabel: "互动",
+          tabBarLabel: t("tabs.interaction"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="interaction" color={color} focused={focused} />
           ),
@@ -246,7 +251,7 @@ function TabNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: "我",
+          tabBarLabel: t("tabs.profile"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="profile" color={color} focused={focused} />
           ),
@@ -627,18 +632,19 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // 加载字体
-        await Font.loadAsync({
-          "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),
-          "PlayfairDisplay-Medium": require("./assets/fonts/PlayfairDisplay-Medium.ttf"),
-          "PlayfairDisplay-Bold": require("./assets/fonts/PlayfairDisplay-Bold.ttf"),
-        });
+        await Promise.all([
+          Font.loadAsync({
+            "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),
+            "PlayfairDisplay-Medium": require("./assets/fonts/PlayfairDisplay-Medium.ttf"),
+            "PlayfairDisplay-Bold": require("./assets/fonts/PlayfairDisplay-Bold.ttf"),
+          }),
+          initI18n(),
+        ]);
         setFontsLoaded(true);
       } catch (error) {
         console.log("Font loading failed, using system fonts:", error);
         setFontsLoaded(true);
       } finally {
-        // 隐藏原生 splash screen，显示我们的视频
         await SplashScreen.hideAsync().catch(() => { });
         setAppIsReady(true);
       }

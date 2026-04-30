@@ -25,6 +25,7 @@ import {
   sendSms,
   sendEmailOtp,
 } from "@/lib/auth/service";
+import { useTranslation } from "react-i18next";
 
 const PHONE_RE = /^1[3-9]\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // `useSearchParams()` needs to sit inside a <Suspense> boundary, otherwise the
 // page fails to prerender at build time. Inner component holds the form.
 function RegisterPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const nextPath = params.get("next") || "/discover";
@@ -57,7 +59,7 @@ function RegisterPageInner() {
       if (method === "phone") await sendSms({ phone: identifier });
       else await sendEmailOtp({ email: identifier });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "发送失败");
+      setError(e instanceof Error ? e.message : t("auth.sendFailed"));
       throw e;
     }
   };
@@ -67,19 +69,19 @@ function RegisterPageInner() {
     setError(null);
 
     if (!identifierValid) {
-      setError(method === "phone" ? "请输入 11 位手机号" : "邮箱格式不正确");
+      setError(method === "phone" ? t("auth.invalidPhone") : t("auth.invalidEmail"));
       return;
     }
     if (username.trim().length < 2) {
-      setError("用户名至少 2 个字符");
+      setError(t("auth.usernameMin"));
       return;
     }
     if (password.length < 6) {
-      setError("密码至少 6 位");
+      setError(t("auth.passwordMin"));
       return;
     }
     if (code.length < 4) {
-      setError("请输入验证码");
+      setError(t("auth.enterOtp"));
       return;
     }
 
@@ -103,7 +105,7 @@ function RegisterPageInner() {
       loginWithResponse(response);
       router.replace(nextPath);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "注册失败");
+      setError(err instanceof Error ? err.message : t("auth.registerFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -112,9 +114,9 @@ function RegisterPageInner() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-[28px] tracking-tight">创建账号</h1>
+        <h1 className="font-serif text-[28px] tracking-tight">{t("auth.createAccount")}</h1>
         <p className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          加入 Avant Regard，开始你的时装档案之旅。
+          {t("auth.registerSubtitle")}
         </p>
       </div>
 
@@ -122,28 +124,28 @@ function RegisterPageInner() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <TextField
-          label={method === "phone" ? "手机号" : "邮箱"}
+          label={method === "phone" ? t("auth.phone") : t("auth.email")}
           type={method === "phone" ? "tel" : "email"}
           autoComplete={method === "phone" ? "tel" : "email"}
-          placeholder={method === "phone" ? "11 位手机号" : "you@example.com"}
+          placeholder={method === "phone" ? t("auth.phonePlaceholder") : "you@example.com"}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value.trim())}
         />
 
         <TextField
-          label="用户名"
+          label={t("auth.username")}
           autoComplete="username"
-          placeholder="昵称（之后可修改）"
+          placeholder={t("auth.usernamePlaceholder")}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           maxLength={30}
         />
 
         <TextField
-          label="密码"
+          label={t("auth.password")}
           type="password"
           autoComplete="new-password"
-          placeholder="至少 6 位"
+          placeholder={t("auth.passwordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -157,20 +159,20 @@ function RegisterPageInner() {
 
         <FormError message={error} />
 
-        <SubmitButton loading={submitting}>创建账号</SubmitButton>
+        <SubmitButton loading={submitting}>{t("auth.createAccount")}</SubmitButton>
 
         <p className="font-label text-[11px] leading-relaxed text-[color:var(--ink-muted)]">
-          注册即表示同意 Avant Regard 的服务条款与隐私政策。
+          {t("auth.termsNotice")}
         </p>
       </form>
 
       <div className="border-t border-[var(--border)] pt-5 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-        已有账号？{" "}
+        {t("auth.hasAccount")}{" "}
         <Link
           href={`/auth/login${nextPath !== "/discover" ? `?next=${encodeURIComponent(nextPath)}` : ""}`}
           className="text-[var(--ink)] underline-offset-4 hover:underline"
         >
-          直接登录
+          {t("auth.goLogin")}
         </Link>
       </div>
     </div>

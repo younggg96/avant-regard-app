@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
@@ -27,6 +28,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"terms" | "privacy">("terms");
 
   return (
@@ -42,7 +44,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Ionicons name="close" size={24} color={theme.colors.black} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>用户协议与隐私政策</Text>
+          <Text style={styles.headerTitle}>{t("auth.agreementTitle")}</Text>
           <View style={styles.closeButton} />
         </View>
 
@@ -58,7 +60,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
                 activeTab === "terms" && styles.tabTextActive,
               ]}
             >
-              用户协议
+              {t("auth.termsOfService")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -71,7 +73,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
                 activeTab === "privacy" && styles.tabTextActive,
               ]}
             >
-              隐私政策
+              {t("auth.privacyPolicy")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -87,7 +89,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
         {/* 确认按钮 */}
         <View style={styles.bottomContainer}>
           <Text style={styles.agreementHint}>
-            点击下方按钮即表示您已阅读并同意上述协议
+            {t("auth.agreementHint")}
           </Text>
           <TouchableOpacity
             style={[
@@ -101,7 +103,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
               <ActivityIndicator size="small" color={theme.colors.white} />
             ) : (
               <Text style={styles.confirmButtonText}>
-                我已阅读并同意，继续注册
+                {t("auth.agreeAndContinue")}
               </Text>
             )}
           </TouchableOpacity>

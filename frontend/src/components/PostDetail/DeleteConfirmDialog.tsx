@@ -6,6 +6,7 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "../ui";
 import { theme } from "../../theme";
 import { SCREEN_WIDTH } from "./styles";
@@ -23,6 +24,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -75,7 +77,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                     textAlign: "center",
                   }}
                 >
-                  确认删除
+                  {t("postDetail.confirmDelete")}
                 </Text>
                 <Text
                   style={{
@@ -85,7 +87,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                     marginTop: 8,
                   }}
                 >
-                  删除后将无法恢复，确定要删除这篇帖子吗？
+                  {t("postDetail.confirmDeleteMessage")}
                 </Text>
               </View>
 
@@ -119,7 +121,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                       color: theme.colors.gray600,
                     }}
                   >
-                    取消
+                    {t("common.cancel")}
                   </Text>
                 </TouchableOpacity>
 
@@ -149,7 +151,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                           color: "#FF3040",
                         }}
                       >
-                        删除中...
+                        {t("postDetail.deleting")}
                       </Text>
                     </>
                   ) : (
@@ -160,7 +162,7 @@ export const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
                         color: "#FF3040",
                       }}
                     >
-                      删除
+                      {t("common.delete")}
                     </Text>
                   )}
                 </TouchableOpacity>

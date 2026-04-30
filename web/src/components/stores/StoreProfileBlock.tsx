@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { BuyerStore } from "@/lib/services/buyer-store";
 import type { StoreProfileConfig } from "@/lib/services/store-product";
 import { useStoreFavorites } from "@/lib/hooks/useStoreFavorites";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function StoreProfileBlock({ store, profile }: Props) {
+  const { t } = useTranslation();
   const { isLoggedIn, isFavorited, toggleFavorite, getFavoriteCount } =
     useStoreFavorites();
 
@@ -80,7 +82,7 @@ export function StoreProfileBlock({ store, profile }: Props) {
             {store.hasMerchant && (
               <span
                 className="grid h-5 w-5 place-items-center rounded-full bg-[var(--ink)] text-[10px] text-[var(--canvas)]"
-                title="官方认证商家"
+                title={t("store.certifiedMerchant")}
               >
                 ✓
               </span>
@@ -99,14 +101,14 @@ export function StoreProfileBlock({ store, profile }: Props) {
                 {[store.country, store.city].filter(Boolean).join(" · ")}
               </span>
             )}
-            {store.hasMerchant && <span>官方认证</span>}
+            {store.hasMerchant && <span>{t("store.certified")}</span>}
           </div>
 
           {/* Stats row */}
           <dl className="mt-4 flex gap-6">
-            <StatCell label="关注" value={formatK(favoriteCount)} />
-            <StatCell label="粉丝" value="—" />
-            <StatCell label="获赞与收藏" value="—" />
+            <StatCell label={t("store.statFollow")} value={formatK(favoriteCount)} />
+            <StatCell label={t("store.statFans")} value="—" />
+            <StatCell label={t("store.statLikesAndFavs")} value="—" />
           </dl>
         </div>
 
@@ -122,7 +124,7 @@ export function StoreProfileBlock({ store, profile }: Props) {
                 : "bg-[var(--ink)] text-[var(--canvas)] hover:opacity-80"
             } disabled:opacity-60`}
           >
-            {favorited ? "已关注" : "+ 关注"}
+            {favorited ? t("store.followed") : t("store.follow")}
           </button>
         </div>
       </div>

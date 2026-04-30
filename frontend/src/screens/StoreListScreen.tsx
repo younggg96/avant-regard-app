@@ -31,11 +31,13 @@ import {
     getStoresPaginated,
 } from "../services/buyerStoreService";
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
+import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 20;
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
     const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -233,7 +235,7 @@ const StoreListScreen = () => {
                 <HStack alignItems="center" gap="$sm">
                     {getFavoriteCount(store.id) > 0 && (
                         <Text fontSize={11} color="$gray300">
-                            {getFavoriteCount(store.id)}人已关注
+                            {t("store.followersCount", { count: getFavoriteCount(store.id) })}
                         </Text>
                     )}
                     <Pressable
@@ -251,7 +253,7 @@ const StoreListScreen = () => {
                             fontWeight="$bold"
                             color={isFavorited(store.id) ? "$white" : "$black"}
                         >
-                            {isFavorited(store.id) ? "已关注" : "关注"}
+                            {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
                         </Text>
                     </Pressable>
                     <Box
@@ -265,7 +267,7 @@ const StoreListScreen = () => {
                             fontWeight="$bold"
                             color={store.isOpen ? "#27AE60" : "$gray300"}
                         >
-                            {store.isOpen ? "营业中" : "休息"}
+                            {store.isOpen ? t("store.open") : t("store.closed")}
                         </Text>
                     </Box>
                 </HStack>
@@ -316,7 +318,7 @@ const StoreListScreen = () => {
             <Box py="$lg" alignItems="center">
                 <ActivityIndicator color={theme.colors.black} />
                 <Text color="$gray300" fontSize="$sm" mt="$sm">
-                    加载更多...
+                    {t("common.loadMore")}
                 </Text>
             </Box>
         );
@@ -332,12 +334,12 @@ const StoreListScreen = () => {
                     color={theme.colors.gray200}
                 />
                 <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
-                    {searchQuery.trim() ? "未找到相关店铺" : "暂无店铺"}
+                    {searchQuery.trim() ? t("store.noSearchResults") : t("store.noStores")}
                 </Text>
                 <Text color="$gray300" mt="$sm" textAlign="center" px="$lg">
                     {searchQuery.trim()
-                        ? `没有找到与 "${searchQuery.trim()}" 相关的店铺`
-                        : "请稍后再试"}
+                        ? t("store.noSearchResultsFor", { query: searchQuery.trim() })
+                        : t("store.tryLater")}
                 </Text>
                 {searchQuery.trim() && (
                     <Pressable
@@ -349,7 +351,7 @@ const StoreListScreen = () => {
                         onPress={clearSearch}
                     >
                         <Text color="$white" fontWeight="$medium">
-                            清除搜索
+                            {t("store.clearSearch")}
                         </Text>
                     </Pressable>
                 )}
@@ -361,13 +363,13 @@ const StoreListScreen = () => {
         return (
             <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
                 <ScreenHeader
-                    title="全部店铺"
+                    title={t("store.allStores")}
                     showBackButton
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center" bg="$gray50">
                     <ActivityIndicator size="small" color={theme.colors.black} />
-                    <Text color="$gray300" mt="$md">加载中...</Text>
+                    <Text color="$gray300" mt="$md">{t("common.loading")}</Text>
                 </VStack>
             </SafeAreaView>
         );
@@ -393,7 +395,7 @@ const StoreListScreen = () => {
                     <TextInput
                         ref={inputRef}
                         style={styles.searchInput}
-                        placeholder="搜索店铺名称、城市或品牌..."
+                        placeholder={t("store.searchPlaceholder")}
                         placeholderTextColor={theme.colors.gray300}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -414,7 +416,7 @@ const StoreListScreen = () => {
                 </HStack>
                 <Pressable onPress={handleSearch} px="$lg" py="$sm" bg="$black" rounded="$sm" h={44} justifyContent="center">
                     <Text color="$white" fontSize="$sm" fontWeight="$semibold">
-                        搜索
+                        {t("common.search")}
                     </Text>
                 </Pressable>
             </HStack>
@@ -425,7 +427,7 @@ const StoreListScreen = () => {
         <>
             <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
                 <ScreenHeader
-                    title="全部店铺"
+                    title={t("store.allStores")}
                     subtitle={searchQuery.trim() ? undefined : `共 ${totalStores} 家`}
                     showBackButton
                     onBackPress={() => navigation.goBack()}
@@ -491,7 +493,7 @@ const StoreListScreen = () => {
                                     <HStack alignItems="center" gap="$md">
                                         {getFavoriteCount(selectedStore.id) > 0 && (
                                             <Text fontSize="$xs" color="$gray300">
-                                                {getFavoriteCount(selectedStore.id)}人已关注
+                                                {t("store.followersCount", { count: getFavoriteCount(selectedStore.id) })}
                                             </Text>
                                         )}
                                         <Pressable
@@ -509,7 +511,7 @@ const StoreListScreen = () => {
                                                 fontWeight="$bold"
                                                 color={isFavorited(selectedStore.id) ? "$white" : "$black"}
                                             >
-                                                {isFavorited(selectedStore.id) ? "已关注" : "关注"}
+                                                {isFavorited(selectedStore.id) ? t("store.followed") : t("store.follow")}
                                             </Text>
                                         </Pressable>
                                         <Pressable onPress={closeStoreDetail}>
@@ -534,7 +536,7 @@ const StoreListScreen = () => {
                                                 fontWeight="$semibold"
                                                 color={selectedStore.isOpen ? "#27AE60" : "$gray300"}
                                             >
-                                                {selectedStore.isOpen ? "营业中" : "休息中"}
+                                                {selectedStore.isOpen ? t("store.open") : t("store.closed")}
                                             </Text>
                                         </HStack>
                                         {selectedStore.hours && (
@@ -546,7 +548,7 @@ const StoreListScreen = () => {
                                                     style={{ marginTop: 2 }}
                                                 />
                                                 <Text fontSize="$sm" color="$gray300" ml="$sm" flex={1} lineHeight="$lg">
-                                                    营业时间：{selectedStore.hours}
+                                                    {t("store.businessHours")}：{selectedStore.hours}
                                                 </Text>
                                             </HStack>
                                         )}
@@ -586,7 +588,7 @@ const StoreListScreen = () => {
                                                     </Text>
                                                     <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
                                                         <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold">
-                                                            拨打
+                                                            {t("store.call")}
                                                         </Text>
                                                     </Box>
                                                 </Pressable>
@@ -598,7 +600,7 @@ const StoreListScreen = () => {
                                     {selectedStore.style.length > 0 && (
                                         <VStack mt="$lg">
                                             <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                                                店铺风格
+                                                {t("store.storeStyle")}
                                             </Text>
                                             <HStack flexWrap="wrap" gap="$xs">
                                                 {selectedStore.style.map((s, idx) => (
@@ -616,7 +618,7 @@ const StoreListScreen = () => {
                                     {selectedStore.brands.length > 0 && (
                                         <VStack mt="$lg" mb="$2xl">
                                             <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                                                主营品牌
+                                                {t("store.mainBrands")}
                                             </Text>
                                             <HStack flexWrap="wrap" gap="$xs">
                                                 {selectedStore.brands.map((brand, idx) => (
@@ -652,7 +654,7 @@ const StoreListScreen = () => {
                                     >
                                         <Ionicons name="navigate-outline" size={20} color={theme.colors.black} />
                                         <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm">
-                                            导航
+                                            {t("store.navigate")}
                                         </Text>
                                     </Pressable>
 
@@ -669,7 +671,7 @@ const StoreListScreen = () => {
                                         >
                                             <Ionicons name="call" size={20} color={theme.colors.white} />
                                             <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm">
-                                                联系商家
+                                                {t("store.contactMerchant")}
                                             </Text>
                                         </Pressable>
                                     ) : (
@@ -682,7 +684,7 @@ const StoreListScreen = () => {
                                             justifyContent="center"
                                         >
                                             <Text fontSize="$md" fontWeight="$semibold" color="$gray300">
-                                                暂无联系方式
+                                                {t("store.noContact")}
                                             </Text>
                                         </Box>
                                     )}

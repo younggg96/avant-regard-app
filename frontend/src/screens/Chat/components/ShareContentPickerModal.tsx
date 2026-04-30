@@ -19,6 +19,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
@@ -68,10 +69,10 @@ const MODAL_HEIGHT = Math.round(SCREEN_HEIGHT * 0.6);
 
 type PostTab = "published" | "favorite" | "liked";
 
-const POST_TABS: { key: PostTab; label: string }[] = [
-  { key: "published", label: "我的发布" },
-  { key: "favorite", label: "我的收藏" },
-  { key: "liked", label: "我的喜欢" },
+const POST_TAB_KEYS: { key: PostTab; labelKey: string }[] = [
+  { key: "published", labelKey: "chat.myPublished" },
+  { key: "favorite", labelKey: "chat.myFavorites" },
+  { key: "liked", labelKey: "chat.myLiked" },
 ];
 
 export type SharePayload =
@@ -88,20 +89,20 @@ interface ShareContentPickerModalProps {
   onSelect: (result: SharePayload) => void;
 }
 
-const CATEGORY_TITLE: Record<ShareCategory, string> = {
-  post: "选择帖子",
-  store: "选择买手店",
-  brand: "选择品牌",
-  show: "选择秀场",
-  user: "选择用户",
+const CATEGORY_TITLE_KEY: Record<ShareCategory, string> = {
+  post: "chat.selectPost",
+  store: "chat.selectStore",
+  brand: "chat.selectBrand",
+  show: "chat.selectShow",
+  user: "chat.selectUser",
 };
 
-const CATEGORY_SEARCH_PLACEHOLDER: Record<ShareCategory, string> = {
-  post: "搜索笔记或论坛帖子",
-  store: "搜索买手店",
-  brand: "搜索品牌",
-  show: "搜索秀场",
-  user: "搜索用户",
+const CATEGORY_SEARCH_KEY: Record<ShareCategory, string> = {
+  post: "chat.searchPost",
+  store: "chat.searchStore",
+  brand: "chat.searchBrand",
+  show: "chat.searchShow",
+  user: "chat.searchUser",
 };
 
 export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = ({
@@ -110,6 +111,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   onClose,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.userId;
 
@@ -314,7 +316,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
           )}
           <View style={styles.rowInfo}>
             <Text style={styles.rowTitle} numberOfLines={2}>
-              {item.title || "(无标题)"}
+              {item.title || t("chat.noTitle")}
             </Text>
             <Text style={styles.rowSubtitle} numberOfLines={1}>
               @{item.username}
@@ -395,7 +397,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
               {item.name}
             </Text>
             <Text style={styles.rowSubtitle} numberOfLines={1}>
-              {[item.country, item.category].filter(Boolean).join(" · ") || "品牌"}
+              {[item.country, item.category].filter(Boolean).join(" · ") || t("chat.brandLabel")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -482,7 +484,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     }
 
     if (category === "post") {
-      if (!posts.length) return renderEmpty(keyword);
+      if (!posts.length) return renderEmpty(keyword, t("search.noResults"), t("common.empty"));
       return (
         <FlatList
           data={posts}
@@ -493,7 +495,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
       );
     }
     if (category === "store") {
-      if (!stores.length) return renderEmpty(keyword);
+      if (!stores.length) return renderEmpty(keyword, t("search.noResults"), t("common.empty"));
       return (
         <FlatList
           data={stores}
@@ -504,7 +506,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
       );
     }
     if (category === "brand") {
-      if (!brands.length) return renderEmpty(keyword);
+      if (!brands.length) return renderEmpty(keyword, t("search.noResults"), t("common.empty"));
       return (
         <FlatList
           data={brands}
@@ -515,7 +517,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
       );
     }
     if (category === "show") {
-      if (!shows.length) return renderEmpty(keyword);
+      if (!shows.length) return renderEmpty(keyword, t("search.noResults"), t("common.empty"));
       return (
         <FlatList
           data={shows}
@@ -526,7 +528,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
       );
     }
     if (category === "user") {
-      if (!users.length) return renderEmpty(keyword);
+      if (!users.length) return renderEmpty(keyword, t("search.noResults"), t("common.empty"));
       return (
         <FlatList
           data={users}
@@ -555,8 +557,8 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
 
   if (!category) return null;
 
-  const title = CATEGORY_TITLE[category];
-  const placeholder = CATEGORY_SEARCH_PLACEHOLDER[category];
+  const title = t(CATEGORY_TITLE_KEY[category]);
+  const placeholder = t(CATEGORY_SEARCH_KEY[category]);
 
   return (
     <Modal
@@ -589,19 +591,19 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
 
         {category === "post" && !keyword.trim() && (
           <View style={styles.tabsRow}>
-            {POST_TABS.map((t) => {
-              const active = postTab === t.key;
+            {POST_TAB_KEYS.map((tab) => {
+              const active = postTab === tab.key;
               return (
                 <TouchableOpacity
-                  key={t.key}
+                  key={tab.key}
                   style={[styles.tab, active && styles.tabActive]}
-                  onPress={() => setPostTab(t.key)}
+                  onPress={() => setPostTab(tab.key)}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[styles.tabText, active && styles.tabTextActive]}
                   >
-                    {t.label}
+                    {t(tab.labelKey)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -637,7 +639,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   );
 };
 
-function renderEmpty(keyword: string) {
+function renderEmpty(keyword: string, noResultsText: string, emptyText: string) {
   return (
     <View style={styles.center}>
       <Ionicons
@@ -646,7 +648,7 @@ function renderEmpty(keyword: string) {
         color={theme.colors.gray200}
       />
       <Text style={styles.emptyText}>
-        {keyword.trim() ? "没有找到匹配的内容" : "暂无内容"}
+        {keyword.trim() ? noResultsText : emptyText}
       </Text>
     </View>
   );

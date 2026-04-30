@@ -19,6 +19,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import useSWR, { mutate as globalMutate } from "swr";
@@ -62,6 +63,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function StoreProfileConfigPage() {
+  const { t } = useTranslation();
   const params = useParams<{ merchantId: string }>();
   const merchantId = Number(params?.merchantId);
 
@@ -111,10 +113,10 @@ export default function StoreProfileConfigPage() {
         <SubPageBackLink merchantId={merchantId} />
         <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
           <div className="font-serif text-[17px] text-[var(--ink)]">
-            无权限访问该页面
+            {t("common.noPermission")}
           </div>
           <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-            商家 ID 不匹配或尚未通过审核.
+            {t("common.merchantIdMismatch")}
           </div>
         </div>
       </section>
@@ -148,7 +150,7 @@ export default function StoreProfileConfigPage() {
       );
       setSavedAt(new Date().toLocaleTimeString("zh-CN"));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -158,9 +160,9 @@ export default function StoreProfileConfigPage() {
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <SubPageHeader
-        title="店铺主页配置"
-        description="控制「买手店 Tab」顶部 StoreProfileCard 的展示：头图 / 封面 / 介绍 / 标签."
-        actions={<StatusBadge active>单例配置</StatusBadge>}
+        title={t("merchant.profileConfigTitle")}
+        description={t("merchant.profileConfigDesc")}
+        actions={<StatusBadge active>{t("merchant.singletonConfig")}</StatusBadge>}
       />
 
       {loadingConfig && !hydrated ? (
@@ -169,45 +171,45 @@ export default function StoreProfileConfigPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="grid gap-5 rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-5">
             <div className="grid gap-5 sm:grid-cols-2">
-              <FormField label="Logo 图（正方形）">
+              <FormField label={t("merchant.logoImage")}>
                 <ImagePicker
                   value={form.logoImage}
                   onChange={(v) => setForm({ ...form, logoImage: v })}
                   height={160}
-                  hint="建议 1:1，用于卡片左侧头像位."
+                  hint={t("merchant.logoImageHint")}
                 />
               </FormField>
-              <FormField label="封面图（右侧）">
+              <FormField label={t("merchant.coverImageRight")}>
                 <ImagePicker
                   value={form.coverImage}
                   onChange={(v) => setForm({ ...form, coverImage: v })}
                   height={160}
-                  hint="建议 4:3，展示店铺氛围."
+                  hint={t("merchant.coverImageHint")}
                 />
               </FormField>
             </div>
 
-            <FormField label="短介绍（卡片顶部）">
+            <FormField label={t("merchant.shortDescription")}>
               <TextInput
                 value={form.shortDescription}
                 onChange={(v) => setForm({ ...form, shortDescription: v })}
-                placeholder="一句话介绍你的店铺调性"
+                placeholder={t("merchant.shortDescPlaceholder")}
               />
             </FormField>
 
-            <FormField label="长介绍（卡片底部）">
+            <FormField label={t("merchant.longDescription")}>
               <TextInput
                 value={form.longDescription}
                 onChange={(v) => setForm({ ...form, longDescription: v })}
                 multiline
                 rows={4}
-                placeholder="品牌故事、选品理念，支持换行."
+                placeholder={t("merchant.longDescPlaceholder")}
               />
             </FormField>
 
             <ChipEditor
-              label={`标签（最多 ${MAX_TAGS} 个）`}
-              placeholder="输入一个标签后点击添加"
+              label={t("merchant.tagsLabel", { max: MAX_TAGS })}
+              placeholder={t("merchant.tagsPlaceholder")}
               draft={tagDraft}
               onDraftChange={setTagDraft}
               items={form.tags}
@@ -229,11 +231,11 @@ export default function StoreProfileConfigPage() {
               )}
               {savedAt && !err && (
                 <span className="font-label text-[11px] text-[color:var(--ink-muted)]">
-                  已保存 · {savedAt}
+                  {t("common.savedAt", { time: savedAt })}
                 </span>
               )}
               <Button onClick={onSave} loading={saving}>
-                保存
+                {t("common.save")}
               </Button>
             </div>
           </div>
@@ -241,21 +243,18 @@ export default function StoreProfileConfigPage() {
           <aside className="space-y-4">
             <div className="rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-5">
               <h2 className="font-label text-[13px] font-semibold text-[var(--ink)]">
-                预览提示
+                {t("merchant.previewHint")}
               </h2>
               <ul className="mt-3 space-y-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-                <li>• 此页保存后，App「买手店 Tab」顶部卡片会立即更新.</li>
-                <li>• 未填写任何字段时，前端会使用默认 Mock 数据兜底，不会白屏.</li>
-                <li>
-                  • 标签超过 6 个时前端仅渲染前 6 个，所以这里限制了上限；如需调整
-                  请同步修改前端常量.
-                </li>
+                <li>• {t("merchant.previewHint1")}</li>
+                <li>• {t("merchant.previewHint2")}</li>
+                <li>• {t("merchant.previewHint3")}</li>
               </ul>
               <Link
                 href={`/stores/${encodeURIComponent(merchant.storeId)}`}
                 className="mt-4 inline-flex font-label text-[12px] text-[var(--ink)] underline-offset-2 hover:underline"
               >
-                查看店铺页面 →
+                {t("merchant.viewStorePage")}
               </Link>
             </div>
           </aside>

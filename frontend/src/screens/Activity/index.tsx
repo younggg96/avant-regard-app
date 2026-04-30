@@ -3,6 +3,7 @@ import { FlatList, RefreshControl, Linking, ActivityIndicator } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
@@ -18,6 +19,7 @@ import { styles } from "./styles";
 const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
 
 const ActivityScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
   const systemOnly = route.params?.filter === "system";
@@ -133,7 +135,7 @@ const ActivityScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title={systemOnly ? "系统消息" : "互动消息"}
+        title={systemOnly ? t("interaction.systemNotice") : t("activity.title")}
         showBackButton
         rightActions={
           unreadCount > 0
@@ -147,7 +149,7 @@ const ActivityScreen = () => {
           {FILTER_TABS.map((tab) => (
             <FilterChip
               key={tab.id}
-              label={tab.label}
+              label={t(tab.labelKey)}
               isActive={filter === tab.id}
               onPress={() => setFilter(tab.id)}
             />
@@ -170,10 +172,10 @@ const ActivityScreen = () => {
             <Box py={48} px="$lg" alignItems="center">
               <Ionicons name="notifications-outline" size={44} color={theme.colors.gray200} />
               <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
-                暂无互动消息
+                {t("activity.noActivity")}
               </Text>
               <Text fontSize="$sm" color="$gray400" textAlign="center">
-                当有人点赞、评论或关注你时，将在这里显示
+                {t("activity.emptyHint")}
               </Text>
             </Box>
           )

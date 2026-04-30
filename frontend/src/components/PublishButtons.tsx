@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable } from "./ui";
 import { theme } from "../theme";
@@ -16,12 +17,15 @@ interface PublishButtonsProps {
 const PublishButtons: React.FC<PublishButtonsProps> = ({
   onSaveDraft,
   onPublish,
-  draftButtonText = "存草稿",
-  publishButtonText = "发布",
+  draftButtonText,
+  publishButtonText,
   showDraftButton = true,
   publishDisabled = false,
   draftDisabled = false,
 }) => {
+  const { t } = useTranslation();
+  const draftLabel = draftButtonText || t("publishButtons.saveDraft");
+  const publishLabel = publishButtonText || t("publishButtons.publish");
   return (
     <Box
       position="absolute"
@@ -53,7 +57,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
                 color={theme.colors.white}
               />
               <Text color="$white" ml="$xs" fontWeight="$medium">
-                {draftButtonText}
+                {draftLabel}
               </Text>
             </HStack>
           </Pressable>
@@ -71,7 +75,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
           <HStack justifyContent="center" alignItems="center" gap="$xs">
             <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
             <Text color="$white" ml="$xs" fontWeight="$medium">
-              {publishButtonText}
+              {publishLabel}
             </Text>
           </HStack>
         </Pressable>

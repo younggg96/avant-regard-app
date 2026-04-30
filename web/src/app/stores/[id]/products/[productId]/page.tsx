@@ -10,8 +10,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { config } from "@/lib/config";
+import { getServerT } from "@/lib/i18n/server";
 import type { StoreProduct } from "@/lib/services/store-product";
-import { ProductDetailView } from "./view";
+import { ProductDetailView } from "@/app/stores/[id]/products/[productId]/view";
 
 export const revalidate = 60;
 
@@ -45,11 +46,12 @@ export async function generateMetadata({
 }: {
   params: Promise<{ id: string; productId: string }>;
 }): Promise<Metadata> {
+  const t = getServerT();
   const { productId } = await params;
   const product = await fetchProduct(productId);
-  if (!product) return { title: "商品 | Avant Regard" };
+  if (!product) return { title: t("productMeta.fallbackTitle") };
   return {
-    title: `${product.title} · 商品 | Avant Regard`,
+    title: t("productMeta.titleTemplate", { name: product.title }),
     description: product.description ?? product.title,
     openGraph: {
       title: product.title,

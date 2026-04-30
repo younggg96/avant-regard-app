@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { Box, Text, ActionSheet } from "../components/ui";
@@ -20,6 +21,7 @@ import { ConversationRow } from "./Interaction/components/ConversationRow";
 import { isStrangerConversation } from "./Interaction/utils";
 
 const StrangerMessagesScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const {
     conversations,
@@ -86,25 +88,25 @@ const StrangerMessagesScreen = () => {
   const handleBatchDelete = useCallback(() => {
     if (selectedIds.size === 0) return;
     Alert.alert(
-      "确认删除",
-      `删除选中的 ${selectedIds.size} 个会话后将无法恢复`,
+      t("interaction.confirmDelete"),
+      t("interaction.batchDeleteWarning", { count: selectedIds.size }),
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             try {
               await removeConversationsBatch([...selectedIds]);
               exitEditMode();
             } catch {
-              Alert.alert("删除失败", "部分会话删除失败，请重试");
+              Alert.alert(t("interaction.deleteFailed"), t("interaction.batchDeleteFailed"));
             }
           },
         },
       ]
     );
-  }, [selectedIds, removeConversationsBatch, exitEditMode]);
+  }, [selectedIds, removeConversationsBatch, exitEditMode, t]);
 
   const handleConvPress = useCallback(
     (c: Conversation) => {
@@ -114,7 +116,7 @@ const StrangerMessagesScreen = () => {
       }
       (navigation.navigate as any)("Chat", {
         conversationId: c.id,
-        otherUserName: c.otherUser?.username || "聊天",
+        otherUserName: c.otherUser?.username || t("chat.title"),
         otherUserAvatar: c.otherUser?.avatarUrl,
         otherUserId: c.otherUser?.userId,
       });
@@ -125,21 +127,21 @@ const StrangerMessagesScreen = () => {
   const handleLongPress = useCallback(
     (c: Conversation) => {
       if (editMode) return;
-      const readLabel = c.unreadCount > 0 ? "标记已读" : "标记未读";
-      setSheetTitle(c.otherUser?.username || "会话");
+      const readLabel = c.unreadCount > 0 ? t("interaction.markRead") : t("interaction.markUnread");
+      setSheetTitle(c.otherUser?.username || t("interaction.conversation"));
       setSheetActions([
         {
           label: readLabel,
           onPress: () => toggleConversationRead(c.id),
         },
         {
-          label: "删除会话",
+          label: t("interaction.deleteConversation"),
           destructive: true,
           onPress: () => {
-            Alert.alert("确认删除", "删除后将无法恢复聊天记录", [
-              { text: "取消", style: "cancel" },
+            Alert.alert(t("interaction.confirmDelete"), t("interaction.deleteWarning"), [
+              { text: t("common.cancel"), style: "cancel" },
               {
-                text: "删除",
+                text: t("common.delete"),
                 style: "destructive",
                 onPress: () => removeConversation(c.id),
               },
@@ -211,7 +213,7 @@ const StrangerMessagesScreen = () => {
           activeOpacity={0.6}
         >
           <Text fontSize="$sm" fontWeight="$medium" color="$black">
-            {editMode ? "完成" : "管理"}
+            {editMode ? t("common.done") : t("strangerMessages.manage")}
           </Text>
         </TouchableOpacity>
       ) : null,
@@ -228,7 +230,7 @@ const StrangerMessagesScreen = () => {
       edges={["top"]}
     >
       <ScreenHeader
-        title="陌生人消息"
+        title={t("strangerMessages.title")}
         showBackButton
         rightComponent={headerRight}
       />
@@ -251,10 +253,10 @@ const StrangerMessagesScreen = () => {
               mt="$md"
               mb="$sm"
             >
-              暂无陌生人消息
+              {t("strangerMessages.empty")}
             </Text>
             <Text fontSize="$sm" color="$gray400" textAlign="center">
-              来自未对话过的用户的消息将在这里显示
+              {t("strangerMessages.emptyHint")}
             </Text>
           </Box>
         }
@@ -294,7 +296,7 @@ const StrangerMessagesScreen = () => {
               ml={6}
               fontWeight={allSelected ? "$semibold" : "$normal"}
             >
-              全选
+              {t("strangerMessages.selectAll")}
             </Text>
           </TouchableOpacity>
 
@@ -317,7 +319,7 @@ const StrangerMessagesScreen = () => {
                 fontWeight="$semibold"
                 color="$white"
               >
-                删除{selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                {t("common.delete")}{selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
               </Text>
             )}
           </TouchableOpacity>
@@ -344,7 +346,7 @@ const StrangerMessagesScreen = () => {
           >
             <ActivityIndicator size="small" color="#fff" />
             <Text fontSize="$xs" color="$white" mt={8}>
-              删除中...
+              {t("strangerMessages.deleting")}
             </Text>
           </Box>
         </Box>

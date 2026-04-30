@@ -1,3 +1,4 @@
+import i18n from "../../i18n";
 import { Post, ShowImageInfo } from "../PostCard";
 
 // 路由参数
@@ -49,8 +50,8 @@ export interface ReplyTarget {
 // 帖子状态类型
 export type PostStatus = "DRAFT" | "PENDING" | "PUBLISHED" | "HIDDEN";
 
-// 格式化时间显示
 export const formatTimestamp = (dateString: string): string => {
+  const t = i18n.t.bind(i18n);
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -58,10 +59,11 @@ export const formatTimestamp = (dateString: string): string => {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMinutes < 1) return "刚刚";
-  if (diffMinutes < 60) return `${diffMinutes}分钟前`;
-  if (diffHours < 24) return `${diffHours}小时前`;
-  if (diffDays < 7) return `${diffDays}天前`;
+  if (diffMinutes < 1) return t("time.justNow");
+  if (diffMinutes < 60) return t("time.minutesAgo", { count: diffMinutes });
+  if (diffHours < 24) return t("time.hoursAgo", { count: diffHours });
+  if (diffDays < 7) return t("time.daysAgo", { count: diffDays });
 
-  return date.toLocaleDateString("zh-CN");
+  const locale = i18n.language === "zh" ? "zh-CN" : "en-US";
+  return date.toLocaleDateString(locale);
 };

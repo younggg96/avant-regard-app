@@ -7,6 +7,7 @@ import {
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { theme } from "../../theme";
 import {
@@ -37,6 +38,7 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
 };
 
 const MaintenanceTab = () => {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<MaintenanceConfig>(DEFAULT_CONFIG);
   const [messageInput, setMessageInput] = useState(DEFAULT_MAINTENANCE_MESSAGE);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ const MaintenanceTab = () => {
       setMessageInput(data.message || DEFAULT_MAINTENANCE_MESSAGE);
       setDirty(false);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "加载维护配置失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchMaintenanceFailed"));
     } finally {
       setLoading(false);
     }
@@ -81,7 +83,7 @@ const MaintenanceTab = () => {
   const handleSave = async () => {
     const trimmed = messageInput.trim();
     if (config.enabled && trimmed.length === 0) {
-      Alert.alert("提示文案不能为空", "开启维护模式时必须填写提示文案");
+      Alert.alert(t("admin.maintenanceMessageEmpty"), t("admin.maintenanceMessageRequired"));
       return;
     }
 
@@ -97,11 +99,11 @@ const MaintenanceTab = () => {
       // 立刻同步当前管理员设备的遮罩状态，避免要等下一次轮询
       applyStatusToLocalStore(saved.enabled, saved.message);
       Alert.alert(
-        "保存成功",
-        saved.enabled ? "维护模式已开启" : "维护模式已关闭"
+        t("admin.saveSuccess"),
+        saved.enabled ? t("admin.maintenanceEnabled") : t("admin.maintenanceDisabled")
       );
     } catch (e) {
-      Alert.alert("保存失败", e instanceof Error ? e.message : "请重试");
+      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : "请重试");
     } finally {
       setSaving(false);
     }
@@ -111,7 +113,7 @@ const MaintenanceTab = () => {
     return (
       <Box style={styles.centered}>
         <ActivityIndicator size="large" color={theme.colors.black} />
-        <Text style={styles.loadingText}>加载维护配置...</Text>
+        <Text style={styles.loadingText}>{t("admin.loadingMaintenance")}</Text>
       </Box>
     );
   }
@@ -124,9 +126,9 @@ const MaintenanceTab = () => {
     >
       <VStack style={styles.header}>
         <Ionicons name="construct-outline" size={32} color={theme.colors.black} />
-        <Text style={styles.headerTitle}>维护模式</Text>
+        <Text style={styles.headerTitle}>{t("admin.maintenanceTitle")}</Text>
         <Text style={styles.headerSubtitle}>
-          开启后除登录与管理员接口外，App 全站接口统一返回 503，用户会看到维护提示
+          {t("admin.maintenanceSubtitle")}
         </Text>
       </VStack>
 
@@ -138,15 +140,15 @@ const MaintenanceTab = () => {
             size={20}
             color={config.enabled ? theme.colors.error : theme.colors.black}
           />
-          <Text style={styles.sectionTitle}>维护开关</Text>
+          <Text style={styles.sectionTitle}>{t("admin.maintenanceToggle")}</Text>
         </HStack>
         <HStack style={styles.toggleRow}>
           <VStack style={{ flex: 1 }}>
             <Text style={styles.toggleLabel}>
-              {config.enabled ? "维护中" : "服务正常"}
+              {config.enabled ? t("admin.maintenanceOn") : t("admin.maintenanceOff")}
             </Text>
             <Text style={styles.toggleDesc}>
-              切换开关后需要点击下方“保存”按钮才会生效
+              {t("admin.maintenanceToggleHint")}
             </Text>
           </VStack>
           <Switch
@@ -162,10 +164,10 @@ const MaintenanceTab = () => {
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
           <Ionicons name="chatbubble-outline" size={20} color={theme.colors.black} />
-          <Text style={styles.sectionTitle}>提示文案</Text>
+          <Text style={styles.sectionTitle}>{t("admin.maintenanceMessage")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
-          用户在 App 内看到的维护提示内容，支持换行
+          {t("admin.maintenanceMessageHint")}
         </Text>
         <TextInput
           style={styles.messageInput}
@@ -182,7 +184,7 @@ const MaintenanceTab = () => {
           <Text style={styles.counter}>{messageInput.length}/500</Text>
           <Pressable onPress={handleReset} style={styles.resetButton}>
             <Ionicons name="refresh-outline" size={14} color={theme.colors.gray400} />
-            <Text style={styles.resetText}>恢复默认文案</Text>
+            <Text style={styles.resetText}>{t("admin.maintenanceResetDefault")}</Text>
           </Pressable>
         </HStack>
       </Box>
@@ -202,7 +204,7 @@ const MaintenanceTab = () => {
           <>
             <Ionicons name="save-outline" size={20} color={theme.colors.white} />
             <Text style={styles.saveButtonText}>
-              {dirty ? "保存配置" : "无修改"}
+              {dirty ? t("admin.saveConfig") : t("admin.noChanges")}
             </Text>
           </>
         )}
@@ -215,8 +217,7 @@ const MaintenanceTab = () => {
           color={theme.colors.gray400}
         />
         <Text style={styles.tipsText}>
-          维护开启后，管理员后台、登录与维护状态查询依然可用；
-          普通用户侧所有接口统一返回 503，App 会显示维护遮罩。
+          {t("admin.maintenanceTips")}
         </Text>
       </HStack>
 

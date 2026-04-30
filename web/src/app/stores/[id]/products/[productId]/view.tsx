@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import useSWR, { mutate as globalMutate } from "swr";
 import {
   formatPriceCents,
@@ -34,6 +35,7 @@ interface Props {
 const CARD_COMMENT_PAGE_SIZE = 20;
 
 export function ProductDetailView({ storeId, initialProduct }: Props) {
+  const { t } = useTranslation();
   const [activeImage, setActiveImage] = useState(0);
   const user = useAuthStore((s) => s.user);
 
@@ -103,14 +105,14 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
     <article className="mx-auto max-w-content px-6 py-8 md:py-10">
       <nav className="mb-6 flex items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
         <Link href="/stores" className="hover:text-[var(--ink)]">
-          买手店
+          {t("nav.stores")}
         </Link>
         <span>/</span>
         <Link
           href={`/stores/${encodeURIComponent(storeId)}`}
           className="hover:text-[var(--ink)]"
         >
-          店铺
+          {t("product.breadcrumbStore")}
         </Link>
         <span>/</span>
         <span className="truncate text-[var(--ink)]">{product.title}</span>
@@ -129,7 +131,7 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
               />
             ) : (
               <div className="grid h-full place-items-center font-label text-[12px] text-[color:var(--ink-muted)]">
-                无图
+                {t("product.noImage")}
               </div>
             )}
             {/* 徽章 */}
@@ -264,7 +266,7 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
           {product.description && (
             <div>
               <h2 className="mb-2 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-                商品详情
+                {t("product.detail")}
               </h2>
               <p className="whitespace-pre-wrap font-serif text-[14px] leading-relaxed text-[color:var(--ink)]">
                 {product.description}
@@ -277,7 +279,7 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
       {/* 评论区 */}
       <section className="mt-12 border-t border-[var(--border)] pt-8">
         <h2 className="mb-4 font-serif text-[20px] text-[var(--ink)]">
-          评论 <span className="text-[color:var(--ink-muted)]">({product.commentCount})</span>
+          {t("product.comments")} <span className="text-[color:var(--ink-muted)]">({product.commentCount})</span>
         </h2>
         <CommentsSection
           productId={product.id}
@@ -310,6 +312,7 @@ function CommentsSection({
   currentUserId: number | null;
   onCountChange: (delta: number) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ProductComment[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -333,13 +336,13 @@ function CommentsSection({
         setPage(p);
         setErr(null);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "加载失败");
+        setErr(e instanceof Error ? e.message : t("common.loadFailed"));
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [productId],
+    [productId, t],
   );
 
   useEffect(() => {
@@ -365,21 +368,21 @@ function CommentsSection({
       setDraft("");
       await onCountChange(1);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "发送失败");
+      setErr(e instanceof Error ? e.message : t("product.sendFailed"));
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDelete = async (id: number) => {
-    if (!confirm("确认删除这条评论？")) return;
+    if (!confirm(t("product.confirmDeleteComment"))) return;
     try {
       await storeProductService.deleteProductComment(id);
       setItems((prev) => prev.filter((c) => c.id !== id));
-      setTotal((t) => Math.max(0, t - 1));
+      setTotal((prev) => Math.max(0, prev - 1));
       await onCountChange(-1);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "删除失败");
+      alert(e instanceof Error ? e.message : t("product.deleteFailed"));
     }
   };
 
@@ -422,7 +425,7 @@ function CommentsSection({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={3}
-          placeholder={currentUserId ? "写下你的评价…" : "登录后可以发表评论"}
+          placeholder={currentUserId ? t("product.commentPlaceholder") : t("product.commentLoginHint")}
           disabled={!currentUserId}
           className="w-full resize-y rounded bg-[var(--canvas)] px-3 py-2 font-label text-[13px] text-[var(--ink)] placeholder:text-[color:var(--ink-muted)] outline-none focus:ring-1 focus:ring-[var(--ink)] disabled:opacity-60"
         />
@@ -433,14 +436,14 @@ function CommentsSection({
             disabled={!draft.trim() || submitting}
             className="rounded bg-[var(--ink)] px-4 py-1.5 text-[var(--canvas)] transition-opacity hover:opacity-80 disabled:opacity-50"
           >
-            {submitting ? "发送中…" : "发送"}
+            {submitting ? t("product.sending") : t("product.send")}
           </button>
         </div>
       </div>
 
       {loading ? (
         <div className="py-10 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-          加载评论中…
+          {t("product.loadingComments")}
         </div>
       ) : err && items.length === 0 ? (
         <div className="py-10 text-center font-label text-[13px] text-red-600">
@@ -448,7 +451,7 @@ function CommentsSection({
         </div>
       ) : items.length === 0 ? (
         <div className="py-10 text-center font-label text-[13px] text-[color:var(--ink-muted)]">
-          还没有评论，快来抢沙发 🛋️
+          {t("product.noComments")}
         </div>
       ) : (
         <ul className="divide-y divide-[var(--border)]">
@@ -471,7 +474,7 @@ function CommentsSection({
             disabled={loadingMore}
             className="rounded border border-[var(--border)] px-4 py-1.5 font-label text-[12px] text-[var(--ink)] transition-colors hover:border-[var(--ink)] disabled:opacity-50"
           >
-            {loadingMore ? "加载中…" : `加载更多（剩余 ${total - items.length}）`}
+            {loadingMore ? t("common.loadingEllipsis") : t("product.loadMore", { remaining: total - items.length })}
           </button>
         </div>
       )}
@@ -490,7 +493,8 @@ function CommentRow({
   onDelete: () => void;
   onToggleLike: () => void;
 }) {
-  const name = comment.username || `用户 #${comment.userId ?? "—"}`;
+  const { t } = useTranslation();
+  const name = comment.username || t("product.userPrefix", { id: comment.userId ?? "—" });
   const createdAt = useMemo(() => {
     if (!comment.createdAt) return "";
     const d = new Date(comment.createdAt);
@@ -534,7 +538,7 @@ function CommentRow({
               onClick={onDelete}
               className="transition-colors hover:text-red-600"
             >
-              删除
+              {t("product.deleteComment")}
             </button>
           )}
         </div>

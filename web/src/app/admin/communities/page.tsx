@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   communitiesApi,
   uploadImage,
@@ -23,15 +24,17 @@ import {
 } from "@/components/admin/ui";
 
 
-const CATEGORIES: { value: CommunityCategory; label: string }[] = [
-  { value: "GENERAL", label: "综合" },
-  { value: "FASHION", label: "时尚" },
-  { value: "LIFESTYLE", label: "生活" },
-  { value: "BEAUTY", label: "美妆" },
-  { value: "CULTURE", label: "文化" },
-];
-
 export default function CommunitiesPage() {
+  const { t } = useTranslation();
+
+  const CATEGORIES: { value: CommunityCategory; label: string }[] = [
+    { value: "GENERAL", label: t("admin.categoryGeneral") },
+    { value: "FASHION", label: t("admin.categoryFashion") },
+    { value: "LIFESTYLE", label: t("admin.categoryLifestyle") },
+    { value: "BEAUTY", label: t("admin.categoryBeauty") },
+    { value: "CULTURE", label: t("admin.categoryCulture") },
+  ];
+
   const [communities, setCommunities] = useState<AdminCommunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AdminCommunity | null>(null);
@@ -41,12 +44,7 @@ export default function CommunitiesPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [form, setForm] = useState<CreateCommunityParams & { isActive?: boolean }>({
-    name: "",
-    slug: "",
-    description: "",
-    category: "GENERAL",
-    isOfficial: false,
-    sortOrder: 0,
+    name: "", slug: "", description: "", category: "GENERAL", isOfficial: false, sortOrder: 0,
   });
 
   const load = useCallback(async () => {
@@ -67,17 +65,7 @@ export default function CommunitiesPage() {
   };
 
   const openEdit = (c: AdminCommunity) => {
-    setForm({
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      category: c.category,
-      isOfficial: c.isOfficial,
-      isActive: c.isActive,
-      sortOrder: c.sortOrder,
-      iconUrl: c.iconUrl,
-      coverUrl: c.coverUrl,
-    });
+    setForm({ name: c.name, slug: c.slug, description: c.description, category: c.category, isOfficial: c.isOfficial, isActive: c.isActive, sortOrder: c.sortOrder, iconUrl: c.iconUrl, coverUrl: c.coverUrl });
     setEditing(c);
   };
 
@@ -126,8 +114,8 @@ export default function CommunitiesPage() {
       try {
         const url = await uploadImage(file);
         setForm((prev) => ({ ...prev, [field]: url }));
-      } catch (e) {
-        alert("上传失败");
+      } catch {
+        alert(t("admin.uploadFailed"));
       }
     };
     input.click();
@@ -138,13 +126,9 @@ export default function CommunitiesPage() {
   return (
     <div>
       <PageHeader
-        title="社区管理"
-        description={`共 ${communities.length} 个社区`}
-        actions={
-          <Button size="sm" onClick={openCreate}>
-            创建社区
-          </Button>
-        }
+        title={t("admin.communities")}
+        description={t("admin.communityTotal", { count: communities.length })}
+        actions={<Button size="sm" onClick={openCreate}>{t("admin.createCommunity")}</Button>}
       />
 
       {loading ? (
@@ -154,49 +138,35 @@ export default function CommunitiesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {communities.map((c) => (
-            <div
-              key={c.id}
-              className="rounded-lg border border-[var(--border)] overflow-hidden"
-            >
-              {c.coverUrl && (
-                <img src={c.coverUrl} alt="" className="h-28 w-full object-cover" />
-              )}
+            <div key={c.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
+              {c.coverUrl && <img src={c.coverUrl} alt="" className="h-28 w-full object-cover" />}
               <div className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    {c.iconUrl && (
-                      <img src={c.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
-                    )}
+                    {c.iconUrl && <img src={c.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
                     <div>
                       <h3 className="font-label text-[14px] font-semibold">{c.name}</h3>
                       <p className="font-label text-[12px] text-[color:var(--ink-muted)]">/{c.slug}</p>
                     </div>
                   </div>
                   <StatusBadge variant={c.isActive ? "success" : "muted"}>
-                    {c.isActive ? "活跃" : "停用"}
+                    {c.isActive ? t("admin.communityActive") : t("admin.communityInactive")}
                   </StatusBadge>
                 </div>
-
                 <p className="mt-2 line-clamp-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-                  {c.description || "暂无描述"}
+                  {c.description || t("admin.noDescription")}
                 </p>
-
                 <div className="mt-3 flex items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
-                  <span>{c.memberCount} 成员</span>
-                  <span>{c.postCount} 帖子</span>
+                  <span>{t("admin.members", { count: c.memberCount })}</span>
+                  <span>{t("admin.communityPosts", { count: c.postCount })}</span>
                   <span>{CATEGORIES.find((cat) => cat.value === c.category)?.label}</span>
                 </div>
-
                 <div className="mt-3 flex gap-1 border-t border-[var(--border)] pt-3">
-                  <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
-                    编辑
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>{t("admin.edit")}</Button>
                   <Button variant="ghost" size="sm" onClick={() => handleToggleActive(c)}>
-                    {c.isActive ? "停用" : "启用"}
+                    {c.isActive ? t("admin.disable") : t("admin.enable")}
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(c)}>
-                    删除
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(c)}>{t("admin.delete")}</Button>
                 </div>
               </div>
             </div>
@@ -204,24 +174,14 @@ export default function CommunitiesPage() {
         </div>
       )}
 
-      <FormDialog
-        open={isFormOpen}
-        title={editing ? "编辑社区" : "创建社区"}
-        onClose={() => { setCreating(false); setEditing(null); }}
-      >
+      <FormDialog open={isFormOpen} title={editing ? t("admin.editCommunity") : t("admin.createCommunity")} onClose={() => { setCreating(false); setEditing(null); }}>
         <div className="space-y-4">
-          <FormField label="名称" required>
-            <TextInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-          </FormField>
+          <FormField label={t("admin.name")} required><TextInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} /></FormField>
           {!editing && (
-            <FormField label="Slug" required>
-              <TextInput value={form.slug} onChange={(v) => setForm({ ...form, slug: v })} placeholder="英文标识" />
-            </FormField>
+            <FormField label={t("admin.slug")} required><TextInput value={form.slug} onChange={(v) => setForm({ ...form, slug: v })} placeholder={t("admin.slugPlaceholder")} /></FormField>
           )}
-          <FormField label="描述">
-            <TextInput value={form.description || ""} onChange={(v) => setForm({ ...form, description: v })} multiline />
-          </FormField>
-          <FormField label="分类">
+          <FormField label={t("admin.description")}><TextInput value={form.description || ""} onChange={(v) => setForm({ ...form, description: v })} multiline /></FormField>
+          <FormField label={t("admin.category")}>
             <select
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value as CommunityCategory })}
@@ -231,38 +191,33 @@ export default function CommunitiesPage() {
             </select>
           </FormField>
           <div className="flex gap-4">
-            <FormField label="图标">
+            <FormField label={t("admin.icon")}>
               <div className="flex items-center gap-2">
                 {form.iconUrl && <img src={form.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
-                <Button variant="secondary" size="sm" onClick={() => handleImageUpload("iconUrl")}>上传</Button>
+                <Button variant="secondary" size="sm" onClick={() => handleImageUpload("iconUrl")}>{t("admin.upload")}</Button>
               </div>
             </FormField>
-            <FormField label="封面">
+            <FormField label={t("admin.cover")}>
               <div className="flex items-center gap-2">
                 {form.coverUrl && <img src={form.coverUrl} alt="" className="h-8 w-12 rounded object-cover" />}
-                <Button variant="secondary" size="sm" onClick={() => handleImageUpload("coverUrl")}>上传</Button>
+                <Button variant="secondary" size="sm" onClick={() => handleImageUpload("coverUrl")}>{t("admin.upload")}</Button>
               </div>
             </FormField>
           </div>
-          <FormField label="排序">
-            <TextInput value={String(form.sortOrder ?? 0)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) || 0 })} type="number" />
-          </FormField>
-          <Toggle checked={!!form.isOfficial} onChange={(v) => setForm({ ...form, isOfficial: v })} label="官方社区" />
-
+          <FormField label={t("admin.sortOrderLabel")}><TextInput value={String(form.sortOrder ?? 0)} onChange={(v) => setForm({ ...form, sortOrder: Number(v) || 0 })} type="number" /></FormField>
+          <Toggle checked={!!form.isOfficial} onChange={(v) => setForm({ ...form, isOfficial: v })} label={t("admin.officialCommunity")} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>取消</Button>
-            <Button onClick={handleSave} loading={saving} disabled={!form.name}>
-              {editing ? "保存" : "创建"}
-            </Button>
+            <Button variant="secondary" onClick={() => { setCreating(false); setEditing(null); }}>{t("admin.cancel")}</Button>
+            <Button onClick={handleSave} loading={saving} disabled={!form.name}>{editing ? t("admin.save") : t("admin.create")}</Button>
           </div>
         </div>
       </FormDialog>
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="确认删除社区？"
-        message={`将删除社区「${deleteTarget?.name}」及其所有帖子。`}
-        confirmLabel="删除"
+        title={t("admin.confirmDeleteCommunity")}
+        message={t("admin.deleteCommunityMsg", { name: deleteTarget?.name })}
+        confirmLabel={t("admin.delete")}
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { customerServiceApi, type AutoReplyConfig } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -13,6 +14,7 @@ import {
 
 
 export default function CustomerServicePage() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<AutoReplyConfig>({ enabled: false, message: "", email: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,31 +52,31 @@ export default function CustomerServicePage() {
 
   return (
     <div>
-      <PageHeader title="客服设置" description="配置自动回复消息和客服邮箱" />
+      <PageHeader title={t("admin.customerService")} description={t("admin.csDesc")} />
 
       <div className="mx-auto max-w-lg space-y-6">
         <div className="rounded-lg border border-[var(--border)] p-5">
           <Toggle
             checked={config.enabled}
             onChange={(v) => update({ enabled: v })}
-            label="启用自动回复"
+            label={t("admin.enableAutoReply")}
           />
           <p className="mt-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-            开启后，用户发送私信时将自动收到以下回复。
+            {t("admin.autoReplyNote")}
           </p>
         </div>
 
-        <FormField label="自动回复内容">
+        <FormField label={t("admin.autoReplyContent")}>
           <TextInput
             value={config.message}
             onChange={(v) => update({ message: v })}
             multiline
             rows={5}
-            placeholder="输入自动回复内容…"
+            placeholder={t("admin.autoReplyPlaceholder")}
           />
         </FormField>
 
-        <FormField label="客服邮箱">
+        <FormField label={t("admin.csEmail")}>
           <TextInput
             value={config.email}
             onChange={(v) => update({ email: v })}
@@ -84,7 +86,7 @@ export default function CustomerServicePage() {
         </FormField>
 
         <Button onClick={handleSave} loading={saving} disabled={!dirty}>
-          保存设置
+          {t("admin.saveSettings")}
         </Button>
       </div>
     </div>

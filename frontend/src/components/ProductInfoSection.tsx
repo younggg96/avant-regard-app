@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { StyleSheet, LayoutAnimation, Platform, UIManager } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, ScrollView } from "./ui";
 import { theme } from "../theme";
@@ -46,6 +47,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
   value,
   onChange,
 }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [showBrandPicker, setShowBrandPicker] = useState(false);
 
@@ -113,7 +115,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
               color={theme.colors.gray400}
             />
             <Text color="$gray500" fontSize="$sm" fontWeight="$medium">
-              单品信息（可选）
+              {t("productInfo.title")}
             </Text>
             {!expanded && hasAnyValue && (
               <Box
@@ -137,7 +139,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
           {/* 品牌搜索 */}
           <Box mb="$md">
             <Text color="$gray400" fontSize="$xs" mb="$xs">
-              品牌
+              {t("productInfo.brand")}
             </Text>
             {value.itemBrand ? (
               <HStack
@@ -174,7 +176,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray200" fontSize="$sm">
-                    搜索品牌...
+                    {t("productInfo.searchBrand")}
                   </Text>
                 </HStack>
               </Pressable>
@@ -184,7 +186,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
           {/* 品类 - 单选 */}
           <Box mb="$md">
             <Text color="$gray400" fontSize="$xs" mb="$xs">
-              品类
+              {t("productInfo.category")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
               {CATEGORIES.map((cat) => {
@@ -213,7 +215,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
           {/* 尺码 - 多选 */}
           <Box mb="$md">
             <Text color="$gray400" fontSize="$xs" mb="$xs">
-              尺码
+              {t("productInfo.size")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm" mb="$xs">
               {LETTER_SIZES.map((size) => {
@@ -273,7 +275,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
           {/* 颜色 - 多选 */}
           <Box mb="$sm">
             <Text color="$gray400" fontSize="$xs" mb="$xs">
-              颜色
+              {t("productInfo.color")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
               {COLORS.map(({ label, value: colorVal }) => {

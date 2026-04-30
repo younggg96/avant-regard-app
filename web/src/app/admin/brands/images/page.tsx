@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { brandsApi, type AdminBrandImage } from "@/lib/services/admin";
 import {
   PageHeader,
   EmptyState,
   LoadingState,
   ConfirmDialog,
-  Button,
 } from "@/components/admin/ui";
 
 
 export default function BrandImagesPage() {
+  const { t } = useTranslation();
   const [images, setImages] = useState<AdminBrandImage[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -65,12 +66,12 @@ export default function BrandImagesPage() {
 
   return (
     <div>
-      <PageHeader title="品牌图片审核" description={`${total} 张待审核`} />
+      <PageHeader title={t("admin.brandImagesTitle")} description={t("admin.brandImagesDesc", { count: total })} />
 
       {loading ? (
         <LoadingState />
       ) : images.length === 0 ? (
-        <EmptyState message="暂无待审核图片" />
+        <EmptyState message={t("admin.noPendingImages")} />
       ) : (
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {images.map((img) => (
@@ -78,7 +79,7 @@ export default function BrandImagesPage() {
               <img src={img.imageUrl} alt="" className="aspect-square w-full object-cover" />
               <div className="p-3 font-label">
                 <p className="truncate text-[12px] text-[color:var(--ink-muted)]">
-                  {img.brandName || `品牌 #${img.brandId}`}
+                  {img.brandName || `Brand #${img.brandId}`}
                 </p>
                 <div className="mt-2 flex gap-1">
                   <button
@@ -86,21 +87,21 @@ export default function BrandImagesPage() {
                     disabled={acting === img.id}
                     className="flex-1 rounded border border-[var(--border)] py-1.5 text-center font-label text-[11px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)] disabled:opacity-40"
                   >
-                    通过
+                    {t("admin.approve")}
                   </button>
                   <button
                     onClick={() => handleReject(img.id)}
                     disabled={acting === img.id}
                     className="flex-1 rounded border border-[var(--border)] py-1.5 text-center font-label text-[11px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)] disabled:opacity-40"
                   >
-                    拒绝
+                    {t("admin.reject")}
                   </button>
                   <button
                     onClick={() => setDeleteTarget(img)}
                     disabled={acting === img.id}
                     className="flex-1 rounded border border-[var(--border)] py-1.5 text-center font-label text-[11px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)] disabled:opacity-40"
                   >
-                    删除
+                    {t("admin.delete")}
                   </button>
                 </div>
               </div>
@@ -111,8 +112,8 @@ export default function BrandImagesPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="确认删除图片？"
-        confirmLabel="删除"
+        title={t("admin.confirmDeleteImage")}
+        confirmLabel={t("admin.delete")}
         loading={!!acting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

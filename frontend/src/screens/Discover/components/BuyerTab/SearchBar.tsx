@@ -7,6 +7,7 @@
  */
 import React from "react";
 import { StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { HStack, Pressable, Text } from "../../../../components/ui";
 import { theme } from "../../../../theme";
@@ -18,17 +19,22 @@ interface SearchBarProps {
 
 const SearchBarImpl: React.FC<SearchBarProps> = ({
   onPress,
-  placeholder = "搜索买手店、品牌或内容...",
-}) => (
-  <Pressable onPress={onPress} style={styles.container}>
-    <HStack alignItems="center" flex={1} gap={6}>
-      <Ionicons name="search" size={18} color={theme.colors.gray300} />
-      <Text numberOfLines={1} style={styles.placeholder}>
-        {placeholder}
-      </Text>
-    </HStack>
-  </Pressable>
-);
+  placeholder,
+}) => {
+  const { t } = useTranslation();
+  const displayPlaceholder = placeholder || t("discover.buyerSearchPlaceholder");
+
+  return (
+    <Pressable onPress={onPress} style={styles.container}>
+      <HStack alignItems="center" flex={1} gap={6}>
+        <Ionicons name="search" size={18} color={theme.colors.gray300} />
+        <Text numberOfLines={1} style={styles.placeholder}>
+          {displayPlaceholder}
+        </Text>
+      </HStack>
+    </Pressable>
+  );
+};
 
 export const SearchBar = React.memo(SearchBarImpl);
 

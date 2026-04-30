@@ -1,5 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
@@ -13,6 +14,7 @@ interface SystemEntryProps {
 }
 
 export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
+  const { t } = useTranslation();
   const systemNotifs = notifications.filter(
     (n) => (n.type === "system" || n.type === "mention") && !isChatNotification(n)
   );
@@ -40,7 +42,7 @@ export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
             <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              系统消息
+              {t("interaction.systemNotice")}
             </Text>
             {latest && (
               <Text fontSize="$xs" color="$gray200">
@@ -49,7 +51,7 @@ export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
             )}
           </HStack>
           <Text fontSize="$sm" color={unreadCount > 0 ? "$black" : "$gray300"} numberOfLines={1}>
-            {latest ? `${latest.title} ${latest.message}` : "暂无系统消息"}
+            {latest ? `${latest.title} ${latest.message}` : t("interaction.noSystemMessages")}
           </Text>
         </VStack>
 

@@ -16,6 +16,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
+import i18next from "i18next";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Box,
@@ -62,12 +64,12 @@ const getRelativeTime = (dateString: string): string => {
   const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  if (diffInMinutes < 1) return "刚刚";
-  if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
-  if (diffInHours < 24) return `${diffInHours}小时前`;
-  if (diffInDays < 7) return `${diffInDays}天前`;
-  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}周前`;
-  return `${Math.floor(diffInDays / 30)}个月前`;
+  if (diffInMinutes < 1) return i18next.t("time.justNow");
+  if (diffInMinutes < 60) return i18next.t("time.minutesAgo", { count: diffInMinutes });
+  if (diffInHours < 24) return i18next.t("time.hoursAgo", { count: diffInHours });
+  if (diffInDays < 7) return i18next.t("time.daysAgo", { count: diffInDays });
+  if (diffInDays < 30) return i18next.t("time.weeksAgo", { count: Math.floor(diffInDays / 7) });
+  return i18next.t("time.monthsAgo", { count: Math.floor(diffInDays / 30) });
 };
 
 // 用于展示的Post类型
@@ -114,12 +116,12 @@ const mapApiPostToDisplayPost = (
     auditStatus: apiPost.auditStatus,
     author: {
       id: String(apiPost.userId),
-      name: userInfo?.username || apiPost.username || "匿名用户",
+      name: userInfo?.username || apiPost.username || i18next.t("community.anonymous"),
       avatar: userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar,
       isVerified: false,
     },
     content: {
-      title: apiPost.title || "无标题",
+      title: apiPost.title || i18next.t("community.noTitle"),
       description: apiPost.contentText || "",
       images:
         apiPost.imageUrls && apiPost.imageUrls.length > 0
@@ -142,6 +144,7 @@ const mapApiPostToDisplayPost = (
 };
 
 const CommunityDetailScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "CommunityDetail">>();
   const { communityId } = route.params;
@@ -164,7 +167,7 @@ const CommunityDetailScreen = () => {
       setCommunity(communityData);
     } catch (err) {
       console.error("获取社区详情失败:", err);
-      setError(err instanceof Error ? err.message : "获取社区详情失败");
+      setError(err instanceof Error ? err.message : i18next.t("community.loadFailed"));
     }
   }, [communityId]);
 
@@ -204,7 +207,7 @@ const CommunityDetailScreen = () => {
       setPosts(displayPosts);
     } catch (err) {
       console.error("获取社区帖子失败:", err);
-      setError(err instanceof Error ? err.message : "获取帖子失败");
+      setError(err instanceof Error ? err.message : i18next.t("community.loadPostsFailed"));
       setPosts([]);
     }
   }, [communityId]);
@@ -255,7 +258,7 @@ const CommunityDetailScreen = () => {
     } catch (err) {
       console.error("关注操作失败:", err);
       // 显示用户友好的错误提示
-      alert("关注操作失败，请稍后重试");
+      alert(i18next.t("community.followFailed"));
     }
   }, [community, user, navigation]);
 

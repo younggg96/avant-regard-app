@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   postsApi,
   commentsApi,
@@ -19,14 +20,15 @@ interface StatCard {
   value: number | string;
 }
 
-const GENDER_LABEL: Record<string, string> = {
-  MALE: "男", FEMALE: "女", OTHER: "未设置",
-};
-const GENDER_COLOR: Record<string, string> = {
-  MALE: "var(--ink)", FEMALE: "var(--ink-muted)", OTHER: "var(--border)",
-};
-
 function GenderPie({ data }: { data: Record<string, number> }) {
+  const { t } = useTranslation();
+  const GENDER_LABEL: Record<string, string> = {
+    MALE: t("admin.male"), FEMALE: t("admin.female"), OTHER: t("admin.notSet"),
+  };
+  const GENDER_COLOR: Record<string, string> = {
+    MALE: "var(--ink)", FEMALE: "var(--ink-muted)", OTHER: "var(--border)",
+  };
+
   const entries = Object.entries(data).filter(([, v]) => v > 0);
   const total = entries.reduce((s, [, v]) => s + v, 0);
   if (total === 0) return null;
@@ -100,6 +102,7 @@ function BarChart({ items }: { items: { name: string; count: number }[] }) {
 }
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StatCard[]>([]);
   const [pendingPosts, setPendingPosts] = useState<AdminPost[]>([]);
@@ -139,11 +142,11 @@ export default function AdminDashboard() {
         }
 
         setStats([
-          { label: "待审核", value: pendingCount },
-          { label: "帖子", value: postsTotal },
-          { label: "评论", value: commentsTotal },
-          { label: "用户", value: usersTotal },
-          { label: "举报", value: reportsTotal },
+          { label: t("admin.pending"), value: pendingCount },
+          { label: t("admin.postsLabel"), value: postsTotal },
+          { label: t("admin.commentsLabel"), value: commentsTotal },
+          { label: t("admin.usersLabel"), value: usersTotal },
+          { label: t("admin.reportsLabel"), value: reportsTotal },
         ]);
       } catch {
         /* partial data is fine */
@@ -152,6 +155,7 @@ export default function AdminDashboard() {
       }
     }
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return <LoadingState />;
@@ -162,7 +166,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader title="管理面板" />
+      <PageHeader title={t("admin.dashboard")} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {stats.map((s) => (
@@ -182,26 +186,26 @@ export default function AdminDashboard() {
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-[var(--border)] p-5">
             <h2 className="mb-4 font-label text-[13px] text-[color:var(--ink-muted)]">
-              累计用户数
+              {t("admin.totalUsers")}
             </h2>
             <LineChart
               labels={growth.map((g) => g.date)}
               lines={[
-                { key: "totalUsers", label: "总用户", values: growth.map((g) => g.totalUsers) },
+                { key: "totalUsers", label: t("admin.totalUsersChart"), values: growth.map((g) => g.totalUsers) },
               ]}
               height={180}
             />
           </div>
           <div className="rounded-lg border border-[var(--border)] p-5">
             <h2 className="mb-4 font-label text-[13px] text-[color:var(--ink-muted)]">
-              每日新增
+              {t("admin.dailyNew")}
             </h2>
             <LineChart
               labels={growth.map((g) => g.date)}
               lines={[
-                { key: "users", label: "用户", values: growth.map((g) => g.users) },
-                { key: "posts", label: "帖子", values: growth.map((g) => g.posts) },
-                { key: "comments", label: "评论", values: growth.map((g) => g.comments) },
+                { key: "users", label: t("admin.usersLabel"), values: growth.map((g) => g.users) },
+                { key: "posts", label: t("admin.postsLabel"), values: growth.map((g) => g.posts) },
+                { key: "comments", label: t("admin.commentsLabel"), values: growth.map((g) => g.comments) },
               ]}
               height={180}
             />
@@ -213,23 +217,23 @@ export default function AdminDashboard() {
         <div className="mt-8 grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border border-[var(--border)] p-5">
             <h2 className="mb-4 font-label text-[13px] text-[color:var(--ink-muted)]">
-              性别分布
+              {t("admin.genderDist")}
             </h2>
             <GenderPie data={demo.gender} />
           </div>
           <div className="rounded-lg border border-[var(--border)] p-5">
             <h2 className="mb-4 font-label text-[13px] text-[color:var(--ink-muted)]">
-              年龄分布
+              {t("admin.ageDist")}
             </h2>
             <LineChart
               labels={ageBracketLabels}
-              lines={[{ key: "age", label: "人数", values: ageBracketValues }]}
+              lines={[{ key: "age", label: t("admin.people"), values: ageBracketValues }]}
               height={160}
             />
           </div>
           <div className="rounded-lg border border-[var(--border)] p-5">
             <h2 className="mb-4 font-label text-[13px] text-[color:var(--ink-muted)]">
-              地区分布 Top 15
+              {t("admin.regionDist")}
             </h2>
             <BarChart items={demo.regions} />
           </div>
@@ -238,18 +242,18 @@ export default function AdminDashboard() {
 
       {pendingPosts.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-3 font-label text-[13px] text-[color:var(--ink-muted)]">最新待审核</h2>
+          <h2 className="mb-3 font-label text-[13px] text-[color:var(--ink-muted)]">{t("admin.latestPending")}</h2>
           <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
             {pendingPosts.map((post) => (
               <div key={post.id} className="flex items-center gap-4 px-4 py-3 font-label text-[13px]">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate">{post.title || "无标题"}</div>
+                  <div className="truncate">{post.title || t("admin.noTitle")}</div>
                   <div className="text-[12px] text-[color:var(--ink-muted)]">
                     @{post.username} · {post.postType}
                   </div>
                 </div>
                 <span className="shrink-0 text-[12px] text-[color:var(--ink-muted)]">
-                  {new Date(post.createdAt).toLocaleDateString("zh-CN")}
+                  {new Date(post.createdAt).toLocaleDateString()}
                 </span>
               </div>
             ))}

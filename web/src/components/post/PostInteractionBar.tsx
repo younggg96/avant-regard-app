@@ -15,6 +15,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { postService } from "@/lib/services/post";
 import type { Post } from "@/lib/types";
@@ -50,6 +51,8 @@ export function PostInteractionBar({
     wantCount?: number;
   };
 }) {
+  const { t } = useTranslation();
+
   const actions: ActionConfig[] = [
     {
       key: "like",
@@ -57,8 +60,8 @@ export function PostInteractionBar({
       initialCount: post.likeCount ?? 0,
       onIcon: "♥",
       offIcon: "♡",
-      labelOn: "已点赞",
-      labelOff: "点赞",
+      labelOn: t("post.liked"),
+      labelOff: t("post.like"),
       toggle: (id, uid, active) =>
         active
           ? postService.unlikePost(id, uid)
@@ -70,8 +73,8 @@ export function PostInteractionBar({
       initialCount: post.favoriteCount ?? 0,
       onIcon: "★",
       offIcon: "☆",
-      labelOn: "已收藏",
-      labelOff: "收藏",
+      labelOn: t("post.favorited"),
+      labelOff: t("post.favorite"),
       toggle: (id, uid, active) =>
         active
           ? postService.unfavoritePost(id, uid)
@@ -83,8 +86,8 @@ export function PostInteractionBar({
       initialCount: post.wantCount ?? 0,
       onIcon: "✓",
       offIcon: "+",
-      labelOn: "已想要",
-      labelOff: "我想要",
+      labelOn: t("post.wanted"),
+      labelOff: t("post.want"),
       toggle: (id, uid, active) =>
         active
           ? postService.unwantPost(id, uid)
@@ -103,7 +106,7 @@ export function PostInteractionBar({
           strokeWidth={2}
           aria-hidden
         />
-        {formatCount(post.commentCount ?? 0)} 评论
+        {formatCount(post.commentCount ?? 0)} {t("post.comment")}
       </span>
     </div>
   );
@@ -116,6 +119,7 @@ function ActionButton({
   postId: number;
   config: ActionConfig;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const userId = useAuthStore((s) => s.user?.userId);
@@ -147,7 +151,7 @@ function ActionButton({
         .catch((err: unknown) => {
           setActive(prevActive);
           setCount(prevCount);
-          setError(err instanceof Error ? err.message : "操作失败");
+          setError(err instanceof Error ? err.message : t("post.actionFailed"));
         });
     });
   };

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,6 +34,7 @@ type RouteParams = {
 };
 
 const FollowersScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "Followers">>();
   const { user } = useAuthStore();
@@ -169,7 +171,7 @@ const FollowersScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>粉丝</Text>
+        <Text style={styles.headerTitle}>{t("followersScreen.title")}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -192,7 +194,7 @@ const FollowersScreen = () => {
               size={24}
               color={theme.colors.gray300}
             />
-            <Text style={styles.emptyText}>该用户已隐藏粉丝列表</Text>
+            <Text style={styles.emptyText}>{t("followersScreen.privateList")}</Text>
           </View>
         ) : followers.length > 0 ? (
           <View style={styles.userList}>
@@ -274,7 +276,7 @@ const FollowersScreen = () => {
               size={24}
               color={theme.colors.gray300}
             />
-            <Text style={styles.emptyText}>还没有粉丝</Text>
+            <Text style={styles.emptyText}>{t("followersScreen.noFollowers")}</Text>
           </View>
         )}
       </ScrollView>

@@ -39,8 +39,10 @@ import {
     reviewSubmission,
     batchReviewSubmissions,
 } from "../services/buyerStoreService";
+import { useTranslation } from "react-i18next";
 
 const StoreReviewScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
 
     const [submissions, setSubmissions] = useState<UserSubmittedStore[]>([]);
@@ -80,7 +82,7 @@ const StoreReviewScreen = () => {
             setTotal(result.total);
             setPage(pageNum);
         } catch (error: any) {
-            Alert.alert("加载失败", error.message || "请稍后重试");
+            Alert.alert(t("store.loadFailed"), error.message || t("store.pleaseRetryLater"));
         } finally {
             setIsLoading(false);
             setIsLoadingMore(false);
@@ -132,12 +134,12 @@ const StoreReviewScreen = () => {
     const handleBatchApprove = () => {
         if (selectedIds.size === 0) return;
         Alert.alert(
-            "批量通过",
-            `确定要通过选中的 ${selectedIds.size} 条审核吗？`,
+            t("store.batchApprove"),
+            t("store.confirmBatchApproveMsg", { count: selectedIds.size }),
             [
-                { text: "取消", style: "cancel" },
+                { text: t("common.cancel"), style: "cancel" },
                 {
-                    text: "全部通过",
+                    text: t("store.approveAll"),
                     onPress: async () => {
                         try {
                             setIsSubmitting(true);
@@ -145,13 +147,13 @@ const StoreReviewScreen = () => {
                                 submissionIds: Array.from(selectedIds),
                                 status: "APPROVED",
                             });
-                            Alert.alert("成功", `已通过 ${selectedIds.size} 条审核`);
+                            Alert.alert(t("common.success"), t("store.batchApprovedMsg", { count: selectedIds.size }));
                             setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)));
                             setTotal((prev) => prev - selectedIds.size);
                             setSelectedIds(new Set());
                             setIsBatchMode(false);
                         } catch (error: any) {
-                            Alert.alert("操作失败", error.message || "请稍后重试");
+                            Alert.alert(t("store.operationFailed"), error.message || t("store.pleaseRetryLater"));
                         } finally {
                             setIsSubmitting(false);
                         }
@@ -204,12 +206,12 @@ const StoreReviewScreen = () => {
 
     const handleApprove = async (submission: UserSubmittedStore) => {
         Alert.alert(
-            "审核通过",
-            `确定要通过「${submission.name}」的审核吗？`,
+            t("store.reviewApproved"),
+            t("store.confirmApproveMsg", { name: submission.name }),
             [
-                { text: "取消", style: "cancel" },
+                { text: t("common.cancel"), style: "cancel" },
                 {
-                    text: "通过",
+                    text: t("store.approve"),
                     onPress: async () => {
                         try {
                             setIsSubmitting(true);
@@ -219,12 +221,12 @@ const StoreReviewScreen = () => {
                             await reviewSubmission(submission.id, {
                                 status: "APPROVED",
                             });
-                            Alert.alert("成功", "审核已通过");
+                            Alert.alert(t("common.success"), t("store.approvedMsg"));
                             setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
                             setTotal((prev) => prev - 1);
                             closeDetailModal();
                         } catch (error: any) {
-                            Alert.alert("操作失败", error.message || "请稍后重试");
+                            Alert.alert(t("store.operationFailed"), error.message || t("store.pleaseRetryLater"));
                         } finally {
                             setIsSubmitting(false);
                         }
@@ -261,7 +263,7 @@ const StoreReviewScreen = () => {
 
     const handleConfirmReject = async () => {
         if (!rejectReason.trim()) {
-            Alert.alert("提示", "请输入拒绝原因");
+            Alert.alert(t("common.notice"), t("store.pleaseInputRejectReason"));
             return;
         }
 
@@ -274,7 +276,7 @@ const StoreReviewScreen = () => {
                     status: "REJECTED",
                     rejectReason: rejectReason.trim(),
                 });
-                Alert.alert("成功", `已拒绝 ${selectedIds.size} 条提交`);
+                Alert.alert(t("common.success"), t("store.batchRejectedMsg", { count: selectedIds.size }));
                 setSubmissions((prev) => prev.filter((s) => !selectedIds.has(s.id)));
                 setTotal((prev) => prev - selectedIds.size);
                 setSelectedIds(new Set());
@@ -285,14 +287,14 @@ const StoreReviewScreen = () => {
                     status: "REJECTED",
                     rejectReason: rejectReason.trim(),
                 });
-                Alert.alert("成功", "已拒绝该提交");
+                Alert.alert(t("common.success"), t("store.rejectedMsg"));
                 setSubmissions((prev) => prev.filter((s) => s.id !== selectedSubmission!.id));
                 setTotal((prev) => prev - 1);
             }
 
             closeRejectModal();
         } catch (error: any) {
-            Alert.alert("操作失败", error.message || "请稍后重试");
+            Alert.alert(t("store.operationFailed"), error.message || t("store.pleaseRetryLater"));
         } finally {
             setIsSubmitting(false);
         }
@@ -349,7 +351,7 @@ const StoreReviewScreen = () => {
                     </VStack>
                     <Box bg="#FFF3E0" px="$sm" py="$xs" rounded="$sm">
                         <Text fontSize="$xs" fontWeight="$bold" color="#FF9800">
-                            待审核
+                            {t("merchant.pendingReview")}
                         </Text>
                     </Box>
                 </HStack>
@@ -405,31 +407,31 @@ const StoreReviewScreen = () => {
             <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
                 <Ionicons name="checkmark-circle-outline" size={64} color={theme.colors.gray200} />
                 <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
-                    暂无待审核的买手店
+                    {t("store.noPendingStores")}
                 </Text>
                 <Text color="$gray300" mt="$sm">
-                    所有用户提交已处理完毕
+                    {t("store.allSubmissionsProcessed")}
                 </Text>
             </VStack>
         );
     };
 
     const rejectModalTitle = isBatchReject
-        ? `拒绝选中的 ${selectedIds.size} 条提交`
-        : `拒绝「${selectedSubmission?.name}」`;
+        ? t("store.rejectSelectedCount", { count: selectedIds.size })
+        : t("store.rejectStoreName", { name: selectedSubmission?.name });
 
     if (isLoading) {
         return (
             <SafeAreaView style={styles.container} edges={["top"]}>
                 <ScreenHeader
-                    title="买手店审核"
+                    title={t("store.storeReview")}
                     showBackButton
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
                     <Text color="$gray300" mt="$md">
-                        加载中...
+                        {t("common.loading")}
                     </Text>
                 </VStack>
             </SafeAreaView>
@@ -439,8 +441,8 @@ const StoreReviewScreen = () => {
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <ScreenHeader
-                title="买手店审核"
-                subtitle={`${total} 条待审核`}
+                title={t("store.storeReview")}
+                subtitle={t("store.pendingCount", { count: total })}
                 showBackButton
                 onBackPress={() => navigation.goBack()}
                 rightComponent={
@@ -476,7 +478,7 @@ const StoreReviewScreen = () => {
                             )}
                         </Box>
                         <Text fontSize="$sm" color="$gray300">
-                            全选 ({selectedIds.size}/{submissions.length})
+                            {t("store.selectAll")} ({selectedIds.size}/{submissions.length})
                         </Text>
                     </Pressable>
                     <HStack gap="$sm">
@@ -491,7 +493,7 @@ const StoreReviewScreen = () => {
                             disabled={selectedIds.size === 0 || isSubmitting}
                         >
                             <Text fontSize="$sm" fontWeight="$semibold" color={selectedIds.size > 0 ? "$error" : "$gray200"}>
-                                拒绝
+                                {t("store.reject")}
                             </Text>
                         </Pressable>
                         <Pressable
@@ -507,7 +509,7 @@ const StoreReviewScreen = () => {
                                 <ActivityIndicator color="#fff" size="small" />
                             ) : (
                                 <Text fontSize="$sm" fontWeight="$semibold" color="$white">
-                                    通过
+                                    {t("store.approve")}
                                 </Text>
                             )}
                         </Pressable>
@@ -581,7 +583,7 @@ const StoreReviewScreen = () => {
                                     <HStack alignItems="center">
                                         <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray300} />
                                         <Text fontSize="$sm" color="$gray300" ml="$sm">
-                                            提交者：{selectedSubmission.username}
+                                            {t("store.submitter")}{selectedSubmission.username}
                                         </Text>
                                         <Text fontSize="$sm" color="$gray200" ml="auto">
                                             {new Date(selectedSubmission.createdAt).toLocaleString("zh-CN")}
@@ -591,7 +593,7 @@ const StoreReviewScreen = () => {
 
                                 <VStack mb="$md">
                                     <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                        详细地址
+                                        {t("store.detailedAddress")}
                                     </Text>
                                     <Text fontSize="$md" color="$black">
                                         {selectedSubmission.address}
@@ -601,7 +603,7 @@ const StoreReviewScreen = () => {
                                 {selectedSubmission.latitude && selectedSubmission.longitude && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            位置坐标
+                                            {t("store.coordinates")}
                                         </Text>
                                         <Text fontSize="$md" color="$black">
                                             {selectedSubmission.latitude.toFixed(6)}, {selectedSubmission.longitude.toFixed(6)}
@@ -612,7 +614,7 @@ const StoreReviewScreen = () => {
                                 {(selectedSubmission.style?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            风格标签
+                                            {t("store.styleTags")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.style.map((s, idx) => (
@@ -629,7 +631,7 @@ const StoreReviewScreen = () => {
                                 {(selectedSubmission.brands?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            销售品牌
+                                            {t("store.salesBrands")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.brands.map((b, idx) => (
@@ -646,7 +648,7 @@ const StoreReviewScreen = () => {
                                 {(selectedSubmission.phone?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            联系电话
+                                            {t("store.phone")}
                                         </Text>
                                         <Text fontSize="$md" color="$black">
                                             {selectedSubmission.phone.join(", ")}
@@ -657,7 +659,7 @@ const StoreReviewScreen = () => {
                                 {selectedSubmission.hours && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            营业时间
+                                            {t("store.businessHours")}
                                         </Text>
                                         <Text fontSize="$md" color="$black">
                                             {selectedSubmission.hours}
@@ -668,7 +670,7 @@ const StoreReviewScreen = () => {
                                 {selectedSubmission.description && (
                                     <VStack mb="$md">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            店铺描述
+                                            {t("store.storeDescription")}
                                         </Text>
                                         <Text fontSize="$md" color="$black" lineHeight={22}>
                                             {selectedSubmission.description}
@@ -679,7 +681,7 @@ const StoreReviewScreen = () => {
                                 {(selectedSubmission.images?.length ?? 0) > 0 && (
                                     <VStack mb="$lg">
                                         <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
-                                            店铺图片
+                                            {t("store.storeImages")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$sm">
                                             {selectedSubmission.images.map((uri, idx) => (
@@ -709,7 +711,7 @@ const StoreReviewScreen = () => {
                                         disabled={isSubmitting}
                                     >
                                         <Text fontSize="$md" fontWeight="$semibold" color="$error">
-                                            拒绝
+                                            {t("store.reject")}
                                         </Text>
                                     </Pressable>
                                     <Pressable
@@ -725,7 +727,7 @@ const StoreReviewScreen = () => {
                                             <ActivityIndicator color={theme.colors.white} />
                                         ) : (
                                             <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                                                通过
+                                                {t("store.approve")}
                                             </Text>
                                         )}
                                     </Pressable>
@@ -770,14 +772,14 @@ const StoreReviewScreen = () => {
                                 ]}
                             >
                                 <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
-                                    拒绝原因
+                                    {t("store.rejectReason")}
                                 </Text>
                                 <Text fontSize="$sm" color="$gray300" mb="$md">
-                                    请填写{rejectModalTitle}的原因，以便用户了解并修正：
+                                    {t("store.rejectReasonDescription", { target: rejectModalTitle })}
                                 </Text>
                                 <TextInput
                                     style={styles.rejectInput}
-                                    placeholder="请输入拒绝原因..."
+                                    placeholder={t("store.rejectReasonPlaceholder")}
                                     placeholderTextColor={theme.colors.gray200}
                                     value={rejectReason}
                                     onChangeText={setRejectReason}
@@ -796,7 +798,7 @@ const StoreReviewScreen = () => {
                                         onPress={closeRejectModal}
                                     >
                                         <Text fontSize="$md" fontWeight="$semibold" color="$black">
-                                            取消
+                                            {t("common.cancel")}
                                         </Text>
                                     </Pressable>
                                     <Pressable
@@ -812,7 +814,7 @@ const StoreReviewScreen = () => {
                                             <ActivityIndicator color={theme.colors.white} />
                                         ) : (
                                             <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                                                确认拒绝
+                                                {t("store.confirmReject")}
                                             </Text>
                                         )}
                                     </Pressable>

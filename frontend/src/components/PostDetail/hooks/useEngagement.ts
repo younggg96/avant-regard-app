@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Post } from "../../PostCard";
 import { postService } from "../../../services/postService";
 import { followService, isFollowingUser } from "../../../services/followService";
@@ -32,6 +33,7 @@ export const useEngagement = ({
   userId,
   setPost,
 }: UseEngagementOptions): UseEngagementReturn => {
+  const { t } = useTranslation();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -59,7 +61,7 @@ export const useEngagement = ({
   const handleLike = useCallback(async () => {
     if (!post) return;
     if (!userId) {
-      Alert.show("提示", "请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
 
@@ -111,7 +113,7 @@ export const useEngagement = ({
   const handleSave = useCallback(async () => {
     if (!post) return;
     if (!userId) {
-      Alert.show("提示", "请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
 
@@ -163,7 +165,7 @@ export const useEngagement = ({
   const handleWant = useCallback(async () => {
     if (!post) return;
     if (!userId) {
-      Alert.show("提示", "请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
 
@@ -233,7 +235,7 @@ export const useEngagement = ({
   // 处理关注
   const handleFollow = useCallback(async () => {
     if (!userId) {
-      Alert.show("请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
 
@@ -242,9 +244,8 @@ export const useEngagement = ({
       return;
     }
 
-    // 不能关注自己
     if (userId === authorId) {
-      Alert.show("不能关注自己");
+      Alert.show(t("engagement.cannotFollowSelf"));
       return;
     }
 
@@ -256,22 +257,22 @@ export const useEngagement = ({
           targetUserId: authorId,
         });
         setIsFollowing(false);
-        Alert.show("已取消关注");
+        Alert.show(t("engagement.unfollowed"));
       } else {
         await followService.followUser({
           followerId: userId,
           targetUserId: authorId,
         });
         setIsFollowing(true);
-        Alert.show("关注成功");
+        Alert.show(t("engagement.followSuccess"));
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "操作失败";
+      const message = error instanceof Error ? error.message : t("engagement.operationFailed");
       Alert.show(message);
     } finally {
       setIsFollowLoading(false);
     }
-  }, [userId, authorId, isFollowing]);
+  }, [userId, authorId, isFollowing, t]);
 
   return {
     isFollowing,

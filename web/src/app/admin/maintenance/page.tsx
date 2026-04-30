@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { maintenanceApi, type MaintenanceConfig } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -12,9 +13,10 @@ import {
 } from "@/components/admin/ui";
 
 
-const DEFAULT_MESSAGE = "服务器正在维护中，请稍后再试。\n我们正在努力恢复服务，给您带来不便深表歉意。";
-
 export default function MaintenancePage() {
+  const { t } = useTranslation();
+  const DEFAULT_MESSAGE = t("admin.maintenanceDefaultMsg");
+
   const [config, setConfig] = useState<MaintenanceConfig>({ enabled: false, message: "" });
   const [messageInput, setMessageInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,7 @@ export default function MaintenancePage() {
 
   const handleSave = async () => {
     if (config.enabled && !messageInput.trim()) {
-      alert("维护模式开启时需要提供维护提示信息");
+      alert(t("admin.maintenanceRequired"));
       return;
     }
     setSaving(true);
@@ -71,13 +73,13 @@ export default function MaintenancePage() {
 
   return (
     <div>
-      <PageHeader title="维护模式" description="控制应用的维护状态，开启后所有用户将看到维护提示" />
+      <PageHeader title={t("admin.maintenance")} description={t("admin.maintenanceDesc")} />
 
       <div className="mx-auto max-w-lg space-y-6">
         {config.enabled && (
           <div className="rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-4">
             <p className="font-label text-[13px] text-[color:var(--ink-muted)]">
-              维护模式已开启，所有用户将看到维护提示页面。
+              {t("admin.maintenanceOn")}
             </p>
           </div>
         )}
@@ -86,23 +88,23 @@ export default function MaintenancePage() {
           <Toggle
             checked={config.enabled}
             onChange={handleToggle}
-            label="开启维护模式"
+            label={t("admin.enableMaintenance")}
           />
           <p className="mt-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-            开启后，APP 和网站将显示维护页面，所有功能暂停。
+            {t("admin.maintenanceNote")}
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="font-label text-[12px] font-medium text-[color:var(--ink-muted)]">
-              维护提示信息
+              {t("admin.maintenanceMsg")}
             </label>
             <button
               onClick={handleResetMessage}
               className="flex items-center gap-1 font-label text-[12px] text-[color:var(--ink-muted)] hover:text-[var(--ink)] transition-colors"
             >
-              恢复默认
+              {t("admin.resetDefault")}
             </button>
           </div>
           <TextInput
@@ -110,7 +112,7 @@ export default function MaintenancePage() {
             onChange={handleMessageChange}
             multiline
             rows={5}
-            placeholder="输入维护提示信息…"
+            placeholder={t("admin.maintenanceMsgPlaceholder")}
           />
           <p className="mt-1 text-right font-label text-[11px] text-[color:var(--ink-muted)]">
             {messageInput.length} / 500
@@ -118,16 +120,16 @@ export default function MaintenancePage() {
         </div>
 
         <div className="rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-4 font-label text-[12px] text-[color:var(--ink-muted)]">
-          <p className="mb-1 text-[11px] uppercase tracking-wider">提示</p>
+          <p className="mb-1 text-[11px] uppercase tracking-wider">{t("admin.tips")}</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>维护模式开启后，502/503 响应也会触发维护提示</li>
-            <li>管理员仍可正常使用后台功能</li>
-            <li>关闭维护模式后，客户端最多 20 秒后自动恢复</li>
+            <li>{t("admin.maintenanceTip1")}</li>
+            <li>{t("admin.maintenanceTip2")}</li>
+            <li>{t("admin.maintenanceTip3")}</li>
           </ul>
         </div>
 
         <Button onClick={handleSave} loading={saving} disabled={!dirty}>
-          保存设置
+          {t("admin.saveSettings")}
         </Button>
       </div>
     </div>

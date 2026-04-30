@@ -16,6 +16,7 @@
 
 import { Globe, CheckCircle2, Archive } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { StoreProfileConfig } from "@/lib/services/store-product";
 
 interface Props {
@@ -30,28 +31,32 @@ interface ServiceItem {
   highlightTags: string[];
 }
 
-const SERVICES: ServiceItem[] = [
-  {
-    icon: <Globe size={18} />,
-    label: "全球直采",
-    labelEn: "DIRECT GLOBAL SOURCING",
-    highlightTags: ["全球直采", "全球采购"],
-  },
-  {
-    icon: <CheckCircle2 size={18} />,
-    label: "正品保障",
-    labelEn: "AUTHENTIC GUARANTEE",
-    highlightTags: ["正品保障", "官方认证"],
-  },
-  {
-    icon: <Archive size={18} />,
-    label: "私人档案服务",
-    labelEn: "PRIVATE ARCHIVE",
-    highlightTags: ["私人档案", "档案服务"],
-  },
-];
+function useServices(): ServiceItem[] {
+  const { t } = useTranslation();
+  return [
+    {
+      icon: <Globe size={18} />,
+      label: t("store.globalSourcing"),
+      labelEn: "DIRECT GLOBAL SOURCING",
+      highlightTags: ["全球直采", "全球采购"],
+    },
+    {
+      icon: <CheckCircle2 size={18} />,
+      label: t("store.authenticGuarantee"),
+      labelEn: "AUTHENTIC GUARANTEE",
+      highlightTags: ["正品保障", "官方认证"],
+    },
+    {
+      icon: <Archive size={18} />,
+      label: t("store.privateArchive"),
+      labelEn: "PRIVATE ARCHIVE",
+      highlightTags: ["私人档案", "档案服务"],
+    },
+  ];
+}
 
 export function StoreServiceCards({ hasMerchant, profile }: Props) {
+  const SERVICES = useServices();
   if (!hasMerchant) return null;
 
   const tags = profile?.tags ?? [];

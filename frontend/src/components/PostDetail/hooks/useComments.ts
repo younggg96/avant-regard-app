@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Alert as RNAlert, Keyboard } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Comment, CommentReply, ReplyTarget, formatTimestamp, PostStatus } from "../types";
 import { commentService } from "../../../services/commentService";
 import { userInfoService } from "../../../services/userInfoService";
@@ -50,6 +51,7 @@ export const useComments = ({
   userId,
   username,
 }: UseCommentsOptions): UseCommentsReturn => {
+  const { t } = useTranslation();
   const commentInputRef = useRef<CommentInputBarRef>(null);
 
   // 评论数据状态
@@ -104,7 +106,7 @@ export const useComments = ({
               id: String(apiReply.id),
               parentId: String(apiReply.parentId),
               userId: apiReply.userId,
-              userName: replyUserInfo?.username || apiReply.username || "用户",
+              userName: replyUserInfo?.username || apiReply.username || t("comments.user"),
               userAvatar:
                 replyUserInfo?.avatarUrl ||
                 apiReply.userAvatar ||
@@ -123,7 +125,7 @@ export const useComments = ({
         return {
           id: String(apiComment.id),
           userId: apiComment.userId,
-          userName: userInfo?.username || apiComment.username || "用户",
+          userName: userInfo?.username || apiComment.username || t("comments.user"),
           userAvatar:
             userInfo?.avatarUrl ||
             apiComment.userAvatar ||
@@ -175,7 +177,7 @@ export const useComments = ({
   const handleCommentLike = useCallback(
     async (commentId: string) => {
       if (!userId) {
-        Alert.show("提示", "请先登录");
+        Alert.show(t("engagement.pleaseLogin"));
         return;
       }
 
@@ -224,7 +226,7 @@ export const useComments = ({
   const handleReplyLike = useCallback(
     async (replyId: string, parentId: string) => {
       if (!userId) {
-        Alert.show("提示", "请先登录");
+        Alert.show(t("engagement.pleaseLogin"));
         return;
       }
 
@@ -297,10 +299,10 @@ export const useComments = ({
     (commentId: string) => {
       if (!userId) return;
 
-      RNAlert.alert("确认删除", "确定要删除这条评论吗？删除后不可恢复。", [
-        { text: "取消", style: "cancel" },
+      RNAlert.alert(t("comments.confirmDelete"), t("comments.confirmDeleteComment"), [
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             const numericId = parseInt(commentId, 10);
@@ -312,7 +314,7 @@ export const useComments = ({
               await commentService.deleteComment(numericId, userId);
             } catch (error) {
               console.error("Error deleting comment:", error);
-              Alert.show("错误", "删除失败，请重试");
+              Alert.show(t("common.failed"), t("comments.deleteFailed"));
               loadComments();
             }
           },
@@ -327,10 +329,10 @@ export const useComments = ({
     (replyId: string, parentId: string) => {
       if (!userId) return;
 
-      RNAlert.alert("确认删除", "确定要删除这条回复吗？删除后不可恢复。", [
-        { text: "取消", style: "cancel" },
+      RNAlert.alert(t("comments.confirmDelete"), t("comments.confirmDeleteReply"), [
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "删除",
+          text: t("common.delete"),
           style: "destructive",
           onPress: async () => {
             const numericId = parseInt(replyId, 10);
@@ -352,7 +354,7 @@ export const useComments = ({
               await commentService.deleteComment(numericId, userId);
             } catch (error) {
               console.error("Error deleting reply:", error);
-              Alert.show("错误", "删除失败，请重试");
+              Alert.show(t("common.failed"), t("comments.deleteFailed"));
               loadComments();
             }
           },
@@ -392,7 +394,7 @@ export const useComments = ({
     if (!commentInput.trim()) return;
 
     if (!userId) {
-      Alert.show("提示", "请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
 
@@ -404,7 +406,7 @@ export const useComments = ({
 
     try {
       const numericPostId = parseInt(postId, 10);
-      if (isNaN(numericPostId)) throw new Error("无效的帖子 ID");
+      if (isNaN(numericPostId)) throw new Error("Invalid post ID");
 
       // 构建评论参数
       const commentParams: {
@@ -439,17 +441,16 @@ export const useComments = ({
       }
 
       if (replyTarget) {
-        // 添加回复到对应的评论
         const newReply: CommentReply = {
           id: String(newApiComment.id),
           parentId: replyTarget.commentId,
           userId: userId,
-          userName: username || "我",
+          userName: username || t("comments.me"),
           userAvatar: userAvatar,
           replyToUserId: replyTarget.userId,
           replyToUsername: replyTarget.userName,
           content: commentInput.trim(),
-          timestamp: "刚刚",
+          timestamp: t("time.justNow"),
           likes: 0,
           isLiked: false,
         };
@@ -467,16 +468,15 @@ export const useComments = ({
           )
         );
 
-        Alert.show("成功", "回复已发布");
+        Alert.show(t("comments.replyPublished"));
       } else {
-        // 添加新评论
         const newComment: Comment = {
           id: String(newApiComment.id),
           userId: newApiComment.userId,
-          userName: username || "我",
+          userName: username || t("comments.me"),
           userAvatar: userAvatar,
           content: newApiComment.content,
-          timestamp: "刚刚",
+          timestamp: t("time.justNow"),
           likes: 0,
           isLiked: false,
           replyCount: 0,
@@ -485,14 +485,14 @@ export const useComments = ({
         };
 
         setComments((prev) => [newComment, ...prev]);
-        Alert.show("成功", "评论已发布");
+        Alert.show(t("comments.commentPublished"));
       }
 
       setCommentInput("");
       setReplyTarget(null);
     } catch (error) {
       console.error("Error submitting comment:", error);
-      Alert.show("错误", error instanceof Error ? error.message : "发布失败");
+      Alert.show(t("common.failed"), error instanceof Error ? error.message : t("comments.publishFailed"));
     } finally {
       setIsSubmittingComment(false);
     }

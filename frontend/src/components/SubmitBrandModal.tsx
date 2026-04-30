@@ -13,6 +13,7 @@ import {
   Platform,
   GestureResponderEvent,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -33,6 +34,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [foundedYear, setFoundedYear] = useState("");
@@ -63,7 +65,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      setErrorMessage("需要相册访问权限才能选择图片");
+      setErrorMessage(t("imageUploader.galleryAccessRequired"));
       setSubmitResult("error");
       return;
     }
@@ -103,7 +105,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
           coverImageUrl = await uploadImage(coverImageUri);
         } catch {
           setSubmitResult("error");
-          setErrorMessage("图片上传失败，请重试");
+          setErrorMessage(t("submitBrand.uploadFailed"));
           setIsSubmitting(false);
           setIsUploading(false);
           return;
@@ -126,7 +128,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
       onSuccess?.();
     } catch (err: any) {
       setSubmitResult("error");
-      setErrorMessage(err?.message || "提交失败，请稍后重试");
+      setErrorMessage(err?.message || t("submitBrand.submitFailed"));
     } finally {
       setIsSubmitting(false);
       setIsUploading(false);
@@ -138,12 +140,12 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
       <View style={styles.successIcon}>
         <Ionicons name="checkmark-circle" size={56} color={theme.colors.black} />
       </View>
-      <Text style={styles.resultTitle}>提交成功</Text>
+      <Text style={styles.resultTitle}>{t("submitBrand.submitSuccess")}</Text>
       <Text style={styles.resultText}>
-        品牌已提交，将在管理员审核通过后添加到列表中
+        {t("submitBrand.submitSuccessMessage")}
       </Text>
       <TouchableOpacity style={styles.doneButton} onPress={handleClose}>
-        <Text style={styles.doneButtonText}>完成</Text>
+        <Text style={styles.doneButtonText}>{t("common.done")}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -168,7 +170,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
             {/* <SafeAreaView style={styles.container} edges={["bottom"]}> */}
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>提交新品牌</Text>
+              <Text style={styles.headerTitle}>{t("submitBrand.title")}</Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={handleClose}
@@ -192,11 +194,11 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                 {/* Brand Name (required) */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.label}>
-                    品牌名称 <Text style={styles.required}>*</Text>
+                    {t("submitBrand.brandName")} <Text style={styles.required}>*</Text>
                   </Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="品牌名称"
+                    placeholder={t("submitBrand.brandName")}
                     placeholderTextColor={theme.colors.gray300}
                     value={name}
                     onChangeText={setName}
@@ -207,7 +209,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                   {/* Cover Image */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.label}>
-                      品牌图片 <Text style={styles.required}>*</Text>
+                      {t("submitBrand.brandImage")} <Text style={styles.required}>*</Text>
                     </Text>
                   <TouchableOpacity
                     style={styles.imagePickerButton}
@@ -242,7 +244,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                           color={theme.colors.gray300}
                         />
                         <Text style={styles.imagePlaceholderText}>
-                          点击添加品牌图片
+                          {t("submitBrand.addBrandImage")}
                         </Text>
                       </View>
                     )}
@@ -250,7 +252,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>分类</Text>
+                  <Text style={styles.label}>{t("submitBrand.category")}</Text>
                   <TextInput
                     style={styles.input}
                     placeholder=""
@@ -261,10 +263,10 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>创始人</Text>
+                  <Text style={styles.label}>{t("submitBrand.founder")}</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="创始人"
+                    placeholder={t("submitBrand.founder")}
                     placeholderTextColor={theme.colors.gray300}
                     value={founder}
                     onChangeText={setFounder}
@@ -273,10 +275,10 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
 
                 <View style={styles.row}>
                   <View style={[styles.fieldGroup, styles.halfField]}>
-                    <Text style={styles.label}>创立年份</Text>
+                    <Text style={styles.label}>{t("submitBrand.foundedYear")}</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="创立年份"
+                      placeholder={t("submitBrand.foundedYear")}
                       placeholderTextColor={theme.colors.gray300}
                       value={foundedYear}
                       onChangeText={setFoundedYear}
@@ -285,10 +287,10 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                     />
                   </View>
                   <View style={[styles.fieldGroup, styles.halfField]}>
-                    <Text style={styles.label}>国家</Text>
+                    <Text style={styles.label}>{t("submitBrand.country")}</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="国家"
+                      placeholder={t("submitBrand.country")}
                       placeholderTextColor={theme.colors.gray300}
                       value={country}
                       onChangeText={setCountry}
@@ -297,7 +299,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>官方网站</Text>
+                  <Text style={styles.label}>{t("submitBrand.officialWebsite")}</Text>
                   <TextInput
                     style={styles.input}
                     placeholder="https://"
@@ -334,11 +336,11 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                     <View style={styles.submitLoadingRow}>
                       <ActivityIndicator size="small" color={theme.colors.white} />
                       <Text style={[styles.submitButtonText, { marginLeft: 8 }]}>
-                        {isUploading ? "上传图片中..." : "提交中..."}
+                        {isUploading ? t("submitBrand.uploadingImage") : t("submitBrand.submitting")}
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.submitButtonText}>提交品牌</Text>
+                    <Text style={styles.submitButtonText}>{t("submitBrand.submitBrand")}</Text>
                   )}
                 </TouchableOpacity>
 

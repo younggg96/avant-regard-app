@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { FlatList, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { Box, Text, ActionSheet } from "../../../components/ui";
@@ -16,6 +17,7 @@ import { RecentAvatars } from "./RecentAvatars";
 import { isStrangerConversation } from "../utils";
 
 export const MessagesContent = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const {
     conversations,
@@ -67,7 +69,7 @@ export const MessagesContent = () => {
     (c: Conversation) => {
       (navigation.navigate as any)("Chat", {
         conversationId: c.id,
-        otherUserName: c.otherUser?.username || "聊天",
+        otherUserName: c.otherUser?.username || t("chat.title"),
         otherUserAvatar: c.otherUser?.avatarUrl,
         otherUserId: c.otherUser?.userId,
       });
@@ -89,21 +91,21 @@ export const MessagesContent = () => {
 
   const handleLongPress = useCallback(
     (c: Conversation) => {
-      const readLabel = c.unreadCount > 0 ? "标记已读" : "标记未读";
-      setSheetTitle(c.otherUser?.username || "会话");
+      const readLabel = c.unreadCount > 0 ? t("interaction.markRead") : t("interaction.markUnread");
+      setSheetTitle(c.otherUser?.username || t("interaction.conversation"));
       setSheetActions([
         {
           label: readLabel,
           onPress: () => toggleConversationRead(c.id),
         },
         {
-          label: "删除会话",
+          label: t("interaction.deleteConversation"),
           destructive: true,
           onPress: () => {
-            Alert.alert("确认删除", "删除后将无法恢复聊天记录", [
-              { text: "取消", style: "cancel" },
+            Alert.alert(t("interaction.confirmDelete"), t("interaction.deleteWarning"), [
+              { text: t("common.cancel"), style: "cancel" },
               {
-                text: "删除",
+                text: t("common.delete"),
                 style: "destructive",
                 onPress: () => removeConversation(c.id),
               },
@@ -182,10 +184,10 @@ export const MessagesContent = () => {
           <Box py={48} px="$lg" alignItems="center">
             <Ionicons name="chatbubbles-outline" size={44} color={theme.colors.gray200} />
             <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
-              暂无对话
+              {t("interaction.noMessages")}
             </Text>
             <Text fontSize="$sm" color="$gray400" textAlign="center">
-              前往用户主页发起聊天
+              {t("interaction.startChatHint")}
             </Text>
           </Box>
         }

@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
@@ -77,6 +78,7 @@ export const MessageBubble = ({
   onReportMessage,
   onReportUser,
 }: MessageBubbleProps) => {
+  const { t } = useTranslation();
   const isMine = message.isMine;
   const [showMenu, setShowMenu] = useState(false);
   const navigation = useNavigation();
@@ -102,7 +104,7 @@ export const MessageBubble = ({
     const list: ActionSheetAction[] = [];
     if (onReportMessage) {
       list.push({
-        label: "举报此消息",
+        label: t("chat.reportMessage"),
         icon: <Ionicons name="flag-outline" size={20} color={theme.colors.error} />,
         destructive: true,
         onPress: () => onReportMessage(message),
@@ -110,14 +112,14 @@ export const MessageBubble = ({
     }
     if (onReportUser) {
       list.push({
-        label: "举报该用户",
+        label: t("chat.reportUser"),
         icon: <Ionicons name="person-remove-outline" size={20} color={theme.colors.error} />,
         destructive: true,
         onPress: () => onReportUser(message),
       });
     }
     return list;
-  }, [message, onReportMessage, onReportUser]);
+  }, [message, onReportMessage, onReportUser, t]);
 
   const handlePostCardPress = () => {
     if (!postCard) return;
@@ -223,7 +225,7 @@ export const MessageBubble = ({
                 ]}
                 numberOfLines={1}
               >
-                用户主页
+                {t("chat.userProfile")}
               </Text>
             </View>
             <View style={cardStyles.tapHint}>
@@ -233,7 +235,7 @@ export const MessageBubble = ({
                   isMine ? cardStyles.textMuted : cardStyles.textSubtle,
                 ]}
               >
-                查看
+                {t("chat.view")}
               </Text>
               <Ionicons
                 name="chevron-forward"
@@ -321,7 +323,7 @@ export const MessageBubble = ({
                   ]}
                   numberOfLines={1}
                 >
-                  秀场
+                  {t("chat.showLabel")}
                 </Text>
               </View>
               <View style={cardStyles.tapHint}>
@@ -331,7 +333,7 @@ export const MessageBubble = ({
                     isMine ? cardStyles.textMuted : cardStyles.textSubtle,
                   ]}
                 >
-                  查看
+                  {t("chat.view")}
                 </Text>
                 <Ionicons
                   name="chevron-forward"
@@ -417,7 +419,7 @@ export const MessageBubble = ({
                   ]}
                   numberOfLines={1}
                 >
-                  品牌
+                  {t("chat.brandLabel")}
                 </Text>
               </View>
               <View style={cardStyles.tapHint}>
@@ -427,7 +429,7 @@ export const MessageBubble = ({
                     isMine ? cardStyles.textMuted : cardStyles.textSubtle,
                   ]}
                 >
-                  查看
+                  {t("chat.view")}
                 </Text>
                 <Ionicons
                   name="chevron-forward"
@@ -525,7 +527,7 @@ export const MessageBubble = ({
                   ]}
                   numberOfLines={1}
                 >
-                  买手店
+                  {t("chat.storeLabel")}
                 </Text>
               </View>
               <View style={cardStyles.tapHint}>
@@ -535,7 +537,7 @@ export const MessageBubble = ({
                     isMine ? cardStyles.textMuted : cardStyles.textSubtle,
                   ]}
                 >
-                  查看
+                  {t("chat.view")}
                 </Text>
                 <Ionicons
                   name="chevron-forward"
@@ -576,7 +578,7 @@ export const MessageBubble = ({
               ]}
               numberOfLines={2}
             >
-              {postCard.title || "帖子分享"}
+              {postCard.title || t("chat.sharePost")}
             </Text>
             <View style={cardStyles.footer}>
               <View style={cardStyles.authorRow}>
@@ -602,7 +604,7 @@ export const MessageBubble = ({
                     isMine ? cardStyles.textMuted : cardStyles.textSubtle,
                   ]}
                 >
-                  查看
+                  {t("chat.view")}
                 </Text>
                 <Ionicons
                   name="chevron-forward"

@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
@@ -72,6 +73,7 @@ interface CollectionDetailParams {
 }
 
 const CollectionDetailScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as CollectionDetailParams;
@@ -118,7 +120,7 @@ const CollectionDetailScreen = () => {
         setRelatedPosts(posts);
       } catch (error) {
         // 正确处理错误，提取错误消息
-        let errorMessage = "加载相关帖子失败";
+        let errorMessage = t("collection.loadPostsFailed");
         if (error instanceof Error) {
           errorMessage = error.message;
         }
@@ -205,7 +207,7 @@ const CollectionDetailScreen = () => {
         <View style={styles.contributorBadge}>
           <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
           <Text style={styles.contributorText}>
-            由 {collection.contributorName} 用户贡献的秀场
+            {t("collection.contributedBy", { name: collection.contributorName })}
           </Text>
         </View>
       )}
@@ -238,7 +240,7 @@ const CollectionDetailScreen = () => {
         {collection.imageCount > 0 && (
           <View style={styles.metaItem}>
             <Ionicons name="images-outline" size={16} color={theme.colors.gray600} />
-            <Text style={styles.metaText}>{collection.imageCount} 张图片</Text>
+            <Text style={styles.metaText}>{t("collection.imageCount", { count: collection.imageCount })}</Text>
           </View>
         )}
       </View>
@@ -254,7 +256,7 @@ const CollectionDetailScreen = () => {
             size={20}
             color={theme.colors.gray600}
           />
-          <Text style={styles.urlButtonText}>查看秀场网站</Text>
+          <Text style={styles.urlButtonText}>{t("collection.viewWebsite")}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -272,7 +274,7 @@ const CollectionDetailScreen = () => {
 
     return (
       <View style={styles.reviewContainer}>
-        <Text style={styles.reviewTitle}>评论</Text>
+        <Text style={styles.reviewTitle}>{t("post.comments")}</Text>
         <View style={styles.reviewTextContainer}>
           <View
             style={[
@@ -303,7 +305,7 @@ const CollectionDetailScreen = () => {
             onPress={toggleReviewExpansion}
           >
             <Text style={styles.expandButtonText}>
-              {isReviewExpanded ? "收起" : "展开全文"}
+              {isReviewExpanded ? t("common.collapse") : t("common.expand")}
             </Text>
             <Ionicons
               name={isReviewExpanded ? "chevron-up" : "chevron-down"}
@@ -327,7 +329,7 @@ const CollectionDetailScreen = () => {
 
     return (
       <View style={styles.relatedPostsContainer}>
-        <Text style={styles.relatedPostsTitle}>相关帖子</Text>
+        <Text style={styles.relatedPostsTitle}>{t("collection.relatedPosts")}</Text>
 
         {postsLoading ? (
           <View style={styles.loadingContainer}>
@@ -344,7 +346,7 @@ const CollectionDetailScreen = () => {
               size={40}
               color={theme.colors.gray300}
             />
-            <Text style={styles.emptyText}>暂无相关帖子</Text>
+            <Text style={styles.emptyText}>{t("collection.noPosts")}</Text>
           </View>
         ) : (
           <View style={styles.postsGrid}>

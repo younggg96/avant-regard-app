@@ -18,6 +18,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { chatService, type Message } from "@/lib/services/chat";
 import { isRenderableImage } from "@/lib/isRenderableImage";
@@ -25,6 +26,7 @@ import { parseSharePayload } from "@/lib/chatShareCards";
 import { ShareCard } from "@/components/chat/ShareCard";
 
 export default function ChatDetailPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const conversationId = Number(params?.id);
   const me = useAuthStore((s) => s.user);
@@ -85,7 +87,7 @@ export default function ChatDetailPage() {
       await chatService.sendMessage(conversationId, content);
       mutate(swrKey);
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "发送失败");
+      setSendError(err instanceof Error ? err.message : t("chat.sendFailed"));
       mutate<Message[]>(
         swrKey,
         (current) => (current ?? []).filter((m) => m.id !== optimistic.id),
@@ -103,16 +105,16 @@ export default function ChatDetailPage() {
           href="/me/chats"
           className="font-label text-[13px] text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
         >
-          ← 全部会话
+          {t("chat.allConversations")}
         </Link>
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          会话 #{conversationId || "?"}
+          {t("chat.conversationId", { id: conversationId || "?" })}
         </div>
       </header>
 
       {error && (
         <div className="mb-3 rounded border border-red-500/20 bg-red-500/5 p-3 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("me.loadFailed")}：{(error as Error).message}
         </div>
       )}
 
@@ -122,7 +124,7 @@ export default function ChatDetailPage() {
       >
         {messages.length === 0 && !error && (
           <div className="flex h-full items-center justify-center font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            开始对话吧
+            {t("chat.startChat")}
           </div>
         )}
 
@@ -163,7 +165,7 @@ export default function ChatDetailPage() {
                   }`}
                 >
                   {m.isDeleted ? (
-                    <span className="italic opacity-60">（消息已删除）</span>
+                    <span className="italic opacity-60">{t("chat.messageDeleted")}</span>
                   ) : (
                     m.content
                   )}
@@ -197,7 +199,7 @@ export default function ChatDetailPage() {
             }
           }}
           rows={2}
-          placeholder="输入消息… (Enter 发送 / Shift+Enter 换行)"
+          placeholder={t("chat.inputPlaceholder")}
           className="flex-1 resize-none rounded border border-[var(--border)] bg-[var(--canvas)] px-3 py-2 font-serif text-[14px] text-[var(--ink)] focus:border-[var(--ink)] focus:outline-none"
         />
         <button
@@ -205,7 +207,7 @@ export default function ChatDetailPage() {
           disabled={!input.trim() || sending}
           className="rounded bg-[var(--ink)] px-5 py-2 font-label text-[13px] text-[var(--canvas)] transition-opacity disabled:opacity-40"
         >
-          {sending ? "发送中…" : "发送"}
+          {sending ? t("chat.sendingMsg") : t("chat.send")}
         </button>
       </form>
     </section>

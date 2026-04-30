@@ -1,16 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
 
-const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/discover", label: "发现" },
-  { href: "/communities", label: "论坛" },
-  { href: "/archive/brands", label: "档案" },
-  { href: "/stores", label: "买手店" },
-];
-
 export function SiteHeader() {
+  const { t } = useTranslation();
+
+  const NAV_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+    { href: "/discover", label: t("nav.discover") },
+    { href: "/communities", label: t("nav.forum") },
+    { href: "/archive/brands", label: t("nav.archive") },
+    { href: "/stores", label: t("nav.stores") },
+  ];
   return (
     <header className="sticky top-0 z-40 border-b bg-white/92 backdrop-blur-md transition-shadow
                        border-black/[0.06] dark:bg-[#0a0a0a]/92 dark:border-white/[0.08]">

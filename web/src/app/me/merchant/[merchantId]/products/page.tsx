@@ -22,6 +22,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -47,7 +48,6 @@ import {
   storeProductService,
   formatPriceCents,
   parsePriceYuanToCents,
-  PRODUCT_STATUS_LABEL,
   type ProductStatus,
   type StoreProduct,
   type StoreProductCreateParams,
@@ -55,20 +55,36 @@ import {
 } from "@/lib/services/store-product";
 import { storeMerchantService } from "@/lib/services/store-merchant";
 
-const STATUS_FILTER_OPTIONS: { value: ProductStatus | "ALL"; label: string }[] = [
-  { value: "ALL", label: "全部" },
-  { value: "PUBLISHED", label: PRODUCT_STATUS_LABEL.PUBLISHED },
-  { value: "DRAFT", label: PRODUCT_STATUS_LABEL.DRAFT },
-  { value: "HIDDEN", label: PRODUCT_STATUS_LABEL.HIDDEN },
-  { value: "SOLD_OUT", label: PRODUCT_STATUS_LABEL.SOLD_OUT },
-];
+const STATUS_I18N_KEY: Record<ProductStatus, string> = {
+  PUBLISHED: "merchant.statusPublished",
+  DRAFT: "merchant.statusDraft",
+  HIDDEN: "merchant.statusHidden",
+  SOLD_OUT: "merchant.statusSoldOut",
+};
 
-const STATUS_FORM_OPTIONS: { value: ProductStatus; label: string }[] = [
-  { value: "PUBLISHED", label: PRODUCT_STATUS_LABEL.PUBLISHED },
-  { value: "DRAFT", label: PRODUCT_STATUS_LABEL.DRAFT },
-  { value: "HIDDEN", label: PRODUCT_STATUS_LABEL.HIDDEN },
-  { value: "SOLD_OUT", label: PRODUCT_STATUS_LABEL.SOLD_OUT },
-];
+function useStatusOptions() {
+  const { t } = useTranslation();
+  const filterOptions = useMemo(
+    () => [
+      { value: "ALL" as const, label: t("common.all") },
+      { value: "PUBLISHED" as const, label: t("merchant.statusPublished") },
+      { value: "DRAFT" as const, label: t("merchant.statusDraft") },
+      { value: "HIDDEN" as const, label: t("merchant.statusHidden") },
+      { value: "SOLD_OUT" as const, label: t("merchant.statusSoldOut") },
+    ],
+    [t],
+  );
+  const formOptions = useMemo(
+    () => [
+      { value: "PUBLISHED" as const, label: t("merchant.statusPublished") },
+      { value: "DRAFT" as const, label: t("merchant.statusDraft") },
+      { value: "HIDDEN" as const, label: t("merchant.statusHidden") },
+      { value: "SOLD_OUT" as const, label: t("merchant.statusSoldOut") },
+    ],
+    [t],
+  );
+  return { filterOptions, formOptions };
+}
 
 const PAGE_SIZE = 20;
 
@@ -102,6 +118,8 @@ const EMPTY_FORM: ProductForm = {
 };
 
 export default function MerchantProductsPage() {
+  const { t } = useTranslation();
+  const { filterOptions: STATUS_FILTER_OPTIONS, formOptions: STATUS_FORM_OPTIONS } = useStatusOptions();
   const params = useParams<{ merchantId: string }>();
   const merchantId = Number(params?.merchantId);
 
@@ -216,14 +234,14 @@ export default function MerchantProductsPage() {
   };
 
   const validateForm = (): string | null => {
-    if (!form.title.trim()) return "标题必填";
-    if (form.images.length === 0) return "至少上传 1 张图片";
+    if (!form.title.trim()) return t("merchant.validateTitleRequired");
+    if (form.images.length === 0) return t("merchant.validateImageRequired");
     const priceCents = parsePriceYuanToCents(form.priceYuan);
-    if (priceCents == null) return "请输入有效的原价";
+    if (priceCents == null) return t("merchant.validatePriceInvalid");
     if (form.hasDiscount) {
       const dc = parsePriceYuanToCents(form.discountPriceYuan);
-      if (dc == null) return "请输入有效的折扣价";
-      if (dc > priceCents) return "折扣价不能高于原价";
+      if (dc == null) return t("merchant.validateDiscountInvalid");
+      if (dc > priceCents) return t("merchant.validateDiscountExceed");
     }
     return null;
   };
@@ -275,7 +293,7 @@ export default function MerchantProductsPage() {
       closeDialog();
       await mutate();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -318,11 +336,11 @@ export default function MerchantProductsPage() {
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <SubPageHeader
-        title="商品管理"
-        description="发布、编辑、下架店铺商品；商品会按上架时间在「买手店 Tab」展示."
+        title={t("merchant.productsTitle")}
+        description={t("merchant.productsDesc")}
         actions={
           <Button size="sm" onClick={openCreate}>
-            + 新建商品
+            {t("merchant.newProduct")}
           </Button>
         }
       />
@@ -331,10 +349,10 @@ export default function MerchantProductsPage() {
         <SearchBar
           value={keyword}
           onChange={setKeyword}
-          placeholder="按标题 / 品牌搜索当前页"
+          placeholder={t("merchant.searchPlaceholder")}
         />
         <div className="flex flex-wrap items-center gap-2 font-label text-[12px]">
-          <span className="text-[color:var(--ink-muted)]">状态</span>
+          <span className="text-[color:var(--ink-muted)]">{t("merchant.statusLabel")}</span>
           <div className="flex flex-wrap gap-1.5">
             {STATUS_FILTER_OPTIONS.map((opt) => (
               <button
@@ -352,7 +370,7 @@ export default function MerchantProductsPage() {
         </div>
         {categories.length > 0 && (
           <div className="sm:col-span-2 flex flex-wrap items-center gap-2 font-label text-[12px]">
-            <span className="text-[color:var(--ink-muted)]">分类</span>
+            <span className="text-[color:var(--ink-muted)]">{t("merchant.categoryLabel")}</span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => {
@@ -361,7 +379,7 @@ export default function MerchantProductsPage() {
                 }}
                 className={chipClass(categoryFilter === "ALL")}
               >
-                全部
+                {t("common.all")}
               </button>
               {categories.map((c) => (
                 <button
@@ -387,8 +405,8 @@ export default function MerchantProductsPage() {
         <EmptyState
           message={
             keyword.trim()
-              ? "当前页没有匹配的商品."
-              : "暂无商品，点击右上角新建."
+              ? t("merchant.noProductsSearch")
+              : t("merchant.noProductsEmpty")
           }
         />
       ) : (
@@ -412,7 +430,7 @@ export default function MerchantProductsPage() {
             onClick={() => setPage(page - 1)}
             className="rounded border border-[var(--border)] px-3 py-1 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)] disabled:opacity-30"
           >
-            上一页
+            {t("common.previousPage")}
           </button>
           <span className="text-[color:var(--ink-muted)]">
             {page} / {pageCount}
@@ -422,19 +440,19 @@ export default function MerchantProductsPage() {
             onClick={() => setPage(page + 1)}
             className="rounded border border-[var(--border)] px-3 py-1 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)] disabled:opacity-30"
           >
-            下一页
+            {t("common.nextPage")}
           </button>
         </div>
       )}
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑商品" : "新建商品"}
+        title={editing ? t("merchant.editProduct") : t("merchant.createProduct")}
         onClose={closeDialog}
         wide
       >
         <div className="grid gap-4">
-          <FormField label="商品图片" required>
+          <FormField label={t("merchant.productImages")} required>
             <MultiImagePicker
               value={form.images}
               onChange={(v) => setForm({ ...form, images: v })}
@@ -444,23 +462,23 @@ export default function MerchantProductsPage() {
           </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="标题" required>
+            <FormField label={t("merchant.productTitle")} required>
               <TextInput
                 value={form.title}
                 onChange={(v) => setForm({ ...form, title: v })}
-                placeholder="如: Classic Wool Coat"
+                placeholder={t("merchant.productTitlePlaceholder")}
               />
             </FormField>
-            <FormField label="品牌">
+            <FormField label={t("merchant.productBrand")}>
               <TextInput
                 value={form.brand}
                 onChange={(v) => setForm({ ...form, brand: v })}
-                placeholder="品牌名（可选）"
+                placeholder={t("merchant.productBrandPlaceholder")}
               />
             </FormField>
           </div>
 
-          <FormField label="分类">
+          <FormField label={t("merchant.productCategory")}>
             <CategorySelect
               value={form.categoryId}
               options={categories.map((c) => ({ id: c.id, name: c.name }))}
@@ -469,15 +487,15 @@ export default function MerchantProductsPage() {
           </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="原价（元）" required>
+            <FormField label={t("merchant.priceYuan")} required>
               <TextInput
                 type="number"
                 value={form.priceYuan}
                 onChange={(v) => setForm({ ...form, priceYuan: v })}
-                placeholder="如: 5890"
+                placeholder={t("merchant.pricePlaceholder")}
               />
             </FormField>
-            <FormField label="折扣价（元，可选）">
+            <FormField label={t("merchant.discountPriceYuan")}>
               <div className="grid gap-2">
                 <Toggle
                   checked={form.hasDiscount}
@@ -488,7 +506,7 @@ export default function MerchantProductsPage() {
                       discountPriceYuan: v ? form.discountPriceYuan : "",
                     })
                   }
-                  label="启用折扣"
+                  label={t("merchant.enableDiscount")}
                 />
                 {form.hasDiscount && (
                   <TextInput
@@ -497,26 +515,26 @@ export default function MerchantProductsPage() {
                     onChange={(v) =>
                       setForm({ ...form, discountPriceYuan: v })
                     }
-                    placeholder="折扣价；需 < 原价"
+                    placeholder={t("merchant.discountPricePlaceholder")}
                   />
                 )}
               </div>
             </FormField>
           </div>
 
-          <FormField label="描述">
+          <FormField label={t("merchant.productDescription")}>
             <TextInput
               value={form.description}
               onChange={(v) => setForm({ ...form, description: v })}
               multiline
               rows={4}
-              placeholder="材质、工艺、穿搭建议等"
+              placeholder={t("merchant.productDescPlaceholder")}
             />
           </FormField>
 
           <ChipEditor
-            label="标签（用于搜索/分类）"
-            placeholder="如: 羊毛, 通勤, 设计师"
+            label={t("merchant.productTags")}
+            placeholder={t("merchant.productTagsPlaceholder")}
             draft={tagDraft}
             onDraftChange={setTagDraft}
             items={form.tags}
@@ -531,9 +549,9 @@ export default function MerchantProductsPage() {
             <Toggle
               checked={form.isNew}
               onChange={(v) => setForm({ ...form, isNew: v })}
-              label="新品（首页会加 NEW 徽标）"
+              label={t("merchant.isNew")}
             />
-            <FormField label="上架状态">
+            <FormField label={t("merchant.listingStatus")}>
               <ChipPicker
                 options={STATUS_FORM_OPTIONS}
                 value={form.status}
@@ -547,10 +565,10 @@ export default function MerchantProductsPage() {
               <span className="font-label text-[12px] text-red-600">{err}</span>
             )}
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={onSave} loading={saving}>
-              {editing ? "保存" : "发布"}
+              {editing ? t("common.save") : t("merchant.publish")}
             </Button>
           </div>
         </div>
@@ -558,13 +576,13 @@ export default function MerchantProductsPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除该商品?"
+        title={t("merchant.deleteProduct")}
         message={
           deleteTarget
-            ? `「${deleteTarget.title}」将被永久删除，相关评论/点赞/浏览数据同步清除. 如果只是暂时下架，建议使用"已下架"状态.`
+            ? t("merchant.deleteProductMsg", { title: deleteTarget.title })
             : ""
         }
-        confirmLabel="删除"
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -584,6 +602,7 @@ function ProductCard({
   onDelete: () => void;
   onQuickToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const cover = product.images[0];
   const canQuickToggle =
     product.status === "PUBLISHED" || product.status === "HIDDEN";
@@ -600,7 +619,7 @@ function ProductCard({
           />
         ) : (
           <div className="flex h-full items-center justify-center font-label text-[11px] text-[color:var(--ink-muted)]">
-            无图
+            {t("common.noImage")}
           </div>
         )}
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
@@ -622,11 +641,11 @@ function ProductCard({
             {product.title}
           </span>
           <StatusBadge active={product.status === "PUBLISHED"}>
-            {PRODUCT_STATUS_LABEL[product.status]}
+            {t(STATUS_I18N_KEY[product.status])}
           </StatusBadge>
         </div>
         <div className="mt-0.5 truncate text-[11px] text-[color:var(--ink-muted)]">
-          {product.brand || "—"} · {product.categoryName ?? "未分类"}
+          {product.brand || "—"} · {product.categoryName ?? t("merchant.uncategorized")}
         </div>
         <div className="mt-1 flex items-baseline gap-2">
           {product.hasDiscount && product.discountPriceCents != null ? (
@@ -654,21 +673,21 @@ function ProductCard({
             onClick={onEdit}
             className="rounded border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)]"
           >
-            编辑
+            {t("common.edit")}
           </button>
           {canQuickToggle && (
             <button
               onClick={onQuickToggle}
               className="rounded border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)]"
             >
-              {product.status === "PUBLISHED" ? "下架" : "上架"}
+              {product.status === "PUBLISHED" ? t("merchant.unpublishProduct") : t("merchant.publishProduct")}
             </button>
           )}
           <button
             onClick={onDelete}
             className="rounded border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)]"
           >
-            删除
+            {t("common.delete")}
           </button>
         </div>
       </div>
@@ -685,13 +704,14 @@ function CategorySelect({
   options: { id: number; name: string }[];
   onChange: (v: number | null) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap gap-1.5">
       <button
         onClick={() => onChange(null)}
         className={chipClass(value == null)}
       >
-        未分类
+        {t("merchant.uncategorized")}
       </button>
       {options.map((o) => (
         <button
@@ -704,7 +724,7 @@ function CategorySelect({
       ))}
       {options.length === 0 && (
         <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          还未创建任何分类，可先去「商品分类」页添加.
+          {t("merchant.noCategoryCreateHint")}
         </span>
       )}
     </div>
@@ -720,15 +740,16 @@ function chipClass(active: boolean) {
 }
 
 function NoAccess({ merchantId }: { merchantId: number }) {
+  const { t } = useTranslation();
   return (
     <section className="min-w-0">
       <SubPageBackLink merchantId={merchantId} />
       <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
         <div className="font-serif text-[17px] text-[var(--ink)]">
-          无权限访问该页面
+          {t("common.noPermission")}
         </div>
         <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-          商家 ID 不匹配或尚未通过审核.
+          {t("common.merchantIdMismatch")}
         </div>
       </div>
     </section>

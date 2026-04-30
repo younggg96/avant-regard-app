@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text as RNText, FlatList } from "react-native";
+import { useTranslation } from "react-i18next";
 import { OptimizedImage, Pressable } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
 import { FollowingBrand } from "../../../services/followService";
@@ -11,12 +12,14 @@ interface FollowedBrandsProps {
 }
 
 export const FollowedBrands = ({ brands, onBrandPress }: FollowedBrandsProps) => {
+  const { t } = useTranslation();
+
   if (brands.length === 0) return null;
 
   return (
     <View style={styles.followedBrandsSection}>
       <View style={styles.followedBrandsHeader}>
-        <RNText style={styles.followedBrandsTitle}>关注的品牌</RNText>
+        <RNText style={styles.followedBrandsTitle}>{t("profile.followedBrands")}</RNText>
         <RNText style={styles.followedBrandsCount}>{brands.length}</RNText>
       </View>
       <FlatList

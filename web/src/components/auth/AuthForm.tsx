@@ -15,6 +15,7 @@
 
 import { useEffect, useState, forwardRef } from "react";
 import type { InputHTMLAttributes, ReactNode, ButtonHTMLAttributes } from "react";
+import { useTranslation } from "react-i18next";
 
 /* ----------------------------- AuthTabs ----------------------------- */
 
@@ -27,9 +28,10 @@ export function AuthTabs({
   value: AuthMethod;
   onChange: (v: AuthMethod) => void;
 }) {
+  const { t } = useTranslation();
   const opts: ReadonlyArray<{ id: AuthMethod; label: string }> = [
-    { id: "phone", label: "手机号" },
-    { id: "email", label: "邮箱" },
+    { id: "phone", label: t("auth.phone") },
+    { id: "email", label: t("auth.email") },
   ];
   return (
     <div
@@ -107,6 +109,7 @@ export function SubmitButton({
   loading,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { loading?: boolean }) {
+  const { t } = useTranslation();
   return (
     <button
       type="submit"
@@ -116,7 +119,7 @@ export function SubmitButton({
         loading ? "cursor-not-allowed opacity-70" : ""
       } ${rest.className ?? ""}`}
     >
-      {loading ? "处理中…" : children}
+      {loading ? t("auth.processing") : children}
     </button>
   );
 }
@@ -124,7 +127,7 @@ export function SubmitButton({
 /* ------------------------------ OtpField ------------------------------ */
 
 export function OtpField({
-  label = "验证码",
+  label,
   error,
   value,
   onChange,
@@ -141,6 +144,8 @@ export function OtpField({
   /** Disable the "send code" button even when not counting down (e.g. phone invalid) */
   sendDisabled?: boolean;
 }) {
+  const { t } = useTranslation();
+  const displayLabel = label ?? t("auth.otp");
   const [countdown, setCountdown] = useState(0);
   const [sending, setSending] = useState(false);
 
@@ -163,16 +168,16 @@ export function OtpField({
     }
   };
 
-  const label_ =
-    sending ? "发送中…" : countdown > 0 ? `${countdown}s 后重试` : "获取验证码";
+  const btnLabel =
+    sending ? t("auth.sending") : countdown > 0 ? t("auth.resendAfter", { seconds: countdown }) : t("auth.sendCode");
 
   return (
     <TextField
-      label={label}
+      label={displayLabel}
       error={error}
       inputMode="numeric"
       autoComplete="one-time-code"
-      placeholder="6 位验证码"
+      placeholder={t("auth.otpPlaceholder")}
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
       disabled={disabled}
@@ -183,7 +188,7 @@ export function OtpField({
           disabled={countdown > 0 || sending || sendDisabled}
           className="mr-2 whitespace-nowrap rounded px-3 py-1.5 font-label text-[12px] text-[var(--ink)] transition-colors hover:bg-[var(--canvas-raised)] disabled:cursor-not-allowed disabled:text-[color:var(--ink-muted)] disabled:hover:bg-transparent"
         >
-          {label_}
+          {btnLabel}
         </button>
       }
     />

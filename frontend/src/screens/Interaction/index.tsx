@@ -9,10 +9,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { useChatStore } from "../../store/chatStore";
 import BuyerMapScreen from "../BuyerMapScreen";
-import { SubTab, SUB_TABS, TAB_INDEX, INDEX_TAB } from "./constants";
+import { SubTab, SUB_TAB_KEYS, TAB_INDEX, INDEX_TAB } from "./constants";
 import { MessagesContent } from "./components/MessagesContent";
 import { styles } from "./styles";
 
@@ -46,6 +47,7 @@ const mapPlaceholderStyles = {
 };
 
 const InteractionScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute<any>();
   const initialTab = route.params?.subTab as SubTab | undefined;
   const [activeTab, setActiveTab] = useState<SubTab>(initialTab || "messages");
@@ -94,7 +96,11 @@ const InteractionScreen = () => {
     [activeTab]
   );
 
-  const tabItems = SUB_TABS.map((t) => ({ ...t, badge: 0 }));
+  const tabItems = (Object.keys(SUB_TAB_KEYS) as SubTab[]).map((id) => ({
+    id,
+    label: t(SUB_TAB_KEYS[id]),
+    badge: 0,
+  }));
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

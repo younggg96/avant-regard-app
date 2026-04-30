@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import { View, TouchableOpacity, ScrollView as RNScrollView } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import {
   Box,
@@ -23,6 +24,7 @@ interface PopularCommunitiesProps {
 export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
   communities,
 }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
 
   // 处理社区点击
@@ -46,11 +48,11 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
     <Box py="$md" px="$md" bg="$white">
       <HStack justifyContent="space-between" alignItems="center" mb="$sm">
         <Text fontSize="$md" fontWeight="$semibold" color="$black">
-          热门社区
+          {t("discover.hotCommunities")}
         </Text>
         <Pressable onPress={handleViewAll}>
           <Text fontSize="$sm" color="$gray500">
-            查看全部
+            {t("discover.viewAll")}
           </Text>
         </Pressable>
       </HStack>

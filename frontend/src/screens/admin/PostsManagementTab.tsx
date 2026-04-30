@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView as RNScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
@@ -36,31 +37,9 @@ type StatusFilter = "ALL" | "PUBLISHED" | "DRAFT" | "HIDDEN";
 type AuditFilter = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 type GradeFilter = "ALL" | "A" | "B" | "C" | "D" | "F" | "NONE";
 
-const GRADE_FILTER_LABELS: Record<string, string> = {
-  ALL: "全部",
-  A: "A级",
-  B: "B级",
-  C: "C级",
-  D: "D级",
-  F: "F级",
-  NONE: "未评级",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  ALL: "全部",
-  PUBLISHED: "已发布",
-  DRAFT: "草稿",
-  HIDDEN: "隐藏",
-};
-
-const AUDIT_LABELS: Record<string, string> = {
-  ALL: "全部",
-  PENDING: "待审核",
-  APPROVED: "已通过",
-  REJECTED: "已拒绝",
-  AUTO_APPROVED: "自动通过",
-  AUTO_REJECTED: "自动驳回",
-};
+const GRADE_FILTER_KEYS: GradeFilter[] = ["ALL", "A", "B", "C", "D", "F", "NONE"];
+const STATUS_KEYS: StatusFilter[] = ["ALL", "PUBLISHED", "DRAFT", "HIDDEN"];
+const AUDIT_KEYS: AuditFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
 
 const AUDIT_COLORS: Record<string, string> = {
   PENDING: "#F59E0B",
@@ -92,30 +71,18 @@ const GRADE_REWARDS: Record<string, string> = {
   F: "—",
 };
 
-const REPORT_REASON_LABELS: Record<string, string> = {
-  SPAM: "垃圾内容",
-  HARASSMENT: "骚扰",
-  INAPPROPRIATE: "不当内容",
-  VIOLENCE: "暴力",
-  HATE_SPEECH: "仇恨言论",
-  FALSE_INFO: "虚假信息",
-  MISINFORMATION: "虚假信息",
-  COPYRIGHT: "侵权",
-  OTHER: "其他",
-};
 
 const PostsManagementTab = () => {
+  const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTab>("all");
 
   return (
     <Box style={styles.container}>
       <HStack style={styles.subTabBar}>
-        {(
-          [
-            { key: "all", label: "全部帖子", icon: "documents-outline" },
-            { key: "reported", label: "被投诉帖子", icon: "flag-outline" },
-          ] as const
-        ).map((tab) => (
+        {([
+            { key: "all" as SubTab, label: t("admin.allPosts"), icon: "documents-outline" },
+            { key: "reported" as SubTab, label: t("admin.reportedPosts"), icon: "flag-outline" },
+          ]).map((tab) => (
           <Pressable
             key={tab.key}
             style={[
@@ -152,6 +119,7 @@ const PostsManagementTab = () => {
 // ==================== All Posts Sub-Tab ====================
 
 const AllPostsSubTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [data, setData] = useState<AllPostsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,8 +148,8 @@ const AllPostsSubTab = () => {
         setPage(p);
       } catch (e) {
         Alert.alert(
-          "错误",
-          e instanceof Error ? e.message : "获取帖子列表失败"
+          t("admin.error"),
+          e instanceof Error ? e.message : t("admin.fetchPostsFailed")
         );
       } finally {
         setLoading(false);
@@ -198,21 +166,21 @@ const AllPostsSubTab = () => {
   const handleSearch = () => loadPosts(1);
 
   const handleDelete = (postId: number) => {
-    Alert.alert("确认删除", "确定要删除这篇帖子吗？此操作不可撤销。", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeletePost"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deletePost(postId);
-            Alert.alert("成功", "帖子已删除");
+            Alert.alert(t("common.success"), t("admin.postDeleted"));
             loadPosts(page);
           } catch (e) {
             Alert.alert(
-              "错误",
-              e instanceof Error ? e.message : "删除失败"
+              t("admin.error"),
+              e instanceof Error ? e.message : t("admin.deleteFailed")
             );
           } finally {
             setActionLoading(false);
@@ -226,10 +194,10 @@ const AllPostsSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.approvePost(postId);
-      Alert.alert("成功", "帖子已通过审核");
+      Alert.alert(t("common.success"), t("admin.postApproved"));
       loadPosts(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -239,10 +207,10 @@ const AllPostsSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.rejectPost(postId);
-      Alert.alert("成功", "帖子已被拒绝");
+      Alert.alert(t("common.success"), t("admin.postRejected"));
       loadPosts(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -262,21 +230,21 @@ const AllPostsSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.regradePost(postId);
-      Alert.alert("成功", "评级已触发，请稍后刷新查看");
+      Alert.alert(t("common.success"), t("admin.gradeTriggered"));
       setTimeout(() => loadPosts(page), 2000);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleBatchRegrade = (ungradedOnly: boolean) => {
-    const label = ungradedOnly ? "未评级帖子" : "当前页所有帖子";
-    Alert.alert("批量评级", `确定要对${label}执行评级吗？`, [
-      { text: "取消", style: "cancel" },
+    const label = ungradedOnly ? t("admin.ungradedPosts") : t("admin.currentPagePosts");
+    Alert.alert(t("admin.batchGrade"), t("admin.confirmBatchGrade", { label }), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确定",
+        text: t("admin.confirm"),
         onPress: async () => {
           try {
             setActionLoading(true);
@@ -285,12 +253,12 @@ const AllPostsSubTab = () => {
               ids,
               ungradedOnly
             );
-            Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+            Alert.alert(t("common.success"), t("admin.batchGradeTriggered", { count: result.triggered }));
             setTimeout(() => loadPosts(page), 3000);
           } catch (e) {
             Alert.alert(
-              "错误",
-              e instanceof Error ? e.message : "批量评级失败"
+              t("admin.error"),
+              e instanceof Error ? e.message : t("admin.batchGradeFailed")
             );
           } finally {
             setActionLoading(false);
@@ -302,12 +270,12 @@ const AllPostsSubTab = () => {
 
   const handleGradeAll = () => {
     Alert.alert(
-      "全站评级",
-      `确定要对系统中所有已发布帖子执行评级吗？\n（最多处理 500 篇/次）`,
+      t("admin.globalGrade"),
+      t("admin.confirmGlobalGrade"),
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "仅未评级",
+          text: t("admin.ungradedOnly"),
           onPress: async () => {
             try {
               setActionLoading(true);
@@ -315,12 +283,12 @@ const AllPostsSubTab = () => {
                 undefined,
                 true
               );
-              Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+              Alert.alert(t("common.success"), t("admin.batchGradeTriggered", { count: result.triggered }));
               setTimeout(() => loadPosts(page), 3000);
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "批量评级失败"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.batchGradeFailed")
               );
             } finally {
               setActionLoading(false);
@@ -328,7 +296,7 @@ const AllPostsSubTab = () => {
           },
         },
         {
-          text: "全部重评",
+          text: t("admin.regradeAll"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -337,12 +305,12 @@ const AllPostsSubTab = () => {
                 undefined,
                 false
               );
-              Alert.alert("成功", `已触发 ${result.triggered} 篇帖子评级`);
+              Alert.alert(t("common.success"), t("admin.batchGradeTriggered", { count: result.triggered }));
               setTimeout(() => loadPosts(page), 3000);
             } catch (e) {
               Alert.alert(
-                "错误",
-                e instanceof Error ? e.message : "批量评级失败"
+                t("admin.error"),
+                e instanceof Error ? e.message : t("admin.batchGradeFailed")
               );
             } finally {
               setActionLoading(false);
@@ -363,7 +331,7 @@ const AllPostsSubTab = () => {
         otherUserId: userId,
       });
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "创建会话失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.createChatFailed"));
     }
   };
 
@@ -388,7 +356,7 @@ const AllPostsSubTab = () => {
               ]}
             >
               <Text style={styles.auditBadgeText}>
-                {AUDIT_LABELS[post.auditStatus] || post.auditStatus}
+                {t(`admin.audit_${post.auditStatus}`) || post.auditStatus}
               </Text>
             </Box>
           )}
@@ -459,7 +427,7 @@ const AllPostsSubTab = () => {
           </Box>
           {post.grade !== "D" && post.grade !== "F" && (
             <Text style={styles.gradeRewardText}>
-              奖励 {GRADE_REWARDS[post.grade]}
+              {t("admin.reward")} {GRADE_REWARDS[post.grade]}
             </Text>
           )}
           <Pressable
@@ -468,19 +436,19 @@ const AllPostsSubTab = () => {
             style={styles.regradeBtn}
           >
             <Ionicons name="refresh" size={12} color={theme.colors.gray400} />
-            <Text style={styles.regradeBtnText}>重新评级</Text>
+            <Text style={styles.regradeBtnText}>{t("admin.regrade")}</Text>
           </Pressable>
         </HStack>
       ) : (
         <HStack style={styles.gradeRow}>
-          <Text style={styles.noGradeText}>未评级</Text>
+          <Text style={styles.noGradeText}>{t("admin.ungraded")}</Text>
           <Pressable
             onPress={() => handleRegrade(post.id)}
             disabled={actionLoading}
             style={styles.regradeBtn}
           >
             <Ionicons name="refresh" size={12} color={theme.colors.gray400} />
-            <Text style={styles.regradeBtnText}>触发评级</Text>
+            <Text style={styles.regradeBtnText}>{t("admin.triggerGrade")}</Text>
           </Pressable>
         </HStack>
       )}
@@ -520,7 +488,7 @@ const AllPostsSubTab = () => {
                 />
               }
             >
-              <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
             </Button>
             <Button
               size="sm"
@@ -535,7 +503,7 @@ const AllPostsSubTab = () => {
                 />
               }
             >
-              <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
             </Button>
           </>
         )}
@@ -552,7 +520,7 @@ const AllPostsSubTab = () => {
             />
           }
         >
-          <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
         </Button>
         <Button
           size="sm"
@@ -569,7 +537,7 @@ const AllPostsSubTab = () => {
           }
         >
           <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-            查看
+            {t("admin.view")}
           </ButtonText>
         </Button>
         <Button
@@ -585,7 +553,7 @@ const AllPostsSubTab = () => {
           }
         >
           <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-            私聊
+            {t("admin.chat")}
           </ButtonText>
         </Button>
       </HStack>
@@ -606,7 +574,7 @@ const AllPostsSubTab = () => {
       <HStack style={styles.searchRow}>
         <Input
           style={styles.searchInput}
-          placeholder="搜索标题或内容..."
+          placeholder={t("admin.searchPostPlaceholder")}
           placeholderTextColor={theme.colors.gray300}
           value={keyword}
           onChangeText={setKeyword}
@@ -616,19 +584,19 @@ const AllPostsSubTab = () => {
           size="sm"
         />
         <Button size="sm" onPress={handleSearch}>
-          <ButtonText>搜索</ButtonText>
+          <ButtonText>{t("common.search")}</ButtonText>
         </Button>
       </HStack>
 
       {/* Filters */}
       <Box style={styles.filterSection}>
-        <Text style={styles.filterLabel}>状态</Text>
+        <Text style={styles.filterLabel}>{t("admin.status")}</Text>
         <RNScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {(Object.keys(STATUS_LABELS) as StatusFilter[]).map((key) => (
+          {STATUS_KEYS.map((key) => (
             <Pressable
               key={key}
               style={[
@@ -643,19 +611,19 @@ const AllPostsSubTab = () => {
                   statusFilter === key && styles.filterChipTextActive,
                 ]}
               >
-                {STATUS_LABELS[key]}
+                {t(`admin.status_${key}`)}
               </Text>
             </Pressable>
           ))}
         </RNScrollView>
 
-        <Text style={styles.filterLabel}>审核</Text>
+        <Text style={styles.filterLabel}>{t("admin.audit")}</Text>
         <RNScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {(Object.keys(AUDIT_LABELS) as AuditFilter[]).map((key) => (
+          {AUDIT_KEYS.map((key) => (
             <Pressable
               key={key}
               style={[
@@ -670,19 +638,19 @@ const AllPostsSubTab = () => {
                   auditFilter === key && styles.filterChipTextActive,
                 ]}
               >
-                {AUDIT_LABELS[key]}
+                {t(`admin.audit_${key}`)}
               </Text>
             </Pressable>
           ))}
         </RNScrollView>
 
-        <Text style={styles.filterLabel}>评级</Text>
+        <Text style={styles.filterLabel}>{t("admin.grade")}</Text>
         <RNScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {(Object.keys(GRADE_FILTER_LABELS) as GradeFilter[]).map((key) => (
+          {GRADE_FILTER_KEYS.map((key) => (
             <Pressable
               key={key}
               style={[
@@ -697,7 +665,7 @@ const AllPostsSubTab = () => {
                   gradeFilter === key && styles.filterChipTextActive,
                 ]}
               >
-                {GRADE_FILTER_LABELS[key]}
+                {t(`admin.grade_${key}`)}
               </Text>
             </Pressable>
           ))}
@@ -708,7 +676,7 @@ const AllPostsSubTab = () => {
       {loading && posts.length === 0 ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : posts.length === 0 ? (
         <Box style={sharedStyles.emptyContainer}>
@@ -717,12 +685,12 @@ const AllPostsSubTab = () => {
             size={48}
             color={theme.colors.gray300}
           />
-          <Text style={sharedStyles.emptyText}>暂无帖子</Text>
+          <Text style={sharedStyles.emptyText}>{t("admin.noPosts")}</Text>
         </Box>
       ) : (
         <>
           <HStack style={styles.batchRow}>
-            <Text style={styles.totalText}>共 {total} 篇帖子</Text>
+            <Text style={styles.totalText}>{t("admin.totalPosts", { count: total })}</Text>
             <HStack style={{ gap: 6 }}>
               <Pressable
                 style={styles.batchBtn}
@@ -734,7 +702,7 @@ const AllPostsSubTab = () => {
                   size={13}
                   color={theme.colors.white}
                 />
-                <Text style={styles.batchBtnText}>本页未评级</Text>
+                <Text style={styles.batchBtnText}>{t("admin.pageUngraded")}</Text>
               </Pressable>
               <Pressable
                 style={[styles.batchBtn, styles.batchBtnAll]}
@@ -746,7 +714,7 @@ const AllPostsSubTab = () => {
                   size={13}
                   color={theme.colors.white}
                 />
-                <Text style={styles.batchBtnText}>本页重评</Text>
+                <Text style={styles.batchBtnText}>{t("admin.pageRegrade")}</Text>
               </Pressable>
               <Pressable
                 style={[styles.batchBtn, styles.batchBtnGlobal]}
@@ -758,7 +726,7 @@ const AllPostsSubTab = () => {
                   size={13}
                   color={theme.colors.white}
                 />
-                <Text style={styles.batchBtnText}>全站评级</Text>
+                <Text style={styles.batchBtnText}>{t("admin.globalGrade")}</Text>
               </Pressable>
             </HStack>
           </HStack>
@@ -778,7 +746,7 @@ const AllPostsSubTab = () => {
                 />
               </Pressable>
               <Text style={styles.paginationText}>
-                第 {page} 页 / 共 {totalPages} 页
+                {t("admin.pagination", { page, total: totalPages })}
               </Text>
               <Pressable
                 disabled={page >= totalPages}
@@ -803,6 +771,7 @@ const AllPostsSubTab = () => {
 // ==================== Reported Posts Sub-Tab ====================
 
 const ReportedPostsSubTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [data, setData] = useState<ReportedPostsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -819,8 +788,8 @@ const ReportedPostsSubTab = () => {
       setPage(p);
     } catch (e) {
       Alert.alert(
-        "错误",
-        e instanceof Error ? e.message : "获取投诉帖子失败"
+        t("admin.error"),
+        e instanceof Error ? e.message : t("admin.fetchReportedPostsFailed")
       );
     } finally {
       setLoading(false);
@@ -833,21 +802,21 @@ const ReportedPostsSubTab = () => {
   }, [loadReports]);
 
   const handleDeletePost = (postId: number) => {
-    Alert.alert("确认删除", "确定要删除这篇被投诉的帖子吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteReportedPost"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deletePost(postId);
-            Alert.alert("成功", "帖子已删除");
+            Alert.alert(t("common.success"), t("admin.postDeleted"));
             loadReports(page);
           } catch (e) {
             Alert.alert(
-              "错误",
-              e instanceof Error ? e.message : "删除失败"
+              t("admin.error"),
+              e instanceof Error ? e.message : t("admin.deleteFailed")
             );
           } finally {
             setActionLoading(false);
@@ -861,10 +830,10 @@ const ReportedPostsSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.updateReportStatus(reportId, "RESOLVED");
-      Alert.alert("成功", "投诉已标记为已处理");
+      Alert.alert(t("common.success"), t("admin.reportMarkedResolved"));
       loadReports(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -874,10 +843,10 @@ const ReportedPostsSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.updateReportStatus(reportId, "DISMISSED");
-      Alert.alert("成功", "投诉已驳回");
+      Alert.alert(t("common.success"), t("admin.reportDismissed"));
       loadReports(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -894,13 +863,6 @@ const ReportedPostsSubTab = () => {
     DISMISSED: theme.colors.gray300,
   };
 
-  const REPORT_STATUS_LABELS: Record<string, string> = {
-    PENDING: "待处理",
-    REVIEWED: "已审阅",
-    RESOLVED: "已处理",
-    DISMISSED: "已驳回",
-  };
-
   const renderReportCard = (item: ReportedPostItem, index: number) => {
     const { report, post } = item;
     return (
@@ -911,7 +873,7 @@ const ReportedPostsSubTab = () => {
             <HStack style={{ alignItems: "center", gap: 6 }}>
               <Ionicons name="flag" size={16} color="#F59E0B" />
               <Text style={styles.reportReasonText}>
-                {REPORT_REASON_LABELS[report.reason] || report.reason}
+                {t(`admin.reason_${report.reason}`) || report.reason}
               </Text>
             </HStack>
             <Box
@@ -924,12 +886,12 @@ const ReportedPostsSubTab = () => {
               ]}
             >
               <Text style={styles.reportStatusText}>
-                {REPORT_STATUS_LABELS[report.status] || report.status}
+                {t(`admin.reportStatus_${report.status}`) || report.status}
               </Text>
             </Box>
           </HStack>
           <Text style={styles.reportMeta}>
-            举报人: {report.reporterName} (ID: {report.reporterId}) ·{" "}
+            {t("admin.reporter")} {report.reporterName} (ID: {report.reporterId}) ·{" "}
             {formatDate(report.createdAt)}
           </Text>
           {report.description ? (
@@ -1000,7 +962,7 @@ const ReportedPostsSubTab = () => {
                       />
                     }
                   >
-                    <ButtonText style={{ fontSize: 12 }}>已处理</ButtonText>
+                    <ButtonText style={{ fontSize: 12 }}>{t("admin.reportResolved")}</ButtonText>
                   </Button>
                   <Button
                     size="sm"
@@ -1018,7 +980,7 @@ const ReportedPostsSubTab = () => {
                     <ButtonText
                       style={{ color: theme.colors.gray400, fontSize: 12 }}
                     >
-                      驳回
+                      {t("admin.dismiss")}
                     </ButtonText>
                   </Button>
                 </>
@@ -1036,7 +998,7 @@ const ReportedPostsSubTab = () => {
                   />
                 }
               >
-                <ButtonText style={{ fontSize: 12 }}>删帖</ButtonText>
+                <ButtonText style={{ fontSize: 12 }}>{t("admin.deletePost")}</ButtonText>
               </Button>
               <Button
                 size="sm"
@@ -1057,7 +1019,7 @@ const ReportedPostsSubTab = () => {
                 <ButtonText
                   style={{ color: theme.colors.white, fontSize: 12 }}
                 >
-                  查看
+                  {t("admin.view")}
                 </ButtonText>
               </Button>
             </HStack>
@@ -1069,7 +1031,7 @@ const ReportedPostsSubTab = () => {
               size={18}
               color={theme.colors.gray300}
             />
-            <Text style={styles.deletedPostText}>帖子已被删除</Text>
+            <Text style={styles.deletedPostText}>{t("admin.postAlreadyDeleted")}</Text>
           </Box>
         )}
       </Box>
@@ -1089,7 +1051,7 @@ const ReportedPostsSubTab = () => {
       {loading && items.length === 0 ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : items.length === 0 ? (
         <Box style={sharedStyles.emptyContainer}>
@@ -1098,11 +1060,11 @@ const ReportedPostsSubTab = () => {
             size={48}
             color={theme.colors.gray300}
           />
-          <Text style={sharedStyles.emptyText}>暂无投诉记录</Text>
+          <Text style={sharedStyles.emptyText}>{t("admin.noReportedPosts")}</Text>
         </Box>
       ) : (
         <>
-          <Text style={styles.totalText}>共 {total} 条投诉</Text>
+          <Text style={styles.totalText}>{t("admin.totalReports", { count: total })}</Text>
           {items.map((item, idx) => renderReportCard(item, idx))}
 
           {totalPages > 1 && (
@@ -1119,7 +1081,7 @@ const ReportedPostsSubTab = () => {
                 />
               </Pressable>
               <Text style={styles.paginationText}>
-                第 {page} 页 / 共 {totalPages} 页
+                {t("admin.pagination", { page, total: totalPages })}
               </Text>
               <Pressable
                 disabled={page >= totalPages}

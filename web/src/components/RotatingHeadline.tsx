@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * Hero headline phrases — every line follows the pattern `为 X / 而生的 Y。`
@@ -32,30 +33,37 @@ interface RotatingHeadlineProps {
  * phrase is rendered as the visible layer on both server and client).
  */
 export function RotatingHeadline({ className = "", style }: RotatingHeadlineProps) {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
+
+  const phrases: ReadonlyArray<Phrase> = [
+    [t("marketing.rotatingPhrase1Top"), t("marketing.rotatingPhrase1Bottom")],
+    [t("marketing.rotatingPhrase2Top"), t("marketing.rotatingPhrase2Bottom")],
+    [t("marketing.rotatingPhrase3Top"), t("marketing.rotatingPhrase3Bottom")],
+    [t("marketing.rotatingPhrase4Top"), t("marketing.rotatingPhrase4Bottom")],
+    [t("marketing.rotatingPhrase5Top"), t("marketing.rotatingPhrase5Bottom")],
+  ];
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % PHRASES.length);
+      setIndex((i) => (i + 1) % phrases.length);
     }, HOLD_MS + FADE_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [phrases.length]);
 
   return (
     <h1
       className={`relative ${className}`}
       style={style}
-      aria-label={PHRASES[0].join("")}
+      aria-label={phrases[0].join("")}
     >
-      {/* Invisible placeholder – reserves the exact two-line height so the
-          absolute-positioned layers below have a stable bounding box. */}
       <span aria-hidden className="invisible block">
-        {PHRASES[0][0]}
+        {phrases[0][0]}
         <br />
-        {PHRASES[0][1]}
+        {phrases[0][1]}
       </span>
 
-      {PHRASES.map(([top, bottom], i) => {
+      {phrases.map(([top, bottom], i) => {
         const active = i === index;
         return (
           <span

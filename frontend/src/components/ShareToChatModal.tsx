@@ -12,6 +12,7 @@ import {
   Dimensions,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { UserAvatar } from "./ui/UserAvatar";
@@ -219,6 +220,7 @@ interface SharePreview {
 }
 
 function resolvePreview(
+  t: (key: string) => string,
   post?: Post | null,
   store?: ShareableStore | null,
   brand?: Brand | null,
@@ -229,7 +231,7 @@ function resolvePreview(
     const p = buildPostSharePayload(post);
     return {
       imageUrl: p.imageUrl,
-      title: p.title || "分享帖子",
+      title: p.title || t("shareToChat.sharePost"),
       subtitle: `@${p.authorName}`,
       messageType: "post_card",
       payload: JSON.stringify(p),
@@ -256,7 +258,7 @@ function resolvePreview(
     return {
       imageUrl: p.imageUrl,
       title: p.name,
-      subtitle: parts.length ? parts.join(" · ") : "品牌",
+      subtitle: parts.length ? parts.join(" · ") : t("shareToChat.brandLabel"),
       messageType: "brand_card",
       payload: JSON.stringify(p),
       placeholderIcon: "pricetag-outline",
@@ -270,7 +272,7 @@ function resolvePreview(
     return {
       imageUrl: p.imageUrl,
       title: p.brandName ? `${p.brandName} · ${p.title}` : p.title,
-      subtitle: seasonLine || "秀场",
+      subtitle: seasonLine || t("shareToChat.showLabel"),
       messageType: "show_card",
       payload: JSON.stringify(p),
       placeholderIcon: "sparkles-outline",
@@ -284,7 +286,7 @@ function resolvePreview(
     return {
       imageUrl: p.avatarUrl,
       title: p.username,
-      subtitle: parts.length ? parts.join(" · ") : "用户主页",
+      subtitle: parts.length ? parts.join(" · ") : t("shareToChat.userProfile"),
       messageType: "user_card",
       payload: JSON.stringify(p),
       placeholderIcon: "person-outline",
@@ -305,6 +307,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   onClose,
   onShareComplete,
 }) => {
+  const { t } = useTranslation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState<number | null>(null);
@@ -358,7 +361,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
-  const preview = resolvePreview(post, store, brand, show, user);
+  const preview = resolvePreview(t, post, store, brand, show, user);
 
   const shareUrl = preview
     ? generateShareUrl(preview.contentType, preview.contentId)
@@ -418,7 +421,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         setSentIds((prev) => new Set(prev).add(conversation.id));
         onShareComplete?.();
       } catch {
-        Alert.show("分享失败，请稍后重试");
+        Alert.show(t("shareToChat.shareFailed"));
       } finally {
         setSending(null);
       }
@@ -454,11 +457,11 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
           ) : isSent ? (
             <View style={s.sentBadge}>
               <Ionicons name="checkmark" size={14} color={theme.colors.white} />
-              <Text style={s.sentText}>已发送</Text>
+              <Text style={s.sentText}>{t("shareToChat.sent")}</Text>
             </View>
           ) : (
             <View style={s.sendBtn}>
-              <Text style={s.sendBtnText}>发送</Text>
+              <Text style={s.sendBtnText}>{t("shareToChat.send")}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -488,7 +491,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
           <View style={s.handle} />
         </View>
 
-        <Text style={s.title}>分享给</Text>
+        <Text style={s.title}>{t("shareToChat.title")}</Text>
 
         {/* Preview card */}
         <View style={s.previewCard}>
@@ -533,35 +536,35 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
             <View style={[s.platformIcon, { backgroundColor: "#07C160" }]}>
               <Ionicons name="chatbubble-ellipses" size={22} color="#fff" />
             </View>
-            <Text style={s.platformLabel}>微信</Text>
+            <Text style={s.platformLabel}>{t("shareToChat.wechat")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.platformItem} onPress={handleWeChatShare} activeOpacity={0.6}>
             <View style={[s.platformIcon, { backgroundColor: "#07C160" }]}>
               <Ionicons name="aperture" size={22} color="#fff" />
             </View>
-            <Text style={s.platformLabel}>朋友圈</Text>
+            <Text style={s.platformLabel}>{t("shareToChat.moments")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.platformItem} onPress={handleWeiboShare} activeOpacity={0.6}>
             <View style={[s.platformIcon, { backgroundColor: "#E6162D" }]}>
               <Ionicons name="logo-rss" size={22} color="#fff" />
             </View>
-            <Text style={s.platformLabel}>微博</Text>
+            <Text style={s.platformLabel}>{t("shareToChat.weibo")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.platformItem} onPress={handleCopyLink} activeOpacity={0.6}>
             <View style={[s.platformIcon, { backgroundColor: theme.colors.gray100 }]}>
               <Ionicons name="link" size={22} color={theme.colors.gray700} />
             </View>
-            <Text style={s.platformLabel}>复制链接</Text>
+            <Text style={s.platformLabel}>{t("shareToChat.copyLink")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.platformItem} onPress={handleSystemShare} activeOpacity={0.6}>
             <View style={[s.platformIcon, { backgroundColor: theme.colors.gray100 }]}>
               <Ionicons name="share-outline" size={22} color={theme.colors.gray700} />
             </View>
-            <Text style={s.platformLabel}>更多</Text>
+            <Text style={s.platformLabel}>{t("shareToChat.more")}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -579,7 +582,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
               size={32}
               color={theme.colors.gray200}
             />
-            <Text style={s.emptyText}>暂无聊天对象</Text>
+            <Text style={s.emptyText}>{t("shareToChat.noChats")}</Text>
           </View>
         ) : (
           <FlatList
@@ -592,7 +595,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
         )}
 
         <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
-          <Text style={s.cancelText}>取消</Text>
+          <Text style={s.cancelText}>{t("common.cancel")}</Text>
         </TouchableOpacity>
       </Animated.View>
     </Modal>

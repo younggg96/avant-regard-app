@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Box, Text, HStack } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { theme } from "../theme";
@@ -49,6 +50,7 @@ import { ReportBlockModal } from "../components/ReportBlockModal";
 import type { ReportTarget } from "../components/PostDetail/CommentsSection";
 
 const PostDetailScreen = () => {
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as PostDetailRouteParams;
@@ -255,7 +257,7 @@ const PostDetailScreen = () => {
       <SafeAreaView style={styles.container}>
         <Box flex={1} justifyContent="center" alignItems="center">
           <Text color="$gray600" fontSize="$md">
-            帖子不存在
+            {t("post.notFound")}
           </Text>
         </Box>
       </SafeAreaView>

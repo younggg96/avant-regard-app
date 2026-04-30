@@ -1,14 +1,16 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { MyPostList } from "@/components/me/MyPostList";
 import { postService } from "@/lib/services/post";
 
 export default function MyFavoritesPage() {
+  const { t } = useTranslation();
   return (
     <MyPostList
-      title="我的收藏"
-      description="我收藏的帖子，作为个人 Archive。"
-      emptyCopy="还没有收藏——打开一篇帖子，点击 ✦ 把它加入你的 Archive。"
+      title={t("me.myFavorites")}
+      description={t("me.myFavoritesDesc")}
+      emptyCopy={t("me.myFavoritesEmpty")}
       swrKey="my-favorites"
       fetcher={(userId) => postService.getFavoritePostsByUserId(userId)}
     />

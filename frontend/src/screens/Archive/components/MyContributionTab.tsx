@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   StyleSheet,
   ActivityIndicator,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, ScrollView } from "../../../components/ui";
@@ -29,9 +30,10 @@ import {
 } from "../../../services/buyerStoreService";
 import { useAuthStore } from "../../../store/authStore";
 import ContributionCard, { CARD_PADDING } from "./ContributionCard";
-import { ContributionSubTab, CONTRIBUTION_SUB_TABS } from "../types";
+import { ContributionSubTab, CONTRIBUTION_SUB_TAB_IDS, CONTRIBUTION_SUB_TAB_KEYS } from "../types";
 
 const MyContributionTab: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
@@ -73,6 +75,11 @@ const MyContributionTab: React.FC = () => {
     setRefreshing(false);
   }, [loadContributions]);
 
+  const subTabs = useMemo(
+    () => CONTRIBUTION_SUB_TAB_IDS.map((id) => ({ id, label: t(CONTRIBUTION_SUB_TAB_KEYS[id]) })),
+    [t]
+  );
+
   if (!user?.userId) {
     return (
       <Box style={styles.emptyState}>
@@ -81,8 +88,8 @@ const MyContributionTab: React.FC = () => {
           size={48}
           color={theme.colors.gray200}
         />
-        <Text style={styles.emptyTitle}>请先登录</Text>
-        <Text style={styles.emptyText}>登录后查看你的贡献记录</Text>
+        <Text style={styles.emptyTitle}>{t("archive.loginRequired")}</Text>
+        <Text style={styles.emptyText}>{t("archive.loginToView")}</Text>
       </Box>
     );
   }
@@ -125,7 +132,7 @@ const MyContributionTab: React.FC = () => {
       await deleteMyShow(Number(show.id));
       setMyShows((prev) => prev.filter((s) => s.id !== show.id));
     } catch (e: any) {
-      Alert.alert("删除失败", e.message || "请稍后重试");
+      Alert.alert(t("archive.deleteFailed"), e.message || t("archive.deleteFailedRetry"));
     }
   };
 
@@ -134,7 +141,7 @@ const MyContributionTab: React.FC = () => {
       await deleteMyBrandSubmission(brand.id);
       setMyBrands((prev) => prev.filter((b) => b.id !== brand.id));
     } catch (e: any) {
-      Alert.alert("删除失败", e.message || "请稍后重试");
+      Alert.alert(t("archive.deleteFailed"), e.message || t("archive.deleteFailedRetry"));
     }
   };
 
@@ -143,7 +150,7 @@ const MyContributionTab: React.FC = () => {
       await deleteMyStoreSubmission(store.id);
       setMyStores((prev) => prev.filter((s) => s.id !== store.id));
     } catch (e: any) {
-      Alert.alert("删除失败", e.message || "请稍后重试");
+      Alert.alert(t("archive.deleteFailed"), e.message || t("archive.deleteFailedRetry"));
     }
   };
 
@@ -158,9 +165,9 @@ const MyContributionTab: React.FC = () => {
     ContributionSubTab,
     { icon: keyof typeof Ionicons.glyphMap; text: string }
   > = {
-    show: { icon: "film-outline", text: "暂无秀场贡献" },
-    brand: { icon: "pricetag-outline", text: "暂无品牌贡献" },
-    store: { icon: "storefront-outline", text: "暂无买手店贡献" },
+    show: { icon: "film-outline", text: t("archive.noShowContrib") },
+    brand: { icon: "pricetag-outline", text: t("archive.noBrandContrib") },
+    store: { icon: "storefront-outline", text: t("archive.noStoreContrib") },
   };
 
   const renderCards = () => {
@@ -224,7 +231,7 @@ const MyContributionTab: React.FC = () => {
     <Box flex={1}>
       {/* Sub-tab chips */}
       <HStack style={styles.subFilterRow}>
-        {CONTRIBUTION_SUB_TABS.map((tab) => {
+        {subTabs.map((tab) => {
           const count =
             tab.id === "show"
               ? myShows.length
@@ -276,7 +283,7 @@ const MyContributionTab: React.FC = () => {
             />
             <Text style={styles.emptyTitle}>{emptyConfig[subTab].text}</Text>
             <Text style={styles.emptyText}>
-              你提交的内容通过审核后会显示在这里
+              {t("archive.submissionHint")}
             </Text>
           </Box>
         ) : (

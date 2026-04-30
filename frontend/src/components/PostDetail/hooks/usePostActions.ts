@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Post } from "../../PostCard";
 import { postService } from "../../../services/postService";
 import { Alert } from "../../../utils/Alert";
@@ -40,6 +41,7 @@ export const usePostActions = ({
   userId,
   navigation,
 }: UsePostActionsOptions): UsePostActionsReturn => {
+  const { t } = useTranslation();
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditConfirmDialog, setShowEditConfirmDialog] = useState(false);
@@ -48,7 +50,7 @@ export const usePostActions = ({
   // 导航到编辑页面
   const navigateToEditScreen = useCallback(() => {
     if (!post) {
-      Alert.show("错误", "帖子数据不存在");
+      Alert.show(t("common.failed"), t("postActions.postDataMissing"));
       return;
     }
 
@@ -60,7 +62,7 @@ export const usePostActions = ({
     console.log("Screen name:", screenName);
     if (!screenName) {
       console.error("Unsupported post type:", postType);
-      Alert.show("错误", `不支持的帖子类型: ${postType || "未知"}`);
+      Alert.show(t("common.failed"), t("postActions.unsupportedPostType", { type: postType || "unknown" }));
       return;
     }
 
@@ -100,7 +102,7 @@ export const usePostActions = ({
   // 确认删除帖子
   const handleConfirmDelete = useCallback(async () => {
     if (!post?.id || !userId) {
-      Alert.show("错误", "缺少必要的参数");
+      Alert.show(t("common.failed"), t("postActions.missingParams"));
       setShowDeleteDialog(false);
       return;
     }
@@ -112,54 +114,57 @@ export const usePostActions = ({
         typeof post.id === "string" ? parseInt(post.id, 10) : post.id;
 
       if (isNaN(postId) || postId <= 0) {
-        throw new Error("无效的帖子 ID");
+        throw new Error("Invalid post ID");
       }
 
       if (!userId || userId <= 0) {
-        throw new Error("无效的用户 ID");
+        throw new Error("Invalid user ID");
       }
 
       await postService.deletePost(postId, userId);
 
       setShowDeleteDialog(false);
-      Alert.show("成功", "帖子已删除");
+      Alert.show(t("common.success"), t("postActions.postDeleted"));
 
       setTimeout(() => {
         navigation.goBack();
       }, 300);
     } catch (error) {
-      console.error("删除帖子时出错:", error);
+      console.error("Error deleting post:", error);
 
-      let errorMessage = "请稍后重试";
+      let errorMessage = t("postActions.retryLater");
 
       if (error instanceof Error) {
         if (
           error.message.includes("网络") ||
           error.message.includes("Network")
         ) {
-          errorMessage = "网络连接失败，请检查网络后重试";
+          errorMessage = t("postActions.networkFailed");
         } else if (
           error.message.includes("权限") ||
           error.message.includes("Permission")
         ) {
-          errorMessage = "没有删除权限";
-        } else if (error.message.includes("无效")) {
+          errorMessage = t("postActions.noPermission");
+        } else if (
+          error.message.includes("无效") ||
+          error.message.includes("Invalid")
+        ) {
           errorMessage = error.message;
         } else if (
           error.message.includes("找不到") ||
           error.message.includes("not found")
         ) {
-          errorMessage = "帖子不存在或已被删除";
+          errorMessage = t("postActions.postNotFound");
         } else {
           errorMessage = error.message;
         }
       }
 
-      Alert.show("删除失败", errorMessage);
+      Alert.show(t("postActions.deleteFailed"), errorMessage);
     } finally {
       setIsDeleting(false);
     }
-  }, [post, userId, navigation]);
+  }, [post, userId, navigation, t]);
 
   return {
     showOptionsMenu,

@@ -6,6 +6,7 @@ import {
   RefreshControl,
   ScrollView as RNScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import {
@@ -45,7 +46,7 @@ function resolveUserKind(u: AdminUser): UserKind {
  *   MERCHANT — 黑色描边 (次醒目)
  *   USER     — 不挂 (卡片默认就是用户, 减噪)
  */
-function renderKindChip(u: AdminUser) {
+function renderKindChip(u: AdminUser, t: (key: string) => string) {
   const kind = resolveUserKind(u);
   if (kind === "USER") return null;
   if (kind === "ADMIN") {
@@ -57,7 +58,7 @@ function renderKindChip(u: AdminUser) {
   }
   return (
     <Box style={styles.kindChipOutline}>
-      <Text style={styles.kindChipOutlineText}>商家</Text>
+      <Text style={styles.kindChipOutlineText}>{t("admin.merchant")}</Text>
     </Box>
   );
 }
@@ -87,13 +88,6 @@ function renderLevelChip(level: number) {
 type SubTab = "users" | "reports" | "blocks";
 type ReportFilter = "ALL" | "PENDING" | "RESOLVED" | "DISMISSED";
 
-const REPORT_STATUS_LABELS: Record<string, string> = {
-  PENDING: "待处理",
-  REVIEWED: "已审阅",
-  RESOLVED: "已处理",
-  DISMISSED: "已驳回",
-};
-
 const REPORT_STATUS_COLORS: Record<string, string> = {
   PENDING: "#F59E0B",
   REVIEWED: "#3B82F6",
@@ -101,39 +95,25 @@ const REPORT_STATUS_COLORS: Record<string, string> = {
   DISMISSED: theme.colors.gray300,
 };
 
-const REASON_LABELS: Record<string, string> = {
-  SPAM: "垃圾内容",
-  HARASSMENT: "骚扰",
-  INAPPROPRIATE: "不当内容",
-  VIOLENCE: "暴力",
-  HATE_SPEECH: "仇恨言论",
-  FALSE_INFO: "虚假信息",
-  PORNOGRAPHY: "色情低俗",
-  MISINFORMATION: "虚假信息",
-  COPYRIGHT: "侵权",
-  OTHER: "其他",
-};
-
-const TARGET_TYPE_LABELS: Record<string, { label: string; icon: string }> = {
-  POST: { label: "帖子", icon: "document-text-outline" },
-  COMMENT: { label: "评论", icon: "chatbubble-outline" },
-  MESSAGE: { label: "聊天消息", icon: "mail-outline" },
-  USER: { label: "用户", icon: "person-outline" },
+const TARGET_TYPE_ICONS: Record<string, string> = {
+  POST: "document-text-outline",
+  COMMENT: "chatbubble-outline",
+  MESSAGE: "mail-outline",
+  USER: "person-outline",
 };
 
 const UsersTab = () => {
+  const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTab>("users");
 
   return (
     <Box style={styles.container}>
       <HStack style={styles.subTabBar}>
-        {(
-          [
-            { key: "users", label: "用户列表", icon: "people-outline" },
-            { key: "reports", label: "举报记录", icon: "flag-outline" },
-            { key: "blocks", label: "屏蔽关系", icon: "ban-outline" },
-          ] as const
-        ).map((tab) => (
+        {([
+            { key: "users" as SubTab, label: t("admin.userList"), icon: "people-outline" },
+            { key: "reports" as SubTab, label: t("admin.reportRecords"), icon: "flag-outline" },
+            { key: "blocks" as SubTab, label: t("admin.blockRelations"), icon: "ban-outline" },
+          ]).map((tab) => (
           <Pressable
             key={tab.key}
             style={[
@@ -173,6 +153,7 @@ const UsersTab = () => {
 // ==================== Users Sub-Tab ====================
 
 const UsersSubTab = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -206,7 +187,7 @@ const UsersSubTab = () => {
         setTotal(result.total);
         setPage(p);
       } catch (e) {
-        Alert.alert("错误", e instanceof Error ? e.message : "获取用户列表失败");
+        Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchUsersFailed"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -232,12 +213,12 @@ const UsersSubTab = () => {
     try {
       setActionLoading(true);
       await adminService.deleteUser(deleteTarget.id);
-      Alert.alert("成功", `用户 ${deleteTarget.username} 已被删除`);
+      Alert.alert(t("common.success"), t("admin.userDeleted", { name: deleteTarget.username }));
       setDeleteModalVisible(false);
       setDeleteTarget(null);
       loadUsers(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "删除失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.deleteFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -255,7 +236,7 @@ const UsersSubTab = () => {
         const titles = await adminService.getUserTitlesAdmin(user.id);
         setTitleList(titles);
       } catch (e) {
-        Alert.alert("错误", e instanceof Error ? e.message : "获取头衔失败");
+        Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchTitlesFailed"));
       } finally {
         setTitleLoading(false);
       }
@@ -271,7 +252,7 @@ const UsersSubTab = () => {
       setNewTitleText("");
       loadUsers(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "添加头衔失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.addTitleFailed"));
     } finally {
       setAddingTitle(false);
     }
@@ -280,16 +261,16 @@ const UsersSubTab = () => {
   const handleRemoveTitle = async (titleId: number) => {
     try {
       await adminService.removeUserTitle(titleId);
-      setTitleList((prev) => prev.filter((t) => t.id !== titleId));
+      setTitleList((prev) => prev.filter((item) => item.id !== titleId));
       loadUsers(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "删除头衔失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.removeTitleFailed"));
     }
   };
 
   const GENDER_LABELS: Record<string, string> = {
-    MALE: "♂ 男",
-    FEMALE: "♀ 女",
+    MALE: t("admin.gender_MALE"),
+    FEMALE: t("admin.gender_FEMALE"),
     OTHER: "",
   };
 
@@ -314,11 +295,11 @@ const UsersSubTab = () => {
               <Text style={styles.userName} numberOfLines={1}>
                 {item.username}
               </Text>
-              {renderKindChip(item)}
+              {renderKindChip(item, t)}
               {renderLevelChip(item.currentLevel ?? 0)}
               {item.merchant && item.merchant.status !== "APPROVED" && (
                 <Box style={styles.kindChipMuted}>
-                  <Text style={styles.kindChipMutedText}>商家审核中</Text>
+                  <Text style={styles.kindChipMutedText}>{t("admin.merchantPending")}</Text>
                 </Box>
               )}
             </HStack>
@@ -343,7 +324,7 @@ const UsersSubTab = () => {
                 : styles.statusTextInactive,
             ]}
           >
-            {item.status === "ACTIVE" ? "正常" : item.status}
+            {item.status === "ACTIVE" ? t("admin.active") : item.status}
           </Text>
         </Box>
       </HStack>
@@ -376,17 +357,17 @@ const UsersSubTab = () => {
       <HStack style={styles.statsRow}>
         <Box style={styles.statItem}>
           <Text style={styles.statValue}>{item.postCount ?? 0}</Text>
-          <Text style={styles.statLabel}>帖子</Text>
+          <Text style={styles.statLabel}>{t("admin.posts")}</Text>
         </Box>
         <Box style={styles.statDivider} />
         <Box style={styles.statItem}>
           <Text style={styles.statValue}>{item.followerCount ?? 0}</Text>
-          <Text style={styles.statLabel}>粉丝</Text>
+          <Text style={styles.statLabel}>{t("admin.followers")}</Text>
         </Box>
         <Box style={styles.statDivider} />
         <Box style={styles.statItem}>
           <Text style={styles.statValue}>{item.followingCount ?? 0}</Text>
-          <Text style={styles.statLabel}>关注</Text>
+          <Text style={styles.statLabel}>{t("admin.following")}</Text>
         </Box>
       </HStack>
 
@@ -420,7 +401,7 @@ const UsersSubTab = () => {
             <HStack style={styles.infoItem}>
               <Text style={styles.detailText}>{GENDER_LABELS[item.gender]}</Text>
               {item.age && item.age > 0 ? (
-                <Text style={styles.detailText}> · {item.age}岁</Text>
+                <Text style={styles.detailText}> · {t("admin.ageYears", { age: item.age })}</Text>
               ) : null}
             </HStack>
           ) : null}
@@ -436,7 +417,7 @@ const UsersSubTab = () => {
             <HStack style={styles.infoItem}>
               <Ionicons name="storefront-outline" size={12} color={theme.colors.gray300} />
               <Text style={styles.detailText}>
-                店铺: {item.merchant.storeId}
+                {t("admin.storeId")}: {item.merchant.storeId}
               </Text>
             </HStack>
           ) : null}
@@ -449,7 +430,7 @@ const UsersSubTab = () => {
           onPress={() => openTitleModal(item)}
           leftIcon={<Ionicons name="ribbon-outline" size={14} color={theme.colors.white} />}
         >
-          <ButtonText style={{ fontSize: 12 }}>头衔</ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("admin.title_btn")}</ButtonText>
         </Button>
         <Button
           size="sm"
@@ -457,7 +438,7 @@ const UsersSubTab = () => {
           onPress={() => handleDelete(item)}
           leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
         >
-          <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
         </Button>
       </HStack>
     </Box>
@@ -468,7 +449,7 @@ const UsersSubTab = () => {
       <HStack style={styles.searchBar}>
         <Input
           style={styles.searchInput}
-          placeholder="搜索用户名或ID"
+          placeholder={t("admin.searchUserPlaceholder")}
           placeholderTextColor={theme.colors.gray300}
           value={keyword}
           onChangeText={setKeyword}
@@ -485,7 +466,7 @@ const UsersSubTab = () => {
       {loading && !refreshing ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : (
         <ScrollView
@@ -498,7 +479,7 @@ const UsersSubTab = () => {
           }
         >
           <Box style={styles.listHeader}>
-            <Text style={styles.totalText}>共 {total} 位用户</Text>
+            <Text style={styles.totalText}>{t("admin.totalUsers", { count: total })}</Text>
           </Box>
 
           {users.length === 0 ? (
@@ -508,7 +489,7 @@ const UsersSubTab = () => {
                 size={48}
                 color={theme.colors.gray300}
               />
-              <Text style={sharedStyles.emptyText}>暂无用户</Text>
+              <Text style={sharedStyles.emptyText}>{t("admin.noUsers")}</Text>
             </Box>
           ) : (
             <>
@@ -524,7 +505,7 @@ const UsersSubTab = () => {
                     <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
-                    第 {page} 页 / 共 {totalPages} 页
+                    {t("admin.pagination", { page, total: totalPages })}
                   </Text>
                   <Pressable
                     disabled={page >= totalPages}
@@ -560,13 +541,11 @@ const UsersSubTab = () => {
                   { color: theme.colors.error, marginLeft: 8 },
                 ]}
               >
-                删除用户
+                {t("admin.deleteUser")}
               </Text>
             </HStack>
             <Text style={sharedStyles.modalWarning}>
-              确定要删除用户 {deleteTarget?.username} (ID:{" "}
-              {deleteTarget?.id})
-              及其所有数据？此操作不可撤销！
+              {t("admin.confirmDeleteUser", { username: deleteTarget?.username, id: deleteTarget?.id })}
             </Text>
             <HStack style={sharedStyles.modalButtons}>
               <Button
@@ -577,7 +556,7 @@ const UsersSubTab = () => {
                   setDeleteTarget(null);
                 }}
               >
-                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
               </Button>
               <Button
                 size="sm"
@@ -586,7 +565,7 @@ const UsersSubTab = () => {
                 disabled={actionLoading}
                 isLoading={actionLoading}
               >
-                <ButtonText>确认删除</ButtonText>
+                <ButtonText>{t("admin.confirmDelete")}</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -605,7 +584,7 @@ const UsersSubTab = () => {
             <HStack style={sharedStyles.modalTitleRow}>
               <Ionicons name="ribbon" size={24} color={theme.colors.black} />
               <Text style={[sharedStyles.modalTitle, { marginLeft: 8 }]}>
-                管理头衔 - {titleTarget?.username}
+                {t("admin.manageTitles")} - {titleTarget?.username}
               </Text>
             </HStack>
 
@@ -617,7 +596,7 @@ const UsersSubTab = () => {
               <RNScrollView style={{ maxHeight: 200, marginVertical: 12 }}>
                 {titleList.length === 0 ? (
                   <Text style={{ color: theme.colors.gray300, textAlign: "center", paddingVertical: 16 }}>
-                    暂无头衔
+                    {t("admin.noTitles")}
                   </Text>
                 ) : (
                   titleList.map((t) => (
@@ -641,7 +620,7 @@ const UsersSubTab = () => {
                           {t.title}
                         </Text>
                         {t.isPrimary && (
-                          <Text style={{ fontSize: 11, color: "#F59E0B", fontWeight: "500" }}>主头衔</Text>
+                          <Text style={{ fontSize: 11, color: "#F59E0B", fontWeight: "500" }}>{t("admin.primaryTitle")}</Text>
                         )}
                       </HStack>
                       <Pressable onPress={() => handleRemoveTitle(t.id)}>
@@ -656,7 +635,7 @@ const UsersSubTab = () => {
             <HStack style={{ gap: 8, marginTop: 4 }}>
               <Input
                 style={{ flex: 1, height: 36 }}
-                placeholder="输入头衔（如 Archivist）"
+                placeholder={t("admin.titlePlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={newTitleText}
                 onChangeText={setNewTitleText}
@@ -671,7 +650,7 @@ const UsersSubTab = () => {
                 disabled={addingTitle || !newTitleText.trim()}
                 isLoading={addingTitle}
               >
-                <ButtonText style={{ fontSize: 12 }}>添加</ButtonText>
+                <ButtonText style={{ fontSize: 12 }}>{t("admin.add")}</ButtonText>
               </Button>
             </HStack>
 
@@ -685,7 +664,7 @@ const UsersSubTab = () => {
                   setTitleList([]);
                 }}
               >
-                <ButtonText style={{ color: theme.colors.white }}>关闭</ButtonText>
+                <ButtonText style={{ color: theme.colors.white }}>{t("common.close")}</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -698,6 +677,7 @@ const UsersSubTab = () => {
 // ==================== Reports Sub-Tab ====================
 
 const ReportsSubTab = () => {
+  const { t } = useTranslation();
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -721,7 +701,7 @@ const ReportsSubTab = () => {
         setTotal(result.total);
         setPage(p);
       } catch (e) {
-        Alert.alert("错误", e instanceof Error ? e.message : "获取举报记录失败");
+        Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchReportsFailed"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -739,7 +719,7 @@ const ReportsSubTab = () => {
       await adminService.updateReportStatus(reportId, status);
       loadReports(page);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "操作失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.operationFailed"));
     }
   };
 
@@ -747,12 +727,12 @@ const ReportsSubTab = () => {
 
   const handleResolveMessageReport = (item: AdminReport) => {
     Alert.alert(
-      "删除消息并通知",
-      `确认删除聊天消息 #${item.targetId} 并通知发送者？`,
+      t("admin.deleteMessageNotify"),
+      t("admin.confirmDeleteMessage", { id: item.targetId }),
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "确认",
+          text: t("admin.confirm"),
           style: "destructive",
           onPress: () => executeResolveMessage(item),
         },
@@ -768,14 +748,14 @@ const ReportsSubTab = () => {
       const { conversationId } = await createConversation(senderId);
       await sendMessageREST(
         conversationId,
-        `您好，您发送的一条聊天消息因违反社区规范（${REASON_LABELS[item.reason] || item.reason}）已被删除。请遵守社区规则，共同维护良好的交流环境。`
+        t("admin.violationNoticeMessage", { reason: t(`admin.reason_${item.reason}`) || item.reason })
       );
 
       await adminService.updateReportStatus(item.id, "RESOLVED");
-      Alert.alert("完成", "消息已删除，发送者已收到通知");
+      Alert.alert(t("admin.done"), t("admin.messageDeletedNotified"));
       loadReports(page);
     } catch (e) {
-      Alert.alert("操作失败", e instanceof Error ? e.message : "请稍后重试");
+      Alert.alert(t("admin.operationFailed"), e instanceof Error ? e.message : t("admin.retryLater"));
     } finally {
       setActionLoading(null);
     }
@@ -784,9 +764,9 @@ const ReportsSubTab = () => {
   const totalPages = Math.ceil(total / pageSize);
 
   const renderReportCard = (item: AdminReport) => {
-    const targetInfo = TARGET_TYPE_LABELS[item.targetType] || {
-      label: item.targetType,
-      icon: "help-circle-outline",
+    const targetInfo = {
+      label: t(`admin.targetType_${item.targetType}`) || item.targetType,
+      icon: TARGET_TYPE_ICONS[item.targetType] || "help-circle-outline",
     };
 
     return (
@@ -816,12 +796,12 @@ const ReportsSubTab = () => {
                     { color: REPORT_STATUS_COLORS[item.status] || theme.colors.gray300 },
                   ]}
                 >
-                  {REPORT_STATUS_LABELS[item.status] || item.status}
+                  {t(`admin.reportStatus_${item.status}`) || item.status}
                 </Text>
               </Box>
             </HStack>
             <Text style={styles.detailText}>
-              举报人: {item.reporterName} (ID: {item.reporterId})
+              {t("admin.reporter")} {item.reporterName} (ID: {item.reporterId})
             </Text>
           </Box>
         </HStack>
@@ -834,7 +814,7 @@ const ReportsSubTab = () => {
               color={theme.colors.error}
             />
             <Text style={styles.reportReason}>
-              {REASON_LABELS[item.reason] || item.reason}
+              {t(`admin.reason_${item.reason}`) || item.reason}
             </Text>
           </HStack>
           {item.description ? (
@@ -858,7 +838,7 @@ const ReportsSubTab = () => {
                 isLoading={actionLoading === item.id}
                 leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
               >
-                <ButtonText style={{ fontSize: 12 }}>删除消息并通知</ButtonText>
+                <ButtonText style={{ fontSize: 12 }}>{t("admin.deleteMessageNotify")}</ButtonText>
               </Button>
             ) : (
               <Button
@@ -867,7 +847,7 @@ const ReportsSubTab = () => {
                 onPress={() => handleUpdateStatus(item.id, "RESOLVED")}
                 leftIcon={<Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />}
               >
-                <ButtonText style={{ fontSize: 12 }}>处理</ButtonText>
+                <ButtonText style={{ fontSize: 12 }}>{t("admin.resolve")}</ButtonText>
               </Button>
             )}
             <Button
@@ -877,7 +857,7 @@ const ReportsSubTab = () => {
               disabled={actionLoading === item.id}
               leftIcon={<Ionicons name="close-circle-outline" size={14} color={theme.colors.white} />}
             >
-              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>驳回</ButtonText>
+              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.dismiss")}</ButtonText>
             </Button>
           </HStack>
         )}
@@ -909,7 +889,7 @@ const ReportsSubTab = () => {
                   filter === f && styles.filterChipTextActive,
                 ]}
               >
-                {f === "ALL" ? "全部" : REPORT_STATUS_LABELS[f] || f}
+                {f === "ALL" ? t("common.all") : t(`admin.reportStatus_${f}`) || f}
               </Text>
             </Pressable>
           )
@@ -919,7 +899,7 @@ const ReportsSubTab = () => {
       {loading && !refreshing ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : (
         <ScrollView
@@ -932,7 +912,7 @@ const ReportsSubTab = () => {
           }
         >
           <Box style={styles.listHeader}>
-            <Text style={styles.totalText}>共 {total} 条举报</Text>
+            <Text style={styles.totalText}>{t("admin.totalReports", { count: total })}</Text>
           </Box>
 
           {reports.length === 0 ? (
@@ -942,7 +922,7 @@ const ReportsSubTab = () => {
                 size={48}
                 color={theme.colors.gray300}
               />
-              <Text style={sharedStyles.emptyText}>暂无举报记录</Text>
+              <Text style={sharedStyles.emptyText}>{t("admin.noReports")}</Text>
             </Box>
           ) : (
             <>
@@ -958,7 +938,7 @@ const ReportsSubTab = () => {
                     <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
-                    第 {page} 页 / 共 {totalPages} 页
+                    {t("admin.pagination", { page, total: totalPages })}
                   </Text>
                   <Pressable
                     disabled={page >= totalPages}
@@ -980,6 +960,7 @@ const ReportsSubTab = () => {
 // ==================== Blocks Sub-Tab ====================
 
 const BlocksSubTab = () => {
+  const { t } = useTranslation();
   const [blocks, setBlocks] = useState<AdminBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -996,7 +977,7 @@ const BlocksSubTab = () => {
       setTotal(result.total);
       setPage(p);
     } catch (e) {
-      Alert.alert("错误", e instanceof Error ? e.message : "获取屏蔽关系失败");
+      Alert.alert(t("admin.error"), e instanceof Error ? e.message : t("admin.fetchBlocksFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1037,7 +1018,7 @@ const BlocksSubTab = () => {
       {loading && !refreshing ? (
         <Box style={sharedStyles.loadingContainer}>
           <ActivityIndicator color={theme.colors.black} />
-          <Text style={sharedStyles.loadingText}>加载中...</Text>
+          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
         </Box>
       ) : (
         <ScrollView
@@ -1050,7 +1031,7 @@ const BlocksSubTab = () => {
           }
         >
           <Box style={styles.listHeader}>
-            <Text style={styles.totalText}>共 {total} 条屏蔽关系</Text>
+            <Text style={styles.totalText}>{t("admin.totalBlocks", { count: total })}</Text>
           </Box>
 
           {blocks.length === 0 ? (
@@ -1060,7 +1041,7 @@ const BlocksSubTab = () => {
                 size={48}
                 color={theme.colors.gray300}
               />
-              <Text style={sharedStyles.emptyText}>暂无屏蔽关系</Text>
+              <Text style={sharedStyles.emptyText}>{t("admin.noBlocks")}</Text>
             </Box>
           ) : (
             <>
@@ -1076,7 +1057,7 @@ const BlocksSubTab = () => {
                     <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
-                    第 {page} 页 / 共 {totalPages} 页
+                    {t("admin.pagination", { page, total: totalPages })}
                   </Text>
                   <Pressable
                     disabled={page >= totalPages}

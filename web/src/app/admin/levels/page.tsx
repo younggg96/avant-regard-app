@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   adminLevelApi,
   type BackfillResponse,
@@ -38,28 +39,29 @@ import {
 
 const LEVEL_USERS_PAGE_SIZE = 20;
 
-/** FilterChips 只接受字符串, 这里用 "L0"..."L5" 编码, "ALL" 透出 undefined. */
-const LEVEL_FILTER_OPTIONS = [5, 4, 3, 2, 1, 0].map((lv) => ({
-  value: `L${lv}` as const,
-  label: lv === 0 ? "Lv0 · 未达 Lv1" : `Lv${lv} · ${LEVEL_TITLES[lv] ?? ""}`,
-}));
-type LevelFilterValue = (typeof LEVEL_FILTER_OPTIONS)[number]["value"];
+type LevelFilterValue = `L${0 | 1 | 2 | 3 | 4 | 5}`;
 
 /** 统一抽取异常消息, 避免在几个 catch 里重复写同一行三元. */
 function getErrorMessage(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
 }
 
-/** 红线式错误横条, 放在 section 顶部. 数据源问题 vs 接口问题要一眼可辨. */
-function ErrorBanner({ message }: { message: string }) {
+function ErrorBanner({ message, prefix }: { message: string; prefix: string }) {
   return (
     <div className="rounded-md border border-red-500/40 bg-red-500/5 px-3 py-2 font-label text-[12px] leading-5 text-red-600">
-      接口异常: {message}
+      {prefix}: {message}
     </div>
   );
 }
 
 export default function AdminLevelsPage() {
+  const { t } = useTranslation();
+
+  const LEVEL_FILTER_OPTIONS = [5, 4, 3, 2, 1, 0].map((lv) => ({
+    value: `L${lv}` as LevelFilterValue,
+    label: lv === 0 ? t("admin.lv0NotReached") : `Lv${lv} · ${LEVEL_TITLES[lv] ?? ""}`,
+  }));
+
   const [items, setItems] = useState<UpgradeRequestInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [requestsError, setRequestsError] = useState<string | null>(null);
@@ -109,7 +111,7 @@ export default function AdminLevelsPage() {
     } catch (e) {
       console.warn("listUpgradeRequests failed", e);
       setItems([]);
-      setRequestsError(getErrorMessage(e, "待审批列表加载失败"));
+      setRequestsError(getErrorMessage(e, t("admin.actionFailed")));
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,7 @@ export default function AdminLevelsPage() {
       console.warn("listUsersByLevel failed", e);
       setLevelUsers([]);
       setLevelUsersTotal(0);
-      setLevelUsersError(getErrorMessage(e, "用户等级列表加载失败"));
+      setLevelUsersError(getErrorMessage(e, t("admin.actionFailed")));
     } finally {
       if (token === levelUsersReqTokenRef.current) {
         setLevelUsersLoading(false);
@@ -170,7 +172,7 @@ export default function AdminLevelsPage() {
       // 用户 current_level 跳了, 底表要跟着刷新, 否则看到的等级是旧的.
       loadLevelUsers();
     } catch (e) {
-      alert(getErrorMessage(e, "审批失败"));
+      alert(getErrorMessage(e, t("admin.approveFailed")));
     } finally {
       setActionLoading(false);
     }
@@ -187,7 +189,7 @@ export default function AdminLevelsPage() {
       // 拒绝也会把 user_levels.pending_level 清掉, 底表"待审核"列要同步.
       loadLevelUsers();
     } catch (e) {
-      alert(getErrorMessage(e, "操作失败"));
+      alert(getErrorMessage(e, t("admin.actionFailed")));
     } finally {
       setActionLoading(false);
     }
@@ -197,26 +199,26 @@ export default function AdminLevelsPage() {
   const doGrant = async () => {
     const uid = parseInt(grantUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      alert("请输入合法用户 ID");
+      alert(t("admin.invalidUserId"));
       return;
     }
     if (grantLevel < 1 || grantLevel > 5) {
-      alert("等级必须在 1-5 之间");
+      alert(t("admin.levelRange"));
       return;
     }
-    if (!confirm(`确认给 user #${uid} 授予 Lv${grantLevel}? 此操作不可撤销.`)) return;
+    if (!confirm(t("admin.confirmGrantMsg", { id: uid, level: grantLevel }))) return;
 
     setActionLoading(true);
     try {
       await adminLevelApi.grantLevel(uid, grantLevel, grantRemark);
-      alert("已授予");
+      alert(t("admin.granted"));
       setGrantOpen(false);
       setGrantUserId("");
       setGrantRemark("");
       load();
       loadLevelUsers();
     } catch (e) {
-      alert(getErrorMessage(e, "授予失败 (可能该用户已达此级)"));
+      alert(getErrorMessage(e, t("admin.grantFailed")));
     } finally {
       setActionLoading(false);
     }
@@ -238,7 +240,7 @@ export default function AdminLevelsPage() {
         loadLevelUsers();
       }
     } catch (e) {
-      alert(getErrorMessage(e, "回填失败"));
+      alert(getErrorMessage(e, t("admin.backfillFailed")));
     } finally {
       setBackfillLoading(false);
     }
@@ -247,7 +249,7 @@ export default function AdminLevelsPage() {
   const runBackfillSingle = () => {
     const uid = parseInt(backfillUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      alert("请输入合法用户 ID");
+      alert(t("admin.invalidUserId"));
       return;
     }
     runBackfill({ dryRun: false, userId: uid });
@@ -258,18 +260,18 @@ export default function AdminLevelsPage() {
   return (
     <div>
       <PageHeader
-        title="等级审批"
-        description="Lv4 升级工单审批 · Lv5 手动授予"
+        title={t("admin.levels")}
+        description={t("admin.levelsDesc")}
         actions={
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setBackfillOpen(true)}>
-              存量回填
+              {t("admin.backfill")}
             </Button>
             <Button size="sm" onClick={() => setGrantOpen(true)}>
-              手动授予
+              {t("admin.manualGrant")}
             </Button>
             <Button variant="ghost" size="sm" onClick={load}>
-              刷新
+              {t("admin.refresh")}
             </Button>
           </div>
         }
@@ -277,15 +279,15 @@ export default function AdminLevelsPage() {
 
       {/* Lv4 待审批队列 */}
       <div className="mb-3 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-        Lv4 升级待审批 · {requestsError ? "—" : `${items.length} 条`}
+        {t("admin.lv4Pending")} · {requestsError ? "—" : t("admin.itemCount", { count: items.length })}
       </div>
 
       {requestsError ? (
         <div className="mb-3">
-          <ErrorBanner message={requestsError} />
+          <ErrorBanner message={requestsError} prefix={t("admin.apiError")} />
         </div>
       ) : items.length === 0 ? (
-        <EmptyState message="暂无待审批工单" />
+        <EmptyState message={t("admin.noPendingRequests")} />
       ) : (
         <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)]">
           {items.map((it) => (
@@ -298,26 +300,26 @@ export default function AdminLevelsPage() {
                   @{it.username ?? `user#${it.userId}`}
                 </div>
                 <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[color:var(--ink-muted)]">
-                  <StatusBadge active>目标 Lv{it.targetLevel}</StatusBadge>
+                  <StatusBadge active>{t("admin.targetLevel", { level: it.targetLevel })}</StatusBadge>
                   <span>user id: {it.userId}</span>
                   <span>·</span>
                   <span>
-                    {new Date(it.createdAt).toLocaleDateString("zh-CN")}
+                    {new Date(it.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1 text-[12px]">
+                <div className="flex shrink-0 items-center gap-1 text-[12px]">
                 <button
                   onClick={() => setApproveTarget(it)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  通过
+                  {t("admin.approve")}
                 </button>
                 <button
                   onClick={() => setRejectTarget(it)}
                   className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                 >
-                  拒绝
+                  {t("admin.reject")}
                 </button>
               </div>
             </div>
@@ -329,11 +331,10 @@ export default function AdminLevelsPage() {
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            全部用户等级 · 按等级降序 · 共{" "}
-            {levelUsersError ? "—" : `${levelUsersTotal} 人`}
+            {t("admin.allUserLevels")} · {levelUsersError ? "—" : t("admin.totalPeople", { count: levelUsersTotal })}
           </div>
           <Button variant="ghost" size="sm" onClick={loadLevelUsers}>
-            刷新
+            {t("admin.refresh")}
           </Button>
         </div>
 
@@ -342,13 +343,13 @@ export default function AdminLevelsPage() {
             options={LEVEL_FILTER_OPTIONS}
             value={levelFilter}
             onChange={handleLevelFilterChange}
-            allLabel="全部等级"
+            allLabel={t("admin.allLevels")}
           />
         </div>
 
         {levelUsersError ? (
           <div className="mb-3">
-            <ErrorBanner message={levelUsersError} />
+            <ErrorBanner message={levelUsersError} prefix={t("admin.apiError")} />
           </div>
         ) : null}
 
@@ -357,19 +358,19 @@ export default function AdminLevelsPage() {
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
                 <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">
-                  用户
+                  {t("admin.colUser")}
                 </th>
                 <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">
-                  类型
+                  {t("admin.colType")}
                 </th>
                 <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">
-                  等级
+                  {t("admin.colLevel")}
                 </th>
                 <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">
-                  待审核
+                  {t("admin.colPending")}
                 </th>
                 <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">
-                  最近升级
+                  {t("admin.colLastUpgrade")}
                 </th>
               </tr>
             </thead>
@@ -377,19 +378,19 @@ export default function AdminLevelsPage() {
               {levelUsersError ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-red-600">
-                    接口异常, 详情见上方提示
+                    {t("admin.apiErrorDetail")}
                   </td>
                 </tr>
               ) : levelUsersLoading && levelUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-[color:var(--ink-muted)]">
-                    加载中…
+                    {t("admin.loading")}
                   </td>
                 </tr>
               ) : levelUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-[color:var(--ink-muted)]">
-                    没有匹配的用户
+                    {t("admin.noMatchingUsers")}
                   </td>
                 </tr>
               ) : (
@@ -429,7 +430,7 @@ export default function AdminLevelsPage() {
                       <td className="px-4 py-3">
                         {isMerchant ? (
                           <span className="inline-flex items-center rounded-full border border-[var(--ink)] bg-transparent px-2 py-0.5 font-label text-[11px] tracking-[0.08em] text-[var(--ink)]">
-                            商家
+                            {t("admin.merchant")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-[var(--canvas-raised)] px-2 py-0.5 font-label text-[11px] tracking-[0.08em] text-[color:var(--ink-muted)]">
@@ -462,7 +463,7 @@ export default function AdminLevelsPage() {
                       </td>
                       <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)]">
                         {u.lastLevelUpAt
-                          ? new Date(u.lastLevelUpAt).toLocaleDateString("zh-CN")
+                          ? new Date(u.lastLevelUpAt).toLocaleDateString()
                           : "—"}
                       </td>
                     </tr>
@@ -482,13 +483,13 @@ export default function AdminLevelsPage() {
 
       <ConfirmDialog
         open={!!approveTarget}
-        title="确认通过此升级申请?"
+        title={t("admin.confirmApprove")}
         message={
           approveTarget
-            ? `@${approveTarget.username ?? approveTarget.userId} → Lv${approveTarget.targetLevel}. 通过后将自动发放对应权益 (Lv4 发放 1 张免费门票), 不可撤销.`
+            ? t("admin.approveMsg", { username: approveTarget.username ?? approveTarget.userId, level: approveTarget.targetLevel })
             : undefined
         }
-        confirmLabel="通过"
+        confirmLabel={t("admin.approve")}
         loading={actionLoading}
         onConfirm={doApprove}
         onCancel={() => setApproveTarget(null)}
@@ -496,9 +497,9 @@ export default function AdminLevelsPage() {
 
       <PromptDialog
         open={!!rejectTarget}
-        title="拒绝原因"
-        placeholder="例如:  档案质量不达标, 请补充品牌正面照"
-        confirmLabel="确认拒绝"
+        title={t("admin.rejectReason")}
+        placeholder={t("admin.rejectReasonExample")}
+        confirmLabel={t("admin.confirmReject")}
         loading={actionLoading}
         onConfirm={doReject}
         onCancel={() => setRejectTarget(null)}
@@ -506,21 +507,21 @@ export default function AdminLevelsPage() {
 
       <FormDialog
         open={grantOpen}
-        title="手动授予等级"
+        title={t("admin.grantTitle")}
         onClose={() => setGrantOpen(false)}
       >
         <div className="space-y-4">
           <p className="font-label text-[12px] text-[color:var(--ink-muted)]">
-            Lv5 荣誉官的唯一通道. Lv1-3 建议交给规则引擎, 仅在特殊补偿时使用.
+            {t("admin.grantDesc")}
           </p>
-          <FormField label="用户 ID" required>
+          <FormField label={t("admin.userId")} required>
             <TextInput
               value={grantUserId}
               onChange={setGrantUserId}
-              placeholder="例如 1024"
+              placeholder={t("admin.userIdPlaceholder")}
             />
           </FormField>
-          <FormField label="目标等级">
+          <FormField label={t("admin.targetLevelLabel")}>
             <div className="flex flex-wrap gap-1.5">
               {LEVEL_OPTIONS.map((opt) => {
                 const active = grantLevel === opt.value;
@@ -540,11 +541,11 @@ export default function AdminLevelsPage() {
               })}
             </div>
           </FormField>
-          <FormField label="备注 (审计留档)">
+          <FormField label={t("admin.remarkLabel")}>
             <TextInput
               value={grantRemark}
               onChange={setGrantRemark}
-              placeholder="例如:  2026-Q2 线下活动参与者"
+              placeholder={t("admin.remarkPlaceholder")}
               multiline
               rows={2}
             />
@@ -555,14 +556,14 @@ export default function AdminLevelsPage() {
               size="sm"
               onClick={() => setGrantOpen(false)}
             >
-              取消
+              {t("admin.cancel")}
             </Button>
             <Button
               size="sm"
               onClick={doGrant}
               loading={actionLoading}
             >
-              授予
+              {t("admin.grant")}
             </Button>
           </div>
         </div>
@@ -571,7 +572,7 @@ export default function AdminLevelsPage() {
       {/* 存量用户等级回填 */}
       <FormDialog
         open={backfillOpen}
-        title="存量用户等级回填"
+        title={t("admin.backfillTitle")}
         onClose={() => {
           setBackfillOpen(false);
           setBackfillResult(null);
@@ -579,19 +580,19 @@ export default function AdminLevelsPage() {
       >
         <div className="space-y-4">
           <div className="rounded border border-[var(--border)] bg-[var(--canvas-raised)] p-3 font-label text-[12px] leading-5 text-[color:var(--ink-muted)]">
-            <p className="font-semibold text-[color:var(--ink)]">红线说明</p>
+            <p className="font-semibold text-[color:var(--ink)]">{t("admin.backfillRedline")}</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
-              <li>幂等:  重复执行不会重复发放权益, 不会回退等级</li>
-              <li>Lv4 达标仅创建 PENDING 审批, 不自动升级</li>
-              <li>Lv5 绝不会自动触发, 仍须在上方手动授予</li>
-              <li>不会发送“升级通知”消息, 避免骚扰老用户</li>
+              <li>{t("admin.backfillRule1")}</li>
+              <li>{t("admin.backfillRule2")}</li>
+              <li>{t("admin.backfillRule3")}</li>
+              <li>{t("admin.backfillRule4")}</li>
             </ul>
           </div>
 
           {/* 全量 */}
           <div className="space-y-2">
             <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-              全量扫描
+              {t("admin.fullScan")}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -600,14 +601,14 @@ export default function AdminLevelsPage() {
                 onClick={() => runBackfill({ dryRun: true })}
                 loading={backfillLoading}
               >
-                Dry Run (不写库)
+                {t("admin.dryRun")}
               </Button>
               <Button
                 size="sm"
                 onClick={() => setConfirmBackfillLive(true)}
                 loading={backfillLoading}
               >
-                执行全量回填
+                {t("admin.runFullBackfill")}
               </Button>
             </div>
           </div>
@@ -615,14 +616,14 @@ export default function AdminLevelsPage() {
           {/* 单用户 */}
           <div className="space-y-2">
             <div className="font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-              单用户回填
+              {t("admin.singleUserBackfill")}
             </div>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <TextInput
                   value={backfillUserId}
                   onChange={setBackfillUserId}
-                  placeholder="用户 ID"
+                  placeholder={t("admin.userId")}
                 />
               </div>
               <Button
@@ -630,7 +631,7 @@ export default function AdminLevelsPage() {
                 onClick={runBackfillSingle}
                 loading={backfillLoading}
               >
-                执行
+                {t("admin.execute")}
               </Button>
             </div>
           </div>
@@ -639,8 +640,8 @@ export default function AdminLevelsPage() {
           {backfillResult && (
             <div className="rounded border border-[var(--border)] bg-[var(--canvas)] p-3 font-label text-[12px] leading-5 text-[var(--ink)]">
               {backfillResult.scope === "single"
-                ? renderSingleResult(backfillResult.user)
-                : renderSummaryResult(backfillResult.summary)}
+                ? renderSingleResult(backfillResult.user, t)
+                : renderSummaryResult(backfillResult.summary, t)}
             </div>
           )}
         </div>
@@ -648,9 +649,9 @@ export default function AdminLevelsPage() {
 
       <ConfirmDialog
         open={confirmBackfillLive}
-        title="确认执行全量等级回填?"
-        message="将对所有现存用户做一次等级回溯计算并写库. 操作幂等, 但建议先 Dry Run 预览."
-        confirmLabel="立即执行"
+        title={t("admin.confirmFullBackfill")}
+        message={t("admin.fullBackfillMsg")}
+        confirmLabel={t("admin.executeNow")}
         loading={backfillLoading}
         onConfirm={() => {
           setConfirmBackfillLive(false);
@@ -662,14 +663,14 @@ export default function AdminLevelsPage() {
   );
 }
 
-function renderSingleResult(u: BackfillUserResult) {
+function renderSingleResult(u: BackfillUserResult, t: (k: string) => string) {
   return (
     <div className="space-y-1">
       <div>
-        <span className="text-[color:var(--ink-muted)]">用户:</span> #{u.userId}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultUser")}</span> #{u.userId}
       </div>
       <div>
-        <span className="text-[color:var(--ink-muted)]">等级:</span> Lv
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultLevel")}</span> Lv
         {u.beforeLevel} → Lv{u.afterLevel}
         {u.pendingLevel ? ` (pending Lv${u.pendingLevel})` : ""}
       </div>
@@ -679,37 +680,37 @@ function renderSingleResult(u: BackfillUserResult) {
       </div>
       {u.dryRun && (
         <div className="pt-1 text-[color:var(--ink-muted)]">
-          Dry Run — 未写入数据库
+          {t("admin.dryRunNote")}
         </div>
       )}
     </div>
   );
 }
 
-function renderSummaryResult(s: BackfillSummary) {
+function renderSummaryResult(s: BackfillSummary, t: (k: string) => string) {
   return (
     <div className="space-y-1">
       <div>
-        <span className="text-[color:var(--ink-muted)]">扫描:</span> {s.scanned}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultScanned")}</span> {s.scanned}
       </div>
       <div>
-        <span className="text-[color:var(--ink-muted)]">实际升级:</span>{" "}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultUpgraded")}</span>{" "}
         {s.upgraded}
       </div>
       <div>
-        <span className="text-[color:var(--ink-muted)]">Lv4 新 PENDING:</span>{" "}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultPendingCreated")}</span>{" "}
         {s.pendingCreated}
       </div>
       <div>
-        <span className="text-[color:var(--ink-muted)]">错误:</span> {s.errors}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultErrors")}</span> {s.errors}
       </div>
       <div>
-        <span className="text-[color:var(--ink-muted)]">等级分布:</span>{" "}
+        <span className="text-[color:var(--ink-muted)]">{t("admin.resultDistribution")}</span>{" "}
         <code className="text-[11px]">{JSON.stringify(s.levelDistribution)}</code>
       </div>
       {s.dryRun && (
         <div className="pt-1 text-[color:var(--ink-muted)]">
-          Dry Run — 未写入数据库
+          {t("admin.dryRunNote")}
         </div>
       )}
     </div>

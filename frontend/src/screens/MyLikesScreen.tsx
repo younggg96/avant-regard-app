@@ -10,6 +10,7 @@ import {
     Image as RNImage,
     StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -50,6 +51,7 @@ const styles = StyleSheet.create({
 });
 
 const MyLikesScreen = () => {
+    const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState<TabType>("posts");
@@ -218,10 +220,10 @@ const MyLikesScreen = () => {
                         color={theme.colors.gray200}
                     />
                     <Text color="$gray400" mt="$md" fontSize="$md">
-                        还没有点赞过帖子
+                        {t("myLikes.noLikes")}
                     </Text>
                     <Text color="$gray300" mt="$xs" fontSize="$sm">
-                        去发现页浏览内容并点赞吧
+                        {t("myLikes.emptyPostsHint")}
                     </Text>
                 </VStack>
             );
@@ -379,10 +381,10 @@ const MyLikesScreen = () => {
                         color={theme.colors.gray200}
                     />
                     <Text color="$gray400" mt="$md" fontSize="$md">
-                        还没有点赞过评论
+                        {t("myLikes.noLikedComments")}
                     </Text>
                     <Text color="$gray300" mt="$xs" fontSize="$sm">
-                        去帖子详情查看并点赞评论吧
+                        {t("myLikes.emptyCommentsHint")}
                     </Text>
                 </VStack>
             );
@@ -403,8 +405,8 @@ const MyLikesScreen = () => {
     };
 
     const tabs: { id: TabType; label: string; count: number }[] = [
-        { id: "posts", label: "帖子", count: likedPosts.length },
-        { id: "comments", label: "评论", count: likedComments.length },
+        { id: "posts", label: t("myLikes.posts"), count: likedPosts.length },
+        { id: "comments", label: t("myLikes.comments"), count: likedComments.length },
     ];
 
     const handleTabPress = (tabId: TabType) => {
@@ -430,7 +432,7 @@ const MyLikesScreen = () => {
             style={{ flex: 1, backgroundColor: theme.colors.white }}
             edges={["top"]}
         >
-            <ScreenHeader title="我的点赞" showBack={true} />
+            <ScreenHeader title={t("myLikes.title")} showBack={true} />
 
             {/* 标签栏 */}
             <HStack

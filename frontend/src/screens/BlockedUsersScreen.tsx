@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Text, HStack } from "../components/ui";
@@ -20,6 +21,7 @@ import {
 } from "../services/moderationService";
 
 const BlockedUsersScreen = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [unblockingId, setUnblockingId] = useState<number | null>(null);
@@ -91,7 +93,7 @@ const BlockedUsersScreen = () => {
           <ActivityIndicator size="small" color={theme.colors.white} />
         ) : (
           <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-            取消屏蔽
+            {t("blockedUsers.unblock")}
           </Text>
         )}
       </TouchableOpacity>
@@ -103,7 +105,7 @@ const BlockedUsersScreen = () => {
     return (
       <View style={styles.emptyContainer}>
         <Text fontSize="$md" color="$gray400">
-          暂无屏蔽的用户
+          {t("blockedUsers.noBlocked")}
         </Text>
       </View>
     );
@@ -111,7 +113,7 @@ const BlockedUsersScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="屏蔽用户管理" showBack={true} />
+      <ScreenHeader title={t("blockedUsers.title")} showBack={true} />
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.white} />

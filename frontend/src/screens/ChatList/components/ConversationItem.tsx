@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
@@ -15,6 +16,7 @@ export const ConversationItem = ({
   conversation,
   onPress,
 }: ConversationItemProps) => {
+  const { t } = useTranslation();
   const other = conversation.otherUser;
   const hasUnread = conversation.unreadCount > 0;
 
@@ -35,7 +37,7 @@ export const ConversationItem = ({
         <View style={styles.conversationHeader}>
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
             <Text style={[styles.conversationName, { flex: 0, flexShrink: 1 }]} numberOfLines={1}>
-              {other?.username || "未知用户"}
+              {other?.username || t("interaction.unknownUser")}
             </Text>
             {other?.primaryTitle ? (
               <View style={styles.titleBadge}>

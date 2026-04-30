@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Box, Pressable, HStack, VStack, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
@@ -33,6 +34,7 @@ export const ChatHeader = ({
   onProfile,
   onBlocked,
 }: ChatHeaderProps) => {
+  const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [blocking, setBlocking] = useState(false);
@@ -43,10 +45,10 @@ export const ChatHeader = ({
     try {
       await moderationService.blockUser(otherUserId);
       setShowBlockConfirm(false);
-      Alert.show(`已屏蔽 ${name}`);
+      Alert.show(t("chat.blocked", { name }));
       onBlocked?.();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "屏蔽失败";
+      const msg = error instanceof Error ? error.message : t("chat.blockFailed");
       Alert.show(msg);
     } finally {
       setBlocking(false);
@@ -55,17 +57,17 @@ export const ChatHeader = ({
 
   const menuActions = useMemo<ActionSheetAction[]>(() => [
     {
-      label: "查看资料",
+      label: t("chat.viewProfile"),
       icon: <Ionicons name="person-outline" size={20} color={theme.colors.black} />,
       onPress: () => onProfile(),
     },
     {
-      label: "屏蔽用户",
+      label: t("chat.blockUser"),
       icon: <Ionicons name="ban-outline" size={20} color={theme.colors.error} />,
       destructive: true,
       onPress: () => setShowBlockConfirm(true),
     },
-  ], [onProfile]);
+  ], [onProfile, t]);
 
   return (
     <>
@@ -133,9 +135,9 @@ export const ChatHeader = ({
               color={theme.colors.error}
               style={{ alignSelf: "center", marginBottom: 12 }}
             />
-            <Text style={styles.confirmTitle}>屏蔽 @{name}？</Text>
+            <Text style={styles.confirmTitle}>{t("chat.blockConfirmTitle", { name })}</Text>
             <Text style={styles.confirmMessage}>
-              屏蔽后，该用户的帖子和聊天消息将对你不可见，对方发送的消息也将被静默拒绝。你可以随时在设置中取消屏蔽。
+              {t("chat.blockConfirmMessage")}
             </Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity
@@ -143,7 +145,7 @@ export const ChatHeader = ({
                 onPress={() => setShowBlockConfirm(false)}
                 disabled={blocking}
               >
-                <Text style={styles.confirmCancelText}>取消</Text>
+                <Text style={styles.confirmCancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.confirmBlockBtn, blocking && { opacity: 0.6 }]}
@@ -153,7 +155,7 @@ export const ChatHeader = ({
                 {blocking ? (
                   <ActivityIndicator size="small" color={theme.colors.white} />
                 ) : (
-                  <Text style={styles.confirmBlockText}>确认屏蔽</Text>
+                  <Text style={styles.confirmBlockText}>{t("chat.confirmBlock")}</Text>
                 )}
               </TouchableOpacity>
             </View>

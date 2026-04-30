@@ -6,6 +6,7 @@ import {
   Modal,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, AdminBrandSubmission } from "../../services/adminService";
@@ -14,6 +15,7 @@ import { Box, HStack, VStack, Text, Input, Button, ButtonText, ScrollView, Optim
 import { ImageSize } from "../../utils/imageUtils";
 
 const BrandSubmissionsTab = () => {
+  const { t } = useTranslation();
   const [submissions, setSubmissions] = useState<AdminBrandSubmission[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,8 +30,8 @@ const BrandSubmissionsTab = () => {
       const result = await adminService.getPendingBrandSubmissions();
       setSubmissions(result);
     } catch (error) {
-      console.error("获取品牌提交列表失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取品牌提交列表失败");
+      console.error("fetchBrandSubmissions failed:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchBrandSubmissionsFailed"));
     } finally {
       setLoading(false);
     }
@@ -46,18 +48,18 @@ const BrandSubmissionsTab = () => {
   }, [fetchSubmissions]);
 
   const handleApprove = async (id: number) => {
-    Alert.alert("确认审核", "确定要通过这个品牌提交吗？通过后将添加到品牌列表。", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmReview"), t("admin.confirmApproveBrand"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确认通过",
+        text: t("admin.confirmApprove"),
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.approveBrandSubmission(id);
-            Alert.alert("成功", "品牌已审核通过并添加到品牌列表");
+            Alert.alert(t("common.success"), t("admin.brandApproved"));
             fetchSubmissions();
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -77,11 +79,11 @@ const BrandSubmissionsTab = () => {
     try {
       setActionLoading(true);
       await adminService.rejectBrandSubmission(selectedId, rejectReason || undefined);
-      Alert.alert("已拒绝", "品牌提交已被拒绝");
+      Alert.alert(t("admin.rejected"), t("admin.brandRejected"));
       setRejectModalVisible(false);
       fetchSubmissions();
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -97,12 +99,12 @@ const BrandSubmissionsTab = () => {
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} size="small" />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : submissions.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
-            <Text style={sharedStyles.emptyText}>暂无待审核的品牌提交</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noPendingBrandSubmissions")}</Text>
           </Box>
         ) : (
           submissions.map((submission) => (
@@ -127,13 +129,13 @@ const BrandSubmissionsTab = () => {
               )}
 
               <VStack style={styles.metaList}>
-                {submission.category && <Text style={sharedStyles.postMeta as any}>分类: {submission.category}</Text>}
-                {submission.founder && <Text style={sharedStyles.postMeta as any}>创始人: {submission.founder}</Text>}
-                {submission.foundedYear && <Text style={sharedStyles.postMeta as any}>创立年份: {submission.foundedYear}</Text>}
-                {submission.country && <Text style={sharedStyles.postMeta as any}>国家: {submission.country}</Text>}
+                {submission.category && <Text style={sharedStyles.postMeta as any}>{t("admin.category")} {submission.category}</Text>}
+                {submission.founder && <Text style={sharedStyles.postMeta as any}>{t("admin.founder")} {submission.founder}</Text>}
+                {submission.foundedYear && <Text style={sharedStyles.postMeta as any}>{t("admin.foundedYear")} {submission.foundedYear}</Text>}
+                {submission.country && <Text style={sharedStyles.postMeta as any}>{t("admin.country")} {submission.country}</Text>}
                 {submission.website && (
                   <Text style={[sharedStyles.postContent, { color: theme.colors.gray500 }]} numberOfLines={1}>
-                    官网: {submission.website}
+                    {t("admin.website")} {submission.website}
                   </Text>
                 )}
               </VStack>
@@ -146,7 +148,7 @@ const BrandSubmissionsTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>通过</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -155,7 +157,7 @@ const BrandSubmissionsTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="close-circle" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>拒绝</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -167,11 +169,11 @@ const BrandSubmissionsTab = () => {
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
-            <Text style={sharedStyles.modalTitle}>拒绝原因</Text>
+            <Text style={sharedStyles.modalTitle}>{t("admin.rejectReason")}</Text>
             <Input
               variant="outline"
               size="md"
-              placeholder="请输入拒绝原因（可选）"
+              placeholder={t("admin.rejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={rejectReason}
               onChangeText={setRejectReason}
@@ -180,10 +182,10 @@ const BrandSubmissionsTab = () => {
             />
             <HStack style={sharedStyles.modalButtons}>
               <Button variant="outline" size="sm" onPress={() => setRejectModalVisible(false)}>
-                <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
               </Button>
               <Button size="sm" colorScheme="error" onPress={handleConfirmReject} disabled={actionLoading} isLoading={actionLoading}>
-                <ButtonText>确认拒绝</ButtonText>
+                <ButtonText>{t("admin.confirmReject")}</ButtonText>
               </Button>
             </HStack>
           </Box>

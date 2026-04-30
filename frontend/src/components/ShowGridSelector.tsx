@@ -1,5 +1,6 @@
 import React from "react";
 import { Dimensions, StyleSheet, View, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
@@ -33,9 +34,11 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
   onRemoveShow,
   onAddShow,
   maxShows = 6,
-  label = "关联秀场",
+  label,
   required = false,
 }) => {
+  const { t } = useTranslation();
+  const displayLabel = label || t("showSelector.linkedShows");
   const showWidth = (screenWidth - 48 - 16) / 3;
   const showHeight = showWidth * 1.4;
 
@@ -43,7 +46,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text color="$gray600" fontSize="$sm">
-          {label}
+          {displayLabel}
         </Text>
         {required && (
           <Text color="$red500" fontSize="$sm" ml="$xs">
@@ -124,7 +127,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               color={theme.colors.gray400}
             />
             <Text color="$gray400" fontSize="$xs" mt="$xs">
-              添加秀场
+              {t("showSelector.addShow")}
             </Text>
           </Pressable>
         )}

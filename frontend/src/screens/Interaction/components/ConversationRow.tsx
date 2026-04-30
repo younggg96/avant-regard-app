@@ -1,6 +1,7 @@
 import React from "react";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
@@ -19,10 +20,11 @@ interface ConversationRowProps {
 }
 
 export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowProps) => {
+  const { t } = useTranslation();
   const other = item.otherUser;
   const hasUnread = item.unreadCount > 0;
   const isCs = other?.userId === CS_USER_ID;
-  const displayName = isCs ? CS_DISPLAY_NAME : (other?.username || "未知用户");
+  const displayName = isCs ? CS_DISPLAY_NAME : (other?.username || t("interaction.unknownUser"));
 
   return (
     <Pressable

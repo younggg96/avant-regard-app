@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { AdminRequired } from "@/components/admin/AdminRequired";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { getServerT } from "@/lib/i18n/server";
 
-export const metadata = {
-  title: "管理后台",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = getServerT();
+  return { title: t("admin.title") };
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (

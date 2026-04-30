@@ -1,5 +1,6 @@
 import React from "react";
 import { ActivityIndicator, Image as RNImage } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
@@ -36,7 +37,9 @@ const ReplyItem: React.FC<{
   onUserPress: (userId: number, userName: string, userAvatar: string) => void;
   onReply: () => void;
   onReport: () => void;
-}> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply, onReport }) => (
+}> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply, onReport }) => {
+  const { t } = useTranslation();
+  return (
   <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} borderLeftColor="$gray200">
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
@@ -98,13 +101,13 @@ const ReplyItem: React.FC<{
         </Pressable>
         <Pressable onPress={onReply}>
           <Text fontSize="$xs" color="$gray500">
-            回复
+            {t("postDetail.reply")}
           </Text>
         </Pressable>
         {isOwner ? (
           <Pressable onPress={onDelete}>
             <Text fontSize="$xs" color="$error">
-              删除
+              {t("postDetail.delete")}
             </Text>
           </Pressable>
         ) : (
@@ -112,7 +115,7 @@ const ReplyItem: React.FC<{
             <HStack space="xs" alignItems="center">
               <Ionicons name="flag-outline" size={12} color={theme.colors.gray400} />
               <Text fontSize="$xs" color="$gray500">
-                举报
+                {t("postDetail.report")}
               </Text>
             </HStack>
           </Pressable>
@@ -120,7 +123,8 @@ const ReplyItem: React.FC<{
       </HStack>
     </VStack>
   </HStack>
-);
+  );
+};
 
 // 单条评论组件
 const CommentItem: React.FC<{
@@ -149,7 +153,9 @@ const CommentItem: React.FC<{
   onToggleReplies,
   onReport,
   onReportReply,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
     <VStack mt="$md">
       <HStack space="sm">
         <Pressable
@@ -206,13 +212,13 @@ const CommentItem: React.FC<{
             </Pressable>
             <Pressable onPress={onReply}>
               <Text fontSize="$xs" color="$gray600">
-                回复
+                {t("postDetail.reply")}
               </Text>
             </Pressable>
             {currentUserId === comment.userId ? (
               <Pressable onPress={onDelete}>
                 <Text fontSize="$xs" color="$error">
-                  删除
+                  {t("postDetail.delete")}
                 </Text>
               </Pressable>
             ) : (
@@ -220,7 +226,7 @@ const CommentItem: React.FC<{
                 <HStack space="xs" alignItems="center">
                   <Ionicons name="flag-outline" size={13} color={theme.colors.gray400} />
                   <Text fontSize="$xs" color="$gray600">
-                    举报
+                    {t("postDetail.report")}
                   </Text>
                 </HStack>
               </Pressable>
@@ -228,7 +234,7 @@ const CommentItem: React.FC<{
             {comment.replyCount > 0 && !comment.showReplies && (
               <Pressable onPress={onToggleReplies}>
                 <Text fontSize="$xs" color="$accent" fontWeight="$medium">
-                  查看 {comment.replyCount} 条回复
+                  {t("postDetail.viewReplies", { count: comment.replyCount })}
                 </Text>
               </Pressable>
             )}
@@ -254,7 +260,7 @@ const CommentItem: React.FC<{
           {comment.replies.length > 0 && (
             <Pressable onPress={onToggleReplies} mt="$sm" ml="$xl" pl="$md">
               <Text fontSize="$xs" color="$gray500">
-                收起回复
+                {t("postDetail.collapseReplies")}
               </Text>
             </Pressable>
           )}
@@ -262,6 +268,7 @@ const CommentItem: React.FC<{
       )}
     </VStack>
   );
+};
 
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
   comments,
@@ -277,7 +284,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   onToggleReplies,
   onReportComment,
 }) => {
-  // 草稿和审核中的帖子不显示评论
+  const { t } = useTranslation();
   const showComments: boolean = postStatus === "PUBLISHED";
 
   if (!showComments) {
@@ -298,8 +305,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         />
         <Text fontSize="$md" color="$gray600" textAlign="center">
           {postStatus === "DRAFT"
-            ? "草稿暂不支持评论，请先完成编辑并发布"
-            : "内容正在审核中，审核通过后可以查看评论"}
+            ? t("postDetail.draftNoComments")
+            : t("postDetail.pendingNoComments")}
         </Text>
       </VStack>
     );
@@ -321,7 +328,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       borderTopColor="$gray100"
     >
       <Text fontSize="$lg" fontWeight="$semibold" color="$black">
-        评论 ({totalComments})
+        {t("postDetail.comments", { count: totalComments })}
       </Text>
 
       {/* Loading State */}
@@ -344,7 +351,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             color={theme.colors.gray300}
           />
           <Text fontSize="$sm" color="$gray400" mt="$sm">
-            暂无评论，快来发表第一条评论吧
+            {t("postDetail.noComments")}
           </Text>
         </Box>
       )}

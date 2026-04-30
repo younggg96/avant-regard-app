@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { recommendApi, type RecommendConfig } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -15,6 +16,7 @@ import {
 const ALL_GRADES = ["S", "A", "B", "C", "D"];
 
 export default function RecommendPage() {
+  const { t } = useTranslation();
   const [config, setConfig] = useState<RecommendConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,7 +61,7 @@ export default function RecommendPage() {
     const discovery = Number(discoveryRatio) || 0;
     const random = Number(randomRatio) || 0;
     if (core + discovery + random !== 100) {
-      alert("三个池的比例必须合计 100%");
+      alert(t("admin.ratioError"));
       return;
     }
 
@@ -82,59 +84,59 @@ export default function RecommendPage() {
 
   return (
     <div>
-      <PageHeader title="推荐配置" description="调整推荐算法的池比例和等级筛选" />
+      <PageHeader title={t("admin.recommend")} description={t("admin.recommendDesc")} />
 
       <div className="mx-auto max-w-xl space-y-6">
         <section className="rounded-lg border border-[var(--border)] p-5 space-y-4">
-          <h3 className="font-label text-[13px] font-semibold">推荐池比例</h3>
+          <h3 className="font-label text-[13px] font-semibold">{t("admin.poolRatios")}</h3>
           <div className="grid grid-cols-3 gap-4">
-            <FormField label="核心池 (%)">
+            <FormField label={t("admin.corePool")}>
               <TextInput value={coreRatio} onChange={(v) => { setCoreRatio(v); setDirty(true); }} type="number" />
             </FormField>
-            <FormField label="发现池 (%)">
+            <FormField label={t("admin.discoveryPool")}>
               <TextInput value={discoveryRatio} onChange={(v) => { setDiscoveryRatio(v); setDirty(true); }} type="number" />
             </FormField>
-            <FormField label="随机池 (%)">
+            <FormField label={t("admin.randomPool")}>
               <TextInput value={randomRatio} onChange={(v) => { setRandomRatio(v); setDirty(true); }} type="number" />
             </FormField>
           </div>
           <p className={`font-label text-[12px] ${ratioSum === 100 ? "text-[var(--ink)]" : "text-[color:var(--ink-muted)]"}`}>
-            合计: {ratioSum}%{ratioSum !== 100 && " (必须为 100%)"}
+            {t("admin.ratioTotal", { sum: ratioSum })}{ratioSum !== 100 && ` (${t("admin.ratioMustBe100")})`}
           </p>
         </section>
 
         <section className="rounded-lg border border-[var(--border)] p-5 space-y-4">
-          <h3 className="font-label text-[13px] font-semibold">核心池等级</h3>
+          <h3 className="font-label text-[13px] font-semibold">{t("admin.corePoolGrades")}</h3>
           <GradeChips grades={config.core_pool.grades} onToggle={(g) => toggleGrade("core_pool", g)} />
         </section>
 
         <section className="rounded-lg border border-[var(--border)] p-5 space-y-4">
-          <h3 className="font-label text-[13px] font-semibold">发现池</h3>
+          <h3 className="font-label text-[13px] font-semibold">{t("admin.discoveryPoolLabel")}</h3>
           <Toggle
             checked={config.discovery_pool.enabled}
             onChange={(v) => { setConfig({ ...config, discovery_pool: { enabled: v } }); setDirty(true); }}
-            label="启用发现池"
+            label={t("admin.enableDiscovery")}
           />
         </section>
 
         <section className="rounded-lg border border-[var(--border)] p-5 space-y-4">
-          <h3 className="font-label text-[13px] font-semibold">随机池等级</h3>
+          <h3 className="font-label text-[13px] font-semibold">{t("admin.randomPoolGrades")}</h3>
           <GradeChips grades={config.random_pool.grades} onToggle={(g) => toggleGrade("random_pool", g)} />
         </section>
 
         <section className="rounded-lg border border-[var(--border)] p-5 space-y-4">
-          <h3 className="font-label text-[13px] font-semibold">冷启动</h3>
-          <FormField label="天数">
+          <h3 className="font-label text-[13px] font-semibold">{t("admin.coldStart")}</h3>
+          <FormField label={t("admin.coldDays")}>
             <TextInput value={coldDays} onChange={(v) => { setColdDays(v); setDirty(true); }} type="number" />
           </FormField>
           <div>
-            <span className="font-label text-[12px] text-[color:var(--ink-muted)]">等级:</span>
+            <span className="font-label text-[12px] text-[color:var(--ink-muted)]">{t("admin.grades")}</span>
             <GradeChips grades={config.cold_start.grades} onToggle={(g) => toggleGrade("cold_start", g)} />
           </div>
         </section>
 
         <Button onClick={handleSave} loading={saving} disabled={!dirty || ratioSum !== 100}>
-          保存配置
+          {t("admin.saveConfig")}
         </Button>
       </div>
     </div>

@@ -18,6 +18,7 @@
 
 import { Suspense, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import type { BuyerStore } from "@/lib/services/buyer-store";
@@ -37,11 +38,14 @@ import {
 
 type TabKey = "home" | "all" | "new";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "home", label: "店铺首页" },
-  { key: "all", label: "全部商品" },
-  { key: "new", label: "上新" },
-];
+function useTabs() {
+  const { t } = useTranslation();
+  return [
+    { key: "home" as TabKey, label: t("store.tabHome") },
+    { key: "all" as TabKey, label: t("store.tabAll") },
+    { key: "new" as TabKey, label: t("store.tabNew") },
+  ];
+}
 
 export function StoreDetailView({
   initialStore,
@@ -56,6 +60,8 @@ export function StoreDetailView({
 }
 
 function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
+  const { t } = useTranslation();
+  const TABS = useTabs();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -136,7 +142,7 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
           break;
         case "EVENT":
           // Phase 5 / B 还没实现活动列表页；给个 toast 告诉用户.
-          setToast("活动入口尚未开放，敬请期待");
+          setToast(t("store.eventNotOpen"));
           setTimeout(() => setToast(null), 2400);
           break;
       }
@@ -157,8 +163,8 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
 
   const activeFilterLabel = useMemo(() => {
     const parts: string[] = [];
-    if (urlCategoryId) parts.push(`分类 #${urlCategoryId}`);
-    if (urlHasDiscount) parts.push("仅折扣");
+    if (urlCategoryId) parts.push(t("store.categoryFilter", { id: urlCategoryId }));
+    if (urlHasDiscount) parts.push(t("store.discountOnly"));
     return parts.join(" · ");
   }, [urlCategoryId, urlHasDiscount]);
 
@@ -166,7 +172,7 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
     <article className="mx-auto max-w-content px-6 py-8 md:py-10">
       <nav className="mb-6 flex items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
         <Link href="/stores" className="hover:text-[var(--ink)]">
-          ← 买手店
+          {t("store.backToStores")}
         </Link>
       </nav>
 
@@ -206,13 +212,13 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
       {/* 过滤标签（分类 / 折扣）仅在 all tab 有值时展示；提供"清空"按钮 */}
       {tab === "all" && activeFilterLabel && (
         <div className="mb-4 flex items-center gap-2 font-label text-[12px] text-[color:var(--ink-muted)]">
-          <span>筛选：{activeFilterLabel}</span>
+          <span>{t("store.filter", { label: activeFilterLabel })}</span>
           <button
             type="button"
             onClick={() => setTab("all")}
             className="text-[var(--ink)] underline-offset-4 hover:underline"
           >
-            清除
+            {t("store.clearFilterBtn")}
           </button>
         </div>
       )}
@@ -228,7 +234,7 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
             storeId={storeId}
             preview={{
               pageSize: 8,
-              title: "近期上新",
+              title: t("store.recentNew"),
               viewAllHref: `/stores/${encodeURIComponent(storeId)}?tab=new`,
             }}
             filters={{ isNew: true }}

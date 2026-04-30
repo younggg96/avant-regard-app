@@ -1,28 +1,30 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   StyleSheet,
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, BroadcastNotificationResult } from "../../services/adminService";
 import { Box, HStack, VStack, Text, Input, Pressable, ScrollView } from "../../components/ui";
 
-const PAGE_OPTIONS = [
-  { value: "", label: "请选择页面" },
-  { value: "PostDetail", label: "帖子详情", paramLabel: "帖子ID (postId)" },
-  { value: "UserProfile", label: "用户主页", paramLabel: "用户ID (userId)" },
-  { value: "BrandDetail", label: "品牌详情", paramLabel: "品牌ID (brandId)" },
-  { value: "CollectionDetail", label: "秀场详情", paramLabel: "秀场ID (id)" },
-  { value: "CommunityDetail", label: "社区详情", paramLabel: "社区ID (communityId)" },
-  { value: "StoreDetail", label: "店铺详情", paramLabel: "店铺ID (storeId)" },
-  { value: "Discover", label: "发现页", paramLabel: "" },
-  { value: "Profile", label: "个人中心", paramLabel: "" },
-];
-
 const BroadcastTab = () => {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
+
+  const PAGE_OPTIONS = useMemo(() => [
+    { value: "", label: t("admin.broadcastSelectPage") },
+    { value: "PostDetail", label: t("admin.broadcastPostDetail"), paramLabel: "postId (postId)" },
+    { value: "UserProfile", label: t("admin.broadcastUserProfile"), paramLabel: "userId (userId)" },
+    { value: "BrandDetail", label: t("admin.broadcastBrandDetail"), paramLabel: "brandId (brandId)" },
+    { value: "CollectionDetail", label: t("admin.broadcastShowDetail"), paramLabel: "id (id)" },
+    { value: "CommunityDetail", label: t("admin.broadcastCommunityDetail"), paramLabel: "communityId (communityId)" },
+    { value: "StoreDetail", label: t("admin.broadcastStoreDetail"), paramLabel: "storeId (storeId)" },
+    { value: "Discover", label: t("admin.broadcastDiscover"), paramLabel: "" },
+    { value: "Profile", label: t("admin.broadcastProfile"), paramLabel: "" },
+  ], [t]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BroadcastNotificationResult | null>(null);
@@ -50,38 +52,38 @@ const BroadcastTab = () => {
 
   const getLinkDescription = () => {
     if (linkType === "URL" && externalUrl.trim()) {
-      return `外部链接: ${externalUrl}`;
+      return `${t("admin.broadcastExternalLink")}: ${externalUrl}`;
     } else if (linkType === "PAGE" && navigateTo) {
       const selectedPage = PAGE_OPTIONS.find((p) => p.value === navigateTo);
       const pageName = selectedPage?.label || navigateTo;
-      return navigateParam.trim() ? `跳转到: ${pageName} (${navigateParam})` : `跳转到: ${pageName}`;
+      return navigateParam.trim() ? `${pageName} (${navigateParam})` : pageName;
     }
-    return "无跳转";
+    return t("admin.broadcastNoLink");
   };
 
   const handleSend = async () => {
     if (!title.trim()) {
-      Alert.alert("提示", "请输入通知标题");
+      Alert.alert(t("admin.hint"), t("admin.broadcastEnterTitle"));
       return;
     }
     if (!message.trim()) {
-      Alert.alert("提示", "请输入通知内容");
+      Alert.alert(t("admin.hint"), t("admin.broadcastEnterContent"));
       return;
     }
     if (linkType === "URL" && !externalUrl.trim()) {
-      Alert.alert("提示", "请输入外部链接地址");
+      Alert.alert(t("admin.hint"), t("admin.broadcastEnterUrl"));
       return;
     }
     if (linkType === "PAGE" && !navigateTo) {
-      Alert.alert("提示", "请选择要跳转的页面");
+      Alert.alert(t("admin.hint"), t("admin.broadcastSelectPageHint"));
       return;
     }
 
     const linkDesc = getLinkDescription();
-    Alert.alert("确认发送", `确定要向所有用户发送此通知吗？\n\n标题：${title}\n内容：${message}\n${linkDesc}`, [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.broadcastConfirmSend"), `${title}\n${message}\n${linkDesc}`, [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "确定发送",
+        text: t("admin.broadcastConfirmSendBtn"),
         onPress: async () => {
           try {
             setLoading(true);
@@ -94,10 +96,10 @@ const BroadcastTab = () => {
             });
             setResult(res);
             Alert.alert(
-              "发送完成",
-              `成功发送：${res.successCount} 人\n失败：${res.failCount} 人\n总用户数：${res.totalUsers} 人`,
+              t("admin.broadcastSendDone"),
+              `${t("common.success")}：${res.successCount}\n${t("common.failed")}：${res.failCount}\n${t("admin.broadcastTotalUsers")}：${res.totalUsers}`,
               [{
-                text: "确定",
+                text: t("common.confirm"),
                 onPress: () => {
                   setTitle("");
                   setMessage("");
@@ -109,7 +111,7 @@ const BroadcastTab = () => {
               }]
             );
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "发送通知失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.broadcastSendFailed"));
           } finally {
             setLoading(false);
           }
@@ -123,16 +125,16 @@ const BroadcastTab = () => {
       <Box style={styles.broadcastContainer}>
         <VStack style={styles.broadcastHeader}>
           <Ionicons name="megaphone" size={32} color={theme.colors.black} />
-          <Text style={styles.broadcastHeaderTitle}>发送广播通知</Text>
-          <Text style={styles.broadcastHeaderSubtitle}>向所有用户发送系统通知和推送消息</Text>
+          <Text style={styles.broadcastHeaderTitle}>{t("admin.broadcastTitle")}</Text>
+          <Text style={styles.broadcastHeaderSubtitle}>{t("admin.broadcastSubtitle")}</Text>
         </VStack>
 
         <VStack style={styles.broadcastForm}>
           <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>通知标题 *</Text>
+            <Text style={styles.broadcastLabel}>{t("admin.broadcastTitleLabel")}</Text>
             <Input
               style={styles.broadcastInput}
-              placeholder="请输入通知标题（最多100字）"
+              placeholder={t("admin.broadcastTitlePlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={title}
               onChangeText={setTitle}
@@ -144,10 +146,10 @@ const BroadcastTab = () => {
           </VStack>
 
           <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>通知内容 *</Text>
+            <Text style={styles.broadcastLabel}>{t("admin.broadcastContentLabel")}</Text>
             <Input
               style={[styles.broadcastInput, styles.broadcastTextarea]}
-              placeholder="请输入通知内容（最多500字）"
+              placeholder={t("admin.broadcastContentPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={message}
               onChangeText={setMessage}
@@ -162,11 +164,11 @@ const BroadcastTab = () => {
           </VStack>
 
           <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>点击跳转（可选）</Text>
+            <Text style={styles.broadcastLabel}>{t("admin.broadcastLinkLabel")}</Text>
             <HStack style={styles.broadcastLinkTypeRow}>
               {(["NONE", "PAGE", "URL"] as const).map((type) => {
                 const iconMap = { NONE: "close-circle-outline", PAGE: "phone-portrait-outline", URL: "link-outline" } as const;
-                const labelMap = { NONE: "无跳转", PAGE: "应用内页面", URL: "外部链接" };
+                const labelMap = { NONE: t("admin.broadcastNoLink"), PAGE: t("admin.broadcastInAppPage"), URL: t("admin.broadcastExternalLink") };
                 return (
                   <Pressable
                     key={type}
@@ -184,7 +186,7 @@ const BroadcastTab = () => {
 
             {linkType === "PAGE" && (
               <Box style={styles.broadcastLinkPageContainer}>
-                <Text style={styles.broadcastLinkSubLabel}>选择页面</Text>
+                <Text style={styles.broadcastLinkSubLabel}>{t("admin.broadcastSelectPageLabel")}</Text>
                 <Box style={styles.broadcastPageOptions}>
                   {PAGE_OPTIONS.filter((p) => p.value).map((page) => (
                     <Pressable
@@ -211,7 +213,7 @@ const BroadcastTab = () => {
                         </Text>
                         <Input
                           style={styles.broadcastInput}
-                          placeholder="请输入参数值"
+                          placeholder={t("admin.broadcastParamPlaceholder")}
                           placeholderTextColor={theme.colors.gray300}
                           value={navigateParam}
                           onChangeText={setNavigateParam}
@@ -220,7 +222,7 @@ const BroadcastTab = () => {
                         />
                       </>
                     ) : (
-                      <Text style={styles.broadcastLinkHint}>此页面无需参数</Text>
+                      <Text style={styles.broadcastLinkHint}>{t("admin.broadcastNoParamNeeded")}</Text>
                     )}
                   </Box>
                 )}
@@ -229,7 +231,7 @@ const BroadcastTab = () => {
 
             {linkType === "URL" && (
               <Box style={styles.broadcastLinkUrlContainer}>
-                <Text style={styles.broadcastLinkSubLabel}>链接地址</Text>
+                <Text style={styles.broadcastLinkSubLabel}>{t("admin.broadcastUrlLabel")}</Text>
                 <Input
                   style={styles.broadcastInput}
                   placeholder="https://example.com"
@@ -242,21 +244,21 @@ const BroadcastTab = () => {
                   variant="outline"
                   size="md"
                 />
-                <Text style={styles.broadcastLinkHint}>用户点击通知后将在浏览器中打开此链接</Text>
+                <Text style={styles.broadcastLinkHint}>{t("admin.broadcastUrlHint")}</Text>
               </Box>
             )}
           </VStack>
 
           {(title || message) && (
             <Box style={styles.broadcastPreview}>
-              <Text style={styles.broadcastPreviewLabel}>预览</Text>
+              <Text style={styles.broadcastPreviewLabel}>{t("admin.broadcastPreview")}</Text>
               <HStack style={styles.broadcastPreviewCard}>
                 <Box style={styles.broadcastPreviewIcon}>
                   <Ionicons name="notifications" size={20} color={theme.colors.white} />
                 </Box>
                 <Box style={styles.broadcastPreviewContent}>
-                  <Text style={styles.broadcastPreviewTitle} numberOfLines={1}>{title || "通知标题"}</Text>
-                  <Text style={styles.broadcastPreviewMessage} numberOfLines={2}>{message || "通知内容"}</Text>
+                  <Text style={styles.broadcastPreviewTitle} numberOfLines={1}>{title || t("admin.broadcastNotifTitle")}</Text>
+                  <Text style={styles.broadcastPreviewMessage} numberOfLines={2}>{message || t("admin.broadcastNotifContent")}</Text>
                   {linkType !== "NONE" && (
                     <HStack style={styles.broadcastPreviewLink}>
                       <Ionicons name={linkType === "URL" ? "open-outline" : "chevron-forward"} size={14} color={theme.colors.accent} />
@@ -278,26 +280,26 @@ const BroadcastTab = () => {
             ) : (
               <>
                 <Ionicons name="send" size={20} color={theme.colors.white} />
-                <Text style={styles.broadcastSendButtonText}>发送给所有用户</Text>
+                <Text style={styles.broadcastSendButtonText}>{t("admin.broadcastSendAll")}</Text>
               </>
             )}
           </Pressable>
 
           {result && (
             <Box style={styles.broadcastResultCard}>
-              <Text style={styles.broadcastResultTitle}>上次发送结果</Text>
+              <Text style={styles.broadcastResultTitle}>{t("admin.broadcastLastResult")}</Text>
               <HStack style={styles.broadcastResultRow}>
                 <Box style={styles.broadcastResultItem}>
                   <Text style={styles.broadcastResultNumber}>{result.successCount}</Text>
-                  <Text style={styles.broadcastResultLabel}>成功</Text>
+                  <Text style={styles.broadcastResultLabel}>{t("common.success")}</Text>
                 </Box>
                 <Box style={styles.broadcastResultItem}>
                   <Text style={[styles.broadcastResultNumber, { color: theme.colors.error }]}>{result.failCount}</Text>
-                  <Text style={styles.broadcastResultLabel}>失败</Text>
+                  <Text style={styles.broadcastResultLabel}>{t("common.failed")}</Text>
                 </Box>
                 <Box style={styles.broadcastResultItem}>
                   <Text style={styles.broadcastResultNumber}>{result.totalUsers}</Text>
-                  <Text style={styles.broadcastResultLabel}>总用户</Text>
+                  <Text style={styles.broadcastResultLabel}>{t("admin.broadcastTotalUsers")}</Text>
                 </Box>
               </HStack>
             </Box>
@@ -306,7 +308,7 @@ const BroadcastTab = () => {
           <HStack style={styles.broadcastTips}>
             <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
             <Text style={styles.broadcastTipsText}>
-              广播通知将同时保存到用户的通知列表并发送推送消息。请谨慎使用，避免打扰用户。
+              {t("admin.broadcastTips")}
             </Text>
           </HStack>
         </VStack>

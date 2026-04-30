@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { usersApi, type AdminUser, type UserTitle } from "@/lib/services/admin";
 import { LEVEL_TITLES } from "@/lib/levels/titles";
 import {
@@ -20,44 +21,30 @@ import {
 
 type UserKind = "ADMIN" | "MERCHANT" | "USER";
 
-/**
- * 根据后端返回的身份字段判定展示类型.
- *   - is_admin=True                                 -> ADMIN
- *   - 在 store_merchants 有 APPROVED 的入驻记录      -> MERCHANT
- *   - 其它                                          -> USER
- *
- * ADMIN 与 MERCHANT 同时成立时优先展示 ADMIN (权限最高, 避免误导).
- */
 function resolveUserKind(u: AdminUser): UserKind {
   if (u.isAdmin) return "ADMIN";
   if (u.merchant?.status === "APPROVED") return "MERCHANT";
   return "USER";
 }
 
-/**
- * 三档视觉区分 (不依赖 StatusBadge.variant, 因其已 deprecated / 被忽略):
- *   ADMIN    — 实心黑底, 最醒目
- *   MERCHANT — 描边,     次醒目
- *   USER     — 灰底,     默认
- */
-const KIND_STYLE: Record<UserKind, { label: string; className: string }> = {
-  ADMIN: {
-    label: "ADMIN",
-    className: "bg-[var(--ink)] text-[var(--canvas)]",
-  },
-  MERCHANT: {
-    label: "商家",
-    className:
-      "border border-[var(--ink)] bg-transparent text-[var(--ink)]",
-  },
-  USER: {
-    label: "USER",
-    className: "bg-[var(--canvas-raised)] text-[color:var(--ink-muted)]",
-  },
-};
-
-
 export default function UsersPage() {
+  const { t } = useTranslation();
+
+  const KIND_STYLE: Record<UserKind, { label: string; className: string }> = {
+    ADMIN: {
+      label: "ADMIN",
+      className: "bg-[var(--ink)] text-[var(--canvas)]",
+    },
+    MERCHANT: {
+      label: t("admin.merchant"),
+      className: "border border-[var(--ink)] bg-transparent text-[var(--ink)]",
+    },
+    USER: {
+      label: "USER",
+      className: "bg-[var(--canvas-raised)] text-[color:var(--ink-muted)]",
+    },
+  };
+
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -137,10 +124,10 @@ export default function UsersPage() {
 
   return (
     <div>
-      <PageHeader title="用户管理" description={`共 ${total} 位用户`} />
+      <PageHeader title={t("admin.users")} description={t("admin.userTotal", { count: total })} />
 
       <div className="mb-4 max-w-sm">
-        <SearchBar value={keyword} onChange={setKeyword} placeholder="搜索用户名、手机号…" />
+        <SearchBar value={keyword} onChange={setKeyword} placeholder={t("admin.searchUsers")} />
       </div>
 
       {loading ? (
@@ -153,13 +140,13 @@ export default function UsersPage() {
             <table className="w-full font-label text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">用户</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">类型</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">等级</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">头衔</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">数据</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">注册时间</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">操作</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colUser")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colType")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colLevel")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colTitles")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colData")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colRegTime")}</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -206,16 +193,16 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {user.titles?.map((t) => (
-                          <StatusBadge key={t.id} variant="info">{t.title}</StatusBadge>
+                        {user.titles?.map((tt) => (
+                          <StatusBadge key={tt.id} variant="info">{tt.title}</StatusBadge>
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)]">
-                      <div>帖子 {user.postCount ?? 0} · 粉丝 {user.followerCount ?? 0}</div>
+                      <div>{t("admin.postsCount", { count: user.postCount ?? 0 })} · {t("admin.followersCount", { count: user.followerCount ?? 0 })}</div>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)]">
-                      {new Date(user.createdAt).toLocaleDateString("zh-CN")}
+                      {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
@@ -223,13 +210,13 @@ export default function UsersPage() {
                           onClick={() => openTitles(user)}
                           className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          头衔
+                          {t("admin.manageTitles")}
                         </button>
                         <button
                           onClick={() => setDeleteTarget(user)}
                           className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                         >
-                          删除
+                          {t("admin.delete")}
                         </button>
                       </div>
                     </td>
@@ -245,9 +232,9 @@ export default function UsersPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="确认删除用户？"
-        message={`将永久删除用户 @${deleteTarget?.username} 及其所有数据，此操作不可撤销。`}
-        confirmLabel="删除"
+        title={t("admin.confirmDeleteUser")}
+        message={t("admin.deleteUserMsg", { username: deleteTarget?.username })}
+        confirmLabel={t("admin.delete")}
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -255,23 +242,23 @@ export default function UsersPage() {
 
       <FormDialog
         open={!!titlesUser}
-        title={`管理头衔 — @${titlesUser?.username}`}
+        title={t("admin.manageTitlesFor", { username: titlesUser?.username })}
         onClose={() => setTitlesUser(null)}
       >
         <div className="space-y-3">
           {titlesLoading && !titles.length ? (
-            <p className="text-center font-label text-[13px] text-[color:var(--ink-muted)]">加载中…</p>
+            <p className="text-center font-label text-[13px] text-[color:var(--ink-muted)]">{t("admin.loading")}</p>
           ) : titles.length === 0 ? (
-            <p className="text-center font-label text-[13px] text-[color:var(--ink-muted)]">暂无头衔</p>
+            <p className="text-center font-label text-[13px] text-[color:var(--ink-muted)]">{t("admin.noTitles")}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {titles.map((t) => (
+              {titles.map((tt) => (
                 <span
-                  key={t.id}
+                  key={tt.id}
                   className="inline-flex items-center gap-1 rounded-full bg-[var(--canvas-raised)] px-3 py-1 font-label text-[12px] text-[color:var(--ink-muted)]"
                 >
-                  {t.title}
-                  <button onClick={() => handleRemoveTitle(t.id)} className="text-[color:var(--ink-muted)] hover:text-[var(--ink)]">
+                  {tt.title}
+                  <button onClick={() => handleRemoveTitle(tt.id)} className="text-[color:var(--ink-muted)] hover:text-[var(--ink)]">
                     ×
                   </button>
                 </span>
@@ -280,16 +267,16 @@ export default function UsersPage() {
           )}
 
           <div className="flex gap-2">
-            <FormField label="新头衔">
+            <FormField label={t("admin.newTitle")}>
               <TextInput
                 value={newTitle}
                 onChange={setNewTitle}
-                placeholder="输入头衔名称"
+                placeholder={t("admin.titlePlaceholder")}
               />
             </FormField>
             <div className="flex items-end">
               <Button size="sm" onClick={handleAddTitle} disabled={!newTitle.trim()}>
-                添加
+                {t("admin.add")}
               </Button>
             </div>
           </div>

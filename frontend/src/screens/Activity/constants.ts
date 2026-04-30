@@ -3,11 +3,11 @@ import { NotificationType } from "../../services/notificationService";
 
 export type ActivityFilter = "all" | "like_collection" | "comment" | "follow";
 
-export const FILTER_TABS: { id: ActivityFilter; label: string }[] = [
-  { id: "all", label: "全部" },
-  { id: "like_collection", label: "赞与收藏" },
-  { id: "comment", label: "评论" },
-  { id: "follow", label: "关注" },
+export const FILTER_TABS: { id: ActivityFilter; labelKey: string }[] = [
+  { id: "all", labelKey: "activity.all" },
+  { id: "like_collection", labelKey: "activity.likesAndSaves" },
+  { id: "comment", labelKey: "activity.comments" },
+  { id: "follow", labelKey: "activity.follows" },
 ];
 
 export const EXCLUDED_TYPES: NotificationType[] = ["system", "mention"];

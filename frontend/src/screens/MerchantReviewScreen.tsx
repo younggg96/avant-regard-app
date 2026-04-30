@@ -22,6 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Text,
@@ -47,6 +48,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 type TabType = "pending" | "approved" | "all";
 
 const MerchantReviewScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
 
@@ -146,23 +148,23 @@ const MerchantReviewScreen = () => {
   // 审核通过
   const handleApprove = async (merchant: MerchantApplicationDetail) => {
     Alert.alert(
-      "审核通过",
-      `确定要通过该商家的入驻申请吗？\n店铺：${merchant.storeName || merchant.storeId}`,
+      t("merchant.approveTitle"),
+      `${t("merchant.approveConfirm")}\n${t("merchant.storeLabel")}${merchant.storeName || merchant.storeId}`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "通过",
+          text: t("merchant.approved"),
           onPress: async () => {
             try {
               setIsSubmitting(true);
               await reviewMerchant(merchant.id, {
                 status: "APPROVED",
               });
-              Alert.alert("成功", "审核已通过");
+              Alert.alert(t("common.success"), t("merchant.approveSuccess"));
               queryClient.invalidateQueries({ queryKey: ["pending-merchants"] });
               closeDetailModal();
             } catch (error: any) {
-              Alert.alert("操作失败", error.message || "请稍后重试");
+              Alert.alert(t("common.operationFailed"), error.message || t("common.retryLater"));
             } finally {
               setIsSubmitting(false);
             }
@@ -203,7 +205,7 @@ const MerchantReviewScreen = () => {
   const handleConfirmReject = async () => {
     if (!selectedMerchant) return;
     if (!rejectReason.trim()) {
-      Alert.alert("提示", "请输入拒绝原因");
+      Alert.alert(t("common.hint"), t("merchant.enterRejectReason"));
       return;
     }
 
@@ -213,11 +215,11 @@ const MerchantReviewScreen = () => {
         status: "REJECTED",
         rejectReason: rejectReason.trim(),
       });
-      Alert.alert("成功", "已拒绝该申请");
+      Alert.alert(t("common.success"), t("merchant.rejectSuccess"));
       queryClient.invalidateQueries({ queryKey: ["pending-merchants"] });
       closeRejectModal();
     } catch (error: any) {
-      Alert.alert("操作失败", error.message || "请稍后重试");
+      Alert.alert(t("common.operationFailed"), error.message || t("common.retryLater"));
     } finally {
       setIsSubmitting(false);
     }
@@ -227,13 +229,13 @@ const MerchantReviewScreen = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
-        return { bg: "#FFF3E0", text: "#FF9800", label: "待审核" };
+        return { bg: "#FFF3E0", text: "#FF9800", label: t("merchant.pendingReview") };
       case "APPROVED":
-        return { bg: "#E8F5E9", text: "#4CAF50", label: "已入驻" };
+        return { bg: "#E8F5E9", text: "#4CAF50", label: t("merchant.approved") };
       case "REJECTED":
-        return { bg: "#FFEBEE", text: "#F44336", label: "已拒绝" };
+        return { bg: "#FFEBEE", text: "#F44336", label: t("merchant.rejected") };
       case "SUSPENDED":
-        return { bg: "#ECEFF1", text: "#607D8B", label: "已暂停" };
+        return { bg: "#ECEFF1", text: "#607D8B", label: t("merchant.suspended") };
       default:
         return { bg: "#F5F5F5", text: "#9E9E9E", label: status };
     }
@@ -261,24 +263,24 @@ const MerchantReviewScreen = () => {
   const handleUpdateMerchantStatus = async (status: "APPROVED" | "SUSPENDED") => {
     if (!manageMerchant) return;
 
-    const statusLabel = status === "APPROVED" ? "恢复" : "暂停";
+    const statusLabel = status === "APPROVED" ? t("merchant.resumeMerchant") : t("merchant.suspendMerchant");
     Alert.alert(
-      `${statusLabel}商家`,
-      `确定要${statusLabel}该商家吗？`,
+      statusLabel,
+      `${t("merchant.confirmStatusChange")}`,
       [
-        { text: "取消", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "确定",
+          text: t("common.confirm"),
           onPress: async () => {
             try {
               setIsSubmitting(true);
               await adminUpdateMerchant(manageMerchant.id, { status });
-              Alert.alert("成功", `商家已${statusLabel}`);
+              Alert.alert(t("common.success"), t("merchant.statusUpdated"));
               queryClient.invalidateQueries({ queryKey: ["approved-merchants"] });
               queryClient.invalidateQueries({ queryKey: ["all-merchants"] });
               closeManageModal();
             } catch (error: any) {
-              Alert.alert("操作失败", error.message || "请稍后重试");
+              Alert.alert(t("common.operationFailed"), error.message || t("common.retryLater"));
             } finally {
               setIsSubmitting(false);
             }
@@ -303,7 +305,7 @@ const MerchantReviewScreen = () => {
       queryClient.invalidateQueries({ queryKey: ["approved-merchants"] });
       queryClient.invalidateQueries({ queryKey: ["all-merchants"] });
     } catch (error: any) {
-      Alert.alert("操作失败", error.message || "请稍后重试");
+      Alert.alert(t("common.operationFailed"), error.message || t("common.retryLater"));
     } finally {
       setIsSubmitting(false);
     }
@@ -410,7 +412,7 @@ const MerchantReviewScreen = () => {
               <Ionicons name="person" size={12} color={theme.colors.gray300} />
             </Box>
             <Text fontSize="$xs" color="$gray300">
-              {item.username || `用户 ${item.userId}`}
+              {item.username || `${t("merchant.user")} ${item.userId}`}
             </Text>
             <Text fontSize="$xs" color="$gray200" ml="$sm">
               {formatDate(item.createdAt)}
@@ -426,9 +428,9 @@ const MerchantReviewScreen = () => {
     if (isLoading) return null;
 
     const emptyMessages = {
-      pending: { title: "暂无待审核的商家申请", subtitle: "所有商家入驻申请已处理完毕" },
-      approved: { title: "暂无已入驻的商家", subtitle: "还没有商家通过审核入驻" },
-      all: { title: "暂无商家数据", subtitle: "目前还没有任何商家申请记录" },
+      pending: { title: t("merchant.noPendingApplications"), subtitle: t("merchant.allProcessed") },
+      approved: { title: t("merchant.noApprovedMerchants"), subtitle: t("merchant.noApprovedYet") },
+      all: { title: t("merchant.noMerchantData"), subtitle: t("merchant.noApplicationRecords") },
     };
 
     const msg = emptyMessages[activeTab];
@@ -453,9 +455,9 @@ const MerchantReviewScreen = () => {
   // Tab 标题
   const getTabTitle = () => {
     switch (activeTab) {
-      case "pending": return "待审核";
-      case "approved": return "已入驻";
-      case "all": return "全部";
+      case "pending": return t("merchant.pendingReview");
+      case "approved": return t("merchant.approved");
+      case "all": return t("common.all");
     }
   };
 
@@ -463,14 +465,14 @@ const MerchantReviewScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="商家管理"
+          title={t("merchant.title")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator  color={theme.colors.black} />
           <Text color="$gray300" mt="$md">
-            加载中...
+            {t("common.loading")}
           </Text>
         </VStack>
       </SafeAreaView>
@@ -480,7 +482,7 @@ const MerchantReviewScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="商家管理"
+        title={t("merchant.title")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -492,7 +494,7 @@ const MerchantReviewScreen = () => {
           onPress={() => handleTabChange("pending")}
         >
           <Text style={[styles.tabText, activeTab === "pending" && styles.tabTextActive]}>
-            待审核
+            {t("merchant.pendingReview")}
           </Text>
           {pendingData?.total ? (
             <View style={styles.tabBadge}>
@@ -505,7 +507,7 @@ const MerchantReviewScreen = () => {
           onPress={() => handleTabChange("approved")}
         >
           <Text style={[styles.tabText, activeTab === "approved" && styles.tabTextActive]}>
-            已入驻
+            {t("merchant.approved")}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -513,7 +515,7 @@ const MerchantReviewScreen = () => {
           onPress={() => handleTabChange("all")}
         >
           <Text style={[styles.tabText, activeTab === "all" && styles.tabTextActive]}>
-            全部
+            {t("common.all")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -578,7 +580,7 @@ const MerchantReviewScreen = () => {
                       color={theme.colors.gray300}
                     />
                     <Text fontSize="$sm" color="$gray300" ml="$sm">
-                      申请者：{selectedMerchant.username || `用户 ${selectedMerchant.userId}`}
+                      {t("merchant.applicant")}{selectedMerchant.username || `${t("merchant.user")} ${selectedMerchant.userId}`}
                     </Text>
                     <Text fontSize="$sm" color="$gray200" ml="auto">
                       {formatDate(selectedMerchant.createdAt)}
@@ -589,7 +591,7 @@ const MerchantReviewScreen = () => {
                 {/* 联系信息 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
-                    联系信息
+                    {t("merchant.contactInfo")}
                   </Text>
 
                   {selectedMerchant.contactName && (
@@ -648,7 +650,7 @@ const MerchantReviewScreen = () => {
                 {selectedMerchant.businessLicense && (
                   <VStack mb="$lg">
                     <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
-                      证明材料
+                      {t("merchant.proofMaterial")}
                     </Text>
                     <OptimizedImage
                       uri={selectedMerchant.businessLicense}
@@ -681,7 +683,7 @@ const MerchantReviewScreen = () => {
                 {/* 权限信息 */}
                 <VStack mb="$lg">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
-                    开通权限
+                    {t("merchant.permissions")}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {selectedMerchant.canPostBanner && (
@@ -694,21 +696,21 @@ const MerchantReviewScreen = () => {
                     {selectedMerchant.canPostAnnouncement && (
                       <Box bg="#FFF3E0" px="$sm" py="$xs" rounded="$sm">
                         <Text fontSize="$xs" color="#F57C00">
-                          公告
+                          {t("merchant.announcement")}
                         </Text>
                       </Box>
                     )}
                     {selectedMerchant.canPostActivity && (
                       <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
                         <Text fontSize="$xs" color="#388E3C">
-                          活动
+                          {t("merchant.activity")}
                         </Text>
                       </Box>
                     )}
                     {selectedMerchant.canPostDiscount && (
                       <Box bg="#FCE4EC" px="$sm" py="$xs" rounded="$sm">
                         <Text fontSize="$xs" color="#C2185B">
-                          折扣
+                          {t("merchant.discount")}
                         </Text>
                       </Box>
                     )}
@@ -728,7 +730,7 @@ const MerchantReviewScreen = () => {
                     disabled={isSubmitting}
                   >
                     <Text fontSize="$md" fontWeight="$semibold" color="$error">
-                      拒绝
+                      {t("merchant.rejected")}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -744,7 +746,7 @@ const MerchantReviewScreen = () => {
                       <ActivityIndicator  color={theme.colors.white} />
                     ) : (
                       <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                        通过
+                        {t("merchant.approved")}
                       </Text>
                     )}
                   </Pressable>
@@ -780,10 +782,10 @@ const MerchantReviewScreen = () => {
             ]}
           >
             <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
-              拒绝原因
+              {t("merchant.rejectReason")}
             </Text>
             <Text fontSize="$sm" color="$gray300" mb="$md">
-              请填写拒绝「{selectedMerchant?.storeName || selectedMerchant?.storeId}」入驻的原因：
+              {t("merchant.rejectReasonPrompt", { store: selectedMerchant?.storeName || selectedMerchant?.storeId })}
             </Text>
             <TextInput
               style={styles.rejectInput}
@@ -805,7 +807,7 @@ const MerchantReviewScreen = () => {
                 onPress={closeRejectModal}
               >
                 <Text fontSize="$md" fontWeight="$semibold" color="$black">
-                  取消
+                  {t("common.cancel")}
                 </Text>
               </Pressable>
               <Pressable
@@ -821,7 +823,7 @@ const MerchantReviewScreen = () => {
                   <ActivityIndicator  color={theme.colors.white} />
                 ) : (
                   <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                    确认拒绝
+                    {t("merchant.confirmReject")}
                   </Text>
                 )}
               </Pressable>
@@ -866,7 +868,7 @@ const MerchantReviewScreen = () => {
                         color={theme.colors.gray400}
                       />
                       <Text fontSize="$sm" color="$gray400" ml="$sm">
-                        商家状态
+                        {t("merchant.merchantStatus")}
                       </Text>
                     </HStack>
                     <Box bg={getStatusColor(manageMerchant.status).bg} px="$sm" py="$xs" rounded="$sm">
@@ -880,7 +882,7 @@ const MerchantReviewScreen = () => {
                 {/* 联系信息 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
-                    联系信息
+                    {t("merchant.contactInfo")}
                   </Text>
 
                   {manageMerchant.contactName && (
@@ -926,13 +928,13 @@ const MerchantReviewScreen = () => {
                 {/* 权限管理 */}
                 <VStack mb="$lg">
                   <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
-                    权限管理
+                    {t("merchant.permissionManage")}
                   </Text>
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">Banner 发布</Text>
+                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.bannerPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostBanner}
@@ -946,7 +948,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="megaphone-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">公告发布</Text>
+                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.announcementPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostAnnouncement}
@@ -960,7 +962,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">活动发布</Text>
+                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.activityPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostActivity}
@@ -974,7 +976,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">折扣发布</Text>
+                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.discountPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostDiscount}
@@ -1001,7 +1003,7 @@ const MerchantReviewScreen = () => {
                       <HStack alignItems="center" gap="$xs">
                         <Ionicons name="pause-circle-outline" size={18} color="#F44336" />
                         <Text fontSize="$md" fontWeight="$semibold" color="#F44336">
-                          暂停商家
+                          {t("merchant.suspendMerchant")}
                         </Text>
                       </HStack>
                     </Pressable>
@@ -1018,7 +1020,7 @@ const MerchantReviewScreen = () => {
                       <HStack alignItems="center" gap="$xs">
                         <Ionicons name="play-circle-outline" size={18} color="#4CAF50" />
                         <Text fontSize="$md" fontWeight="$semibold" color="#4CAF50">
-                          恢复商家
+                          {t("merchant.resumeMerchant")}
                         </Text>
                       </HStack>
                     </Pressable>

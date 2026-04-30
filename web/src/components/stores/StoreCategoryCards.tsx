@@ -16,6 +16,7 @@
  */
 
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import {
   storeProductService,
   type StoreEntryCard,
@@ -43,6 +44,7 @@ export function StoreCategoryCards({ storeId, onNavigate }: Props) {
     () => storeProductService.listPublicEntryCards(storeId),
     { revalidateOnFocus: false },
   );
+  const FALLBACK_CARDS = useFallbackCards();
 
   if (isLoading) {
     return <div className="mb-10 h-[120px] animate-pulse rounded bg-[var(--canvas-soft)]" />;
@@ -117,32 +119,35 @@ interface CardLike {
 }
 
 // 没有入口卡片配置时的兜底导航 —— 仅用客户端颜色，不依赖图片.
-const FALLBACK_CARDS: CardLike[] = [
-  {
-    key: "fb-all",
-    imageUrl: "",
-    label: "全部商品",
-    labelEn: "ALL",
-    type: "CLASSIFICATION",
-    targetCategoryId: null,
-  },
-  {
-    key: "fb-new",
-    imageUrl: "",
-    label: "近期上新",
-    labelEn: "NEW",
-    type: "NEW_ARRIVAL",
-    targetCategoryId: null,
-  },
-  {
-    key: "fb-sale",
-    imageUrl: "",
-    label: "折扣专区",
-    labelEn: "SALE",
-    type: "DISCOUNT",
-    targetCategoryId: null,
-  },
-];
+function useFallbackCards(): CardLike[] {
+  const { t } = useTranslation();
+  return [
+    {
+      key: "fb-all",
+      imageUrl: "",
+      label: t("store.fallbackAllProducts"),
+      labelEn: "ALL",
+      type: "CLASSIFICATION",
+      targetCategoryId: null,
+    },
+    {
+      key: "fb-new",
+      imageUrl: "",
+      label: t("store.fallbackNewArrival"),
+      labelEn: "NEW",
+      type: "NEW_ARRIVAL",
+      targetCategoryId: null,
+    },
+    {
+      key: "fb-sale",
+      imageUrl: "",
+      label: t("store.fallbackDiscount"),
+      labelEn: "SALE",
+      type: "DISCOUNT",
+      targetCategoryId: null,
+    },
+  ];
+}
 
 function fallbackLabelEn(type: EntryCardType): string {
   switch (type) {

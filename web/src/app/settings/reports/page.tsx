@@ -9,24 +9,18 @@
 
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import useSWR from "swr";
 import {
   moderationService,
   type MyReportsResponse,
 } from "@/lib/services/moderation";
 
-const STATUS_COPY: Record<string, { label: string; tone: string }> = {
-  PENDING: { label: "审核中", tone: "text-amber-600 dark:text-amber-400" },
-  REVIEWED: { label: "已审核", tone: "text-[color:var(--ink-muted)]" },
-  RESOLVED: { label: "已处理", tone: "text-green-700 dark:text-green-400" },
-  DISMISSED: { label: "已驳回", tone: "text-red-600 dark:text-red-400" },
-};
-
-const TARGET_LABEL: Record<string, string> = {
-  POST: "帖子",
-  COMMENT: "评论",
-  MESSAGE: "私信",
-  USER: "用户",
+const STATUS_TONE: Record<string, string> = {
+  PENDING: "text-amber-600 dark:text-amber-400",
+  REVIEWED: "text-[color:var(--ink-muted)]",
+  RESOLVED: "text-green-700 dark:text-green-400",
+  DISMISSED: "text-red-600 dark:text-red-400",
 };
 
 const PAGE_SIZE = 20;
@@ -34,6 +28,7 @@ const PAGE_SIZE = 20;
 // `useSearchParams()` needs a <Suspense> boundary for `next build` to
 // prerender this route without falling back to full CSR.
 function MyReportsPageInner() {
+  const { t } = useTranslation();
   const sp = useSearchParams();
   const router = useRouter();
   const page = Math.max(1, Number(sp.get("page") || 1));
@@ -55,27 +50,27 @@ function MyReportsPageInner() {
     <section className="min-w-0">
       <header className="mb-8 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          我的举报
+          {t("settings.myReports")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          你提交的所有举报和当前处理状态。
+          {t("settings.myReportsDesc")}
         </p>
       </header>
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loadingEllipsis")}
         </div>
       )}
       {error && (
         <div className="rounded border border-red-500/20 bg-red-500/5 p-4 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("common.loadFailed")}：{(error as Error).message}
         </div>
       )}
 
       {!isLoading && !error && data && data.reports.length === 0 && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-8 font-serif text-sm text-[color:var(--ink-muted)]">
-          还没有任何举报记录。
+          {t("settings.noReports")}
         </div>
       )}
 
@@ -83,9 +78,21 @@ function MyReportsPageInner() {
         <>
           <ul className="divide-y divide-[var(--border)] rounded border border-[var(--border)] bg-[var(--canvas)]">
             {data.reports.map((r) => {
-              const status = STATUS_COPY[r.status] ?? {
-                label: r.status,
-                tone: "text-[color:var(--ink-muted)]",
+              const STATUS_LABEL_MAP: Record<string, string> = {
+                PENDING: t("reports.statusPending"),
+                REVIEWED: t("reports.statusReviewed"),
+                RESOLVED: t("reports.statusResolved"),
+                DISMISSED: t("reports.statusDismissed"),
+              };
+              const TARGET_LABEL: Record<string, string> = {
+                POST: t("reports.targetPost"),
+                COMMENT: t("reports.targetComment"),
+                MESSAGE: t("reports.targetMessage"),
+                USER: t("reports.targetUser"),
+              };
+              const status = {
+                label: STATUS_LABEL_MAP[r.status] ?? r.status,
+                tone: STATUS_TONE[r.status] ?? "text-[color:var(--ink-muted)]",
               };
               const time = new Date(r.createdAt).toLocaleString("zh-CN", {
                 year: "numeric",
@@ -110,7 +117,7 @@ function MyReportsPageInner() {
                       </span>
                     </div>
                     <div className="mt-1 font-label text-[12px] text-[color:var(--ink-muted)]">
-                      原因：{r.reason}
+                      {t("settings.reason")}：{r.reason}
                       {r.description ? ` · ${r.description}` : ""}
                     </div>
                     <div className="mt-1 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
@@ -130,7 +137,7 @@ function MyReportsPageInner() {
                 onClick={() => goPage(page - 1)}
                 className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--ink)] disabled:opacity-40"
               >
-                上一页
+                {t("common.previousPage")}
               </button>
               <span className="text-[color:var(--ink-muted)]">
                 {page} / {totalPages}
@@ -141,7 +148,7 @@ function MyReportsPageInner() {
                 onClick={() => goPage(page + 1)}
                 className="rounded border border-[var(--border)] px-3 py-1.5 text-[var(--ink)] disabled:opacity-40"
               >
-                下一页
+                {t("common.nextPage")}
               </button>
             </div>
           )}

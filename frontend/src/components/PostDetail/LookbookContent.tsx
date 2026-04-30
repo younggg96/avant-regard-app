@@ -1,5 +1,6 @@
 import React from "react";
 import { View, FlatList } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Text, Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -27,6 +28,7 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
   onImageIndexChange,
   onOpenFullscreen,
 }) => {
+  const { t } = useTranslation();
   // Drive the carousel height from the cover (first) slide's natural aspect
   // ratio, clamped to a pleasant range. All slides share this height because
   // a paginated horizontal FlatList needs a consistent viewport — mismatched
@@ -121,13 +123,13 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
           <View style={styles.lookbookMeta}>
             {post.brandName && (
               <View style={styles.lookbookMetaItem}>
-                <Text style={styles.lookbookMetaLabel}>品牌</Text>
+                <Text style={styles.lookbookMetaLabel}>{t("productInfo.brand")}</Text>
                 <Text style={styles.lookbookMetaValue}>{post.brandName}</Text>
               </View>
             )}
             {post.season && (
               <View style={styles.lookbookMetaItem}>
-                <Text style={styles.lookbookMetaLabel}>系列</Text>
+                <Text style={styles.lookbookMetaLabel}>{t("postDetail.series")}</Text>
                 <Text style={styles.lookbookMetaValue}>{post.season}</Text>
               </View>
             )}

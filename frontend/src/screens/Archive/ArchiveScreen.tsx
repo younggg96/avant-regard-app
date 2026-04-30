@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import {
   StyleSheet,
   View,
@@ -8,17 +8,24 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { BrandListTab, MyContributionTab, LeaderboardTab } from "./components";
-import { ArchiveTab, MAIN_TABS } from "./types";
+import { ArchiveTab, MAIN_TAB_IDS, MAIN_TAB_KEYS } from "./types";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 const ArchiveScreen: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ArchiveTab>("all");
+
+  const tabs = useMemo(
+    () => MAIN_TAB_IDS.map((id) => ({ id, label: t(MAIN_TAB_KEYS[id]) })),
+    [t]
+  );
 
   const headerHeight = useRef(new Animated.Value(1)).current;
   const headerOpacity = useRef(new Animated.Value(1)).current;
@@ -62,7 +69,7 @@ const ArchiveScreen: React.FC = () => {
   const handleTabChange = useCallback(
     (tab: ArchiveTab) => {
       setActiveTab(tab);
-      const tabIndex = MAIN_TABS.findIndex((t) => t.id === tab);
+      const tabIndex = MAIN_TAB_IDS.indexOf(tab);
       horizontalScrollRef.current?.scrollTo({
         x: tabIndex * screenWidth,
         animated: true,
@@ -76,7 +83,7 @@ const ArchiveScreen: React.FC = () => {
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x;
       const pageIndex = Math.round(offsetX / screenWidth);
-      const newTab = MAIN_TABS[pageIndex]?.id;
+      const newTab = MAIN_TAB_IDS[pageIndex];
       if (newTab && newTab !== activeTab) {
         setActiveTab(newTab);
         if (newTab !== "all") showHeader();
@@ -100,7 +107,7 @@ const ArchiveScreen: React.FC = () => {
       >
         <ScreenHeader
           title="Archive"
-          subtitle="探索全球时尚品牌"
+          subtitle={t("archive.subtitle")}
           boldTitle
           borderless
         />
@@ -108,7 +115,7 @@ const ArchiveScreen: React.FC = () => {
 
       {/* Tab bar */}
       <CenteredTabBar
-        tabs={MAIN_TABS}
+        tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
       />

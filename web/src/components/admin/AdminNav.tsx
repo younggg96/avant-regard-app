@@ -2,46 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 interface AdminNavItem {
   href: string;
-  label: string;
-  group: string;
+  labelKey: string;
+  groupKey: string;
 }
 
 const ADMIN_NAV: AdminNavItem[] = [
-  { href: "/admin",                label: "概览",       group: "管理面板" },
+  { href: "/admin",                labelKey: "admin.overview",         groupKey: "admin.navGroupDashboard" },
 
-  { href: "/admin/posts/pending",  label: "待审核帖子", group: "内容审核" },
-  { href: "/admin/posts",          label: "帖子管理",   group: "内容审核" },
-  { href: "/admin/comments",       label: "评论管理",   group: "内容审核" },
+  { href: "/admin/posts/pending",  labelKey: "admin.pendingPosts",     groupKey: "admin.navGroupContent" },
+  { href: "/admin/posts",          labelKey: "admin.postsManagement",  groupKey: "admin.navGroupContent" },
+  { href: "/admin/comments",       labelKey: "admin.comments",         groupKey: "admin.navGroupContent" },
 
-  { href: "/admin/users",          label: "用户管理",   group: "用户系统" },
-  { href: "/admin/reports",        label: "举报管理",   group: "用户系统" },
-  { href: "/admin/levels",         label: "等级审批",   group: "用户系统" },
-  { href: "/admin/lottery",        label: "月度抽奖",   group: "用户系统" },
+  { href: "/admin/users",          labelKey: "admin.users",            groupKey: "admin.navGroupUsers" },
+  { href: "/admin/reports",        labelKey: "admin.reports",          groupKey: "admin.navGroupUsers" },
+  { href: "/admin/levels",         labelKey: "admin.levels",           groupKey: "admin.navGroupUsers" },
+  { href: "/admin/lottery",        labelKey: "admin.lottery",          groupKey: "admin.navGroupUsers" },
 
-  { href: "/admin/communities",    label: "社区管理",   group: "社区与品牌" },
-  { href: "/admin/brands",         label: "品牌管理",   group: "社区与品牌" },
-  { href: "/admin/brands/submissions", label: "品牌审核", group: "社区与品牌" },
-  { href: "/admin/brands/images",  label: "品牌图片审核", group: "社区与品牌" },
+  { href: "/admin/communities",    labelKey: "admin.communities",      groupKey: "admin.navGroupCommunity" },
+  { href: "/admin/brands",         labelKey: "admin.brands",           groupKey: "admin.navGroupCommunity" },
+  { href: "/admin/brands/submissions", labelKey: "admin.brandSubmissions", groupKey: "admin.navGroupCommunity" },
+  { href: "/admin/brands/images",  labelKey: "admin.brandImages",      groupKey: "admin.navGroupCommunity" },
 
-  { href: "/admin/shows",          label: "秀场管理",   group: "秀场与买手店" },
-  { href: "/admin/shows/review",   label: "秀场审核",   group: "秀场与买手店" },
-  { href: "/admin/stores",         label: "买手店管理", group: "秀场与买手店" },
+  { href: "/admin/shows",          labelKey: "admin.shows",            groupKey: "admin.navGroupShows" },
+  { href: "/admin/shows/review",   labelKey: "admin.showReview",       groupKey: "admin.navGroupShows" },
+  { href: "/admin/stores",         labelKey: "admin.stores",           groupKey: "admin.navGroupShows" },
 
-  { href: "/admin/banners",        label: "Banner",    group: "运营配置" },
-  { href: "/admin/broadcast",      label: "广播通知",   group: "运营配置" },
-  { href: "/admin/customer-service", label: "客服设置", group: "运营配置" },
-  { href: "/admin/recommend",      label: "推荐配置",   group: "运营配置" },
-  { href: "/admin/maintenance",    label: "维护模式",   group: "运营配置" },
+  { href: "/admin/banners",        labelKey: "admin.banners",          groupKey: "admin.navGroupOps" },
+  { href: "/admin/broadcast",      labelKey: "admin.broadcast",        groupKey: "admin.navGroupOps" },
+  { href: "/admin/customer-service", labelKey: "admin.customerService", groupKey: "admin.navGroupOps" },
+  { href: "/admin/recommend",      labelKey: "admin.recommend",        groupKey: "admin.navGroupOps" },
+  { href: "/admin/maintenance",    labelKey: "admin.maintenance",      groupKey: "admin.navGroupOps" },
 ];
 
 export function AdminNav() {
+  const { t } = useTranslation();
   const pathname = usePathname();
 
   const groups = ADMIN_NAV.reduce<Record<string, AdminNavItem[]>>((acc, it) => {
-    (acc[it.group] ||= []).push(it);
+    const groupLabel = t(it.groupKey);
+    (acc[groupLabel] ||= []).push(it);
     return acc;
   }, {});
 
@@ -71,7 +74,7 @@ export function AdminNav() {
                         : "text-[color:var(--ink-muted)] hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                     }`}
                   >
-                    {it.label}
+                    {t(it.labelKey)}
                   </Link>
                 </li>
               );

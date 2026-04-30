@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
 import { theme } from "../theme";
@@ -34,6 +35,7 @@ interface SearchHistory {
 }
 
 const SearchScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { user } = useAuthStore();
@@ -114,12 +116,12 @@ const SearchScreen = () => {
     } catch (error) {
       console.error("Search failed:", error);
       // 显示用户友好的错误提示
-      const errorMessage = error instanceof Error ? error.message : "未知错误";
+      const errorMessage = error instanceof Error ? error.message : t("common.unknownError");
       if (errorMessage.includes("JSON could not be generated") ||
         errorMessage.includes("Worker threw exception")) {
-        Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+        Alert.alert(t("search.unavailable"), t("search.serverBusy"));
       } else {
-        Alert.alert("搜索失败", "网络连接异常，请检查网络后重试");
+        Alert.alert(t("search.failed"), t("search.networkError"));
       }
       if (searchType === "posts") {
         setPostResults([]);
@@ -161,10 +163,10 @@ const SearchScreen = () => {
         }
       } catch (error) {
         console.error("Search failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "未知错误";
+        const errorMessage = error instanceof Error ? error.message : t("common.unknownError");
         if (errorMessage.includes("JSON could not be generated") ||
           errorMessage.includes("Worker threw exception")) {
-          Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+          Alert.alert(t("search.unavailable"), t("search.serverBusy"));
         }
         if (type === "posts") {
           setPostResults([]);
@@ -218,10 +220,10 @@ const SearchScreen = () => {
         }
       } catch (error) {
         console.error("Search failed:", error);
-        const errorMessage = error instanceof Error ? error.message : "未知错误";
+        const errorMessage = error instanceof Error ? error.message : t("common.unknownError");
         if (errorMessage.includes("JSON could not be generated") ||
           errorMessage.includes("Worker threw exception")) {
-          Alert.alert("搜索暂时不可用", "服务器繁忙，请稍后重试");
+          Alert.alert(t("search.unavailable"), t("search.serverBusy"));
         }
         if (searchType === "posts") {
           setPostResults([]);
@@ -285,7 +287,7 @@ const SearchScreen = () => {
     async (postId: string) => {
       const userId = user?.userId;
       if (!userId) {
-        Alert.alert("提示", "请先登录");
+        Alert.alert(t("search.loginRequired"));
         return;
       }
 
@@ -345,7 +347,7 @@ const SearchScreen = () => {
       image: images[0] || "https://picsum.photos/id/1/600/800",
       author: {
         id: userId,
-        name: post.username || "用户",
+        name: post.username || t("profile.user"),
         avatar: post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
       },
       content: {
@@ -544,9 +546,9 @@ const SearchScreen = () => {
 
   // 渲染搜索类型选择 Tab
   const TAB_CONFIG: { type: SearchType; label: string }[] = [
-    { type: "posts", label: "帖子" },
-    { type: "users", label: "用户" },
-    { type: "brands", label: "品牌" },
+    { type: "posts", label: t("search.posts") },
+    { type: "users", label: t("search.users") },
+    { type: "brands", label: t("search.brands") },
   ];
 
   const renderSearchTypeTabs = () => {

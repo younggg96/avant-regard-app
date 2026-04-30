@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
   ViewStyle,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { useLevelStore } from "../../store/levelStore";
 import { levelService } from "../../services/levelService";
@@ -47,6 +48,7 @@ export const EventRegistrationButton: React.FC<Props> = ({
   disabled,
   style,
 }) => {
+  const { t } = useTranslation();
   const status = useLevelStore((s) => s.status);
   const refresh = useLevelStore((s) => s.refresh);
   const [submitting, setSubmitting] = useState(false);
@@ -77,11 +79,11 @@ export const EventRegistrationButton: React.FC<Props> = ({
         objectType: "EVENT",
         objectId: eventId,
       });
-      Alert.show(`报名成功, 免费门票剩余 ${res.remaining}`);
+      Alert.show(t("level.registerSuccess", { remaining: res.remaining }));
       await refresh();
       onRedeemed?.(res.remaining);
     } catch (e: any) {
-      Alert.show(e?.message ?? "核销失败, 请稍后重试");
+      Alert.show(e?.message ?? t("level.redeemFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +97,7 @@ export const EventRegistrationButton: React.FC<Props> = ({
     submitting,
   ]);
 
-  const label = canUseFreeTicket ? "使用免费门票报名" : "支付报名";
+  const label = canUseFreeTicket ? t("level.useFreeTicket") : t("level.payToRegister");
 
   return (
     <Pressable

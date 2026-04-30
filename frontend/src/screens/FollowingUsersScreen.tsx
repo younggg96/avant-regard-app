@@ -9,6 +9,7 @@ import {
   FlatList,
   Keyboard,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -43,6 +44,7 @@ type RouteParams = {
 type SubTab = "users" | "mutual" | "brands";
 
 const FollowingUsersScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "FollowingUsers">>();
   const { user } = useAuthStore();
@@ -309,11 +311,11 @@ const FollowingUsersScreen = () => {
         : filteredBrands;
 
   const tabs: { id: SubTab; label: string; count: number }[] = [
-    { id: "users", label: "用户", count: followingUsers.length },
+    { id: "users", label: t("followingUsers.users"), count: followingUsers.length },
     ...(isOwnProfile
-      ? [{ id: "mutual" as SubTab, label: "互关", count: mutualFollows.length }]
+      ? [{ id: "mutual" as SubTab, label: t("followingUsers.mutual"), count: mutualFollows.length }]
       : []),
-    { id: "brands", label: "品牌", count: followingBrands.length },
+    { id: "brands", label: t("followingUsers.brands"), count: followingBrands.length },
   ];
 
   return (
@@ -323,7 +325,7 @@ const FollowingUsersScreen = () => {
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
         </Pressable>
-        <RNText style={styles.headerTitle}>关注</RNText>
+        <RNText style={styles.headerTitle}>{t("followingUsers.title")}</RNText>
         <View style={{ width: 40 }} />
       </View>
 
@@ -385,7 +387,7 @@ const FollowingUsersScreen = () => {
         <VStack flex={1} alignItems="center" justifyContent="center">
           <Ionicons name="lock-closed-outline" size={24} color={theme.colors.gray300} />
           <Text color="$gray400" mt="$md">
-            该用户已隐藏关注列表
+            {t("followingUsers.privateList")}
           </Text>
         </VStack>
       ) : (
@@ -409,10 +411,10 @@ const FollowingUsersScreen = () => {
                 ? "people-outline"
                 : "people-outline",
             activeTab === "brands"
-              ? "还没有关注任何品牌"
+              ? t("followingUsers.noBrands")
               : activeTab === "mutual"
-                ? "还没有互相关注的用户"
-                : "还没有关注任何用户"
+                ? t("followingUsers.noMutual")
+                : t("followingUsers.noFollowing")
           )}
           onScrollBeginDrag={() => Keyboard.dismiss()}
           keyboardShouldPersistTaps="handled"

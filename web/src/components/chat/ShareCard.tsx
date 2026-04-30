@@ -25,6 +25,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslation } from "react-i18next";
 import {
   ChevronRight,
   FileText,
@@ -127,6 +128,7 @@ interface CardFooterProps {
 }
 
 function CardFooter({ icon, label, isMine }: CardFooterProps) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   return (
     <div className={`mt-2 flex items-center justify-between ${skin.muted}`}>
@@ -135,7 +137,7 @@ function CardFooter({ icon, label, isMine }: CardFooterProps) {
         <span className="truncate">{label}</span>
       </div>
       <div className="flex shrink-0 items-center gap-0.5 font-label text-[11px]">
-        <span>查看</span>
+        <span>{t("chat.view")}</span>
         <ChevronRight size={12} strokeWidth={1.75} />
       </div>
     </div>
@@ -187,13 +189,14 @@ function PostCard({
   payload: PostSharePayload;
   isMine: boolean;
 }) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   return (
     <CardShell href={`/posts/${payload.postId}`} isMine={isMine}>
-      <CoverImage src={payload.imageUrl} alt={payload.title || "分享帖子"} isMine={isMine} />
+      <CoverImage src={payload.imageUrl} alt={payload.title || t("post.sharePost")} isMine={isMine} />
       <div className="px-3 py-2.5">
         <div className={`line-clamp-2 font-serif text-[14px] leading-snug ${skin.title}`}>
-          {payload.title || "帖子分享"}
+          {payload.title || t("post.postShare")}
         </div>
         <div className={`mt-1 flex items-center gap-1.5 truncate font-label text-[11px] ${skin.sub}`}>
           <span className={`relative inline-block h-4 w-4 shrink-0 overflow-hidden rounded-full ${skin.placeholderBg}`}>
@@ -211,7 +214,7 @@ function PostCard({
         </div>
         <CardFooter
           icon={<FileText size={12} strokeWidth={1.75} />}
-          label="帖子"
+          label={t("chat.sharePost")}
           isMine={isMine}
         />
       </div>
@@ -226,6 +229,7 @@ function StoreCard({
   payload: StoreSharePayload;
   isMine: boolean;
 }) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   const location = [payload.city, payload.country].filter(Boolean).join(", ");
   const hasRating = typeof payload.rating === "number" && payload.rating > 0;
@@ -268,7 +272,7 @@ function StoreCard({
         )}
         <CardFooter
           icon={<Store size={12} strokeWidth={1.75} />}
-          label="买手店"
+          label={t("chat.shareStore")}
           isMine={isMine}
         />
       </div>
@@ -283,6 +287,7 @@ function BrandCard({
   payload: BrandSharePayload;
   isMine: boolean;
 }) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   const infoParts = [payload.country, payload.category].filter(Boolean);
   const initial = payload.name?.charAt(0).toUpperCase() || "·";
@@ -314,7 +319,7 @@ function BrandCard({
         )}
         <CardFooter
           icon={<Tag size={12} strokeWidth={1.75} />}
-          label="品牌"
+          label={t("chat.shareBrand")}
           isMine={isMine}
         />
       </div>
@@ -329,6 +334,7 @@ function ShowCard({
   payload: ShowSharePayload;
   isMine: boolean;
 }) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   const seasonLine = [payload.season, payload.year].filter(Boolean).join(" ");
   const metaParts = [payload.designer, payload.category].filter(Boolean);
@@ -359,7 +365,7 @@ function ShowCard({
         )}
         <CardFooter
           icon={<Sparkles size={12} strokeWidth={1.75} />}
-          label="秀场"
+          label={t("chat.shareShow")}
           isMine={isMine}
         />
       </div>
@@ -374,6 +380,7 @@ function UserCard({
   payload: UserSharePayload;
   isMine: boolean;
 }) {
+  const { t } = useTranslation();
   const skin = cardSkin(isMine);
   const metaParts = [payload.primaryTitle, payload.location].filter(Boolean);
   return (
@@ -415,7 +422,7 @@ function UserCard({
       <div className="px-3 pb-2.5 pt-2">
         <CardFooter
           icon={<User size={12} strokeWidth={1.75} />}
-          label="用户主页"
+          label={t("chat.shareUser")}
           isMine={isMine}
         />
       </div>

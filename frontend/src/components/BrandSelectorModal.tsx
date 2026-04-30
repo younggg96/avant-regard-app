@@ -6,6 +6,7 @@ import {
   StyleSheet,
   GestureResponderEvent,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
@@ -41,6 +42,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
   onClose,
   onLoadMore,
 }) => {
+  const { t } = useTranslation();
   const brandWidth = (screenWidth - 48) / 2;
 
   const handleEndReached = () => {
@@ -72,7 +74,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
                 <Text fontSize="$lg" color="$black" fontWeight="$medium">
-                  选择关联品牌
+                  {t("brandSelector.title")}
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
                   <Ionicons
@@ -88,7 +90,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                     value={searchQuery}
                     onChangeText={onSearchChange}
                     onSubmitEditing={onSearch}
-                    placeholder="搜索品牌名称..."
+                    placeholder={t("brandSelector.searchPlaceholder")}
                     placeholderTextColor={theme.colors.gray400}
                     variant="outline"
                     returnKeyType="search"
@@ -100,7 +102,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                 </Box>
                 <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
                   <Text color="$white" fontSize="$sm" fontWeight="$semibold">
-                    搜索
+                    {t("brandSelector.search")}
                   </Text>
                 </Pressable>
               </HStack>
@@ -181,7 +183,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                 isLoading && brands.length > 0 ? (
                   <Box py="$md" alignItems="center">
                     <Text color="$gray400" fontSize="$sm">
-                      加载中...
+                      {t("brandSelector.loading")}
                     </Text>
                   </Box>
                 ) : null
@@ -200,7 +202,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                     color={theme.colors.gray300}
                   />
                   <Text color="$gray400" mt="$md">
-                    {isLoading ? "加载中..." : "未找到相关品牌"}
+                    {isLoading ? t("brandSelector.loading") : t("brandSelector.noResults")}
                   </Text>
                 </Box>
               }

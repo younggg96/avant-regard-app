@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, VStack, ScrollView } from "../../../components/ui";
@@ -36,41 +37,45 @@ const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
 const LeaderboardItem: React.FC<{
   user: ContributionUser;
   onPress: (userId: number, username: string, avatarUrl: string) => void;
-}> = ({ user, onPress }) => (
-  <TouchableOpacity
-    style={styles.itemContainer}
-    onPress={() => onPress(user.userId, user.username, user.avatarUrl)}
-    activeOpacity={0.7}
-  >
-    <RankBadge rank={user.rank} />
-    <View style={styles.avatarWrapper}>
-      {user.avatarUrl ? (
-        <OptimizedImage
-          uri={user.avatarUrl}
-          size={ImageSize.THUMBNAIL}
-          style={styles.avatar}
-          contentFit="cover"
-          lazy={true}
-        />
-      ) : (
-        <View style={[styles.avatar, styles.avatarPlaceholder]}>
-          <Ionicons name="person" size={16} color={theme.colors.white} />
-        </View>
-      )}
-    </View>
-    <VStack flex={1} ml={8}>
-      <Text style={styles.username} numberOfLines={1}>
-        {user.username || `用户${user.userId}`}
-      </Text>
-      <Text style={styles.countText}>
-        贡献 {user.contributionCount}
-      </Text>
-    </VStack>
-    <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
-  </TouchableOpacity>
-);
+}> = ({ user, onPress }) => {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity
+      style={styles.itemContainer}
+      onPress={() => onPress(user.userId, user.username, user.avatarUrl)}
+      activeOpacity={0.7}
+    >
+      <RankBadge rank={user.rank} />
+      <View style={styles.avatarWrapper}>
+        {user.avatarUrl ? (
+          <OptimizedImage
+            uri={user.avatarUrl}
+            size={ImageSize.THUMBNAIL}
+            style={styles.avatar}
+            contentFit="cover"
+            lazy={true}
+          />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Ionicons name="person" size={16} color={theme.colors.white} />
+          </View>
+        )}
+      </View>
+      <VStack flex={1} ml={8}>
+        <Text style={styles.username} numberOfLines={1}>
+          {user.username || t("archive.userFallback", { id: user.userId })}
+        </Text>
+        <Text style={styles.countText}>
+          {t("archive.contributionCount", { count: user.contributionCount })}
+        </Text>
+      </VStack>
+      <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
+    </TouchableOpacity>
+  );
+};
 
 export const ArchiveLeaderboard: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [leaderboard, setLeaderboard] = useState<ContributionUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +128,7 @@ export const ArchiveLeaderboard: React.FC = () => {
         <HStack alignItems="center" space="xs">
           <Ionicons name="trophy-outline" size={18} color={theme.colors.black} />
           <Text fontSize="$md" fontWeight="$semibold" color="$black">
-            Archive 贡献榜
+            {t("archive.contributionBoard")}
           </Text>
         </HStack>
       </HStack>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Box, Text, HStack } from "./ui";
 import { theme } from "../theme";
 import HalfStarRating from "./HalfStarRating";
@@ -13,14 +14,16 @@ interface RatingSelectorProps {
 const RatingSelector: React.FC<RatingSelectorProps> = ({
   rating,
   onRatingChange,
-  label = "评分",
+  label,
   required = false,
 }) => {
+  const { t } = useTranslation();
+  const displayLabel = label || t("ratingSelector.rating");
   return (
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text color="$gray600" fontSize="$sm">
-          {label}
+          {displayLabel}
         </Text>
         {required && (
           <Text color="$red500" fontSize="$sm" ml="$xs">

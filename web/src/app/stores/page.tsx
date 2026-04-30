@@ -33,6 +33,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -111,6 +112,7 @@ function distanceKm(a: LngLat, b: LngLat): number {
 }
 
 function StoresPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -551,10 +553,10 @@ function StoresPageInner() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-4xl tracking-tight text-black dark:text-white md:text-5xl">
-            买手店
+            {t("store.title")}
           </h1>
           <p className="mt-2 font-serif text-[15px] text-black/60 dark:text-white/50">
-            探索全球收录的独立买手店，按地区 · 品牌 · 风格筛选。
+            {t("store.subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -562,14 +564,14 @@ function StoresPageInner() {
             href="/stores/submit"
             className="rounded border border-[var(--border)] px-3 py-2 font-label text-[12px] text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
           >
-            + 推荐买手店
+            {t("store.recommendStore")}
           </Link>
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
             className="relative rounded bg-black px-3 py-2 font-label text-[12px] font-medium text-white dark:bg-white dark:text-black"
           >
-            高级筛选
+            {t("store.advancedFilter")}
             {activeFilterCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 font-label text-[10px] font-semibold leading-none text-white">
                 {activeFilterCount}
@@ -589,7 +591,7 @@ function StoresPageInner() {
               patchUrl({ q: (e.target as HTMLInputElement).value });
             }
           }}
-          placeholder="搜索店名 / 地址 / 品牌…"
+          placeholder={t("store.searchPlaceholder")}
           className="min-w-[240px] flex-1 rounded border border-[var(--border)] bg-[var(--canvas)] px-3 py-2 font-label text-[13px] text-[var(--ink)] focus:border-[var(--ink)] focus:outline-none"
         />
         <button
@@ -602,7 +604,7 @@ function StoresPageInner() {
               : "border-[var(--border)] bg-[var(--canvas)] text-[var(--ink)] hover:border-[var(--ink)]"
           } ${geoStatus === "pending" ? "opacity-60" : ""}`}
         >
-          📍 {nearbyMode ? "附近已开启" : "附近"}
+          📍 {nearbyMode ? t("store.nearbyOn") : t("store.nearby")}
         </button>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-[var(--border)] px-3 py-2 font-label text-[12px] text-[var(--ink)]">
           <input
@@ -613,7 +615,7 @@ function StoresPageInner() {
             }
             className="h-4 w-4 accent-black dark:accent-white"
           />
-          仅营业中
+          {t("store.openOnly")}
         </label>
         {hasActiveFilters && (
           <button
@@ -621,7 +623,7 @@ function StoresPageInner() {
             onClick={resetAllFilters}
             className="font-label text-[12px] text-[color:var(--ink-muted)] underline-offset-4 hover:text-[var(--ink)] hover:underline"
           >
-            清除筛选
+            {t("store.clearFilter")}
           </button>
         )}
       </div>
@@ -692,40 +694,40 @@ function StoresPageInner() {
         <TabButton
           active={view === "list"}
           onClick={() => setView("list")}
-          label="买手店列表"
+          label={t("store.listTab")}
         />
         <TabButton
           active={view === "map"}
           onClick={() => setView("map")}
-          label="买手店地图"
+          label={t("store.mapTab")}
         />
       </div>
 
       {/* ----- Status line (map-specific hints) ----- */}
       {view === "map" && (
         <div className="mb-3 flex flex-wrap items-center gap-3 font-label text-[12px] text-[color:var(--ink-muted)]">
-          {isLoadingStores && <span>加载中…</span>}
+          {isLoadingStores && <span>{t("common.loadingEllipsis")}</span>}
           {storesError && (
             <button
               type="button"
               onClick={() => reloadStores()}
               className="text-red-600 underline-offset-4 hover:underline"
             >
-              加载失败，点击重试
+              {t("store.loadFailedRetry")}
             </button>
           )}
           {nearbyMode && (
             <span>
-              附近模式：{NEARBY_RADIUS_KM}km 范围内 {nearbyStores.length} 家店铺
+              {t("store.nearbyMode", { radius: NEARBY_RADIUS_KM, count: nearbyStores.length })}
               {isNearbyLoading && "…"}
             </span>
           )}
           {!nearbyMode && hasActiveFilters && (
-            <span>按筛选条件匹配 {filteredStores.length} 家门店</span>
+            <span>{t("store.filterMatch", { count: filteredStores.length })}</span>
           )}
-          {geoStatus === "pending" && <span>正在获取当前位置…</span>}
+          {geoStatus === "pending" && <span>{t("store.gettingLocation")}</span>}
           {geoStatus === "denied" && !nearbyMode && (
-            <span>定位未开启 / 被拒绝</span>
+            <span>{t("store.locationDenied")}</span>
           )}
         </div>
       )}
@@ -755,13 +757,13 @@ function StoresPageInner() {
 
           {/* Floating bottom count badge */}
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-[var(--canvas)]/90 px-3 py-1.5 font-label text-[11px] text-[var(--ink)] shadow-sm backdrop-blur">
-            视口内 {baseDisplay.length} 家店铺
+            {t("store.viewportCount", { count: baseDisplay.length })}
           </div>
         </div>
 
         <aside className="flex min-h-[480px] flex-col rounded border border-[var(--border)] bg-[var(--canvas-soft)]">
           <div className="border-b border-[var(--border)] px-4 py-3 font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-            {displayStores.length} / {filteredStores.length} 家门店
+            {t("store.sidebarCount", { visible: displayStores.length, total: filteredStores.length })}
           </div>
           <ul className="flex-1 divide-y divide-[var(--border)] overflow-y-auto">
             {displayStores.map((s) => (
@@ -801,7 +803,7 @@ function StoresPageInner() {
                   {(getFavoriteCount(s.id) > 0 || s.brands.length > 0) && (
                     <span className="flex items-center gap-2 font-label text-[11px] text-[color:var(--ink-muted)]">
                       {getFavoriteCount(s.id) > 0 && (
-                        <span>{getFavoriteCount(s.id)} 人关注</span>
+                        <span>{t("store.followCount", { count: getFavoriteCount(s.id) })}</span>
                       )}
                       {s.brands.length > 0 && (
                         <span className="truncate italic">
@@ -815,7 +817,7 @@ function StoresPageInner() {
             ))}
             {!isLoadingStores && displayStores.length === 0 && (
               <li className="px-4 py-8 text-center font-serif text-sm text-[color:var(--ink-muted)]">
-                没有匹配的门店。
+                {t("store.noMatchStore")}
               </li>
             )}
           </ul>

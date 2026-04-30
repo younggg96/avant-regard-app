@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { commentsApi, type AdminComment } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -12,6 +13,7 @@ import {
 
 
 export default function CommentsPage() {
+  const { t } = useTranslation();
   const [comments, setComments] = useState<AdminComment[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -48,7 +50,7 @@ export default function CommentsPage() {
 
   return (
     <div>
-      <PageHeader title="评论管理" description={`共 ${total} 条评论`} />
+      <PageHeader title={t("admin.comments")} description={t("admin.commentTotal", { count: total })} />
 
       {loading ? (
         <LoadingState />
@@ -60,12 +62,12 @@ export default function CommentsPage() {
             <table className="w-full font-label text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">评论内容</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">用户</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">所属帖子</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">点赞</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">时间</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">操作</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colContent")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colUser")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colPostTitle")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colLikes")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colTime")}</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -80,14 +82,14 @@ export default function CommentsPage() {
                     </td>
                     <td className="px-4 py-3 text-[color:var(--ink-muted)]">{c.likeCount}</td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)]">
-                      {new Date(c.createdAt).toLocaleDateString("zh-CN")}
+                      {new Date(c.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setDeleteTarget(c)}
                         className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                       >
-                        删除
+                        {t("admin.delete")}
                       </button>
                     </td>
                   </tr>
@@ -101,9 +103,9 @@ export default function CommentsPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="确认删除评论？"
+        title={t("admin.confirmDeleteComment")}
         message={deleteTarget?.content}
-        confirmLabel="删除"
+        confirmLabel={t("admin.delete")}
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

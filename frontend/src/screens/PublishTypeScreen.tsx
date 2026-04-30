@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack } from "../components/ui";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -16,51 +17,52 @@ interface PublishType {
   route: string;
 }
 
-const publishTypes: PublishType[] = [
-  {
-    id: "forum",
-    title: "用户论坛",
-    description: "在社区发表话题和讨论",
-    icon: "chatbubbles",
-    color: "#000000",
-    route: "PublishForumPost",
-  },
-  {
-    id: "lookbook",
-    title: "发布Lookbook",
-    description: "分享时装系列或造型集合",
-    icon: "albums",
-    color: "#000000",
-    route: "PublishLookbook",
-  },
-  {
-    id: "outfit",
-    title: "分享搭配",
-    description: "展示个人穿搭或搭配建议",
-    icon: "shirt",
-    color: "#000000",
-    route: "PublishOutfit",
-  },
-  {
-    id: "review",
-    title: "单品评价",
-    description: "对时尚单品进行专业点评",
-    icon: "star",
-    color: "#000000",
-    route: "PublishReview",
-  },
-  {
-    id: "store",
-    title: "提交买手店",
-    description: "分享发现的宝藏买手店",
-    icon: "storefront",
-    color: "#000000",
-    route: "SubmitStore",
-  },
-];
-
 const PublishTypeScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
+
+  const publishTypes: PublishType[] = [
+    {
+      id: "forum",
+      title: t("publish.typeForumTitle"),
+      description: t("publish.typeForumDesc"),
+      icon: "chatbubbles",
+      color: "#000000",
+      route: "PublishForumPost",
+    },
+    {
+      id: "lookbook",
+      title: t("publish.typeLookbookTitle"),
+      description: t("publish.typeLookbookDesc"),
+      icon: "albums",
+      color: "#000000",
+      route: "PublishLookbook",
+    },
+    {
+      id: "outfit",
+      title: t("publish.typeOutfitTitle"),
+      description: t("publish.typeOutfitDesc"),
+      icon: "shirt",
+      color: "#000000",
+      route: "PublishOutfit",
+    },
+    {
+      id: "review",
+      title: t("publish.typeReviewTitle"),
+      description: t("publish.typeReviewDesc"),
+      icon: "star",
+      color: "#000000",
+      route: "PublishReview",
+    },
+    {
+      id: "store",
+      title: t("publish.typeStoreTitle"),
+      description: t("publish.typeStoreDesc"),
+      icon: "storefront",
+      color: "#000000",
+      route: "SubmitStore",
+    },
+  ];
 
   const handleSelectType = (type: PublishType) => {
     // @ts-ignore - navigation types
@@ -70,7 +72,7 @@ const PublishTypeScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="选择发布"
+        title={t("publish.selectType")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -83,10 +85,10 @@ const PublishTypeScreen = () => {
         <VStack px="$lg" py="$lg" gap="$md">
           <Box mb="$md">
             <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
-              创作内容
+              {t("publish.createContent")}
             </Text>
             <Text fontSize="$sm" color="$gray500">
-              选择适合您内容的发布类型
+              {t("publish.selectTypeHint")}
             </Text>
           </Box>
 

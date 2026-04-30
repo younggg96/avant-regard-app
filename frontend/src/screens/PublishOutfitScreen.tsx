@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Text,
@@ -58,6 +59,7 @@ type PublishOutfitRouteParams = {
 };
 
 const PublishOutfitScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishOutfitRouteParams }, "params">>();
   const { user } = useAuthStore();
@@ -181,7 +183,7 @@ const PublishOutfitScreen = () => {
     } catch (error) {
       console.error("Failed to load shows:", error);
       if (reset) {
-        Alert.show("加载秀场数据失败");
+        Alert.show(t("publish.loadShowsFailed"));
       }
     } finally {
       setIsLoadingShows(false);
@@ -277,17 +279,15 @@ const PublishOutfitScreen = () => {
     loadShows(true);
   }, []);
 
-  // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
     if (selectedBrands.length >= MAX_BRANDS) {
-      Alert.show("提示: 最多只能关联" + MAX_BRANDS + "个品牌");
+      Alert.show(t("publish.maxBrandsReached", { count: MAX_BRANDS }));
       return;
     }
 
-    // 检查是否已添加
     const isDuplicate = selectedBrands.some((item) => item.id === brand.id);
     if (isDuplicate) {
-      Alert.show("提示: 该品牌已经添加过了");
+      Alert.show(t("publish.brandAlreadyAdded"));
       return;
     }
 
@@ -301,14 +301,13 @@ const PublishOutfitScreen = () => {
 
     setSelectedBrands([...selectedBrands, selectedBrand]);
     setShowBrandSelector(false);
-    Alert.show("已关联品牌", "", 1500);
+    Alert.show(t("publish.brandLinked"), "", 1500);
   };
 
-  // 移除品牌
   const handleRemoveBrand = (index: number) => {
     const newBrands = selectedBrands.filter((_, i) => i !== index);
     setSelectedBrands(newBrands);
-    Alert.show("已取消关联");
+    Alert.show(t("publish.brandUnlinked"));
   };
 
   // 编辑模式：初始化草稿数据
@@ -355,36 +354,33 @@ const PublishOutfitScreen = () => {
     return allShows;
   }, [allShows, searchQuery, searchResults]);
 
-  // 选择秀场
   const handleSelectShow = (show: Show) => {
     if (selectedShows.length >= MAX_SHOWS) {
-      Alert.show("提示: 最多只能关联" + MAX_SHOWS + "个秀场");
+      Alert.show(t("publish.maxShowsReached", { count: MAX_SHOWS }));
       return;
     }
 
-    // 检查是否已经添加过相同的秀
     const isDuplicate = selectedShows.some(
       (item) => item.brand === show.brand && item.season === show.season
     );
 
     if (isDuplicate) {
-      Alert.show("提示: 该秀场已经添加过了");
+      Alert.show(t("publish.showAlreadyAdded"));
       return;
     }
 
-    // 将 Show 转换为 SelectedShow 格式
     const selectedShow: SelectedShow = {
-      id: 0, // 本地数据没有数据库 ID，使用 0
+      id: 0,
       brand: show.brand,
       season: show.season,
       imageUrl: show.cover_image,
-      showId: show.show_id, // 数据库秀场 ID，用于关联帖子
-      showUrl: show.cover_image, // 仅用于按钮点击跳转链接
+      showId: show.show_id,
+      showUrl: show.cover_image,
     };
 
     setSelectedShows([...selectedShows, selectedShow]);
     setShowSelector(false);
-    Alert.show("已关联秀场", "", 1500);
+    Alert.show(t("publish.showLinked"), "", 1500);
   };
 
   // 检查是否满足发布标准
@@ -413,12 +409,12 @@ const PublishOutfitScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress("上传中 0%");
+      setUploadProgress(t("publish.uploadingPercent", { percent: 0 }));
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
         undefined,
         (percent) => {
-          setUploadProgress(`上传中 ${percent}%`);
+          setUploadProgress(t("publish.uploadingPercent", { percent }));
         }
       );
     }
@@ -439,18 +435,18 @@ const PublishOutfitScreen = () => {
 
   const handlePublish = async () => {
     if (!canPublish()) {
-      Alert.show("提示: 请完成所有必填项");
+      Alert.show(t("publish.completeRequiredFields"));
       return;
     }
 
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
     const existingTask = useUploadStore.getState().currentTask;
     if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
-      Alert.show("有内容正在上传中，请稍后再试");
+      Alert.show(t("publish.uploadInProgress"));
       return;
     }
 
@@ -530,18 +526,17 @@ const PublishOutfitScreen = () => {
 
   const handleSaveDraft = async () => {
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
-    // 验证是否有内容可以保存
     if (
       !title &&
       !description &&
       images.length === 0 &&
       selectedShows.length === 0
     ) {
-      Alert.show("提示: 请至少填写一些内容再保存草稿");
+      Alert.show(t("publish.draftNeedsContent"));
       return;
     }
 
@@ -561,8 +556,7 @@ const PublishOutfitScreen = () => {
       // 获取所有关联品牌的 brandIds
       const brandIds = selectedBrands.map((brand) => brand.id);
 
-      // 保存草稿
-      setUploadProgress("正在保存...");
+      setUploadProgress(t("publish.saving"));
 
       const coverLocalUri = coverImage || images[0] || null;
       const coverDims = await resolveCoverDimensions(coverLocalUri, imageDimensions);
@@ -573,7 +567,7 @@ const PublishOutfitScreen = () => {
           userId: user.userId,
           postType: "DAILY_SHARE",
           status: "DRAFT",
-          title: title.trim() || "搭配草稿",
+          title: title.trim() || t("publish.outfitDraft"),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -591,7 +585,7 @@ const PublishOutfitScreen = () => {
           userId: user.userId,
           postType: "DAILY_SHARE",
           postStatus: "DRAFT",
-          title: title.trim() || "搭配草稿",
+          title: title.trim() || t("publish.outfitDraft"),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -606,10 +600,10 @@ const PublishOutfitScreen = () => {
       }
 
       setUploadProgress(null);
-      Alert.show("草稿已保存", "", 1500);
+      Alert.show(t("publish.draftSaved"), "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+      Alert.show(error instanceof Error ? error.message : t("publish.saveFailed"));
     } finally {
       setIsSavingDraft(false);
       setUploadProgress(null);
@@ -630,7 +624,7 @@ const PublishOutfitScreen = () => {
 
   const handleAddImage = () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "个媒体文件");
+      Alert.show(t("publish.maxMediaReached", { count: MAX_IMAGES }));
       return;
     }
     setShowImagePicker(true);
@@ -642,10 +636,10 @@ const PublishOutfitScreen = () => {
     try {
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
+        if (status !== "granted") { Alert.show(t("publish.cameraPermissionRequired")); return; }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+        if (status !== "granted") { Alert.show(t("publish.galleryPermissionRequired")); return; }
       }
 
       const result = source === "camera"
@@ -666,7 +660,7 @@ const PublishOutfitScreen = () => {
       }
     } catch (error) {
       console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -676,7 +670,7 @@ const PublishOutfitScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.show("需要相册权限才能选择图片");
+        Alert.show(t("publish.galleryPermissionRequired"));
         return;
       }
 
@@ -695,7 +689,7 @@ const PublishOutfitScreen = () => {
       }
     } catch (error) {
       console.error("Multi image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -710,7 +704,7 @@ const PublishOutfitScreen = () => {
       setCoverImage(newImages[0]);
     }
 
-    Alert.show(`已添加 ${croppedUris.length} 张图片`, "", 1500);
+    Alert.show(t("publish.imagesAdded", { count: croppedUris.length }), "", 1500);
   };
 
   const handleBatchCropCancel = () => {
@@ -723,7 +717,7 @@ const PublishOutfitScreen = () => {
 
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+      if (status !== "granted") { Alert.show(t("publish.videoPermissionRequired")); return; }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
@@ -751,11 +745,11 @@ const PublishOutfitScreen = () => {
         if (!coverImage) {
           setCoverImage(thumbnail?.uri ?? videoUri);
         }
-        Alert.show("视频已添加", "", 1500);
+        Alert.show(t("publish.videoAdded"), "", 1500);
       }
     } catch (error) {
       console.error("Video selection error:", error);
-      Alert.show("错误: 视频选择失败，请重试");
+      Alert.show(t("publish.videoSelectionFailed"));
     }
   };
 
@@ -788,7 +782,7 @@ const PublishOutfitScreen = () => {
         setCurrentImageIndex(0);
       }
 
-      Alert.show("设置成功: 已将此图片设为封面");
+      Alert.show(t("publish.setCoverSuccess"));
     }
   };
 
@@ -806,7 +800,7 @@ const PublishOutfitScreen = () => {
         setCoverImage(newImages.length > 0 ? newImages[0] : null);
       }
 
-      Alert.show("删除成功: 图片已删除");
+      Alert.show(t("publish.imageDeleted"));
     }
 
     setSelectedImageUri(null);
@@ -849,7 +843,7 @@ const PublishOutfitScreen = () => {
             setCoverImage(croppedUri);
           }
 
-          Alert.show("编辑成功", "", 1500);
+          Alert.show(t("publish.editSuccess"), "", 1500);
           setSelectedImageUri(null);
           setSelectedImageIndex(null);
         } else {
@@ -859,7 +853,7 @@ const PublishOutfitScreen = () => {
           if (!coverImage) {
             setCoverImage(croppedUri);
           }
-          Alert.show("图片已添加", "", 1500);
+          Alert.show(t("publish.imageAdded"), "", 1500);
         }
 
         setCropperImageUri(null);
@@ -897,7 +891,7 @@ const PublishOutfitScreen = () => {
   const handleRemoveShow = (index: number) => {
     const newShows = selectedShows.filter((_, i) => i !== index);
     setSelectedShows(newShows);
-    Alert.show("已取消关联");
+    Alert.show(t("publish.showUnlinked"));
   };
 
   const previewHeight = useMemo(() => {
@@ -932,7 +926,7 @@ const PublishOutfitScreen = () => {
               color={theme.colors.gray400}
             />
             <Text color="$gray500" mt="$sm">
-              点击添加搭配图片 或 视频
+              {t("publish.tapToAddMedia")}
             </Text>
           </Pressable>
         </Box>
@@ -1074,7 +1068,7 @@ const PublishOutfitScreen = () => {
                   alignItems="center"
                 >
                   <Text color="$white" fontSize={10} fontWeight="$medium">
-                    封面
+                    {t("publish.cover")}
                   </Text>
                 </Box>
               )}
@@ -1098,7 +1092,7 @@ const PublishOutfitScreen = () => {
       </ScrollView>
       {images.length > 1 && (
         <Text color="$gray400" fontSize="$xs" textAlign="center" mt="$xs">
-          点击图片进入编辑器，长按可拖拽调整顺序
+          {t("publish.thumbnailHint")}
         </Text>
       )}
     </Box>
@@ -1129,7 +1123,7 @@ const PublishOutfitScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={editMode ? "编辑搭配" : "分享搭配"}
+        title={editMode ? t("publish.editOutfit") : t("publish.shareOutfit")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -1140,7 +1134,7 @@ const PublishOutfitScreen = () => {
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
             <Text color="$white" fontSize="$sm" flex={1}>
-              编辑后帖子将重新进入审核状态
+              {t("publish.reAuditWarning")}
             </Text>
           </HStack>
         </Box>
@@ -1157,7 +1151,7 @@ const PublishOutfitScreen = () => {
         <Box mx="$md" mb="$md">
           <HStack mb="$sm" alignItems="center">
             <Text color="$gray600" fontSize="$sm">
-              标题
+              {t("publish.titleLabel")}
             </Text>
             <Text color="$red500" fontSize="$sm" ml="$xs">
               *
@@ -1166,7 +1160,7 @@ const PublishOutfitScreen = () => {
           <Input
             value={title}
             onChangeText={setTitle}
-            placeholder="分享您的搭配灵感和穿搭心得"
+            placeholder={t("publish.outfitTitlePlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="outline"
@@ -1185,7 +1179,7 @@ const PublishOutfitScreen = () => {
         <Box mx="$md" mb="$md">
           <HStack mb="$sm" alignItems="center">
             <Text color="$gray600" fontSize="$sm">
-              搭配详情
+              {t("publish.outfitDetailsLabel")}
             </Text>
             <Text color="$red500" fontSize="$sm" ml="$xs">
               *
@@ -1194,7 +1188,7 @@ const PublishOutfitScreen = () => {
           <Input
             value={description}
             onChangeText={setDescription}
-            placeholder="详细描述您的搭配..."
+            placeholder={t("publish.outfitDescPlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="outline"
@@ -1219,22 +1213,20 @@ const PublishOutfitScreen = () => {
           onRemoveShow={handleRemoveShow}
           onAddShow={() => setShowSelector(true)}
           maxShows={MAX_SHOWS}
-          label="关联秀场"
+          label={t("publish.linkShow")}
           required
         />
 
-        {/* 关联品牌 */}
         <BrandGridSelector
           selectedBrands={selectedBrands}
           onBrandPress={() => { }}
           onRemoveBrand={handleRemoveBrand}
           onAddBrand={() => setShowBrandSelector(true)}
           maxBrands={MAX_BRANDS}
-          label="关联品牌"
+          label={t("publish.linkBrand")}
           required={false}
         />
 
-        {/* 单品信息（可选） */}
         <ProductInfoSection value={productInfo} onChange={setProductInfo} />
       </ScrollView>
 
@@ -1244,10 +1236,10 @@ const PublishOutfitScreen = () => {
         publishDisabled={!canPublish() || isPublishing || isSavingDraft}
         draftDisabled={isPublishing || isSavingDraft}
         publishButtonText={
-          isPublishing ? uploadProgress || "发布中..." : "发布"
+          isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")
         }
         draftButtonText={
-          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+          isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")
         }
       />
 
@@ -1260,7 +1252,7 @@ const PublishOutfitScreen = () => {
         onSelectVideo={handleVideoSelection}
         showMultiSelectOption={images.length < MAX_IMAGES}
         showVideoOption={true}
-        title="添加媒体"
+        title={t("publish.addMedia")}
       />
 
       {videoPreviewUri && (

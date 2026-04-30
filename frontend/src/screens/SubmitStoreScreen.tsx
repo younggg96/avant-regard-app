@@ -33,6 +33,7 @@ import {
   UserSubmittedStoreCreate,
 } from "../services/buyerStoreService";
 import { uploadImages } from "../services/postService";
+import { useTranslation } from "react-i18next";
 
 const STYLE_OPTIONS = [
   "先锋",
@@ -62,6 +63,7 @@ const COUNTRY_OPTIONS = [
 ];
 
 const SubmitStoreScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
@@ -88,7 +90,7 @@ const SubmitStoreScreen = () => {
       setIsLocating(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.show("提示: 需要位置权限来获取店铺坐标");
+        Alert.show(t("storeSubmit.locationPermissionRequired"));
         return;
       }
 
@@ -97,9 +99,9 @@ const SubmitStoreScreen = () => {
       });
       setLatitude(location.coords.latitude);
       setLongitude(location.coords.longitude);
-      Alert.show("已获取当前位置坐标");
+      Alert.show(t("storeSubmit.locationObtained"));
     } catch (error) {
-      Alert.show("提示: 无法获取位置，请手动输入或稍后重试");
+      Alert.show(t("storeSubmit.locationFailed"));
     } finally {
       setIsLocating(false);
     }
@@ -108,7 +110,7 @@ const SubmitStoreScreen = () => {
   const pickImages = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+      if (status !== "granted") { Alert.show(t("storeSubmit.albumPermissionRequired")); return; }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -122,7 +124,7 @@ const SubmitStoreScreen = () => {
         setImages((prev) => [...prev, ...newImages].slice(0, 6));
       }
     } catch (error) {
-      Alert.show("提示: 选择图片失败");
+      Alert.show(t("storeSubmit.imagePickFailed"));
     }
   };
 
@@ -140,19 +142,19 @@ const SubmitStoreScreen = () => {
 
   const validateForm = (): boolean => {
     if (!name.trim()) {
-      Alert.show("提示: 请输入店铺名称");
+      Alert.show(t("storeSubmit.nameRequired"));
       return false;
     }
     if (!address.trim()) {
-      Alert.show("提示: 请输入详细地址");
+      Alert.show(t("storeSubmit.addressRequired"));
       return false;
     }
     if (!city.trim()) {
-      Alert.show("提示: 请输入所在城市");
+      Alert.show(t("storeSubmit.cityRequired"));
       return false;
     }
     if (!country.trim()) {
-      Alert.show("提示: 请选择所在国家");
+      Alert.show(t("storeSubmit.countryRequired"));
       return false;
     }
     return true;
@@ -181,7 +183,7 @@ const SubmitStoreScreen = () => {
 
   const handleSubmit = async () => {
     if (!user) {
-      Alert.show("提示: 请先登录");
+      Alert.show(t("storeSubmit.loginRequired"));
       return;
     }
 
@@ -224,14 +226,14 @@ const SubmitStoreScreen = () => {
 
       await submitStore(data);
 
-      Alert.show("提交成功", "您的买手店信息已提交，等待平台审核", 2000);
+      Alert.show(t("storeSubmit.submitSuccess"), t("storeSubmit.submitSuccessMessage"), 2000);
       setTimeout(() => {
         navigation.goBack();
       }, 1500);
     } catch (error: any) {
       Alert.show(
-        "提交失败",
-        error.message || "请稍后重试",
+        t("storeSubmit.submitFailed"),
+        error.message || t("storeSubmit.retryLater"),
         3000
       );
     } finally {
@@ -242,7 +244,7 @@ const SubmitStoreScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="提交买手店"
+        title={t("storeSubmit.title")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -266,7 +268,7 @@ const SubmitStoreScreen = () => {
                 color={theme.colors.gray500}
               />
               <Text color="$gray500" fontSize="$sm" flex={1} lineHeight={20}>
-                发现了一家好店？快来分享给其他用户吧！提交后将由平台审核，审核通过后将展示给所有用户。
+                {t("storeSubmit.description")}
               </Text>
             </HStack>
           </Box>
@@ -274,7 +276,7 @@ const SubmitStoreScreen = () => {
           {/* 基本信息 */}
           <Box mx="$md" mb="$md">
             <Text fontSize="$md" fontWeight="$bold" color="$black">
-              基本信息
+              {t("storeSubmit.basicInfo")}
             </Text>
           </Box>
 
@@ -282,7 +284,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                店铺名称
+                {t("storeSubmit.storeName")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -291,7 +293,7 @@ const SubmitStoreScreen = () => {
             <Input
               value={name}
               onChangeText={setName}
-              placeholder="输入店铺名称"
+              placeholder={t("storeSubmit.storeNamePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               maxLength={100}
@@ -302,7 +304,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                所在国家
+                {t("storeSubmit.country")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -334,7 +336,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                所在城市
+                {t("storeSubmit.city")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -343,7 +345,7 @@ const SubmitStoreScreen = () => {
             <Input
               value={city}
               onChangeText={setCity}
-              placeholder="如：上海、东京、巴黎"
+              placeholder={t("storeSubmit.cityPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               maxLength={50}
@@ -354,7 +356,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                详细地址
+                {t("storeSubmit.storeAddress")}
               </Text>
               <Text color="$red500" fontSize="$sm" ml="$xs">
                 *
@@ -363,7 +365,7 @@ const SubmitStoreScreen = () => {
             <Input
               value={address}
               onChangeText={setAddress}
-              placeholder="输入详细地址，方便其他用户找到"
+              placeholder={t("storeSubmit.addressPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               multiline
@@ -379,7 +381,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$lg">
             <HStack justifyContent="between" alignItems="center" mb="$xs">
               <Text color="$gray600" fontSize="$sm">
-                位置坐标（可选）
+                {t("storeSubmit.coordinates")}
               </Text>
               <Pressable
                 flexDirection="row"
@@ -397,19 +399,19 @@ const SubmitStoreScreen = () => {
                   />
                 )}
                 <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs">
-                  获取当前位置
+                  {t("storeSubmit.getLocation")}
                 </Text>
               </Pressable>
             </HStack>
             {latitude && longitude ? (
               <Box bg="$gray100" rounded="$md" p="$sm">
                 <Text fontSize="$sm" color="$gray500">
-                  纬度: {latitude.toFixed(6)}, 经度: {longitude.toFixed(6)}
+                  {t("storeSubmit.coordinatesDisplay", { lat: latitude.toFixed(6), lng: longitude.toFixed(6) })}
                 </Text>
               </Box>
             ) : (
               <Text fontSize="$xs" color="$gray400">
-                点击右上角按钮获取当前位置，或留空由平台补充
+                {t("storeSubmit.coordinatesHint")}
               </Text>
             )}
           </Box>
@@ -417,7 +419,7 @@ const SubmitStoreScreen = () => {
           {/* 详细信息 */}
           <Box mx="$md" mb="$md">
             <Text fontSize="$md" fontWeight="$bold" color="$black">
-              详细信息
+              {t("storeSubmit.detailInfo")}
             </Text>
           </Box>
 
@@ -425,7 +427,7 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                风格标签（最多选5个）
+                {t("storeSubmit.styleLabel")}
               </Text>
             </HStack>
             <HStack flexWrap="wrap" gap="$xs">
@@ -454,13 +456,13 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                销售品牌
+                {t("storeSubmit.storeBrands")}
               </Text>
             </HStack>
             <Input
               value={brands}
               onChangeText={setBrands}
-              placeholder="用逗号分隔，如：Rick Owens, Guidi, CCP"
+              placeholder={t("storeSubmit.brandsPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
             />
@@ -470,13 +472,13 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                联系电话
+                {t("storeSubmit.storePhone")}
               </Text>
             </HStack>
             <Input
               value={phone}
               onChangeText={setPhone}
-              placeholder="多个号码用逗号分隔"
+              placeholder={t("storeSubmit.phonePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               keyboardType="phone-pad"
@@ -487,13 +489,13 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                营业时间
+                {t("storeSubmit.businessHours")}
               </Text>
             </HStack>
             <Input
               value={hours}
               onChangeText={setHours}
-              placeholder="如：11:00-21:00，周一休息"
+              placeholder={t("storeSubmit.hoursPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               maxLength={100}
@@ -504,13 +506,13 @@ const SubmitStoreScreen = () => {
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
-                店铺描述
+                {t("storeSubmit.storeDescription")}
               </Text>
             </HStack>
             <Input
               value={description}
               onChangeText={setDescription}
-              placeholder="介绍一下这家店的特色..."
+              placeholder={t("storeSubmit.descriptionPlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="filled"
               multiline
@@ -533,7 +535,7 @@ const SubmitStoreScreen = () => {
             onRemoveImage={removeImage}
             onAddImage={pickImages}
             maxImages={6}
-            label="店铺图片"
+            label={t("storeSubmit.storeImages")}
           />
 
           {/* 提交按钮 */}
@@ -552,7 +554,7 @@ const SubmitStoreScreen = () => {
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
                 <Text fontSize="$md" fontWeight="$bold" color="$white">
-                  提交审核
+                  {t("storeSubmit.submit")}
                 </Text>
               )}
             </Pressable>

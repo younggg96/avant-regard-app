@@ -16,6 +16,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
+import { useTranslation } from "react-i18next";
 import {
   notificationService,
   type Notification,
@@ -23,6 +24,7 @@ import {
 import { isRenderableImage } from "@/lib/isRenderableImage";
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { data, isLoading, error } = useSWR<Notification[]>(
     ["notifications-all"],
@@ -82,10 +84,10 @@ export default function NotificationsPage() {
       <header className="mb-6 flex items-end justify-between gap-3 border-b border-[var(--border)] pb-5">
         <div>
           <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-            通知
+            {t("notification.title")}
           </h1>
           <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-            {unreadCount > 0 ? `${unreadCount} 条未读` : "全部已读"}
+            {unreadCount > 0 ? t("notification.unreadCount", { count: unreadCount }) : t("notification.allRead")}
           </p>
         </div>
         {unreadCount > 0 && (
@@ -94,26 +96,26 @@ export default function NotificationsPage() {
             onClick={onMarkAllRead}
             className="font-label text-[12px] text-[var(--ink)] underline-offset-4 hover:underline"
           >
-            全部标为已读
+            {t("notification.markAllRead")}
           </button>
         )}
       </header>
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loading")}
         </div>
       )}
 
       {error && (
         <div className="rounded border border-red-500/20 bg-red-500/5 p-4 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("me.loadFailed")}：{(error as Error).message}
         </div>
       )}
 
       {!isLoading && !error && (!data || data.length === 0) && (
         <div className="rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-8 font-serif text-sm text-[color:var(--ink-muted)]">
-          暂无通知。
+          {t("notification.noNotifications")}
         </div>
       )}
 
@@ -181,7 +183,7 @@ export default function NotificationsPage() {
                   }}
                   className="shrink-0 self-center font-label text-[11px] text-[color:var(--ink-muted)] opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
                 >
-                  删除
+                  {t("notification.deleteLabel")}
                 </span>
               </button>
             </li>

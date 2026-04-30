@@ -28,6 +28,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import {
@@ -48,8 +49,6 @@ import {
 } from "@/components/merchant/shared";
 import {
   storeMerchantService,
-  ACTIVITY_TYPE_LABEL,
-  DISCOUNT_TYPE_LABEL,
   type StoreMerchant,
   type MerchantBuyerStore,
   type MerchantBuyerStoreUpdateParams,
@@ -89,6 +88,7 @@ function MerchantThumb({
   alt: string;
   className: string;
 }) {
+  const { t } = useTranslation();
   if (isDisplayableUrl(url)) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={url!} alt={alt} className={className} />;
@@ -97,9 +97,9 @@ function MerchantThumb({
     <div
       className={`${className} flex items-center justify-center border border-dashed border-[var(--border)] bg-[var(--canvas)] text-center font-label text-[10px] leading-tight text-[color:var(--ink-muted)]`}
     >
-      图片不可用
+      {t("merchant.imageUnavailable")}
       <br />
-      请重新上传
+      {t("merchant.imageReupload")}
     </div>
   );
 }
@@ -108,31 +108,41 @@ function MerchantThumb({
 
 type TabKey = "info" | "banner" | "announcement" | "activity" | "discount";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "info", label: "店铺信息" },
-  { key: "banner", label: "Banner" },
-  { key: "announcement", label: "公告" },
-  { key: "activity", label: "活动" },
-  { key: "discount", label: "折扣" },
-];
+function useMerchantTabs() {
+  const { t } = useTranslation();
+  return [
+    { key: "info" as TabKey, label: t("merchant.tabInfo") },
+    { key: "banner" as TabKey, label: t("merchant.tabBanner") },
+    { key: "announcement" as TabKey, label: t("merchant.tabAnnouncement") },
+    { key: "activity" as TabKey, label: t("merchant.tabActivity") },
+    { key: "discount" as TabKey, label: t("merchant.tabDiscount") },
+  ];
+}
 
-const ACTIVITY_TYPE_OPTIONS: { value: ActivityType; label: string }[] = [
-  { value: "TRUNK_SHOW", label: "Trunk Show" },
-  { value: "POP_UP", label: "快闪店" },
-  { value: "SALE", label: "特卖会" },
-  { value: "EVENT", label: "活动" },
-  { value: "OTHER", label: "其他" },
-];
+function useActivityTypeOptions() {
+  const { t } = useTranslation();
+  return useMemo(() => [
+    { value: "TRUNK_SHOW" as const, label: "Trunk Show" },
+    { value: "POP_UP" as const, label: t("merchant.activityTypePopUp") },
+    { value: "SALE" as const, label: t("merchant.activityTypeSale") },
+    { value: "EVENT" as const, label: t("merchant.activityTypeEvent") },
+    { value: "OTHER" as const, label: t("merchant.activityTypeOther") },
+  ], [t]);
+}
 
-const DISCOUNT_TYPE_OPTIONS: { value: DiscountType; label: string }[] = [
-  { value: "PERCENTAGE", label: "折扣比例" },
-  { value: "FIXED", label: "满减优惠" },
-  { value: "SPECIAL", label: "特别优惠" },
-];
+function useDiscountTypeOptions() {
+  const { t } = useTranslation();
+  return useMemo(() => [
+    { value: "PERCENTAGE" as const, label: t("merchant.discountTypePercentage") },
+    { value: "FIXED" as const, label: t("merchant.discountTypeFixed") },
+    { value: "SPECIAL" as const, label: t("merchant.discountTypeSpecial") },
+  ], [t]);
+}
 
 // ───────────────────────────── 页面 ─────────────────────────────
 
 export default function MerchantManagePage() {
+  const { t } = useTranslation();
   const params = useParams<{ merchantId: string }>();
   const merchantId = Number(params?.merchantId);
 
@@ -158,10 +168,10 @@ export default function MerchantManagePage() {
         <BackLink />
         <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
           <div className="font-serif text-[17px] text-[var(--ink)]">
-            未找到该商家申请
+            {t("merchant.notFound")}
           </div>
           <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-            可能已被删除, 或不属于当前登录账号.
+            {t("merchant.notFoundDesc")}
           </div>
         </div>
       </section>
@@ -174,10 +184,10 @@ export default function MerchantManagePage() {
         <BackLink />
         <div className="mt-8 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
           <div className="font-serif text-[17px] text-[var(--ink)]">
-            该商家尚未通过审核
+            {t("merchant.notApproved")}
           </div>
           <div className="mt-2 font-label text-[13px] text-[color:var(--ink-muted)]">
-            当前状态: {merchant.status}. 认证通过后才可管理店铺内容.
+            {t("merchant.notApprovedDesc", { status: merchant.status })}
           </div>
         </div>
       </section>
@@ -191,13 +201,13 @@ export default function MerchantManagePage() {
       <header className="mt-4 mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-5">
         <div>
           <h1 className="font-serif text-2xl text-black dark:text-white md:text-3xl">
-            商家管理
+            {t("merchant.management")}
           </h1>
           <p className="mt-1 font-label text-[12px] text-[color:var(--ink-muted)]">
-            店铺 ID: {merchant.storeId}
+            {t("merchant.storeId", { id: merchant.storeId })}
           </p>
         </div>
-        <StatusBadge active>已认证</StatusBadge>
+        <StatusBadge active>{t("merchant.certified")}</StatusBadge>
       </header>
 
       <ProductSystemNav merchantId={merchant.id} />
@@ -225,32 +235,33 @@ export default function MerchantManagePage() {
 // 行"卡片导航"，clarity > cleverness.
 
 function ProductSystemNav({ merchantId }: { merchantId: number }) {
+  const { t } = useTranslation();
   const items = [
     {
       href: `/me/merchant/${merchantId}/profile`,
-      title: "店铺主页配置",
-      desc: "Logo / 封面 / 介绍 / 标签",
+      title: t("merchant.navProfile"),
+      desc: t("merchant.navProfileDesc"),
     },
     {
       href: `/me/merchant/${merchantId}/entry-cards`,
-      title: "入口卡片",
-      desc: "首页分类 / 折扣 / 活动 / 新品 四种入口",
+      title: t("merchant.navEntryCards"),
+      desc: t("merchant.navEntryCardsDesc"),
     },
     {
       href: `/me/merchant/${merchantId}/categories`,
-      title: "商品分类",
-      desc: "上衣 / 裤子 / 男装 / 女装 …",
+      title: t("merchant.navCategories"),
+      desc: t("merchant.navCategoriesDesc"),
     },
     {
       href: `/me/merchant/${merchantId}/products`,
-      title: "商品管理",
-      desc: "新品 / 折扣 / 草稿 / 下架",
+      title: t("merchant.navProducts"),
+      desc: t("merchant.navProductsDesc"),
     },
   ];
   return (
     <div className="mb-6">
       <div className="mb-2 font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-        商品系统
+        {t("merchant.productSystem")}
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((it) => (
@@ -278,12 +289,13 @@ function ProductSystemNav({ merchantId }: { merchantId: number }) {
 }
 
 function BackLink() {
+  const { t } = useTranslation();
   return (
     <Link
       href="/me/merchant"
       className="inline-flex items-center gap-1 font-label text-[12px] text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
     >
-      ← 返回我的店铺
+      {t("merchant.backToMyStore")}
     </Link>
   );
 }
@@ -295,6 +307,7 @@ function TabBar({
   active: TabKey;
   onChange: (k: TabKey) => void;
 }) {
+  const TABS = useMerchantTabs();
   return (
     <div className="flex flex-wrap gap-1 border-b border-[var(--border)] font-label text-[13px]">
       {TABS.map((t) => (
@@ -327,15 +340,16 @@ function InfoTab({ merchant }: { merchant: StoreMerchant }) {
 }
 
 function PermissionsCard({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
   const items = [
     { label: "Banner", enabled: merchant.canPostBanner },
-    { label: "公告", enabled: merchant.canPostAnnouncement },
-    { label: "活动", enabled: merchant.canPostActivity },
-    { label: "折扣", enabled: merchant.canPostDiscount },
+    { label: t("merchant.tabAnnouncement"), enabled: merchant.canPostAnnouncement },
+    { label: t("merchant.tabActivity"), enabled: merchant.canPostActivity },
+    { label: t("merchant.tabDiscount"), enabled: merchant.canPostDiscount },
   ];
 
   return (
-    <Card title="已开通权限">
+    <Card title={t("merchant.permissions")}>
       <div className="flex flex-wrap gap-1.5">
         {items.map((it) => (
           <span
@@ -347,7 +361,7 @@ function PermissionsCard({ merchant }: { merchant: StoreMerchant }) {
             }`}
           >
             {it.label}
-            {!it.enabled && " · 未开通"}
+            {!it.enabled && ` · ${t("merchant.notEnabled")}`}
           </span>
         ))}
       </div>
@@ -356,6 +370,7 @@ function PermissionsCard({ merchant }: { merchant: StoreMerchant }) {
 }
 
 function ContactInfoCard({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     contactName: merchant.contactName ?? "",
@@ -381,7 +396,7 @@ function ContactInfoCard({ merchant }: { merchant: StoreMerchant }) {
       await storeMerchantService.updateMerchant(merchant.id, form);
       setEditing(false);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -389,36 +404,36 @@ function ContactInfoCard({ merchant }: { merchant: StoreMerchant }) {
 
   return (
     <Card
-      title="联系信息"
+      title={t("merchant.contactInfo")}
       action={
         !editing ? (
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-            编辑
+            {t("common.edit")}
           </Button>
         ) : null
       }
     >
       {!editing ? (
         <dl className="grid gap-3 sm:grid-cols-3">
-          <Info label="联系人" value={merchant.contactName} />
-          <Info label="联系电话" value={merchant.contactPhone} />
-          <Info label="联系邮箱" value={merchant.contactEmail} />
+          <Info label={t("merchant.contactName")} value={merchant.contactName} />
+          <Info label={t("merchant.contactPhone")} value={merchant.contactPhone} />
+          <Info label={t("merchant.contactEmail")} value={merchant.contactEmail} />
         </dl>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          <FormField label="联系人姓名">
+          <FormField label={t("merchant.contactNameLabel")}>
             <TextInput
               value={form.contactName}
               onChange={(v) => setForm({ ...form, contactName: v })}
             />
           </FormField>
-          <FormField label="联系电话">
+          <FormField label={t("merchant.contactPhone")}>
             <TextInput
               value={form.contactPhone}
               onChange={(v) => setForm({ ...form, contactPhone: v })}
             />
           </FormField>
-          <FormField label="联系邮箱">
+          <FormField label={t("merchant.contactEmail")}>
             <TextInput
               value={form.contactEmail}
               onChange={(v) => setForm({ ...form, contactEmail: v })}
@@ -429,10 +444,10 @@ function ContactInfoCard({ merchant }: { merchant: StoreMerchant }) {
               <span className="font-label text-[12px] text-red-600">{err}</span>
             )}
             <Button variant="secondary" onClick={() => setEditing(false)}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={onSave} loading={saving}>
-              保存
+              {t("common.save")}
             </Button>
           </div>
         </div>
@@ -442,6 +457,7 @@ function ContactInfoCard({ merchant }: { merchant: StoreMerchant }) {
 }
 
 function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
   const { data: store, mutate } = useSWR(
     ["merchant-buyer-store", merchant.storeId],
     () => storeMerchantService.getBuyerStore(merchant.storeId),
@@ -486,63 +502,63 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
       await mutate(next, { revalidate: false });
       setEditing(false);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败");
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   if (!store) {
-    return <Card title="店铺信息">正在载入…</Card>;
+    return <Card title={t("merchant.storeInfo")}>{t("merchant.loading")}</Card>;
   }
 
   return (
     <Card
-      title="店铺信息"
+      title={t("merchant.storeInfo")}
       action={
         !editing ? (
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-            编辑
+            {t("common.edit")}
           </Button>
         ) : null
       }
     >
       {!editing ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Info label="店铺名称" value={store.name} />
-          <Info label="所在地" value={`${store.city}, ${store.country}`} />
-          <Info label="地址" value={store.address} />
-          <Info label="营业时间" value={store.hours} />
-          <Info label="休息日" value={store.rest} />
+          <Info label={t("merchant.storeName")} value={store.name} />
+          <Info label={t("merchant.storeLocation")} value={`${store.city}, ${store.country}`} />
+          <Info label={t("merchant.storeAddress")} value={store.address} />
+          <Info label={t("merchant.businessHours")} value={store.hours} />
+          <Info label={t("merchant.restDays")} value={store.rest} />
           <Info
-            label="联系电话"
+            label={t("merchant.phoneLabel")}
             value={store.phone?.length ? store.phone.join(" / ") : undefined}
           />
           {store.description && (
             <div className="sm:col-span-2">
-              <Info label="店铺描述" value={store.description} />
+              <Info label={t("merchant.storeDescription")} value={store.description} />
             </div>
           )}
           {!!store.brands?.length && (
             <div className="sm:col-span-2">
-              <TagList label="销售品牌" values={store.brands} />
+              <TagList label={t("merchant.brandsLabel")} values={store.brands} />
             </div>
           )}
           {!!store.style?.length && (
             <div className="sm:col-span-2">
-              <TagList label="风格标签" values={store.style} />
+              <TagList label={t("merchant.styleLabel")} values={store.style} />
             </div>
           )}
         </div>
       ) : (
         <div className="grid gap-3">
-          <FormField label="店铺名称">
+          <FormField label={t("merchant.storeName")}>
             <TextInput
               value={form.name ?? ""}
               onChange={(v) => setForm({ ...form, name: v })}
             />
           </FormField>
-          <FormField label="地址">
+          <FormField label={t("merchant.storeAddress")}>
             <TextInput
               value={form.address ?? ""}
               onChange={(v) => setForm({ ...form, address: v })}
@@ -551,22 +567,22 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
             />
           </FormField>
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="营业时间">
+            <FormField label={t("merchant.businessHours")}>
               <TextInput
                 value={form.hours ?? ""}
                 onChange={(v) => setForm({ ...form, hours: v })}
-                placeholder="例如: 10:00-21:00"
+                placeholder={t("merchant.businessHoursPlaceholder")}
               />
             </FormField>
-            <FormField label="休息日">
+            <FormField label={t("merchant.restDays")}>
               <TextInput
                 value={form.rest ?? ""}
                 onChange={(v) => setForm({ ...form, rest: v })}
-                placeholder="例如: 周一休息"
+                placeholder={t("merchant.restDaysPlaceholder")}
               />
             </FormField>
           </div>
-          <FormField label="店铺描述">
+          <FormField label={t("merchant.storeDescription")}>
             <TextInput
               value={form.description ?? ""}
               onChange={(v) => setForm({ ...form, description: v })}
@@ -576,8 +592,8 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
           </FormField>
 
           <ChipEditor
-            label="联系电话"
-            placeholder="添加电话号码"
+            label={t("merchant.phoneLabel")}
+            placeholder={t("merchant.phonePlaceholder")}
             draft={newPhone}
             onDraftChange={setNewPhone}
             items={form.phone ?? []}
@@ -593,8 +609,8 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
           />
 
           <ChipEditor
-            label="销售品牌"
-            placeholder="添加品牌名称"
+            label={t("merchant.brandsLabel")}
+            placeholder={t("merchant.brandsPlaceholder")}
             draft={newBrand}
             onDraftChange={setNewBrand}
             items={form.brands ?? []}
@@ -610,8 +626,8 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
           />
 
           <ChipEditor
-            label="风格标签"
-            placeholder="添加风格标签"
+            label={t("merchant.styleLabel")}
+            placeholder={t("merchant.stylePlaceholder")}
             draft={newStyle}
             onDraftChange={setNewStyle}
             items={form.style ?? []}
@@ -637,10 +653,10 @@ function BuyerStoreCard({ merchant }: { merchant: StoreMerchant }) {
                 resetForm(store);
               }}
             >
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={onSave} loading={saving}>
-              保存
+              {t("common.save")}
             </Button>
           </div>
         </div>
@@ -659,6 +675,7 @@ interface BannerForm {
 }
 
 function BannerTab({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
   const { data, isLoading, mutate } = useSWR(
     ["merchant-banners", merchant.id],
     () => storeMerchantService.getMerchantBanners(merchant.id),
@@ -734,17 +751,17 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          共 {banners.length} 条 Banner
+          {t("merchant.bannerCount", { count: banners.length })}
         </div>
         <Button size="sm" onClick={openCreate}>
-          + 新建 Banner
+          {t("merchant.newBanner")}
         </Button>
       </div>
 
       {isLoading ? (
         <LoadingState />
       ) : banners.length === 0 ? (
-        <EmptyState message="暂无 Banner, 点击右上角新建." />
+        <EmptyState message={t("merchant.noBanners")} />
       ) : (
         <ul className="grid gap-3">
           {banners.map((b) => (
@@ -762,14 +779,14 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
               <div className="min-w-0 flex-1 font-label">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[13px] font-medium text-[var(--ink)]">
-                    {b.title || "无标题"}
+                    {b.title || t("merchant.noTitle")}
                   </span>
                   <StatusBadge active={b.status === "PUBLISHED"}>
-                    {b.status === "PUBLISHED" ? "已发布" : "草稿"}
+                    {b.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                   </StatusBadge>
                 </div>
                 <div className="mt-0.5 text-[12px] text-[color:var(--ink-muted)]">
-                  点击 {b.clickCount} · 曝光 {b.viewCount} · 排序 {b.sortOrder}
+                  {t("merchant.bannerStats", { clicks: b.clickCount, views: b.viewCount, sort: b.sortOrder })}
                 </div>
               </div>
               <RowActions
@@ -783,32 +800,32 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑 Banner" : "新建 Banner"}
+        title={editing ? t("merchant.editBanner") : t("merchant.newBannerTitle")}
         onClose={closeDialog}
       >
         <div className="grid gap-4">
-          <FormField label="Banner 图片" required>
+          <FormField label={t("merchant.bannerImage")} required>
             <ImagePicker
               value={form.imageUrl}
               onChange={(v) => setForm({ ...form, imageUrl: v })}
               height={150}
             />
           </FormField>
-          <FormField label="标题">
+          <FormField label={t("merchant.titleLabel")}>
             <TextInput
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
-              placeholder="Banner 标题 (可选)"
+              placeholder={t("merchant.bannerTitlePlaceholder")}
             />
           </FormField>
-          <FormField label="跳转链接">
+          <FormField label={t("merchant.linkUrl")}>
             <TextInput
               value={form.linkUrl}
               onChange={(v) => setForm({ ...form, linkUrl: v })}
-              placeholder="https://... (可选)"
+              placeholder="https://..."
             />
           </FormField>
-          <FormField label="排序">
+          <FormField label={t("merchant.sortOrderLabel")}>
             <TextInput
               value={String(form.sortOrder)}
               onChange={(v) =>
@@ -819,14 +836,14 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
           </FormField>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
               loading={saving}
               disabled={!form.imageUrl}
             >
-              {editing ? "保存" : "创建"}
+              {editing ? t("common.save") : t("merchant.create")}
             </Button>
           </div>
         </div>
@@ -834,9 +851,9 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除这条 Banner?"
-        message="删除后无法恢复."
-        confirmLabel="删除"
+        title={t("merchant.deleteBanner")}
+        message={t("merchant.deleteIrreversible")}
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -854,6 +871,7 @@ interface AnnouncementForm {
 }
 
 function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
   const { data, isLoading, mutate } = useSWR(
     ["merchant-announcements", merchant.id],
     () => storeMerchantService.getMerchantAnnouncements(merchant.id),
@@ -923,17 +941,17 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          共 {announcements.length} 条公告
+          {t("merchant.announcementCount", { count: announcements.length })}
         </div>
         <Button size="sm" onClick={openCreate}>
-          + 新建公告
+          {t("merchant.newAnnouncement")}
         </Button>
       </div>
 
       {isLoading ? (
         <LoadingState />
       ) : announcements.length === 0 ? (
-        <EmptyState message="暂无公告, 点击右上角新建." />
+        <EmptyState message={t("merchant.noAnnouncements")} />
       ) : (
         <ul className="grid gap-3">
           {announcements.map((a) => (
@@ -946,14 +964,14 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
                   <div className="flex flex-wrap items-center gap-2">
                     {a.isPinned && (
                       <span className="font-label text-[11px] text-[color:var(--ink)]">
-                        📌 置顶
+                        📌 {t("merchant.pinned")}
                       </span>
                     )}
                     <span className="font-serif text-[15px] text-[var(--ink)]">
                       {a.title}
                     </span>
                     <StatusBadge active={a.status === "PUBLISHED"}>
-                      {a.status === "PUBLISHED" ? "已发布" : "草稿"}
+                      {a.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </StatusBadge>
                   </div>
                   <p className="mt-1 line-clamp-2 font-serif text-[13px] text-[color:var(--ink-muted)]">
@@ -972,41 +990,41 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑公告" : "新建公告"}
+        title={editing ? t("merchant.editAnnouncement") : t("merchant.newAnnouncementTitle")}
         onClose={closeDialog}
       >
         <div className="grid gap-4">
-          <FormField label="公告标题" required>
+          <FormField label={t("merchant.announcementTitle")} required>
             <TextInput
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
-              placeholder="请输入公告标题"
+              placeholder={t("merchant.announcementTitlePlaceholder")}
             />
           </FormField>
-          <FormField label="公告内容" required>
+          <FormField label={t("merchant.announcementContent")} required>
             <TextInput
               value={form.content}
               onChange={(v) => setForm({ ...form, content: v })}
               multiline
               rows={5}
-              placeholder="请输入公告内容"
+              placeholder={t("merchant.announcementContentPlaceholder")}
             />
           </FormField>
           <Toggle
             checked={form.isPinned}
             onChange={(v) => setForm({ ...form, isPinned: v })}
-            label="置顶公告"
+            label={t("merchant.pinAnnouncement")}
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
               loading={saving}
               disabled={!form.title || !form.content}
             >
-              {editing ? "保存" : "发布"}
+              {editing ? t("common.save") : t("merchant.publish")}
             </Button>
           </div>
         </div>
@@ -1014,9 +1032,9 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除这条公告?"
-        message="删除后无法恢复."
-        confirmLabel="删除"
+        title={t("merchant.deleteAnnouncement")}
+        message={t("merchant.deleteIrreversible")}
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -1040,6 +1058,8 @@ interface ActivityForm {
 }
 
 function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
+  const ACTIVITY_TYPE_OPTIONS = useActivityTypeOptions();
   const { data, isLoading, mutate } = useSWR(
     ["merchant-activities", merchant.id],
     () => storeMerchantService.getMerchantActivities(merchant.id),
@@ -1124,17 +1144,17 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          共 {activities.length} 条活动
+          {t("merchant.activityCount", { count: activities.length })}
         </div>
         <Button size="sm" onClick={openCreate}>
-          + 新建活动
+          {t("merchant.newActivity")}
         </Button>
       </div>
 
       {isLoading ? (
         <LoadingState />
       ) : activities.length === 0 ? (
-        <EmptyState message="暂无活动, 点击右上角新建." />
+        <EmptyState message={t("merchant.noActivities")} />
       ) : (
         <ul className="grid gap-3">
           {activities.map((a) => (
@@ -1166,16 +1186,16 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
                   )}
                   <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                     <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)]">
-                      {ACTIVITY_TYPE_LABEL[a.activityType]}
+                      {ACTIVITY_TYPE_OPTIONS.find((o) => o.value === a.activityType)?.label ?? a.activityType}
                     </span>
                     {a.needRegistration && (
                       <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)]">
-                        报名 {a.registrationCount}
+                        {t("merchant.registrationCount", { count: a.registrationCount })}
                         {a.registrationLimit ? `/${a.registrationLimit}` : ""}
                       </span>
                     )}
                     <StatusBadge active={a.status === "PUBLISHED"}>
-                      {a.status === "PUBLISHED" ? "已发布" : "草稿"}
+                      {a.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </StatusBadge>
                   </div>
                 </div>
@@ -1191,43 +1211,43 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑活动" : "新建活动"}
+        title={editing ? t("merchant.editActivity") : t("merchant.newActivityTitle")}
         onClose={closeDialog}
         wide
       >
         <div className="grid gap-4">
-          <FormField label="封面图片">
+          <FormField label={t("merchant.coverImage")}>
             <ImagePicker
               value={form.coverImage}
               onChange={(v) => setForm({ ...form, coverImage: v })}
               height={120}
             />
           </FormField>
-          <FormField label="活动标题" required>
+          <FormField label={t("merchant.activityTitle")} required>
             <TextInput
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
-              placeholder="请输入活动标题"
+              placeholder={t("merchant.activityTitlePlaceholder")}
             />
           </FormField>
-          <FormField label="活动描述">
+          <FormField label={t("merchant.activityDescription")}>
             <TextInput
               value={form.description}
               onChange={(v) => setForm({ ...form, description: v })}
               multiline
               rows={3}
-              placeholder="请输入活动描述"
+              placeholder={t("merchant.activityDescPlaceholder")}
             />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="开始时间" required>
+            <FormField label={t("merchant.startTime")} required>
               <TextInput
                 type="datetime-local"
                 value={form.activityStartTime}
                 onChange={(v) => setForm({ ...form, activityStartTime: v })}
               />
             </FormField>
-            <FormField label="结束时间" required>
+            <FormField label={t("merchant.endTime")} required>
               <TextInput
                 type="datetime-local"
                 value={form.activityEndTime}
@@ -1235,13 +1255,13 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
               />
             </FormField>
           </div>
-          <FormField label="活动地点">
+          <FormField label={t("merchant.activityLocation")}>
             <TextInput
               value={form.location}
               onChange={(v) => setForm({ ...form, location: v })}
             />
           </FormField>
-          <FormField label="活动类型">
+          <FormField label={t("merchant.activityType")}>
             <ChipPicker
               options={ACTIVITY_TYPE_OPTIONS}
               value={form.activityType}
@@ -1251,10 +1271,10 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
           <Toggle
             checked={form.needRegistration}
             onChange={(v) => setForm({ ...form, needRegistration: v })}
-            label="需要报名"
+            label={t("merchant.needRegistration")}
           />
           {form.needRegistration && (
-            <FormField label="报名人数限制 (留空不限)">
+            <FormField label={t("merchant.registrationLimit")}>
               <TextInput
                 type="number"
                 value={form.registrationLimit}
@@ -1264,7 +1284,7 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
@@ -1273,7 +1293,7 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
                 !form.title || !form.activityStartTime || !form.activityEndTime
               }
             >
-              {editing ? "保存" : "发布"}
+              {editing ? t("common.save") : t("merchant.publish")}
             </Button>
           </div>
         </div>
@@ -1281,9 +1301,9 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除这个活动?"
-        message="删除后无法恢复."
-        confirmLabel="删除"
+        title={t("merchant.deleteActivity")}
+        message={t("merchant.deleteIrreversible")}
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -1323,6 +1343,8 @@ interface DiscountForm {
 }
 
 function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
+  const DISCOUNT_TYPE_OPTIONS = useDiscountTypeOptions();
   const { data, isLoading, mutate } = useSWR(
     ["merchant-discounts", merchant.id],
     () => storeMerchantService.getMerchantDiscounts(merchant.id),
@@ -1403,17 +1425,17 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-          共 {discounts.length} 条折扣
+          {t("merchant.discountCount", { count: discounts.length })}
         </div>
         <Button size="sm" onClick={openCreate}>
-          + 新建折扣
+          {t("merchant.newDiscount")}
         </Button>
       </div>
 
       {isLoading ? (
         <LoadingState />
       ) : discounts.length === 0 ? (
-        <EmptyState message="暂无折扣, 点击右上角新建." />
+        <EmptyState message={t("merchant.noDiscounts")} />
       ) : (
         <ul className="grid gap-3">
           {discounts.map((d) => (
@@ -1445,15 +1467,15 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
                     <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)]">
-                      {DISCOUNT_TYPE_LABEL[d.discountType]}
+                      {DISCOUNT_TYPE_OPTIONS.find((o) => o.value === d.discountType)?.label ?? d.discountType}
                     </span>
                     {d.needCode && d.discountCode && (
                       <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)]">
-                        码: {d.discountCode}
+                        {t("merchant.code")}: {d.discountCode}
                       </span>
                     )}
                     <StatusBadge active={d.status === "PUBLISHED"}>
-                      {d.status === "PUBLISHED" ? "已发布" : "草稿"}
+                      {d.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </StatusBadge>
                   </div>
                 </div>
@@ -1469,57 +1491,57 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
 
       <FormDialog
         open={creating || !!editing}
-        title={editing ? "编辑折扣" : "新建折扣"}
+        title={editing ? t("merchant.editDiscount") : t("merchant.newDiscountTitle")}
         onClose={closeDialog}
         wide
       >
         <div className="grid gap-4">
-          <FormField label="封面图片">
+          <FormField label={t("merchant.coverImage")}>
             <ImagePicker
               value={form.coverImage}
               onChange={(v) => setForm({ ...form, coverImage: v })}
               height={120}
             />
           </FormField>
-          <FormField label="折扣标题" required>
+          <FormField label={t("merchant.discountTitle")} required>
             <TextInput
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
-              placeholder="如: 春季大促, 会员专享"
+              placeholder={t("merchant.discountTitlePlaceholder")}
             />
           </FormField>
-          <FormField label="折扣类型">
+          <FormField label={t("merchant.discountType")}>
             <ChipPicker
               options={DISCOUNT_TYPE_OPTIONS}
               value={form.discountType}
               onChange={(v) => setForm({ ...form, discountType: v })}
             />
           </FormField>
-          <FormField label="折扣详情">
+          <FormField label={t("merchant.discountDetails")}>
             <TextInput
               value={form.discountValue}
               onChange={(v) => setForm({ ...form, discountValue: v })}
-              placeholder="如: 8 折, 满 1000 减 200"
+              placeholder={t("merchant.discountDetailsPlaceholder")}
             />
           </FormField>
-          <FormField label="折扣描述">
+          <FormField label={t("merchant.discountDescription")}>
             <TextInput
               value={form.description}
               onChange={(v) => setForm({ ...form, description: v })}
               multiline
               rows={3}
-              placeholder="描述折扣详情, 适用范围等"
+              placeholder={t("merchant.discountDescPlaceholder")}
             />
           </FormField>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="开始时间" required>
+            <FormField label={t("merchant.startTime")} required>
               <TextInput
                 type="datetime-local"
                 value={form.discountStartTime}
                 onChange={(v) => setForm({ ...form, discountStartTime: v })}
               />
             </FormField>
-            <FormField label="结束时间" required>
+            <FormField label={t("merchant.endTime")} required>
               <TextInput
                 type="datetime-local"
                 value={form.discountEndTime}
@@ -1530,20 +1552,20 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
           <Toggle
             checked={form.needCode}
             onChange={(v) => setForm({ ...form, needCode: v })}
-            label="需要优惠码"
+            label={t("merchant.needCode")}
           />
           {form.needCode && (
-            <FormField label="优惠码">
+            <FormField label={t("merchant.discountCode")}>
               <TextInput
                 value={form.discountCode}
                 onChange={(v) => setForm({ ...form, discountCode: v })}
-                placeholder="请输入优惠码"
+                placeholder={t("merchant.discountCodePlaceholder")}
               />
             </FormField>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={onSave}
@@ -1552,7 +1574,7 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
                 !form.title || !form.discountStartTime || !form.discountEndTime
               }
             >
-              {editing ? "保存" : "发布"}
+              {editing ? t("common.save") : t("merchant.publish")}
             </Button>
           </div>
         </div>
@@ -1560,9 +1582,9 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="删除这条折扣?"
-        message="删除后无法恢复."
-        confirmLabel="删除"
+        title={t("merchant.deleteDiscount")}
+        message={t("merchant.deleteIrreversible")}
+        confirmLabel={t("common.delete")}
         loading={deleting}
         onConfirm={onDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -1651,19 +1673,20 @@ function RowActions({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex shrink-0 gap-1 font-label text-[12px]">
       <button
         onClick={onEdit}
         className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
       >
-        编辑
+        {t("common.edit")}
       </button>
       <button
         onClick={onDelete}
         className="rounded px-2 py-1 text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
       >
-        删除
+        {t("common.delete")}
       </button>
     </div>
   );

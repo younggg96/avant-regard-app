@@ -11,10 +11,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 import { changePassword } from "@/lib/auth/service";
 
 export default function PasswordSettingsPage() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const getAccessToken = useAuthStore((s) => s.getAccessToken);
 
@@ -31,21 +33,21 @@ export default function PasswordSettingsPage() {
     setOk(false);
 
     if (!user?.userId) {
-      setErr("未登录");
+      setErr(t("auth.notLoggedIn"));
       return;
     }
     if (newPassword.length < 6) {
-      setErr("新密码至少 6 位");
+      setErr(t("settings.passwordMinLength"));
       return;
     }
     if (newPassword !== confirm) {
-      setErr("两次输入的新密码不一致");
+      setErr(t("settings.passwordMismatch"));
       return;
     }
 
     const token = getAccessToken();
     if (!token) {
-      setErr("登录已过期，请重新登录");
+      setErr(t("auth.sessionExpired"));
       return;
     }
 
@@ -60,7 +62,7 @@ export default function PasswordSettingsPage() {
       setNew("");
       setConfirm("");
     } catch (error) {
-      setErr(error instanceof Error ? error.message : "修改失败");
+      setErr(error instanceof Error ? error.message : t("settings.changeFailed"));
     } finally {
       setSaving(false);
     }
@@ -70,34 +72,34 @@ export default function PasswordSettingsPage() {
     <section className="min-w-0">
       <header className="mb-8 border-b border-[var(--border)] pb-5">
         <h1 className="font-serif text-3xl text-black dark:text-white md:text-4xl">
-          修改密码
+          {t("settings.changePassword")}
         </h1>
         <p className="mt-2 font-serif text-[14px] text-[color:var(--ink-muted)]">
-          忘记旧密码？可以通过
+          {t("settings.changePasswordDesc")}
           <Link href="/auth/forgot" className="mx-1 link-underline">
-            短信 / 邮箱验证码
+            {t("settings.changePasswordLink")}
           </Link>
-          重置。
+          {t("settings.changePasswordSuffix")}
         </p>
       </header>
 
       <form onSubmit={onSubmit} className="grid max-w-md gap-5">
         <Field
-          label="当前密码"
+          label={t("settings.currentPassword")}
           value={oldPassword}
           onChange={(e) => setOld(e.target.value)}
           type="password"
           required
         />
         <Field
-          label="新密码"
+          label={t("settings.newPassword")}
           value={newPassword}
           onChange={(e) => setNew(e.target.value)}
           type="password"
           required
         />
         <Field
-          label="确认新密码"
+          label={t("settings.confirmNewPassword")}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           type="password"
@@ -111,7 +113,7 @@ export default function PasswordSettingsPage() {
         )}
         {ok && (
           <div className="font-label text-[13px] text-green-700 dark:text-green-400">
-            密码已修改
+            {t("settings.passwordChanged")}
           </div>
         )}
 
@@ -121,7 +123,7 @@ export default function PasswordSettingsPage() {
             disabled={saving}
             className="rounded bg-[var(--ink)] px-6 py-2 font-label text-[13px] text-[var(--canvas)] transition-opacity disabled:opacity-40"
           >
-            {saving ? "保存中…" : "保存"}
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </form>

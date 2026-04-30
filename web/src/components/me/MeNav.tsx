@@ -1,27 +1,23 @@
 "use client";
 
-/**
- * Vertical sidebar nav for /me and /settings sections.
- *
- * Driven by a flat config so new sub-pages (reports, blocked) can be added
- * with one line. Highlight logic uses `startsWith` so nested pages like
- * `/me/chats/123` still light up their parent entry.
- */
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 export interface MeNavItem {
   href: string;
   label: string;
+  labelKey?: string;
   group?: string;
+  groupKey?: string;
 }
 
 export function MeNav({ items }: { items: MeNavItem[] }) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const groups = items.reduce<Record<string, MeNavItem[]>>((acc, it) => {
-    const g = it.group ?? "";
+    const g = it.groupKey ? t(it.groupKey) : (it.group ?? "");
     (acc[g] ||= []).push(it);
     return acc;
   }, {});
@@ -50,7 +46,7 @@ export function MeNav({ items }: { items: MeNavItem[] }) {
                         : "text-[color:var(--ink-muted)] hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]"
                     }`}
                   >
-                    {it.label}
+                    {it.labelKey ? t(it.labelKey) : it.label}
                   </Link>
                 </li>
               );

@@ -9,6 +9,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
 import {
   Box,
   Text,
@@ -50,6 +51,7 @@ type PublishLookbookRouteParams = {
 };
 
 const PublishLookbookScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishLookbookRouteParams }, "params">>();
   const { user } = useAuthStore();
@@ -99,14 +101,13 @@ const PublishLookbookScreen = () => {
   // 选择品牌
   const handleSelectBrand = (brand: Brand) => {
     if (selectedBrands.length >= MAX_BRANDS) {
-      Alert.show("提示: 最多只能关联" + MAX_BRANDS + "个品牌");
+      Alert.show(t("publish.maxBrandsReached", { count: MAX_BRANDS }));
       return;
     }
 
-    // 检查是否已添加
     const isDuplicate = selectedBrands.some((item) => item.id === brand.id);
     if (isDuplicate) {
-      Alert.show("提示: 该品牌已经添加过了");
+      Alert.show(t("publish.brandAlreadyAdded"));
       return;
     }
 
@@ -120,17 +121,16 @@ const PublishLookbookScreen = () => {
 
     setSelectedBrands([...selectedBrands, selectedBrand]);
     setShowBrandSelector(false);
-    Alert.show("已关联品牌", "", 1500);
+    Alert.show(t("publish.brandLinked"), "", 1500);
   };
 
   // 移除品牌
   const handleRemoveBrand = (index: number) => {
     const newBrands = selectedBrands.filter((_, i) => i !== index);
     setSelectedBrands(newBrands);
-    Alert.show("已取消关联");
+    Alert.show(t("publish.brandUnlinked"));
   };
 
-  // 编辑模式：初始化草稿数据
   useEffect(() => {
     if (editMode && draftPost) {
       console.log("Initializing edit mode with draft:", draftPost);
@@ -185,15 +185,15 @@ const PublishLookbookScreen = () => {
 
   const validateForm = (): boolean => {
     if (images.length === 0) {
-      Alert.show("提示: Lookbook需要至少上传一张图片");
+      Alert.show(t("publish.needAtLeastOneImage"));
       return false;
     }
     if (!title.trim()) {
-      Alert.show("提示: 请填写Lookbook标题");
+      Alert.show(t("publish.titleRequired"));
       return false;
     }
     if (!description.trim()) {
-      Alert.show("提示: 请填写Lookbook简介");
+      Alert.show(t("publish.descriptionRequired"));
       return false;
     }
     return true;
@@ -218,12 +218,12 @@ const PublishLookbookScreen = () => {
 
     let uploadedUrls: string[] = [];
     if (localUris.length > 0) {
-      setUploadProgress("上传中 0%");
+      setUploadProgress(t("publish.uploadingPercent", { percent: 0 }));
       uploadedUrls = await postService.uploadMediaFiles(
         localUris,
         undefined,
         (percent) => {
-          setUploadProgress(`上传中 ${percent}%`);
+          setUploadProgress(t("publish.uploadingPercent", { percent }));
         }
       );
     }
@@ -249,13 +249,13 @@ const PublishLookbookScreen = () => {
     }
 
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
     const existingTask = useUploadStore.getState().currentTask;
     if (existingTask && (existingTask.status === "uploading" || existingTask.status === "publishing")) {
-      Alert.show("有内容正在上传中，请稍后再试");
+      Alert.show(t("publish.uploadInProgress"));
       return;
     }
 
@@ -330,13 +330,12 @@ const PublishLookbookScreen = () => {
 
   const handleSaveDraft = async () => {
     if (!user?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("publish.loginRequired"));
       return;
     }
 
-    // 草稿至少需要有图片或标题
     if (images.length === 0 && !title.trim()) {
-      Alert.show("请至少添加一张图片或填写标题");
+      Alert.show(t("publish.draftNeedsContent"));
       return;
     }
 
@@ -352,7 +351,7 @@ const PublishLookbookScreen = () => {
       const brandIds = selectedBrands.map((brand) => brand.id);
 
       // 保存草稿
-      setUploadProgress("正在保存...");
+      setUploadProgress(t("publish.saving"));
 
       // Measure the cover once (local dims already tracked from the picker)
       // so the backend stores cover_width/cover_height and the feed masonry
@@ -366,7 +365,7 @@ const PublishLookbookScreen = () => {
           userId: user.userId,
           postType: "OUTFIT",
           status: "DRAFT",
-          title: title.trim() || "未命名草稿",
+          title: title.trim() || t("publish.untitledDraft"),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -382,7 +381,7 @@ const PublishLookbookScreen = () => {
           userId: user.userId,
           postType: "OUTFIT",
           postStatus: "DRAFT",
-          title: title.trim() || "未命名草稿",
+          title: title.trim() || t("publish.untitledDraft"),
           contentText: description.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
@@ -396,10 +395,10 @@ const PublishLookbookScreen = () => {
       }
 
       setUploadProgress(null);
-      Alert.show("草稿已保存", "", 1500);
+      Alert.show(t("publish.draftSaved"), "", 1500);
     } catch (error) {
       console.error("Save draft error:", error);
-      Alert.show(error instanceof Error ? error.message : "保存失败，请重试");
+      Alert.show(error instanceof Error ? error.message : t("publish.saveFailed"));
     } finally {
       setIsSavingDraft(false);
       setUploadProgress(null);
@@ -417,7 +416,7 @@ const PublishLookbookScreen = () => {
 
   const handleAddImage = () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.show("提示: 最多只能上传" + MAX_IMAGES + "个媒体文件");
+      Alert.show(t("publish.maxMediaReached", { count: MAX_IMAGES }));
       return;
     }
     setShowImagePicker(true);
@@ -429,10 +428,10 @@ const PublishLookbookScreen = () => {
     try {
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相机权限才能拍照"); return; }
+        if (status !== "granted") { Alert.show(t("publish.cameraPermissionRequired")); return; }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") { Alert.show("需要相册权限才能选择图片"); return; }
+        if (status !== "granted") { Alert.show(t("publish.galleryPermissionRequired")); return; }
       }
 
       const result = source === "camera"
@@ -453,7 +452,7 @@ const PublishLookbookScreen = () => {
       }
     } catch (error) {
       console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -463,7 +462,7 @@ const PublishLookbookScreen = () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.show("需要相册权限才能选择图片");
+        Alert.show(t("publish.galleryPermissionRequired"));
         return;
       }
 
@@ -482,7 +481,7 @@ const PublishLookbookScreen = () => {
       }
     } catch (error) {
       console.error("Multi image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("publish.imageSelectionFailed"));
     }
   };
 
@@ -497,7 +496,7 @@ const PublishLookbookScreen = () => {
       setCoverImage(newImages[0]);
     }
 
-    Alert.show(`已添加 ${croppedUris.length} 张图片`, "", 1500);
+    Alert.show(t("publish.imagesAdded", { count: croppedUris.length }), "", 1500);
   };
 
   const handleBatchCropCancel = () => {
@@ -509,7 +508,7 @@ const PublishLookbookScreen = () => {
     setShowImagePicker(false);
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") { Alert.show("需要相册权限才能选择视频"); return; }
+      if (status !== "granted") { Alert.show(t("publish.videoPermissionRequired")); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
@@ -538,11 +537,11 @@ const PublishLookbookScreen = () => {
         if (!coverImage) {
           setCoverImage(thumbnail?.uri ?? videoUri);
         }
-        Alert.show("视频已添加", "", 1500);
+        Alert.show(t("publish.videoAdded"), "", 1500);
       }
     } catch (error) {
       console.error("Video selection error:", error);
-      Alert.show("错误: 视频选择失败，请重试");
+      Alert.show(t("publish.videoSelectionFailed"));
     }
   };
 
@@ -591,7 +590,7 @@ const PublishLookbookScreen = () => {
         setImages(newImages);
       }
 
-      Alert.show("设置成功: 已设为封面");
+      Alert.show(t("publish.setCoverSuccess"));
     }
   };
 
@@ -609,7 +608,7 @@ const PublishLookbookScreen = () => {
         setCoverImage(newImages.length > 0 ? newImages[0] : null);
       }
 
-      Alert.show("删除成功: 图片已删除");
+      Alert.show(t("publish.imageDeleted"));
     }
 
     setSelectedImageUri(null);
@@ -631,7 +630,7 @@ const PublishLookbookScreen = () => {
     }
     setIsReorderMode(true);
     setReorderFromIndex(index);
-    Alert.show("已选中，点击其他图片交换位置", "", 1500);
+    Alert.show(t("publish.reorderHint"), "", 1500);
   };
 
   // 退出移动模式
@@ -665,7 +664,7 @@ const PublishLookbookScreen = () => {
       setCoverImage(newImages[reorderFromIndex]);
     }
 
-    Alert.show("位置已调换", "", 1000);
+    Alert.show(t("publish.positionSwapped"), "", 1000);
     handleExitReorderMode();
   };
 
@@ -698,7 +697,7 @@ const PublishLookbookScreen = () => {
             }
           }
 
-          Alert.show("编辑成功", "", 1500);
+          Alert.show(t("publish.editSuccess"), "", 1500);
           setSelectedImageUri(null);
           setSelectedImageIndex(null);
         } else {
@@ -708,7 +707,7 @@ const PublishLookbookScreen = () => {
           if (!coverImage) {
             setCoverImage(croppedUri);
           }
-          Alert.show("图片已添加", "", 1500);
+          Alert.show(t("publish.imageAdded"), "", 1500);
         }
 
         setCropperImageUri(null);
@@ -791,7 +790,7 @@ const PublishLookbookScreen = () => {
               color={theme.colors.gray400}
             />
             <Text color="$gray500" mt="$sm">
-              点击添加图片 或 视频
+              {t("publish.tapToAddMedia")}
             </Text>
           </Pressable>
         </Box>
@@ -886,7 +885,7 @@ const PublishLookbookScreen = () => {
                     alignItems="center"
                   >
                     <Text color="$white" fontSize={10} fontWeight="$medium">
-                      封面
+                      {t("publish.cover")}
                     </Text>
                   </Box>
                 )}
@@ -927,8 +926,8 @@ const PublishLookbookScreen = () => {
           fontWeight={isReorderMode ? "$medium" : "$normal"}
         >
           {isReorderMode
-            ? "点击其他图片交换位置，或点击 + 取消"
-            : "点击缩略图编辑，长按调整顺序"}
+            ? t("publish.reorderModeHint")
+            : t("publish.thumbnailHint")}
         </Text>
       )}
     </Box>
@@ -959,7 +958,7 @@ const PublishLookbookScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={editMode ? "编辑Lookbook" : "发布Lookbook"}
+        title={editMode ? t("publish.editLookbook") : t("publish.publishLookbook")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -970,7 +969,7 @@ const PublishLookbookScreen = () => {
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
             <Text color="$white" fontSize="$sm" flex={1}>
-              编辑后帖子将重新进入审核状态
+              {t("publish.reAuditWarning")}
             </Text>
           </HStack>
         </Box>
@@ -987,7 +986,7 @@ const PublishLookbookScreen = () => {
         <Box mx="$md" mb="$md">
           <HStack mb="$sm" alignItems="center">
             <Text color="$gray600" fontSize="$sm">
-              标题
+              {t("publish.titleLabel")}
             </Text>
             <Text color="$red500" fontSize="$sm" ml="$xs">
               *
@@ -996,7 +995,7 @@ const PublishLookbookScreen = () => {
           <Input
             value={title}
             onChangeText={setTitle}
-            placeholder="请输入您的 Lookbook 标题（例：2025 我的春夏穿搭合集）"
+            placeholder={t("publish.lookbookTitlePlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="filled"
@@ -1015,7 +1014,7 @@ const PublishLookbookScreen = () => {
         <Box mx="$md" mb="$md">
           <HStack mb="$sm" alignItems="center">
             <Text color="$gray600" fontSize="$sm">
-              简介
+              {t("publish.descriptionLabel")}
             </Text>
             <Text color="$red500" fontSize="$sm" ml="$xs">
               *
@@ -1024,7 +1023,7 @@ const PublishLookbookScreen = () => {
           <Input
             value={description}
             onChangeText={setDescription}
-            placeholder="请简单介绍您的 Lookbook 灵感或主题"
+            placeholder={t("publish.lookbookDescPlaceholder")}
             placeholderTextColor={theme.colors.gray400}
             multiline
             variant="filled"
@@ -1046,11 +1045,10 @@ const PublishLookbookScreen = () => {
           onRemoveBrand={handleRemoveBrand}
           onAddBrand={() => setShowBrandSelector(true)}
           maxBrands={MAX_BRANDS}
-          label="关联品牌"
+          label={t("publish.linkBrand")}
           required={false}
         />
 
-        {/* 单品信息（可选） */}
         <ProductInfoSection value={productInfo} onChange={setProductInfo} />
       </ScrollView>
 
@@ -1060,10 +1058,10 @@ const PublishLookbookScreen = () => {
         publishDisabled={!canPublish() || isPublishing || isSavingDraft}
         draftDisabled={isPublishing || isSavingDraft}
         publishButtonText={
-          isPublishing ? uploadProgress || "发布中..." : "发布"
+          isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")
         }
         draftButtonText={
-          isSavingDraft ? uploadProgress || "保存中..." : "存草稿"
+          isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")
         }
       />
 
@@ -1076,7 +1074,7 @@ const PublishLookbookScreen = () => {
         onSelectVideo={handleVideoSelection}
         showMultiSelectOption={images.length < MAX_IMAGES}
         showVideoOption={true}
-        title="添加媒体"
+        title={t("publish.addMedia")}
       />
 
       {selectedImageUri && (

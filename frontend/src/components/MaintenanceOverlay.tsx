@@ -5,12 +5,14 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import {
   DEFAULT_MAINTENANCE_MESSAGE,
   useMaintenanceStore,
 } from "../store/maintenanceStore";
 
 export default function MaintenanceOverlay() {
+  const { t } = useTranslation();
   const isDown = useMaintenanceStore((s) => s.isDown);
   const message = useMaintenanceStore((s) => s.message);
 
@@ -24,7 +26,7 @@ export default function MaintenanceOverlay() {
     <View style={styles.overlay}>
       <View style={styles.card}>
         <Text style={styles.icon}>🔧</Text>
-        <Text style={styles.title}>服务器维护中</Text>
+        <Text style={styles.title}>{t("maintenance.title")}</Text>
         <Text style={styles.message}>{displayMessage}</Text>
         <ActivityIndicator
           size="small"

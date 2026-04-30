@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,6 +33,7 @@ type RouteParams = {
 };
 
 const BrandFollowersScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "BrandFollowers">>();
   const { user } = useAuthStore();
@@ -126,7 +128,7 @@ const BrandFollowersScreen = () => {
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {brandName ? `${brandName} 的关注者` : "品牌关注者"}
+          {brandName ? `${brandName} - ${t("brand.followers")}` : t("brand.followers")}
         </Text>
         <View style={styles.headerRight} />
       </View>
@@ -217,7 +219,7 @@ const BrandFollowersScreen = () => {
               size={24}
               color={theme.colors.gray300}
             />
-            <Text style={styles.emptyText}>还没有关注者</Text>
+            <Text style={styles.emptyText}>{t("followersScreen.noFollowers")}</Text>
           </View>
         )}
       </ScrollView>

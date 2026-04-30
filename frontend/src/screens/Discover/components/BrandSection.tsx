@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FlatList, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "../../../components/ui";
@@ -17,6 +18,7 @@ const CARD_WIDTH = 200;
 const IMAGE_SIZE = 48;
 
 export const BrandSection: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [brands, setBrands] = useState<FollowingBrand[]>([]);
@@ -86,7 +88,7 @@ export const BrandSection: React.FC = () => {
       <Box pt={14} pb={10} bg="$white" borderBottomWidth={1} borderBottomColor="#F0F0F0">
         <HStack px="$md" mb={10}>
           <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
-            关注的品牌
+            {t("discover.followedBrands")}
           </Text>
         </HStack>
         <Pressable
@@ -105,7 +107,7 @@ export const BrandSection: React.FC = () => {
         >
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.gray400} />
           <Text fontSize={13} fontWeight="$medium" color="$gray400">
-            去发现并关注品牌
+            {t("discover.goDiscoverBrands")}
           </Text>
         </Pressable>
       </Box>
@@ -118,7 +120,7 @@ export const BrandSection: React.FC = () => {
     <Box pt={14} pb={10} bg="$white" borderBottomWidth={1} borderBottomColor="#F0F0F0">
       <HStack px="$md" mb={10} gap={6}>
         <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
-          关注的品牌
+          {t("discover.followedBrands")}
         </Text>
         <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
           {brands.length}
@@ -161,7 +163,7 @@ export const BrandSection: React.FC = () => {
                   <Ionicons name="grid-outline" size={22} color={theme.colors.black} />
                 </Box>
                 <Text flex={1} fontSize="$xs" fontWeight="$semibold" color="$black" lineHeight="$2xs">
-                  全部
+                  {t("discover.all")}
                 </Text>
                 <Ionicons name="chevron-forward" size={16} color={theme.colors.gray400} />
               </Pressable>
@@ -210,7 +212,7 @@ export const BrandSection: React.FC = () => {
                   {item.name}
                 </Text>
                 <Text fontSize={11} color="$gray400" mt={1}>
-                  {formatFollowerCount(item.followersCount)} 人关注
+                  {t("discover.followersCount", { count: formatFollowerCount(item.followersCount) })}
                 </Text>
               </Box>
 
@@ -222,7 +224,7 @@ export const BrandSection: React.FC = () => {
                 bg="#F0F0F0"
               >
                 <Text fontSize={11} fontWeight="$semibold" color="$gray600">
-                  已关注
+                  {t("discover.following")}
                 </Text>
               </Pressable>
             </Pressable>

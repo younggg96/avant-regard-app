@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
 import { theme } from "../../theme";
@@ -27,6 +28,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
   onDelete,
   onShare,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -39,7 +41,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
           <TouchableWithoutFeedback>
             <View style={styles.optionsMenuContainer}>
               <View style={styles.optionsMenuHeader}>
-                <Text style={styles.optionsMenuTitle}>管理帖子</Text>
+                <Text style={styles.optionsMenuTitle}>{t("postDetail.managePost")}</Text>
                 <TouchableOpacity
                   onPress={onClose}
                   style={styles.optionsMenuCloseButton}
@@ -70,7 +72,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
                       color={theme.colors.black}
                       style={styles.optionsMenuIcon}
                     />
-                    <Text style={styles.optionsMenuItemText}>分享帖子</Text>
+                    <Text style={styles.optionsMenuItemText}>{t("postDetail.sharePost")}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -91,7 +93,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
                       color={theme.colors.black}
                       style={styles.optionsMenuIcon}
                     />
-                    <Text style={styles.optionsMenuItemText}>编辑帖子</Text>
+                    <Text style={styles.optionsMenuItemText}>{t("postDetail.editPost")}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -111,7 +113,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
                     color="#FF3040"
                     style={styles.optionsMenuIcon}
                   />
-                  <Text style={styles.optionsMenuItemTextDanger}>删除帖子</Text>
+                  <Text style={styles.optionsMenuItemTextDanger}>{t("postDetail.deletePost")}</Text>
                 </TouchableOpacity>
 
                 {/* 取消按钮 */}
@@ -119,7 +121,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
                   style={[styles.optionsMenuItem, styles.optionsMenuItemCancel]}
                   onPress={onClose}
                 >
-                  <Text style={styles.optionsMenuItemText}>取消</Text>
+                  <Text style={styles.optionsMenuItemText}>{t("common.cancel")}</Text>
                 </TouchableOpacity>
               </View>
             </View>

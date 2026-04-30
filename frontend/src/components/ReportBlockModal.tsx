@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { moderationService, ReportReason } from "../services/moderationService";
@@ -30,13 +31,13 @@ interface ReportBlockModalProps {
   onShare?: () => void;
 }
 
-const REPORT_REASONS: { key: ReportReason; label: string; icon: string }[] = [
-  { key: "SPAM", label: "垃圾内容 / 广告", icon: "megaphone-outline" },
-  { key: "INAPPROPRIATE", label: "不当或攻击性内容", icon: "alert-circle-outline" },
-  { key: "HARASSMENT", label: "骚扰或霸凌", icon: "sad-outline" },
-  { key: "MISINFORMATION", label: "虚假信息", icon: "warning-outline" },
-  { key: "COPYRIGHT", label: "侵权内容", icon: "copy-outline" },
-  { key: "OTHER", label: "其他", icon: "ellipsis-horizontal-circle-outline" },
+const REPORT_REASON_KEYS: { key: ReportReason; i18nKey: string; icon: string }[] = [
+  { key: "SPAM", i18nKey: "reportBlock.spam", icon: "megaphone-outline" },
+  { key: "INAPPROPRIATE", i18nKey: "reportBlock.inappropriate", icon: "alert-circle-outline" },
+  { key: "HARASSMENT", i18nKey: "reportBlock.harassment", icon: "sad-outline" },
+  { key: "MISINFORMATION", i18nKey: "reportBlock.misinformation", icon: "warning-outline" },
+  { key: "COPYRIGHT", i18nKey: "reportBlock.copyright", icon: "copy-outline" },
+  { key: "OTHER", i18nKey: "reportBlock.other", icon: "ellipsis-horizontal-circle-outline" },
 ];
 
 type Step = "menu" | "report" | "block-confirm";
@@ -51,6 +52,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
   onBlockComplete,
   onShare,
 }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>("menu");
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [description, setDescription] = useState("");
@@ -70,7 +72,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
 
   const handleReport = async () => {
     if (!selectedReason) {
-      Alert.show("请选择举报原因");
+      Alert.show(t("reportBlock.selectReason"));
       return;
     }
     setSubmitting(true);
@@ -81,10 +83,10 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
         reason: selectedReason,
         description: description.trim() || undefined,
       });
-      Alert.show("举报已提交，我们会尽快处理");
+      Alert.show(t("reportBlock.reportSubmitted"));
       handleClose();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "举报失败，请稍后重试";
+      const msg = error instanceof Error ? error.message : t("reportBlock.reportFailed");
       Alert.show(msg);
     } finally {
       setSubmitting(false);
@@ -95,11 +97,11 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
     setSubmitting(true);
     try {
       await moderationService.blockUser(Number(targetAuthorId));
-      Alert.show(`已屏蔽 ${targetAuthorName}，其内容将不再显示`);
+      Alert.show(t("reportBlock.blockSuccess", { name: targetAuthorName }));
       handleClose();
       onBlockComplete?.();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "屏蔽失败，请稍后重试";
+      const msg = error instanceof Error ? error.message : t("reportBlock.blockFailed");
       Alert.show(msg);
     } finally {
       setSubmitting(false);
@@ -117,7 +119,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
           }}
         >
           <Ionicons name="share-outline" size={22} color={theme.colors.black} />
-          <Text style={styles.menuItemText}>分享帖子</Text>
+          <Text style={styles.menuItemText}>{t("reportBlock.sharePost")}</Text>
         </TouchableOpacity>
       )}
       <TouchableOpacity
@@ -125,25 +127,25 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
         onPress={() => setStep("report")}
       >
         <Ionicons name="flag-outline" size={22} color={theme.colors.error} />
-        <Text style={styles.menuItemTextDanger}>举报内容</Text>
+        <Text style={styles.menuItemTextDanger}>{t("reportBlock.reportContent")}</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.menuItem}
         onPress={() => setStep("block-confirm")}
       >
         <Ionicons name="ban-outline" size={22} color={theme.colors.error} />
-        <Text style={styles.menuItemTextDanger}>屏蔽用户 @{targetAuthorName}</Text>
+        <Text style={styles.menuItemTextDanger}>{t("reportBlock.blockUser", { name: targetAuthorName })}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.cancelButton} onPress={handleClose}>
-        <Text style={styles.cancelText}>取消</Text>
+        <Text style={styles.cancelText}>{t("common.cancel")}</Text>
       </TouchableOpacity>
     </>
   );
 
   const renderReportForm = () => (
     <ScrollView showsVerticalScrollIndicator={false}>
-      <Text style={styles.formTitle}>举报原因</Text>
-      {REPORT_REASONS.map((r) => (
+      <Text style={styles.formTitle}>{t("reportBlock.reportReason")}</Text>
+      {REPORT_REASON_KEYS.map((r) => (
         <TouchableOpacity
           key={r.key}
           style={[
@@ -163,7 +165,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
               selectedReason === r.key && styles.reasonTextSelected,
             ]}
           >
-            {r.label}
+            {t(r.i18nKey)}
           </Text>
           {selectedReason === r.key && (
             <Ionicons name="checkmark" size={20} color={theme.colors.black} />
@@ -174,7 +176,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
       {selectedReason === "OTHER" && (
         <TextInput
           style={styles.descriptionInput}
-          placeholder="请描述具体问题..."
+          placeholder={t("reportBlock.descriptionPlaceholder")}
           placeholderTextColor={theme.colors.gray300}
           value={description}
           onChangeText={setDescription}
@@ -185,7 +187,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
 
       <View style={styles.formActions}>
         <TouchableOpacity style={styles.backButton} onPress={() => setStep("menu")}>
-          <Text style={styles.backButtonText}>返回</Text>
+          <Text style={styles.backButtonText}>{t("reportBlock.back")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
@@ -198,7 +200,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
           {submitting ? (
             <ActivityIndicator size="small" color={theme.colors.white} />
           ) : (
-            <Text style={styles.submitButtonText}>提交举报</Text>
+            <Text style={styles.submitButtonText}>{t("reportBlock.submitReport")}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -210,13 +212,13 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
       <View style={styles.blockIcon}>
         <Ionicons name="ban-outline" size={48} color={theme.colors.error} />
       </View>
-      <Text style={styles.blockTitle}>屏蔽 @{targetAuthorName}？</Text>
+      <Text style={styles.blockTitle}>{t("reportBlock.blockTitle", { name: targetAuthorName })}</Text>
       <Text style={styles.blockMessage}>
-        屏蔽后，该用户的所有内容将从你的动态中移除，且对方无法看到你的内容。你可以随时在设置中取消屏蔽。
+        {t("reportBlock.blockMessage")}
       </Text>
       <View style={styles.formActions}>
         <TouchableOpacity style={styles.backButton} onPress={() => setStep("menu")}>
-          <Text style={styles.backButtonText}>取消</Text>
+          <Text style={styles.backButtonText}>{t("common.cancel")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.blockConfirmButton, submitting && { opacity: 0.6 }]}
@@ -226,7 +228,7 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
           {submitting ? (
             <ActivityIndicator size="small" color={theme.colors.white} />
           ) : (
-            <Text style={styles.submitButtonText}>确认屏蔽</Text>
+            <Text style={styles.submitButtonText}>{t("reportBlock.confirmBlock")}</Text>
           )}
         </TouchableOpacity>
       </View>

@@ -15,6 +15,7 @@
  */
 
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { uploadImage } from "@/lib/services/admin";
 import { Button, FormField, TextInput } from "@/components/admin/ui";
 
@@ -34,6 +35,7 @@ export function ImagePicker({
   /** 图片下方的辅助说明文字，例如"建议 1:1 正方形"。 */
   hint?: string;
 }) {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -50,7 +52,7 @@ export function ImagePicker({
         const url = await uploadImage(file);
         onChange(url);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "上传失败");
+        setErr(e instanceof Error ? e.message : t("common.uploadFailed"));
       } finally {
         setUploading(false);
       }
@@ -74,7 +76,7 @@ export function ImagePicker({
           />
         ) : (
           <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-            {uploading ? "上传中…" : "点击选择图片"}
+            {uploading ? t("common.uploading") : t("common.clickToSelectImage")}
           </div>
         )}
       </div>
@@ -84,14 +86,14 @@ export function ImagePicker({
             onClick={handleClick}
             className="underline-offset-2 hover:underline"
           >
-            更换
+            {t("common.replace")}
           </button>
           <span>·</span>
           <button
             onClick={() => onChange("")}
             className="underline-offset-2 hover:underline"
           >
-            清除
+            {t("common.clear")}
           </button>
         </div>
       )}
@@ -123,10 +125,10 @@ export function MultiImagePicker({
   /** 每格高度。宽度由 grid 自适应。 */
   height?: number;
 }) {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // 点击"+"打开多选文件。逐个上传（不走并发）以便对失败项有清晰的定位。
   const handlePick = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -147,7 +149,7 @@ export function MultiImagePicker({
             uploaded.push(url);
           } catch (e) {
             // 单张失败就继续下一张，但把错误暴露给用户。
-            setErr(`${f.name}: ${e instanceof Error ? e.message : "上传失败"}`);
+            setErr(`${f.name}: ${e instanceof Error ? e.message : t("common.uploadFailed")}`);
           }
         }
         if (uploaded.length > 0) {
@@ -189,7 +191,7 @@ export function MultiImagePicker({
             <img src={url} alt="" className="h-full w-full object-cover" />
             {/* 顺序控制 —— 第 1 张默认作封面，设计上需要让用户明显感知"顺序=展示顺序" */}
             <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 font-label text-[10px] text-white">
-              {idx === 0 ? "封面" : idx + 1}
+              {idx === 0 ? t("common.cover") : idx + 1}
             </div>
             <div className="absolute bottom-1 right-1 flex gap-1 opacity-0 transition-opacity hover:opacity-100">
               {idx > 0 && (
@@ -236,7 +238,7 @@ export function MultiImagePicker({
             className="flex items-center justify-center rounded border border-dashed border-[var(--border)] bg-[var(--canvas)] font-label text-[12px] text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] disabled:opacity-50"
             style={{ height }}
           >
-            {uploading ? "上传中…" : "+ 添加"}
+            {uploading ? t("common.uploading") : t("common.addMore")}
           </button>
         )}
       </div>
@@ -245,7 +247,7 @@ export function MultiImagePicker({
           {value.length}/{max}
         </span>
         <span>·</span>
-        <span>第 1 张默认作封面，可通过 ←/→ 调整顺序</span>
+        <span>{t("common.coverHint")}</span>
       </div>
       {err && (
         <div className="mt-1 font-label text-[11px] text-red-600">{err}</div>
@@ -275,9 +277,9 @@ export function ChipEditor({
   items: string[];
   onAdd: (v: string) => void;
   onRemove: (idx: number) => void;
-  /** 可选上限；达到上限后隐藏输入框。 */
   max?: number;
 }) {
+  const { t } = useTranslation();
   const atLimit = max != null && items.length >= max;
 
   const commit = () => {
@@ -300,7 +302,7 @@ export function ChipEditor({
             />
           </div>
           <Button variant="secondary" size="sm" onClick={commit}>
-            添加
+            {t("common.add")}
           </Button>
         </div>
       )}
@@ -315,7 +317,7 @@ export function ChipEditor({
               <button
                 onClick={() => onRemove(idx)}
                 className="text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
-                aria-label="移除"
+                aria-label={t("common.remove")}
               >
                 ×
               </button>
@@ -369,12 +371,13 @@ export function ChipPicker<T extends string>({
 // ============================================================================
 
 export function SubPageBackLink({ merchantId }: { merchantId: number | string }) {
+  const { t } = useTranslation();
   return (
     <a
       href={`/me/merchant/${merchantId}`}
       className="inline-flex items-center gap-1 font-label text-[12px] text-[color:var(--ink-muted)] hover:text-[var(--ink)]"
     >
-      ← 返回商家管理
+      {t("common.backToMerchant")}
     </a>
   );
 }

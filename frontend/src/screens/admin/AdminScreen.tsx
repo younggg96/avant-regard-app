@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import PendingTab from "./PendingTab";
@@ -57,32 +58,33 @@ interface TabConfig {
   navigateTo?: string;
 }
 
-const TABS: TabConfig[] = [
-  { key: "pending", label: "待审核帖子" },
-  { key: "postsManagement", label: "帖子管理" },
-  { key: "comments", label: "评论管理" },
-  { key: "users", label: "用户管理" },
-  { key: "customerService", label: "客服对话" },
-  { key: "stores", label: "店铺审核", navigateTo: "StoreReview" },
-  { key: "merchants", label: "商家入驻", navigateTo: "MerchantReview" },
-  { key: "storeManagement", label: "买手店管理" },
-  { key: "banners", label: "Banner" },
-  { key: "communities", label: "社区管理" },
-  { key: "broadcast", label: "广播通知" },
-  { key: "brandSubmissions", label: "品牌审核" },
-  { key: "brandManagement", label: "品牌管理" },
-  { key: "showReview", label: "秀场审核" },
-  { key: "showManagement", label: "秀场管理" },
-  { key: "brandImageReview", label: "图片审核" },
-  { key: "recommendConfig", label: "推荐配置" },
-  { key: "levelReview", label: "等级审批" },
-  { key: "lottery", label: "月度抽奖" },
-  { key: "maintenance", label: "维护模式" },
-];
-
 const AdminScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>("pending");
+
+  const TABS: TabConfig[] = useMemo(() => [
+    { key: "pending", label: t("admin.pendingPosts") },
+    { key: "postsManagement", label: t("admin.postsManagement") },
+    { key: "comments", label: t("admin.commentsManagement") },
+    { key: "users", label: t("admin.usersManagement") },
+    { key: "customerService", label: t("admin.customerService") },
+    { key: "stores", label: t("admin.storeReview"), navigateTo: "StoreReview" },
+    { key: "merchants", label: t("admin.merchantEntry"), navigateTo: "MerchantReview" },
+    { key: "storeManagement", label: t("admin.storeManagement") },
+    { key: "banners", label: "Banner" },
+    { key: "communities", label: t("admin.communityManagement") },
+    { key: "broadcast", label: t("admin.broadcast") },
+    { key: "brandSubmissions", label: t("admin.brandReview") },
+    { key: "brandManagement", label: t("admin.brandManagement") },
+    { key: "showReview", label: t("admin.showReview") },
+    { key: "showManagement", label: t("admin.showManagement") },
+    { key: "brandImageReview", label: t("admin.brandImages") },
+    { key: "recommendConfig", label: t("admin.recommend") },
+    { key: "levelReview", label: t("admin.levelReview") },
+    { key: "lottery", label: t("admin.lottery") },
+    { key: "maintenance", label: t("admin.maintenance") },
+  ], [t]);
 
   const handleTabPress = (tab: TabConfig) => {
     if (tab.navigateTo) {
@@ -137,7 +139,7 @@ const AdminScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="管理员后台" showBack={true} />
+      <ScreenHeader title={t("admin.title")} showBack={true} />
 
       <ScrollView
         horizontal

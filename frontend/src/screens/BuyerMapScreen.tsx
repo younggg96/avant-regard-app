@@ -38,6 +38,7 @@ import {
   hasValidCoordinates,
 } from "../services/buyerStoreService";
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
+import { useTranslation } from "react-i18next";
 
 interface FilterState {
   country: string;
@@ -186,6 +187,7 @@ const getCityDisplayName = (city: string): string => {
 const SEARCH_BAR_HEIGHT = 48; // 40px input + 8px bottom padding
 
 const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
@@ -310,8 +312,8 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       console.error("Error loading stores:", error);
       setLoadError(
         error instanceof Error
-          ? error.message || "加载失败"
-          : "加载失败"
+          ? error.message || t("store.loadFailed")
+          : t("store.loadFailed")
       );
     } finally {
       setIsLoading(false);
@@ -342,7 +344,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       setIsLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("位置权限", "需要位置权限来发现附近的店铺");
+        Alert.alert(t("map.locationPermission"), t("map.locationPermissionMessage"));
         return null;
       }
 
@@ -358,7 +360,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       return loc;
     } catch (error) {
       console.error("Error getting location:", error);
-      Alert.alert("获取位置失败", "请确保已开启定位服务");
+      Alert.alert(t("map.locationFailed"), t("map.enableLocationService"));
       return null;
     } finally {
       setIsLoadingLocation(false);
@@ -891,7 +893,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               style={{ marginRight: 6 }}
             />
             <Text style={styles.searchPlaceholder} numberOfLines={1}>
-              搜索店铺名称、城市或品牌...
+              {t("store.searchPlaceholder")}
             </Text>
           </Pressable>
           <Pressable
@@ -958,7 +960,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               color={theme.colors.gray300}
             />
             <Text fontSize="$md" fontWeight="$semibold" color="$black">
-              加载失败
+              {t("store.loadFailed")}
             </Text>
             <Text fontSize="$sm" color="$gray400" textAlign="center">
               {loadError}
@@ -972,7 +974,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               onPress={loadInitialData}
             >
               <Text fontSize="$sm" color="$white" fontWeight="$semibold">
-                点击重试
+                {t("store.tapRetry")}
               </Text>
             </Pressable>
           </VStack>
@@ -1044,7 +1046,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               fontWeight="$medium"
               ml="$xs"
             >
-              附近
+              {t("map.nearby")}
             </Text>
           </Pressable>
 
@@ -1077,7 +1079,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               fontWeight="$medium"
               ml="$xs"
             >
-              营业中
+              {t("store.open")}
             </Text>
           </Pressable>
 
@@ -1192,7 +1194,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
         >
           <Box bg="rgba(255,255,255,0.95)" px="$sm" py="$xs" rounded="$sm">
             <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              发现 {visibleStores.length} 家好店
+              {t("map.foundStores", { count: visibleStores.length })}
             </Text>
           </Box>
           <HStack gap="$sm">
@@ -1205,7 +1207,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 onPress={resetFilters}
               >
                 <Text fontSize="$xs" color="$black" textDecorationLine="underline">
-                  清除筛选
+                  {t("map.clearFilters")}
                 </Text>
               </Pressable>
             )}
@@ -1220,7 +1222,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
             >
               <Ionicons name="add" size={14} color={theme.colors.black} />
               <Text fontSize="$xs" fontWeight="$semibold" color="$black" ml="$xs">
-                上传
+                {t("map.upload")}
               </Text>
             </Pressable>
             <Pressable
@@ -1234,7 +1236,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
             >
               <Ionicons name="list" size={14} color={theme.colors.white} />
               <Text fontSize="$xs" fontWeight="$semibold" color="$white" ml="$xs">
-                全部
+                {t("common.all")}
               </Text>
             </Pressable>
           </HStack>
@@ -1285,7 +1287,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                     fontWeight="$bold"
                     color={store.isOpen ? "#27AE60" : "$gray300"}
                   >
-                    {store.isOpen ? "营业中" : "休息"}
+                    {store.isOpen ? t("store.open") : t("store.closed")}
                   </Text>
                 </Box>
               </HStack>
@@ -1314,7 +1316,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 borderBottomColor="$gray100"
               >
                 <Text fontSize="$xs" color="$gray300" numberOfLines={1} fontStyle="italic">
-                  {store.brands.join(" / ") || "暂无品牌信息"}
+                  {store.brands.join(" / ") || t("store.noBrandInfo")}
                 </Text>
               </Box>
 
@@ -1323,7 +1325,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 <HStack gap="$sm">
                   {getFavoriteCount(store.id) > 0 && (
                     <Text fontSize={11} color="$gray300" alignSelf="center">
-                      {getFavoriteCount(store.id)}人已关注
+                      {t("store.followersCount", { count: getFavoriteCount(store.id) })}
                     </Text>
                   )}
                   <Pressable
@@ -1342,7 +1344,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                       fontWeight="$bold"
                       color={isFavorited(store.id) ? "$white" : "$black"}
                     >
-                      {isFavorited(store.id) ? "已关注" : "关注"}
+                      {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -1412,7 +1414,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               borderBottomColor="$gray100"
             >
               <Text fontSize="$lg" fontWeight="$bold" color="$black">
-                筛选条件
+                {t("map.filterConditions")}
               </Text>
               <Pressable onPress={closeFilters}>
                 <Ionicons name="close" size={24} color={theme.colors.gray300} />
@@ -1423,7 +1425,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {/* 国家筛选（按数量排序） */}
               <VStack mt="$lg">
                 <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                  国家 / Country
+                  {t("map.country")}
                 </Text>
                 <HStack flexWrap="wrap" gap="$xs">
                   {sortedCountries.map((country) => (
@@ -1462,7 +1464,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {sortedCities.length > 0 && (
                 <VStack mt="$lg">
                   <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                    城市 / City {filters.country && <Text fontSize="$xs" color="$gray300">({filters.country})</Text>}
+                    {t("map.city")} {filters.country && <Text fontSize="$xs" color="$gray300">({filters.country})</Text>}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {sortedCities.map((city) => (
@@ -1500,7 +1502,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {/* 热门品牌筛选 */}
               <VStack mt="$lg">
                 <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                  热门品牌
+                  {t("map.popularBrands")}
                 </Text>
                 <HStack flexWrap="wrap" gap="$xs">
                   {POPULAR_BRANDS.map((brand) => (
@@ -1565,7 +1567,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {/* 其他条件 */}
               <VStack mt="$lg" mb="$2xl">
                 <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                  更多选项
+                  {t("map.moreOptions")}
                 </Text>
                 <HStack gap="$lg">
                   <Pressable
@@ -1586,7 +1588,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                       color={filters.openOnly ? "$black" : "$gray300"}
                       fontWeight={filters.openOnly ? "$medium" : "$normal"}
                     >
-                      仅显示营业中
+                      {t("map.openOnly")}
                     </Text>
                   </Pressable>
 
@@ -1608,7 +1610,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                       color={filters.hasPhone ? "$black" : "$gray300"}
                       fontWeight={filters.hasPhone ? "$medium" : "$normal"}
                     >
-                      有联系电话
+                      {t("map.hasPhone")}
                     </Text>
                   </Pressable>
                 </HStack>
@@ -1633,7 +1635,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 onPress={resetFilters}
               >
                 <Text fontSize="$md" fontWeight="$semibold" color="$black">
-                  重置
+                  {t("map.reset")}
                 </Text>
               </Pressable>
               <Pressable
@@ -1646,7 +1648,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 onPress={closeFilters}
               >
                 <Text fontSize="$md" fontWeight="$semibold" color="$white">
-                  查看 {filteredStores.length} 家店铺
+                  {t("map.viewStores", { count: filteredStores.length })}
                 </Text>
               </Pressable>
             </HStack>
@@ -1689,7 +1691,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   <HStack alignItems="center" gap="$md">
                     {getFavoriteCount(selectedStore.id) > 0 && (
                       <Text fontSize="$xs" color="$gray300">
-                        {getFavoriteCount(selectedStore.id)}人已关注
+                        {t("store.followersCount", { count: getFavoriteCount(selectedStore.id) })}
                       </Text>
                     )}
                     <Pressable
@@ -1707,7 +1709,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                         fontWeight="$bold"
                         color={isFavorited(selectedStore.id) ? "$white" : "$black"}
                       >
-                        {isFavorited(selectedStore.id) ? "已关注" : "关注"}
+                        {isFavorited(selectedStore.id) ? t("store.followed") : t("store.follow")}
                       </Text>
                     </Pressable>
                     <Pressable onPress={closeStoreDetail}>
@@ -1732,7 +1734,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                         fontWeight="$semibold"
                         color={selectedStore.isOpen ? "#27AE60" : "$gray300"}
                       >
-                        {selectedStore.isOpen ? "营业中" : "休息中"}
+                        {selectedStore.isOpen ? t("store.open") : t("store.closed")}
                       </Text>
                     </HStack>
                     {selectedStore.hours && (
@@ -1784,7 +1786,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                           </Text>
                           <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
                             <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold">
-                              拨打
+                              {t("store.call")}
                             </Text>
                           </Box>
                         </Pressable>
@@ -1796,7 +1798,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   {selectedStore.style.length > 0 && (
                     <VStack mt="$lg">
                       <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                        店铺风格
+                        {t("store.storeStyle")}
                       </Text>
                       <HStack flexWrap="wrap" gap="$xs">
                         {selectedStore.style.map((s, idx) => (
@@ -1814,7 +1816,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   {selectedStore.brands.length > 0 && (
                     <VStack mt="$lg" mb="$2xl">
                       <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                        主营品牌
+                        {t("store.mainBrands")}
                       </Text>
                       <HStack flexWrap="wrap" gap="$xs">
                         {selectedStore.brands.map((brand, idx) => (
@@ -1850,7 +1852,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   >
                     <Ionicons name="navigate-outline" size={20} color={theme.colors.black} />
                     <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm">
-                      导航
+                      {t("store.navigate")}
                     </Text>
                   </Pressable>
 
@@ -1867,7 +1869,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                     >
                       <Ionicons name="call" size={20} color={theme.colors.white} />
                       <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm">
-                        联系商家
+                        {t("store.contactMerchant")}
                       </Text>
                     </Pressable>
                   ) : (
@@ -1880,7 +1882,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                       justifyContent="center"
                     >
                       <Text fontSize="$md" fontWeight="$semibold" color="$gray300">
-                        暂无联系方式
+                        {t("store.noContact")}
                       </Text>
                     </Box>
                   )}

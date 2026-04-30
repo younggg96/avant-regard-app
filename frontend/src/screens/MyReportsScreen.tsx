@@ -7,6 +7,7 @@ import {
   Dimensions,
   Image as RNImage,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,6 +46,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 const MyReportsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -245,10 +247,10 @@ const MyReportsScreen = () => {
     <VStack alignItems="center" justifyContent="center" py="$xl" flex={1}>
       <Ionicons name="flag-outline" size={48} color={theme.colors.gray200} />
       <Text color="$gray400" mt="$md" fontSize="$md">
-        暂无举报记录
+        {t("myReports.noReports")}
       </Text>
       <Text color="$gray300" mt="$xs" fontSize="$sm">
-        您提交的举报将在这里显示
+        {t("myReports.emptyHint")}
       </Text>
     </VStack>
   );
@@ -264,7 +266,7 @@ const MyReportsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="我的举报" showBack />
+      <ScreenHeader title={t("myReports.title")} showBack />
 
       {isLoading ? (
         <VStack alignItems="center" justifyContent="center" flex={1}>

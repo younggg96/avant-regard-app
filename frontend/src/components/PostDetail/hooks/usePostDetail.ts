@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Post } from "../../PostCard";
 import { postService, Post as ApiPost } from "../../../services/postService";
 import { showService, Show } from "../../../services/showService";
@@ -49,7 +50,7 @@ export const convertApiPostToUiPost = async (
     image: apiPost.imageUrls?.[0],
     author: {
       id: String(apiPost.userId),
-      name: userInfo?.username || apiPost.username || "用户",
+      name: userInfo?.username || apiPost.username || "User",
       avatar:
         userInfo?.avatarUrl ||
         apiPost.avatarUrl ||
@@ -101,6 +102,7 @@ interface UsePostDetailReturn {
 export const usePostDetail = ({
   params,
 }: UsePostDetailOptions): UsePostDetailReturn => {
+  const { t } = useTranslation();
   const [post, setPost] = useState<Post | null>(params.post || null);
   const [isLoading, setIsLoading] = useState(!params.post);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +122,7 @@ export const usePostDetail = ({
 
     // 需要 postId 才能加载
     if (!params.postId) {
-      setError("缺少帖子 ID");
+      setError(t("postActions.missingPostId"));
       setIsLoading(false);
       return;
     }
@@ -131,14 +133,13 @@ export const usePostDetail = ({
     try {
       const postId = parseInt(params.postId, 10);
       if (isNaN(postId)) {
-        throw new Error("无效的帖子 ID");
+        throw new Error("Invalid post ID");
       }
 
-      // 从 API 获取帖子详情
       const apiPost = await postService.getPostById(postId);
       setPostStatus(apiPost.status);
       if (!apiPost) {
-        throw new Error("帖子不存在");
+        throw new Error(t("postActions.postNotFound"));
       }
 
       // 获取作者信息
@@ -161,7 +162,7 @@ export const usePostDetail = ({
       setPost(uiPost);
     } catch (err) {
       console.error("Error loading post detail:", err);
-      setError(err instanceof Error ? err.message : "加载失败");
+      setError(err instanceof Error ? err.message : t("common.failed"));
     } finally {
       setIsLoading(false);
     }

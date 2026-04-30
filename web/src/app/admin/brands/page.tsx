@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { brandsApi, type AdminBrand, type UpdateBrandParams } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -17,6 +18,7 @@ import {
 
 
 export default function BrandsPage() {
+  const { t } = useTranslation();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -46,14 +48,7 @@ export default function BrandsPage() {
   useEffect(() => { setPage(1); }, [keyword]);
 
   const openEdit = (b: AdminBrand) => {
-    setForm({
-      name: b.name,
-      category: b.category,
-      foundedYear: b.foundedYear,
-      founder: b.founder,
-      country: b.country,
-      website: b.website,
-    });
+    setForm({ name: b.name, category: b.category, foundedYear: b.foundedYear, founder: b.founder, country: b.country, website: b.website });
     setEditing(b);
   };
 
@@ -83,10 +78,10 @@ export default function BrandsPage() {
 
   return (
     <div>
-      <PageHeader title="品牌管理" description={`共 ${total} 个品牌`} />
+      <PageHeader title={t("admin.brands")} description={t("admin.brandTotal", { count: total })} />
 
       <div className="mb-4 max-w-sm">
-        <SearchBar value={keyword} onChange={setKeyword} placeholder="搜索品牌名…" />
+        <SearchBar value={keyword} onChange={setKeyword} placeholder={t("admin.searchBrand")} />
       </div>
 
       {loading ? (
@@ -99,12 +94,12 @@ export default function BrandsPage() {
             <table className="w-full font-label text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">品牌</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">分类</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">创始人</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">国家</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">创立年份</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">操作</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colBrand")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.category")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colFounder")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colCountry")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colFoundedYear")}</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -117,12 +112,8 @@ export default function BrandsPage() {
                     <td className="px-4 py-3 text-[color:var(--ink-muted)]">{b.foundedYear || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => openEdit(b)} className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]">
-                          编辑
-                        </button>
-                        <button onClick={() => setDeleteTarget(b)} className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]">
-                          删除
-                        </button>
+                        <button onClick={() => openEdit(b)} className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]">{t("admin.edit")}</button>
+                        <button onClick={() => setDeleteTarget(b)} className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]">{t("admin.delete")}</button>
                       </div>
                     </td>
                   </tr>
@@ -134,26 +125,26 @@ export default function BrandsPage() {
         </>
       )}
 
-      <FormDialog open={!!editing} title={`编辑品牌 — ${editing?.name}`} onClose={() => setEditing(null)}>
+      <FormDialog open={!!editing} title={t("admin.editBrand", { name: editing?.name })} onClose={() => setEditing(null)}>
         <div className="space-y-4">
-          <FormField label="品牌名"><TextInput value={form.name || ""} onChange={(v) => setForm({ ...form, name: v })} /></FormField>
-          <FormField label="分类"><TextInput value={form.category || ""} onChange={(v) => setForm({ ...form, category: v })} /></FormField>
-          <FormField label="创始人"><TextInput value={form.founder || ""} onChange={(v) => setForm({ ...form, founder: v })} /></FormField>
-          <FormField label="国家"><TextInput value={form.country || ""} onChange={(v) => setForm({ ...form, country: v })} /></FormField>
-          <FormField label="创立年份"><TextInput value={form.foundedYear || ""} onChange={(v) => setForm({ ...form, foundedYear: v })} /></FormField>
-          <FormField label="官网"><TextInput value={form.website || ""} onChange={(v) => setForm({ ...form, website: v })} /></FormField>
+          <FormField label={t("admin.brandNameLabel")}><TextInput value={form.name || ""} onChange={(v) => setForm({ ...form, name: v })} /></FormField>
+          <FormField label={t("admin.category")}><TextInput value={form.category || ""} onChange={(v) => setForm({ ...form, category: v })} /></FormField>
+          <FormField label={t("admin.founderLabel")}><TextInput value={form.founder || ""} onChange={(v) => setForm({ ...form, founder: v })} /></FormField>
+          <FormField label={t("admin.colCountry")}><TextInput value={form.country || ""} onChange={(v) => setForm({ ...form, country: v })} /></FormField>
+          <FormField label={t("admin.foundedYearLabel")}><TextInput value={form.foundedYear || ""} onChange={(v) => setForm({ ...form, foundedYear: v })} /></FormField>
+          <FormField label={t("admin.websiteLabel")}><TextInput value={form.website || ""} onChange={(v) => setForm({ ...form, website: v })} /></FormField>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setEditing(null)}>取消</Button>
-            <Button onClick={handleSave} loading={saving}>保存</Button>
+            <Button variant="secondary" onClick={() => setEditing(null)}>{t("admin.cancel")}</Button>
+            <Button onClick={handleSave} loading={saving}>{t("admin.save")}</Button>
           </div>
         </div>
       </FormDialog>
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="确认删除品牌？"
-        message={`将删除品牌「${deleteTarget?.name}」及其所有图片。`}
-        confirmLabel="删除"
+        title={t("admin.confirmDeleteBrand")}
+        message={t("admin.deleteBrandMsg", { name: deleteTarget?.name })}
+        confirmLabel={t("admin.delete")}
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

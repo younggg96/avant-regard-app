@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Modal } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Box, Text, Pressable } from "./ui";
@@ -36,6 +37,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   enableCropper = false,
   defaultCropAspect = "free",
 }) => {
+  const { t } = useTranslation();
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [rawImageUri, setRawImageUri] = useState<string | null>(null);
@@ -51,13 +53,13 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
-          Alert.show("需要相机权限才能拍照");
+          Alert.show(t("imageUploader.cameraPermission"));
           return;
         }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-          Alert.show("需要相册权限才能选择图片");
+          Alert.show(t("imageUploader.galleryPermission"));
           return;
         }
       }
@@ -83,12 +85,12 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           setShowCropper(true);
         } else {
           onImageSelected(selectedUri);
-          Alert.show("图片已设置", "", 1500);
+          Alert.show(t("imageUploader.imageSet"), "", 1500);
         }
       }
     } catch (error) {
       console.error("Image selection error:", error);
-      Alert.show("错误: 图片选择失败，请重试");
+      Alert.show(t("imageUploader.selectionError"));
     }
   };
 
@@ -96,7 +98,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     setShowCropper(false);
     setRawImageUri(null);
     onImageSelected(croppedUri);
-    Alert.show("图片已设置", "", 1500);
+    Alert.show(t("imageUploader.imageSet"), "", 1500);
   };
 
   const handleCropCancel = () => {
@@ -115,7 +117,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
 
   const handleRemoveImage = () => {
     onImageRemoved();
-    Alert.show("图片已移除");
+    Alert.show(t("imageUploader.imageRemoved"));
   };
 
   const cropperModal = enableCropper ? (
@@ -220,7 +222,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           onPress={handleEditWithCropper}
         >
           <Text color="$white" fontSize="$xs" fontWeight="$medium">
-            {enableCropper ? "裁剪" : "更换"}
+            {enableCropper ? t("imageUploader.crop") : t("imageUploader.replace")}
           </Text>
         </Pressable>
 
@@ -239,7 +241,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
             onPress={handleAddImage}
           >
             <Text color="$white" fontSize="$xs" fontWeight="$medium">
-              更换
+              {t("imageUploader.replace")}
             </Text>
           </Pressable>
         )}

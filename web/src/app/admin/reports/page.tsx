@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { reportsApi, type AdminReport } from "@/lib/services/admin";
 import {
   PageHeader,
@@ -13,29 +14,30 @@ import {
 } from "@/components/admin/ui";
 
 
-const STATUS_OPTIONS = [
-  { value: "PENDING" as const, label: "待处理" },
-  { value: "RESOLVED" as const, label: "已解决" },
-  { value: "DISMISSED" as const, label: "已驳回" },
-];
-
-type ReportStatus = (typeof STATUS_OPTIONS)[number]["value"];
-
-const TARGET_LABELS: Record<string, string> = {
-  POST: "帖子",
-  COMMENT: "评论",
-  MESSAGE: "私信",
-  USER: "用户",
-};
-
-const STATUS_VARIANTS: Record<string, "warning" | "success" | "muted" | "info"> = {
-  PENDING: "warning",
-  REVIEWED: "info",
-  RESOLVED: "success",
-  DISMISSED: "muted",
-};
-
 export default function ReportsPage() {
+  const { t } = useTranslation();
+
+  const STATUS_OPTIONS = [
+    { value: "PENDING" as const, label: t("admin.statusPendingReport") },
+    { value: "RESOLVED" as const, label: t("admin.statusResolved") },
+    { value: "DISMISSED" as const, label: t("admin.statusDismissed") },
+  ];
+
+  const TARGET_LABELS: Record<string, string> = {
+    POST: t("admin.targetPost"),
+    COMMENT: t("admin.targetComment"),
+    MESSAGE: t("admin.targetMessage"),
+    USER: t("admin.targetUser"),
+  };
+
+  const STATUS_LABEL: Record<string, string> = {
+    PENDING: t("admin.statusPendingReport"),
+    RESOLVED: t("admin.statusResolved"),
+    DISMISSED: t("admin.statusDismissed"),
+  };
+
+  type ReportStatus = (typeof STATUS_OPTIONS)[number]["value"];
+
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -71,10 +73,10 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <PageHeader title="举报管理" description={`共 ${total} 条举报记录`} />
+      <PageHeader title={t("admin.reports")} description={t("admin.reportTotal", { count: total })} />
 
       <div className="mb-4">
-        <FilterChips options={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter} allLabel="全部" />
+        <FilterChips options={STATUS_OPTIONS} value={statusFilter} onChange={setStatusFilter} allLabel={t("admin.all")} />
       </div>
 
       {loading ? (
@@ -87,13 +89,13 @@ export default function ReportsPage() {
             <table className="w-full font-label text-[13px]">
               <thead>
                 <tr className="border-b border-[var(--border)] bg-[var(--canvas-soft)]">
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">举报人</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">目标</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">原因</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">描述</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">状态</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">时间</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">操作</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colReporter")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colTarget")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colReason")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colDescription")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colStatus")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colTime")}</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colActions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
@@ -109,14 +111,12 @@ export default function ReportsPage() {
                       <div className="truncate text-[color:var(--ink-muted)]">{r.description || "—"}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge variant={STATUS_VARIANTS[r.status] || "muted"}>
-                        {r.status === "PENDING" ? "待处理" :
-                         r.status === "RESOLVED" ? "已解决" :
-                         r.status === "DISMISSED" ? "已驳回" : r.status}
+                      <StatusBadge active={r.status === "PENDING"}>
+                        {STATUS_LABEL[r.status] || r.status}
                       </StatusBadge>
                     </td>
                     <td className="px-4 py-3 text-[12px] text-[color:var(--ink-muted)]">
-                      {new Date(r.createdAt).toLocaleDateString("zh-CN")}
+                      {new Date(r.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
                       {r.status === "PENDING" && (
@@ -127,7 +127,7 @@ export default function ReportsPage() {
                             onClick={() => handleStatus(r.id, "RESOLVED")}
                             disabled={acting === r.id}
                           >
-                            解决
+                            {t("admin.resolve")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -135,7 +135,7 @@ export default function ReportsPage() {
                             onClick={() => handleStatus(r.id, "DISMISSED")}
                             disabled={acting === r.id}
                           >
-                            驳回
+                            {t("admin.dismiss")}
                           </Button>
                         </div>
                       )}

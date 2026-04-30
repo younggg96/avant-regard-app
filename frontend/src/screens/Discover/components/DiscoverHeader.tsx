@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
@@ -30,6 +31,8 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     onAvatarPress,
     onSearchPress,
 }) => {
+    const { t } = useTranslation();
+
     return (
         <Box bg="$white" px="$md" pt="$xs">
             <VStack space="sm">
@@ -67,7 +70,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             style={styles.searchIcon}
                         />
                         <Text style={styles.searchText} numberOfLines={1}>
-                            搜索品牌、单品、穿搭...
+                            {t("discover.searchPlaceholder")}
                         </Text>
                     </HStack>
                 </Pressable>

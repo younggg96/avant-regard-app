@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import {
   Box,
@@ -71,14 +72,6 @@ type RouteParams = {
 
 type TabType = "info" | "banner" | "announcement" | "activity" | "discount";
 
-const TABS: { key: TabType; label: string; icon: string }[] = [
-  { key: "info", label: "店铺", icon: "storefront-outline" },
-  { key: "banner", label: "Banner", icon: "image-outline" },
-  { key: "announcement", label: "公告", icon: "megaphone-outline" },
-  { key: "activity", label: "活动", icon: "calendar-outline" },
-  { key: "discount", label: "折扣", icon: "pricetag-outline" },
-];
-
 const ACTIVITY_TYPES: { value: ActivityType; label: string }[] = [
   { value: "TRUNK_SHOW", label: "Trunk Show" },
   { value: "POP_UP", label: "快闪店" },
@@ -94,9 +87,18 @@ const DISCOUNT_TYPES: { value: DiscountType; label: string }[] = [
 ];
 
 const MerchantManageScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantManage">>();
   const { user } = useAuthStore();
+
+  const TABS: { key: TabType; label: string; icon: string }[] = [
+    { key: "info", label: t("merchant.storeInfo"), icon: "storefront-outline" },
+    { key: "banner", label: "Banner", icon: "image-outline" },
+    { key: "announcement", label: t("merchant.announcement"), icon: "megaphone-outline" },
+    { key: "activity", label: t("merchant.activity"), icon: "calendar-outline" },
+    { key: "discount", label: t("merchant.discount"), icon: "pricetag-outline" },
+  ];
 
   // 商家信息
   const [merchant, setMerchant] = useState<StoreMerchant | null>(null);
@@ -258,9 +260,9 @@ const MerchantManageScreen = () => {
       });
 
       setIsEditingInfo(false);
-      Alert.alert("成功", "联系信息已更新");
+      Alert.alert(t("common.success"), t("merchant.contactInfoUpdated"));
     } catch (error: any) {
-      Alert.alert("保存失败", error.message || "请稍后重试");
+      Alert.alert(t("common.saveFailed"), error.message || t("common.retryLater"));
     } finally {
       setIsSubmitting(false);
     }
@@ -280,9 +282,9 @@ const MerchantManageScreen = () => {
       setNewPhone("");
       setNewBrand("");
       setNewStyle("");
-      Alert.alert("成功", "店铺信息已更新");
+      Alert.alert(t("common.success"), t("merchant.storeInfoUpdated"));
     } catch (error: any) {
-      Alert.alert("保存失败", error.message || "请稍后重试");
+      Alert.alert(t("common.saveFailed"), error.message || t("common.retryLater"));
     } finally {
       setIsSubmitting(false);
     }
@@ -384,7 +386,7 @@ const MerchantManageScreen = () => {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("权限不足", "需要相册权限才能选择图片");
+      Alert.alert(t("common.permissionDenied"), t("common.photoPermissionRequired"));
       return;
     }
 
@@ -402,7 +404,7 @@ const MerchantManageScreen = () => {
       const url = await uploadImageFromUri(result.assets[0].uri);
       setFormData((prev: any) => ({ ...prev, [fieldName]: url }));
     } catch (error: any) {
-      Alert.alert("上传失败", error?.message || "请稍后重试");
+      Alert.alert(t("common.uploadFailed"), error?.message || t("common.retryLater"));
     } finally {
       setUploadingField(null);
     }
@@ -418,7 +420,7 @@ const MerchantManageScreen = () => {
       switch (editType) {
         case "banner":
           if (!formData.imageUrl) {
-            Alert.alert("提示", "请选择 Banner 图片");
+            Alert.alert(t("common.hint"), t("merchant.selectBannerImage"));
             return;
           }
           if (editItem) {
@@ -430,7 +432,7 @@ const MerchantManageScreen = () => {
 
         case "announcement":
           if (!formData.title || !formData.content) {
-            Alert.alert("提示", "请填写公告标题和内容");
+            Alert.alert(t("common.hint"), t("merchant.fillAnnouncementTitleContent"));
             return;
           }
           if (editItem) {
@@ -442,7 +444,7 @@ const MerchantManageScreen = () => {
 
         case "activity":
           if (!formData.title || !formData.activityStartTime || !formData.activityEndTime) {
-            Alert.alert("提示", "请填写活动标题和时间");
+            Alert.alert(t("common.hint"), t("merchant.fillActivityTitleTime"));
             return;
           }
           if (editItem) {
@@ -454,7 +456,7 @@ const MerchantManageScreen = () => {
 
         case "discount":
           if (!formData.title || !formData.discountStartTime || !formData.discountEndTime) {
-            Alert.alert("提示", "请填写折扣标题和时间");
+            Alert.alert(t("common.hint"), t("merchant.fillDiscountTitleTime"));
             return;
           }
           if (editItem) {
@@ -467,9 +469,9 @@ const MerchantManageScreen = () => {
 
       closeEditModal();
       await loadContent();
-      Alert.alert("成功", editItem ? "更新成功" : "发布成功");
+      Alert.alert(t("common.success"), editItem ? t("common.updateSuccess") : t("common.publishSuccess"));
     } catch (error: any) {
-      Alert.alert("操作失败", error.message || "请稍后重试");
+      Alert.alert(t("common.operationFailed"), error.message || t("common.retryLater"));
     } finally {
       setIsSubmitting(false);
     }
@@ -477,10 +479,10 @@ const MerchantManageScreen = () => {
 
   // 删除内容
   const handleDelete = (type: TabType, id: number) => {
-    Alert.alert("确认删除", "删除后无法恢复，确定要删除吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("common.confirmDelete"), t("common.deleteIrreversible"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
@@ -503,7 +505,7 @@ const MerchantManageScreen = () => {
                 break;
             }
           } catch (error: any) {
-            Alert.alert("删除失败", error.message || "请稍后重试");
+            Alert.alert(t("common.deleteFailed"), error.message || t("common.retryLater"));
           }
         },
       },
@@ -549,7 +551,7 @@ const MerchantManageScreen = () => {
         <VStack alignItems="center" py="$xl">
           <Ionicons name="image-outline" size={48} color={theme.colors.gray200} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            暂无 Banner，点击下方按钮添加
+            {t("merchant.noBanners")}
           </Text>
         </VStack>
       ) : (
@@ -588,7 +590,7 @@ const MerchantManageScreen = () => {
                       color={banner.status === "PUBLISHED" ? "#27AE60" : "$gray300"}
                       style={styles.textRegular}
                     >
-                      {banner.status === "PUBLISHED" ? "已发布" : "草稿"}
+                      {banner.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </Text>
                   </Box>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
@@ -624,7 +626,7 @@ const MerchantManageScreen = () => {
         <VStack alignItems="center" py="$xl">
           <Ionicons name="megaphone-outline" size={48} color={theme.colors.gray200} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            暂无公告，点击下方按钮添加
+            {t("merchant.noAnnouncements")}
           </Text>
         </VStack>
       ) : (
@@ -673,7 +675,7 @@ const MerchantManageScreen = () => {
                       color={announcement.status === "PUBLISHED" ? "#27AE60" : "$gray300"}
                       style={styles.textRegular}
                     >
-                      {announcement.status === "PUBLISHED" ? "已发布" : "草稿"}
+                      {announcement.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </Text>
                   </Box>
                 </HStack>
@@ -706,7 +708,7 @@ const MerchantManageScreen = () => {
         <VStack alignItems="center" py="$xl">
           <Ionicons name="calendar-outline" size={48} color={theme.colors.gray200} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            暂无活动，点击下方按钮添加
+            {t("merchant.noActivities")}
           </Text>
         </VStack>
       ) : (
@@ -799,7 +801,7 @@ const MerchantManageScreen = () => {
         <VStack alignItems="center" py="$xl">
           <Ionicons name="pricetag-outline" size={48} color={theme.colors.gray200} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            暂无折扣，点击下方按钮添加
+            {t("merchant.noDiscounts")}
           </Text>
         </VStack>
       ) : (
@@ -918,7 +920,7 @@ const MerchantManageScreen = () => {
             </HStack>
             <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
               <Text fontSize="$xs" fontWeight="$bold" color="#4CAF50">
-                已认证
+                {t("merchant.approved")}
               </Text>
             </Box>
           </HStack>
@@ -928,14 +930,14 @@ const MerchantManageScreen = () => {
         <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
             <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-              联系信息
+              {t("merchant.contactInfo")}
             </Text>
             {!isEditingInfo && (
               <Pressable onPress={() => setIsEditingInfo(true)}>
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
                   <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
-                    编辑
+                    {t("common.edit")}
                   </Text>
                 </HStack>
               </Pressable>
@@ -946,7 +948,7 @@ const MerchantManageScreen = () => {
             <VStack gap="$md">
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  联系人姓名
+                  {t("merchant.contactName")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -961,7 +963,7 @@ const MerchantManageScreen = () => {
 
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  联系电话
+                  {t("merchant.contactPhone")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -977,7 +979,7 @@ const MerchantManageScreen = () => {
 
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  联系邮箱
+                  {t("merchant.contactEmail")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -1010,7 +1012,7 @@ const MerchantManageScreen = () => {
                   }}
                 >
                   <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                    取消
+                    {t("common.cancel")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1026,7 +1028,7 @@ const MerchantManageScreen = () => {
                     <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
-                      保存
+                      {t("common.save")}
                     </Text>
                   )}
                 </Pressable>
@@ -1038,10 +1040,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="person-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    联系人
+                    {t("merchant.contactName")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {merchant.contactName || "未设置"}
+                    {merchant.contactName || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1050,10 +1052,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="call-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    联系电话
+                    {t("merchant.contactPhone")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {merchant.contactPhone || "未设置"}
+                    {merchant.contactPhone || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1062,10 +1064,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="mail-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    联系邮箱
+                    {t("merchant.contactEmail")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {merchant.contactEmail || "未设置"}
+                    {merchant.contactEmail || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1076,7 +1078,7 @@ const MerchantManageScreen = () => {
         {/* 权限信息 */}
         <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
           <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$md" style={styles.textBold}>
-            已开通权限
+            {t("merchant.permissions")}
           </Text>
           <HStack flexWrap="wrap" gap="$sm">
             {merchant.canPostBanner && (
@@ -1094,7 +1096,7 @@ const MerchantManageScreen = () => {
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="megaphone-outline" size={14} color="#F57C00" />
                   <Text fontSize="$sm" color="#F57C00" style={styles.textRegular}>
-                    公告
+                    {t("merchant.announcement")}
                   </Text>
                 </HStack>
               </Box>
@@ -1104,7 +1106,7 @@ const MerchantManageScreen = () => {
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="calendar-outline" size={14} color="#388E3C" />
                   <Text fontSize="$sm" color="#388E3C" style={styles.textRegular}>
-                    活动
+                    {t("merchant.activity")}
                   </Text>
                 </HStack>
               </Box>
@@ -1114,7 +1116,7 @@ const MerchantManageScreen = () => {
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="pricetag-outline" size={14} color="#C2185B" />
                   <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
-                    折扣
+                    {t("merchant.discount")}
                   </Text>
                 </HStack>
               </Box>
@@ -1126,14 +1128,14 @@ const MerchantManageScreen = () => {
         <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
             <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-              店铺信息
+              {t("merchant.storeInfo")}
             </Text>
             {!isEditingStore && (
               <Pressable onPress={() => setIsEditingStore(true)}>
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
                   <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
-                    编辑
+                    {t("common.edit")}
                   </Text>
                 </HStack>
               </Pressable>
@@ -1145,7 +1147,7 @@ const MerchantManageScreen = () => {
               {/* 店铺名称 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  店铺名称
+                  {t("merchant.storeName")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -1161,7 +1163,7 @@ const MerchantManageScreen = () => {
               {/* 店铺地址 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  店铺地址
+                  {t("merchant.storeAddress")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -1178,7 +1180,7 @@ const MerchantManageScreen = () => {
               {/* 联系电话 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  联系电话
+                  {t("merchant.contactPhone")}
                 </Text>
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
@@ -1240,7 +1242,7 @@ const MerchantManageScreen = () => {
               {/* 营业时间 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  营业时间
+                  {t("merchant.businessHours")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -1256,7 +1258,7 @@ const MerchantManageScreen = () => {
               {/* 休息日 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  休息日
+                  {t("merchant.restDay")}
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -1272,7 +1274,7 @@ const MerchantManageScreen = () => {
               {/* 店铺描述 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  店铺描述
+                  {t("merchant.storeDescription")}
                 </Text>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: "top" }]}
@@ -1290,7 +1292,7 @@ const MerchantManageScreen = () => {
               {/* 销售品牌 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  销售品牌
+                  {t("merchant.salesBrands")}
                 </Text>
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
@@ -1351,7 +1353,7 @@ const MerchantManageScreen = () => {
               {/* 风格标签 */}
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  风格标签
+                  {t("merchant.styleTags")}
                 </Text>
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
@@ -1438,7 +1440,7 @@ const MerchantManageScreen = () => {
                   }}
                 >
                   <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                    取消
+                    {t("common.cancel")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1454,7 +1456,7 @@ const MerchantManageScreen = () => {
                     <ActivityIndicator  color={theme.colors.white} />
                   ) : (
                     <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
-                      保存
+                      {t("common.save")}
                     </Text>
                   )}
                 </Pressable>
@@ -1467,10 +1469,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="storefront-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    店铺名称
+                    {t("merchant.storeName")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {buyerStore?.name || "未设置"}
+                    {buyerStore?.name || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1480,10 +1482,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="location-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                 <VStack flex={1}>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    地址
+                    {t("store.address")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {buyerStore?.address || "未设置"}
+                    {buyerStore?.address || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1493,7 +1495,7 @@ const MerchantManageScreen = () => {
                 <Ionicons name="call-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                 <VStack flex={1}>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    联系电话
+                    {t("merchant.contactPhone")}
                   </Text>
                   {buyerStore?.phone && buyerStore.phone.length > 0 ? (
                     buyerStore.phone.map((p, idx) => (
@@ -1503,7 +1505,7 @@ const MerchantManageScreen = () => {
                     ))
                   ) : (
                     <Text fontSize="$md" color="$gray200" style={styles.textRegular}>
-                      未设置
+                      {t("merchant.notSet")}
                     </Text>
                   )}
                 </VStack>
@@ -1514,10 +1516,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="time-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    营业时间
+                    {t("merchant.businessHours")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {buyerStore?.hours || "未设置"}
+                    {buyerStore?.hours || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1527,10 +1529,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    休息日
+                    {t("merchant.restDay")}
                   </Text>
                   <Text fontSize="$md" color="$black" style={styles.textRegular}>
-                    {buyerStore?.rest || "未设置"}
+                    {buyerStore?.rest || t("merchant.notSet")}
                   </Text>
                 </VStack>
               </HStack>
@@ -1541,7 +1543,7 @@ const MerchantManageScreen = () => {
                   <Ionicons name="document-text-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                   <VStack flex={1}>
                     <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                      店铺描述
+                      {t("merchant.storeDescription")}
                     </Text>
                     <Text fontSize="$md" color="$black" style={styles.textRegular}>
                       {buyerStore.description}
@@ -1556,7 +1558,7 @@ const MerchantManageScreen = () => {
                   <HStack alignItems="center" gap="$sm">
                     <Ionicons name="pricetags-outline" size={18} color={theme.colors.gray400} />
                     <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                      销售品牌
+                      {t("merchant.salesBrands")}
                     </Text>
                   </HStack>
                   <HStack flexWrap="wrap" gap="$xs" ml={26}>
@@ -1577,7 +1579,7 @@ const MerchantManageScreen = () => {
                   <HStack alignItems="center" gap="$sm">
                     <Ionicons name="color-palette-outline" size={18} color={theme.colors.gray400} />
                     <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                      风格标签
+                      {t("merchant.styleTags")}
                     </Text>
                   </HStack>
                   <HStack flexWrap="wrap" gap="$xs" ml={26}>
@@ -1741,7 +1743,7 @@ const MerchantManageScreen = () => {
                 )}
               </Box>
               <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                置顶公告
+                {t("merchant.pinAnnouncement")}
               </Text>
             </Pressable>
           </VStack>
@@ -1881,7 +1883,7 @@ const MerchantManageScreen = () => {
                 )}
               </Box>
               <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                需要报名
+                {t("merchant.needRegistration")}
               </Text>
             </Pressable>
 
@@ -2040,7 +2042,7 @@ const MerchantManageScreen = () => {
                 )}
               </Box>
               <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                需要优惠码
+                {t("merchant.needCode")}
               </Text>
             </Pressable>
 
@@ -2065,13 +2067,13 @@ const MerchantManageScreen = () => {
 
   // 获取编辑模态框标题
   const getEditModalTitle = () => {
-    const action = editItem ? "编辑" : "新建";
+    const action = editItem ? t("common.edit") : t("merchant.add");
     const typeLabels: Record<string, string> = {
-      info: "店铺信息",
+      info: t("merchant.storeInfo"),
       banner: "Banner",
-      announcement: "公告",
-      activity: "活动",
-      discount: "折扣",
+      announcement: t("merchant.announcement"),
+      activity: t("merchant.activity"),
+      discount: t("merchant.discount"),
     };
     return `${action}${typeLabels[editType] || ""}`;
   };
@@ -2080,14 +2082,14 @@ const MerchantManageScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="商家管理"
+          title={t("merchant.title")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator  color={theme.colors.black} />
           <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            加载中...
+            {t("common.loading")}
           </Text>
         </VStack>
       </SafeAreaView>
@@ -2098,7 +2100,7 @@ const MerchantManageScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <ScreenHeader
-          title="商家管理"
+          title={t("merchant.title")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
@@ -2110,7 +2112,7 @@ const MerchantManageScreen = () => {
             textAlign="center"
             style={styles.textRegular}
           >
-            您还不是认证商家
+            {t("merchant.notVerified")}
           </Text>
           <Text
             fontSize="$sm"
@@ -2119,7 +2121,7 @@ const MerchantManageScreen = () => {
             textAlign="center"
             style={styles.textRegular}
           >
-            请先在店铺页面申请商家入驻
+            {t("merchant.applyFirst")}
           </Text>
         </VStack>
       </SafeAreaView>
@@ -2129,7 +2131,7 @@ const MerchantManageScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="商家管理"
+        title={t("merchant.title")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -2169,7 +2171,7 @@ const MerchantManageScreen = () => {
                 color="$white"
                 style={styles.textBold}
               >
-                添加{TABS.find((t) => t.key === activeTab)?.label}
+                {t("merchant.add")}{TABS.find((tab) => tab.key === activeTab)?.label}
               </Text>
             </HStack>
           </Pressable>
@@ -2204,7 +2206,7 @@ const MerchantManageScreen = () => {
             >
               <Pressable onPress={closeEditModal}>
                 <Text fontSize="$md" color="$gray300" style={styles.textRegular}>
-                  取消
+                  {t("common.cancel")}
                 </Text>
               </Pressable>
               <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
@@ -2215,7 +2217,7 @@ const MerchantManageScreen = () => {
                   <ActivityIndicator  color={theme.colors.black} />
                 ) : (
                   <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                    保存
+                    {t("common.save")}
                   </Text>
                 )}
               </Pressable>

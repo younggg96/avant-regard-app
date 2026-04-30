@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader, { HeaderAction } from "../components/ScreenHeader";
@@ -23,6 +24,7 @@ import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 
 const NotificationsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -164,7 +166,7 @@ const NotificationsScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="通知"
+        title={t("notification.title")}
         rightActions={headerActions}
         showBackButton={true}
       />
@@ -188,9 +190,9 @@ const NotificationsScreen = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text style={styles.emptyTitle}>暂无通知</Text>
+            <Text style={styles.emptyTitle}>{t("notification.empty")}</Text>
             <Text style={styles.emptyText}>
-              当有新的互动时，您会在这里收到通知
+              {t("notification.emptyHint")}
             </Text>
           </View>
         ) : (

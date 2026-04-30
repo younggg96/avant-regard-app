@@ -19,6 +19,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   formatPriceCents,
   storeProductService,
@@ -48,6 +49,7 @@ interface Props {
 const DEFAULT_PAGE_SIZE = 24;
 
 export function StoreProductGrid({ storeId, filters, preview, columns = "default" }: Props) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<StoreProduct[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -74,7 +76,7 @@ export function StoreProductGrid({ storeId, filters, preview, columns = "default
         setTotal(res.total ?? 0);
         setPage(targetPage);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "加载失败");
+        setErr(e instanceof Error ? e.message : t("common.loadFailed"));
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -117,7 +119,7 @@ export function StoreProductGrid({ storeId, filters, preview, columns = "default
           onClick={() => fetchPage(1, false)}
           className="rounded border border-[var(--border)] px-3 py-1 text-[var(--ink)] hover:border-[var(--ink)]"
         >
-          点击重试
+          {t("common.clickRetry")}
         </button>
       </div>
     );
@@ -126,7 +128,7 @@ export function StoreProductGrid({ storeId, filters, preview, columns = "default
   if (items.length === 0) {
     return (
       <div className="grid place-items-center py-20 font-label text-[13px] text-[color:var(--ink-muted)]">
-        暂无商品。
+        {t("store.noProducts")}
       </div>
     );
   }
@@ -142,7 +144,7 @@ export function StoreProductGrid({ storeId, filters, preview, columns = "default
             href={preview.viewAllHref}
             className="font-label text-[12px] text-[color:var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
           >
-            查看全部 →
+            {t("store.viewAll")}
           </Link>
         </div>
       )}
@@ -160,7 +162,7 @@ export function StoreProductGrid({ storeId, filters, preview, columns = "default
             disabled={loadingMore}
             className="rounded border border-[var(--border)] bg-[var(--canvas)] px-5 py-2 font-label text-[13px] text-[var(--ink)] transition-colors hover:border-[var(--ink)] disabled:opacity-50"
           >
-            {loadingMore ? "加载中…" : `加载更多（剩余 ${total - items.length}）`}
+            {loadingMore ? t("common.loadingEllipsis") : t("store.loadMore", { remaining: total - items.length })}
           </button>
         </div>
       )}

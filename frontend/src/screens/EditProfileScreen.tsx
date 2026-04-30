@@ -13,6 +13,7 @@ import {
   Platform,
   LayoutChangeEvent,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -48,10 +49,10 @@ const isPersistableRemoteUrl = (url: string): boolean =>
   /^https?:\/\//i.test(url.trim());
 
 // 性别选项
-const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "MALE", label: "男" },
-  { value: "FEMALE", label: "女" },
-  { value: "OTHER", label: "其他" },
+const GENDER_KEYS: { value: Gender; key: string }[] = [
+  { value: "MALE", key: "auth.male" },
+  { value: "FEMALE", key: "auth.female" },
+  { value: "OTHER", key: "auth.other" },
 ];
 
 // 中国所有省份列表
@@ -93,6 +94,7 @@ const PROVINCES = [
 ];
 
 const EditProfileScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, updateProfile } = useAuthStore();
 
@@ -475,7 +477,8 @@ const EditProfileScreen = () => {
 
   // 获取性别标签
   const getGenderLabel = (value: Gender) => {
-    return GENDER_OPTIONS.find((opt) => opt.value === value)?.label || "其他";
+    const key = GENDER_KEYS.find((opt) => opt.value === value)?.key || "auth.other";
+    return t(key);
   };
 
   // 切换品牌选择
@@ -505,10 +508,10 @@ const EditProfileScreen = () => {
   if (initialLoading) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <ScreenHeader title="编辑个人资料" showBack={true} />
+        <ScreenHeader title={t("editProfile.title")} showBack={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={theme.colors.black} />
-          <Text style={styles.loadingText}>加载中...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -517,7 +520,7 @@ const EditProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="编辑个人资料"
+        title={t("editProfile.title")}
         showBack={true}
         rightActions={[
           {
@@ -627,7 +630,7 @@ const EditProfileScreen = () => {
               style={styles.inputGroup}
               onLayout={handleInputLayout("username")}
             >
-              <Text style={styles.label}>用户名 *</Text>
+              <Text style={styles.label}>{t("editProfile.username")} *</Text>
               <TextInput
                 ref={usernameInputRef}
                 style={styles.input}
@@ -647,7 +650,7 @@ const EditProfileScreen = () => {
 
             {/* 个人简介 */}
             <View style={styles.inputGroup} onLayout={handleInputLayout("bio")}>
-              <Text style={styles.label}>个人简介</Text>
+              <Text style={styles.label}>{t("editProfile.bio")}</Text>
               <TextInput
                 ref={bioInputRef}
                 style={[styles.input, styles.textArea]}
@@ -668,7 +671,7 @@ const EditProfileScreen = () => {
 
             {/* 所在地 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>所在地</Text>
+              <Text style={styles.label}>{t("editProfile.location")}</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setShowProvinceModal(true)}
@@ -691,7 +694,7 @@ const EditProfileScreen = () => {
 
             {/* 性别 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>性别</Text>
+              <Text style={styles.label}>{t("editProfile.gender")}</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setShowGenderModal(true)}
@@ -709,7 +712,7 @@ const EditProfileScreen = () => {
 
             {/* 年龄 */}
             <View style={styles.inputGroup} onLayout={handleInputLayout("age")}>
-              <Text style={styles.label}>年龄</Text>
+              <Text style={styles.label}>{t("editProfile.age")}</Text>
               <TextInput
                 style={styles.input}
                 value={age}
@@ -728,7 +731,7 @@ const EditProfileScreen = () => {
               style={styles.inputGroup}
               onLayout={handleInputLayout("preference")}
             >
-              <Text style={styles.label}>时尚偏好</Text>
+              <Text style={styles.label}>{t("editProfile.preference")}</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={preference}
@@ -748,7 +751,7 @@ const EditProfileScreen = () => {
 
             {/* 关注的品牌 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>关注的品牌</Text>
+              <Text style={styles.label}>{t("editProfile.favBrands")}</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setShowBrandModal(true)}
@@ -865,7 +868,7 @@ const EditProfileScreen = () => {
                 <Ionicons name="close" size={24} color={theme.colors.black} />
               </TouchableOpacity>
             </View>
-            {GENDER_OPTIONS.map((option) => (
+            {GENDER_KEYS.map((option) => (
               <TouchableOpacity
                 key={option.value}
                 style={[
@@ -880,7 +883,7 @@ const EditProfileScreen = () => {
                     gender === option.value && styles.provinceItemTextSelected,
                   ]}
                 >
-                  {option.label}
+                  {t(option.key)}
                 </Text>
                 {gender === option.value && (
                   <Ionicons

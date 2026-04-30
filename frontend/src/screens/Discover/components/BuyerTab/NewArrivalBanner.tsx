@@ -9,6 +9,7 @@
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
@@ -25,6 +26,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
   banner,
   onPress,
 }) => {
+  const { t } = useTranslation();
   const hasText = !!(banner.title || banner.subtitle || banner.cta);
 
   return (
@@ -42,7 +44,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
                 </Text>
               )}
               <HStack alignItems="center" mt={8} gap={6}>
-                <Text style={styles.cta}>{banner.cta || "查看详情"}</Text>
+                <Text style={styles.cta}>{banner.cta || t("discover.buyerViewDetails")}</Text>
                 <Ionicons
                   name="arrow-forward"
                   size={12}
