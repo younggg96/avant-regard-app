@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import {
   communitiesApi,
@@ -139,11 +140,21 @@ export default function CommunitiesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {communities.map((c) => (
             <div key={c.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
-              {c.coverUrl && <img src={c.coverUrl} alt="" className="h-28 w-full object-cover" />}
+              {c.coverUrl && (
+                <div className="relative h-28 w-full">
+                  <Image
+                    src={c.coverUrl}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                </div>
+              )}
               <div className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    {c.iconUrl && <img src={c.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
+                    {c.iconUrl && <Image src={c.iconUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />}
                     <div>
                       <h3 className="font-label text-[14px] font-semibold">{c.name}</h3>
                       <p className="font-label text-[12px] text-[color:var(--ink-muted)]">/{c.slug}</p>
@@ -193,13 +204,13 @@ export default function CommunitiesPage() {
           <div className="flex gap-4">
             <FormField label={t("admin.icon")}>
               <div className="flex items-center gap-2">
-                {form.iconUrl && <img src={form.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />}
+                {form.iconUrl && <Image src={form.iconUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />}
                 <Button variant="secondary" size="sm" onClick={() => handleImageUpload("iconUrl")}>{t("admin.upload")}</Button>
               </div>
             </FormField>
             <FormField label={t("admin.cover")}>
               <div className="flex items-center gap-2">
-                {form.coverUrl && <img src={form.coverUrl} alt="" className="h-8 w-12 rounded object-cover" />}
+                {form.coverUrl && <Image src={form.coverUrl} alt="" width={48} height={32} className="h-8 w-12 rounded object-cover" />}
                 <Button variant="secondary" size="sm" onClick={() => handleImageUpload("coverUrl")}>{t("admin.upload")}</Button>
               </div>
             </FormField>

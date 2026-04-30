@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { postsApi, type AdminPost } from "@/lib/services/admin";
 import {
@@ -121,7 +122,7 @@ export default function PendingPostsPage() {
               />
 
               {post.coverImage && (
-                <img src={post.coverImage} alt="" className="h-11 w-11 shrink-0 rounded object-cover" />
+                <Image src={post.coverImage} alt="" width={44} height={44} className="h-11 w-11 shrink-0 rounded object-cover" />
               )}
 
               <div className="min-w-0 flex-1 font-label">

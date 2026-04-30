@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { showsApi, type AdminShow } from "@/lib/services/admin";
 import {
@@ -154,7 +155,7 @@ export default function ShowsPage() {
                   <tr key={s.id} className="hover:bg-[var(--canvas-soft)] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {s.coverImage && <img src={s.coverImage} alt="" className="h-10 w-10 rounded object-cover" />}
+                        {s.coverImage && <Image src={s.coverImage} alt="" width={40} height={40} className="h-10 w-10 rounded object-cover" />}
                         <span className="font-medium">{s.title || `${s.brandName} ${s.season}`}</span>
                       </div>
                     </td>

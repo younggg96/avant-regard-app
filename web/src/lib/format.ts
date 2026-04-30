@@ -1,8 +1,13 @@
 /**
  * Small formatting helpers used across server and client components.
+ *
+ * IMPORTANT: This module must stay free of top-level imports that touch
+ * React context (e.g. `react-i18next`). Server components import
+ * `formatCount` from here, and pulling react-i18next into a server bundle
+ * triggers `createContext is not a function` errors during page data
+ * collection. The fallback `t` below is a key-passthrough used only when
+ * no translator is supplied; in practice every caller passes one.
  */
-
-import i18n from "./i18n";
 
 export function formatCount(n: number | undefined | null): string {
   const value = n ?? 0;
@@ -20,10 +25,19 @@ type RelativeTimeT = (
   options?: Record<string, string | number>,
 ) => string;
 
+const passthroughT: RelativeTimeT = (key, options) => {
+  if (!options) return key;
+  let value = key;
+  for (const [k, v] of Object.entries(options)) {
+    value = value.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v));
+  }
+  return value;
+};
+
 /**
  * Relative time for feed timestamps. Prefer passing `t` from `useTranslation()`
- * in React so updates follow hook re-renders; when omitted, uses the shared
- * i18n instance (current language from localStorage / detector).
+ * in React so updates follow hook re-renders; when omitted, falls back to a
+ * key-passthrough (no localization) to keep this module server-safe.
  */
 export function formatRelativeTime(iso?: string, t?: RelativeTimeT): string {
   if (!iso) return "";
@@ -31,10 +45,7 @@ export function formatRelativeTime(iso?: string, t?: RelativeTimeT): string {
   if (Number.isNaN(then)) return "";
   const diff = Date.now() - then;
   const minutes = Math.floor(diff / 60_000);
-  const tr =
-    t ??
-    ((key: string, options?: Record<string, string | number>) =>
-      String(i18n.t(key, options)));
+  const tr = t ?? passthroughT;
   if (minutes < 1) return tr("timeRelative.justNow");
   if (minutes < 60) return tr("timeRelative.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
@@ -56,16 +67,13 @@ const KNOWN_POST_TYPES = new Set([
 
 /**
  * Localized post type label. Prefer `t` from `useTranslation()`; when omitted,
- * uses the shared i18n instance (same as {@link formatRelativeTime}).
+ * falls back to a key-passthrough (same as {@link formatRelativeTime}).
  */
 export function postTypeLabel(
   postType?: string,
   t?: RelativeTimeT,
 ): string {
-  const tr =
-    t ??
-    ((key: string, options?: Record<string, string | number>) =>
-      String(i18n.t(key, options)));
+  const tr = t ?? passthroughT;
   const key =
     postType && KNOWN_POST_TYPES.has(postType)
       ? `postTypes.${postType}`

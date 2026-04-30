@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { storesApi, uploadImage, type AdminStore } from "@/lib/services/admin";
 import {
@@ -158,7 +159,7 @@ export default function StoresPage() {
                   <tr key={s.id} className="hover:bg-[var(--canvas-soft)] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        {s.coverImage && <img src={s.coverImage} alt="" className="h-10 w-10 rounded object-cover" />}
+                        {s.coverImage && <Image src={s.coverImage} alt="" width={40} height={40} className="h-10 w-10 rounded object-cover" />}
                         <span className="font-medium">{s.name}</span>
                       </div>
                     </td>
@@ -200,7 +201,7 @@ export default function StoresPage() {
           </div>
           <FormField label={t("admin.cover")}>
             <div className="flex items-center gap-3">
-              {form.coverImage && <img src={form.coverImage} alt="" className="h-12 w-16 rounded object-cover" />}
+              {form.coverImage && <Image src={form.coverImage} alt="" width={64} height={48} className="h-12 w-16 rounded object-cover" />}
               <Button variant="secondary" size="sm" onClick={handleCoverUpload}>{t("admin.upload")}</Button>
             </div>
           </FormField>

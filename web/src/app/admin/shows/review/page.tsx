@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { showsApi, type AdminShow } from "@/lib/services/admin";
 import {
@@ -63,7 +64,17 @@ export default function ShowReviewPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {shows.map((s) => (
             <div key={s.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
-              {s.coverImage && <img src={s.coverImage} alt="" className="h-36 w-full object-cover" />}
+              {s.coverImage && (
+                <div className="relative h-36 w-full">
+                  <Image
+                    src={s.coverImage}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                </div>
+              )}
               <div className="p-4 font-label">
                 <h3 className="text-[14px] font-semibold">{s.brandName}</h3>
                 <div className="mt-1 text-[12px] text-[color:var(--ink-muted)]">

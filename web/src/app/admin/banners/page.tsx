@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { bannersApi, uploadImage, type AdminBanner } from "@/lib/services/admin";
 import {
@@ -129,7 +130,7 @@ export default function BannersPage() {
         <div className="space-y-3">
           {banners.map((b) => (
             <div key={b.id} className="flex items-center gap-4 rounded-lg border border-[var(--border)] p-4">
-              <img src={b.imageUrl} alt="" className="h-16 w-28 shrink-0 rounded object-cover" />
+              <Image src={b.imageUrl} alt="" width={112} height={64} className="h-16 w-28 shrink-0 rounded object-cover" />
               <div className="min-w-0 flex-1 font-label">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-medium">{b.title || t("admin.noTitle")}</span>
@@ -157,7 +158,7 @@ export default function BannersPage() {
         <div className="space-y-4">
           <FormField label={t("admin.image")} required>
             <div className="flex items-center gap-3">
-              {form.imageUrl && <img src={form.imageUrl} alt="" className="h-16 w-28 rounded object-cover" />}
+              {form.imageUrl && <Image src={form.imageUrl} alt="" width={112} height={64} className="h-16 w-28 rounded object-cover" />}
               <Button variant="secondary" size="sm" onClick={handleImageUpload}>{t("admin.uploadImage")}</Button>
             </div>
           </FormField>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { brandsApi, type AdminBrandImage } from "@/lib/services/admin";
 import {
@@ -76,7 +77,15 @@ export default function BrandImagesPage() {
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {images.map((img) => (
             <div key={img.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
-              <img src={img.imageUrl} alt="" className="aspect-square w-full object-cover" />
+              <div className="relative aspect-square w-full">
+                <Image
+                  src={img.imageUrl}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                />
+              </div>
               <div className="p-3 font-label">
                 <p className="truncate text-[12px] text-[color:var(--ink-muted)]">
                   {img.brandName || `Brand #${img.brandId}`}

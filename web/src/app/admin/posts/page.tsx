@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { postsApi, type AllPostsParams, type AdminPost } from "@/lib/services/admin";
 import {
@@ -151,7 +152,7 @@ export default function PostsManagementPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {post.coverImage && (
-                          <img src={post.coverImage} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+                          <Image src={post.coverImage} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded object-cover" />
                         )}
                         <div className="min-w-0">
                           <div className="max-w-[200px] truncate">{post.title || t("admin.noTitle")}</div>

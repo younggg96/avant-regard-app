@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { usersApi, type AdminUser, type UserTitle } from "@/lib/services/admin";
 import { LEVEL_TITLES } from "@/lib/levels/titles";
@@ -160,7 +161,7 @@ export default function UsersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         {user.avatarUrl ? (
-                          <img src={user.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          <Image src={user.avatarUrl} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
                         ) : (
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--canvas-raised)] text-[11px] font-medium">
                             {user.username?.[0]?.toUpperCase()}

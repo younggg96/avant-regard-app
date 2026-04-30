@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { brandSubmissionsApi, type AdminBrandSubmission } from "@/lib/services/admin";
 import {
@@ -64,7 +65,15 @@ export default function BrandSubmissionsPage() {
           {submissions.map((s) => (
             <div key={s.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
               {s.coverImage && (
-                <img src={s.coverImage} alt="" className="h-32 w-full object-cover" />
+                <div className="relative h-32 w-full">
+                  <Image
+                    src={s.coverImage}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
+                </div>
               )}
               <div className="p-4 font-label">
                 <h3 className="text-[14px] font-semibold">{s.name}</h3>
