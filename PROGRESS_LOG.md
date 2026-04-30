@@ -1,4 +1,31 @@
-## 2026-04-30: PublishForumPostScreen 重复声明导致无 default export
+## 2026-04-30: Web Docker `npm ci` — `package-lock.json` 与 `package.json` 同步
+
+### Summary
+`web/Dockerfile` 仅复制 `web/package.json` 与 `web/package-lock.json`。仓库根为 npm workspace，`npm install` 会更新根目录锁文件而非 `web/package-lock.json`，导致在 `web/` 加入 `i18next` 等依赖后 Docker 内 `npm ci` 报 lock 不同步。在临时目录仅凭 `web/package.json` 运行 `npm install --package-lock-only --legacy-peer-deps`，重写 `web/package-lock.json` 为独立锁文件，使 `npm ci` 通过。
+
+---
+
+## 2026-04-30: Web `formatRelativeTime` & `postTypeLabel`（i18n 实例）
+
+### Summary
+- `formatRelativeTime`：去掉无 `t` 时的硬编码中文；未传 `t` 时用 `i18n.t` + `timeRelative.*`（与当前语言一致）。  
+- `postTypeLabel`：同样在未传 `t` 时用 `i18n.t` + `postTypes.*`。`PostCard` 仍传 `t` 以便随界面语言重渲染。
+
+---
+
+## 2026-04-30: 设置 — 资料页保存按钮文案
+
+### Summary
+`settings/profile` 使用 `common.saving` 但文案库无该键；补充 `common.saving`，并改为 `settings.saveProfile` / `settings.savingProfile`。
+
+## 2026-04-30: 商家主页配置「已保存」与保存按钮
+
+### Summary
+`me/merchant/.../profile` 保存成功时间按语言格式化；`common` 增加 `saved`；保存按钮使用 `merchant.saveProfileConfig`（保存配置 / Save configuration）。
+
+---
+
+## 2026-04-30: PublishForumPostScreen 重复声明
 
 ### Summary
 `PublishForumPostScreen.tsx` 中 `renderContentBlock`、`renderImageBlock` 各多了一行重复的 `const ... =` 声明，文件无法解析，TypeScript 报「无 default export」。

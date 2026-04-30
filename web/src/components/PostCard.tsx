@@ -17,6 +17,7 @@
 
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { FadeImage } from "@/components/FadeImage";
 import { VideoCover, VideoBadge } from "@/components/VideoCover";
 import { PostCardLikeBadge } from "@/components/PostCardLikeBadge";
@@ -42,8 +43,9 @@ const clampAspect = (ratio: number) =>
   Math.min(Math.max(ratio, MIN_ASPECT), MAX_ASPECT);
 
 export function PostCard({ post, priority = false, masonry = false }: PostCardProps) {
+  const { t } = useTranslation();
   const rawCover = post.imageUrls?.[0];
-  const typeLabel = postTypeLabel(post.postType);
+  const typeLabel = postTypeLabel(post.postType, t);
   const coverIsVideo = isVideoUrl(rawCover);
   // Guard: covers come from user-published posts; stray ImagePicker file://
   // URIs would otherwise crash next/image in SSR.

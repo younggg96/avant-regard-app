@@ -174,7 +174,7 @@ export default function ProfileSettingsPage() {
             disabled={saving}
             className="rounded bg-[var(--ink)] px-6 py-2 font-label text-[13px] text-[var(--canvas)] transition-opacity disabled:opacity-40"
           >
-            {saving ? t("common.saving") : t("common.save")}
+            {saving ? t("settings.savingProfile") : t("settings.saveProfile")}
           </button>
         </div>
       </form>

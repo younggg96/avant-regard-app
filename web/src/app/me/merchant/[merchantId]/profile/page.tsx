@@ -42,6 +42,7 @@ import {
   type StoreProfileConfigUpsertParams,
 } from "@/lib/services/store-product";
 import { storeMerchantService } from "@/lib/services/store-merchant";
+import { getCurrentLanguage } from "@/lib/i18n";
 
 const MAX_TAGS = 6;
 
@@ -91,7 +92,7 @@ export default function StoreProfileConfigPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [tagDraft, setTagDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [savedAtMs, setSavedAtMs] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   // 拉到数据后填充表单（只做一次，后续由用户编辑驱动）.
@@ -148,7 +149,7 @@ export default function StoreProfileConfigPage() {
           k[0] === "store-profile-config" &&
           k[1] === storeId,
       );
-      setSavedAt(new Date().toLocaleTimeString("zh-CN"));
+      setSavedAtMs(Date.now());
     } catch (e) {
       setErr(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
@@ -229,13 +230,22 @@ export default function StoreProfileConfigPage() {
               {err && (
                 <span className="font-label text-[12px] text-red-600">{err}</span>
               )}
-              {savedAt && !err && (
+              {savedAtMs != null && !err && (
                 <span className="font-label text-[11px] text-[color:var(--ink-muted)]">
-                  {t("common.savedAt", { time: savedAt })}
+                  {t("common.savedAt", {
+                    time: new Date(savedAtMs).toLocaleTimeString(
+                      getCurrentLanguage() === "zh" ? "zh-CN" : "en-US",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      },
+                    ),
+                  })}
                 </span>
               )}
               <Button onClick={onSave} loading={saving}>
-                {t("common.save")}
+                {t("merchant.saveProfileConfig")}
               </Button>
             </div>
           </div>
