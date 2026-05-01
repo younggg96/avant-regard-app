@@ -1,6 +1,7 @@
 import { NotificationType } from "../../services/notificationService";
 import { ActivityFilter, EXCLUDED_TYPES, NOTIF_ICON_MAP } from "./constants";
 import { theme } from "../../theme";
+import i18n from "@/i18n";
 
 export function matchesFilter(type: NotificationType, filter: ActivityFilter): boolean {
   if (EXCLUDED_TYPES.includes(type)) return false;
@@ -28,9 +29,9 @@ export function formatTime(iso: string | null): string {
   const min = Math.floor(ms / 60000);
   const hrs = Math.floor(min / 60);
   const days = Math.floor(hrs / 24);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min}分钟前`;
-  if (hrs < 24) return `${hrs}小时前`;
-  if (days < 7) return `${days}天前`;
-  return d.toLocaleDateString("zh-CN");
+  if (min < 1) return i18n.t("time.justNow");
+  if (min < 60) return i18n.t("time.minutesAgo", { count: min });
+  if (hrs < 24) return i18n.t("time.hoursAgo", { count: hrs });
+  if (days < 7) return i18n.t("time.daysAgo", { count: days });
+  return d.toLocaleDateString(i18n.language === "zh" ? "zh-CN" : "en-US");
 }

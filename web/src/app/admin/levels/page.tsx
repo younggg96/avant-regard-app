@@ -21,7 +21,7 @@ import {
   type LevelUserRow,
   type UpgradeRequestInfo,
 } from "@/lib/services/level";
-import { LEVEL_OPTIONS, LEVEL_TITLES } from "@/lib/levels/titles";
+import { getLevelOptions, getLevelTitleKey } from "@/lib/levels/titles";
 import {
   Button,
   ConfirmDialog,
@@ -59,7 +59,7 @@ export default function AdminLevelsPage() {
 
   const LEVEL_FILTER_OPTIONS = [5, 4, 3, 2, 1, 0].map((lv) => ({
     value: `L${lv}` as LevelFilterValue,
-    label: lv === 0 ? t("admin.lv0NotReached") : `Lv${lv} · ${LEVEL_TITLES[lv] ?? ""}`,
+    label: lv === 0 ? t("admin.lv0NotReached") : `Lv${lv} · ${t(getLevelTitleKey(lv))}`,
   }));
 
   const [items, setItems] = useState<UpgradeRequestInfo[]>([]);
@@ -396,7 +396,7 @@ export default function AdminLevelsPage() {
               ) : (
                 levelUsers.map((u) => {
                   const level = u.currentLevel ?? 0;
-                  const title = LEVEL_TITLES[level];
+                  const title = level >= 1 ? t(getLevelTitleKey(level)) : undefined;
                   const isMerchant = u.merchant?.status === "APPROVED";
                   return (
                     <tr
@@ -523,7 +523,7 @@ export default function AdminLevelsPage() {
           </FormField>
           <FormField label={t("admin.targetLevelLabel")}>
             <div className="flex flex-wrap gap-1.5">
-              {LEVEL_OPTIONS.map((opt) => {
+              {getLevelOptions(t).map((opt) => {
                 const active = grantLevel === opt.value;
                 return (
                   <button

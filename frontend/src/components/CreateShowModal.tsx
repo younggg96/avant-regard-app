@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { showService, CreateShowParams } from "../services/showService";
@@ -37,6 +38,7 @@ interface Props {
 }
 
 const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [season, setSeason] = useState("");
@@ -70,7 +72,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
         setCoverImage(url);
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "图片上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.imageUploadFailed"));
     } finally {
       setImageUploading(false);
     }
@@ -78,16 +80,16 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert("提示", "请输入秀场标题");
+      Alert.alert(t("common.hint"), t("createShow.titleRequired"));
       return;
     }
     const yearNum = parseInt(year, 10);
     if (!year || isNaN(yearNum) || yearNum < 1900 || yearNum > 2100) {
-      Alert.alert("提示", "请输入有效的年份");
+      Alert.alert(t("common.hint"), t("createShow.yearInvalid"));
       return;
     }
     if (!season) {
-      Alert.alert("提示", "请选择季度");
+      Alert.alert(t("common.hint"), t("createShow.seasonRequired"));
       return;
     }
 
@@ -104,9 +106,9 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
         coverImage: coverImage || undefined,
       };
       await showService.createShow(params);
-      Alert.alert("提交成功", "秀场已提交，等待管理员审核通过后将展示在品牌页面。", [
+      Alert.alert(t("createShow.submitSuccess"), t("createShow.submitSuccessMsg"), [
         {
-          text: "确定",
+          text: t("common.confirm"),
           onPress: () => {
             resetForm();
             onClose();
@@ -115,7 +117,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
         },
       ]);
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "创建秀场失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("createShow.submitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -126,11 +128,11 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
       <View style={sharedStyles.modalOverlay}>
         <View style={[sharedStyles.modalContent, styles.modalSize]}>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={sharedStyles.modalTitle}>上传秀场</Text>
+            <Text style={sharedStyles.modalTitle}>{t("brand.uploadShow")}</Text>
             <Text style={styles.brandLabel}>{brandName}</Text>
 
             {/* Cover Image */}
-            <Text style={sharedStyles.formLabel}>封面图</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.coverImage")}</Text>
             {coverImage ? (
               <OptimizedImage
                 uri={coverImage}
@@ -151,14 +153,14 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
                 <>
                   <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
                   <Text style={sharedStyles.uploadImageButtonText}>
-                    {coverImage ? "更换封面" : "上传封面"}
+                    {coverImage ? t("admin.changeCover") : t("admin.uploadCover")}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
 
             {/* Title */}
-            <Text style={sharedStyles.formLabel}>秀场标题 *</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.showTitleRequired")}</Text>
             <TextInput
               style={sharedStyles.modalInput}
               placeholder="例如: Spring 2025 Ready-to-Wear"
@@ -168,7 +170,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             />
 
             {/* Year */}
-            <Text style={sharedStyles.formLabel}>年份 *</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.yearRequired")}</Text>
             <TextInput
               style={sharedStyles.modalInput}
               placeholder="例如: 2025"
@@ -180,7 +182,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             />
 
             {/* Season */}
-            <Text style={sharedStyles.formLabel}>季度 *</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.seasonRequired")}</Text>
             <View style={sharedStyles.linkTypeContainer}>
               {SEASONS.map((s) => (
                 <TouchableOpacity
@@ -196,7 +198,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             </View>
 
             {/* Category */}
-            <Text style={sharedStyles.formLabel}>类别</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.category")}</Text>
             <View style={sharedStyles.linkTypeContainer}>
               {CATEGORIES.map((c) => (
                 <TouchableOpacity
@@ -212,20 +214,20 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             </View>
 
             {/* Designer */}
-            <Text style={sharedStyles.formLabel}>主设计师</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.chiefDesigner")}</Text>
             <TextInput
               style={sharedStyles.modalInput}
-              placeholder="选填"
+              placeholder={t("common.optional")}
               placeholderTextColor={theme.colors.gray300}
               value={designer}
               onChangeText={setDesigner}
             />
 
             {/* Description */}
-            <Text style={sharedStyles.formLabel}>秀场介绍</Text>
+            <Text style={sharedStyles.formLabel}>{t("admin.showDescription")}</Text>
             <TextInput
               style={[sharedStyles.modalInput, { minHeight: 80 }]}
-              placeholder="选填，介绍秀场的亮点、主题等"
+              placeholder={t("createShow.descriptionPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={description}
               onChangeText={setDescription}
@@ -237,7 +239,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             {/* Buttons */}
             <View style={sharedStyles.modalButtons}>
               <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={handleClose}>
-                <Text style={sharedStyles.modalCancelText}>取消</Text>
+                <Text style={sharedStyles.modalCancelText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
@@ -247,7 +249,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
                 {submitting ? (
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
-                  <Text style={sharedStyles.modalConfirmText}>提交审核</Text>
+                  <Text style={sharedStyles.modalConfirmText}>{t("storeSubmit.submit")}</Text>
                 )}
               </TouchableOpacity>
             </View>

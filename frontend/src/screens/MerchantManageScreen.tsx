@@ -72,18 +72,18 @@ type RouteParams = {
 
 type TabType = "info" | "banner" | "announcement" | "activity" | "discount";
 
-const ACTIVITY_TYPES: { value: ActivityType; label: string }[] = [
-  { value: "TRUNK_SHOW", label: "Trunk Show" },
-  { value: "POP_UP", label: "快闪店" },
-  { value: "SALE", label: "特卖会" },
-  { value: "EVENT", label: "活动" },
-  { value: "OTHER", label: "其他" },
+const getActivityTypes = (t: (key: string) => string) => [
+  { value: "TRUNK_SHOW" as ActivityType, label: "Trunk Show" },
+  { value: "POP_UP" as ActivityType, label: t("merchant.activityTypePopUp") },
+  { value: "SALE" as ActivityType, label: t("merchant.activityTypeSale") },
+  { value: "EVENT" as ActivityType, label: t("merchant.activityTypeEvent") },
+  { value: "OTHER" as ActivityType, label: t("merchant.activityTypeOther") },
 ];
 
-const DISCOUNT_TYPES: { value: DiscountType; label: string }[] = [
-  { value: "PERCENTAGE", label: "折扣比例" },
-  { value: "FIXED", label: "满减优惠" },
-  { value: "SPECIAL", label: "特别优惠" },
+const getDiscountTypes = (t: (key: string) => string) => [
+  { value: "PERCENTAGE" as DiscountType, label: t("merchant.discountTypePercentage") },
+  { value: "FIXED" as DiscountType, label: t("merchant.discountTypeFixed") },
+  { value: "SPECIAL" as DiscountType, label: t("merchant.discountTypeSpecial") },
 ];
 
 const MerchantManageScreen = () => {
@@ -91,6 +91,9 @@ const MerchantManageScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantManage">>();
   const { user } = useAuthStore();
+
+  const ACTIVITY_TYPES = getActivityTypes(t);
+  const DISCOUNT_TYPES = getDiscountTypes(t);
 
   const TABS: { key: TabType; label: string; icon: string }[] = [
     { key: "info", label: t("merchant.storeInfo"), icon: "storefront-outline" },
@@ -576,7 +579,7 @@ const MerchantManageScreen = () => {
             <HStack p="$md" justifyContent="between" alignItems="center">
               <VStack flex={1}>
                 <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                  {banner.title || "无标题"}
+                  {banner.title || t("merchant.noTitle")}
                 </Text>
                 <HStack gap="$sm" mt="$xs">
                   <Box
@@ -594,7 +597,7 @@ const MerchantManageScreen = () => {
                     </Text>
                   </Box>
                   <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                    点击 {banner.clickCount}
+                    {t("merchant.clickCount", { count: banner.clickCount })}
                   </Text>
                 </HStack>
               </VStack>
@@ -765,7 +768,7 @@ const MerchantManageScreen = () => {
                     {activity.needRegistration && (
                       <Box px="$sm" py="$xs" rounded="$xs" bg="#E3F2FD">
                         <Text fontSize="$xs" color="#1976D2" style={styles.textRegular}>
-                          需报名 ({activity.registrationCount}
+                          {t("merchant.needRegistration")} ({activity.registrationCount}
                           {activity.registrationLimit ? `/${activity.registrationLimit}` : ""})
                         </Text>
                       </Box>
@@ -861,7 +864,7 @@ const MerchantManageScreen = () => {
                     {discount.needCode && discount.discountCode && (
                       <Box px="$sm" py="$xs" rounded="$xs" bg="#FFF3E0">
                         <Text fontSize="$xs" color="#E65100" style={styles.textRegular}>
-                          码: {discount.discountCode}
+                          {t("merchant.codeLabel", { code: discount.discountCode })}
                         </Text>
                       </Box>
                     )}
@@ -911,7 +914,7 @@ const MerchantManageScreen = () => {
               </Box>
               <VStack>
                 <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
-                  店铺ID
+                  {t("merchant.storeIdLabel")}
                 </Text>
                 <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
                   {merchant.storeId}
@@ -952,7 +955,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入联系人姓名"
+                    placeholder={t("merchant.enterContactName")}
                   placeholderTextColor={theme.colors.gray200}
                   value={infoFormData.contactName}
                   onChangeText={(text) =>
@@ -967,7 +970,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入联系电话"
+                    placeholder={t("merchant.enterContactPhone")}
                   placeholderTextColor={theme.colors.gray200}
                   value={infoFormData.contactPhone}
                   onChangeText={(text) =>
@@ -983,7 +986,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入联系邮箱"
+                    placeholder={t("merchant.enterContactEmail")}
                   placeholderTextColor={theme.colors.gray200}
                   value={infoFormData.contactEmail}
                   onChangeText={(text) =>
@@ -1151,7 +1154,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入店铺名称"
+                    placeholder={t("merchant.enterStoreName")}
                   placeholderTextColor={theme.colors.gray200}
                   value={storeFormData.name}
                   onChangeText={(text) =>
@@ -1167,7 +1170,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入店铺地址"
+                    placeholder={t("merchant.enterStoreAddress")}
                   placeholderTextColor={theme.colors.gray200}
                   value={storeFormData.address}
                   onChangeText={(text) =>
@@ -1185,7 +1188,7 @@ const MerchantManageScreen = () => {
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
-                    placeholder="添加电话号码"
+                    placeholder={t("merchant.addPhoneNumber")}
                     placeholderTextColor={theme.colors.gray200}
                     value={newPhone}
                     onChangeText={setNewPhone}
@@ -1246,7 +1249,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="例如：10:00-21:00"
+                    placeholder={t("merchant.hoursPlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={storeFormData.hours}
                   onChangeText={(text) =>
@@ -1262,7 +1265,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="例如：周一休息"
+                    placeholder={t("merchant.restDayPlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={storeFormData.rest}
                   onChangeText={(text) =>
@@ -1278,7 +1281,7 @@ const MerchantManageScreen = () => {
                 </Text>
                 <TextInput
                   style={[styles.input, { height: 80, textAlignVertical: "top" }]}
-                  placeholder="介绍一下您的店铺"
+                    placeholder={t("merchant.descriptionPlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={storeFormData.description}
                   onChangeText={(text) =>
@@ -1297,7 +1300,7 @@ const MerchantManageScreen = () => {
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
-                    placeholder="添加品牌名称"
+                    placeholder={t("merchant.addBrandName")}
                     placeholderTextColor={theme.colors.gray200}
                     value={newBrand}
                     onChangeText={setNewBrand}
@@ -1358,7 +1361,7 @@ const MerchantManageScreen = () => {
                 <HStack gap="$sm" mb="$sm">
                   <TextInput
                     style={[styles.input, { flex: 1 }]}
-                    placeholder="添加风格标签"
+                    placeholder={t("merchant.addStyleTag")}
                     placeholderTextColor={theme.colors.gray200}
                     value={newStyle}
                     onChangeText={setNewStyle}
@@ -1624,7 +1627,7 @@ const MerchantManageScreen = () => {
           <VStack gap="$md">
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                Banner 图片 *
+                {t("merchant.bannerImageLabel")}
               </Text>
               <Pressable
                 h={150}
@@ -1640,7 +1643,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      上传中...
+                      {t("merchant.uploading")}
                     </Text>
                   </VStack>
                 ) : formData.imageUrl ? (
@@ -1655,7 +1658,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      点击选择图片
+                      {t("merchant.tapSelectImage")}
                     </Text>
                   </VStack>
                 )}
@@ -1664,11 +1667,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                标题
+                {t("merchant.titleLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="Banner 标题（可选）"
+                placeholder={t("merchant.bannerTitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
@@ -1677,11 +1680,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                跳转链接
+                {t("merchant.linkUrl")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="点击跳转的链接（可选）"
+                placeholder={t("merchant.linkUrlPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.linkUrl}
                 onChangeText={(text) => setFormData({ ...formData, linkUrl: text })}
@@ -1695,11 +1698,11 @@ const MerchantManageScreen = () => {
           <VStack gap="$md">
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                公告标题 *
+                {t("merchant.announcementTitleLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="请输入公告标题"
+                placeholder={t("merchant.announcementTitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
@@ -1708,11 +1711,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                公告内容 *
+                {t("merchant.announcementContentLabel")}
               </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="请输入公告内容"
+                placeholder={t("merchant.announcementContentPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.content}
                 onChangeText={(text) => setFormData({ ...formData, content: text })}
@@ -1754,7 +1757,7 @@ const MerchantManageScreen = () => {
           <VStack gap="$md">
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                封面图片
+                {t("merchant.coverImage")}
               </Text>
               <Pressable
                 h={120}
@@ -1770,7 +1773,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      上传中...
+                      {t("merchant.uploading")}
                     </Text>
                   </VStack>
                 ) : formData.coverImage ? (
@@ -1785,7 +1788,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      点击选择封面
+                      {t("merchant.tapSelectCover")}
                     </Text>
                   </VStack>
                 )}
@@ -1794,11 +1797,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                活动标题 *
+                {t("merchant.activityTitleLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="请输入活动标题"
+                placeholder={t("merchant.activityTitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
@@ -1807,11 +1810,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                活动描述
+                {t("merchant.activityDescLabel")}
               </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="请输入活动描述"
+                placeholder={t("merchant.activityDescPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
@@ -1823,11 +1826,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                活动地点
+                {t("merchant.activityLocationLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="请输入活动地点"
+                placeholder={t("merchant.activityLocationPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.location}
                 onChangeText={(text) => setFormData({ ...formData, location: text })}
@@ -1836,7 +1839,7 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                活动类型
+                {t("merchant.activityTypeLabel")}
               </Text>
               <HStack flexWrap="wrap" gap="$sm">
                 {ACTIVITY_TYPES.map((type) => (
@@ -1889,12 +1892,12 @@ const MerchantManageScreen = () => {
 
             {formData.needRegistration && (
               <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  报名人数限制
-                </Text>
+              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                {t("merchant.registrationLimit")}
+              </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="留空表示不限制"
+                  placeholder={t("merchant.registrationLimitPlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={formData.registrationLimit?.toString() || ""}
                   onChangeText={(text) =>
@@ -1915,7 +1918,7 @@ const MerchantManageScreen = () => {
           <VStack gap="$md">
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                封面图片
+                {t("merchant.coverImage")}
               </Text>
               <Pressable
                 h={120}
@@ -1931,7 +1934,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      上传中...
+                      {t("merchant.uploading")}
                     </Text>
                   </VStack>
                 ) : formData.coverImage ? (
@@ -1946,7 +1949,7 @@ const MerchantManageScreen = () => {
                   <VStack alignItems="center">
                     <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
-                      点击选择封面
+                      {t("merchant.tapSelectCover")}
                     </Text>
                   </VStack>
                 )}
@@ -1955,11 +1958,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                折扣标题 *
+                {t("merchant.discountTitleLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="如：春季大促、会员专享"
+                placeholder={t("merchant.discountTitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
@@ -1968,7 +1971,7 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                折扣类型
+                {t("merchant.discountTypeLabel")}
               </Text>
               <HStack flexWrap="wrap" gap="$sm">
                 {DISCOUNT_TYPES.map((type) => (
@@ -1994,11 +1997,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                折扣详情 *
+                {t("merchant.discountDetailLabel")}
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="如：8折、满1000减200"
+                placeholder={t("merchant.discountDetailPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.discountValue}
                 onChangeText={(text) => setFormData({ ...formData, discountValue: text })}
@@ -2007,11 +2010,11 @@ const MerchantManageScreen = () => {
 
             <VStack>
               <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                折扣描述
+                {t("merchant.discountDescLabel")}
               </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="描述折扣详情、适用范围等"
+                placeholder={t("merchant.discountDescPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 value={formData.description}
                 onChangeText={(text) => setFormData({ ...formData, description: text })}
@@ -2049,11 +2052,11 @@ const MerchantManageScreen = () => {
             {formData.needCode && (
               <VStack>
                 <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  优惠码
+                  {t("merchant.discountCodeLabel")}
                 </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="请输入优惠码"
+                  placeholder={t("merchant.discountCodePlaceholder")}
                   placeholderTextColor={theme.colors.gray200}
                   value={formData.discountCode}
                   onChangeText={(text) => setFormData({ ...formData, discountCode: text })}

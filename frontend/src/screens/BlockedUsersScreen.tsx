@@ -49,10 +49,10 @@ const BlockedUsersScreen = () => {
     try {
       await moderationService.unblockUser(user.userId);
       setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
-      Alert.show(`已取消屏蔽 ${user.username}`);
+      Alert.show(t("user.unblockSuccess"));
     } catch (error) {
       const msg =
-        error instanceof Error ? error.message : "操作失败，请稍后重试";
+        error instanceof Error ? error.message : t("common.operationFailed");
       Alert.show(msg);
     } finally {
       setUnblockingId(null);
@@ -77,7 +77,7 @@ const BlockedUsersScreen = () => {
           lazy={true}
         />
         <Text fontSize="$md" fontWeight="$medium" color="$black" numberOfLines={1}>
-          {item.username || `用户${item.userId}`}
+          {item.username || `${t("profile.user")}${item.userId}`}
         </Text>
       </HStack>
 

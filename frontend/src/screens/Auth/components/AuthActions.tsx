@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthMode, LoginMethod } from "../types";
@@ -20,11 +21,11 @@ import { ReportIssueSheet } from "./ReportIssueSheet";
 
 type DocumentType = "terms" | "privacy" | "guidelines" | "minor";
 
-const DOCUMENT_TITLES: Record<DocumentType, string> = {
-  terms: "软件许可服务协议",
-  privacy: "隐私政策",
-  guidelines: "平台自律公约",
-  minor: "未成年人个人信息保护规则",
+const DOCUMENT_TITLE_KEYS: Record<DocumentType, string> = {
+  terms: "settings.termsOfService",
+  privacy: "settings.privacyPolicy",
+  guidelines: "settings.communityGuidelines",
+  minor: "settings.minorProtection",
 };
 
 interface AuthActionsProps {
@@ -40,21 +41,11 @@ interface AuthActionsProps {
   reportDefaultContact?: string;
 }
 
-const getButtonText = (mode: AuthMode, loading: boolean): string => {
-  if (loading) return "处理中...";
-
-  switch (mode) {
-    case "login":
-      return "登录";
-    case "register":
-      return "注册";
-    case "forgotPassword":
-      return "重置密码";
-    case "verification":
-      return "验证并登录";
-    default:
-      return "确定";
-  }
+const BUTTON_TEXT_KEYS: Record<string, string> = {
+  login: "auth.login",
+  register: "auth.register",
+  forgotPassword: "auth.resetPassword",
+  verification: "auth.verifyAndLogin",
 };
 
 const DocumentContent: React.FC<{ type: DocumentType }> = ({ type }) => {
@@ -82,6 +73,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   setAgreedToTerms,
   reportDefaultContact,
 }) => {
+  const { t } = useTranslation();
   const showAppleLogin = false;
   const [viewingDocument, setViewingDocument] = useState<DocumentType | null>(
     null
@@ -108,30 +100,30 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
             />
           </TouchableOpacity>
           <Text style={checkboxStyles.text}>
-            我已阅读并同意
+            {t('auth.agreeTerms')}
             <Text
               style={checkboxStyles.link}
               onPress={() => setViewingDocument("terms")}
             >
-              《软件许可服务协议》
+              {t('auth.termsLink')}
             </Text>
             <Text
               style={checkboxStyles.link}
               onPress={() => setViewingDocument("privacy")}
             >
-              《隐私政策》
+              {t('auth.privacyLink')}
             </Text>
             <Text
               style={checkboxStyles.link}
               onPress={() => setViewingDocument("minor")}
             >
-              《未成年人个人信息保护规则》
+              {t('auth.minorLink')}
             </Text>
             <Text
               style={checkboxStyles.link}
               onPress={() => setViewingDocument("guidelines")}
             >
-              《平台自律公约》
+              {t('auth.guidelinesLink')}
             </Text>
           </Text>
         </View>
@@ -146,7 +138,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
         disabled={loading || needsAgreement}
       >
         <Text style={styles.mainButtonText}>
-          {getButtonText(mode, loading)}
+          {loading ? t('auth.processing') : t(BUTTON_TEXT_KEYS[mode] || 'common.confirm')}
         </Text>
       </TouchableOpacity>
 
@@ -154,7 +146,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
         <>
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>或</Text>
+            <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
           <TouchableOpacity
@@ -163,7 +155,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
             disabled={loading}
           >
             <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-            <Text style={styles.appleButtonText}>通过 Apple 登录</Text>
+            <Text style={styles.appleButtonText}>{t('auth.loginByApple')}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -173,18 +165,18 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
           <>
             {loginMethod === "phone" && (
               <TouchableOpacity onPress={() => setMode("verification")}>
-                <Text style={styles.linkText}>验证码登录</Text>
+                <Text style={styles.linkText}>{t('auth.verificationLogin')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={() => setMode("forgotPassword")}>
-              <Text style={styles.linkText}>忘记密码？</Text>
+              <Text style={styles.linkText}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
           </>
         )}
 
         {mode !== "login" && (
           <TouchableOpacity onPress={() => setMode("login")}>
-            <Text style={styles.linkText}>返回登录</Text>
+            <Text style={styles.linkText}>{t('auth.backToLogin')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -192,16 +184,16 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
       <View style={styles.switchContainer}>
         {mode === "login" ? (
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>还没有账户？</Text>
+            <Text style={styles.switchText}>{t('auth.noAccount')}</Text>
             <TouchableOpacity onPress={() => setMode("register")}>
-              <Text style={styles.switchLink}>立即注册</Text>
+              <Text style={styles.switchLink}>{t('auth.goRegister')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.switchRow}>
-            <Text style={styles.switchText}>已有账户？</Text>
+            <Text style={styles.switchText}>{t('auth.hasAccount')}</Text>
             <TouchableOpacity onPress={() => setMode("login")}>
-              <Text style={styles.switchLink}>立即登录</Text>
+              <Text style={styles.switchLink}>{t('auth.goLogin')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -210,8 +202,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
       {/* 问题反馈入口 */}
       <View style={reportStyles.container}>
         <Text style={reportStyles.hint}>
-          若您收不到验证码，或注册/登录出现问题，请点击下方按钮提交反馈，
-          工作人员会尽快与您联系。
+          {t('auth.reportHint')}
         </Text>
         <TouchableOpacity
           style={reportStyles.button}
@@ -223,7 +214,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
             size={16}
             color={theme.colors.black}
           />
-          <Text style={reportStyles.buttonText}>问题反馈 / Report</Text>
+          <Text style={reportStyles.buttonText}>{t('auth.reportButton')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -250,7 +241,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
               <Ionicons name="close" size={24} color={theme.colors.black} />
             </TouchableOpacity>
             <Text style={checkboxStyles.modalTitle}>
-              {viewingDocument ? DOCUMENT_TITLES[viewingDocument] : ""}
+              {viewingDocument ? t(DOCUMENT_TITLE_KEYS[viewingDocument]) : ""}
             </Text>
             <View style={checkboxStyles.modalCloseButton} />
           </View>
@@ -265,7 +256,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
               style={checkboxStyles.modalConfirmButton}
               onPress={() => setViewingDocument(null)}
             >
-              <Text style={checkboxStyles.modalConfirmText}>关闭</Text>
+              <Text style={checkboxStyles.modalConfirmText}>{t('common.close')}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>

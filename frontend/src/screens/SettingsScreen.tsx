@@ -392,7 +392,7 @@ const SettingsScreen = () => {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Avant Regard v1.0.0</Text>
-          <Text style={styles.footerText}>© 2024 时装档案</Text>
+          <Text style={styles.footerText}>{t("settings.copyright")}</Text>
         </View>
       </ScrollView>
 

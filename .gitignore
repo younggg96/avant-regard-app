@@ -90,3 +90,5 @@ backend/.venv/
 *.pem
 .npm
 .eslintcache
+backend/.agents/*
+backend/skills-lock.json

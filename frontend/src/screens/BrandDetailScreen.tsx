@@ -52,7 +52,7 @@ interface RouteParams {
 }
 
 const BrandDetailScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -267,7 +267,8 @@ const BrandDetailScreen = () => {
   }, [user?.userId, brand, isFollowing]);
 
   const formatFollowerCount = (count: number): string => {
-    if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
+    if (count >= 10000 && i18n.language?.startsWith('zh'))
+      return `${(count / 10000).toFixed(1)}${t('common.wan')}`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
     return String(count);
   };

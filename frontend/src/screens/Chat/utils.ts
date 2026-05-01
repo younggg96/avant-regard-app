@@ -1,3 +1,4 @@
+import i18n from "@/i18n";
 import { Message } from "../../services/chatService";
 
 export function formatMessageTime(iso: string): string {
@@ -10,7 +11,7 @@ export function formatMessageTime(iso: string): string {
 
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `昨天 ${h}:${m}`;
+  if (d.toDateString() === yesterday.toDateString()) return `${i18n.t('chat.yesterday')} ${h}:${m}`;
 
   return `${d.getMonth() + 1}/${d.getDate()} ${h}:${m}`;
 }

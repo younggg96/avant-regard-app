@@ -12,6 +12,7 @@ import {
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
@@ -32,6 +33,7 @@ interface DraftItem {
 }
 
 const DraftsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -68,13 +70,13 @@ const DraftsScreen = () => {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffMins < 60) {
-      return `${diffMins}分钟前`;
+      return t('time.minutesAgo', { count: diffMins });
     } else if (diffHours < 24) {
-      return `${diffHours}小时前`;
+      return t('time.hoursAgo', { count: diffHours });
     } else if (diffDays < 7) {
-      return `${diffDays}天前`;
+      return t('time.daysAgo', { count: diffDays });
     } else {
-      return `${Math.floor(diffDays / 7)}周前`;
+      return t('time.weeksAgo', { count: Math.floor(diffDays / 7) });
     }
   };
 
@@ -83,7 +85,7 @@ const DraftsScreen = () => {
     return {
       id: String(post.id),
       type: convertPostTypeToDraftType(post.postType),
-      title: post.title || "无标题",
+      title: post.title || t('community.noTitle'),
       content: post.contentText || "",
       images: post.imageUrls || [],
       lastModified: formatTimeAgo(post.updatedAt),
@@ -101,7 +103,7 @@ const DraftsScreen = () => {
       setDrafts(draftItems);
     } catch (error) {
       console.error("Error loading drafts:", error);
-      Alert.show("加载草稿失败，请重试");
+      Alert.show(t('drafts.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -162,10 +164,10 @@ const DraftsScreen = () => {
       await loadDrafts();
       setSelectedItems(new Set());
       setIsSelectionMode(false);
-      Alert.show(`删除成功: 已删除 ${selectedItems.size} 个草稿`);
+      Alert.show(t('drafts.deleteSuccess', { count: selectedItems.size }));
     } catch (error) {
       console.error("Error deleting drafts:", error);
-      Alert.show("删除失败，请重试");
+      Alert.show(t('drafts.deleteFailed'));
     }
   };
 
@@ -179,25 +181,25 @@ const DraftsScreen = () => {
         };
       case "outfit":
         return {
-          label: "搭配分享",
+          label: t('publish.typeOutfitTitle'),
           icon: "shirt-outline",
           color: "#3b82f6",
         };
       case "review":
         return {
-          label: "单品评测",
+          label: t('publish.typeReviewTitle'),
           icon: "star-outline",
           color: "#f59e0b",
         };
       case "forum":
         return {
-          label: "论坛帖子",
+          label: t('publish.forumPost'),
           icon: "chatbubbles-outline",
           color: "#8b5cf6",
         };
       default:
         return {
-          label: "草稿",
+          label: t('profile.draft'),
           icon: "document-outline",
           color: theme.colors.gray500,
         };
@@ -284,13 +286,13 @@ const DraftsScreen = () => {
         size={64}
         color={theme.colors.gray300}
       />
-      <Text style={styles.emptyTitle}>暂无草稿</Text>
-      <Text style={styles.emptySubtitle}>开始创作您的时尚内容吧</Text>
+      <Text style={styles.emptyTitle}>{t('profile.noDrafts')}</Text>
+      <Text style={styles.emptySubtitle}>{t('drafts.emptyHint')}</Text>
       <TouchableOpacity
         style={styles.createButton}
         onPress={() => (navigation as any).navigate("Publish")}
       >
-        <Text style={styles.createButtonText}>开始创作</Text>
+        <Text style={styles.createButtonText}>{t('drafts.startCreating')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -298,7 +300,7 @@ const DraftsScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="我的草稿"
+        title={t('drafts.title')}
         showBack={true}
         rightComponent={
           <TouchableOpacity
@@ -317,7 +319,7 @@ const DraftsScreen = () => {
       {isSelectionMode && (
         <View style={styles.selectionBar}>
           <Text style={styles.selectionText}>
-            已选择 {selectedItems.size} 个草稿
+            {t('drafts.selectedCount', { count: selectedItems.size })}
           </Text>
           <TouchableOpacity
             style={styles.deleteButton}
@@ -330,7 +332,7 @@ const DraftsScreen = () => {
                 selectedItems.size === 0 && styles.disabledText,
               ]}
             >
-              删除
+              {t('common.delete')}
             </Text>
           </TouchableOpacity>
         </View>

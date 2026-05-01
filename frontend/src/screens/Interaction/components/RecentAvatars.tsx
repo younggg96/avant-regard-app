@@ -3,11 +3,12 @@ import { StyleSheet, Alert, ScrollView as RNScrollView } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { Conversation, createConversation } from "../../../services/chatService";
 import { theme } from "../../../theme";
-import { CS_USER_ID, CS_DISPLAY_NAME } from "../constants";
+import { CS_USER_ID } from "../constants";
 import { isStrangerConversation } from "../utils";
 
 const AVATAR_SIZE = 56;
@@ -24,6 +25,7 @@ interface RecentAvatarsProps {
 export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
   conversations,
 }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [csLoading, setCsLoading] = useState(false);
 
@@ -35,12 +37,12 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
     (c: Conversation) => {
       (navigation.navigate as any)("Chat", {
         conversationId: c.id,
-        otherUserName: c.otherUser?.username || "聊天",
+        otherUserName: c.otherUser?.username || t("chat.title"),
         otherUserAvatar: c.otherUser?.avatarUrl,
         otherUserId: c.otherUser?.userId,
       });
     },
-    [navigation]
+    [navigation, t]
   );
 
   const handleCsPress = useCallback(async () => {
@@ -50,15 +52,15 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
       const { conversationId } = await createConversation(CS_USER_ID);
       (navigation.navigate as any)("Chat", {
         conversationId,
-        otherUserName: CS_DISPLAY_NAME,
+        otherUserName: t("interaction.csDisplayName"),
         otherUserId: CS_USER_ID,
       });
     } catch {
-      Alert.alert("提示", "无法连接客服，请稍后再试");
+      Alert.alert(t("common.hint"), t("interaction.csUnavailable"));
     } finally {
       setCsLoading(false);
     }
-  }, [navigation, csLoading]);
+  }, [navigation, csLoading, t]);
 
   const handleAddPress = useCallback(() => {
     (navigation.navigate as any)("Search", { allowedTypes: ["users"] });
@@ -80,7 +82,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
             />
           </Box>
           <Text style={styles.name} numberOfLines={1}>
-            客服
+            {t("interaction.csLabel")}
           </Text>
         </Pressable>
 
@@ -100,7 +102,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
                 />
               </Box>
               <Text style={styles.name} numberOfLines={1}>
-                {other?.username || "用户"}
+                {other?.username || t("profile.user")}
               </Text>
             </Pressable>
           );
@@ -111,7 +113,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
             <Ionicons name="add" size={28} color={theme.colors.gray300} />
           </Box>
           <Text style={styles.name} numberOfLines={1}>
-            搜索用户
+            {t("chat.searchUser")}
           </Text>
         </Pressable>
       </RNScrollView>

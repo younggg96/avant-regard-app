@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { adminService, AdminBrand, AdminBrandImage, UpdateBrandParams } from "../../services/adminService";
 import { sharedStyles } from "./adminStyles";
@@ -15,6 +16,7 @@ import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, Scroll
 import { ImageSize } from "../../utils/imageUtils";
 
 const BrandManagementTab = () => {
+  const { t } = useTranslation();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -42,8 +44,8 @@ const BrandManagementTab = () => {
       setTotal(result.total);
       setPage(result.page);
     } catch (error) {
-      console.error("获取品牌列表失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取品牌列表失败");
+      console.error("fetchBrands error:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setLoading(false);
     }
@@ -95,24 +97,24 @@ const BrandManagementTab = () => {
         loadBrandImages(editingBrand.id);
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.uploadFailed"));
     } finally {
       setBrandImageUploading(false);
     }
   };
 
   const handleDeleteBrandImage = async (imageId: number) => {
-    Alert.alert("确认删除", "确定要删除这张图片吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteImage"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             await adminService.deleteBrandImage(imageId);
             setBrandImages((prev) => prev.filter((img) => img.id !== imageId));
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteFailed"));
           }
         },
       },
@@ -121,10 +123,10 @@ const BrandManagementTab = () => {
 
   const handleToggleImageSelected = async (img: AdminBrandImage) => {
     if (img.status === "PENDING") {
-      Alert.alert("待审核", "该图片尚未审核，是否直接通过审核？", [
-        { text: "取消", style: "cancel" },
+      Alert.alert(t("admin.pendingReview"), t("admin.brandImagePendingApprove"), [
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "通过审核",
+          text: t("admin.approve"),
           onPress: async () => {
             try {
               await adminService.approveBrandImage(img.id);
@@ -132,7 +134,7 @@ const BrandManagementTab = () => {
                 prev.map((i) => (i.id === img.id ? { ...i, status: "APPROVED", isSelected: true } : i))
               );
             } catch (error) {
-              Alert.alert("错误", error instanceof Error ? error.message : "审核失败");
+              Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
             }
           },
         },
@@ -146,7 +148,7 @@ const BrandManagementTab = () => {
         prev.map((i) => (i.id === img.id ? { ...i, isSelected: newSelected } : i))
       );
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     }
   };
 
@@ -155,30 +157,30 @@ const BrandManagementTab = () => {
     try {
       setActionLoading(true);
       await adminService.updateAdminBrand(editingBrand.id, editForm);
-      Alert.alert("成功", "品牌信息已更新");
+      Alert.alert(t("common.success"), t("admin.brandUpdated"));
       setEditModalVisible(false);
       fetchBrands(page, keyword);
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "更新失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.updateFailed"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = (brand: AdminBrand) => {
-    Alert.alert("确认删除", `确定要删除品牌「${brand.name}」吗？此操作不可撤销。`, [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteBrand", { name: brand.name }), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deleteAdminBrand(brand.id);
-            Alert.alert("已删除", `品牌「${brand.name}」已删除`);
+            Alert.alert(t("admin.deleted"), t("admin.brandDeleted", { name: brand.name }));
             fetchBrands(page, keyword);
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -201,7 +203,7 @@ const BrandManagementTab = () => {
         <HStack space="sm" style={styles.searchRow}>
           <Input
             style={styles.searchInput}
-            placeholder="搜索品牌名称..."
+            placeholder={t("admin.searchBrandPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={keyword}
             onChangeText={setKeyword}
@@ -215,17 +217,17 @@ const BrandManagementTab = () => {
           </Pressable>
         </HStack>
 
-        <Text style={styles.totalText}>共 {total} 个品牌</Text>
+        <Text style={styles.totalText}>{t("admin.totalBrands", { count: total })}</Text>
 
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.black} />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : brands.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="pricetag-outline" size={48} color={theme.colors.gray200} />
-            <Text style={sharedStyles.emptyText}>暂无品牌数据</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noData")}</Text>
           </Box>
         ) : (
           brands.map((brand) => (
@@ -246,10 +248,10 @@ const BrandManagementTab = () => {
               )}
 
               <VStack style={styles.brandMeta}>
-                {brand.category && <Text style={sharedStyles.postContent} numberOfLines={1}>分类: {brand.category}</Text>}
-                {brand.founder && <Text style={sharedStyles.postContent} numberOfLines={1}>创始人: {brand.founder}</Text>}
-                {brand.country && <Text style={sharedStyles.postContent} numberOfLines={1}>国家: {brand.country}</Text>}
-                {brand.foundedYear && <Text style={sharedStyles.postContent} numberOfLines={1}>创立年份: {brand.foundedYear}</Text>}
+                {brand.category && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.category")}: {brand.category}</Text>}
+                {brand.founder && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.founder")}: {brand.founder}</Text>}
+                {brand.country && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.country")}: {brand.country}</Text>}
+                {brand.foundedYear && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.foundedYear")}: {brand.foundedYear}</Text>}
               </VStack>
 
               <HStack style={sharedStyles.actionButtons}>
@@ -260,7 +262,7 @@ const BrandManagementTab = () => {
                   leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.white} />}
                   style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>编辑</ButtonText>
+                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("common.edit")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -269,7 +271,7 @@ const BrandManagementTab = () => {
                   disabled={actionLoading}
                   leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
                 >
-                  <ButtonText style={{ fontSize: 12 }}>删除</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
                 </Button>
               </HStack>
             </Box>
@@ -285,7 +287,7 @@ const BrandManagementTab = () => {
             >
               <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
             </Pressable>
-            <Text style={styles.paginationText}>第 {page} 页 / 共 {totalPages} 页</Text>
+            <Text style={styles.paginationText}>{t("admin.pagination", { page, total: totalPages })}</Text>
             <Pressable
               disabled={page >= totalPages}
               onPress={() => fetchBrands(page + 1, keyword)}
@@ -303,12 +305,12 @@ const BrandManagementTab = () => {
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={sharedStyles.modalTitle}>编辑品牌</Text>
+              <Text style={sharedStyles.modalTitle}>{t("admin.editBrand")}</Text>
 
               <Text style={sharedStyles.formLabel}>
-                品牌展示图片（已选 {selectedCount} 张{pendingCount > 0 ? `，待审核 ${pendingCount} 张` : ""}）
+                {t("admin.brandImagesLabel", { selected: selectedCount })}{pendingCount > 0 ? t("admin.brandImagesPending", { count: pendingCount }) : ""}
               </Text>
-              <Text style={styles.imageHint}>点击图片勾选/取消，勾选的图片将展示在品牌详情页轮播中；黄色边框为待审核图片</Text>
+              <Text style={styles.imageHint}>{t("admin.brandImagesHint")}</Text>
               {brandImagesLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.black} style={{ marginVertical: 12 }} />
               ) : (
@@ -335,7 +337,7 @@ const BrandManagementTab = () => {
                         />
                         {isPending ? (
                           <Box style={styles.pendingBadge}>
-                            <Text style={styles.pendingBadgeText}>待审核</Text>
+                            <Text style={styles.pendingBadgeText}>{t("admin.pendingReview")}</Text>
                           </Box>
                         ) : (
                           <Box style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
@@ -363,11 +365,11 @@ const BrandManagementTab = () => {
                 </Box>
               )}
 
-              <Text style={sharedStyles.formLabel}>品牌名称</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.storeName")}</Text>
               <Input
                 variant="outline"
                 size="md"
-                placeholder="品牌名称"
+                placeholder={t("admin.brandNameRequired")}
                 placeholderTextColor={theme.colors.gray300}
                 value={editForm.name || ""}
                 onChangeText={(v) => setEditForm((f) => ({ ...f, name: v }))}
@@ -375,22 +377,22 @@ const BrandManagementTab = () => {
 
               <HStack style={styles.fieldRow}>
                 <Box style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>分类</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.category")}</Text>
                   <Input
                     variant="outline"
                     size="md"
-                    placeholder="高定/成衣/配饰"
+                    placeholder={t("admin.categoryPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.category || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, category: v }))}
                   />
                 </Box>
                 <Box style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>国家</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.country")}</Text>
                   <Input
                     variant="outline"
                     size="md"
-                    placeholder="例如: 法国"
+                    placeholder={t("admin.countryPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.country || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, country: v }))}
@@ -400,22 +402,22 @@ const BrandManagementTab = () => {
 
               <HStack style={styles.fieldRow}>
                 <Box style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>创始人</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.founder")}</Text>
                   <Input
                     variant="outline"
                     size="md"
-                    placeholder="创始人"
+                    placeholder={t("admin.founder")}
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.founder || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, founder: v }))}
                   />
                 </Box>
                 <Box style={{ flex: 1 }}>
-                  <Text style={sharedStyles.formLabel}>创立年份</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.foundedYear")}</Text>
                   <Input
                     variant="outline"
                     size="md"
-                    placeholder="例如: 1988"
+                    placeholder={t("admin.yearPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     value={editForm.foundedYear || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, foundedYear: v }))}
@@ -425,7 +427,7 @@ const BrandManagementTab = () => {
                 </Box>
               </HStack>
 
-              <Text style={sharedStyles.formLabel}>官方网站</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.website")}</Text>
               <Input
                 variant="outline"
                 size="md"
@@ -439,10 +441,10 @@ const BrandManagementTab = () => {
 
               <HStack style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setEditModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button size="sm" onPress={handleSave} disabled={actionLoading} isLoading={actionLoading}>
-                  <ButtonText>保存修改</ButtonText>
+                  <ButtonText>{t("admin.saveChanges")}</ButtonText>
                 </Button>
               </HStack>
             </ScrollView>

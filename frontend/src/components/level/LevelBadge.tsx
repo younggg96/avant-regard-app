@@ -10,7 +10,7 @@ import React from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
-import { getLevelTitle } from "./levelTitles";
+import { getLevelTitle, getLevelTitleKey } from "./levelTitles";
 
 export { getLevelTitle };
 
@@ -43,7 +43,7 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
 
   return (
     <View
-      accessibilityLabel={`Level Lv${level} ${getLevelTitle(level)}`}
+      accessibilityLabel={`Level Lv${level} ${t(getLevelTitleKey(level))}`}
       style={[
         styles.base,
         { width: dim.w, height: dim.h, borderRadius: dim.w / 2 },

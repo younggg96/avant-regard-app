@@ -23,6 +23,7 @@
  *     自己管理自己的状态最简单。
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import i18n from "../../../../../i18n";
 import {
   BuyerStore,
   getStoresPaginated,
@@ -324,7 +325,7 @@ export const useBuyerTabData = (
       setSelectedStoreIdState((prev) => prev ?? result.stores[0]?.id ?? null);
     } catch (err) {
       console.error("加载买手店列表失败:", err);
-      setError(err instanceof Error ? err.message : "加载买手店失败");
+      setError(err instanceof Error ? err.message : i18n.t("discover.buyerLoadFailed"));
     } finally {
       if (mode === "initial") setIsLoading(false);
       else setIsRefreshing(false);

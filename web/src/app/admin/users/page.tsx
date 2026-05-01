@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { usersApi, type AdminUser, type UserTitle } from "@/lib/services/admin";
-import { LEVEL_TITLES } from "@/lib/levels/titles";
+import { getLevelTitleKey } from "@/lib/levels/titles";
 import {
   PageHeader,
   SearchBar,
@@ -155,7 +155,7 @@ export default function UsersPage() {
                   const kind = resolveUserKind(user);
                   const kindStyle = KIND_STYLE[kind];
                   const level = user.currentLevel ?? 0;
-                  const levelTitle = LEVEL_TITLES[level];
+                  const levelTitle = level >= 1 ? t(getLevelTitleKey(level)) : undefined;
                   return (
                   <tr key={user.id} className="hover:bg-[var(--canvas-soft)] transition-colors">
                     <td className="px-4 py-3">

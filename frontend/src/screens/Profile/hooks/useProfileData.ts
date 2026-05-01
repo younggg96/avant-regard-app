@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import i18n from "@/i18n";
 import { useAuthStore } from "../../../store/authStore";
 import {
   postService,
@@ -36,7 +37,7 @@ function convertToDisplayPost(
     id: String(apiPost.id),
     type: apiPost.postType,
     auditStatus: apiPost.auditStatus,
-    title: apiPost.title || "无标题",
+    title: apiPost.title || i18n.t("community.noTitle"),
     image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
     author: {
       id: String(apiPost.userId),
@@ -44,7 +45,7 @@ function convertToDisplayPost(
       avatar: authorInfo.avatar,
     },
     content: {
-      title: apiPost.title || "无标题",
+      title: apiPost.title || i18n.t("community.noTitle"),
       description: apiPost.contentText || "",
       images: apiPost.imageUrls || [],
       coverAspectRatio:
@@ -246,7 +247,7 @@ export function useProfileData() {
       updateTabState(targetTab, { isLoading: true });
 
       try {
-        const authorName = userInfo?.username || user?.username || "用户";
+        const authorName = userInfo?.username || user?.username || i18n.t("profile.user");
         const authorAvatar =
           userInfo?.avatarUrl ||
           user?.avatar ||
@@ -277,7 +278,7 @@ export function useProfileData() {
           const apiPosts = await postService.getFavoritePostsByUserId(user.userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || i18n.t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -285,7 +286,7 @@ export function useProfileData() {
           const apiPosts = await postService.getLikedPostsByUserId(user.userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || i18n.t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -303,7 +304,7 @@ export function useProfileData() {
           const apiPosts = await postService.getWantedPostsByUserId(user.userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || i18n.t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -313,7 +314,7 @@ export function useProfileData() {
       } catch (error) {
         console.error(`Error loading ${targetTab}:`, error);
         updateTabState(targetTab, { isLoading: false });
-        Alert.show("加载失败，请重试");
+        Alert.show(i18n.t("common.loadFailed"));
       }
     },
     [user?.userId, userInfo, tabsData, updateTabState]

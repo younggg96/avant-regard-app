@@ -13,6 +13,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { sharedStyles } from "./adminStyles";
@@ -29,7 +30,7 @@ import {
   updateAutoReplyConfig,
 } from "../../services/adminService";
 
-function formatTime(iso: string | null): string {
+function formatTime(iso: string | null, t: (key: string, opts?: Record<string, any>) => string): string {
   if (!iso) return "";
   const d = new Date(iso);
   const now = new Date();
@@ -37,11 +38,11 @@ function formatTime(iso: string | null): string {
   const min = Math.floor(ms / 60000);
   const hrs = Math.floor(min / 60);
   const days = Math.floor(hrs / 24);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min}分钟前`;
-  if (hrs < 24) return `${hrs}小时前`;
-  if (days < 7) return `${days}天前`;
-  return d.toLocaleDateString("zh-CN");
+  if (min < 1) return t("time.justNow");
+  if (min < 60) return t("time.minutesAgo", { count: min });
+  if (hrs < 24) return t("time.hoursAgo", { count: hrs });
+  if (days < 7) return t("time.daysAgo", { count: days });
+  return d.toLocaleDateString();
 }
 
 const DEFAULT_CONFIG: AutoReplyConfig = {
@@ -52,6 +53,7 @@ const DEFAULT_CONFIG: AutoReplyConfig = {
 };
 
 const CustomerServiceTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,9 +118,9 @@ const CustomerServiceTab = () => {
       const updated = await updateAutoReplyConfig(config);
       setConfig(updated);
       setDirty(false);
-      Alert.alert("保存成功", "自动回复配置已更新");
+      Alert.alert(t("admin.saveSuccess"), t("admin.csAutoReplyUpdated"));
     } catch {
-      Alert.alert("保存失败", "请稍后再试");
+      Alert.alert(t("admin.saveFailed"), t("common.retryLater"));
     } finally {
       setSaving(false);
     }
@@ -136,7 +138,7 @@ const CustomerServiceTab = () => {
     (c: Conversation) => {
       (navigation.navigate as any)("Chat", {
         conversationId: c.id,
-        otherUserName: c.otherUser?.username || "用户",
+        otherUserName: c.otherUser?.username || t("profile.user"),
         otherUserAvatar: c.otherUser?.avatarUrl,
         otherUserId: c.otherUser?.userId,
       });
@@ -147,19 +149,19 @@ const CustomerServiceTab = () => {
   const handleDelete = useCallback(
     (c: Conversation) => {
       Alert.alert(
-        "删除会话",
-        `确认删除与「${c.otherUser?.username || "用户"}」的客服对话？`,
+        t("interaction.deleteConversation"),
+        t("admin.csDeleteConfirm", { name: c.otherUser?.username || t("profile.user") }),
         [
-          { text: "取消", style: "cancel" },
+          { text: t("common.cancel"), style: "cancel" },
           {
-            text: "删除",
+            text: t("common.delete"),
             style: "destructive",
             onPress: async () => {
               try {
                 await deleteConversation(c.id);
                 setConversations((prev) => prev.filter((x) => x.id !== c.id));
               } catch {
-                Alert.alert("错误", "删除失败，请稍后再试");
+                Alert.alert(t("admin.error"), t("admin.deleteFailed"));
               }
             },
           },
@@ -184,7 +186,7 @@ const CustomerServiceTab = () => {
             size={18}
             color={theme.colors.black}
           />
-          <Text style={styles.settingsTitle}>自动回复设置</Text>
+          <Text style={styles.settingsTitle}>{t("admin.csAutoReplySettings")}</Text>
         </View>
         <View style={styles.settingsHeaderRight}>
           <View
@@ -194,7 +196,7 @@ const CustomerServiceTab = () => {
             ]}
           />
           <Text style={styles.statusLabel}>
-            {config.enabled ? "已开启" : "已关闭"}
+            {config.enabled ? t("admin.csEnabled") : t("admin.csClosed")}
           </Text>
           <Ionicons
             name={expanded ? "chevron-up" : "chevron-down"}
@@ -215,7 +217,7 @@ const CustomerServiceTab = () => {
           ) : (
             <>
               <View style={styles.toggleRow}>
-                <Text style={styles.fieldLabel}>启用自动回复</Text>
+                <Text style={styles.fieldLabel}>{t("admin.csEnableAutoReply")}</Text>
                 <Switch
                   value={config.enabled}
                   onValueChange={(v) => updateField("enabled", v)}
@@ -224,7 +226,7 @@ const CustomerServiceTab = () => {
                 />
               </View>
 
-              <Text style={styles.fieldLabel}>客服邮箱</Text>
+              <Text style={styles.fieldLabel}>{t("admin.csEmail")}</Text>
               <TextInput
                 style={styles.emailInput}
                 value={config.email}
@@ -235,18 +237,18 @@ const CustomerServiceTab = () => {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.fieldLabel}>回复内容</Text>
+              <Text style={styles.fieldLabel}>{t("admin.csReplyContent")}</Text>
               <TextInput
                 style={styles.messageInput}
                 value={config.message}
                 onChangeText={(v) => updateField("message", v)}
-                placeholder="输入自动回复的内容..."
+                placeholder={t("admin.csReplyPlaceholder")}
                 placeholderTextColor={theme.colors.gray200}
                 multiline
                 textAlignVertical="top"
               />
               <Text style={styles.fieldHint}>
-                当用户首次发送消息给客服时，将自动发送此回复
+                {t("admin.csReplyHint")}
               </Text>
 
               <TouchableOpacity
@@ -261,7 +263,7 @@ const CustomerServiceTab = () => {
                 {saving ? (
                   <ActivityIndicator size="small" color={theme.colors.white} />
                 ) : (
-                  <Text style={styles.saveButtonText}>保存设置</Text>
+                  <Text style={styles.saveButtonText}>{t("admin.saveConfig")}</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -292,15 +294,15 @@ const CustomerServiceTab = () => {
         <View style={styles.info}>
           <View style={styles.topRow}>
             <Text style={styles.username} numberOfLines={1}>
-              {other?.username || "未知用户"}
+              {other?.username || t("interaction.unknownUser")}
             </Text>
-            <Text style={styles.time}>{formatTime(item.lastMessageAt)}</Text>
+            <Text style={styles.time}>{formatTime(item.lastMessageAt, t)}</Text>
           </View>
           <Text
             style={[styles.message, hasUnread && styles.messageUnread]}
             numberOfLines={1}
           >
-            {item.lastMessageText || "暂无消息"}
+            {item.lastMessageText || t("interaction.noMessages")}
           </Text>
         </View>
       </TouchableOpacity>
@@ -311,7 +313,7 @@ const CustomerServiceTab = () => {
     return (
       <View style={sharedStyles.loadingContainer}>
         <Ionicons name="chatbubbles-outline" size={40} color={theme.colors.gray200} />
-        <Text style={sharedStyles.loadingText}>加载中...</Text>
+        <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
       </View>
     );
   }
@@ -336,8 +338,8 @@ const CustomerServiceTab = () => {
             {conversations.length > 0 && (
               <View style={styles.statsBar}>
                 <Text style={styles.statsText}>
-                  共 {conversations.length} 个会话
-                  {totalUnread > 0 ? `，${totalUnread} 条未读` : ""}
+                  {t("admin.csConversationCount", { count: conversations.length })}
+                  {totalUnread > 0 ? t("admin.csUnreadCount", { count: totalUnread }) : ""}
                 </Text>
               </View>
             )}
@@ -350,9 +352,9 @@ const CustomerServiceTab = () => {
               size={48}
               color={theme.colors.gray200}
             />
-            <Text style={sharedStyles.emptyText}>暂无客服会话</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.csNoConversations")}</Text>
             <Text style={sharedStyles.emptySubtext}>
-              用户发起客服对话后将显示在此处
+              {t("admin.csNoConversationsHint")}
             </Text>
           </View>
         }

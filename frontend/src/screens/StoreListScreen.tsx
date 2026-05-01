@@ -428,7 +428,7 @@ const StoreListScreen = () => {
             <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
                 <ScreenHeader
                     title={t("store.allStores")}
-                    subtitle={searchQuery.trim() ? undefined : `共 ${totalStores} 家`}
+                    subtitle={searchQuery.trim() ? undefined : t("store.totalStoreCount", { count: totalStores })}
                     showBackButton
                     onBackPress={() => navigation.goBack()}
                 />

@@ -54,7 +54,7 @@ const MyTitlesScreen = () => {
         prev.map((t) => ({ ...t, isPrimary: t.id === titleId }))
       );
     } catch (error) {
-      Alert.show("设置失败，请重试");
+      Alert.show(t("common.operationFailed"));
     } finally {
       setUpdating(false);
     }
@@ -67,7 +67,7 @@ const MyTitlesScreen = () => {
       await userInfoService.clearPrimaryTitle(user.userId);
       setTitles((prev) => prev.map((t) => ({ ...t, isPrimary: false })));
     } catch (error) {
-      Alert.show("操作失败，请重试");
+      Alert.show(t("common.operationFailed"));
     } finally {
       setUpdating(false);
     }
@@ -82,7 +82,7 @@ const MyTitlesScreen = () => {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} />
-            <Text style={styles.loadingText}>加载中...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         ) : titles.length === 0 ? (
           <View style={styles.emptyContainer}>

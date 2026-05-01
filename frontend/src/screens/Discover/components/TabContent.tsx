@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
 import { theme } from "../../../theme";
@@ -155,14 +156,18 @@ const listFooterStyles = StyleSheet.create({
   },
 });
 
-const LoadMoreFooter: React.FC = React.memo(() => (
-  <View style={listFooterStyles.wrapper}>
-    <ActivityIndicator size="small" color={theme.colors.gray400} />
-    <Text fontSize="$sm" color="$gray400">
-      加载中...
-    </Text>
-  </View>
-));
+const LoadMoreFooterInner: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <View style={listFooterStyles.wrapper}>
+      <ActivityIndicator size="small" color={theme.colors.gray400} />
+      <Text fontSize="$sm" color="$gray400">
+        {t("common.loading")}
+      </Text>
+    </View>
+  );
+};
+const LoadMoreFooter: React.FC = React.memo(LoadMoreFooterInner);
 LoadMoreFooter.displayName = "LoadMoreFooter";
 
 // Memoize DisplayPost → Post adaption so that identical DisplayPost refs keep
@@ -352,6 +357,7 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   loadingMore = false,
   scrollToTopSignal = 0,
 }) => {
+  const { t } = useTranslation();
   const flatListRef = useRef<FlatList<Post>>(null);
   const masonryListRef = useRef<any>(null);
 
@@ -509,13 +515,13 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   const getEmptyStateText = () => {
     switch (tab) {
       case "forum":
-        return { title: "暂无论坛帖子", subtitle: "快来发布第一篇帖子吧" };
+        return { title: t("discover.noForumPosts"), subtitle: t("discover.noForumPostsHint") };
       case "recommend":
-        return { title: "暂无发现内容", subtitle: "下拉刷新获取最新内容" };
+        return { title: t("discover.noRecommendContent"), subtitle: t("discover.noRecommendHint") };
       case "following":
-        return { title: "暂无关注内容", subtitle: "关注更多用户查看他们的动态" };
+        return { title: t("discover.noFollowingContent"), subtitle: t("discover.noFollowingHint") };
       default:
-        return { title: "暂无内容", subtitle: "" };
+        return { title: t("common.empty"), subtitle: "" };
     }
   };
 
@@ -537,13 +543,13 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
           <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
             <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.gray400} />
             <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
-              加载失败
+              {t("common.loadFailed")}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
               {error}
             </Text>
             <Pressable onPress={onRefresh} px="$lg" py="$sm" bg="$black" rounded="$md">
-              <Text color="$white" fontWeight="$medium">点击重试</Text>
+              <Text color="$white" fontWeight="$medium">{t("discover.tapRetry")}</Text>
             </Pressable>
           </VStack>
         </ScrollView>
@@ -622,7 +628,7 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
       {tab === "following" && currentPosts.length > 0 && (
         <HStack px="$md" pt={14} pb={10} gap={6} alignItems="center">
           <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
-            关注的帖子
+            {t("discover.followingPosts")}
           </Text>
           <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
             {currentPosts.length}

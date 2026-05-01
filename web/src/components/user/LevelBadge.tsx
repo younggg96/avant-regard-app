@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * LevelBadge — 黑白极简等级徽章
  *
@@ -8,8 +10,9 @@
  */
 
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 
-import { LEVEL_TITLES } from "@/lib/levels/titles";
+import { getLevelTitleKey } from "@/lib/levels/titles";
 
 interface LevelBadgeProps {
   level: number;
@@ -19,9 +22,11 @@ interface LevelBadgeProps {
 }
 
 export function LevelBadge({ level, size = "md", href }: LevelBadgeProps) {
+  const { t } = useTranslation();
+
   if (!level || level < 1) return null;
 
-  const title = LEVEL_TITLES[level] ?? "";
+  const title = t(getLevelTitleKey(level));
   const sizes =
     size === "sm"
       ? "h-5 text-[10px] px-1.5 gap-0.5"

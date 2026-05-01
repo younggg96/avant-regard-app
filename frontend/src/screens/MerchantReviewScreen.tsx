@@ -789,7 +789,7 @@ const MerchantReviewScreen = () => {
             </Text>
             <TextInput
               style={styles.rejectInput}
-              placeholder="请输入拒绝原因..."
+              placeholder={t("merchant.enterRejectReason")}
               placeholderTextColor={theme.colors.gray200}
               value={rejectReason}
               onChangeText={setRejectReason}

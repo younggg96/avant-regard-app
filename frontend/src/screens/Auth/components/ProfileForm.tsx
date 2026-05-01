@@ -69,7 +69,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
       });
     } else {
       if (currentIds.length >= 5) {
-        Alert.show("提示: 最多选择 5 个品牌");
+        Alert.show(t('profileReminder.maxBrandsHint'));
         return;
       }
       setFormData({
@@ -243,7 +243,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
                       formData.age === age && styles.pickerOptionTextSelected,
                     ]}
                   >
-                    {age}岁
+                    {age}{t('profile.ageUnit')}
                   </Text>
                 </TouchableOpacity>
               ))}

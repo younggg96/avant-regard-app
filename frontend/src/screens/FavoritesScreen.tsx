@@ -46,15 +46,15 @@ const FavoritesScreen = () => {
   const convertToDisplayPost = (apiPost: ApiPost): DisplayPost => {
     return {
       id: String(apiPost.id),
-      title: apiPost.title || "无标题",
+      title: apiPost.title || t("chat.noTitle"),
       image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
       author: {
         id: String(apiPost.userId),
-        name: apiPost.username || "用户",
+        name: apiPost.username || t("profile.user"),
         avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
       },
       content: {
-        title: apiPost.title || "无标题",
+        title: apiPost.title || t("chat.noTitle"),
         description: apiPost.contentText || "",
         images: apiPost.imageUrls || [],
         coverAspectRatio:
@@ -81,7 +81,7 @@ const FavoritesScreen = () => {
       setFavoritePosts(displayPosts);
     } catch (error) {
       console.error("Error loading favorite posts:", error);
-      Alert.show("加载收藏失败，请重试");
+      Alert.show(t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -133,18 +133,18 @@ const FavoritesScreen = () => {
   const tabs = [
     {
       key: "all",
-      label: "全部",
+      label: t("common.all"),
       count: favoritePosts.length + favorites.length,
     },
-    { key: "looks", label: "造型", count: favoritePosts.length },
+    { key: "looks", label: t("favorites.looks"), count: favoritePosts.length },
     {
       key: "designers",
-      label: "设计师",
+      label: t("favorites.designers"),
       count: favorites.filter((f) => f.type === "designer").length,
     },
     {
       key: "collections",
-      label: "系列",
+      label: t("favorites.collections"),
       count: favorites.filter((f) => f.type === "collection").length,
     },
   ];
@@ -327,7 +327,7 @@ const FavoritesScreen = () => {
         {loading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator  color={theme.colors.gray400} />
-            <Text style={styles.loadingText}>加载中...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         ) : activeTab === "looks" ? (
           // 显示帖子列表

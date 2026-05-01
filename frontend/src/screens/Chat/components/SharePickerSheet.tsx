@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 
@@ -12,20 +13,16 @@ export type ShareCategory =
 
 interface CategoryConfig {
   key: ShareCategory;
-  label: string;
+  labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-/*
- * Categories share the same monochrome treatment – consistent with the app's
- * minimalist black/white editorial language (see theme/index.ts).
- */
 const CATEGORIES: CategoryConfig[] = [
-  { key: "post",  label: "帖子",   icon: "document-text-outline" },
-  { key: "store", label: "买手店", icon: "storefront-outline" },
-  { key: "brand", label: "品牌",   icon: "pricetag-outline" },
-  { key: "show",  label: "秀场",   icon: "sparkles-outline" },
-  { key: "user",  label: "用户",   icon: "person-outline" },
+  { key: "post",  labelKey: "chat.postLabel",  icon: "document-text-outline" },
+  { key: "store", labelKey: "chat.storeLabel", icon: "storefront-outline" },
+  { key: "brand", labelKey: "chat.brandLabel", icon: "pricetag-outline" },
+  { key: "show",  labelKey: "chat.showLabel",  icon: "sparkles-outline" },
+  { key: "user",  labelKey: "chat.userLabel",  icon: "person-outline" },
 ];
 
 interface SharePickerSheetProps {
@@ -37,6 +34,8 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
   visible,
   onSelect,
 }) => {
+  const { t } = useTranslation();
+
   if (!visible) return null;
 
   return (
@@ -52,7 +51,7 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
             <View style={styles.iconBubble}>
               <Ionicons name={cat.icon} size={22} color={theme.colors.black} />
             </View>
-            <Text style={styles.label}>{cat.label}</Text>
+            <Text style={styles.label}>{t(cat.labelKey)}</Text>
           </TouchableOpacity>
         ))}
       </View>

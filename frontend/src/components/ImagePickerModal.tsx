@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack } from "./ui";
 import { theme } from "../theme";
@@ -23,10 +24,12 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
   onSelectGallery,
   onSelectMultipleGallery,
   onSelectVideo,
-  title = "选择图片",
+  title,
   showVideoOption = false,
   showMultiSelectOption = false,
 }) => {
+  const { t } = useTranslation();
+  const displayTitle = title || t("imagePickerModal.title");
   return (
     <Modal
       visible={visible}
@@ -51,7 +54,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             justifyContent="between"
           >
             <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              {title}
+              {displayTitle}
             </Text>
             <Pressable p="$xs" onPress={onClose}>
               <Ionicons name="close" size={24} color={theme.colors.gray600} />
@@ -62,7 +65,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             <HStack alignItems="center">
               <Ionicons name="camera" size={24} color={theme.colors.accent} />
               <Text color="$black" fontSize="$md" ml="$md">
-                拍照
+                {t("imagePickerModal.takePhoto")}
               </Text>
             </HStack>
           </Pressable>
@@ -71,7 +74,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             <HStack alignItems="center">
               <Ionicons name="images" size={24} color={theme.colors.accent} />
               <Text color="$black" fontSize="$md" ml="$md">
-                从相册选择图片
+                {t("imagePickerModal.selectFromGallery")}
               </Text>
             </HStack>
           </Pressable>
@@ -85,7 +88,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
                   color={theme.colors.accent}
                 />
                 <Text color="$black" fontSize="$md" ml="$md">
-                  从相册多选图片
+                  {t("imagePickerModal.selectMultiple")}
                 </Text>
               </HStack>
             </Pressable>
@@ -96,7 +99,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
               <HStack alignItems="center">
                 <Ionicons name="videocam" size={24} color={theme.colors.accent} />
                 <Text color="$black" fontSize="$md" ml="$md">
-                  从相册选择视频
+                  {t("imagePickerModal.selectVideo")}
                 </Text>
               </HStack>
             </Pressable>

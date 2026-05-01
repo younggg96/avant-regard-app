@@ -54,7 +54,7 @@ export const MessageInput = ({
         ]}
         onPress={onToggleSharePicker}
         activeOpacity={0.7}
-        accessibilityLabel="打开分享菜单"
+        accessibilityLabel={t('chat.openShareMenu')}
       >
         <Ionicons
           name={sharePickerOpen ? "close" : "add"}

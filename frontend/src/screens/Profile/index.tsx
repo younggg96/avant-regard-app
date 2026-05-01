@@ -327,8 +327,8 @@ const ProfileScreen = () => {
     try {
       const postId = typeof postToDelete.id === "string"
         ? parseInt(postToDelete.id, 10) : Number(postToDelete.id);
-      if (isNaN(postId) || postId <= 0) throw new Error("无效的帖子 ID");
-      if (!user.userId || user.userId <= 0) throw new Error("无效的用户 ID");
+      if (isNaN(postId) || postId <= 0) throw new Error(t("profile.invalidPostId"));
+      if (!user.userId || user.userId <= 0) throw new Error(t("profile.invalidUserId"));
 
       await postService.deletePost(postId, user.userId);
       setShowDeleteDialog(false);

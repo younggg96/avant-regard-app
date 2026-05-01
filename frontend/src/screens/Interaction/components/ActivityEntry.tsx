@@ -1,5 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
@@ -14,6 +15,7 @@ interface ActivityEntryProps {
 }
 
 export const ActivityEntry = ({ notifications, onPress }: ActivityEntryProps) => {
+  const { t } = useTranslation();
   const nonSystem = notifications.filter((n) => n.type !== "system" && n.type !== "mention");
   const unreadCount = nonSystem.filter((n) => !n.isRead).length;
   const latest = nonSystem[0];
@@ -52,7 +54,7 @@ export const ActivityEntry = ({ notifications, onPress }: ActivityEntryProps) =>
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
             <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              互动消息
+              {t("activity.title")}
             </Text>
             {latest && (
               <Text fontSize="$xs" color="$gray200">
@@ -61,7 +63,7 @@ export const ActivityEntry = ({ notifications, onPress }: ActivityEntryProps) =>
             )}
           </HStack>
           <Text fontSize="$sm" color={unreadCount > 0 ? "$black" : "$gray300"} numberOfLines={1}>
-            {latest ? `${latest.title} ${latest.message}` : "暂无互动消息"}
+            {latest ? `${latest.title} ${latest.message}` : t("activity.noActivity")}
           </Text>
         </VStack>
 

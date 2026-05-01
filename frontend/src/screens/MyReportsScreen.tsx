@@ -27,22 +27,22 @@ import {
   getMyReports,
 } from "../services/moderationService";
 
-const REASON_LABELS: Record<string, string> = {
-  SPAM: "垃圾内容 / 广告",
-  INAPPROPRIATE: "不当或攻击性内容",
-  HARASSMENT: "骚扰或霸凌",
-  MISINFORMATION: "虚假信息",
-  COPYRIGHT: "侵权内容",
-  PORNOGRAPHY: "色情低俗",
-  VIOLENCE: "暴力恐怖",
-  OTHER: "其他",
+const REASON_LABEL_KEYS: Record<string, string> = {
+  SPAM: "reportBlock.spam",
+  INAPPROPRIATE: "reportBlock.inappropriate",
+  HARASSMENT: "reportBlock.harassment",
+  MISINFORMATION: "reportBlock.misinformation",
+  COPYRIGHT: "reportBlock.copyright",
+  PORNOGRAPHY: "myReports.reasonPornography",
+  VIOLENCE: "myReports.reasonViolence",
+  OTHER: "reportBlock.other",
 };
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: "处理中", color: "#F59E0B", bg: "#FEF3C7" },
-  REVIEWED: { label: "已审核", color: "#3B82F6", bg: "#DBEAFE" },
-  RESOLVED: { label: "已处理", color: "#10B981", bg: "#D1FAE5" },
-  DISMISSED: { label: "已驳回", color: "#6B7280", bg: "#F3F4F6" },
+const STATUS_CONFIG: Record<string, { labelKey: string; color: string; bg: string }> = {
+  PENDING: { labelKey: "myReports.pending", color: "#F59E0B", bg: "#FEF3C7" },
+  REVIEWED: { labelKey: "myReports.reviewed", color: "#3B82F6", bg: "#DBEAFE" },
+  RESOLVED: { labelKey: "myReports.resolved", color: "#10B981", bg: "#D1FAE5" },
+  DISMISSED: { labelKey: "myReports.rejected", color: "#6B7280", bg: "#F3F4F6" },
 };
 
 const MyReportsScreen = () => {
@@ -100,11 +100,11 @@ const MyReportsScreen = () => {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "刚刚";
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 30) return `${days}天前`;
-    return date.toLocaleDateString("zh-CN");
+    if (minutes < 1) return t('time.justNow');
+    if (minutes < 60) return t('time.minutesAgo', { count: minutes });
+    if (hours < 24) return t('time.hoursAgo', { count: hours });
+    if (days < 30) return t('time.daysAgo', { count: days });
+    return date.toLocaleDateString();
   };
 
   const handleReportPress = (report: ReportRecord) => {
@@ -118,13 +118,8 @@ const MyReportsScreen = () => {
   };
 
   const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "POST": return "帖子";
-      case "COMMENT": return "评论";
-      case "MESSAGE": return "消息";
-      case "USER": return "用户";
-      default: return type;
-    }
+    const key = `admin.targetType_${type}`;
+    return t(key as any, { defaultValue: type });
   };
 
   const getTypeIcon = (type: string) => {
@@ -162,7 +157,7 @@ const MyReportsScreen = () => {
             <HStack alignItems="center" gap="$sm">
               <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
                 <Text style={[styles.statusText, { color: status.color }]}>
-                  {status.label}
+                  {t(status.labelKey)}
                 </Text>
               </View>
               <Text fontSize="$xs" color="$gray200">
@@ -211,7 +206,7 @@ const MyReportsScreen = () => {
                 </Text>
               ) : (
                 <Text fontSize="$sm" color="$gray300" fontStyle="italic">
-                  内容已被删除
+                  {t('myReports.contentDeleted')}
                 </Text>
               )}
 
@@ -222,7 +217,7 @@ const MyReportsScreen = () => {
                   color={theme.colors.error}
                 />
                 <Text fontSize="$xs" color="$gray400">
-                  {REASON_LABELS[item.reason] || item.reason}
+                  {REASON_LABEL_KEYS[item.reason] ? t(REASON_LABEL_KEYS[item.reason]) : item.reason}
                 </Text>
               </HStack>
 
@@ -233,7 +228,7 @@ const MyReportsScreen = () => {
                   mt="$xs"
                   numberOfLines={2}
                 >
-                  补充说明：{item.description}
+                  {t('myReports.additionalInfo', { text: item.description })}
                 </Text>
               ) : null}
             </VStack>
@@ -259,7 +254,7 @@ const MyReportsScreen = () => {
     if (!loadingMore) return null;
     return (
       <Box py="$md" alignItems="center">
-        <Text fontSize="$xs" color="$gray300">加载更多...</Text>
+        <Text fontSize="$xs" color="$gray300">{t('common.loadMore')}</Text>
       </Box>
     );
   };

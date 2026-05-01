@@ -247,7 +247,7 @@ const AllCommunitiesScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title="全部社区"
+        title={t("community.allCommunities")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -343,10 +343,10 @@ const AllCommunitiesScreen = () => {
             </Text>
             <Text color="$gray400" textAlign="center">
               {searchQuery
-                ? "尝试其他关键词"
+                ? t("community.tryOtherKeywords")
                 : activeTab === "following"
-                  ? "去全部社区看看吧"
-                  : "暂无社区"}
+                  ? t("community.goViewAll")
+                  : t("community.noCommunities")}
             </Text>
             {activeTab === "following" && !searchQuery && (
               <Pressable
@@ -358,7 +358,7 @@ const AllCommunitiesScreen = () => {
                 onPress={() => setActiveTab("all")}
               >
                 <Text color="$white" fontWeight="$medium">
-                  浏览全部社区
+                  {t("community.browseAll")}
                 </Text>
               </Pressable>
             )}

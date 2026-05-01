@@ -96,7 +96,7 @@ const FollowingUsersScreen = () => {
       }
     } catch (error) {
       console.error("Error loading following data:", error);
-      Alert.show("加载失败，请重试");
+      Alert.show(t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -119,12 +119,12 @@ const FollowingUsersScreen = () => {
         followerId: user.userId,
         targetUserId,
       });
-      Alert.show("已取消关注");
+      Alert.show(t("engagement.unfollowed"));
       setFollowingUsers((prev) => prev.filter((u) => u.userId !== targetUserId));
       setMutualFollows((prev) => prev.filter((u) => u.userId !== targetUserId));
     } catch (error) {
       console.error("Error unfollowing user:", error);
-      Alert.show("取消关注失败，请重试");
+      Alert.show(t("engagement.operationFailed"));
     }
   };
 
@@ -132,11 +132,11 @@ const FollowingUsersScreen = () => {
     if (!user?.userId) return;
     try {
       await unfollowBrand({ userId: user.userId, brandId });
-      Alert.show("已取消关注品牌");
+      Alert.show(t("engagement.unfollowed"));
       setFollowingBrands((prev) => prev.filter((b) => b.brandId !== brandId));
     } catch (error) {
       console.error("Error unfollowing brand:", error);
-      Alert.show("取消关注失败，请重试");
+      Alert.show(t("engagement.operationFailed"));
     }
   };
 
@@ -149,7 +149,7 @@ const FollowingUsersScreen = () => {
   };
 
   const formatFollowerCount = (count: number): string => {
-    if (count >= 10000) return `${(count / 10000).toFixed(1)}万`;
+    if (count >= 10000) return `${(count / 10000).toFixed(1)}w`;
     if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
     return String(count);
   };
@@ -219,7 +219,7 @@ const FollowingUsersScreen = () => {
                 </Text>
                 {isMutual && (
                   <View style={styles.mutualBadge}>
-                    <RNText style={styles.mutualBadgeText}>互关</RNText>
+                    <RNText style={styles.mutualBadgeText}>{t("followingUsers.mutual")}</RNText>
                   </View>
                 )}
               </HStack>
@@ -279,7 +279,7 @@ const FollowingUsersScreen = () => {
                 </Text>
               ) : null}
               <Text fontSize="$xs" color="$gray400">
-                {formatFollowerCount(item.followersCount)} 人关注
+                {t("discover.followersCount", { count: formatFollowerCount(item.followersCount) })}
               </Text>
             </HStack>
           </VStack>
@@ -298,7 +298,7 @@ const FollowingUsersScreen = () => {
     <VStack alignItems="center" justifyContent="center" py="$xl" style={{ paddingTop: 60 }}>
       <Ionicons name={icon as any} size={24} color={theme.colors.gray300} />
       <Text color="$gray400" mt="$md">
-        {normalizedQuery ? "没有找到匹配的结果" : message}
+        {normalizedQuery ? t("search.noResults") : message}
       </Text>
     </VStack>
   );
@@ -357,7 +357,7 @@ const FollowingUsersScreen = () => {
           <TextInput
             style={styles.searchInput}
             placeholder={
-              activeTab === "brands" ? "搜索品牌..." : "搜索用户..."
+              activeTab === "brands" ? t("auth.searchBrandPlaceholder") : t("followingUsers.searchUsers")
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
@@ -380,7 +380,7 @@ const FollowingUsersScreen = () => {
         <VStack flex={1} alignItems="center" justifyContent="center">
           <ActivityIndicator color={theme.colors.gray400} />
           <Text fontSize="$sm" color="$gray400" mt="$sm">
-            加载中...
+            {t("common.loading")}
           </Text>
         </VStack>
       ) : isPrivate ? (

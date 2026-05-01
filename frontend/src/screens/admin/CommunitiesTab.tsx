@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import {
@@ -22,16 +23,18 @@ import { formatDate, pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
-const CATEGORY_NAMES: Record<CommunityCategory, string> = {
-  GENERAL: "综合",
-  FASHION: "时尚",
-  LIFESTYLE: "生活方式",
-  BEAUTY: "美妆",
-  CULTURE: "文化",
-};
+const getCategoryNames = (t: (key: string) => string): Record<CommunityCategory, string> => ({
+  GENERAL: t("admin.categoryGeneral"),
+  FASHION: t("admin.categoryFashion"),
+  LIFESTYLE: t("admin.categoryLifestyle"),
+  BEAUTY: t("admin.categoryBeauty"),
+  CULTURE: t("admin.categoryCulture"),
+});
 
 const CommunitiesTab = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
+  const CATEGORY_NAMES = getCategoryNames(t);
   const [communities, setCommunities] = useState<AdminCommunity[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,8 +72,8 @@ const CommunitiesTab = () => {
       const result = await adminService.getAllCommunities(true);
       setCommunities(result);
     } catch (error) {
-      console.error("获取社区列表失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取社区列表失败");
+      console.error("fetchCommunities error:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setLoading(false);
     }
@@ -85,8 +88,8 @@ const CommunitiesTab = () => {
       setPostsTotalPages(result.totalPages);
       setPostsTotal(result.total);
     } catch (error) {
-      console.error("获取社区帖子失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取社区帖子失败");
+      console.error("fetchCommunityPosts error:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchPostsFailed"));
     } finally {
       setPostsLoading(false);
     }
@@ -135,15 +138,15 @@ const CommunitiesTab = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      Alert.alert("错误", "请输入社区名称");
+      Alert.alert(t("admin.error"), t("admin.communityNameRequired"));
       return;
     }
     if (!form.slug.trim()) {
-      Alert.alert("错误", "请输入社区标识（slug）");
+      Alert.alert(t("admin.error"), t("admin.communitySlugRequired"));
       return;
     }
     if (!/^[a-z0-9-]+$/.test(form.slug)) {
-      Alert.alert("错误", "社区标识只能包含小写字母、数字和连字符");
+      Alert.alert(t("admin.error"), t("admin.communitySlugFormat"));
       return;
     }
     try {
@@ -160,34 +163,34 @@ const CommunitiesTab = () => {
           isActive: form.isActive,
         };
         await adminService.updateCommunity(editingCommunity.id, updateParams);
-        Alert.alert("成功", "社区更新成功");
+        Alert.alert(t("common.success"), t("admin.communityUpdated"));
       } else {
         await adminService.createCommunity(form);
-        Alert.alert("成功", "社区创建成功");
+        Alert.alert(t("common.success"), t("admin.communityCreated"));
       }
       setModalVisible(false);
       fetchCommunities();
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (communityId: number, communityName: string) => {
-    Alert.alert("确认删除", `确定要删除社区"${communityName}"吗？\n\n此操作将同时删除该社区下的所有帖子，不可撤销！`, [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteCommunity", { name: communityName }), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deleteCommunity(communityId);
-            Alert.alert("成功", "社区已删除");
+            Alert.alert(t("common.success"), t("admin.communityDeleted"));
             fetchCommunities();
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -200,10 +203,10 @@ const CommunitiesTab = () => {
     try {
       setActionLoading(true);
       await adminService.updateCommunity(community.id, { isActive: !community.isActive });
-      Alert.alert("成功", `社区已${community.isActive ? "禁用" : "启用"}`);
+      Alert.alert(t("common.success"), community.isActive ? t("admin.communityDisabled") : t("admin.communityEnabled"));
       fetchCommunities();
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -215,10 +218,10 @@ const CommunitiesTab = () => {
       const url = await pickAndUploadImage([1, 1]);
       if (url) {
         setForm((prev) => ({ ...prev, iconUrl: url }));
-        Alert.alert("成功", "图标上传成功");
+        Alert.alert(t("common.success"), t("admin.iconUploaded"));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "图标上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.uploadFailed"));
     } finally {
       setIconUploading(false);
     }
@@ -230,10 +233,10 @@ const CommunitiesTab = () => {
       const url = await pickAndUploadImage([16, 9]);
       if (url) {
         setForm((prev) => ({ ...prev, coverUrl: url }));
-        Alert.alert("成功", "封面上传成功");
+        Alert.alert(t("common.success"), t("admin.coverUploaded"));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "封面上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.uploadFailed"));
     } finally {
       setCoverUploading(false);
     }
@@ -252,20 +255,20 @@ const CommunitiesTab = () => {
 
   const handleDeleteCommunityPost = async (postId: number) => {
     if (!selectedCommunityId) return;
-    Alert.alert("确认删除", "确定要删除这篇帖子吗？此操作不可撤销。", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeletePost"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await adminService.deleteCommunityPost(selectedCommunityId, postId);
-            Alert.alert("成功", "帖子已删除");
+            Alert.alert(t("common.success"), t("admin.postDeleted"));
             fetchCommunityPosts(selectedCommunityId, postsPage);
             fetchCommunities();
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -291,12 +294,12 @@ const CommunitiesTab = () => {
       )}
 
       <Box style={[styles.communityStatusBadge, community.isActive ? styles.communityStatusActive : styles.communityStatusInactive]}>
-        <Text style={styles.communityStatusText}>{community.isActive ? "启用" : "禁用"}</Text>
+        <Text style={styles.communityStatusText}>{community.isActive ? t("admin.communityActiveLabel") : t("admin.communityInactiveLabel")}</Text>
       </Box>
 
       {community.isOfficial && (
         <Box style={styles.communityOfficialBadge}>
-          <Text style={styles.communityOfficialText}>官方</Text>
+          <Text style={styles.communityOfficialText}>{t("admin.communityOfficial")}</Text>
         </Box>
       )}
 
@@ -328,11 +331,11 @@ const CommunitiesTab = () => {
         <HStack style={styles.communityMeta}>
           <HStack style={styles.communityMetaItem}>
             <Ionicons name="people-outline" size={14} color={theme.colors.gray400} />
-            <Text style={styles.communityMetaText}>{community.memberCount} 成员</Text>
+            <Text style={styles.communityMetaText}>{community.memberCount} {t("community.members")}</Text>
           </HStack>
           <HStack style={styles.communityMetaItem}>
             <Ionicons name="document-text-outline" size={14} color={theme.colors.gray400} />
-            <Text style={styles.communityMetaText}>{community.postCount} 帖子</Text>
+            <Text style={styles.communityMetaText}>{community.postCount} {t("community.posts")}</Text>
           </HStack>
           <HStack style={styles.communityMetaItem}>
             <Text style={styles.communityCategory}>{CATEGORY_NAMES[community.category]}</Text>
@@ -343,11 +346,11 @@ const CommunitiesTab = () => {
       <HStack style={styles.communityActions}>
         <Pressable style={[styles.communityActionBtn, styles.communityPostsBtn]} onPress={() => handleOpenCommunityPosts(community)} disabled={actionLoading}>
           <Ionicons name="list-outline" size={18} color={theme.colors.white} />
-          <Text style={styles.communityActionText}>帖子</Text>
+          <Text style={styles.communityActionText}>{t("admin.posts")}</Text>
         </Pressable>
         <Pressable style={[styles.communityActionBtn, styles.communityEditBtn]} onPress={() => handleOpenEditModal(community)} disabled={actionLoading}>
           <Ionicons name="create-outline" size={18} color={theme.colors.white} />
-          <Text style={styles.communityActionText}>编辑</Text>
+          <Text style={styles.communityActionText}>{t("common.edit")}</Text>
         </Pressable>
         <Pressable style={[styles.communityActionBtn, community.isActive ? styles.communityDisableBtn : styles.communityEnableBtn]} onPress={() => handleToggleStatus(community)} disabled={actionLoading}>
           <Ionicons name={community.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
@@ -367,24 +370,24 @@ const CommunitiesTab = () => {
       >
         <Pressable style={styles.addCommunityButton} onPress={handleOpenCreateModal}>
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
-          <Text style={styles.addCommunityButtonText}>创建社区</Text>
+          <Text style={styles.addCommunityButtonText}>{t("admin.createCommunity")}</Text>
         </Pressable>
 
         {loading && communities.length === 0 ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : communities.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="people-outline" size={48} color={theme.colors.gray300} />
-            <Text style={sharedStyles.emptyText}>暂无社区</Text>
-            <Text style={sharedStyles.emptySubtext}>点击上方按钮创建社区</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noCommunities")}</Text>
+            <Text style={sharedStyles.emptySubtext}>{t("admin.noCommunitiesHint")}</Text>
           </Box>
         ) : (
           <>
             <Box style={styles.communitiesHeader}>
-              <Text style={styles.communitiesHeaderText}>共 {communities.length} 个社区</Text>
+              <Text style={styles.communitiesHeaderText}>{t("admin.totalCommunities", { count: communities.length })}</Text>
             </Box>
             {communities.map(renderCommunityCard)}
           </>
@@ -397,9 +400,9 @@ const CommunitiesTab = () => {
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.communityModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={sharedStyles.modalTitle}>{editingCommunity ? "编辑社区" : "创建社区"}</Text>
+              <Text style={sharedStyles.modalTitle}>{editingCommunity ? t("admin.editCommunity") : t("admin.createCommunity")}</Text>
 
-              <Text style={sharedStyles.formLabel}>社区图标</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.communityIcon")}</Text>
               <HStack style={styles.communityFormImageRow}>
                 {form.iconUrl ? (
                   <OptimizedImage
@@ -418,12 +421,12 @@ const CommunitiesTab = () => {
                   {iconUploading ? (
                     <ActivityIndicator color={theme.colors.white} size="small" />
                   ) : (
-                    <Text style={sharedStyles.uploadSmallButtonText}>{form.iconUrl ? "更换图标" : "上传图标"}</Text>
+                    <Text style={sharedStyles.uploadSmallButtonText}>{form.iconUrl ? t("admin.changeIcon") : t("admin.uploadIcon")}</Text>
                   )}
                 </Pressable>
               </HStack>
 
-              <Text style={sharedStyles.formLabel}>社区封面</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.communityCover")}</Text>
               {form.coverUrl ? (
                 <OptimizedImage
                   uri={form.coverUrl}
@@ -443,15 +446,15 @@ const CommunitiesTab = () => {
                 ) : (
                   <>
                     <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
-                    <Text style={sharedStyles.uploadImageButtonText}>{form.coverUrl ? "更换封面" : "上传封面"}</Text>
+                    <Text style={sharedStyles.uploadImageButtonText}>{form.coverUrl ? t("admin.changeCover") : t("admin.uploadCover")}</Text>
                   </>
                 )}
               </Pressable>
 
-              <Text style={sharedStyles.formLabel}>社区名称 *</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.communityNameLabel")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入社区名称"
+                placeholder={t("admin.communityNamePlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={form.name}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, name: text }))}
@@ -459,10 +462,10 @@ const CommunitiesTab = () => {
                 size="md"
               />
 
-              <Text style={sharedStyles.formLabel}>社区标识（slug）*</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.communitySlugLabel")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入社区标识（小写字母、数字、连字符）"
+                placeholder={t("admin.communitySlugPlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={form.slug}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, slug: text.toLowerCase() }))}
@@ -471,12 +474,12 @@ const CommunitiesTab = () => {
                 variant="outline"
                 size="md"
               />
-              {editingCommunity && <Text style={sharedStyles.formHint}>创建后不可修改</Text>}
+              {editingCommunity && <Text style={sharedStyles.formHint}>{t("admin.communitySlugImmutable")}</Text>}
 
-              <Text style={sharedStyles.formLabel}>社区描述</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.description")}</Text>
               <Input
                 style={[sharedStyles.modalInput, { minHeight: 80 }]}
-                placeholder="输入社区描述（可选）"
+                placeholder={t("admin.communityDescPlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={form.description}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, description: text }))}
@@ -486,7 +489,7 @@ const CommunitiesTab = () => {
                 size="md"
               />
 
-              <Text style={sharedStyles.formLabel}>社区分类</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.category")}</Text>
               <Box style={sharedStyles.linkTypeContainer}>
                 {(Object.keys(CATEGORY_NAMES) as CommunityCategory[]).map((category) => (
                   <Pressable
@@ -501,10 +504,10 @@ const CommunitiesTab = () => {
                 ))}
               </Box>
 
-              <Text style={sharedStyles.formLabel}>排序（数字越大越靠前）</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.sortOrder")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入排序数字"
+                placeholder={t("admin.sortOrderPlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={String(form.sortOrder || 0)}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, sortOrder: parseInt(text) || 0 }))}
@@ -514,7 +517,7 @@ const CommunitiesTab = () => {
               />
 
               <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isOfficial: !prev.isOfficial }))}>
-                <Text style={sharedStyles.formLabel}>官方社区</Text>
+                <Text style={sharedStyles.formLabel}>{t("admin.communityOfficial")}</Text>
                 <Box style={[sharedStyles.statusToggleSwitch, form.isOfficial && sharedStyles.statusToggleSwitchActive]}>
                   <Box style={[sharedStyles.statusToggleThumb, form.isOfficial && sharedStyles.statusToggleThumbActive]} />
                 </Box>
@@ -522,7 +525,7 @@ const CommunitiesTab = () => {
 
               {editingCommunity && (
                 <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, isActive: !prev.isActive }))}>
-                  <Text style={sharedStyles.formLabel}>启用状态</Text>
+                  <Text style={sharedStyles.formLabel}>{t("admin.activeStatus")}</Text>
                   <Box style={[sharedStyles.statusToggleSwitch, form.isActive && sharedStyles.statusToggleSwitchActive]}>
                     <Box style={[sharedStyles.statusToggleThumb, form.isActive && sharedStyles.statusToggleThumbActive]} />
                   </Box>
@@ -531,7 +534,7 @@ const CommunitiesTab = () => {
 
               <Box style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.gray400 }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.gray400 }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -539,7 +542,7 @@ const CommunitiesTab = () => {
                   disabled={actionLoading}
                   isLoading={actionLoading}
                 >
-                  <ButtonText>{editingCommunity ? "保存修改" : "创建社区"}</ButtonText>
+                  <ButtonText>{editingCommunity ? t("admin.saveChanges") : t("admin.createCommunity")}</ButtonText>
                 </Button>
               </Box>
             </ScrollView>
@@ -555,19 +558,19 @@ const CommunitiesTab = () => {
               <Pressable style={styles.communityPostsCloseBtn} onPress={() => setPostsModalVisible(false)}>
                 <Ionicons name="close" size={24} color={theme.colors.black} />
               </Pressable>
-              <Text style={styles.communityPostsTitle}>{selectedCommunityName} 的帖子</Text>
-              <Text style={styles.communityPostsCount}>共 {postsTotal} 篇</Text>
+              <Text style={styles.communityPostsTitle}>{selectedCommunityName}</Text>
+              <Text style={styles.communityPostsCount}>{t("admin.totalPosts", { count: postsTotal })}</Text>
             </HStack>
 
             {postsLoading && communityPosts.length === 0 ? (
               <Box style={sharedStyles.loadingContainer}>
                 <ActivityIndicator color={theme.colors.black} size="small" />
-                <Text style={sharedStyles.loadingText}>加载中...</Text>
+                <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
               </Box>
             ) : communityPosts.length === 0 ? (
               <Box style={sharedStyles.emptyContainer}>
                 <Ionicons name="document-text-outline" size={48} color={theme.colors.gray300} />
-                <Text style={sharedStyles.emptyText}>该社区暂无帖子</Text>
+                <Text style={sharedStyles.emptyText}>{t("admin.noPosts")}</Text>
               </Box>
             ) : (
               <ScrollView style={styles.communityPostsList}>
@@ -607,7 +610,7 @@ const CommunitiesTab = () => {
                     >
                       <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
                     </Pressable>
-                    <Text style={sharedStyles.pageInfo}>第 {postsPage} 页 / 共 {postsTotalPages} 页</Text>
+                    <Text style={sharedStyles.pageInfo}>{t("admin.pagination", { page: postsPage, total: postsTotalPages })}</Text>
                     <Pressable
                       disabled={postsPage >= postsTotalPages}
                       onPress={() => selectedCommunityId && postsPage < postsTotalPages && fetchCommunityPosts(selectedCommunityId, postsPage + 1)}

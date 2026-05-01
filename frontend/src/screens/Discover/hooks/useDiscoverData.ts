@@ -15,6 +15,7 @@ import { getCommunities, CommunityListResponse } from "../../../services/communi
 import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
 import { Alert } from "../../../utils/Alert";
+import i18n from "../../../i18n";
 import { useFeedRecommendation } from "./useFeedRecommendation";
 
 // 每个 Tab 的加载状态
@@ -343,7 +344,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     } catch (err) {
       console.error("获取推荐帖子失败:", err);
       if (!options?.silent) {
-        setError(err instanceof Error ? err.message : "获取推荐帖子失败");
+        setError(err instanceof Error ? err.message : i18n.t("discover.fetchRecommendFailed"));
       }
     }
   }, [refreshFeed]);
@@ -627,10 +628,10 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
         if (isCurrentlyLiked) {
           await unlikePost(numericPostId, userId);
-          Alert.show("已取消点赞");
+          Alert.show(i18n.t("engagement.unlikeSuccess"));
         } else {
           await likePost(numericPostId, userId);
-          Alert.show("点赞成功");
+          Alert.show(i18n.t("engagement.likeSuccess"));
         }
       } catch (err) {
         console.error("点赞操作失败:", err);

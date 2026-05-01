@@ -259,7 +259,7 @@ const StoreManagementTab = () => {
   const handleDelete = (store: BuyerStore) => {
     Alert.alert(
       t("admin.confirmDelete"),
-      `确定要删除买手店「${store.name}」吗？此操作不可撤销。`,
+      t("admin.confirmDeleteStore", { name: store.name }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -681,7 +681,7 @@ const StoreManagementTab = () => {
               <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
             </Pressable>
             <Text style={styles.paginationText}>
-              第 {page} 页 / 共 {totalPages} 页
+              {t("admin.pagination", { page, total: totalPages })}
             </Text>
             <Pressable
               disabled={page >= totalPages}
@@ -713,7 +713,7 @@ const StoreManagementTab = () => {
 
               {renderFormField(t("admin.storeId"), createForm.id, (v) =>
                 setCreateForm((f) => ({ ...f, id: v })),
-                { placeholder: "唯一标识，如 bj-001", required: true, autoCapitalize: "none" }
+                { placeholder: t("admin.storeIdPlaceholder"), required: true, autoCapitalize: "none" }
               )}
 
               {renderFormField(t("admin.storeName"), createForm.name, (v) =>
@@ -727,7 +727,7 @@ const StoreManagementTab = () => {
                   <Input
                     value={createForm.country}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, country: v }))}
-                    placeholder="如: 中国"
+                    placeholder={t("admin.countryPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -738,7 +738,7 @@ const StoreManagementTab = () => {
                   <Input
                     value={createForm.city}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, city: v }))}
-                    placeholder="如: 北京"
+                    placeholder={t("admin.cityPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -792,14 +792,14 @@ const StoreManagementTab = () => {
                 t("admin.brands"),
                 toEditableString(createForm.brands),
                 (v) => setCreateForm((f) => ({ ...f, brands: v as any })),
-                { placeholder: "用逗号分隔，如: Rick Owens, Maison Margiela" }
+                { placeholder: t("admin.brandsPlaceholder") }
               )}
 
               {renderFormField(
                 t("admin.styleTags"),
                 toEditableString(createForm.style),
                 (v) => setCreateForm((f) => ({ ...f, style: v as any })),
-                { placeholder: "用逗号分隔，如: 先锋, 暗黑" }
+                { placeholder: t("admin.styleTagsPlaceholder") }
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
@@ -808,7 +808,7 @@ const StoreManagementTab = () => {
                   <Input
                     value={toEditableString(createForm.phone)}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, phone: v as any }))}
-                    placeholder="逗号分隔"
+                    placeholder={t("admin.commaSeparated")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -819,7 +819,7 @@ const StoreManagementTab = () => {
                   <Input
                     value={createForm.hours || ""}
                     onChangeText={(v) => setCreateForm((f) => ({ ...f, hours: v }))}
-                    placeholder="如: 10:00-21:00"
+                    placeholder={t("admin.hoursPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -974,7 +974,7 @@ const StoreManagementTab = () => {
                   ? editForm.brands
                   : toEditableString(editForm.brands),
                 (v) => setEditForm((f) => ({ ...f, brands: v as any })),
-                { placeholder: "用逗号分隔" }
+                { placeholder: t("admin.commaSeparated") }
               )}
 
               {renderFormField(
@@ -983,7 +983,7 @@ const StoreManagementTab = () => {
                   ? editForm.style
                   : toEditableString(editForm.style),
                 (v) => setEditForm((f) => ({ ...f, style: v as any })),
-                { placeholder: "用逗号分隔" }
+                { placeholder: t("admin.commaSeparated") }
               )}
 
               <HStack space="sm" style={{ marginTop: theme.spacing.sm }}>
@@ -996,7 +996,7 @@ const StoreManagementTab = () => {
                         : toEditableString(editForm.phone)
                     }
                     onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v as any }))}
-                    placeholder="逗号分隔"
+                    placeholder={t("admin.commaSeparated")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -1007,7 +1007,7 @@ const StoreManagementTab = () => {
                   <Input
                     value={editForm.hours || ""}
                     onChangeText={(v) => setEditForm((f) => ({ ...f, hours: v }))}
-                    placeholder="如: 10:00-21:00"
+                    placeholder={t("admin.hoursPlaceholder")}
                     placeholderTextColor={theme.colors.gray300}
                     variant="outline"
                     size="md"
@@ -1017,7 +1017,7 @@ const StoreManagementTab = () => {
 
               {renderFormField(t("admin.restDay"), editForm.rest || "", (v) =>
                 setEditForm((f) => ({ ...f, rest: v })),
-                { placeholder: "如: 周一" }
+                { placeholder: t("admin.restDayPlaceholder") }
               )}
 
               {renderFormField(t("admin.description"), editForm.description || "", (v) =>

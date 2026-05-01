@@ -108,7 +108,7 @@ const FollowersScreen = () => {
       }
     } catch (error) {
       console.error("Error loading followers:", error);
-      Alert.show("加载失败，请重试");
+      Alert.show(t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -137,13 +137,13 @@ const FollowersScreen = () => {
           followerId: user.userId,
           targetUserId: targetUserId,
         });
-        Alert.show("已取消关注");
+        Alert.show(t("engagement.unfollowed"));
       } else {
         await followUser({
           followerId: user.userId,
           targetUserId: targetUserId,
         });
-        Alert.show("关注成功");
+        Alert.show(t("engagement.followSuccess"));
       }
       // 更新关注状态
       setFollowingStatus((prev) => ({
@@ -152,7 +152,7 @@ const FollowersScreen = () => {
       }));
     } catch (error) {
       console.error("Error toggling follow:", error);
-      Alert.show(isCurrentlyFollowing ? "取消关注失败" : "关注失败");
+      Alert.show(t("engagement.operationFailed"));
     }
   };
 
@@ -185,7 +185,7 @@ const FollowersScreen = () => {
         {loading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator  color={theme.colors.gray400} />
-            <Text style={styles.loadingText}>加载中...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         ) : isPrivate ? (
           <View style={styles.emptyState}>
@@ -261,8 +261,8 @@ const FollowersScreen = () => {
                       ]}
                     >
                       {followingStatus[follower.userId]
-                        ? (mutualFollowIds.has(follower.userId) ? "互相关注" : "已关注")
-                        : "回关"}
+                        ? (mutualFollowIds.has(follower.userId) ? t("profile.mutual") : t("profile.unfollow"))
+                        : t("followersScreen.followBack")}
                     </Text>
                   </TouchableOpacity>
                 )}

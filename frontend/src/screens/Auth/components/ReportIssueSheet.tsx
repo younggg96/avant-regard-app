@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
@@ -34,11 +35,11 @@ interface IssueOption {
   label: string;
 }
 
-const ISSUE_OPTIONS: IssueOption[] = [
-  { value: "OTP_NOT_RECEIVED", label: "收不到验证码" },
-  { value: "REGISTER_FAILED", label: "注册失败" },
-  { value: "LOGIN_FAILED", label: "登录失败" },
-  { value: "OTHER", label: "其他问题" },
+const ISSUE_OPTION_KEYS: { value: AuthIssueType; labelKey: string }[] = [
+  { value: "OTP_NOT_RECEIVED", labelKey: "auth.issueOtpNotReceived" },
+  { value: "REGISTER_FAILED", labelKey: "auth.issueRegisterFailed" },
+  { value: "LOGIN_FAILED", labelKey: "auth.issueLoginFailed" },
+  { value: "OTHER", labelKey: "auth.issueOther" },
 ];
 
 const MAX_DESCRIPTION = 500;
@@ -55,6 +56,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
   loginMethod,
   defaultContact,
 }) => {
+  const { t } = useTranslation();
   const [issueType, setIssueType] = useState<AuthIssueType>("OTP_NOT_RECEIVED");
   const [contactValue, setContactValue] = useState("");
   const [description, setDescription] = useState("");
@@ -78,17 +80,17 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
     if (!trimmedContact) {
       Alert.show(
         contactType === "EMAIL"
-          ? "请填写邮箱，便于我们联系您"
-          : "请填写手机号，便于我们联系您"
+          ? t('auth.fillEmail')
+          : t('auth.fillPhone')
       );
       return;
     }
     if (contactType === "EMAIL" && !validateEmail(trimmedContact)) {
-      Alert.show("请填写正确的邮箱地址");
+      Alert.show(t('auth.invalidEmail'));
       return;
     }
     if (contactType === "PHONE" && !validatePhoneLoose(trimmedContact)) {
-      Alert.show("请填写正确的手机号");
+      Alert.show(t('auth.invalidPhone'));
       return;
     }
 
@@ -100,14 +102,14 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
         contactValue: trimmedContact,
         description,
       });
-      Alert.show("提交成功：工作人员会尽快与您联系", "", 1500);
+      Alert.show(t('auth.feedbackSuccess'), "", 1500);
       onClose();
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "提交失败，请稍后重试";
-      Alert.show(`提交失败：${message}`);
+          : t('auth.feedbackFailed');
+      Alert.show(t('auth.feedbackFailedMsg', { message }));
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +136,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
             <View style={styles.handle} />
 
             <View style={styles.header}>
-              <Text style={styles.title}>问题反馈</Text>
+              <Text style={styles.title}>{t('auth.reportTitle')}</Text>
               <TouchableOpacity
                 onPress={onClose}
                 disabled={submitting}
@@ -154,13 +156,12 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.hint}>
-                若您在登录或注册过程中遇到问题——例如收不到验证码、注册失败、登录失败
-                ——请点击下方「提交反馈」，工作人员会通过您填写的联系方式尽快与您联系。
+                {t('auth.reportIssueHint')}
               </Text>
 
-              <Text style={styles.sectionLabel}>问题类型</Text>
+              <Text style={styles.sectionLabel}>{t('auth.issueType')}</Text>
               <View style={styles.optionGroup}>
-                {ISSUE_OPTIONS.map((option) => {
+                {ISSUE_OPTION_KEYS.map((option) => {
                   const active = option.value === issueType;
                   return (
                     <TouchableOpacity
@@ -178,7 +179,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
                           active && styles.optionChipTextActive,
                         ]}
                       >
-                        {option.label}
+                        {t(option.labelKey)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -186,7 +187,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
               </View>
 
               <Text style={styles.sectionLabel}>
-                {contactType === "EMAIL" ? "联系邮箱" : "联系手机号"}
+                {contactType === "EMAIL" ? t('auth.contactEmail') : t('auth.contactPhone')}
               </Text>
               <TextInput
                 style={styles.input}
@@ -194,8 +195,8 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
                 onChangeText={setContactValue}
                 placeholder={
                   contactType === "EMAIL"
-                    ? "请输入可接收回复的邮箱"
-                    : "请输入可以联系到您的手机号"
+                    ? t('auth.contactEmailPlaceholder')
+                    : t('auth.contactPhonePlaceholder')
                 }
                 placeholderTextColor={theme.colors.gray200}
                 keyboardType={
@@ -207,7 +208,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
               />
 
               <Text style={styles.sectionLabel}>
-                问题描述<Text style={styles.sectionLabelOptional}>（选填）</Text>
+                {t('auth.issueDescription')}<Text style={styles.sectionLabelOptional}>{t('auth.issueDescriptionOptional')}</Text>
               </Text>
               <TextInput
                 style={[styles.input, styles.textarea]}
@@ -215,7 +216,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
                 onChangeText={(v) =>
                   setDescription(v.slice(0, MAX_DESCRIPTION))
                 }
-                placeholder="请描述您遇到的具体情况，便于我们更快定位问题"
+                placeholder={t('auth.issueDescriptionPlaceholder')}
                 placeholderTextColor={theme.colors.gray200}
                 multiline
                 editable={!submitting}
@@ -236,7 +237,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
               {submitting ? (
                 <ActivityIndicator color={theme.colors.white} />
               ) : (
-                <Text style={styles.submitButtonText}>提交反馈</Text>
+                <Text style={styles.submitButtonText}>{t('auth.submitFeedback')}</Text>
               )}
             </TouchableOpacity>
           </SafeAreaView>

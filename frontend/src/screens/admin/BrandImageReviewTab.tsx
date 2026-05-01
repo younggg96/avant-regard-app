@@ -129,7 +129,7 @@ const BrandImageReviewTab = () => {
           <Box key={img.id} style={sharedStyles.postCard}>
             <HStack style={sharedStyles.postHeader}>
               <Text style={sharedStyles.postTitle} numberOfLines={1}>
-                {img.brandName || `品牌 #${img.brandId}`}
+                {img.brandName || `${t("admin.brand")} #${img.brandId}`}
               </Text>
               <Text style={sharedStyles.postDate}>
                 {img.createdAt ? new Date(img.createdAt).toLocaleDateString("zh-CN") : ""}

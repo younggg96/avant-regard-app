@@ -47,13 +47,13 @@ const AUDIT_COLORS: Record<string, string> = {
   REJECTED: theme.colors.error,
 };
 
-const GRADE_LABELS: Record<string, string> = {
-  A: "A级·深度",
-  B: "B级·单品",
-  C: "C级·日常",
-  D: "D级·无关联",
-  F: "F级·违规",
-};
+const getGradeLabels = (t: (key: string) => string): Record<string, string> => ({
+  A: t("admin.gradeLabelA"),
+  B: t("admin.gradeLabelB"),
+  C: t("admin.gradeLabelC"),
+  D: t("admin.gradeLabelD"),
+  F: t("admin.gradeLabelF"),
+});
 
 const GRADE_COLORS: Record<string, string> = {
   A: "#7C3AED",
@@ -422,7 +422,7 @@ const AllPostsSubTab = () => {
             ]}
           >
             <Text style={styles.gradeBadgeText}>
-              {GRADE_LABELS[post.grade] || post.grade}
+              {getGradeLabels(t)[post.grade] || post.grade}
             </Text>
           </Box>
           {post.grade !== "D" && post.grade !== "F" && (

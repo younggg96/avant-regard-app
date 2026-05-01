@@ -1,5 +1,6 @@
 import { Post as ApiPost } from "../../services/postService";
 import { UserInfo } from "../../services/userInfoService";
+import i18n from "../../i18n";
 import { DisplayPost } from "./types";
 
 /**
@@ -15,12 +16,12 @@ export const getRelativeTime = (dateString: string): string => {
   const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  if (diffInMinutes < 1) return "刚刚";
-  if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
-  if (diffInHours < 24) return `${diffInHours}小时前`;
-  if (diffInDays < 7) return `${diffInDays}天前`;
-  if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}周前`;
-  return `${Math.floor(diffInDays / 30)}个月前`;
+  if (diffInMinutes < 1) return i18n.t("time.justNow");
+  if (diffInMinutes < 60) return i18n.t("time.minutesAgo", { count: diffInMinutes });
+  if (diffInHours < 24) return i18n.t("time.hoursAgo", { count: diffInHours });
+  if (diffInDays < 7) return i18n.t("time.daysAgo", { count: diffInDays });
+  if (diffInDays < 30) return i18n.t("time.weeksAgo", { count: Math.floor(diffInDays / 7) });
+  return i18n.t("time.monthsAgo", { count: Math.floor(diffInDays / 30) });
 };
 
 /**
@@ -51,7 +52,7 @@ export const mapApiPostToDisplayPost = (
   const resolvedAvatar =
     userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar;
   const resolvedName =
-    userInfo?.username || apiPost.username || "匿名用户";
+    userInfo?.username || apiPost.username || i18n.t("user.anonymous");
 
   return {
     id: String(apiPost.id),
@@ -65,7 +66,7 @@ export const mapApiPostToDisplayPost = (
       title: userInfo?.primaryTitle || undefined,
     },
     content: {
-      title: apiPost.title || "无标题",
+      title: apiPost.title || i18n.t("user.noTitle"),
       description: apiPost.contentText || "",
       images:
         apiPost.imageUrls && apiPost.imageUrls.length > 0

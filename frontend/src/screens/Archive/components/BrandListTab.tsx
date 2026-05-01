@@ -15,6 +15,7 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, HStack, VStack, ScrollView } from "../../../components/ui";
 import { theme } from "../../../theme";
@@ -38,6 +39,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   onScrollUp,
   onScrollDown,
 }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
@@ -47,7 +49,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categoryFilters, setCategoryFilters] = useState<CategoryFilter[]>([
-    { label: "全部", value: "all" },
+    { label: t("archive.all"), value: "all" },
   ]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -87,7 +89,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       );
       setPage(1);
     } catch {
-      setError("加载品牌数据失败");
+      setError(t("archive.brandLoadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +129,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
     try {
       const categories = await brandService.getBrandCategories();
       setCategoryFilters([
-        { label: "全部", value: "all" },
+        { label: t("archive.all"), value: "all" },
         ...categories.map((cat) => ({ label: cat, value: cat })),
       ]);
     } catch {
@@ -168,11 +170,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
 
   const handleOpenSubmitModal = useCallback(() => {
     if (!user?.userId) {
-      Alert.alert("提示", "请先登录后再提交品牌");
+      Alert.alert(t("common.hint"), t("archive.loginToSubmitBrand"));
       return;
     }
     setSubmitModalVisible(true);
-  }, [user]);
+  }, [user, t]);
 
   const groupedBrands = useMemo(() => {
     const groups = brands.reduce(
@@ -228,7 +230,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
           style={styles.retryButton}
           onPress={() => loadBrands()}
         >
-          <Text style={styles.retryButtonText}>重试</Text>
+          <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
         </TouchableOpacity>
       </VStack>
     );
@@ -257,7 +259,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
             />
             <TextInput
               style={styles.searchInput}
-              placeholder="搜索品牌、设计师、国家..."
+              placeholder={t("archive.searchBrandPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -311,10 +313,10 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       {/* Results count */}
       <HStack justifyContent="between" px="$md" py="$sm">
         <Text style={styles.resultsText}>
-          {brands.length} / {total} 个品牌
+          {t("archive.brandCount", { current: brands.length, total })}
         </Text>
         <TouchableOpacity onPress={handleOpenSubmitModal} activeOpacity={0.7}>
-          <Text style={styles.submitLinkText}>上传品牌</Text>
+          <Text style={styles.submitLinkText}>{t("archive.submitBrand")}</Text>
         </TouchableOpacity>
       </HStack>
 
@@ -361,7 +363,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
                     )}
                     {brand.foundedYear && (
                       <Text style={styles.brandMeta}>
-                        {brand.foundedYear}年
+                        {t("archive.foundedYearLabel", { year: brand.foundedYear })}
                       </Text>
                     )}
                   </HStack>
@@ -383,11 +385,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
               size={48}
               color={theme.colors.gray200}
             />
-            <Text style={styles.emptyTitle}>未找到品牌</Text>
+            <Text style={styles.emptyTitle}>{t("archive.noBrandsFound")}</Text>
             <Text style={styles.emptyText}>
               {searchQuery
-                ? `没有匹配 "${searchQuery}" 的品牌`
-                : "品牌列表正在更新中"}
+                ? t("archive.noMatchingBrands", { query: searchQuery })
+                : t("archive.brandsUpdating")}
             </Text>
           </VStack>
         )}
@@ -396,7 +398,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         {!hasMore && brands.length > 0 && (
           <HStack justifyContent="center" py="$lg">
             <Text style={styles.footerText}>
-              已加载全部 {total} 个品牌
+              {t("archive.allBrandsLoaded", { total })}
             </Text>
           </HStack>
         )}

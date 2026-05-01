@@ -212,7 +212,7 @@ const LotteryAdminTab: React.FC = () => {
   const handleSyncEntries = (round: LotteryRoundInfo) => {
     Alert.alert(
       t("admin.lotterySyncEntries"),
-      `把所有 Lv3+ 用户批量拉入 ${round.month} 期. 已在池的用户会被自动跳过.`,
+      t("admin.lotterySyncDesc", { month: round.month }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -221,7 +221,7 @@ const LotteryAdminTab: React.FC = () => {
             try {
               setActionLoading(true);
               const res = await adminLevelService.syncEntries(round.id);
-              Alert.alert(t("admin.lotterySyncDone"), `新增 ${res.added} 位参与者`);
+              Alert.alert(t("admin.lotterySyncDone"), t("admin.lotterySyncResult", { count: res.added }));
               fetchRounds();
             } catch (e) {
               Alert.alert(
@@ -259,10 +259,8 @@ const LotteryAdminTab: React.FC = () => {
     );
 
     Alert.alert(
-      `开奖 · ${round.month}`,
-      `即将按奖池随机抽取:\n\n${round.prizeConfig
-        .map((p) => `  · ${p.name} × ${p.quota}`)
-        .join("\n")}\n\n共 ${totalQuota} 个名额, 从 ${round.totalEntries} 位参与者中抽取.\n开奖后期数状态会锁定为 DRAWN, 不可撤销.`,
+      `${t("admin.lotteryDraw")} · ${round.month}`,
+      t("admin.lotteryDrawConfirmDesc", { prizes: round.prizeConfig.map((p) => `  · ${p.name} × ${p.quota}`).join("\n"), totalQuota, entries: round.totalEntries }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -272,7 +270,7 @@ const LotteryAdminTab: React.FC = () => {
             try {
               setActionLoading(true);
               const res = await adminLevelService.drawRound(round.id, null);
-              Alert.alert(t("admin.lotteryDrawnResult"), `共产生 ${res.winners} 位中奖者`);
+              Alert.alert(t("admin.lotteryDrawnResult"), t("admin.lotteryDrawnWinners", { count: res.winners }));
               fetchRounds();
             } catch (e) {
               Alert.alert(
@@ -339,7 +337,7 @@ const LotteryAdminTab: React.FC = () => {
             />
             <Text style={sharedStyles.emptyText}>{t("admin.noRounds")}</Text>
             <Text style={sharedStyles.emptySubtext}>
-              点右上 "建期 / 改奖池" 开始
+              {t("admin.lotteryEmptyHint")}
             </Text>
           </Box>
         ) : (
@@ -481,7 +479,7 @@ const LotteryAdminTab: React.FC = () => {
             <Input
               variant="outline"
               size="md"
-              placeholder="例如 2026-04"
+              placeholder={t("admin.lotteryMonthPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={editorMonth}
               onChangeText={setEditorMonth}
@@ -494,8 +492,8 @@ const LotteryAdminTab: React.FC = () => {
             />
             <Text style={sharedStyles.formHint}>
               {editorMode === "edit"
-                ? "改奖池时期号锁定, 如需换期请回到列表选择对应期数."
-                : "已 DRAWN 的期数不能再改奖池."}
+                ? t("admin.lotteryEditMonthLocked")
+                : t("admin.lotteryDrawnNoEdit")}
             </Text>
 
             <Text style={sharedStyles.formLabel}>{t("admin.lotteryPrizeList")}</Text>
@@ -518,7 +516,7 @@ const LotteryAdminTab: React.FC = () => {
                     <Input
                       variant="outline"
                       size="sm"
-                      placeholder="名称"
+                      placeholder={t("admin.lotteryPrizeName")}
                       placeholderTextColor={theme.colors.gray300}
                       value={p.name}
                       onChangeText={(v) => updatePrize(idx, "name", v)}
@@ -527,7 +525,7 @@ const LotteryAdminTab: React.FC = () => {
                     <Input
                       variant="outline"
                       size="sm"
-                      placeholder="名额"
+                      placeholder={t("admin.lotteryPrizeQuota")}
                       placeholderTextColor={theme.colors.gray300}
                       value={String(p.quota ?? "")}
                       onChangeText={(v) => updatePrize(idx, "quota", v)}

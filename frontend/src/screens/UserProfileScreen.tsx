@@ -213,7 +213,7 @@ const UserProfileScreen = () => {
       id: String(apiPost.id),
       type: apiPost.postType,
       auditStatus: apiPost.auditStatus,
-      title: apiPost.title || "无标题",
+      title: apiPost.title || t("chat.noTitle"),
       image: firstImage,
       author: {
         id: String(apiPost.userId),
@@ -221,7 +221,7 @@ const UserProfileScreen = () => {
         avatar: authorInfo.avatar,
       },
       content: {
-        title: apiPost.title || "无标题",
+        title: apiPost.title || t("chat.noTitle"),
         description: apiPost.contentText || "",
         images: validImages.length > 0 ? validImages : [firstImage],
         coverAspectRatio:
@@ -329,7 +329,7 @@ const UserProfileScreen = () => {
       }
       updateTabState(targetTab, { isLoading: true });
       try {
-        const authorName = userInfo?.username || username || "用户";
+        const authorName = userInfo?.username || username || t("profile.user");
         const authorAvatar =
           userInfo?.avatarUrl ||
           avatar ||
@@ -363,7 +363,7 @@ const UserProfileScreen = () => {
           const apiPosts = await postService.getFavoritePostsByUserId(userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -380,7 +380,7 @@ const UserProfileScreen = () => {
           const apiPosts = await postService.getLikedPostsByUserId(userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -397,7 +397,7 @@ const UserProfileScreen = () => {
           const apiPosts = await postService.getWantedPostsByUserId(userId);
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
-              name: p.username || "用户",
+              name: p.username || t("profile.user"),
               avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
             })
           );
@@ -531,7 +531,7 @@ const UserProfileScreen = () => {
 
   const handleFollowToggle = async () => {
     if (!currentUser?.userId) {
-      Alert.show("请先登录");
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
     setFollowLoading(true);
@@ -544,7 +544,7 @@ const UserProfileScreen = () => {
         setIsFollowing(false);
         setIsMutual(false);
         setFollowersCount((prev) => Math.max(0, prev - 1));
-        Alert.show("已取消关注");
+        Alert.show(t("engagement.unfollowed"));
       } else {
         await followService.followUser({
           followerId: currentUser.userId,
@@ -554,11 +554,11 @@ const UserProfileScreen = () => {
         const mutual = await isMutualFollow(currentUser.userId, userId);
         setIsMutual(mutual);
         setFollowersCount((prev) => prev + 1);
-        Alert.show("关注成功");
+        Alert.show(t("engagement.followSuccess"));
       }
     } catch (error) {
       console.error("Follow toggle error:", error);
-      const message = error instanceof Error ? error.message : "操作失败";
+      const message = error instanceof Error ? error.message : t("engagement.operationFailed");
       Alert.show(message);
     } finally {
       setFollowLoading(false);
@@ -595,12 +595,12 @@ const UserProfileScreen = () => {
       );
       if (updatedInfo.coverUrl) {
         setCoverImage(updatedInfo.coverUrl);
-        Alert.show("背景图更新成功");
+        Alert.show(t("editProfile.coverUploadSuccess"));
       }
     } catch (error) {
       console.error("Cover upload error:", error);
       setCoverImage(previousCover);
-      Alert.show("背景图上传失败");
+      Alert.show(t("common.uploadFailed"));
     } finally {
       setUploadingCover(false);
     }
@@ -727,9 +727,9 @@ const UserProfileScreen = () => {
 
   const renderContributionContent = () => {
     const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
-      { id: "show", label: "秀场", count: myShows.length },
-      { id: "brand", label: "品牌", count: myBrands.length },
-      { id: "store", label: "买手店", count: myStores.length },
+      { id: "show", label: t("profileContrib.show"), count: myShows.length },
+      { id: "brand", label: t("profileContrib.brand"), count: myBrands.length },
+      { id: "store", label: t("profileContrib.store"), count: myStores.length },
     ];
 
     const getData = () => {
@@ -741,16 +741,16 @@ const UserProfileScreen = () => {
     };
     const data = getData();
 
-    const displayName = userInfo?.username || username || "该用户";
+    const displayName = userInfo?.username || username || t("profile.user");
     const emptyIcons: Record<ContribSubTab, string> = {
       show: "film-outline",
       brand: "pricetag-outline",
       store: "storefront-outline",
     };
     const emptyTexts: Record<ContribSubTab, string> = {
-      show: isCurrentUser ? "暂无秀场贡献" : `${displayName} 暂无秀场贡献`,
-      brand: isCurrentUser ? "暂无品牌贡献" : `${displayName} 暂无品牌贡献`,
-      store: isCurrentUser ? "暂无买手店贡献" : `${displayName} 暂无买手店贡献`,
+      show: t("profileContrib.noShowContrib"),
+      brand: t("profileContrib.noBrandContrib"),
+      store: t("profileContrib.noStoreContrib"),
     };
 
     // Build a displayable post + its press handler for a contribution item.
@@ -817,7 +817,7 @@ const UserProfileScreen = () => {
         {contribLoading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
             <ActivityIndicator color={theme.colors.gray400} />
-            <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+            <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
           </VStack>
         ) : data.length === 0 ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
@@ -925,7 +925,7 @@ const UserProfileScreen = () => {
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">加载中...</Text>
+          <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
         </VStack>
       );
     }
@@ -1041,7 +1041,7 @@ const UserProfileScreen = () => {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <RNText style={styles.collapsedUsername} numberOfLines={1}>
-                  {userInfo?.username || username || "用户"}
+                  {userInfo?.username || username || t("profile.user")}
                 </RNText>
               </View>
             )}
@@ -1209,11 +1209,11 @@ const UserProfileScreen = () => {
                       createConversation(userId).then((res: { conversationId: number }) => {
                         (navigation as any).navigate("Chat", {
                           conversationId: res.conversationId,
-                          otherUserName: userInfo?.username || username || "用户",
+                          otherUserName: userInfo?.username || username || t("profile.user"),
                           otherUserAvatar: userInfo?.avatarUrl,
                           otherUserId: userId,
                         });
-                      }).catch((e: Error) => Alert.show("发起聊天失败"));
+                      }).catch((e: Error) => Alert.show(t("engagement.operationFailed")));
                     }}
                   >
                     <Ionicons name="chatbubble-outline" size={16} color={theme.colors.black} />
@@ -1233,7 +1233,7 @@ const UserProfileScreen = () => {
 
           <View style={styles.userNameSection}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <RNText style={styles.userName}>{userInfo?.username || username || "用户"}</RNText>
+              <RNText style={styles.userName}>{userInfo?.username || username || t("profile.user")}</RNText>
               {otherLevel > 0 ? <LevelBadge level={otherLevel} size="sm" /> : null}
               {userInfo?.primaryTitle ? (
                 <View style={styles.primaryTitleBadge}>
@@ -1247,7 +1247,7 @@ const UserProfileScreen = () => {
           <View style={styles.tagsContainer}>
             {userProfile?.age != null && userProfile.age > 0 && (
               <View style={styles.tag}>
-                <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}岁</RNText>
+                <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}{t("profile.ageUnit")}</RNText>
               </View>
             )}
             {userInfo?.location && (
@@ -1419,7 +1419,7 @@ const UserProfileScreen = () => {
           visible={showShareToChat}
           user={{
             userId,
-            username: userInfo?.username || username || "用户",
+            username: userInfo?.username || username || t("profile.user"),
             avatarUrl: userInfo?.avatarUrl || avatar,
             bio: userInfo?.bio,
             location: userInfo?.location,

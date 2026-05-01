@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text as RNText, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { UserTitle } from "../../../services/userInfoService";
 
@@ -8,24 +9,25 @@ interface UserTitlesSectionProps {
 }
 
 export const UserTitlesSection = ({ titles }: UserTitlesSectionProps) => {
+  const { t } = useTranslation();
   if (titles.length === 0) return null;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <RNText style={styles.title}>头衔</RNText>
+        <RNText style={styles.title}>{t("profile.titles")}</RNText>
         <RNText style={styles.count}>{titles.length}</RNText>
       </View>
       <View style={styles.chipContainer}>
-        {titles.map((t) => (
+        {titles.map((item) => (
           <View
-            key={t.id}
-            style={[styles.chip, t.isPrimary && styles.chipPrimary]}
+            key={item.id}
+            style={[styles.chip, item.isPrimary && styles.chipPrimary]}
           >
             <RNText
-              style={[styles.chipText, t.isPrimary && styles.chipTextPrimary]}
+              style={[styles.chipText, item.isPrimary && styles.chipTextPrimary]}
             >
-              {t.title}
+              {item.title}
             </RNText>
           </View>
         ))}

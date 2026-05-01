@@ -1,5 +1,6 @@
 import React from "react";
 import { Dimensions } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
@@ -24,16 +25,18 @@ const ImageGridSelector: React.FC<ImageGridSelectorProps> = ({
   onRemoveImage,
   onAddImage,
   maxImages = 6,
-  label = "图片",
+  label,
   required = false,
 }) => {
+  const { t } = useTranslation();
+  const displayLabel = label || t("publish.blockImage");
   const itemWidth = (screenWidth - 48 - 16) / 3;
 
   return (
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text color="$gray600" fontSize="$sm">
-          {label}
+          {displayLabel}
         </Text>
         {required && (
           <Text color="$red500" fontSize="$sm" ml="$xs">

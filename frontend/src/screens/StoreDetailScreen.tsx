@@ -76,14 +76,7 @@ type RouteParams = {
   };
 };
 
-// 评论提示建议
-const DEFAULT_SUGGESTIONS = [
-  "这家店最近在打折，折扣力度很大，值得一去！",
-  "这家店最近暂时关门/装修中，去之前建议先确认营业时间",
-  "店员服务态度很好，会耐心推荐适合的款式",
-  "店内货品已经换新了，有很多新到的单品值得看看",
-  "这家店的 XX 品牌货最全/价格最实惠",
-];
+// 评论提示建议 - loaded from i18n in component
 
 const StoreDetailScreen = () => {
   const { t } = useTranslation();
@@ -112,7 +105,14 @@ const StoreDetailScreen = () => {
     commentId: number;
     username: string;
   } | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS);
+  const defaultSuggestions = [
+    t("store.suggestion1"),
+    t("store.suggestion2"),
+    t("store.suggestion3"),
+    t("store.suggestion4"),
+    t("store.suggestion5"),
+  ];
+  const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions);
   const commentInputAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef<TextInput>(null);
 

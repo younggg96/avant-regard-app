@@ -69,7 +69,7 @@ const BrandFollowersScreen = () => {
       }
     } catch (error) {
       console.error("Error loading brand followers:", error);
-      Alert.show("加载失败，请重试");
+      Alert.show(t("common.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -96,13 +96,13 @@ const BrandFollowersScreen = () => {
           followerId: user.userId,
           targetUserId: targetUserId,
         });
-        Alert.show("已取消关注");
+        Alert.show(t("engagement.unfollowed"));
       } else {
         await followUser({
           followerId: user.userId,
           targetUserId: targetUserId,
         });
-        Alert.show("关注成功");
+        Alert.show(t("engagement.followSuccess"));
       }
       setFollowingStatus((prev) => ({
         ...prev,
@@ -110,7 +110,7 @@ const BrandFollowersScreen = () => {
       }));
     } catch (error) {
       console.error("Error toggling follow:", error);
-      Alert.show(isCurrentlyFollowing ? "取消关注失败" : "关注失败");
+      Alert.show(t("engagement.operationFailed"));
     }
   };
 
@@ -142,7 +142,7 @@ const BrandFollowersScreen = () => {
         {loading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={theme.colors.gray400} />
-            <Text style={styles.loadingText}>加载中...</Text>
+            <Text style={styles.loadingText}>{t("common.loading")}</Text>
           </View>
         ) : followers.length > 0 ? (
           <View style={styles.userList}>
@@ -205,7 +205,7 @@ const BrandFollowersScreen = () => {
                         styles.followingButtonText,
                       ]}
                     >
-                      {followingStatus[follower.userId] ? "已关注" : "关注"}
+                      {followingStatus[follower.userId] ? t("profile.unfollow") : t("profile.followUser")}
                     </Text>
                   </TouchableOpacity>
                 )}

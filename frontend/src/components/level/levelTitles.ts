@@ -4,8 +4,11 @@
  * 与 `web/src/lib/levels/titles.ts` 对称, 与 PRD 保持一致:
  *   Lv1 萌新 · Lv2 活跃 · Lv3 探店官 · Lv4 档案官 · Lv5 荣誉官
  *
- * 所有展示 "Lv{n} · 称号" 的地方 (徽章 / 用户表 / 审批页) 都走这里,
- * 未来改文案只改一处.
+ * 多语言使用方式:
+ *   - React 组件: const { t } = useTranslation(); t(getLevelTitleKey(level))
+ *   - 选项列表:    getLevelOptions(t)
+ *
+ * LEVEL_TITLES 保留为中文兜底, 仅在无法获取 t 函数时使用.
  */
 
 export const LEVEL_TITLES: Record<number, string> = {
@@ -16,19 +19,55 @@ export const LEVEL_TITLES: Record<number, string> = {
   5: "荣誉官",
 };
 
-export function getLevelTitle(level: number): string {
+/** 返回等级称号的 i18n key, 供 t() 调用. */
+export function getLevelTitleKey(level: number): string {
+  return `level.titles.${level}`;
+}
+
+/**
+ * 返回等级称号字符串.
+ * 传入 t 函数时使用 i18n; 否则用内置中文兜底.
+ */
+export function getLevelTitle(level: number, t?: (key: string) => string): string {
+  if (t) return t(getLevelTitleKey(level));
   return LEVEL_TITLES[level] ?? "";
 }
 
-/** 返回 "Lv{n} 称号", 无效 level 返回空串. */
-export function formatLevelLabel(level: number, suffix: string = ""): string {
+/**
+ * 返回 "Lv{n} 称号".
+ * 传入 t 函数时使用 i18n; 否则用内置中文兜底.
+ */
+export function formatLevelLabel(
+  level: number,
+  t?: (key: string) => string,
+  suffix: string = "",
+): string {
   if (!level || level < 1 || level > 5) return "";
-  const title = LEVEL_TITLES[level] ?? "";
+  const title = getLevelTitle(level, t);
   const base = title ? `Lv${level} ${title}` : `Lv${level}`;
   return suffix ? `${base}${suffix}` : base;
 }
 
-/** 等级下拉选项 (admin 手动授予 / 审批等场景). */
+/**
+ * 等级下拉选项 — 多语言版本, 推荐在 React 组件中使用.
+ * 用法: const opts = getLevelOptions(t);
+ */
+export function getLevelOptions(
+  t: (key: string) => string,
+): Array<{ value: number; label: string }> {
+  return [1, 2, 3, 4, 5].map((v) => ({
+    value: v,
+    label:
+      v === 5
+        ? `${formatLevelLabel(v, t)} (${t("level.lv5Channel")})`
+        : formatLevelLabel(v, t),
+  }));
+}
+
+/**
+ * @deprecated 使用 getLevelOptions(t) 以支持多语言.
+ * 仅在无法访问 i18n 的静态上下文中保留.
+ */
 export const LEVEL_OPTIONS: Array<{ value: number; label: string }> = [1, 2, 3, 4, 5].map(
   (v) => ({
     value: v,

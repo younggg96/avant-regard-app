@@ -6,6 +6,7 @@ import {
   Text,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { ImageCropper, AspectRatio } from "./ImageCropper";
@@ -23,6 +24,7 @@ const BatchImageCropper: React.FC<BatchImageCropperProps> = ({
   onCancel,
   onDone,
 }) => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [croppedResults, setCroppedResults] = useState<(string | null)[]>(
     () => new Array(sourceUris.length).fill(null)
@@ -111,7 +113,7 @@ const BatchImageCropper: React.FC<BatchImageCropperProps> = ({
             style={styles.skipButton}
             onPress={handleSkipCrop}
           >
-            <Text style={styles.skipButtonText}>跳过裁剪</Text>
+            <Text style={styles.skipButtonText}>{t("imageCropper.skipCrop")}</Text>
           </TouchableOpacity>
         </View>
 

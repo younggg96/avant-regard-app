@@ -36,7 +36,7 @@ import {
   Text,
 } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
-import { LEVEL_OPTIONS } from "../../components/level/levelTitles";
+import { getLevelOptions } from "../../components/level/levelTitles";
 
 const LevelReviewTab: React.FC = () => {
   const { t } = useTranslation();
@@ -94,7 +94,7 @@ const LevelReviewTab: React.FC = () => {
   const handleApprove = (item: UpgradeRequestInfo) => {
     Alert.alert(
       t("admin.confirmApprove"),
-      `确认授予 @${item.username ?? item.userId} 升级到 Lv${item.targetLevel}?  \n通过后将自动发放对应权益(Lv4 -> 1 张免费门票), 不可撤销.`,
+      t("admin.confirmApproveLevel", { user: item.username ?? item.userId, level: item.targetLevel }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -150,16 +150,16 @@ const LevelReviewTab: React.FC = () => {
   const handleGrant = () => {
     const uid = parseInt(grantUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      Alert.alert(t("admin.error"), "请输入合法的用户 ID");
+      Alert.alert(t("admin.error"), t("admin.invalidUserId"));
       return;
     }
     if (grantLevel < 1 || grantLevel > 5) {
-      Alert.alert(t("admin.error"), "等级必须在 1-5 之间");
+      Alert.alert(t("admin.error"), t("admin.levelRange"));
       return;
     }
     Alert.alert(
       t("admin.confirmGrant"),
-      `将直接把 user #${uid} 的等级设为 Lv${grantLevel}. \n受"只升不降"约束, 若该用户当前等级 >= Lv${grantLevel} 将被拒绝.`,
+      t("admin.confirmGrantLevel", { uid, level: grantLevel }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -212,10 +212,10 @@ const LevelReviewTab: React.FC = () => {
 
   const handleBackfillAll = (dryRun: boolean) => {
     Alert.alert(
-      dryRun ? "Dry Run 全量预览?" : "确认执行全量回填?",
+      dryRun ? t("admin.backfillDryRunTitle") : t("admin.backfillConfirmTitle"),
       dryRun
-        ? "将对所有用户做等级回溯计算, 但不写库. 仅用于预览."
-        : "将对所有用户做等级回溯计算并写库. 操作幂等, 不会重复发福利 / 不会发通知. 建议先 Dry Run.",
+        ? t("admin.backfillDryRunDesc")
+        : t("admin.backfillConfirmDesc"),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -229,7 +229,7 @@ const LevelReviewTab: React.FC = () => {
   const handleBackfillSingle = () => {
     const uid = parseInt(backfillUserId.trim(), 10);
     if (!uid || Number.isNaN(uid)) {
-      Alert.alert(t("admin.error"), "请输入合法用户 ID");
+      Alert.alert(t("admin.error"), t("admin.invalidUserId"));
       return;
     }
     runBackfill({ dryRun: false, userId: uid });
@@ -281,7 +281,7 @@ const LevelReviewTab: React.FC = () => {
               <HStack style={styles.targetRow}>
                 <Box style={styles.targetBadge}>
                   <Text style={styles.targetBadgeText}>
-                    目标 Lv{it.targetLevel}
+                    {t("admin.targetLevelLabel", { level: it.targetLevel })}
                   </Text>
                 </Box>
                 <Text style={styles.userIdText}>user id: {it.userId}</Text>
@@ -342,7 +342,7 @@ const LevelReviewTab: React.FC = () => {
           <Input
             variant="outline"
             size="md"
-            placeholder="例如 1024"
+            placeholder={t("admin.userIdPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={grantUserId}
             onChangeText={setGrantUserId}
@@ -351,7 +351,7 @@ const LevelReviewTab: React.FC = () => {
 
           <Text style={sharedStyles.formLabel}>{t("admin.targetLevel")}</Text>
           <Box style={styles.levelRow}>
-            {LEVEL_OPTIONS.map((opt) => {
+            {getLevelOptions(t).map((opt) => {
               const active = grantLevel === opt.value;
               return (
                 <Pressable
@@ -379,7 +379,7 @@ const LevelReviewTab: React.FC = () => {
           <Input
             variant="outline"
             size="md"
-            placeholder="例如:  2026-Q2 线下活动参与者"
+            placeholder={t("admin.remarkPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={grantRemark}
             onChangeText={setGrantRemark}
@@ -441,7 +441,7 @@ const LevelReviewTab: React.FC = () => {
               <Input
                 variant="outline"
                 size="md"
-                placeholder="用户 ID"
+                placeholder={t("admin.userId")}
                 placeholderTextColor={theme.colors.gray300}
                 value={backfillUserId}
                 onChangeText={setBackfillUserId}
@@ -463,9 +463,7 @@ const LevelReviewTab: React.FC = () => {
               {backfillResult.scope === "single" ? (
                 <>
                   <Text style={styles.backfillResultLine}>
-                    用户 #{backfillResult.user.userId}:  Lv
-                    {backfillResult.user.beforeLevel} → Lv
-                    {backfillResult.user.afterLevel}
+                    {t("admin.backfillUserResult", { userId: backfillResult.user.userId, before: backfillResult.user.beforeLevel, after: backfillResult.user.afterLevel })}
                     {backfillResult.user.pendingLevel
                       ? `  (pending Lv${backfillResult.user.pendingLevel})`
                       : ""}
@@ -475,24 +473,22 @@ const LevelReviewTab: React.FC = () => {
                   </Text>
                   {backfillResult.user.dryRun && (
                     <Text style={styles.backfillResultCaption}>
-                      Dry Run — 未写入数据库
+                      {t("admin.backfillDryRunNote")}
                     </Text>
                   )}
                 </>
               ) : (
                 <>
                   <Text style={styles.backfillResultLine}>
-                    扫描 {backfillResult.summary.scanned} 人 · 升级{" "}
-                    {backfillResult.summary.upgraded} 人 · 新增 Lv4 PENDING{" "}
-                    {backfillResult.summary.pendingCreated} 条
+                    {t("admin.backfillSummary", { scanned: backfillResult.summary.scanned, upgraded: backfillResult.summary.upgraded, pending: backfillResult.summary.pendingCreated })}
                   </Text>
                   <Text style={styles.backfillResultCaption}>
-                    错误 {backfillResult.summary.errors} ·  分布{" "}
+                    {t("admin.backfillErrors", { errors: backfillResult.summary.errors })}{" "}
                     {JSON.stringify(backfillResult.summary.levelDistribution)}
                   </Text>
                   {backfillResult.summary.dryRun && (
                     <Text style={styles.backfillResultCaption}>
-                      Dry Run — 未写入数据库
+                      {t("admin.backfillDryRunNote")}
                     </Text>
                   )}
                 </>
@@ -520,7 +516,7 @@ const LevelReviewTab: React.FC = () => {
             <Input
               variant="outline"
               size="md"
-              placeholder="例如:  档案质量不达标, 请补充品牌正面照"
+              placeholder={t("admin.rejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={rejectRemark}
               onChangeText={setRejectRemark}

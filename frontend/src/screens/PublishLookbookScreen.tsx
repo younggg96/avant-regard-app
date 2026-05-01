@@ -1093,7 +1093,7 @@ const PublishLookbookScreen = () => {
         visible={showImagePreview}
         imageUrls={previewImages}
         initialIndex={previewInitialIndex}
-        title={title || "Lookbook 预览"}
+        title={title || t("publish.lookbookPreview")}
         onClose={() => setShowImagePreview(false)}
         onImagePress={(index) => {
           if (isVideoUrl(images[index])) {

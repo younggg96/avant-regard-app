@@ -34,7 +34,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { theme } from "../../theme";
 import { useLevelStore } from "../../store/levelStore";
-import { getLevelTitle, LevelBadge } from "./LevelBadge";
+import { getLevelTitleKey, LevelBadge } from "./LevelBadge";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -98,7 +98,7 @@ export const LevelUpgradeModal: React.FC = () => {
 
   if (!visible || !celebrateLevel) return null;
 
-  const title = getLevelTitle(celebrateLevel);
+  const title = t(getLevelTitleKey(celebrateLevel));
 
   return (
     <Modal visible transparent statusBarTranslucent animationType="none">

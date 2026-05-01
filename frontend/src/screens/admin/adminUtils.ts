@@ -1,4 +1,5 @@
 import { Alert } from "react-native";
+import i18n from "@/i18n";
 import { config } from "../../config/env";
 import { useAuthStore } from "../../store/authStore";
 
@@ -8,24 +9,15 @@ export const formatDate = (dateString: string) => {
 };
 
 export const getPostTypeName = (type: string) => {
-  const typeMap: Record<string, string> = {
-    OUTFIT: "穿搭",
-    DAILY_SHARE: "日常分享",
-    ITEM_REVIEW: "单品评价",
-    ARTICLES: "论坛帖子",
-  };
-  return typeMap[type] || type;
+  const key = `admin.postType_${type}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : type;
 };
 
 export const getLinkTypeName = (type: string) => {
-  const typeMap: Record<string, string> = {
-    NONE: "无链接",
-    POST: "帖子",
-    BRAND: "品牌",
-    SHOW: "秀场",
-    EXTERNAL: "外部链接",
-  };
-  return typeMap[type] || type;
+  const key = `admin.linkType_${type}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : type;
 };
 
 export const uploadImageFromUri = async (uri: string): Promise<string> => {
@@ -54,7 +46,7 @@ export const uploadImageFromUri = async (uri: string): Promise<string> => {
   if (data.code === 0 && data.data?.url) {
     return data.data.url;
   }
-  throw new Error(data.message || "上传失败");
+  throw new Error(data.message || i18n.t("admin.uploadFailed"));
 };
 
 export const pickAndUploadImage = async (
@@ -64,7 +56,7 @@ export const pickAndUploadImage = async (
 
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== "granted") {
-    Alert.alert("权限不足", "需要访问相册权限才能上传图片");
+    Alert.alert(i18n.t("common.permissionDenied"), i18n.t("common.photoPermissionRequired"));
     return null;
   }
 

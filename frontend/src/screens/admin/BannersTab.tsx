@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import {
   Banner,
@@ -24,6 +25,7 @@ import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, Op
 import { ImageSize } from "../../utils/imageUtils";
 
 const BannersTab = () => {
+  const { t } = useTranslation();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +61,7 @@ const BannersTab = () => {
         setSearchResults(results);
       }
     } catch (error) {
-      console.error("搜索失败:", error);
+      console.error("search error:", error);
     } finally {
       setSearchLoading(false);
     }
@@ -81,8 +83,8 @@ const BannersTab = () => {
       const result = await getAllBanners();
       setBanners(result);
     } catch (error) {
-      console.error("获取 Banner 列表失败:", error);
-      Alert.alert("错误", error instanceof Error ? error.message : "获取 Banner 列表失败");
+      console.error("fetchBanners error:", error);
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setLoading(false);
     }
@@ -132,45 +134,45 @@ const BannersTab = () => {
 
   const handleSave = async () => {
     if (!form.title.trim()) {
-      Alert.alert("错误", "请输入 Banner 标题");
+      Alert.alert(t("admin.error"), t("admin.bannerTitleRequired"));
       return;
     }
     if (!form.image_url.trim()) {
-      Alert.alert("错误", "请上传或输入图片 URL");
+      Alert.alert(t("admin.error"), t("admin.bannerImageRequired"));
       return;
     }
     try {
       setActionLoading(true);
       if (editingBanner) {
         await updateBanner(editingBanner.id, form);
-        Alert.alert("成功", "Banner 更新成功");
+        Alert.alert(t("common.success"), t("admin.bannerUpdated"));
       } else {
         await createBanner(form);
-        Alert.alert("成功", "Banner 创建成功");
+        Alert.alert(t("common.success"), t("admin.bannerCreated"));
       }
       setModalVisible(false);
       fetchBanners();
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDelete = async (bannerId: number) => {
-    Alert.alert("确认删除", "确定要删除这个 Banner 吗？", [
-      { text: "取消", style: "cancel" },
+    Alert.alert(t("admin.confirmDelete"), t("admin.confirmDeleteBanner"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "删除",
+        text: t("common.delete"),
         style: "destructive",
         onPress: async () => {
           try {
             setActionLoading(true);
             await deleteBanner(bannerId);
-            Alert.alert("成功", "Banner 已删除");
+            Alert.alert(t("common.success"), t("admin.bannerDeleted"));
             fetchBanners();
           } catch (error) {
-            Alert.alert("错误", error instanceof Error ? error.message : "删除失败");
+            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.deleteFailed"));
           } finally {
             setActionLoading(false);
           }
@@ -183,10 +185,10 @@ const BannersTab = () => {
     try {
       setActionLoading(true);
       await toggleBannerStatus(banner.id);
-      Alert.alert("成功", `Banner 已${banner.isActive ? "禁用" : "启用"}`);
+      Alert.alert(t("common.success"), banner.isActive ? t("admin.bannerDisabled") : t("admin.bannerEnabled"));
       fetchBanners();
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "操作失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
     } finally {
       setActionLoading(false);
     }
@@ -198,10 +200,10 @@ const BannersTab = () => {
       const url = await pickAndUploadImage([16, 9]);
       if (url) {
         setForm((prev) => ({ ...prev, image_url: url }));
-        Alert.alert("成功", "图片上传成功");
+        Alert.alert(t("common.success"), t("admin.imageUploaded"));
       }
     } catch (error) {
-      Alert.alert("错误", error instanceof Error ? error.message : "图片上传失败");
+      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.uploadFailed"));
     } finally {
       setImageUploading(false);
     }
@@ -217,17 +219,17 @@ const BannersTab = () => {
         lazy={true}
       />
       <Box style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
-        <Text style={styles.bannerStatusText}>{banner.isActive ? "启用" : "禁用"}</Text>
+        <Text style={styles.bannerStatusText}>{banner.isActive ? t("admin.communityActiveLabel") : t("admin.communityInactiveLabel")}</Text>
       </Box>
       <Box style={styles.bannerInfo}>
         <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
         {banner.subtitle && <Text style={styles.bannerSubtitle} numberOfLines={1}>{banner.subtitle}</Text>}
         <HStack style={styles.bannerMeta}>
           <Text style={styles.bannerMetaText}>
-            链接: {getLinkTypeName(banner.linkType)}
+            {t("admin.bannerLink")}: {getLinkTypeName(banner.linkType)}
             {banner.linkValue && ` → ${banner.linkValue}`}
           </Text>
-          <Text style={styles.bannerMetaText}>排序: {banner.sortOrder}</Text>
+          <Text style={styles.bannerMetaText}>{t("admin.bannerSort")}: {banner.sortOrder}</Text>
         </HStack>
       </Box>
       <HStack style={styles.bannerActions}>
@@ -252,24 +254,24 @@ const BannersTab = () => {
       >
         <Pressable style={styles.addBannerButton} onPress={handleOpenCreateModal}>
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
-          <Text style={styles.addBannerButtonText}>添加 Banner</Text>
+          <Text style={styles.addBannerButtonText}>{t("admin.addBanner")}</Text>
         </Pressable>
 
         {loading && banners.length === 0 ? (
           <Box style={sharedStyles.loadingContainer}>
             <ActivityIndicator color={theme.colors.black} />
-            <Text style={sharedStyles.loadingText}>加载中...</Text>
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : banners.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons name="images-outline" size={48} color={theme.colors.gray300} />
-            <Text style={sharedStyles.emptyText}>暂无 Banner</Text>
-            <Text style={sharedStyles.emptySubtext}>点击上方按钮添加轮播图</Text>
+            <Text style={sharedStyles.emptyText}>{t("admin.noBanners")}</Text>
+            <Text style={sharedStyles.emptySubtext}>{t("admin.noBannersHint")}</Text>
           </Box>
         ) : (
           <>
             <Box style={styles.bannersHeader}>
-              <Text style={styles.bannersHeaderText}>共 {banners.length} 个 Banner</Text>
+              <Text style={styles.bannersHeaderText}>{t("admin.totalBanners", { count: banners.length })}</Text>
             </Box>
             {banners.map(renderBannerCard)}
           </>
@@ -283,7 +285,7 @@ const BannersTab = () => {
           <Box style={[sharedStyles.modalContent, styles.bannerModalContent]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={sharedStyles.modalTitle}>
-                {editingBanner ? "编辑 Banner" : "创建 Banner"}
+                {editingBanner ? t("admin.editBanner") : t("admin.createBanner")}
               </Text>
 
               {form.image_url ? (
@@ -297,7 +299,7 @@ const BannersTab = () => {
               ) : (
                 <Box style={styles.bannerFormPlaceholder}>
                   <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
-                  <Text style={styles.bannerFormPlaceholderText}>点击下方按钮上传图片</Text>
+                  <Text style={styles.bannerFormPlaceholderText}>{t("admin.bannerUploadHint")}</Text>
                 </Box>
               )}
 
@@ -308,16 +310,16 @@ const BannersTab = () => {
                   <>
                     <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
                     <Text style={sharedStyles.uploadImageButtonText}>
-                      {form.image_url ? "更换图片" : "上传图片"}
+                      {form.image_url ? t("admin.changeImage") : t("admin.uploadImage")}
                     </Text>
                   </>
                 )}
               </Pressable>
 
-              <Text style={sharedStyles.formLabel}>标题 *</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.bannerTitleLabel")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入 Banner 标题"
+                placeholder={t("admin.bannerTitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={form.title}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, title: text }))}
@@ -325,10 +327,10 @@ const BannersTab = () => {
                 size="md"
               />
 
-              <Text style={sharedStyles.formLabel}>副标题</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.bannerSubtitleLabel")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入副标题（可选）"
+                placeholder={t("admin.bannerSubtitlePlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={form.subtitle}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, subtitle: text }))}
@@ -336,7 +338,7 @@ const BannersTab = () => {
                 size="md"
               />
 
-              <Text style={sharedStyles.formLabel}>链接类型</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.bannerLinkType")}</Text>
               <Box style={sharedStyles.linkTypeContainer}>
                 {["NONE", "POST", "BRAND", "SHOW", "EXTERNAL"].map((type) => (
                   <Pressable
@@ -354,10 +356,10 @@ const BannersTab = () => {
               {form.link_type !== "NONE" && (
                 <>
                   <Text style={sharedStyles.formLabel}>
-                    {form.link_type === "POST" && "帖子 ID"}
-                    {form.link_type === "BRAND" && "品牌名字"}
-                    {form.link_type === "SHOW" && "秀场 ID"}
-                    {form.link_type === "EXTERNAL" && "外部链接 URL"}
+                    {form.link_type === "POST" && t("admin.bannerPostId")}
+                    {form.link_type === "BRAND" && t("admin.bannerBrandName")}
+                    {form.link_type === "SHOW" && t("admin.bannerShowId")}
+                    {form.link_type === "EXTERNAL" && t("admin.bannerExternalUrl")}
                   </Text>
 
                   {(form.link_type === "POST" || form.link_type === "SHOW") && (
@@ -366,7 +368,7 @@ const BannersTab = () => {
                         <Ionicons name="search-outline" size={18} color={theme.colors.gray300} style={styles.searchIcon} />
                         <Input
                           style={styles.searchInput}
-                          placeholder={form.link_type === "POST" ? "搜索帖子标题 / 内容 / 作者..." : "搜索品牌 / 季节 / 类别..."}
+                          placeholder={form.link_type === "POST" ? t("admin.bannerSearchPost") : t("admin.bannerSearchShow")}
                           placeholderTextColor={theme.colors.gray300}
                           value={searchKeyword}
                           onChangeText={(text: string) => handleSearchInputChange(text)}
@@ -421,7 +423,7 @@ const BannersTab = () => {
                         </ScrollView>
                       )}
                       {searchKeyword.length > 0 && !searchLoading && searchResults.length === 0 && (
-                        <Text style={styles.searchNoResult}>无搜索结果</Text>
+                        <Text style={styles.searchNoResult}>{t("search.noResults")}</Text>
                       )}
                     </Box>
                   )}
@@ -429,10 +431,10 @@ const BannersTab = () => {
                   <Input
                     style={sharedStyles.modalInput}
                     placeholder={
-                      form.link_type === "POST" ? "输入帖子 ID" :
-                        form.link_type === "BRAND" ? "输入品牌名字（如 Chanel）" :
-                          form.link_type === "SHOW" ? "输入秀场 ID" :
-                            "输入完整 URL（https://...）"
+                      form.link_type === "POST" ? t("admin.bannerPostIdPlaceholder") :
+                        form.link_type === "BRAND" ? t("admin.bannerBrandNamePlaceholder") :
+                          form.link_type === "SHOW" ? t("admin.bannerShowIdPlaceholder") :
+                            t("admin.bannerUrlPlaceholder")
                     }
                     placeholderTextColor={theme.colors.gray300}
                     value={form.link_value}
@@ -444,10 +446,10 @@ const BannersTab = () => {
                 </>
               )}
 
-              <Text style={sharedStyles.formLabel}>排序（数字越小越靠前）</Text>
+              <Text style={sharedStyles.formLabel}>{t("admin.bannerSortLabel")}</Text>
               <Input
                 style={sharedStyles.modalInput}
-                placeholder="输入排序数字"
+                placeholder={t("admin.sortOrderPlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={String(form.sort_order)}
                 onChangeText={(text: string) => setForm((prev) => ({ ...prev, sort_order: parseInt(text) || 0 }))}
@@ -457,7 +459,7 @@ const BannersTab = () => {
               />
 
               <Pressable style={sharedStyles.statusToggle} onPress={() => setForm((prev) => ({ ...prev, is_active: !prev.is_active }))}>
-                <Text style={sharedStyles.formLabel}>启用状态</Text>
+                <Text style={sharedStyles.formLabel}>{t("admin.activeStatus")}</Text>
                 <Box style={[sharedStyles.statusToggleSwitch, form.is_active && sharedStyles.statusToggleSwitchActive]}>
                   <Box style={[sharedStyles.statusToggleThumb, form.is_active && sharedStyles.statusToggleThumbActive]} />
                 </Box>
@@ -465,7 +467,7 @@ const BannersTab = () => {
 
               <Box style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.white }}>取消</ButtonText>
+                  <ButtonText style={{ color: theme.colors.white }}>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -473,7 +475,7 @@ const BannersTab = () => {
                   disabled={actionLoading}
                   isLoading={actionLoading}
                 >
-                  <ButtonText>{editingBanner ? "保存修改" : "创建 Banner"}</ButtonText>
+                  <ButtonText>{editingBanner ? t("admin.saveChanges") : t("admin.createBanner")}</ButtonText>
                 </Button>
               </Box>
             </ScrollView>

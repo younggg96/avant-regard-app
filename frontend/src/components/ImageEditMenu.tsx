@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, VStack, HStack } from "./ui";
 import { theme } from "../theme";
@@ -23,6 +24,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
   onSetCover,
   onDelete,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       visible={visible}
@@ -51,7 +53,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
             justifyContent="between"
           >
             <Text fontSize="$lg" color="$black" fontWeight="$medium">
-              编辑图片
+              {t("imageEditMenu.title")}
             </Text>
             <Pressable p="$xs" onPress={onClose}>
               <Ionicons name="close" size={24} color={theme.colors.gray600} />
@@ -75,10 +77,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                 </Box>
                 <VStack flex={1}>
                   <Text color="$black" fontSize="$md" fontWeight="$medium">
-                    编辑和裁剪
+                    {t("imageEditMenu.editAndCrop")}
                   </Text>
                   <Text color="$gray500" fontSize="$sm">
-                    调整图片尺寸和比例
+                    {t("imageEditMenu.adjustSize")}
                   </Text>
                 </VStack>
                 <Ionicons
@@ -109,10 +111,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   </Box>
                   <VStack flex={1}>
                     <Text color="$black" fontSize="$md" fontWeight="$medium">
-                      设为封面
+                      {t("imageEditMenu.setAsCover")}
                     </Text>
                     <Text color="$gray500" fontSize="$sm">
-                      将此图片设为主封面
+                      {t("imageEditMenu.setAsCoverDesc")}
                     </Text>
                   </VStack>
                   <Ionicons
@@ -144,10 +146,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   </Box>
                   <VStack flex={1}>
                     <Text color="$black" fontSize="$md" fontWeight="$medium">
-                      当前封面
+                      {t("imageEditMenu.currentCover")}
                     </Text>
                     <Text color="$gray500" fontSize="$sm">
-                      这是您的主封面图片
+                      {t("imageEditMenu.currentCoverDesc")}
                     </Text>
                   </VStack>
                   <Ionicons
@@ -177,10 +179,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                 </Box>
                 <VStack flex={1}>
                   <Text color="$error" fontSize="$md" fontWeight="$medium">
-                    删除图片
+                    {t("imageEditMenu.deleteImage")}
                   </Text>
                   <Text color="$gray500" fontSize="$sm">
-                    从列表中移除此图片
+                    {t("imageEditMenu.deleteImageDesc")}
                   </Text>
                 </VStack>
               </HStack>
@@ -198,7 +200,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
               onPress={onClose}
             >
               <Text color="$gray600" fontSize="$md" fontWeight="$medium">
-                取消
+                {t("common.cancel")}
               </Text>
             </Pressable>
           </Box>

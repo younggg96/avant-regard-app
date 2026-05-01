@@ -269,12 +269,12 @@ const EditProfileScreen = () => {
   // 保存用户资料
   const handleSave = async () => {
     if (!username.trim()) {
-      Alert.show("提示: 请输入用户名");
+      Alert.show(t("editProfile.usernameRequired"));
       return;
     }
 
     if (!user?.userId) {
-      Alert.show("错误: 用户未登录");
+      Alert.show(t("editProfile.loginRequired"));
       return;
     }
 
@@ -282,14 +282,14 @@ const EditProfileScreen = () => {
     // the save payload would carry the local `file://` URI and poison the
     // stored profile. (See `isPersistableRemoteUrl` for the second defence.)
     if (uploadingAvatar || uploadingCover) {
-      Alert.show("提示: 图片正在上传，请稍候再保存");
+      Alert.show(t("editProfile.uploadInProgress"));
       return;
     }
 
     // 验证年龄
     const ageNum = age ? parseInt(age, 10) : 0;
     if (age && (isNaN(ageNum) || ageNum < 0 || ageNum > 150)) {
-      Alert.show("提示: 请输入有效的年龄");
+      Alert.show(t("editProfile.invalidAge"));
       return;
     }
 
@@ -324,7 +324,7 @@ const EditProfileScreen = () => {
         avatar: updatedInfo.avatarUrl || avatarUrlForSave || undefined,
       });
 
-      Alert.show("成功: 个人资料已更新", "", 1000);
+      Alert.show(t("editProfile.saveSuccess"), "", 1000);
       setTimeout(() => navigation.goBack(), 1000);
     } catch (error) {
       console.warn("更新完整资料失败，尝试更新基本信息:", error);
@@ -347,14 +347,14 @@ const EditProfileScreen = () => {
             (isPersistableRemoteUrl(avatar) ? avatar : undefined),
         });
 
-        Alert.show("成功: 基本资料已更新", "", 1000);
+        Alert.show(t("editProfile.saveSuccess"), "", 1000);
         setTimeout(() => navigation.goBack(), 1000);
       } catch (fallbackError) {
         const message =
           fallbackError instanceof Error
             ? fallbackError.message
-            : "更新失败，请重试";
-        Alert.show("错误: " + message);
+            : t("editProfile.saveFailed");
+        Alert.show(message);
       }
     } finally {
       setLoading(false);
@@ -364,13 +364,13 @@ const EditProfileScreen = () => {
   // 选择并上传头像
   const handlePickImage = async () => {
     if (!user?.userId) {
-      Alert.show("错误: 用户未登录");
+      Alert.show(t("editProfile.loginRequired"));
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.show("权限不足: 需要访问相册权限来更换头像");
+      Alert.show(t("common.photoPermissionRequired"));
       return;
     }
 
@@ -401,11 +401,11 @@ const EditProfileScreen = () => {
         setAvatar(updatedInfo.avatarUrl);
         // 更新本地存储
         updateProfile({ avatar: updatedInfo.avatarUrl });
-        Alert.show("头像上传成功");
+        Alert.show(t("editProfile.avatarUploadSuccess"));
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "上传失败";
-      Alert.show("头像上传失败: " + message);
+      const message = error instanceof Error ? error.message : t("common.uploadFailed");
+      Alert.show(message);
       // 恢复原来的头像
       setAvatar(previousAvatar);
     } finally {
@@ -416,13 +416,13 @@ const EditProfileScreen = () => {
   // 选择并上传封面图片
   const handlePickCoverImage = async () => {
     if (!user?.userId) {
-      Alert.show("错误: 用户未登录");
+      Alert.show(t("editProfile.loginRequired"));
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.show("权限不足: 需要访问相册权限来更换封面");
+      Alert.show(t("common.photoPermissionRequired"));
       return;
     }
 
@@ -451,11 +451,11 @@ const EditProfileScreen = () => {
 
       if (updatedInfo.coverUrl) {
         setCover(updatedInfo.coverUrl);
-        Alert.show("封面上传成功");
+        Alert.show(t("editProfile.coverUploadSuccess"));
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "上传失败";
-      Alert.show("封面上传失败: " + message);
+      const message = error instanceof Error ? error.message : t("common.uploadFailed");
+      Alert.show(message);
       // 恢复原来的封面
       setCover(previousCover);
     } finally {
@@ -488,7 +488,7 @@ const EditProfileScreen = () => {
         return prev.filter((id) => id !== brandId);
       } else {
         if (prev.length >= 5) {
-          Alert.show("提示: 最多选择 5 个品牌");
+          Alert.show(t("profileReminder.maxBrandsHint"));
           return prev;
         }
         return [...prev, brandId];
@@ -576,7 +576,7 @@ const EditProfileScreen = () => {
               )}
             </TouchableOpacity>
             <Text style={styles.avatarHint}>
-              {uploadingAvatar ? "上传中..." : "点击更换头像"}
+              {uploadingAvatar ? t("publish.uploading") : t("editProfile.changeAvatar")}
             </Text>
           </View>
           {/* 封面图片区域 */}
@@ -601,13 +601,13 @@ const EditProfileScreen = () => {
                     size={32}
                     color={theme.colors.gray400}
                   />
-                  <Text style={styles.coverPlaceholderText}>添加封面图片</Text>
+                  <Text style={styles.coverPlaceholderText}>{t("editProfile.addCoverImage")}</Text>
                 </View>
               )}
               {uploadingCover ? (
                 <View style={styles.coverLoadingOverlay}>
                   <ActivityIndicator size="small" color={theme.colors.white} />
-                  <Text style={styles.coverLoadingText}>上传中...</Text>
+                  <Text style={styles.coverLoadingText}>{t("publish.uploading")}</Text>
                 </View>
               ) : (
                 <View style={styles.coverEditIcon}>
@@ -620,7 +620,7 @@ const EditProfileScreen = () => {
               )}
             </TouchableOpacity>
             <Text style={styles.coverHint}>
-              {uploadingCover ? "上传中..." : "点击更换封面（推荐比例 16:9）"}
+              {uploadingCover ? t("publish.uploading") : t("editProfile.changeCoverHint")}
             </Text>
           </View>
           {/* 表单区域 */}
@@ -636,7 +636,7 @@ const EditProfileScreen = () => {
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="请输入用户名"
+                placeholder={t("auth.usernamePlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 maxLength={20}
                 returnKeyType="next"
@@ -656,7 +656,7 @@ const EditProfileScreen = () => {
                 style={[styles.input, styles.textArea]}
                 value={bio}
                 onChangeText={setBio}
-                placeholder="介绍一下自己..."
+                placeholder={t("auth.bioPlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 multiline
                 numberOfLines={4}
@@ -682,7 +682,7 @@ const EditProfileScreen = () => {
                     !location && styles.selectInputPlaceholder,
                   ]}
                 >
-                  {location || "请选择所在省份"}
+                  {location || t("editProfile.selectProvince")}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -717,7 +717,7 @@ const EditProfileScreen = () => {
                 style={styles.input}
                 value={age}
                 onChangeText={setAge}
-                placeholder="请输入年龄"
+                placeholder={t("editProfile.agePlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 keyboardType="number-pad"
                 maxLength={3}
@@ -736,7 +736,7 @@ const EditProfileScreen = () => {
                 style={[styles.input, styles.textArea]}
                 value={preference}
                 onChangeText={setPreference}
-                placeholder="例如：极简主义、街头风格、复古..."
+                placeholder={t("auth.preferencePlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 multiline
                 numberOfLines={3}
@@ -766,7 +766,7 @@ const EditProfileScreen = () => {
                 >
                   {selectedBrandIds.length > 0
                     ? getSelectedBrandNames()
-                    : "选择您想关注的品牌"}
+                    : t("auth.brandPlaceholder")}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -800,7 +800,7 @@ const EditProfileScreen = () => {
             onPress={() => { }}
           >
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>选择所在省份</Text>
+              <Text style={styles.modalTitle}>{t("editProfile.selectProvince")}</Text>
               <TouchableOpacity
                 onPress={() => setShowProvinceModal(false)}
                 style={styles.modalCloseButton}
@@ -860,7 +860,7 @@ const EditProfileScreen = () => {
             onPress={() => { }}
           >
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>选择性别</Text>
+              <Text style={styles.modalTitle}>{t("editProfile.gender")}</Text>
               <TouchableOpacity
                 onPress={() => setShowGenderModal(false)}
                 style={styles.modalCloseButton}
@@ -917,7 +917,7 @@ const EditProfileScreen = () => {
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                选择关注的品牌（{selectedBrandIds.length}/5）
+                {t("profileReminder.selectBrandsTitle", { count: selectedBrandIds.length })}
               </Text>
               <TouchableOpacity
                 onPress={() => setShowBrandModal(false)}
@@ -932,7 +932,7 @@ const EditProfileScreen = () => {
               <Ionicons name="search" size={18} color={theme.colors.gray400} />
               <TextInput
                 style={styles.brandSearchInput}
-                placeholder="搜索品牌..."
+                placeholder={t("auth.searchBrandPlaceholder")}
                 placeholderTextColor={theme.colors.gray400}
                 value={brandSearchKeyword}
                 onChangeText={handleBrandSearch}
@@ -951,7 +951,7 @@ const EditProfileScreen = () => {
             {loadingBrands ? (
               <View style={styles.brandLoadingContainer}>
                 <ActivityIndicator size="small" color={theme.colors.black} />
-                <Text style={styles.brandLoadingText}>加载中...</Text>
+                <Text style={styles.brandLoadingText}>{t("common.loading")}</Text>
               </View>
             ) : (
               <FlatList
@@ -1005,7 +1005,7 @@ const EditProfileScreen = () => {
                 ListEmptyComponent={
                   <View style={styles.emptyList}>
                     <Text style={styles.emptyListText}>
-                      {brandSearchKeyword ? "没有找到匹配的品牌" : "暂无品牌选项"}
+                      {brandSearchKeyword ? t("auth.noBrandMatch") : t("auth.noBrands")}
                     </Text>
                   </View>
                 }
@@ -1013,15 +1013,15 @@ const EditProfileScreen = () => {
                   loadingMoreBrands ? (
                     <View style={styles.loadMoreContainer}>
                       <ActivityIndicator size="small" color={theme.colors.black} />
-                      <Text style={styles.loadMoreText}>加载更多...</Text>
+                      <Text style={styles.loadMoreText}>{t("common.loadMore")}</Text>
                     </View>
                   ) : hasMoreBrands && brandOptions.length > 0 ? (
                     <View style={styles.loadMoreContainer}>
-                      <Text style={styles.loadMoreHint}>上滑加载更多</Text>
+                      <Text style={styles.loadMoreHint}>{t("auth.scrollForMore")}</Text>
                     </View>
                   ) : brandOptions.length > 0 ? (
                     <View style={styles.loadMoreContainer}>
-                      <Text style={styles.loadMoreHint}>已加载全部品牌</Text>
+                      <Text style={styles.loadMoreHint}>{t("auth.allBrandsLoaded")}</Text>
                     </View>
                   ) : null
                 }
@@ -1031,7 +1031,7 @@ const EditProfileScreen = () => {
               style={styles.confirmButton}
               onPress={() => setShowBrandModal(false)}
             >
-              <Text style={styles.confirmButtonText}>确定</Text>
+              <Text style={styles.confirmButtonText}>{t("common.confirm")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>

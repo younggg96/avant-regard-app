@@ -4,6 +4,7 @@
  */
 
 export { LevelBadge, getLevelTitle } from "./LevelBadge";
+export { getLevelTitleKey, getLevelOptions } from "./levelTitles";
 export { LevelProgressBar } from "./LevelProgressBar";
 export { MonthlyLotteryEntry } from "./MonthlyLotteryEntry";
 export { LevelUpgradeModal } from "./LevelUpgradeModal";

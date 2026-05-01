@@ -53,7 +53,7 @@ const MyCommentsScreen = () => {
             setComments(result);
         } catch (error) {
             console.error("Error loading comments:", error);
-            Alert.show("加载失败，请重试");
+            Alert.show(t("common.loadFailed"));
         } finally {
             setIsLoading(false);
         }
@@ -92,13 +92,13 @@ const MyCommentsScreen = () => {
         try {
             await commentService.deleteComment(commentToDelete.id, user.userId);
             setShowDeleteDialog(false);
-            Alert.show("评论已删除");
+            Alert.show(t("admin.commentDeleted"));
 
             // 从列表中移除
             setComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
         } catch (error) {
             console.error("删除评论失败:", error);
-            Alert.show("删除失败", "请稍后重试");
+            Alert.show(t("common.deleteFailed"), t("common.retryLater"));
         } finally {
             setIsDeleting(false);
             setCommentToDelete(null);
@@ -118,10 +118,10 @@ const MyCommentsScreen = () => {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return "刚刚";
-        if (minutes < 60) return `${minutes}分钟前`;
-        if (hours < 24) return `${hours}小时前`;
-        if (days < 30) return `${days}天前`;
+        if (minutes < 1) return t("time.justNow");
+        if (minutes < 60) return t("time.minutesAgo", { count: minutes });
+        if (hours < 24) return t("time.hoursAgo", { count: hours });
+        if (days < 30) return t("time.daysAgo", { count: days });
         return date.toLocaleDateString("zh-CN");
     };
 
@@ -201,7 +201,7 @@ const MyCommentsScreen = () => {
                                     color={theme.colors.gray300}
                                 />
                                 <Text fontSize="$xs" color="$gray300">
-                                    {item.replyCount} 回复
+                                    {item.replyCount} {t("post.reply")}
                                 </Text>
                             </HStack>
                         )}
@@ -216,7 +216,7 @@ const MyCommentsScreen = () => {
                                     color={theme.colors.gray300}
                                 />
                                 <Text fontSize="$xs" color="$gray300">
-                                    删除
+                                    {t("common.delete")}
                                 </Text>
                             </HStack>
                         </Pressable>
@@ -302,7 +302,7 @@ const MyCommentsScreen = () => {
                                         color="$black"
                                         textAlign="center"
                                     >
-                                        确认删除
+                                        {t("comments.confirmDelete")}
                                     </Text>
                                     <Text
                                         fontSize="$sm"
@@ -310,7 +310,7 @@ const MyCommentsScreen = () => {
                                         textAlign="center"
                                         mt="$sm"
                                     >
-                                        删除后将无法恢复，确定要删除这条评论吗？
+                                        {t("comments.confirmDeleteComment")}
                                     </Text>
                                 </VStack>
 
@@ -339,7 +339,7 @@ const MyCommentsScreen = () => {
                                             fontWeight="$medium"
                                             color="$gray600"
                                         >
-                                            取消
+                                            {t("common.cancel")}
                                         </Text>
                                     </Pressable>
 
@@ -364,7 +364,7 @@ const MyCommentsScreen = () => {
                                                         fontWeight="$semibold"
                                                         color="#FF3040"
                                                     >
-                                                        删除中...
+                                                        {t("common.loading")}
                                                     </Text>
                                                 </>
                                             ) : (
@@ -373,7 +373,7 @@ const MyCommentsScreen = () => {
                                                     fontWeight="$semibold"
                                                     color="#FF3040"
                                                 >
-                                                    删除
+                                                    {t("common.delete")}
                                                 </Text>
                                             )}
                                         </HStack>

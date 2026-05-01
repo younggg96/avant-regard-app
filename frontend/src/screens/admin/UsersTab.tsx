@@ -25,7 +25,7 @@ import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VS
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { LEVEL_TITLES } from "../../components/level/levelTitles";
+import { getLevelTitleKey } from "../../components/level/levelTitles";
 
 /**
  * 三档身份解析 (与 Web 端 /admin/users 对齐):
@@ -68,7 +68,7 @@ function renderKindChip(u: AdminUser, t: (key: string) => string) {
  *   Lv ≥ 1  -> 黑底白字 "Lv3 · 探店官"
  *   Lv 0   -> 灰底灰字 "—"   (与 Web 对齐, 让运营一眼分辨 "未达标" vs "数据缺失")
  */
-function renderLevelChip(level: number) {
+function renderLevelChip(level: number, t: (key: string) => string) {
   if (!level || level < 1) {
     return (
       <Box style={styles.levelChipMuted}>
@@ -76,7 +76,7 @@ function renderLevelChip(level: number) {
       </Box>
     );
   }
-  const title = LEVEL_TITLES[level] ?? "";
+  const title = t(getLevelTitleKey(level));
   return (
     <Box style={styles.levelChip}>
       <Text style={styles.levelChipText}>Lv{level}</Text>
@@ -110,9 +110,9 @@ const UsersTab = () => {
     <Box style={styles.container}>
       <HStack style={styles.subTabBar}>
         {([
-            { key: "users" as SubTab, label: t("admin.userList"), icon: "people-outline" },
-            { key: "reports" as SubTab, label: t("admin.reportRecords"), icon: "flag-outline" },
-            { key: "blocks" as SubTab, label: t("admin.blockRelations"), icon: "ban-outline" },
+            { key: "users" as SubTab, label: t("admin.userList"), icon: "people-outline" as const },
+            { key: "reports" as SubTab, label: t("admin.reportRecords"), icon: "flag-outline" as const },
+            { key: "blocks" as SubTab, label: t("admin.blockRelations"), icon: "ban-outline" as const },
           ]).map((tab) => (
           <Pressable
             key={tab.key}
@@ -296,7 +296,7 @@ const UsersSubTab = () => {
                 {item.username}
               </Text>
               {renderKindChip(item, t)}
-              {renderLevelChip(item.currentLevel ?? 0)}
+              {renderLevelChip(item.currentLevel ?? 0, t)}
               {item.merchant && item.merchant.status !== "APPROVED" && (
                 <Box style={styles.kindChipMuted}>
                   <Text style={styles.kindChipMutedText}>{t("admin.merchantPending")}</Text>
@@ -599,9 +599,9 @@ const UsersSubTab = () => {
                     {t("admin.noTitles")}
                   </Text>
                 ) : (
-                  titleList.map((t) => (
+                  titleList.map((titleItem) => (
                     <HStack
-                      key={t.id}
+                      key={titleItem.id}
                       style={{
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -612,18 +612,18 @@ const UsersSubTab = () => {
                     >
                       <HStack style={{ alignItems: "center", gap: 8, flex: 1 }}>
                         <Ionicons
-                          name={t.isPrimary ? "star" : "star-outline"}
+                          name={titleItem.isPrimary ? "star" : "star-outline"}
                           size={16}
-                          color={t.isPrimary ? "#F59E0B" : theme.colors.gray300}
+                          color={titleItem.isPrimary ? "#F59E0B" : theme.colors.gray300}
                         />
-                        <Text style={{ fontSize: 14, fontWeight: t.isPrimary ? "600" : "400", color: theme.colors.black }}>
-                          {t.title}
+                        <Text style={{ fontSize: 14, fontWeight: titleItem.isPrimary ? "600" : "400", color: theme.colors.black }}>
+                          {titleItem.title}
                         </Text>
-                        {t.isPrimary && (
+                        {titleItem.isPrimary && (
                           <Text style={{ fontSize: 11, color: "#F59E0B", fontWeight: "500" }}>{t("admin.primaryTitle")}</Text>
                         )}
                       </HStack>
-                      <Pressable onPress={() => handleRemoveTitle(t.id)}>
+                      <Pressable onPress={() => handleRemoveTitle(titleItem.id)}>
                         <Ionicons name="close-circle" size={20} color={theme.colors.error} />
                       </Pressable>
                     </HStack>

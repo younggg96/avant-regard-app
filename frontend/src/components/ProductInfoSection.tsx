@@ -15,20 +15,27 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const CATEGORIES = ["外套", "裤装", "鞋装", "裙子", "内搭", "配件"] as const;
+const CATEGORIES = [
+  { value: "外套", labelKey: "productInfo.coat" },
+  { value: "裤装", labelKey: "productInfo.pants" },
+  { value: "鞋装", labelKey: "productInfo.shoes" },
+  { value: "裙子", labelKey: "productInfo.skirt" },
+  { value: "内搭", labelKey: "productInfo.innerwear" },
+  { value: "配件", labelKey: "productInfo.accessory" },
+] as const;
 const LETTER_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const NUMBER_SIZES = [
   "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50",
 ] as const;
-const COLORS: { label: string; value: string }[] = [
-  { label: "黑", value: "黑" },
-  { label: "白", value: "白" },
-  { label: "蓝", value: "蓝" },
-  { label: "红", value: "红" },
-  { label: "棕", value: "棕" },
+const COLORS: { labelKey: string; value: string }[] = [
+  { labelKey: "productInfo.black", value: "黑" },
+  { labelKey: "productInfo.white", value: "白" },
+  { labelKey: "productInfo.blue", value: "蓝" },
+  { labelKey: "productInfo.red", value: "红" },
+  { labelKey: "productInfo.brown", value: "棕" },
 ];
 
-export type ItemCategory = (typeof CATEGORIES)[number];
+export type ItemCategory = (typeof CATEGORIES)[number]["value"];
 
 export interface ProductInfo {
   itemBrand?: string;
@@ -190,11 +197,11 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
               {CATEGORIES.map((cat) => {
-                const selected = value.itemCategory === cat;
+                const selected = value.itemCategory === cat.value;
                 return (
                   <Pressable
-                    key={cat}
-                    onPress={() => handleCategorySelect(cat)}
+                    key={cat.value}
+                    onPress={() => handleCategorySelect(cat.value)}
                     bg={selected ? "$accent" : "$gray100"}
                     rounded="$full"
                     px="$md"
@@ -204,7 +211,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                       color={selected ? "$white" : "$gray500"}
                       fontSize="$sm"
                     >
-                      {cat}
+                      {t(cat.labelKey)}
                     </Text>
                   </Pressable>
                 );
@@ -278,7 +285,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
               {t("productInfo.color")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
-              {COLORS.map(({ label, value: colorVal }) => {
+              {COLORS.map(({ labelKey, value: colorVal }) => {
                 const selected = value.itemColors?.includes(colorVal);
                 return (
                   <Pressable
@@ -293,7 +300,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                       color={selected ? "$white" : "$gray500"}
                       fontSize="$sm"
                     >
-                      {label}
+                      {t(labelKey)}
                     </Text>
                   </Pressable>
                 );

@@ -5,6 +5,7 @@
 
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../theme";
 import { LevelTaskProgress } from "../../services/levelService";
 
@@ -13,14 +14,20 @@ interface Props {
 }
 
 export const LevelProgressBar: React.FC<Props> = ({ task }) => {
+  const { t } = useTranslation();
   const pct = task.target > 0
     ? Math.max(0, Math.min(1, task.progress / task.target))
     : 0;
 
+  const label = t(`level.taskLabels.${task.action}`, {
+    target: task.target,
+    defaultValue: task.label,
+  });
+
   return (
     <View style={styles.row}>
       <View style={styles.labelRow}>
-        <Text style={styles.label}>{task.label}</Text>
+        <Text style={styles.label}>{label}</Text>
         <Text style={[styles.count, task.completed && styles.countDone]}>
           {task.progress}/{task.target}
         </Text>

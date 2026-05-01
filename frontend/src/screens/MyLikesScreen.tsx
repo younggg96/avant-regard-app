@@ -70,15 +70,15 @@ const MyLikesScreen = () => {
     const convertToDisplayPost = (apiPost: Post): DisplayPost => {
         return {
             id: String(apiPost.id),
-            title: apiPost.title || "无标题",
+            title: apiPost.title || t('community.noTitle'),
             image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
             author: {
                 id: String(apiPost.userId),
-                name: apiPost.username || "用户",
+                name: apiPost.username || t('profile.user'),
                 avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
             },
             content: {
-                title: apiPost.title || "无标题",
+                title: apiPost.title || t('community.noTitle'),
                 description: apiPost.contentText || "",
                 images: apiPost.imageUrls || [],
                 coverAspectRatio:
@@ -105,7 +105,7 @@ const MyLikesScreen = () => {
             setLikedPosts(result.map(convertToDisplayPost));
         } catch (error) {
             console.error("Error loading liked posts:", error);
-            Alert.show("加载失败，请重试");
+            Alert.show(t('myLikes.loadFailed'));
         } finally {
             setPostsLoading(false);
         }
@@ -119,7 +119,7 @@ const MyLikesScreen = () => {
             setLikedComments(result);
         } catch (error) {
             console.error("Error loading liked comments:", error);
-            Alert.show("加载失败，请重试");
+            Alert.show(t('myLikes.loadFailed'));
         } finally {
             setCommentsLoading(false);
         }
@@ -155,10 +155,10 @@ const MyLikesScreen = () => {
         try {
             await postService.unlikePost(Number(post.id), user.userId);
             setLikedPosts((prev) => prev.filter((p) => p.id !== post.id));
-            Alert.show("已取消点赞");
+            Alert.show(t('myLikes.unlikeSuccess'));
         } catch (error) {
             console.error("取消点赞失败:", error);
-            Alert.show("操作失败，请重试");
+            Alert.show(t('myLikes.operationFailed'));
         }
     };
 
@@ -168,10 +168,10 @@ const MyLikesScreen = () => {
         try {
             await commentService.unlikeComment(comment.id, user.userId);
             setLikedComments((prev) => prev.filter((c) => c.comment.id !== comment.id));
-            Alert.show("已取消点赞");
+            Alert.show(t('myLikes.unlikeSuccess'));
         } catch (error) {
             console.error("取消点赞失败:", error);
-            Alert.show("操作失败，请重试");
+            Alert.show(t('myLikes.operationFailed'));
         }
     };
 
@@ -191,11 +191,11 @@ const MyLikesScreen = () => {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return "刚刚";
-        if (minutes < 60) return `${minutes}分钟前`;
-        if (hours < 24) return `${hours}小时前`;
-        if (days < 30) return `${days}天前`;
-        return date.toLocaleDateString("zh-CN");
+        if (minutes < 1) return t('time.justNow');
+        if (minutes < 60) return t('time.minutesAgo', { count: minutes });
+        if (hours < 24) return t('time.hoursAgo', { count: hours });
+        if (days < 30) return t('time.daysAgo', { count: days });
+        return date.toLocaleDateString();
     };
 
     const renderPostsTab = () => {
@@ -348,7 +348,7 @@ const MyLikesScreen = () => {
                                         color={theme.colors.gray300}
                                     />
                                     <Text fontSize="$xs" color="$gray300">
-                                        取消点赞
+                                        {t('myLikes.unlikeAction')}
                                     </Text>
                                 </HStack>
                             </Pressable>

@@ -590,11 +590,7 @@ const SearchScreen = () => {
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
         <Text fontSize="$md" color="$gray600">
-          找到{" "}
-          <Text fontWeight="$semibold" color="$black">
-            {postTotal}
-          </Text>{" "}
-          个帖子
+          {t("search.foundResults", { count: postTotal, type: t("search.posts") })}
         </Text>
       </HStack>
 
@@ -644,7 +640,7 @@ const SearchScreen = () => {
             mt="$md"
             textAlign="center"
           >
-            未找到相关帖子
+            {t("search.noResults")}
           </Text>
           <Text
             fontSize="$sm"
@@ -653,7 +649,7 @@ const SearchScreen = () => {
             textAlign="center"
             lineHeight="$lg"
           >
-            试试其他关键词吧
+            {t("search.tryOtherKeywords")}
           </Text>
         </VStack>
       )}
@@ -665,11 +661,7 @@ const SearchScreen = () => {
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
         <Text fontSize="$md" color="$gray600">
-          找到{" "}
-          <Text fontWeight="$semibold" color="$black">
-            {userResults.length}
-          </Text>{" "}
-          个用户
+          {t("search.foundResults", { count: userResults.length, type: t("search.users") })}
         </Text>
       </HStack>
 
@@ -697,7 +689,7 @@ const SearchScreen = () => {
             mt="$md"
             textAlign="center"
           >
-            未找到相关用户
+            {t("search.noResults")}
           </Text>
           <Text
             fontSize="$sm"
@@ -706,7 +698,7 @@ const SearchScreen = () => {
             textAlign="center"
             lineHeight="$lg"
           >
-            支持用户名模糊搜索和用户ID精确搜索
+            {t("search.searchUsersHint")}
           </Text>
         </VStack>
       )}
@@ -717,11 +709,7 @@ const SearchScreen = () => {
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
         <Text fontSize="$md" color="$gray600">
-          找到{" "}
-          <Text fontWeight="$semibold" color="$black">
-            {brandResults.length}
-          </Text>{" "}
-          个品牌
+          {t("search.foundResults", { count: brandResults.length, type: t("search.brands") })}
         </Text>
       </HStack>
 
@@ -749,7 +737,7 @@ const SearchScreen = () => {
             mt="$md"
             textAlign="center"
           >
-            未找到相关品牌
+            {t("search.noResults")}
           </Text>
           <Text
             fontSize="$sm"
@@ -758,7 +746,7 @@ const SearchScreen = () => {
             textAlign="center"
             lineHeight="$lg"
           >
-            试试其他品牌名称吧
+            {t("search.tryOtherKeywords")}
           </Text>
         </VStack>
       )}
@@ -801,10 +789,10 @@ const SearchScreen = () => {
             style={styles.searchInput}
             placeholder={
               searchType === "posts"
-                ? "搜索帖子标题、内容、作者..."
+                ? t("search.searchPostsPlaceholder")
                 : searchType === "users"
-                  ? "搜索用户名或用户ID..."
-                  : "搜索品牌名称..."
+                  ? t("search.searchUsersPlaceholder")
+                  : t("search.searchBrandsPlaceholder")
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
@@ -836,7 +824,7 @@ const SearchScreen = () => {
           rounded="$sm"
         >
           <Text color="$white" fontSize="$sm" fontWeight="$semibold">
-            搜索
+            {t("common.search")}
           </Text>
         </Pressable>
       </HStack>
@@ -857,11 +845,11 @@ const SearchScreen = () => {
                 alignItems="center"
               >
                 <Text fontSize="$md" fontWeight="$semibold" color="$black">
-                  搜索历史
+                  {t("search.recent")}
                 </Text>
                 <Pressable onPress={handleClearAllHistory}>
                   <Text fontSize="$sm" color="$gray600">
-                    清空
+                    {t("search.clear")}
                   </Text>
                 </Pressable>
               </HStack>
@@ -894,7 +882,7 @@ const SearchScreen = () => {
                 mt="$md"
                 textAlign="center"
               >
-                {searchType === "posts" ? "搜索帖子" : searchType === "users" ? "搜索用户" : "搜索品牌"}
+                {searchType === "posts" ? t("search.posts") : searchType === "users" ? t("search.users") : t("search.brands")}
               </Text>
               <Text
                 fontSize="$sm"
@@ -904,10 +892,10 @@ const SearchScreen = () => {
                 lineHeight="$lg"
               >
                 {searchType === "posts"
-                  ? "输入关键词搜索帖子标题、内容或作者"
+                  ? t("search.searchPostsHint")
                   : searchType === "users"
-                    ? "输入用户名模糊搜索或用户ID精确搜索"
-                    : "输入品牌名称进行搜索"}
+                    ? t("search.searchUsersHint")
+                    : t("search.searchBrandsHint")}
               </Text>
             </VStack>
           )}
@@ -917,7 +905,7 @@ const SearchScreen = () => {
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator size="small" color={theme.colors.black} />
           <Text fontSize="$md" color="$gray600" mt="$md">
-            搜索中...
+            {t("common.loading")}
           </Text>
         </VStack>
       ) : (

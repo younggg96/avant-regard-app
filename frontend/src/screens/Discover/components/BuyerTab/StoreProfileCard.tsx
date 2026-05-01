@@ -15,6 +15,7 @@
  */
 import React from "react";
 import { StyleSheet, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
@@ -50,6 +51,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   onDetailPress,
   onMorePress,
 }) => {
+  const { t } = useTranslation();
   const {
     name,
     description,
@@ -96,7 +98,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                   {name}
                 </Text>
                 <View style={styles.typeBadge}>
-                  <Text style={styles.typeBadgeText}>买手店</Text>
+                  <Text style={styles.typeBadgeText}>{t("discover.buyerStoreBadge")}</Text>
                 </View>
               </HStack>
               <Text fontSize={12} color="$gray300" numberOfLines={2} lineHeight={16}>
@@ -156,7 +158,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                       : styles.followButtonTextIdle,
                   ]}
                 >
-                  {isFollowed ? "已关注" : "关注"}
+                  {isFollowed ? t("discover.buyerFollowedBtn") : t("discover.buyerFollowBtn")}
                 </Text>
               </Pressable>
               <Pressable
@@ -175,11 +177,11 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
       </Pressable>
 
       <HStack style={styles.statsRow}>
-        <StatColumn value={followerLabel} label="粉丝" />
+        <StatColumn value={followerLabel} label={t("discover.buyerStatFollowers")} />
         <View style={styles.statsDivider} />
-        <StatColumn value={followingLabel} label="关注" />
+        <StatColumn value={followingLabel} label={t("discover.buyerStatFollowing")} />
         <View style={styles.statsDivider} />
-        <StatColumn value={postCountLabel} label="帖子" />
+        <StatColumn value={postCountLabel} label={t("discover.buyerStatPosts")} />
       </HStack>
 
       <Box px="$md" pb="$md">

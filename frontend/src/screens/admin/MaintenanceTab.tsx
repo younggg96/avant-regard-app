@@ -103,7 +103,7 @@ const MaintenanceTab = () => {
         saved.enabled ? t("admin.maintenanceEnabled") : t("admin.maintenanceDisabled")
       );
     } catch (e) {
-      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : "请重试");
+      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : t("common.retryLater"));
     } finally {
       setSaving(false);
     }

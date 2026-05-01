@@ -315,7 +315,7 @@ const ChatScreen = () => {
             <Pressable
               style={StyleSheet.absoluteFillObject}
               onPress={exitWriting}
-              accessibilityLabel="退出输入"
+              accessibilityLabel={t('chat.exitInput')}
             />
           )}
         </View>

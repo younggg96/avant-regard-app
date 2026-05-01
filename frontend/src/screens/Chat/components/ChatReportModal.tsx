@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
@@ -16,12 +17,12 @@ import {
 } from "../../../services/moderationService";
 import { Alert } from "../../../utils/Alert";
 
-const CHAT_REPORT_REASONS: { key: ReportReason; label: string; icon: string }[] = [
-  { key: "PORNOGRAPHY", label: "色情低俗", icon: "eye-off-outline" },
-  { key: "VIOLENCE", label: "暴力恐怖", icon: "skull-outline" },
-  { key: "SPAM", label: "垃圾广告", icon: "megaphone-outline" },
-  { key: "HARASSMENT", label: "辱骂骚扰", icon: "sad-outline" },
-  { key: "OTHER", label: "其他", icon: "ellipsis-horizontal-circle-outline" },
+const CHAT_REPORT_REASONS: { key: ReportReason; labelKey: string; icon: string }[] = [
+  { key: "PORNOGRAPHY", labelKey: "chat.reasonPornography", icon: "eye-off-outline" },
+  { key: "VIOLENCE", labelKey: "chat.reasonViolence", icon: "skull-outline" },
+  { key: "SPAM", labelKey: "chat.reasonSpam", icon: "megaphone-outline" },
+  { key: "HARASSMENT", labelKey: "chat.reasonHarassment", icon: "sad-outline" },
+  { key: "OTHER", labelKey: "report.other", icon: "ellipsis-horizontal-circle-outline" },
 ];
 
 type ReportTarget =
@@ -39,6 +40,7 @@ export const ChatReportModal = ({
   target,
   onClose,
 }: ChatReportModalProps) => {
+  const { t } = useTranslation();
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,11 +66,11 @@ export const ChatReportModal = ({
         reason: selectedReason,
       });
       handleClose();
-      Alert.show("已收到，我们会处理");
+      Alert.show(t('chat.reportReceived'));
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "举报失败";
+      const msg = error instanceof Error ? error.message : t('report.failed');
       if (msg.includes("已举报")) {
-        Alert.show("24小时内已举报过，请勿重复提交");
+        Alert.show(t('chat.reportDuplicate'));
       } else {
         Alert.show(msg);
       }
@@ -77,7 +79,7 @@ export const ChatReportModal = ({
     }
   };
 
-  const title = target?.type === "MESSAGE" ? "举报此消息" : "举报该用户";
+  const title = target?.type === "MESSAGE" ? t('chat.reportMessage') : t('chat.reportUser');
 
   return (
     <ActionSheet
@@ -96,7 +98,7 @@ export const ChatReportModal = ({
           {submitting ? (
             <ActivityIndicator size="small" color={theme.colors.white} />
           ) : (
-            <Text style={styles.submitText}>提交举报</Text>
+            <Text style={styles.submitText}>{t('reportBlock.submitReport')}</Text>
           )}
         </TouchableOpacity>
       }
@@ -129,7 +131,7 @@ export const ChatReportModal = ({
                   selectedReason === r.key && styles.reasonTextSelected,
                 ]}
               >
-                {r.label}
+                {t(r.labelKey)}
               </Text>
               {selectedReason === r.key && (
                 <Ionicons name="checkmark" size={20} color={theme.colors.black} />

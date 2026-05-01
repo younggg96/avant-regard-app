@@ -20,6 +20,7 @@
  */
 
 import Link from "next/link";
+import { Heart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -195,8 +196,8 @@ function StoreCard({
             )}
           </div>
           {isFavorited && (
-            <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/60 font-label text-[12px] text-white">
-              ♥
+            <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white">
+              <Heart size={13} fill="currentColor" strokeWidth={0} />
             </span>
           )}
         </div>
@@ -206,8 +207,9 @@ function StoreCard({
               {store.name}
             </h3>
             {typeof store.favoriteCount === "number" && store.favoriteCount > 0 && (
-              <span className="whitespace-nowrap font-label text-[11px] text-[color:var(--ink-muted)]">
-                ♥ {store.favoriteCount}
+              <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-label text-[11px] text-[color:var(--ink-muted)]">
+                <Heart size={10} fill="currentColor" strokeWidth={0} />
+                {store.favoriteCount}
               </span>
             )}
           </div>

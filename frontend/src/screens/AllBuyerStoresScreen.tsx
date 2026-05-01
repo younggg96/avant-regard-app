@@ -196,7 +196,7 @@ const AllBuyerStoresScreen: React.FC = () => {
     <SafeAreaView style={styles.root} edges={["top"]}>
       <ScreenHeader
         title={t("store.allStores")}
-        subtitle={total > 0 ? `共 ${total} 家` : undefined}
+        subtitle={total > 0 ? t('store.totalCount', { count: total }) : undefined}
         showBack
       />
 

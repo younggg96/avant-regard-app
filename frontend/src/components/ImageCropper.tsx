@@ -7,6 +7,7 @@ import {
   Text,
   StatusBar,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import {
@@ -36,8 +37,8 @@ interface AspectConfig {
   ratio?: number;
 }
 
-const ASPECT_CONFIGS: Record<AspectRatio, AspectConfig> = {
-  free: { label: "自由裁剪" },
+const ASPECT_CONFIGS: Record<AspectRatio, AspectConfig & { i18nKey?: string }> = {
+  free: { label: "自由裁剪", i18nKey: "imageCropper.freeCrop" },
   "1:1": { label: "1:1", ratio: 1 },
   "4:3": { label: "4:3", ratio: 4 / 3 },
   "16:9": { label: "16:9", ratio: 16 / 9 },
@@ -66,6 +67,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   onDone,
   minBoxSize = 60,
 }) => {
+  const { t } = useTranslation();
   const [selectedAspect, setSelectedAspect] = useState<AspectRatio>(aspect);
   const [imageDimensions, setImageDimensions] =
     useState<ImageDimensions | null>(null);
@@ -551,9 +553,9 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
         <StatusBar barStyle="light-content" backgroundColor="black" />
         <View style={styles.header}>
           <TouchableOpacity onPress={onCancel} style={styles.headerButton}>
-            <Text style={styles.headerButtonText}>取消</Text>
+            <Text style={styles.headerButtonText}>{t("common.cancel")}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>裁剪图片</Text>
+          <Text style={styles.headerTitle}>{t("imageCropper.title")}</Text>
           <View style={styles.headerButton} />
         </View>
 
@@ -632,7 +634,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
                     styles.aspectButtonTextActive,
                   ]}
                 >
-                  {ASPECT_CONFIGS[aspectKey].label}
+                  {ASPECT_CONFIGS[aspectKey].i18nKey ? t(ASPECT_CONFIGS[aspectKey].i18nKey!) : ASPECT_CONFIGS[aspectKey].label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -640,7 +642,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
 
           <View style={styles.actionContainer}>
             <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
-              <Text style={styles.doneButtonText}>完成裁剪</Text>
+              <Text style={styles.doneButtonText}>{t("imageCropper.done")}</Text>
             </TouchableOpacity>
           </View>
         </View>

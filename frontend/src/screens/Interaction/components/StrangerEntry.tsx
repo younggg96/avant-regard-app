@@ -1,5 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
@@ -14,11 +15,12 @@ interface StrangerEntryProps {
 }
 
 export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) => {
+  const { t } = useTranslation();
   if (conversations.length === 0) return null;
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   const latest = conversations[0];
-  const latestName = latest?.otherUser?.username || "未知用户";
+  const latestName = latest?.otherUser?.username || t("interaction.unknownUser");
 
   return (
     <Pressable
@@ -49,7 +51,7 @@ export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) =>
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
             <Text fontSize="$sm" fontWeight="$semibold" color="$black">
-              陌生人消息
+              {t("strangerMessages.title")}
             </Text>
             {latest && (
               <Text fontSize="$xs" color="$gray200">
@@ -63,8 +65,8 @@ export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) =>
             numberOfLines={1}
           >
             {latest
-              ? `${latestName}: ${formatLastMessage(latest.lastMessageText) || "发来一条消息"}`
-              : "暂无陌生人消息"}
+              ? `${latestName}: ${formatLastMessage(latest.lastMessageText) || t("interaction.sentMessage")}`
+              : t("strangerMessages.empty")}
           </Text>
         </VStack>
 

@@ -11,6 +11,7 @@ import {
   Text,
   LayoutChangeEvent,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image, ImageProps, ImageSource } from 'expo-image';
 import { theme } from '../../theme';
 import { getOptimizedImageUrl, ImageSize } from '../../utils/imageUtils';
@@ -68,6 +69,7 @@ const OptimizedImageInner = ({
   style,
   ...props
 }: OptimizedImageProps) => {
+  const { t } = useTranslation();
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const containerHeightRef = useRef(0);
@@ -163,7 +165,7 @@ const OptimizedImageInner = ({
           style={[StyleSheet.absoluteFill, styles.loadingOverlay]}
         >
           <ActivityIndicator size="small" color={theme.colors.gray300} />
-          {showLabel && <Text style={styles.loadingText}>加载中…</Text>}
+          {showLabel && <Text style={styles.loadingText}>{t("common.loading")}</Text>}
         </View>
       )}
 

@@ -1,4 +1,5 @@
 import { Dimensions } from "react-native";
+import i18n from "@/i18n";
 import { AuthMode } from "./types";
 
 export const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -54,21 +55,24 @@ export const AGE_RANGES = [
 ];
 
 // 页面标题配置
-export const AUTH_TITLES: Record<AuthMode, string> = {
-  login: "登录",
-  register: "注册",
-  forgotPassword: "忘记密码",
-  verification: "验证码登录",
-  completeProfile: "完善资料",
+const AUTH_TITLE_KEYS: Record<AuthMode, string> = {
+  login: "auth.login",
+  register: "auth.register",
+  forgotPassword: "auth.forgotPasswordTitle",
+  verification: "auth.verificationLogin",
+  completeProfile: "auth.completeProfile",
 };
 
-export const AUTH_SUBTITLES: Record<AuthMode, string> = {
-  login: "欢迎回来",
-  register: "创建您的账户",
-  forgotPassword: "重置您的密码",
-  verification: "输入验证码",
-  completeProfile: "让我们更好地了解您",
+const AUTH_SUBTITLE_KEYS: Record<AuthMode, string> = {
+  login: "auth.loginTitle",
+  register: "auth.registerSubtitle",
+  forgotPassword: "auth.forgotPasswordSubtitle",
+  verification: "auth.verificationSubtitle",
+  completeProfile: "auth.completeProfileSubtitle",
 };
+
+export const getAuthTitle = (mode: AuthMode): string => i18n.t(AUTH_TITLE_KEYS[mode]);
+export const getAuthSubtitle = (mode: AuthMode): string => i18n.t(AUTH_SUBTITLE_KEYS[mode]);
 
 // 默认国家区号（中国）
 export const DEFAULT_COUNTRY_CODE = {
@@ -76,6 +80,9 @@ export const DEFAULT_COUNTRY_CODE = {
   name: "中国",
   flag: "🇨🇳",
   dialCode: "+86",
+  get localizedName() {
+    return i18n.t("countries.CN");
+  },
 };
 
 // 初始表单数据

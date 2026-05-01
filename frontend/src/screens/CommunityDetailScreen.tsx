@@ -404,7 +404,7 @@ const CommunityDetailScreen = () => {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <ScreenHeader
-          title="社区"
+          title={t("community.title")}
           showBackButton
           onBackPress={() => navigation.goBack()}
         />
@@ -424,7 +424,7 @@ const CommunityDetailScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={community?.name || "社区"}
+        title={community?.name || t("community.title")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
@@ -467,21 +467,21 @@ const CommunityDetailScreen = () => {
                   {community.name}
                 </Text>
                 <Text fontSize="$sm" color="$gray500" numberOfLines={2}>
-                  {community.description || "暂无简介"}
+                  {community.description || t("community.noDescription")}
                 </Text>
                 {community.description && community.description.length > 40 && (
                   <Pressable onPress={() => setDescModalVisible(true)}>
                     <Text fontSize="$xs" color="$black" fontWeight="$medium" mt={2}>
-                      查看全部
+                      {t("community.viewAll")}
                     </Text>
                   </Pressable>
                 )}
                 <HStack gap="$md" mt="$xs">
                   <Text fontSize="$xs" color="$gray400">
-                    {community.memberCount} 成员
+                    {community.memberCount} {t("community.members")}
                   </Text>
                   <Text fontSize="$xs" color="$gray400">
-                    {community.postCount} 帖子
+                    {community.postCount} {t("community.posts")}
                   </Text>
                 </HStack>
               </VStack>
@@ -497,7 +497,7 @@ const CommunityDetailScreen = () => {
                   color={community.isFollowing ? "$black" : "$white"}
                   fontWeight="$medium"
                 >
-                  {community.isFollowing ? "已关注" : "关注"}
+                  {community.isFollowing ? t("community.joined") : t("community.join")}
                 </Text>
               </Pressable>
             </HStack>
@@ -520,7 +520,7 @@ const CommunityDetailScreen = () => {
               mt="$md"
               textAlign="center"
             >
-              加载失败
+              {t("common.loadFailed")}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
               {error}
@@ -533,7 +533,7 @@ const CommunityDetailScreen = () => {
               rounded="$sm"
             >
               <Text color="$white" fontWeight="$medium">
-                点击重试
+                {t("community.tapRetry")}
               </Text>
             </Pressable>
           </VStack>
@@ -552,10 +552,10 @@ const CommunityDetailScreen = () => {
               mt="$md"
               textAlign="center"
             >
-              暂无帖子
+              {t("community.noPosts")}
             </Text>
             <Text color="$gray400" textAlign="center" lineHeight="$lg">
-              快来发布第一篇帖子吧
+              {t("community.beFirstPost")}
             </Text>
           </VStack>
         ) : (
@@ -585,7 +585,7 @@ const CommunityDetailScreen = () => {
           <HStack justifyContent="center" alignItems="center" py="$lg">
             <ActivityIndicator color={theme.colors.accent} />
             <Text color="$gray400" fontSize="$sm" ml="$sm">
-              加载更多...
+              {t("common.loadMore")}...
             </Text>
           </HStack>
         )}

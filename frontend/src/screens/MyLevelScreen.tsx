@@ -35,7 +35,7 @@ import {
   LevelBadge,
   LevelProgressBar,
   MonthlyLotteryEntry,
-  getLevelTitle,
+  getLevelTitleKey,
 } from "../components/level";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
@@ -127,11 +127,11 @@ const MyLevelScreen: React.FC = () => {
           )}
 
           <Text style={styles.heroLevel}>
-            {currentLevel > 0 ? `Lv${currentLevel}` : "未达等级"}
+            {currentLevel > 0 ? `Lv${currentLevel}` : t("level.notStarted")}
           </Text>
           {currentLevel > 0 ? (
             <Text style={styles.heroTitle}>
-              {getLevelTitle(currentLevel)}
+              {t(getLevelTitleKey(currentLevel))}
             </Text>
           ) : null}
 
@@ -144,7 +144,7 @@ const MyLevelScreen: React.FC = () => {
                 style={{ marginRight: 4 }}
               />
               <Text style={styles.pendingChipText}>
-                Lv{pendingLevel} 审核中
+                {t("level.pendingReview", { level: pendingLevel })}
               </Text>
             </View>
           ) : null}
@@ -154,18 +154,21 @@ const MyLevelScreen: React.FC = () => {
         {status?.nextLevel ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
-              距离 Lv{status.nextLevel} · {status.nextLevelTitle}
+              {t("level.toNextLevel", {
+                level: status.nextLevel,
+                title: status.nextLevelTitle ?? t(getLevelTitleKey(status.nextLevel!)),
+              })}
             </Text>
             {status.nextLevelBenefit ? (
               <Text style={styles.cardSubtitle}>
-                解锁后: {status.nextLevelBenefit}
+                {t("level.unlockBenefit", { benefit: status.nextLevelBenefit })}
               </Text>
             ) : null}
 
             <View style={{ marginTop: theme.spacing.md }}>
               {status.nextTasks.length === 0 ? (
                 <Text style={styles.noTaskText}>
-                  该等级由运营人工授予, 暂无自动任务
+                  {t("level.manualGrantOnly")}
                 </Text>
               ) : (
                 status.nextTasks.map((task) => (
@@ -176,15 +179,15 @@ const MyLevelScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>已达顶级</Text>
-            <Text style={styles.cardSubtitle}>恭喜, 您已是荣誉官</Text>
+            <Text style={styles.cardTitle}>{t("level.topReached")}</Text>
+            <Text style={styles.cardSubtitle}>{t("level.congratsUpgrade")} · {t(getLevelTitleKey(5))}</Text>
           </View>
         )}
 
         {/* ============ 已解锁权益 ============ */}
         {benefits.length > 0 ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>我的权益</Text>
+            <Text style={styles.cardTitle}>{t("level.myBenefits")}</Text>
             {benefits.map((b) => (
               <View key={b.benefitId} style={styles.benefitRow}>
                 <View style={{ flex: 1 }}>
@@ -193,7 +196,7 @@ const MyLevelScreen: React.FC = () => {
                     <Text style={styles.benefitDesc}>{b.description}</Text>
                   ) : null}
                   <Text style={styles.benefitQuota}>
-                    剩余 {b.remaining} / {b.quota}
+                    {t("level.remaining", { remaining: b.remaining, quota: b.quota })}
                   </Text>
                 </View>
 
@@ -201,14 +204,14 @@ const MyLevelScreen: React.FC = () => {
                 {b.benefitType === "FREE_TICKET_LV4" ? (
                   <View style={styles.offlineChip}>
                     <Text style={styles.offlineChipText}>
-                      {b.remaining > 0 ? "报名活动时使用" : "已用完"}
+                      {b.remaining > 0 ? t("level.freeTicketUse") : t("level.exhausted")}
                     </Text>
                   </View>
                 ) : null}
 
                 {b.benefitType === "ANNUAL_LV5" ? (
                   <View style={styles.offlineChip}>
-                    <Text style={styles.offlineChipText}>联系运营使用</Text>
+                    <Text style={styles.offlineChipText}>{t("level.annualPerksUse")}</Text>
                   </View>
                 ) : null}
               </View>
@@ -224,9 +227,14 @@ const MyLevelScreen: React.FC = () => {
 
         {/* ============ 全量规则时间线 ============ */}
         <View style={[styles.card, { marginBottom: 32 }]}>
-          <Text style={styles.cardTitle}>等级路径</Text>
+          <Text style={styles.cardTitle}>{t("level.levelRoadmap")}</Text>
           {rules.map((spec) => {
             const reached = currentLevel >= spec.level;
+            const specTitle = t(getLevelTitleKey(spec.level)) || spec.title;
+            const specSubtitle =
+              t(`level.subtitles.${spec.level}`) || spec.subtitle;
+            const specBenefit =
+              t(`level.benefits.${spec.level}`) || spec.benefit;
             return (
               <View key={spec.level} style={styles.timelineRow}>
                 <View
@@ -237,29 +245,34 @@ const MyLevelScreen: React.FC = () => {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.timelineLv}>
-                    Lv{spec.level} · {spec.title}
+                    Lv{spec.level} · {specTitle}
                   </Text>
-                  {spec.subtitle ? (
-                    <Text style={styles.timelineSubtitle}>
-                      {spec.subtitle}
-                    </Text>
+                  {specSubtitle ? (
+                    <Text style={styles.timelineSubtitle}>{specSubtitle}</Text>
                   ) : null}
                   {spec.tasks.length > 0 ? (
                     <Text style={styles.timelineBody}>
-                      {spec.tasks.map((t) => t.label).join(" · ")}
+                      {spec.tasks
+                        .map((task) =>
+                          t(`level.taskLabels.${task.action}`, {
+                            target: task.target,
+                            defaultValue: task.label,
+                          })
+                        )
+                        .join(" · ")}
                     </Text>
                   ) : null}
-                  {spec.benefit ? (
+                  {specBenefit ? (
                     <Text style={styles.timelineBenefit}>
-                      权益: {spec.benefit}
+                      {t("level.benefit")}: {specBenefit}
                     </Text>
                   ) : null}
                   <Text style={styles.timelineMode}>
                     {spec.mode === "AUTO"
-                      ? "自动升级"
+                      ? t("level.autoUpgrade")
                       : spec.mode === "AUDIT"
-                      ? "达标后需 Admin 审核"
-                      : "仅 Admin 人工授予"}
+                      ? t("level.auditUpgrade")
+                      : t("level.manualUpgrade")}
                   </Text>
                 </View>
               </View>

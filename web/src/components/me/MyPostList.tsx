@@ -9,6 +9,7 @@
  */
 
 import useSWR from "swr";
+import { useTranslation } from "react-i18next";
 import { PostCard } from "@/components/PostCard";
 import { useAuthStore } from "@/lib/auth/store";
 import type { Post } from "@/lib/types";
@@ -28,6 +29,7 @@ export function MyPostList({
   fetcher,
   swrKey,
 }: MyPostListProps) {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const userId = user?.userId;
 
@@ -49,13 +51,15 @@ export function MyPostList({
 
       {isLoading && (
         <div className="font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
-          加载中…
+          {t("common.loadingEllipsis")}
         </div>
       )}
 
       {error && (
         <div className="rounded border border-red-500/20 bg-red-500/5 p-4 font-serif text-sm text-red-600 dark:text-red-400">
-          加载失败：{(error as Error).message}
+          {t("common.loadFailedWithMessage", {
+            message: (error as Error).message,
+          })}
         </div>
       )}
 

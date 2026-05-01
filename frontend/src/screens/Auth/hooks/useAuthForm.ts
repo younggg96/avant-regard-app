@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { TextInput, ScrollView, LayoutChangeEvent, Platform } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
+import i18n from "@/i18n";
 import { Alert } from "../../../utils/Alert";
 import { authService, LoginResponse } from "../../../services/authService";
 import { userInfoService, Gender, UserProfileInfo } from "../../../services/userInfoService";
@@ -241,30 +242,30 @@ export const useAuthForm = () => {
   // 发送验证码（根据 loginMethod 发送短信或邮箱验证码）
   const sendVerificationCode = useCallback(async () => {
     if (countdown > 0) {
-      Alert.show(`请等待 ${countdown} 秒后再试`);
+      Alert.show(i18n.t('auth.waitCountdown', { count: countdown }));
       return;
     }
 
     if (loginMethod === "email") {
       if (!validateEmail(formData.email)) {
-        Alert.show("提示: 请输入正确的邮箱地址");
+        Alert.show(i18n.t('auth.invalidEmail'));
         return;
       }
       setLoading(true);
       try {
         await authService.sendEmailOtp({ email: formData.email.trim() });
         setCountdown(60);
-        Alert.show("验证码已发送至 " + formData.email);
+        Alert.show(i18n.t('auth.codeSentTo', { target: formData.email }));
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
-        Alert.show("发送失败: " + message);
+          error instanceof Error ? error.message : i18n.t('auth.codeFailed');
+        Alert.show(i18n.t('auth.sendFailedMsg', { message }));
       } finally {
         setLoading(false);
       }
     } else {
       if (!validatePhone(formData.phone)) {
-        Alert.show("提示: 请输入正确的手机号码");
+        Alert.show(i18n.t('auth.invalidPhone'));
         return;
       }
       const fullPhone = getFullPhoneNumber();
@@ -272,11 +273,11 @@ export const useAuthForm = () => {
       try {
         await authService.sendSms({ phone: fullPhone });
         setCountdown(60);
-        Alert.show("验证码已发送至 " + fullPhone);
+        Alert.show(i18n.t('auth.codeSentTo', { target: fullPhone }));
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "验证码发送失败，请稍后重试";
-        Alert.show("发送失败: " + message);
+          error instanceof Error ? error.message : i18n.t('auth.codeFailed');
+        Alert.show(i18n.t('auth.sendFailedMsg', { message }));
       } finally {
         setLoading(false);
       }
@@ -303,7 +304,7 @@ export const useAuthForm = () => {
   // 处理密码登录
   const handleLogin = useCallback(async () => {
     if (!formData.password) {
-      Alert.show("提示: 请输入密码");
+      Alert.show(i18n.t('auth.passwordRequired'));
       return;
     }
 
@@ -312,7 +313,7 @@ export const useAuthForm = () => {
       let response;
       if (loginMethod === "email") {
         if (!validateEmail(formData.email)) {
-          Alert.show("提示: 请输入正确的邮箱地址");
+          Alert.show(i18n.t('auth.invalidEmail'));
           setLoading(false);
           return;
         }
@@ -322,7 +323,7 @@ export const useAuthForm = () => {
         });
       } else {
         if (!validatePhone(formData.phone)) {
-          Alert.show("提示: 请输入正确的手机号码");
+          Alert.show(i18n.t('auth.invalidPhone'));
           setLoading(false);
           return;
         }
@@ -335,15 +336,15 @@ export const useAuthForm = () => {
 
       loginWithResponse(response);
       await syncProfileStatus(response);
-      Alert.show("登录成功: 欢迎回来！", "", 1000);
+      Alert.show(i18n.t('auth.loginWelcome'), "", 1000);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : loginMethod === "email"
-          ? "邮箱或密码错误"
-          : "手机号或密码错误";
-      Alert.show("登录失败: " + message);
+          ? i18n.t('auth.emailPasswordError')
+          : i18n.t('auth.phonePasswordError');
+      Alert.show(i18n.t('auth.loginFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -362,7 +363,7 @@ export const useAuthForm = () => {
   // 处理验证码登录
   const handleOtpLogin = useCallback(async () => {
     if (!formData.verificationCode) {
-      Alert.show("提示: 请输入验证码");
+      Alert.show(i18n.t('auth.codeRequired'));
       return;
     }
 
@@ -371,7 +372,7 @@ export const useAuthForm = () => {
       let response;
       if (loginMethod === "email") {
         if (!validateEmail(formData.email)) {
-          Alert.show("提示: 请输入正确的邮箱地址");
+          Alert.show(i18n.t('auth.invalidEmail'));
           setLoading(false);
           return;
         }
@@ -381,7 +382,7 @@ export const useAuthForm = () => {
         });
       } else {
         if (!validatePhone(formData.phone)) {
-          Alert.show("提示: 请输入正确的手机号码");
+          Alert.show(i18n.t('auth.invalidPhone'));
           setLoading(false);
           return;
         }
@@ -394,11 +395,11 @@ export const useAuthForm = () => {
 
       loginWithResponse(response);
       await syncProfileStatus(response);
-      Alert.show("登录成功: 欢迎回来！", "", 1000);
+      Alert.show(i18n.t('auth.loginWelcome'), "", 1000);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "验证码错误或已过期";
-      Alert.show("登录失败: " + message);
+        error instanceof Error ? error.message : i18n.t('auth.codeExpired');
+      Alert.show(i18n.t('auth.loginFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -417,7 +418,7 @@ export const useAuthForm = () => {
   // Apple 登录
   const handleAppleLogin = useCallback(async () => {
     if (!isAppleLoginAvailable) {
-      Alert.show("当前设备不支持 Apple 登录");
+      Alert.show(i18n.t('auth.appleNotSupported'));
       return;
     }
 
@@ -431,7 +432,7 @@ export const useAuthForm = () => {
       });
 
       if (!credential.identityToken) {
-        Alert.show("Apple 登录失败: 未获取到身份凭证");
+        Alert.show(i18n.t('auth.appleNoCredential'));
         return;
       }
 
@@ -447,14 +448,14 @@ export const useAuthForm = () => {
 
       loginWithResponse(response);
       await syncProfileStatus(response);
-      Alert.show("登录成功: 欢迎！", "", 1000);
+      Alert.show(i18n.t('auth.loginWelcome'), "", 1000);
     } catch (error: any) {
       if (error.code === "ERR_REQUEST_CANCELED") {
         return;
       }
       const message =
-        error instanceof Error ? error.message : "Apple 登录失败，请稍后重试";
-      Alert.show("登录失败: " + message);
+        error instanceof Error ? error.message : i18n.t('auth.appleLoginFailed');
+      Alert.show(i18n.t('auth.loginFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -464,33 +465,33 @@ export const useAuthForm = () => {
   const validateRegisterForm = useCallback((): boolean => {
     if (loginMethod === "email") {
       if (!validateEmail(formData.email)) {
-        Alert.show("提示: 请输入正确的邮箱地址");
+        Alert.show(i18n.t('auth.invalidEmail'));
         return false;
       }
     } else {
       if (!validatePhone(formData.phone)) {
-        Alert.show("提示: 请输入正确的手机号码");
+        Alert.show(i18n.t('auth.invalidPhone'));
         return false;
       }
     }
 
     if (!formData.verificationCode) {
-      Alert.show("提示: 请输入验证码");
+      Alert.show(i18n.t('auth.codeRequired'));
       return false;
     }
 
     if (!formData.username || formData.username.trim().length < 2) {
-      Alert.show("提示: 用户名长度至少2个字符");
+      Alert.show(i18n.t('auth.usernameMinLength'));
       return false;
     }
 
     if (!formData.password || formData.password.length < 6) {
-      Alert.show("提示: 密码长度至少6位");
+      Alert.show(i18n.t('auth.passwordMinLength'));
       return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.show("提示: 两次输入的密码不一致");
+      Alert.show(i18n.t('changePassword.mismatch'));
       return false;
     }
 
@@ -536,8 +537,8 @@ export const useAuthForm = () => {
       const message =
         error instanceof Error
           ? error.message
-          : "注册过程中出现错误，请稍后重试";
-      Alert.show("注册失败: " + message);
+          : i18n.t('auth.registerDefaultError');
+      Alert.show(i18n.t('auth.registerFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -550,7 +551,7 @@ export const useAuthForm = () => {
   // 处理完善资料（所有字段均为可选，填写完成后直接登录进入主页面）
   const handleCompleteProfile = useCallback(async () => {
     if (!registeredUserId || !registeredTokens) {
-      Alert.show("错误: 请重新注册");
+      Alert.show(i18n.t('auth.pleaseReRegister'));
       setShowProfileModal(false);
       return;
     }
@@ -629,11 +630,11 @@ export const useAuthForm = () => {
       setRegisteredTokens(null);
       setFormData(INITIAL_FORM_DATA);
 
-      Alert.show("注册成功: 欢迎加入！", "", 1000);
+      Alert.show(i18n.t('auth.registerWelcome'), "", 1000);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "保存资料失败，请稍后重试";
-      Alert.show("保存失败: " + message);
+        error instanceof Error ? error.message : i18n.t('auth.saveDefaultError');
+      Alert.show(i18n.t('auth.saveFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -650,28 +651,28 @@ export const useAuthForm = () => {
   const handleForgotPassword = useCallback(async () => {
     if (loginMethod === "email") {
       if (!validateEmail(formData.email)) {
-        Alert.show("提示: 请输入正确的邮箱地址");
+        Alert.show(i18n.t('auth.invalidEmail'));
         return;
       }
     } else {
       if (!validatePhone(formData.phone)) {
-        Alert.show("提示: 请输入正确的手机号码");
+        Alert.show(i18n.t('auth.invalidPhone'));
         return;
       }
     }
 
     if (!formData.verificationCode) {
-      Alert.show("提示: 请输入验证码");
+      Alert.show(i18n.t('auth.codeRequired'));
       return;
     }
 
     if (!formData.password || formData.password.length < 6) {
-      Alert.show("提示: 新密码长度至少6位");
+      Alert.show(i18n.t('auth.newPasswordMinLength'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.show("提示: 两次输入的密码不一致");
+      Alert.show(i18n.t('changePassword.mismatch'));
       return;
     }
 
@@ -692,7 +693,7 @@ export const useAuthForm = () => {
         });
       }
 
-      Alert.show("密码重置成功: 请使用新密码登录", "", 1000);
+      Alert.show(i18n.t('auth.passwordResetSuccess'), "", 1000);
 
       setTimeout(() => {
         setMode("login");
@@ -705,8 +706,8 @@ export const useAuthForm = () => {
       }, 1000);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "密码重置失败，请稍后重试";
-      Alert.show("重置失败: " + message);
+        error instanceof Error ? error.message : i18n.t('auth.passwordResetDefaultError');
+      Alert.show(i18n.t('auth.resetFailedMsg', { message }));
     } finally {
       setLoading(false);
     }
@@ -762,7 +763,7 @@ export const useAuthForm = () => {
   // 处理主要操作
   const handleMainAction = useCallback(() => {
     if (mode !== "forgotPassword" && mode !== "completeProfile" && !agreedToTerms) {
-      Alert.show("请先阅读并同意相关协议");
+      Alert.show(i18n.t('auth.pleaseAgreeTerms'));
       return;
     }
     switch (mode) {

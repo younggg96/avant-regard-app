@@ -184,7 +184,7 @@ const ShowManagementTab = () => {
   const handleDelete = (show: Show) => {
     Alert.alert(
       t("admin.confirmDelete"),
-      `确定要删除秀场「${show.title || show.brand + " " + show.season}」吗？此操作不可撤销。`,
+      t("admin.confirmDeleteShow", { name: show.title || show.brand + " " + show.season }),
       [
         { text: t("common.cancel"), style: "cancel" },
         {
@@ -238,7 +238,7 @@ const ShowManagementTab = () => {
       <Input
         variant="outline"
         size="md"
-        placeholder="例如: Yohji Yamamoto"
+        placeholder={t("admin.brandNamePlaceholder")}
         placeholderTextColor={theme.colors.gray300}
         value={form.brand || ""}
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, brand: v }))}
@@ -279,7 +279,7 @@ const ShowManagementTab = () => {
       <Input
         variant="outline"
         size="md"
-        placeholder="例如: Spring 2025 Ready-to-Wear"
+        placeholder={t("admin.showTitlePlaceholder")}
         placeholderTextColor={theme.colors.gray300}
         value={form.title || ""}
         onChangeText={(v: string) => setForm((f: any) => ({ ...f, title: v }))}
@@ -289,7 +289,7 @@ const ShowManagementTab = () => {
       <Input
         variant="outline"
         size="md"
-        placeholder="例如: 2025"
+        placeholder={t("admin.yearPlaceholder")}
         placeholderTextColor={theme.colors.gray300}
         value={String(form.year || "")}
         onChangeText={(v: string) =>
@@ -613,7 +613,7 @@ const ShowManagementTab = () => {
               />
             </Pressable>
             <Text style={styles.paginationText}>
-              第 {page} 页 / 共 {totalPages} 页
+              {t("admin.pagination", { page, total: totalPages })}
             </Text>
             <Pressable
               disabled={page >= totalPages}

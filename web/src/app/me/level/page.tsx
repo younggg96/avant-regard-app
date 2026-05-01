@@ -128,12 +128,12 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
             {t("level.nextLevel")}
           </div>
           <div className="mt-1 font-serif text-lg text-black dark:text-white">
-            Lv{status.nextLevel} · {status.nextLevelTitle ?? ""}
+            Lv{status.nextLevel} · {t(`level.titles.${status.nextLevel}`, { defaultValue: status.nextLevelTitle ?? "" })}
           </div>
         </div>
         {status.nextLevelBenefit && (
           <div className="max-w-[60%] text-right font-label text-[12px] text-[color:var(--ink-muted)]">
-            {t("level.unlock")}: {status.nextLevelBenefit}
+            {t("level.unlock")}: {t(`level.benefits.${status.nextLevel}`, { defaultValue: status.nextLevelBenefit })}
           </div>
         )}
       </div>
@@ -144,7 +144,7 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
             <li key={task.action}>
               <div className="mb-1 flex items-center justify-between font-label text-[12px]">
                 <span className={task.completed ? "text-[var(--ink)]" : "text-[color:var(--ink-muted)]"}>
-                  {task.label}
+                  {t(`level.taskLabels.${task.action}`, { target: task.target, defaultValue: task.label })}
                 </span>
                 <span className="tabular-nums text-[color:var(--ink-muted)]">
                   {task.progress} / {task.target}
@@ -311,7 +311,7 @@ function LevelTimeline({
                     Lv{r.level}
                   </span>
                   <span className="font-serif text-[15px] text-black dark:text-white">
-                    {r.title}
+                    {t(`level.titles.${r.level}`, { defaultValue: r.title })}
                   </span>
                 </div>
                 <span className="font-label text-[10px] uppercase tracking-widest text-[color:var(--ink-muted)]">
@@ -323,20 +323,23 @@ function LevelTimeline({
                 </span>
               </div>
               <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-                {r.subtitle}
+                {t(`level.subtitles.${r.level}`, { defaultValue: r.subtitle })}
               </div>
               {r.tasks.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 font-label text-[12px] text-[color:var(--ink-muted)]">
                   {r.tasks.map((task) => (
                     <li key={task.action}>
-                      {task.label} · {t("level.taskTarget", { target: task.target })}
+                      {t(`level.taskLabels.${task.action}`, {
+                        target: task.target,
+                        defaultValue: task.label,
+                      })}
                     </li>
                   ))}
                 </ul>
               )}
               {r.benefit && (
                 <div className="mt-2 font-label text-[12px] text-[var(--ink)]">
-                  {t("level.benefit")}: {r.benefit}
+                  {t("level.benefit")}: {t(`level.benefits.${r.level}`, { defaultValue: r.benefit })}
                 </div>
               )}
             </li>

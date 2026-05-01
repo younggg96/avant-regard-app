@@ -29,8 +29,8 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   imageUri,
   onImageSelected,
   onImageRemoved,
-  placeholder = "添加图片",
-  subtitle = "建议尺寸 16:9",
+  placeholder,
+  subtitle,
   height = 180,
   aspectRatio = [16, 9],
   allowEditing = true,
@@ -38,6 +38,8 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   defaultCropAspect = "free",
 }) => {
   const { t } = useTranslation();
+  const displayPlaceholder = placeholder || t("imageUploader.addImage");
+  const displaySubtitle = subtitle || t("imageUploader.recommendedSize");
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [rawImageUri, setRawImageUri] = useState<string | null>(null);
@@ -160,10 +162,10 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
               color={theme.colors.gray400}
             />
             <Text color="$gray500" mt="$sm" fontSize="$sm">
-              {placeholder}
+              {displayPlaceholder}
             </Text>
             <Text color="$gray400" fontSize="$xs" mt="$xs">
-              {subtitle}
+              {displaySubtitle}
             </Text>
           </Pressable>
         </Box>

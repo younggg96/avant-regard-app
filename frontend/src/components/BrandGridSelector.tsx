@@ -1,5 +1,6 @@
 import React from "react";
 import { Dimensions, StyleSheet, View, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
@@ -31,9 +32,11 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
   onRemoveBrand,
   onAddBrand,
   maxBrands = 6,
-  label = "关联品牌",
+  label,
   required = false,
 }) => {
+  const { t } = useTranslation();
+  const displayLabel = label || t("publish.linkBrand");
   const brandWidth = (screenWidth - 48 - 16) / 3;
   const brandHeight = brandWidth * 1.2;
 
@@ -41,7 +44,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text color="$gray600" fontSize="$sm">
-          {label}
+          {displayLabel}
         </Text>
         {required && (
           <Text color="$red500" fontSize="$sm" ml="$xs">
@@ -134,7 +137,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               color={theme.colors.gray400}
             />
             <Text color="$gray400" fontSize="$xs" mt="$xs">
-              添加品牌
+              {t("brandSelector.addBrand")}
             </Text>
           </Pressable>
         )}

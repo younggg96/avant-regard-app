@@ -10,6 +10,7 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
 import { ProfileForm } from "./ProfileForm";
@@ -58,6 +59,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onLoadMoreBrands,
   onComplete,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <Modal
       visible={visible}
@@ -78,8 +81,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           >
             {/* Modal 标题 */}
             <View style={styles.header}>
-              <Text style={styles.title}>完善个人资料</Text>
-              <Text style={styles.subtitle}>让我们更好地了解您</Text>
+              <Text style={styles.title}>{t('auth.completeProfile')}</Text>
+              <Text style={styles.subtitle}>{t('auth.completeProfileSubtitle')}</Text>
             </View>
 
             <ProfileForm
@@ -110,7 +113,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               {loading ? (
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Text style={styles.completeButtonText}>完成并进入</Text>
+                <Text style={styles.completeButtonText}>{t('auth.completeAndEnter')}</Text>
               )}
             </TouchableOpacity>
           </ScrollView>

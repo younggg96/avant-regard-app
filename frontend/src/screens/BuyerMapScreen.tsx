@@ -75,13 +75,13 @@ const POPULAR_BRANDS = [
   "Maison Margiela",
 ];
 
-// 风格分类
-const STYLE_CATEGORIES = {
-  设计师风格: ["先锋", "暗黑", "工匠", "极简"],
-  复古潮流: ["vintage", "archive", "中古", "美式复古", "美式vintage"],
-  特色风格: ["日系", "女装", "哥特", "视觉系", "亚文化", "银饰"],
-  集合店: ["设计师品牌", "设计师品牌集合店", "集合店"],
-};
+// 风格分类 - keys are i18n'd in the render function
+const STYLE_CATEGORIES_DATA: { key: string; styles: string[] }[] = [
+  { key: "map.styleDesigner", styles: ["先锋", "暗黑", "工匠", "极简"] },
+  { key: "map.styleVintage", styles: ["vintage", "archive", "中古", "美式复古", "美式vintage"] },
+  { key: "map.styleUnique", styles: ["日系", "女装", "哥特", "视觉系", "亚文化", "银饰"] },
+  { key: "map.styleCollection", styles: ["设计师品牌", "设计师品牌集合店", "集合店"] },
+];
 
 // 国家中英文映射
 const COUNTRY_TRANSLATIONS: { [key: string]: string } = {
@@ -1534,13 +1534,13 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               </VStack>
 
               {/* 风格分类筛选 */}
-              {Object.entries(STYLE_CATEGORIES).map(([category, categoryStyles]) => (
-                <VStack key={category} mt="$lg">
+              {STYLE_CATEGORIES_DATA.map((category) => (
+                <VStack key={category.key} mt="$lg">
                   <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
-                    {category}
+                    {t(category.key)}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
-                    {categoryStyles.map((styleItem) => (
+                    {category.styles.map((styleItem) => (
                       <Pressable
                         key={styleItem}
                         px="$md"

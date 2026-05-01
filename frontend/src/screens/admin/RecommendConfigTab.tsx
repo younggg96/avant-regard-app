@@ -160,7 +160,7 @@ const RecommendConfigTab = () => {
       setDirty(false);
       Alert.alert(t("admin.saveSuccess"), t("admin.recommendUpdated"));
     } catch (e) {
-      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : "请重试");
+      Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : t("common.retryLater"));
     } finally {
       setSaving(false);
     }
@@ -233,7 +233,7 @@ const RecommendConfigTab = () => {
 
         <HStack style={[styles.sumRow, !sumValid && styles.sumRowError]}>
           <Text style={[styles.sumText, !sumValid && styles.sumTextError]}>
-            合计：{sum}%
+            {t("admin.recommendTotal", { sum })}
           </Text>
           {sumValid ? (
             <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
