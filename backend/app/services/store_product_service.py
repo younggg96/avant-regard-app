@@ -34,9 +34,10 @@ from app.schemas.store_product import (
 _PRODUCT_SELECT = (
     "*, store_product_categories(name)"
 )
+# 与 buyer_store_comments 相同：两张 users 外键必须用 *_fkey 消歧，否则 PostgREST 报错。
 _COMMENT_SELECT = (
-    "*, users(username, user_info(avatar_url)),"
-    " reply_to:reply_to_user_id(username)"
+    "*, users!store_product_comments_user_id_fkey(username, user_info(avatar_url)),"
+    " reply_to:users!store_product_comments_reply_to_user_id_fkey(username)"
 )
 
 
