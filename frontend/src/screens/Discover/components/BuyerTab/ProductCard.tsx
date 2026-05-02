@@ -15,7 +15,7 @@
  *     —— 两种格式切换对消费者信任感更好。
  */
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
@@ -84,7 +84,7 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
       onPress={() => onPress(product.id)}
       style={styles.card}
     >
-      <View style={styles.imageWrapper}>
+      <Box style={styles.imageWrapper}>
         <OptimizedImage
           uri={product.image}
           size={ImageSize.MEDIUM}
@@ -93,13 +93,13 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
           lazy
         />
         {product.badge && (
-          <View style={[styles.badge, BADGE_STYLE[product.badge].container]}>
+          <Box style={[styles.badge, BADGE_STYLE[product.badge].container]}>
             <Text style={[styles.badgeText, BADGE_STYLE[product.badge].text]}>
               {product.badge}
             </Text>
-          </View>
+          </Box>
         )}
-      </View>
+      </Box>
       <Box px={2} pt={8}>
         <Text
           numberOfLines={2}

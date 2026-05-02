@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { FlatList, RefreshControl, Alert, ActivityIndicator } from "react-native";
+import { FlatList, RefreshControl, Alert, ActivityIndicator, Image as RNImage, StyleSheet, Dimensions } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -121,7 +121,11 @@ export const MessagesContent = () => {
   if (!isInitialLoaded) {
     return (
       <Box flex={1} justifyContent="center" alignItems="center">
-        <ActivityIndicator size="large" color={theme.colors.black} />
+        <RNImage
+          source={require("../../../../assets/gif/profile-loading.gif")}
+          style={msgStyles.loadingGif}
+          resizeMode="contain"
+        />
       </Box>
     );
   }
@@ -210,3 +214,12 @@ export const MessagesContent = () => {
     </>
   );
 };
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+
+const msgStyles = StyleSheet.create({
+  loadingGif: {
+    width: screenWidth,
+    height: screenHeight / 2,
+  },
+});

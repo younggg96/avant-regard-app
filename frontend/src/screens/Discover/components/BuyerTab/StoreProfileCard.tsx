@@ -14,7 +14,7 @@
  * 里重复格式化数字或兜底空字段。
  */
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
@@ -66,15 +66,15 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   } = profile;
 
   return (
-    <Box mx="$md" mt="$sm" bg="$white" borderWidth={1} borderColor="#F0F0F0" rounded="$lg" overflow="hidden">
+    <Box mx="$md" mt="$sm" mb="$sm" bg="$white" borderWidth={1} borderColor="#F0F0F0" rounded="$md" overflow="hidden">
       <Pressable onPress={onDetailPress}>
         <HStack>
-          <View style={styles.leftPane}>
-            <View style={styles.logoWrapper}>
+          <Box style={styles.leftPane}>
+            {/* <Box style={styles.logoWrapper}> */}
               {/* 商家在 profile_config.logoImage 配了图就用图；没有就落回
                   店名首字母占位。这是 Phase 3 把 StoreProfileCard 接上
                   后端配置的核心改动之一（老逻辑只有 logoLetter 分支）。 */}
-              {logoImage ? (
+              {/* {logoImage ? (
                 <OptimizedImage
                   uri={logoImage}
                   size={ImageSize.THUMBNAIL}
@@ -84,8 +84,8 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                 />
               ) : (
                 <Text style={styles.logoText}>{logoLetter}</Text>
-              )}
-            </View>
+              )} */}
+            {/* </Box> */}
             <VStack flex={1} mt="$sm" pr="$xs">
               <HStack alignItems="center" gap={6} mb={2}>
                 <Text
@@ -97,9 +97,9 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                 >
                   {name}
                 </Text>
-                <View style={styles.typeBadge}>
+                <Box style={styles.typeBadge}>
                   <Text style={styles.typeBadgeText}>{t("discover.buyerStoreBadge")}</Text>
-                </View>
+                </Box>
               </HStack>
               <Text fontSize={12} color="$gray300" numberOfLines={2} lineHeight={16}>
                 {description}
@@ -122,9 +122,9 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                 ))}
               </HStack>
             </VStack>
-          </View>
+          </Box>
 
-          <View style={styles.rightPane}>
+          <Box style={styles.rightPane}>
             {coverImage ? (
               <OptimizedImage
                 uri={coverImage}
@@ -134,10 +134,10 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                 lazy
               />
             ) : (
-              <View style={[styles.coverImage, styles.coverFallback]} />
+              <Box style={[styles.coverImage, styles.coverFallback]} />
             )}
 
-            <View style={styles.overlayControls}>
+            <Box style={styles.overlayControls}>
               <Pressable
                 onPress={(e: any) => {
                   e?.stopPropagation?.();
@@ -161,7 +161,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                   {isFollowed ? t("discover.buyerFollowedBtn") : t("discover.buyerFollowBtn")}
                 </Text>
               </Pressable>
-              <Pressable
+              {/* <Pressable
                 onPress={(e: any) => {
                   e?.stopPropagation?.();
                   onMorePress();
@@ -170,17 +170,17 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
               >
                 <Ionicons name="ellipsis-horizontal" size={16} color={theme.colors.white} />
-              </Pressable>
-            </View>
-          </View>
+              </Pressable> */}
+            </Box>
+          </Box>
         </HStack>
       </Pressable>
 
       <HStack style={styles.statsRow}>
         <StatColumn value={followerLabel} label={t("discover.buyerStatFollowers")} />
-        <View style={styles.statsDivider} />
+        <Box style={styles.statsDivider} />
         <StatColumn value={followingLabel} label={t("discover.buyerStatFollowing")} />
-        <View style={styles.statsDivider} />
+        <Box style={styles.statsDivider} />
         <StatColumn value={postCountLabel} label={t("discover.buyerStatPosts")} />
       </HStack>
 
@@ -194,10 +194,10 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
 };
 
 const StatColumn: React.FC<{ value: string; label: string }> = ({ value, label }) => (
-  <View style={styles.statCell}>
+  <Box style={styles.statCell}>
     <Text style={styles.statValue}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
-  </View>
+  </Box>
 );
 
 export const StoreProfileCard = React.memo(StoreProfileCardImpl);
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   followButton: {
     paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 4,
   },
   followButtonIdle: {
     backgroundColor: theme.colors.black,

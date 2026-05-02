@@ -580,8 +580,32 @@ class StoreMerchantService:
         return banners, result.count or 0
 
     def increment_banner_click(self, banner_id: int):
-        """增加 Banner 点击数"""
-        self.db_admin.rpc("increment_banner_click", {"banner_id": banner_id}).execute()
+        """增加 Banner 点击数。
+        
+        优先走已定义的 RPC（migration 043）；如果 RPC 还未部署，退而用
+        fetch-then-update（click_count 是统计用途，小概率 race condition 可接受）。
+        """
+        try:
+            self.db_admin.rpc(
+                "increment_banner_click", {"banner_id": banner_id}
+            ).execute()
+        except Exception:
+            # RPC 尚未部署时静默回退到两阶段更新
+            try:
+                row = (
+                    self.db_admin.table("store_banners")
+                    .select("click_count")
+                    .eq("id", banner_id)
+                    .single()
+                    .execute()
+                    .data
+                )
+                if row:
+                    self.db_admin.table("store_banners").update(
+                        {"click_count": (row.get("click_count") or 0) + 1}
+                    ).eq("id", banner_id).execute()
+            except Exception:
+                pass
 
     # ==================== 活动相关 ====================
 

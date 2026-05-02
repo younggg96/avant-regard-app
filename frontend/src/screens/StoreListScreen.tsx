@@ -3,6 +3,7 @@ import {
     StyleSheet,
     FlatList,
     ActivityIndicator,
+    Image as RNImage,
     Linking,
     Platform,
     RefreshControl,
@@ -34,7 +35,7 @@ import { useStoreFavorites } from "../hooks/useStoreFavorites";
 import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 20;
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
     const { t } = useTranslation();
@@ -368,8 +369,11 @@ const StoreListScreen = () => {
                     onBackPress={() => navigation.goBack()}
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center" bg="$gray50">
-                    <ActivityIndicator size="small" color={theme.colors.black} />
-                    <Text color="$gray300" mt="$md">{t("common.loading")}</Text>
+                    <RNImage
+                        source={require("../../assets/gif/profile-loading.gif")}
+                        style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+                        resizeMode="contain"
+                    />
                 </VStack>
             </SafeAreaView>
         );

@@ -365,8 +365,11 @@ async def get_merchant_banners(
 
 @router.post("/banners/{banner_id}/click")
 async def record_banner_click(banner_id: int):
-    """记录 Banner 点击"""
-    store_merchant_service.increment_banner_click(banner_id)
+    """记录 Banner 点击（fire-and-forget，失败不影响用户体验）"""
+    try:
+        store_merchant_service.increment_banner_click(banner_id)
+    except Exception:
+        pass
     return success(None)
 
 

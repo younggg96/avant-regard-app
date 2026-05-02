@@ -16,10 +16,14 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   ActivityIndicator,
+  Image as RNImage,
   FlatList,
   RefreshControl,
   ScrollView,
+  Dimensions,
 } from "react-native";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -246,15 +250,17 @@ const StoreDetailScreen = () => {
     setIsRefreshing(false);
   };
 
-  // Banner 点击处理
+  // Banner 点击处理。打埋点是 fire-and-forget：埋点失败不应当阻塞用户跳转，
+  // 也不应当用 ERROR 级别污染日志（迁移 043_add_increment_banner_click.sql
+  // 还没在所有环境跑过时，调用会拿到 PostgREST 的 schema cache miss）。
   const handleBannerClick = async (banner: StoreBanner) => {
-    try {
-      await recordBannerClick(banner.id);
-      if (banner.linkUrl) {
-        Linking.openURL(banner.linkUrl);
+    recordBannerClick(banner.id).catch((error) => {
+      if (__DEV__) {
+        console.warn("[StoreDetail] recordBannerClick failed:", error);
       }
-    } catch (error) {
-      console.error("Banner click error:", error);
+    });
+    if (banner.linkUrl) {
+      Linking.openURL(banner.linkUrl);
     }
   };
 
@@ -562,13 +568,14 @@ const StoreDetailScreen = () => {
     <Box mb="$md" pb="$md" borderBottomWidth={1} borderBottomColor="$gray100">
       <HStack alignItems="start" mb="$sm">
         <Box
-          w={40}
-          h={40}
+          w={36}
+          h={36}
           rounded="$sm"
           bg="$gray100"
           justifyContent="center"
           alignItems="center"
           mr="$sm"
+          style={{ borderRadius: 18 }}
         >
           {item.userAvatar ? (
             <OptimizedImage
@@ -666,10 +673,11 @@ const StoreDetailScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator color={theme.colors.black} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
-            {t("common.loading")}
-          </Text>
+          <RNImage
+            source={require("../../assets/gif/profile-loading.gif")}
+            style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
+            resizeMode="contain"
+          />
         </VStack>
       </SafeAreaView>
     );
@@ -723,305 +731,207 @@ const StoreDetailScreen = () => {
         }
         ListHeaderComponent={
           <VStack>
-            {/* 店铺信息卡片 */}
-            <Box bg="$white" mb="$md">
-              {/* 店铺名称和状态 */}
-              <HStack justifyContent="between" alignItems="start" mb="$sm">
-                <VStack flex={1}>
-                  <Text fontSize="$xl" fontWeight="$bold" color="$black" style={styles.textBold}>
-                    {store.name}
-                  </Text>
-                  <Text fontSize="$sm" color="$gray300" mt="$xs" style={styles.textRegular}>
-                    {store.city}, {store.country}
-                  </Text>
-                </VStack>
-                <HStack alignItems="center" gap="$sm">
-                  {store.favoriteCount > 0 && (
-                    <Text fontSize={11} color="$gray300">
-                      {t("store.followersCount", { count: store.favoriteCount })}
-                    </Text>
-                  )}
-                  <Pressable
-                    onPress={handleToggleFavorite}
-                    bg={store.isFavorited ? "$black" : "$white"}
-                    borderWidth={1}
-                    borderColor="$black"
-                    rounded="$sm"
-                    px="$md"
-                    py="$xs"
-                  >
-                    <Text
-                      fontSize="$xs"
-                      fontWeight="$bold"
-                      color={store.isFavorited ? "$white" : "$black"}
-                    >
+            {/* ── 店铺名称 / 状态 / 关注 ── */}
+            <VStack px="$md" pt="$md" pb="$sm">
+              {/* 名称行 */}
+              <HStack justifyContent="between" alignItems="flex-start">
+                <Text fontSize={22} fontWeight="$bold" color="$black" flex={1} mr="$md" style={styles.textBold}>
+                  {store.name}
+                </Text>
+                <HStack alignItems="center" gap={10}>
+                  <Pressable onPress={handleToggleFavorite} style={styles.followBtn}>
+                    <Text fontSize={12} color={"$black"} style={[styles.textRegular]}>
                       {store.isFavorited ? t("store.followed") : t("store.follow")}
                     </Text>
                   </Pressable>
-                  <Box
-                    px="$sm"
-                    py="$xs"
-                    rounded="$sm"
-                    bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-                  >
-                    <Text
-                      fontSize="$xs"
-                      fontWeight="$bold"
-                      color={store.isOpen ? "#27AE60" : "$gray300"}
-                      style={styles.textBold}
-                    >
+                  <HStack alignItems="center" gap={4}>
+                    <Box w={6} h={6} rounded="$sm" bg={store.isOpen ? "#27AE60" : "$gray300"} />
+                    <Text fontSize={12} color={store.isOpen ? "#27AE60" : "$gray300"} style={styles.textRegular}>
                       {store.isOpen ? t("store.open") : t("store.closed")}
                     </Text>
-                  </Box>
+                  </HStack>
                 </HStack>
               </HStack>
 
-              {/* 贡献者信息 */}
+              {/* 城市 */}
+              <Text fontSize={13} color="$gray400" mt={4} style={styles.textRegular}>
+                {store.city}, {store.country}
+              </Text>
+
+              {/* 贡献者 */}
               {store.contributorName && (
-                <HStack
-                  alignItems="center"
-                  bg="#F5F0FF"
-                  px="$md"
-                  py="$sm"
-                  rounded="$sm"
-                  mb="$md"
-                  gap="$xs"
-                >
-                  <Ionicons name="person-outline" size={13} color={theme.colors.gray500} />
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                <HStack alignItems="center" mt={10} gap={5} bg="#F5F0FF" px={10} py={6} rounded="$xs" alignSelf="flex-start">
+                  <Ionicons name="person-outline" size={12} color={theme.colors.gray500} />
+                  <Text fontSize={11} color="$gray400" style={styles.textRegular}>
                     {t("store.contributedBy", { name: store.contributorName })}
                   </Text>
                 </HStack>
               )}
+            </VStack>
 
-              {/* 评分和统计 */}
-              <HStack
-                bg="$gray50"
-                rounded="$sm"
-                p="$md"
-                justifyContent="space-around"
-                mb="$md"
-              >
-                <Pressable alignItems="center" onPress={openRatingModal}>
-                  <HStack alignItems="center" justifyContent="center" mb="$xs">
-                    <HalfStarRating
-                      rating={store.averageRating || 0}
-                      size={16}
-                      color="#FFB800"
-                      inactiveColor={theme.colors.gray200}
-                    />
-                    <Text fontSize="$lg" fontWeight="$bold" color="$gray300" style={styles.textBold}>
-                      ｜ {store.averageRating?.toFixed(1) || "-"}
-                    </Text>
-                  </HStack>
-                  <Text fontSize="$xs" color="$black" style={styles.textRegular}>
-                    {t("store.ratingCount", { count: store.ratingCount })}
-                  </Text>
-                </Pressable>
-
-                <Box w={1} h="80%" bg="$gray200" />
-
-                <Pressable alignItems="center" onPress={() => openCommentInput()}>
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={24}
-                    color={theme.colors.black}
+            {/* ── 统计行 ── */}
+            <HStack
+              borderTopWidth={StyleSheet.hairlineWidth}
+              borderBottomWidth={StyleSheet.hairlineWidth}
+              borderColor="$gray100"
+              py={14}
+              mx="$md"
+              my="$sm"
+              justifyContent="space-around"
+            >
+              <Pressable alignItems="center" onPress={openRatingModal}>
+                <HStack alignItems="center" gap={4}>
+                  <HalfStarRating
+                    rating={store.averageRating || 0}
+                    size={13}
+                    color="#FFB800"
+                    inactiveColor={theme.colors.gray200}
                   />
-                  <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
-                    {t("store.commentCount", { count: store.commentCount })}
+                  <Text fontSize={13} color="$black" fontWeight="$semibold" style={styles.textBold}>
+                    {store.averageRating?.toFixed(1) || "0.0"}
                   </Text>
-                </Pressable>
-
-                <Box w={1} h="80%" bg="$gray200" />
-
-                <Pressable alignItems="center" onPress={handleToggleFavorite}>
-                  <Ionicons
-                    name="people-outline"
-                    size={24}
-                    color={theme.colors.black}
-                  />
-                  <Text fontSize="$xs" fontWeight="$bold" color="$black" mt="$xs" style={styles.textBold}>
-                    {t("store.followCount", { count: store.favoriteCount })}
-                  </Text>
-                </Pressable>
-              </HStack>
-
-              {/* 地址 */}
-              <Pressable
-                bg="$gray50"
-                rounded="$sm"
-                p="$md"
-                mb="$sm"
-                onPress={handleNavigate}
-              >
-                <HStack alignItems="center" gap="$md">
-                  <Ionicons name="location-outline" size={20} color={theme.colors.black} />
-                  <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
-                    {store.address}
-                  </Text>
-                  <Ionicons name="navigate-outline" size={18} color={theme.colors.gray300} />
                 </HStack>
+                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                  {t("store.ratingCount", { count: store.ratingCount })}
+                </Text>
+              </Pressable>
+
+              <Box w={StyleSheet.hairlineWidth} bg="$gray200" />
+
+              <Pressable alignItems="center" onPress={() => openCommentInput()}>
+                <Ionicons name="chatbubble-outline" size={18} color={theme.colors.black} />
+                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                  {t("store.commentCount", { count: store.commentCount })}
+                </Text>
+              </Pressable>
+
+              <Box w={StyleSheet.hairlineWidth} bg="$gray200" />
+
+              <Pressable alignItems="center" onPress={handleToggleFavorite}>
+                <Ionicons name="people-outline" size={18} color={theme.colors.black} />
+                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                  {t("store.followCount", { count: store.favoriteCount })}
+                </Text>
+              </Pressable>
+            </HStack>
+
+            {/* ── 信息行：地址 / 时间 / 电话 ── */}
+            <VStack mx="$md" borderTopWidth={StyleSheet.hairlineWidth} borderColor="$gray100">
+              {/* 地址 */}
+              <Pressable onPress={handleNavigate} style={styles.infoRow}>
+                <Ionicons name="location-outline" size={16} color={theme.colors.gray400} />
+                <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                  {store.address}
+                </Text>
+                <Ionicons name="navigate-outline" size={15} color={theme.colors.gray300} />
               </Pressable>
 
               {/* 营业时间 */}
-              {store.hours && (
-                <Box bg="$gray50" rounded="$sm" p="$md" mb="$sm">
-                  <HStack alignItems="center" gap="$md">
-                    <Ionicons name="time-outline" size={20} color={theme.colors.black} />
-                    <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
-                      {store.hours}
-                    </Text>
-                  </HStack>
+              {!!store.hours && (
+                <Box style={styles.infoRow} flexDirection="row" alignItems="center">
+                  <Ionicons name="time-outline" size={16} color={theme.colors.gray400} />
+                  <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                    {store.hours}
+                  </Text>
                 </Box>
               )}
 
               {/* 电话 */}
-              {store.phone && store.phone.length > 0 && (
-                <Box bg="$gray50" rounded="$sm" p="$md" mb="$sm">
-                  {store.phone.map((phone, idx) => (
-                    <Pressable
-                      key={idx}
-                      flexDirection="row"
-                      alignItems="center"
-                      gap="$md"
-                      mt={idx > 0 ? "$sm" : 0}
-                      onPress={() => handleCall(phone)}
-                    >
-                      <Ionicons name="call-outline" size={20} color={theme.colors.black} />
-                      <Text fontSize="$md" color="$black" ml="$sm" flex={1} style={styles.textRegular}>
-                        {phone}
-                      </Text>
-                      <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#27AE60" fontWeight="$semibold" style={styles.textBold}>
-                          {t("store.call")}
-                        </Text>
-                      </Box>
-                    </Pressable>
-                  ))}
-                </Box>
-              )}
-
-              {/* 风格标签 */}
-              {store.style.length > 0 && (
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    {t("store.storeStyle")}
+              {store.phone && store.phone.length > 0 && store.phone.map((phone, idx) => (
+                <Pressable key={idx} style={styles.infoRow} onPress={() => handleCall(phone)}>
+                  <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
+                  <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                    {phone}
                   </Text>
-                  <HStack flexWrap="wrap" gap="$xs">
-                    {store.style.map((s, idx) => (
-                      <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
-                        <Text fontSize="$sm" color="$white" fontWeight="$medium" style={styles.textRegular}>
-                          {s}
-                        </Text>
-                      </Box>
-                    ))}
-                  </HStack>
-                </VStack>
-              )}
-
-              {/* 品牌 */}
-              {store.brands.length > 0 && (
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    {t("store.mainBrands")}
+                  <Text fontSize={12} color="#27AE60" style={styles.textRegular}>
+                    {t("store.call")}
                   </Text>
-                  <HStack flexWrap="wrap" gap="$xs">
-                    {store.brands.map((brand, idx) => (
-                      <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
-                        <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                          {brand}
-                        </Text>
-                      </Box>
-                    ))}
-                  </HStack>
-                </VStack>
-              )}
-
-              {/* 店铺介绍 */}
-              {!!store.description && (
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    {t("store.storeIntro")}
-                  </Text>
-                  <Box bg="$gray50" rounded="$sm" p="$md">
-                    <Text fontSize="$sm" color="$black" lineHeight={22} style={styles.textRegular}>
-                      {store.description}
-                    </Text>
-                  </Box>
-                </VStack>
-              )}
-
-              {/* 店铺图片 */}
-              {(store.images?.length ?? 0) > 0 && (
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                    {t("store.storeImages")}
-                  </Text>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                  >
-                    {store.images!.map((uri, idx) => (
-                      <Box key={idx} mr="$sm" rounded="$md" overflow="hidden">
-                        <OptimizedImage
-                          uri={uri}
-                          size={ImageSize.MEDIUM}
-                          style={styles.storeImage}
-                          contentFit="cover"
-                          lazy={true}
-                        />
-                      </Box>
-                    ))}
-                  </ScrollView>
-                </VStack>
-              )}
-
-              {/* 商家入驻入口 - 如果还没有认证商家 */}
-              <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" style={styles.textBold}>
-                {t("store.merchantInfo")}
-              </Text>
-              {!merchantContent?.isMerchant && (
-                <Pressable
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  bg="$gray50"
-                  rounded="$sm"
-                  p="$sm"
-                  mb="$sm"
-                  onPress={openMerchantApplyModal}
-                >
-                  <HStack alignItems="center" gap="$sm">
-                    <Box
-                      w={36}
-                      h={36}
-                      rounded="$sm"
-                      bg="$white"
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <Ionicons name="storefront" size={18} color="$black" />
-                    </Box>
-                    <VStack>
-                      <Text fontSize="$sm" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                        {t("store.iAmMerchant")}
-                      </Text>
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                        {t("store.applyManage")}
-                      </Text>
-                    </VStack>
-                  </HStack>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
                 </Pressable>
-              )}
-            </Box>
+              ))}
+            </VStack>
+
+            {/* ── 风格标签 ── */}
+            {store.style.length > 0 && (
+              <VStack px="$md" mt="$md">
+                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                  {t("store.storeStyle").toUpperCase()}
+                </Text>
+                <HStack flexWrap="wrap" gap={6}>
+                  {store.style.map((s, idx) => (
+                    <Box key={idx} style={styles.styleChip}>
+                      <Text fontSize={12} color="$black" style={styles.textRegular}>{s}</Text>
+                    </Box>
+                  ))}
+                </HStack>
+              </VStack>
+            )}
+
+            {/* ── 品牌 ── */}
+            {store.brands.length > 0 && (
+              <VStack px="$md" mt="$md">
+                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                  {t("store.mainBrands").toUpperCase()}
+                </Text>
+                <HStack flexWrap="wrap" gap={6}>
+                  {store.brands.map((brand, idx) => (
+                    <Box key={idx} style={styles.brandChip}>
+                      <Text fontSize={12} color="$gray600" style={styles.textRegular}>{brand}</Text>
+                    </Box>
+                  ))}
+                </HStack>
+              </VStack>
+            )}
+
+            {/* ── 店铺介绍 ── */}
+            {!!store.description && (
+              <VStack px="$md" mt="$md">
+                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                  {t("store.storeIntro").toUpperCase()}
+                </Text>
+                <Text fontSize={14} color="$black" lineHeight={22} style={styles.textRegular}>
+                  {store.description}
+                </Text>
+              </VStack>
+            )}
+
+            {/* ── 店铺图片 ── */}
+            {(store.images?.length ?? 0) > 0 && (
+              <VStack mt="$md">
+                <Text fontSize={11} color="$gray400" mb={8} px="$md" letterSpacing={0.5} style={styles.textRegular}>
+                  {t("store.storeImages").toUpperCase()}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+                  {store.images!.map((uri, idx) => (
+                    <OptimizedImage
+                      key={idx}
+                      uri={uri}
+                      size={ImageSize.MEDIUM}
+                      style={styles.storeImage}
+                      contentFit="cover"
+                      lazy={true}
+                    />
+                  ))}
+                </ScrollView>
+              </VStack>
+            )}
+
+            {/* ── 商家入驻 ── */}
+            {!merchantContent?.isMerchant && (
+              <Pressable style={styles.merchantRow} onPress={openMerchantApplyModal}>
+                <Ionicons name="storefront-outline" size={15} color={theme.colors.gray400} />
+                <Text fontSize={13} color="$gray400" flex={1} ml={8} style={styles.textRegular}>
+                  {t("store.iAmMerchant")}
+                </Text>
+                <Ionicons name="chevron-forward" size={15} color={theme.colors.gray300} />
+              </Pressable>
+            )}
 
             {/* ==================== 商家内容区域 ==================== */}
             {merchantContent?.isMerchant && (
               <>
                 {/* Banner 轮播 */}
                 {merchantContent.banners.length > 0 && (
-                  <Box mb="$md">
+                  <Box mb="$md" mx="$md" mt="$sm">
                     <ScrollView
                       ref={bannerScrollRef}
                       horizontal
@@ -1079,62 +989,50 @@ const StoreDetailScreen = () => {
                   </Box>
                 )}
 
-                {/* 公告 */}
+                {/* ── 公告 ── */}
                 {merchantContent.announcements.length > 0 && (
-                  <Box bg="$white" mb="$sm" rounded="$sm">
-                    <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm" style={styles.textBold}>
-                      {t("store.storeAnnouncement")}
+                  <VStack px="$md" mt="$lg">
+                    <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                      {t("store.storeAnnouncement").toUpperCase()}
                     </Text>
-                    {merchantContent.announcements.map((announcement) => (
-                      <Box
-                        key={announcement.id}
-                        bg="$gray50"
-                        p="$sm"
-                        rounded="$sm"
-                        mb="$xs"
-                      >
-                        <HStack alignItems="center" gap="$xs" mb="$xs">
-                          {announcement.isPinned && (
-                            <Box bg="$error" px="$xs" py={2} rounded="$xs">
-                              <Text fontSize={10} color="$white" style={styles.textBold}>
-                                {t("store.pinned")}
-                              </Text>
-                            </Box>
-                          )}
-                          <Text
-                            fontSize="$sm"
-                            fontWeight="$semibold"
-                            color="$black"
-                            flex={1}
-                            numberOfLines={1}
-                            style={styles.textBold}
-                          >
-                            {announcement.title}
+                    <VStack gap={10}>
+                      {merchantContent.announcements.map((announcement) => (
+                        <VStack key={announcement.id}>
+                          <HStack alignItems="center" gap={6} mb={2}>
+                            {announcement.isPinned && (
+                              <Box bg="$gray100" px={6} py={1} rounded="$xs">
+                                <Text fontSize={10} color="$gray600" style={styles.textRegular}>
+                                  {t("store.pinned")}
+                                </Text>
+                              </Box>
+                            )}
+                            <Text
+                              fontSize={14}
+                              fontWeight="$semibold"
+                              color="$black"
+                              flex={1}
+                              numberOfLines={1}
+                              style={styles.textBold}
+                            >
+                              {announcement.title}
+                            </Text>
+                          </HStack>
+                          <Text fontSize={13} color="$gray600" lineHeight={20} numberOfLines={3} style={styles.textRegular}>
+                            {announcement.content}
                           </Text>
-                        </HStack>
-                        <Text
-                          fontSize="$sm"
-                          color="$gray300"
-                          numberOfLines={2}
-                          style={styles.textRegular}
-                        >
-                          {announcement.content}
-                        </Text>
-                      </Box>
-                    ))}
-                  </Box>
+                        </VStack>
+                      ))}
+                    </VStack>
+                  </VStack>
                 )}
 
-                {/* 近期活动 */}
+                {/* ── 近期活动 ── */}
                 {merchantContent.activities.length > 0 && (
-                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
-                    <HStack alignItems="center" gap="$sm" mb="$sm">
-                      <Ionicons name="calendar" size={18} color="#1976D2" />
-                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
-                        {t("store.recentActivities")}
-                      </Text>
-                    </HStack>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <VStack mt="$lg">
+                    <Text fontSize={11} color="$gray400" mb={8} px="$md" letterSpacing={0.5} style={styles.textRegular}>
+                      {t("store.recentActivities").toUpperCase()}
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
                       {merchantContent.activities.map((activity) => (
                         <Pressable
                           key={activity.id}
@@ -1152,9 +1050,9 @@ const StoreDetailScreen = () => {
                               lazy={true}
                             />
                           )}
-                          <VStack p="$sm">
+                          <VStack mt={8}>
                             <Text
-                              fontSize="$sm"
+                              fontSize={13}
                               fontWeight="$semibold"
                               color="$black"
                               numberOfLines={1}
@@ -1162,95 +1060,68 @@ const StoreDetailScreen = () => {
                             >
                               {activity.title}
                             </Text>
-                            <HStack alignItems="center" gap="$xs" mt="$xs">
-                              <Ionicons name="time-outline" size={12} color={theme.colors.gray300} />
-                              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                                {formatDate(activity.activityStartTime)} - {formatDate(activity.activityEndTime)}
+                            <HStack alignItems="center" gap={4} mt={4}>
+                              <Ionicons name="time-outline" size={11} color={theme.colors.gray400} />
+                              <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+                                {formatDate(activity.activityStartTime)} – {formatDate(activity.activityEndTime)}
                               </Text>
                             </HStack>
                             {activity.needRegistration && (
-                              <Box bg="#E3F2FD" px="$xs" py={2} rounded="$xs" alignSelf="flex-start" mt="$xs">
-                                <Text fontSize={10} color="#1976D2" style={styles.textRegular}>
-                                  {t("store.needRegistration")} {activity.registrationLimit ? `(${activity.registrationCount}/${activity.registrationLimit})` : ""}
-                                </Text>
-                              </Box>
+                              <Text fontSize={10} color="$gray400" mt={4} style={styles.textRegular}>
+                                {t("store.needRegistration")}
+                                {activity.registrationLimit ? ` · ${activity.registrationCount}/${activity.registrationLimit}` : ""}
+                              </Text>
                             )}
                           </VStack>
                         </Pressable>
                       ))}
                     </ScrollView>
-                  </Box>
+                  </VStack>
                 )}
 
-                {/* 近期折扣 */}
+                {/* ── 近期折扣 ── */}
                 {merchantContent.discounts.length > 0 && (
-                  <Box bg="$white" p="$md" mb="$md" rounded="$md">
-                    <HStack alignItems="center" gap="$sm" mb="$sm">
-                      <Ionicons name="pricetag" size={18} color="#E65100" />
-                      <Text fontSize="$md" fontWeight="$bold" color="$black" style={styles.textBold}>
-                        {t("store.promotions")}
-                      </Text>
-                    </HStack>
-                    {merchantContent.discounts.map((discount) => (
-                      <Box
-                        key={discount.id}
-                        bg="linear-gradient(135deg, #FFF3E0 0%, #FFECB3 100%)"
-                        p="$md"
-                        rounded="$md"
-                        mb="$sm"
-                        borderWidth={1}
-                        borderColor="#FFE082"
-                      >
-                        <HStack justifyContent="between" alignItems="start">
-                          <VStack flex={1}>
-                            <Text
-                              fontSize="$md"
-                              fontWeight="$bold"
-                              color="$black"
-                              style={styles.textBold}
-                            >
-                              {discount.title}
-                            </Text>
-                            {discount.discountValue && (
-                              <Text
-                                fontSize="$xl"
-                                fontWeight="$bold"
-                                color="#E65100"
-                                mt="$xs"
-                                style={styles.textBold}
-                              >
-                                {discount.discountValue}
+                  <VStack px="$md" mt="$lg">
+                    <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                      {t("store.promotions").toUpperCase()}
+                    </Text>
+                    <VStack gap={10}>
+                      {merchantContent.discounts.map((discount) => (
+                        <Box key={discount.id} style={styles.discountRow}>
+                          <HStack justifyContent="between" alignItems="flex-start" gap={10}>
+                            <VStack flex={1}>
+                              <Text fontSize={14} fontWeight="$semibold" color="$black" style={styles.textBold}>
+                                {discount.title}
                               </Text>
+                              {discount.discountValue && (
+                                <Text fontSize={18} fontWeight="$bold" color="#E65100" mt={2} style={styles.textBold}>
+                                  {discount.discountValue}
+                                </Text>
+                              )}
+                              {discount.description && (
+                                <Text fontSize={12} color="$gray600" mt={4} numberOfLines={2} style={styles.textRegular}>
+                                  {discount.description}
+                                </Text>
+                              )}
+                              <HStack alignItems="center" gap={4} mt={6}>
+                                <Ionicons name="time-outline" size={11} color={theme.colors.gray400} />
+                                <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+                                  {formatDate(discount.discountStartTime)} – {formatDate(discount.discountEndTime)}
+                                </Text>
+                              </HStack>
+                            </VStack>
+                            {discount.needCode && discount.discountCode && (
+                              <Box style={styles.discountCode}>
+                                <Text fontSize={11} color="#E65100" fontWeight="$semibold" style={styles.textBold}>
+                                  {discount.discountCode}
+                                </Text>
+                              </Box>
                             )}
-                            {discount.description && (
-                              <Text
-                                fontSize="$xs"
-                                color="$gray300"
-                                mt="$xs"
-                                numberOfLines={2}
-                                style={styles.textRegular}
-                              >
-                                {discount.description}
-                              </Text>
-                            )}
-                            <HStack alignItems="center" gap="$xs" mt="$sm">
-                              <Ionicons name="time-outline" size={12} color={theme.colors.gray300} />
-                              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
-                                {formatDate(discount.discountStartTime)} - {formatDate(discount.discountEndTime)}
-                              </Text>
-                            </HStack>
-                          </VStack>
-                          {discount.needCode && discount.discountCode && (
-                            <Box bg="$white" px="$sm" py="$xs" rounded="$sm" borderWidth={1} borderColor="#E65100" borderStyle="dashed">
-                              <Text fontSize="$xs" color="#E65100" style={styles.textBold}>
-                                {t("store.discountCode")}: {discount.discountCode}
-                              </Text>
-                            </Box>
-                          )}
-                        </HStack>
-                      </Box>
-                    ))}
-                  </Box>
+                          </HStack>
+                        </Box>
+                      ))}
+                    </VStack>
+                  </VStack>
                 )}
               </>
             )}
@@ -1259,21 +1130,19 @@ const StoreDetailScreen = () => {
             <HStack
               justifyContent="between"
               alignItems="center"
-              mb="$md"
-              pt="$md"
-              borderTopWidth={1}
-              borderTopColor="$gray50"
+              px="$md"
+              pt="$lg"
+              pb="$sm"
+              mt="$md"
+              borderTopWidth={StyleSheet.hairlineWidth}
+              borderTopColor="$gray100"
             >
-              <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
-                {t("store.userReviews")} ({commentsTotal})
+              <Text fontSize={13} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
+                {t("store.userReviews").toUpperCase()} ({commentsTotal})
               </Text>
-              <Pressable
-                flexDirection="row"
-                alignItems="center"
-                onPress={() => openCommentInput()}
-              >
-                <Ionicons name="create-outline" size={18} color={theme.colors.black} />
-                <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs" style={styles.textRegular}>
+              <Pressable flexDirection="row" alignItems="center" onPress={() => openCommentInput()}>
+                <Ionicons name="create-outline" size={15} color={theme.colors.gray400} />
+                <Text fontSize={12} color="$gray400" ml={4} style={styles.textRegular}>
                   {t("store.writeReview")}
                 </Text>
               </Pressable>
@@ -1281,27 +1150,11 @@ const StoreDetailScreen = () => {
           </VStack>
         }
         ListEmptyComponent={
-          <VStack alignItems="center" py="$xl">
-            <Ionicons
-              name="chatbubble-outline"
-              size={48}
-              color={theme.colors.gray200}
-            />
-            <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <VStack alignItems="center" py="$xl" px="$md">
+            <Ionicons name="chatbubble-outline" size={32} color={theme.colors.gray200} />
+            <Text fontSize={13} color="$gray300" mt="$md" textAlign="center" style={styles.textRegular}>
               {t("store.noReviewsYet")}
             </Text>
-            <Pressable
-              mt="$md"
-              px="$lg"
-              py="$sm"
-              bg="$black"
-              rounded="$sm"
-              onPress={() => openCommentInput()}
-            >
-              <Text color="$white" fontWeight="$medium" style={styles.textRegular}>
-                {t("store.writeReview")}
-              </Text>
-            </Pressable>
           </VStack>
         }
         onEndReached={() => {
@@ -1529,48 +1382,30 @@ const StoreDetailScreen = () => {
       </Modal>
 
       {/* 底部操作栏 */}
-      <Box
-        px="$lg"
-        py="$md"
+      <HStack
+        px="$xl"
+        py="$lg"
         bg="$white"
-        borderTopWidth={1}
+        borderTopWidth={StyleSheet.hairlineWidth}
         borderTopColor="$gray100"
+        gap="$sm"
       >
-        <HStack gap="$sm">
-          <Pressable
-            flex={1}
-            flexDirection="row"
-            py="$md"
-            rounded="$sm"
-            borderWidth={1}
-            borderColor="$gray200"
-            alignItems="center"
-            justifyContent="center"
-            onPress={openRatingModal}
-          >
-            <Ionicons name="star-outline" size={18} color={theme.colors.black} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm" style={styles.textBold}>
-              {store.userRating ? t("store.rated", { rating: store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1) }) : t("store.rateStore")}
-            </Text>
-          </Pressable>
+        <Pressable style={styles.bottomBtnOutline} onPress={openRatingModal} flex={1}>
+          <Ionicons name="star-outline" size={15} color={theme.colors.black} />
+          <Text fontSize={13} color="$black" ml={6} style={styles.textRegular}>
+            {store.userRating
+              ? t("store.rated", { rating: store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1) })
+              : t("store.rateStore")}
+          </Text>
+        </Pressable>
 
-          <Pressable
-            flex={1}
-            flexDirection="row"
-            py="$md"
-            rounded="$sm"
-            bg="$black"
-            alignItems="center"
-            justifyContent="center"
-            onPress={() => openCommentInput()}
-          >
-            <Ionicons name="chatbubble-outline" size={18} color={theme.colors.white} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm" style={styles.textBold}>
-              {t("store.writeReview")}
-            </Text>
-          </Pressable>
-        </HStack>
-      </Box>
+        <Pressable style={styles.bottomBtnFill} onPress={() => openCommentInput()} flex={1}>
+          <Ionicons name="chatbubble-outline" size={15} color={theme.colors.white} />
+          <Text fontSize={13} color="$white" ml={6} style={styles.textRegular}>
+            {t("store.writeReview")}
+          </Text>
+        </Pressable>
+      </HStack>
       {/* 商家申请弹窗 */}
       <Modal
         visible={showMerchantApplyModal}
@@ -1756,8 +1591,66 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   listContent: {
-    padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
+  },
+  // follow button
+  followBtn: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.black,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 4,
+  },
+  // info rows
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.gray100,
+  },
+  // style chip (outline)
+  styleChip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.black,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  // brand chip (light gray)
+  brandChip: {
+    backgroundColor: theme.colors.gray50,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  // merchant row
+  merchantRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.gray100,
+  },
+  // bottom bar buttons
+  bottomBtnOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray200,
+    borderRadius: 6,
+  },
+  bottomBtnFill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    backgroundColor: theme.colors.black,
+    borderRadius: 6,
   },
   modalContent: {
     backgroundColor: theme.colors.white,
@@ -1799,16 +1692,33 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  horizontalList: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
   activityCard: {
-    width: 200,
-    marginRight: theme.spacing.sm,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: 12,
-    overflow: "hidden",
+    width: 180,
   },
   activityImage: {
     width: "100%",
-    height: 100,
+    height: 120,
+    borderRadius: 8,
+  },
+  discountRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#FFE082",
+    borderRadius: 8,
+    backgroundColor: "#FFFBF0",
+  },
+  discountCode: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E65100",
+    borderRadius: 4,
+    borderStyle: "dashed",
   },
   // 商家申请弹窗样式
   merchantApplyContainer: {

@@ -503,7 +503,18 @@
     "alertCommentFailed": "Comment Failed",
     "alertDeleteComment": "Delete Comment",
     "alertDeleteCommentConfirm": "Are you sure you want to delete this comment?",
-    "alertDeleteFailed": "Delete Failed"
+    "alertDeleteFailed": "Delete Failed",
+    "brandLabel": "Brand: ",
+    "comments": "Comments ({{count}})",
+    "noComments": "No comments yet, be the first to comment",
+    "writeComment": "Write a comment...",
+    "operationFailed": "Operation failed",
+    "publishFailed": "Publish failed",
+    "deleteFailed": "Delete failed",
+    "likeFailed": "Like failed",
+    "loadMoreComments": "Load more comments",
+    "anonymous": "Anonymous",
+    "productNotFound": "Product not found"
   },
   "storeSubmit": {
     "title": "Submit Store",

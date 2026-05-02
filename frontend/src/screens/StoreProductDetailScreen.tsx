@@ -24,7 +24,7 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
-  FlatList,
+  Image as RNImage,
   Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
@@ -32,10 +32,9 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TextInput,
+  TouchableWithoutFeedback,
   View,
   Dimensions,
-  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -61,6 +60,7 @@ import {
 } from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { formatTimestamp } from "../components/PostDetail/types";
+import { CommentInputBar, CommentInputBarRef } from "../components/PostDetail/CommentInputBar";
 import { useTranslation } from "react-i18next";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -113,7 +113,8 @@ const StoreProductDetailScreen: React.FC = () => {
   const [commentInput, setCommentInput] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
-  const commentInputRef = useRef<TextInput>(null);
+  const [isCommentFocused, setIsCommentFocused] = useState(false);
+  const commentInputRef = useRef<CommentInputBarRef>(null);
 
   // ---------------------- 图片全屏浏览 -------------------------------------
   // 暂不接入 FullscreenImageViewer（它强耦合 isVideoUrl 等 posts 逻辑），
@@ -203,7 +204,7 @@ const StoreProductDetailScreen: React.FC = () => {
   const handleToggleLike = useCallback(async () => {
     if (likePending) return;
     if (!currentUser) {
-      Alert.show(t("common.pleaseLogin"));
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
     const nextLiked = !isLiked;
@@ -230,6 +231,7 @@ const StoreProductDetailScreen: React.FC = () => {
       userId: c.userId,
       userName: c.username,
     });
+    setIsCommentFocused(true);
     setTimeout(() => {
       commentInputRef.current?.focus();
     }, 50);
@@ -237,13 +239,33 @@ const StoreProductDetailScreen: React.FC = () => {
 
   const handleCancelReply = useCallback(() => {
     setReplyTarget(null);
+    setIsCommentFocused(false);
+    Keyboard.dismiss();
   }, []);
+
+  const handleInputFocus = useCallback(() => {
+    setIsCommentFocused(true);
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    if (!commentInput) {
+      setIsCommentFocused(false);
+    }
+  }, [commentInput]);
+
+  const handleOverlayPress = useCallback(() => {
+    Keyboard.dismiss();
+    commentInputRef.current?.blur();
+    setIsCommentFocused(false);
+    setReplyTarget(null);
+  }, []);
+
 
   const handleSubmitComment = useCallback(async () => {
     const text = commentInput.trim();
     if (!text) return;
     if (!currentUser) {
-      Alert.show(t("common.pleaseLogin"));
+      Alert.show(t("engagement.pleaseLogin"));
       return;
     }
     if (isSubmittingComment) return;
@@ -259,6 +281,7 @@ const StoreProductDetailScreen: React.FC = () => {
       setCommentsTotal((n) => n + 1);
       setCommentInput("");
       setReplyTarget(null);
+      setIsCommentFocused(false);
       Keyboard.dismiss();
     } catch (e) {
       Alert.show(e instanceof Error ? e.message : t("store.publishFailed"));
@@ -356,7 +379,11 @@ const StoreProductDetailScreen: React.FC = () => {
       <SafeAreaView style={styles.root} edges={["top"]}>
         <Header title={t("store.productDetail")} onBack={navigation.goBack} />
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={theme.colors.black} />
+          <RNImage
+            source={require("../../assets/gif/profile-loading.gif")}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         </View>
       </SafeAreaView>
     );
@@ -529,7 +556,7 @@ const StoreProductDetailScreen: React.FC = () => {
           {/* 评论区 */}
           <View style={styles.commentsSection}>
             <Text fontSize={16} fontWeight="$semibold" color="$black">
-              {t("store.comments")} ({commentsTotal})
+              {t("store.comments", { count: commentsTotal })}
             </Text>
 
             {commentsLoading && comments.length === 0 && (
@@ -572,66 +599,38 @@ const StoreProductDetailScreen: React.FC = () => {
           </View>
         </ScrollView>
 
-        {/* 底部操作栏：点赞 + 评论输入 */}
-        <View style={styles.bottomBar}>
-          <Pressable onPress={handleToggleLike} style={styles.bottomAction}>
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={24}
-              color={isLiked ? theme.colors.error : theme.colors.gray600}
-            />
-            <Text fontSize={11} color={isLiked ? "$error" : "$gray600"} mt={2}>
-              {likeCount}
-            </Text>
-          </Pressable>
+        {/* 遮罩层：点击退出评论输入 */}
+        {isCommentFocused && (
+          <TouchableWithoutFeedback onPress={handleOverlayPress}>
+            <View style={styles.contentOverlay} />
+          </TouchableWithoutFeedback>
+        )}
 
-          <View style={styles.inputWrapper}>
-            {replyTarget && (
-              <View style={styles.replyHint}>
-                <Text fontSize={11} color="$gray600">
-                  {t("store.reply")} <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
-                </Text>
-                <TouchableOpacity onPress={handleCancelReply} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={theme.colors.gray400} />
-                </TouchableOpacity>
-              </View>
-            )}
-            <View style={styles.inputRow}>
-              <TextInput
-                ref={commentInputRef}
-                value={commentInput}
-                onChangeText={setCommentInput}
-                placeholder={
-                  replyTarget ? `${t("store.reply")} @${replyTarget.userName}` : t("store.writeComment")
-                }
-                placeholderTextColor={theme.colors.gray400}
-                style={styles.input}
-                returnKeyType="send"
-                onSubmitEditing={handleSubmitComment}
-                maxLength={500}
-              />
-              <Pressable
-                onPress={handleSubmitComment}
-                disabled={isSubmittingComment || !commentInput.trim()}
-                style={styles.sendButton}
-              >
-                {isSubmittingComment ? (
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                ) : (
-                  <Ionicons
-                    name="send"
-                    size={18}
-                    color={
-                      commentInput.trim()
-                        ? theme.colors.accent
-                        : theme.colors.gray400
-                    }
-                  />
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
+        {/* 底部操作栏 */}
+        <CommentInputBar
+          ref={commentInputRef}
+          commentInput={commentInput}
+          isSubmitting={isSubmittingComment}
+          isFocused={isCommentFocused}
+          displayLikes={likeCount}
+          displaySaves={0}
+          displayComments={commentsTotal}
+          displayIsLiked={isLiked}
+          displayIsSaved={false}
+          replyTarget={
+            replyTarget
+              ? { commentId: String(replyTarget.commentId), userId: replyTarget.userId, userName: replyTarget.userName }
+              : null
+          }
+          onInputChange={setCommentInput}
+          onInputFocus={handleInputFocus}
+          onInputBlur={handleInputBlur}
+          onSubmit={handleSubmitComment}
+          onLike={handleToggleLike}
+          onSave={() => {}}
+          onOverlayPress={handleOverlayPress}
+          onCancelReply={handleCancelReply}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -777,6 +776,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 24,
   },
+  loadingGif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
+  },
   heroImage: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH,
@@ -828,54 +831,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: theme.colors.gray100,
   },
-  bottomBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
-  },
-  bottomAction: {
-    alignItems: "center",
-    width: 44,
-  },
-  inputWrapper: {
-    flex: 1,
-  },
-  replyHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 4,
-    backgroundColor: theme.colors.gray50,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.gray50,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.black,
-    padding: 0,
-  },
-  sendButton: {
-    width: 24,
-    height: 24,
-    alignItems: "center",
-    justifyContent: "center",
+  contentOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 10,
   },
 });
 

@@ -17,17 +17,15 @@
  */
 import React, { useCallback, useMemo } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
+  Image as RNImage,
   NativeScrollEvent,
   NativeSyntheticEvent,
   RefreshControl,
   StyleSheet,
-  View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
+import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
 import { theme } from "../../../../theme";
 import { Alert } from "../../../../utils/Alert";
 import { SCREEN_WIDTH } from "../../constants";
@@ -111,7 +109,6 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   // Phase 4 —— 入口卡片点击后按 cardType 真实分流到 StoreProductList。
   // EVENT 类型暂无独立屏（活动列表是 Phase 5+ 的事），仍回退到 StoreDetail；
   // 其它三种都走新 StoreProductList 屏，由它根据 mode + 可选 categoryId 渲染。
-  // __DEV__ 下 log remote/mock 标签，便于回归真实 vs 兜底数据的路径差异。
   const handleCategoryPress = useCallback(
     (card: StoreEntryCardView) => {
       if (!selectedStoreId) return;
@@ -217,20 +214,24 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   // 懒加载 idle：Tab 尚未被激活过就占位一个透明空白，避免暂时的"没有数据"
   // 提示误导用户。激活态下一帧就会切换到 loading → 正常渲染。
   if (!isActive && stores.length === 0 && !isLoading && !error) {
-    return <View style={styles.root} />;
+    return <Box style={styles.root} />;
   }
 
   if (isLoading && stores.length === 0) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.black} />
-      </View>
+      <Box style={styles.center}>
+        <RNImage
+          source={require("../../../../../assets/gif/profile-loading.gif")}
+          style={styles.loadingGif}
+          resizeMode="contain"
+        />
+      </Box>
     );
   }
 
   if (error && stores.length === 0) {
     return (
-      <View style={styles.centerPadded}>
+      <Box style={styles.centerPadded}>
         <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
         <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
           {t("discover.buyerLoadFailed")}
@@ -243,7 +244,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
             {t("discover.buyerTapRetry")}
           </Text>
         </Pressable>
-      </View>
+      </Box>
     );
   }
 
@@ -255,7 +256,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   // 也避免 FlashList 触发 "VirtualizedList should never be nested in
   // ScrollView" 警告。
   return (
-    <View style={styles.root}>
+    <Box style={styles.root}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -294,7 +295,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
           onFavoriteToggle={handleProductFavorite}
         />
       </ScrollView>
-    </View>
+    </Box>
   );
 };
 
@@ -343,9 +344,9 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   return (
     <VStack mx={GRID_HORIZONTAL_PADDING} mb="$lg" gap={GRID_GAP}>
       {rows.map((row, rowIdx) => (
-        <View key={`row-${rowIdx}`} style={styles.row}>
+        <HStack key={`row-${rowIdx}`} gap={GRID_GAP}>
           {row.map((product) => (
-            <View key={product.id} style={styles.cell}>
+            <Box key={product.id} flex={1}>
               <ProductCard
                 product={product}
                 storeName={storeName}
@@ -353,10 +354,10 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
                 onPress={onProductPress}
                 onFavoriteToggle={onFavoriteToggle}
               />
-            </View>
+            </Box>
           ))}
-          {row.length === 1 && <View style={styles.cell} />}
-        </View>
+          {row.length === 1 && <Box flex={1} />}
+        </HStack>
       ))}
     </VStack>
   );
@@ -391,12 +392,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 32,
   },
-  row: {
-    flexDirection: "row",
-    gap: GRID_GAP,
-  },
-  cell: {
-    flex: 1,
+  loadingGif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
   },
 });
 

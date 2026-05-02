@@ -503,7 +503,18 @@
     "alertCommentFailed": "评论失败",
     "alertDeleteComment": "删除评论",
     "alertDeleteCommentConfirm": "确定要删除这条评论吗？",
-    "alertDeleteFailed": "删除失败"
+    "alertDeleteFailed": "删除失败",
+    "brandLabel": "品牌: ",
+    "comments": "评论 ({{count}})",
+    "noComments": "暂无评论，快来发表第一条评论吧",
+    "writeComment": "写评论...",
+    "operationFailed": "操作失败",
+    "publishFailed": "发布失败",
+    "deleteFailed": "删除失败",
+    "likeFailed": "点赞失败",
+    "loadMoreComments": "加载更多评论",
+    "anonymous": "匿名用户",
+    "productNotFound": "商品不存在"
   },
   "storeSubmit": {
     "title": "提交买手店",

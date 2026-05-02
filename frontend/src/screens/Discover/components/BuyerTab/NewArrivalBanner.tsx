@@ -8,7 +8,7 @@
  * 默认 CTA（没配 linkUrl 也保留，让用户知道可以点）。
  */
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
@@ -53,7 +53,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
               </HStack>
             </VStack>
           )}
-          <View style={[styles.imageWrapper, !hasText && styles.imageFull]}>
+          <Box style={[styles.imageWrapper, !hasText && styles.imageFull]}>
             <OptimizedImage
               uri={banner.image}
               size={ImageSize.MEDIUM}
@@ -61,7 +61,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
               contentFit="cover"
               lazy
             />
-          </View>
+          </Box>
         </HStack>
       </Pressable>
     </Box>

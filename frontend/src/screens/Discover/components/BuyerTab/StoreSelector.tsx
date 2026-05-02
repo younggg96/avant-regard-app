@@ -6,10 +6,10 @@
  * 接管，这里保持无状态，便于和 React.memo 配合。
  */
 import React, { useCallback } from "react";
-import { FlatList, ListRenderItem, StyleSheet, View } from "react-native";
+import { FlatList, ListRenderItem, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Pressable, Text } from "../../../../components/ui";
+import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
@@ -67,15 +67,15 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
             hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             style={styles.item}
           >
-            <View style={[styles.logoRing, styles.logoRingIdle]}>
-              <View style={[styles.logoInner, styles.allLogoInner]}>
+            <Box style={[styles.logoRing, styles.logoRingIdle]}>
+              <Box style={[styles.logoInner, styles.allLogoInner]}>
                 <Ionicons
                   name="arrow-forward"
                   size={20}
                   color={theme.colors.white}
                 />
-              </View>
-            </View>
+              </Box>
+            </Box>
             <Text numberOfLines={1} style={[styles.name, styles.nameIdle]}>
               {t("discover.buyerViewAll")}
             </Text>
@@ -91,13 +91,13 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           style={styles.item}
         >
-          <View
+          <Box
             style={[
               styles.logoRing,
               isSelected ? styles.logoRingSelected : styles.logoRingIdle,
             ]}
           >
-            <View style={styles.logoInner}>
+            <Box style={styles.logoInner}>
               {item.coverImage ? (
                 <OptimizedImage
                   uri={item.coverImage}
@@ -107,12 +107,12 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
                   lazy
                 />
               ) : (
-                <View style={styles.logoPlaceholder}>
+                <Box style={styles.logoPlaceholder}>
                   <Text style={styles.logoPlaceholderText}>{firstLetter}</Text>
-                </View>
+                </Box>
               )}
-            </View>
-          </View>
+            </Box>
+          </Box>
           <Text
             numberOfLines={1}
             style={[
@@ -131,14 +131,14 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
   if (isLoading && stores.length === 0) {
     return (
       <Box py="$sm">
-        <View style={styles.skeletonRow}>
+        <HStack style={styles.skeletonRow}>
           {Array.from({ length: 6 }).map((_, idx) => (
-            <View key={idx} style={styles.skeletonCell}>
-              <View style={styles.skeletonLogo} />
-              <View style={styles.skeletonLabel} />
-            </View>
+            <Box key={idx} style={styles.skeletonCell}>
+              <Box style={styles.skeletonLogo} />
+              <Box style={styles.skeletonLabel} />
+            </Box>
           ))}
-        </View>
+        </HStack>
       </Box>
     );
   }

@@ -14,9 +14,9 @@
  *     根据 `cardType` 去分发到对应列表页，本组件不再知道"路由"这一层。
  */
 import React, { useCallback } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, HStack, Pressable, Text } from "../../../../components/ui";
+import { Box, HStack, Pressable, ScrollView, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
@@ -50,16 +50,16 @@ const CardItem: React.FC<{
       contentFit="cover"
       lazy
     />
-    <View style={styles.cardOverlay} />
-    <View style={styles.cardContent}>
+    <Box style={styles.cardOverlay} />
+    <Box style={styles.cardContent}>
       <Text style={styles.cardLabel}>{item.label}</Text>
       {!!item.labelEn && (
         <Text style={styles.cardLabelEn}>{item.labelEn}</Text>
       )}
-      <View style={styles.cardArrow}>
+      <Box style={styles.cardArrow}>
         <Ionicons name="arrow-forward" size={14} color={theme.colors.white} />
-      </View>
-    </View>
+      </Box>
+    </Box>
   </Pressable>
 ));
 CardItem.displayName = "CategoryCardItem";
@@ -84,13 +84,13 @@ const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => 
       <Box mx={HORIZONTAL_MARGIN} my="$md">
         <HStack gap={CARD_GAP}>
           {cards.map((card) => (
-            <View key={card.id} style={styles.flexCell}>
+            <Box key={card.id} flex={1}>
               <CardItem
                 item={card}
                 width={FOUR_COL_WIDTH}
                 onPress={handlePress}
               />
-            </View>
+            </Box>
           ))}
         </HStack>
       </Box>
@@ -105,16 +105,16 @@ const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => 
         contentContainerStyle={styles.scrollContent}
       >
         {cards.map((card) => (
-          <View
+          <Box
             key={card.id}
-            style={[styles.scrollCell, { marginRight: CARD_GAP }]}
+            style={{ marginRight: CARD_GAP }}
           >
             <CardItem
               item={card}
               width={FOUR_COL_WIDTH}
               onPress={handlePress}
             />
-          </View>
+          </Box>
         ))}
       </ScrollView>
     </Box>
@@ -126,15 +126,6 @@ export const CategoryCards = React.memo(CategoryCardsImpl);
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: HORIZONTAL_MARGIN,
-  },
-  flexCell: {
-    // 保持原视觉：≤4 张时每张 flex:1 —— 这里直接用固定 width 也行，但
-    // flex:1 更抗 DPR 下的宽度计算误差，不会出现 "最后一张差 0.5px" 的割裂。
-    flex: 1,
-  },
-  scrollCell: {
-    // 横向滚动模式下固定宽度；高度由 CardItem 内的 aspectRatio 接管
-    // （这里直接把 height 写成 width 即可）。
   },
   card: {
     borderRadius: 10,
