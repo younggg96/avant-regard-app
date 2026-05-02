@@ -22,22 +22,22 @@ import { request } from "./http";
  * 这个约定是和后端对齐的 —— 后端只存 `price_cents`，前端完全掌握展示格式。
  *
  * 单位符号映射参考 `backend/app/schemas/store_product.py` 中 `currency` 字段，
- * 目前只支持 CNY，保留分支方便未来扩展。
+ * 目前支持 CNY / USD。
  */
 export const formatPrice = (
   priceCents: number | null | undefined,
   currency: string = "CNY"
 ): string => {
   if (priceCents == null || Number.isNaN(priceCents)) return "";
-  const yuan = (priceCents / 100).toFixed(2);
+  const amount = (priceCents / 100).toFixed(2);
   switch (currency) {
     case "CNY":
     default:
-      return `¥ ${yuan}`;
+      return `¥ ${amount}`;
     case "USD":
-      return `$ ${yuan}`;
+      return `$ ${amount}`;
     case "JPY":
-      return `¥ ${yuan}`;
+      return `¥ ${amount}`;
   }
 };
 
@@ -166,8 +166,10 @@ export interface StoreProduct {
   likeCount: number;
   commentCount: number;
   viewCount: number;
+  wantCount: number;
   status: ProductStatus;
   likedByMe?: boolean | null;
+  wantedByMe?: boolean | null;
   publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -263,6 +265,51 @@ export const listMyLikedStoreProducts = async (
 ): Promise<StoreProductListResponse> => {
   return request<StoreProductListResponse>(
     `/api/store-merchants/user/liked-products?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+// ============================================================================
+// 商品「想要」(愿望单)
+// ============================================================================
+//
+// 与点赞/喜欢对称的一组幂等接口；前端先做乐观态再发请求，失败回滚。
+// 后端在 want_count 上用 RPC 维护，重复 POST 不会让计数超出。
+
+/** POST /api/store-merchants/products/{productId}/want */
+export const wantStoreProduct = async (productId: number): Promise<void> => {
+  await request<{ wanted: boolean }>(
+    `/api/store-merchants/products/${productId}/want`,
+    { method: "POST" }
+  );
+};
+
+/** DELETE /api/store-merchants/products/{productId}/want */
+export const unwantStoreProduct = async (productId: number): Promise<void> => {
+  await request<{ wanted: boolean }>(
+    `/api/store-merchants/products/${productId}/want`,
+    { method: "DELETE" }
+  );
+};
+
+/** GET /api/store-merchants/products/{productId}/want/check */
+export const checkStoreProductWanted = async (
+  productId: number
+): Promise<boolean> => {
+  const result = await request<{ wanted: boolean }>(
+    `/api/store-merchants/products/${productId}/want/check`,
+    { method: "GET" }
+  );
+  return !!result?.wanted;
+};
+
+/** GET /api/store-merchants/user/wanted-products */
+export const listMyWantedStoreProducts = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<StoreProductListResponse> => {
+  return request<StoreProductListResponse>(
+    `/api/store-merchants/user/wanted-products?page=${page}&pageSize=${pageSize}`,
     { method: "GET" }
   );
 };

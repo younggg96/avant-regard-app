@@ -53,7 +53,12 @@ class StoreProductService:
     # ========================================================================
 
     @staticmethod
-    def _format_product(row: dict, *, liked_by_me: Optional[bool] = None) -> StoreProduct:
+    def _format_product(
+        row: dict,
+        *,
+        liked_by_me: Optional[bool] = None,
+        wanted_by_me: Optional[bool] = None,
+    ) -> StoreProduct:
         category = row.get("store_product_categories") or {}
         return StoreProduct(
             id=row["id"],
@@ -74,8 +79,10 @@ class StoreProductService:
             likeCount=row.get("like_count", 0),
             commentCount=row.get("comment_count", 0),
             viewCount=row.get("view_count", 0),
+            wantCount=row.get("want_count", 0),
             status=row.get("status", "PUBLISHED"),
             likedByMe=liked_by_me,
+            wantedByMe=wanted_by_me,
             publishedAt=row.get("published_at"),
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
@@ -183,9 +190,13 @@ class StoreProductService:
         if not result.data:
             return None
         liked = None
+        wanted = None
         if user_id is not None:
             liked = self.check_product_liked(product_id, user_id)
-        return self._format_product(result.data[0], liked_by_me=liked)
+            wanted = self.check_product_wanted(product_id, user_id)
+        return self._format_product(
+            result.data[0], liked_by_me=liked, wanted_by_me=wanted
+        )
 
     def _get_product_raw(self, product_id: int) -> Optional[dict]:
         result = (
@@ -245,14 +256,20 @@ class StoreProductService:
         rows = result.data or []
         total = result.count or 0
 
-        # 批量回填 likedByMe
+        # 批量回填 likedByMe / wantedByMe
         liked_map: dict[int, bool] = {}
+        wanted_map: dict[int, bool] = {}
         if user_id is not None and rows:
             ids = [r["id"] for r in rows]
             liked_map = self._check_products_liked_bulk(ids, user_id)
+            wanted_map = self._check_products_wanted_bulk(ids, user_id)
 
         products = [
-            self._format_product(row, liked_by_me=liked_map.get(row["id"]))
+            self._format_product(
+                row,
+                liked_by_me=liked_map.get(row["id"]),
+                wanted_by_me=wanted_map.get(row["id"]),
+            )
             for row in rows
         ]
         return products, total
@@ -345,6 +362,124 @@ class StoreProductService:
         ordered = [by_id[pid] for pid in product_ids if pid in by_id]
         products = [
             self._format_product(row, liked_by_me=True) for row in ordered
+        ]
+        return products, total
+
+    # ========================================================================
+    # 想要 (愿望单)
+    # ========================================================================
+    #
+    # 与 like 走的是相同的乐观幂等模型，但计数用 RPC 维护以与 posts 实现
+    # (`increment_post_want_count`) 命名/语义对齐 —— 便于将来抽公共。
+
+    def want_product(self, product_id: int, user_id: int) -> bool:
+        """加入愿望单；重复操作返回 False 但不抛错。"""
+        try:
+            self.db_admin.table("store_product_wants").insert(
+                {"product_id": product_id, "user_id": user_id}
+            ).execute()
+        except Exception:
+            # 唯一约束冲突 -> 视为幂等成功，不动计数
+            return False
+
+        try:
+            self.db_admin.rpc(
+                "increment_store_product_want_count",
+                {"product_id_param": product_id},
+            ).execute()
+        except Exception as e:
+            print(
+                f"[store_products] increment want_count failed id={product_id}: {e}"
+            )
+
+        # 等级规则引擎：复用 want_clicked 计数器 —— 用户对商品/帖子点的"想要"
+        # 在用户成长体系里语义一致。
+        try:
+            from app.services.level_service import level_service
+            from app.schemas.level import LevelAction
+            level_service.record_action(user_id, LevelAction.WANT_CLICKED)
+        except Exception:
+            pass
+        return True
+
+    def unwant_product(self, product_id: int, user_id: int) -> bool:
+        result = (
+            self.db_admin.table("store_product_wants")
+            .delete()
+            .eq("product_id", product_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if not result.data:
+            return False
+        try:
+            self.db_admin.rpc(
+                "decrement_store_product_want_count",
+                {"product_id_param": product_id},
+            ).execute()
+        except Exception as e:
+            print(
+                f"[store_products] decrement want_count failed id={product_id}: {e}"
+            )
+        return True
+
+    def check_product_wanted(self, product_id: int, user_id: int) -> bool:
+        result = (
+            self.db.table("store_product_wants")
+            .select("id")
+            .eq("product_id", product_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        return bool(result.data)
+
+    def _check_products_wanted_bulk(
+        self, product_ids: Iterable[int], user_id: int
+    ) -> dict[int, bool]:
+        ids = list(product_ids)
+        if not ids:
+            return {}
+        result = (
+            self.db.table("store_product_wants")
+            .select("product_id")
+            .in_("product_id", ids)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        wanted_set = {row["product_id"] for row in (result.data or [])}
+        return {pid: (pid in wanted_set) for pid in ids}
+
+    def list_user_wanted_products(
+        self, user_id: int, *, page: int = 1, page_size: int = 20
+    ) -> Tuple[List[StoreProduct], int]:
+        """用户愿望单：标记过想要的商品列表。Profile 页 / 个人中心可用。"""
+        q = (
+            self.db.table("store_product_wants")
+            .select("product_id, created_at", count="exact")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+        )
+        offset = (page - 1) * page_size
+        q = q.range(offset, offset + page_size - 1)
+        res = q.execute()
+
+        product_ids = [r["product_id"] for r in (res.data or [])]
+        total = res.count or 0
+        if not product_ids:
+            return [], total
+
+        products_res = (
+            self.db.table("store_products")
+            .select(_PRODUCT_SELECT)
+            .in_("id", product_ids)
+            .execute()
+        )
+        rows = products_res.data or []
+        by_id = {row["id"]: row for row in rows}
+        ordered = [by_id[pid] for pid in product_ids if pid in by_id]
+        products = [
+            self._format_product(row, wanted_by_me=True) for row in ordered
         ]
         return products, total
 

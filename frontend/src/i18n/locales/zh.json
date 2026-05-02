@@ -468,6 +468,9 @@
     "suggestion4": "店内货品已经换新了，有很多新到的单品值得看看",
     "suggestion5": "这家店的 XX 品牌货最全/价格最实惠",
     "totalCount": "共 {{count}} 家",
+    "verified": "已入驻",
+    "noMoreData": "没有更多了",
+    "noMatchStores": "未找到匹配的买手店",
     "storeNotExist": "店铺不存在",
     "storeNotExistDesc": "该店铺可能已被删除或暂时不可用",
     "merchantApplyTitle": "商家入驻申请",
@@ -514,7 +517,10 @@
     "likeFailed": "点赞失败",
     "loadMoreComments": "加载更多评论",
     "anonymous": "匿名用户",
-    "productNotFound": "商品不存在"
+    "productNotFound": "商品不存在",
+    "want": "我想要",
+    "wanted": "已想要",
+    "wantThisItem": "想要这件单品？"
   },
   "storeSubmit": {
     "title": "提交买手店",

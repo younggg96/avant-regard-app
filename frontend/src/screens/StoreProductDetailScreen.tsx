@@ -23,29 +23,26 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
-  Image as RNImage,
+  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
-  ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
-  View,
   Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
+import { Box, HStack, Image, Pressable, ScrollView, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
 import {
   checkStoreProductLiked,
+  checkStoreProductWanted,
   createStoreProductComment,
   deleteStoreProductComment,
   formatPrice,
@@ -57,10 +54,21 @@ import {
   StoreProductComment,
   unlikeStoreProduct,
   unlikeStoreProductComment,
+  unwantStoreProduct,
+  wantStoreProduct,
 } from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { formatTimestamp } from "../components/PostDetail/types";
-import { CommentInputBar, CommentInputBarRef } from "../components/PostDetail/CommentInputBar";
+import {
+  CommentInputBar,
+  CommentInputBarRef,
+  FullscreenImageViewer,
+  WantPopup,
+} from "../components/PostDetail";
+import {
+  clampAspectRatio,
+  useMediaAspectRatio,
+} from "../utils/useMediaAspectRatio";
 import { useTranslation } from "react-i18next";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -102,6 +110,13 @@ const StoreProductDetailScreen: React.FC = () => {
   const [likeCount, setLikeCount] = useState(0);
   const [likePending, setLikePending] = useState(false);
 
+  // 「想要」(愿望单) 同样独立乐观态，参考 useEngagement 在 posts 上的实现
+  const [isWanted, setIsWanted] = useState(false);
+  const [wantCount, setWantCount] = useState(0);
+  const [wantPending, setWantPending] = useState(false);
+  // 自动浮窗 —— 进入页面 0.8s 后弹一次（已加愿望单则不弹），与 PostDetail 一致
+  const [showWantPopup, setShowWantPopup] = useState(false);
+
   // ---------------------- 评论 ---------------------------------------------
   const [comments, setComments] = useState<StoreProductComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
@@ -117,9 +132,8 @@ const StoreProductDetailScreen: React.FC = () => {
   const commentInputRef = useRef<CommentInputBarRef>(null);
 
   // ---------------------- 图片全屏浏览 -------------------------------------
-  // 暂不接入 FullscreenImageViewer（它强耦合 isVideoUrl 等 posts 逻辑），
-  // 用简易 Modal 也可以，但 Phase 4 先省略：点击图片走 no-op + TODO 埋点。
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
 
   // unmount 防御
   const mountedRef = useRef(true);
@@ -140,6 +154,8 @@ const StoreProductDetailScreen: React.FC = () => {
       setProduct(detail);
       setLikeCount(detail.likeCount ?? 0);
       setIsLiked(!!detail.likedByMe);
+      setWantCount(detail.wantCount ?? 0);
+      setIsWanted(!!detail.wantedByMe);
     } catch (e) {
       console.error("[StoreProductDetail] load product failed:", e);
       if (!mountedRef.current) return;
@@ -187,7 +203,7 @@ const StoreProductDetailScreen: React.FC = () => {
     loadComments("initial");
   }, [loadProduct, loadComments]);
 
-  // 登录后再补一次精确 liked 状态（后端 detail 已带，但冷缓存下可能失败）。
+  // 登录后再补一次精确 liked / wanted 状态（后端 detail 已带，但冷缓存下可能失败）。
   useEffect(() => {
     if (!productId || !currentUser) return;
     checkStoreProductLiked(productId)
@@ -198,7 +214,27 @@ const StoreProductDetailScreen: React.FC = () => {
       .catch(() => {
         /* 忽略 */
       });
+    checkStoreProductWanted(productId)
+      .then((wanted) => {
+        if (!mountedRef.current) return;
+        setIsWanted(wanted);
+      })
+      .catch(() => {
+        /* 忽略 */
+      });
   }, [productId, currentUser]);
+
+  // 进入页面 0.8s 后自动弹 WantPopup —— 已加愿望单则不弹。同 PostDetail 行为。
+  useEffect(() => {
+    if (!product) return;
+    if (isWanted) return;
+    const timer = setTimeout(() => {
+      if (mountedRef.current) setShowWantPopup(true);
+    }, 800);
+    return () => clearTimeout(timer);
+    // 仅依赖 product?.id 与 isWanted 的初始值；后续 isWanted 变化不应再触发自动弹窗。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   // ---------------------- 交互 --------------------------------------------
   const handleToggleLike = useCallback(async () => {
@@ -223,6 +259,29 @@ const StoreProductDetailScreen: React.FC = () => {
       if (mountedRef.current) setLikePending(false);
     }
   }, [isLiked, likePending, currentUser, productId]);
+
+  const handleToggleWant = useCallback(async () => {
+    if (wantPending) return;
+    if (!currentUser) {
+      Alert.show(t("engagement.pleaseLogin"));
+      return;
+    }
+    const nextWanted = !isWanted;
+    setIsWanted(nextWanted);
+    setWantCount((n) => Math.max(0, n + (nextWanted ? 1 : -1)));
+    setWantPending(true);
+    try {
+      if (nextWanted) await wantStoreProduct(productId);
+      else await unwantStoreProduct(productId);
+    } catch (e) {
+      // 回滚乐观态
+      setIsWanted(!nextWanted);
+      setWantCount((n) => Math.max(0, n + (nextWanted ? -1 : 1)));
+      Alert.show(e instanceof Error ? e.message : t("store.operationFailed"));
+    } finally {
+      if (mountedRef.current) setWantPending(false);
+    }
+  }, [isWanted, wantPending, currentUser, productId]);
 
   const handleStartReply = useCallback((c: StoreProductComment) => {
     if (c.userId == null || !c.username) return;
@@ -363,7 +422,36 @@ const StoreProductDetailScreen: React.FC = () => {
     [product]
   );
 
-  const mainImageIndex = Math.max(0, Math.min(activeImageIndex, (product?.images?.length ?? 1) - 1));
+  const productImages = useMemo(
+    () => product?.images?.filter((uri): uri is string => !!uri) ?? [],
+    [product?.images]
+  );
+  const hasProductImages = productImages.length > 0;
+  // Drive the carousel height from the cover (first) slide's natural aspect
+  // ratio, clamped to a pleasant range — mirrors LookbookContent so the
+  // post-detail and product-detail screens render identical hero frames.
+  const coverRatio = clampAspectRatio(
+    useMediaAspectRatio(productImages[0], 4 / 5),
+    3 / 4,
+    16 / 9
+  );
+  const heroFrameStyle = useMemo(
+    () => ({
+      width: SCREEN_WIDTH,
+      height: SCREEN_WIDTH / coverRatio,
+    }),
+    [coverRatio]
+  );
+  // Inner media fills the wrapper; `contentFit="contain"` then letterboxes
+  // mismatched slides so nothing is cropped (same approach as LookbookContent).
+  const heroMediaStyle = useMemo(
+    () => ({ width: "100%" as const, height: "100%" as const }),
+    []
+  );
+  const mainImageIndex = Math.max(
+    0,
+    Math.min(activeImageIndex, Math.max(productImages.length, 1) - 1)
+  );
 
   const handleCarouselScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -373,18 +461,27 @@ const StoreProductDetailScreen: React.FC = () => {
     [activeImageIndex]
   );
 
+  const handleOpenFullscreen = useCallback((index: number) => {
+    setActiveImageIndex(index);
+    setFullscreenVisible(true);
+  }, []);
+
+  const handleCloseFullscreen = useCallback(() => {
+    setFullscreenVisible(false);
+  }, []);
+
   // ---------------------- 分支渲染 ----------------------------------------
   if (isLoading && !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
         <Header title={t("store.productDetail")} onBack={navigation.goBack} />
-        <View style={styles.center}>
-          <RNImage
+        <Box style={styles.center}>
+          <Image
             source={require("../../assets/gif/profile-loading.gif")}
             style={styles.loadingGif}
             resizeMode="contain"
           />
-        </View>
+        </Box>
       </SafeAreaView>
     );
   }
@@ -393,7 +490,7 @@ const StoreProductDetailScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
         <Header title={t("store.productDetail")} onBack={navigation.goBack} />
-        <View style={styles.center}>
+        <Box style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
           <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
             {t("store.loadFailed")}
@@ -406,7 +503,7 @@ const StoreProductDetailScreen: React.FC = () => {
               {t("store.tapRetry")}
             </Text>
           </Pressable>
-        </View>
+        </Box>
       </SafeAreaView>
     );
   }
@@ -426,88 +523,89 @@ const StoreProductDetailScreen: React.FC = () => {
           onScrollEndDrag={() => Keyboard.dismiss()}
           showsVerticalScrollIndicator={false}
         >
-          {/* 图片轮播 */}
-          <View>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleCarouselScroll}
-              scrollEventThrottle={16}
-            >
-              {(product.images && product.images.length > 0
-                ? product.images
-                : [null]
-              ).map((uri, idx) =>
-                uri ? (
-                  <OptimizedImage
-                    key={`${idx}`}
-                    uri={uri}
-                    size={ImageSize.LARGE}
-                    style={styles.heroImage}
-                    contentFit="cover"
-                    lazy={idx > 0}
-                  />
-                ) : (
-                  <View key={`ph-${idx}`} style={[styles.heroImage, styles.heroPlaceholder]}>
-                    <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
-                  </View>
-                )
-              )}
-            </ScrollView>
-            {product.images && product.images.length > 1 && (
-              <View style={styles.dotsRow}>
-                {product.images.map((_, idx) => (
-                  <View
+          {/* 图片轮播 —— 与 LookbookContent 保持一致：FlatList 横向分页 + 圆点指示器 */}
+          <Box style={styles.heroSection}>
+            {hasProductImages ? (
+              <FlatList
+                data={productImages}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={handleCarouselScroll}
+                keyExtractor={(_, index) => `product-img-${index}`}
+                renderItem={({ item, index }) => (
+                  <Pressable
+                    onPress={() => handleOpenFullscreen(index)}
+                    style={heroFrameStyle}
+                  >
+                    <OptimizedImage
+                      uri={item}
+                      size={ImageSize.LARGE}
+                      style={heroMediaStyle}
+                      contentFit="contain"
+                      lazy={index > 0}
+                    />
+                  </Pressable>
+                )}
+              />
+            ) : (
+              <Box style={[heroFrameStyle, styles.heroPlaceholder]}>
+                <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
+              </Box>
+            )}
+            {productImages.length > 1 && (
+              <HStack style={styles.dotIndicatorContainer}>
+                {productImages.map((_, idx) => (
+                  <Box
                     key={idx}
                     style={[
-                      styles.dot,
-                      idx === mainImageIndex && styles.dotActive,
+                      styles.dotIndicator,
+                      idx === mainImageIndex && styles.dotIndicatorActive,
                     ]}
                   />
                 ))}
-              </View>
+              </HStack>
             )}
-          </View>
+          </Box>
 
-          {/* 信息区 */}
-          <VStack px="$md" pt="$md" gap={8}>
-            <HStack gap={6} alignItems="center" flexWrap="wrap">
+          {/* 信息区 —— 小红书风格的内容区域，与 LookbookContent 一致 */}
+          <VStack px="$md" pt="$md" pb="$sm" space="sm">
+            <HStack space="xs" alignItems="center" flexWrap="wrap">
               {product.isNew && (
-                <Box bg="$black" px="$sm" py={3} rounded="$xs">
-                  <Text fontSize={10} fontWeight="$bold" color="$white">
+                <Box bg="$black" px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$bold" color="$white">
                     NEW
                   </Text>
                 </Box>
               )}
               {hasDiscount && (
-                <Box bg="$error" px="$sm" py={3} rounded="$xs">
-                  <Text fontSize={10} fontWeight="$bold" color="$white">
+                <Box bg="$error" px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$bold" color="$white">
                     SALE
                   </Text>
                 </Box>
               )}
               {product.categoryName && (
-                <Box bg="$gray100" px="$sm" py={3} rounded="$xs">
-                  <Text fontSize={10} fontWeight="$medium" color="$gray700">
+                <Box bg="$gray100" px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$medium" color="$gray700">
                     {product.categoryName}
                   </Text>
                 </Box>
               )}
             </HStack>
 
-            <Text fontSize={20} fontWeight="$bold" color="$black" lineHeight={28}>
+            <Text fontSize="$lg" fontWeight="$bold" color="$black" lineHeight="$xl">
               {product.title}
             </Text>
 
             {!!product.brand && (
-              <Text fontSize={13} color="$gray600">
+              <Text fontSize="$xs" color="$gray600">
                 {t("store.brandLabel")}{product.brand}
               </Text>
             )}
 
-            <HStack alignItems="baseline" gap={8}>
-              <Text fontSize={24} fontWeight="$bold" color={hasDiscount ? "$error" : "$black"}>
+            <HStack alignItems="baseline" space="sm">
+              <Text fontSize="$2xl" fontWeight="$bold" color={hasDiscount ? "$error" : "$black"}>
                 {formatPrice(
                   hasDiscount
                     ? (product.discountPriceCents as number)
@@ -517,7 +615,7 @@ const StoreProductDetailScreen: React.FC = () => {
               </Text>
               {hasDiscount && (
                 <Text
-                  fontSize={14}
+                  fontSize="$sm"
                   color="$gray300"
                   style={{ textDecorationLine: "line-through" }}
                 >
@@ -527,19 +625,19 @@ const StoreProductDetailScreen: React.FC = () => {
             </HStack>
 
             {product.tags && product.tags.length > 0 && (
-              <HStack gap={6} flexWrap="wrap">
+              <HStack space="xs" flexWrap="wrap">
                 {product.tags.map((tag) => (
                   <Box
                     key={tag}
                     bg="$gray50"
-                    px={10}
-                    py={4}
+                    px="$sm"
+                    py="$xs"
                     rounded="$lg"
                     borderWidth={StyleSheet.hairlineWidth}
                     borderColor="$gray100"
                   >
-                    <Text fontSize={11} color="$gray700">
-                      {tag}
+                    <Text fontSize="$xs" color="$gray700">
+                      #{tag}
                     </Text>
                   </Box>
                 ))}
@@ -547,31 +645,42 @@ const StoreProductDetailScreen: React.FC = () => {
             )}
 
             {!!product.description && (
-              <Text fontSize={14} color="$gray800" lineHeight={22} mt={4}>
+              <Text fontSize="$sm" color="$gray800" lineHeight="$lg" mt="$xs">
                 {product.description}
               </Text>
             )}
           </VStack>
 
-          {/* 评论区 */}
-          <View style={styles.commentsSection}>
-            <Text fontSize={16} fontWeight="$semibold" color="$black">
+          {/* 评论区 —— 与 PostDetail 的 CommentsSection 保持一致：8px 灰色分隔条 + $lg 标题 */}
+          <VStack
+            space="md"
+            px="$md"
+            py="$lg"
+            mt="$md"
+            borderTopWidth={8}
+            borderTopColor="$gray100"
+          >
+            <Text fontSize="$lg" fontWeight="$semibold" color="$black">
               {t("store.comments", { count: commentsTotal })}
             </Text>
 
             {commentsLoading && comments.length === 0 && (
-              <View style={styles.commentsPending}>
-                <ActivityIndicator size="small" color={theme.colors.gray300} />
-              </View>
+              <Box style={styles.commentsLoading}>
+                <Image
+                  source={require("../../assets/gif/profile-loading.gif")}
+                  style={styles.commentsLoadingGif}
+                  resizeMode="contain"
+                />
+              </Box>
             )}
 
             {!commentsLoading && comments.length === 0 && (
-              <View style={styles.commentsEmpty}>
-                <Ionicons name="chatbubble-outline" size={28} color={theme.colors.gray300} />
-                <Text fontSize={13} color="$gray400" mt={8}>
+              <Box style={styles.commentsEmpty}>
+                <Ionicons name="chatbubble-outline" size={32} color={theme.colors.gray300} />
+                <Text fontSize="$sm" color="$gray400" mt="$sm">
                   {t("store.noComments")}
                 </Text>
-              </View>
+              </Box>
             )}
 
             {comments.map((c) => (
@@ -588,25 +697,34 @@ const StoreProductDetailScreen: React.FC = () => {
             {commentsHasMore && comments.length > 0 && (
               <Pressable
                 onPress={handleEndReached}
-                py={12}
+                py="$sm"
                 alignItems="center"
               >
-                <Text fontSize={12} color="$gray400">
+                <Text fontSize="$xs" color="$gray400">
                   {t("store.loadMoreComments")}
                 </Text>
               </Pressable>
             )}
-          </View>
+          </VStack>
         </ScrollView>
 
         {/* 遮罩层：点击退出评论输入 */}
         {isCommentFocused && (
-          <TouchableWithoutFeedback onPress={handleOverlayPress}>
-            <View style={styles.contentOverlay} />
-          </TouchableWithoutFeedback>
+          <Pressable onPress={handleOverlayPress} style={styles.contentOverlay} />
         )}
 
-        {/* 底部操作栏 */}
+        {/* 「我想要」浮窗 —— 进入页面 0.8s 后弹出 (已加愿望单则跳过)，与 PostDetail 一致 */}
+        <WantPopup
+          visible={showWantPopup}
+          isWanted={isWanted}
+          productImage={productImages[0]}
+          productName={product.title}
+          brandName={product.brand ?? undefined}
+          onWant={handleToggleWant}
+          onDismiss={() => setShowWantPopup(false)}
+        />
+
+        {/* 底部操作栏 —— 复用 PostDetail 的 CommentInputBar；isItemReview=true 才会渲染「想要」按钮 */}
         <CommentInputBar
           ref={commentInputRef}
           commentInput={commentInput}
@@ -617,9 +735,16 @@ const StoreProductDetailScreen: React.FC = () => {
           displayComments={commentsTotal}
           displayIsLiked={isLiked}
           displayIsSaved={false}
+          displayWants={wantCount}
+          displayIsWanted={isWanted}
+          isItemReview
           replyTarget={
             replyTarget
-              ? { commentId: String(replyTarget.commentId), userId: replyTarget.userId, userName: replyTarget.userName }
+              ? {
+                  commentId: String(replyTarget.commentId),
+                  userId: replyTarget.userId,
+                  userName: replyTarget.userName,
+                }
               : null
           }
           onInputChange={setCommentInput}
@@ -628,10 +753,18 @@ const StoreProductDetailScreen: React.FC = () => {
           onSubmit={handleSubmitComment}
           onLike={handleToggleLike}
           onSave={() => {}}
+          onWant={handleToggleWant}
           onOverlayPress={handleOverlayPress}
           onCancelReply={handleCancelReply}
         />
       </KeyboardAvoidingView>
+      <FullscreenImageViewer
+        visible={fullscreenVisible}
+        images={productImages}
+        currentIndex={mainImageIndex}
+        onClose={handleCloseFullscreen}
+        onIndexChange={setActiveImageIndex}
+      />
     </SafeAreaView>
   );
 };
@@ -642,19 +775,21 @@ const StoreProductDetailScreen: React.FC = () => {
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <HStack
-    style={styles.header}
+    bg="$white"
     alignItems="center"
     justifyContent="between"
     px="$md"
     py="$sm"
+    borderBottomWidth={1}
+    borderBottomColor="$gray100"
   >
-    <Pressable onPress={onBack} hitSlop={8}>
+    <Pressable onPress={onBack} p="$xs" hitSlop={8}>
       <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
     </Pressable>
-    <Text fontSize={15} fontWeight="$semibold" color="$black">
+    <Text fontSize="$md" fontWeight="$semibold" color="$black">
       {title}
     </Text>
-    <View style={{ width: 24 }} />
+    <Box w={32} />
   </HStack>
 );
 
@@ -679,7 +814,7 @@ const CommentItemImpl: React.FC<{
     "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=200";
 
   return (
-    <HStack gap={10} py={10}>
+    <HStack space="sm">
       <OptimizedImage
         uri={avatarUri}
         size={ImageSize.THUMBNAIL}
@@ -687,58 +822,58 @@ const CommentItemImpl: React.FC<{
         contentFit="cover"
         lazy
       />
-      <VStack flex={1} gap={4}>
-        <HStack gap={6} alignItems="center" flexWrap="wrap">
-          <Text fontSize={13} fontWeight="$semibold" color="$black">
-            {comment.username || t("store.anonymous")}
-          </Text>
-          {comment.replyToUsername && (
-            <>
-              <Ionicons
-                name="arrow-forward"
-                size={10}
-                color={theme.colors.gray400}
-              />
-              <Text fontSize={12} color="$accent" fontWeight="$medium">
-                @{comment.replyToUsername}
-              </Text>
-            </>
-          )}
+      <VStack flex={1} space="xs">
+        <HStack justifyContent="between" alignItems="center">
+          <HStack space="xs" alignItems="center" flexWrap="wrap" flex={1}>
+            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+              {comment.username || t("store.anonymous")}
+            </Text>
+            {comment.replyToUsername && (
+              <HStack space="xs" alignItems="center">
+                <Ionicons
+                  name="arrow-forward"
+                  size={10}
+                  color={theme.colors.gray400}
+                />
+                <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+                  @{comment.replyToUsername}
+                </Text>
+              </HStack>
+            )}
+          </HStack>
           {!!timestamp && (
-            <Text fontSize={11} color="$gray400" ml="auto">
+            <Text fontSize="$xs" color="$gray600">
               {timestamp}
             </Text>
           )}
         </HStack>
-        <Text fontSize={13} color="$gray800" lineHeight={20}>
+        <Text fontSize="$sm" color="$gray800" lineHeight="$md">
           {comment.content}
         </Text>
-        <HStack gap={14} mt={2} alignItems="center">
+        <HStack space="md" mt="$xs" alignItems="center">
           <Pressable onPress={onLike}>
-            <HStack gap={3} alignItems="center">
+            <HStack space="xs" alignItems="center">
               <Ionicons
                 name={comment.likedByMe ? "heart" : "heart-outline"}
-                size={14}
-                color={comment.likedByMe ? theme.colors.error : theme.colors.gray400}
+                size={16}
+                color={comment.likedByMe ? "#FF3040" : theme.colors.gray400}
               />
-              {!!comment.likeCount && (
-                <Text
-                  fontSize={11}
-                  color={comment.likedByMe ? "$error" : "$gray500"}
-                >
-                  {comment.likeCount}
-                </Text>
-              )}
+              <Text
+                fontSize="$xs"
+                color={comment.likedByMe ? "#FF3040" : "$gray600"}
+              >
+                {comment.likeCount > 0 ? comment.likeCount : ""}
+              </Text>
             </HStack>
           </Pressable>
           <Pressable onPress={onReply}>
-            <Text fontSize={11} color="$gray500">
+            <Text fontSize="$xs" color="$gray600">
               {t("store.reply")}
             </Text>
           </Pressable>
           {isMine && (
             <Pressable onPress={onDelete}>
-              <Text fontSize={11} color="$error">
+              <Text fontSize="$xs" color="$error">
                 {t("common.delete")}
               </Text>
             </Pressable>
@@ -760,10 +895,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  header: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
-  },
   scroll: {
     flex: 1,
   },
@@ -780,46 +911,45 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH,
   },
-  heroImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH,
-    backgroundColor: theme.colors.gray100,
+  heroSection: {
+    position: "relative",
+    backgroundColor: theme.colors.black,
   },
   heroPlaceholder: {
+    backgroundColor: theme.colors.gray100,
     justifyContent: "center",
     alignItems: "center",
   },
-  dotsRow: {
+  // 圆点指示器 —— 与 LookbookContent 一致 (bottom: 20, 6/8px 圆点, 4px 间距)
+  dotIndicatorContainer: {
     position: "absolute",
-    bottom: 10,
+    bottom: 20,
     left: 0,
     right: 0,
     flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
+    alignItems: "center",
   },
-  dot: {
+  dotIndicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    marginHorizontal: 4,
   },
-  dotActive: {
-    backgroundColor: theme.colors.white,
+  dotIndicatorActive: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    backgroundColor: theme.colors.white,
   },
-  commentsSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginTop: 12,
-    borderTopWidth: 8,
-    borderTopColor: theme.colors.gray50,
-  },
-  commentsPending: {
-    paddingVertical: 20,
+  commentsLoading: {
+    paddingVertical: 24,
     alignItems: "center",
+  },
+  commentsLoadingGif: {
+    width: SCREEN_WIDTH * 0.5,
+    height: SCREEN_WIDTH * 0.5,
   },
   commentsEmpty: {
     paddingVertical: 24,

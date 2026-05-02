@@ -70,6 +70,7 @@ import {
   getMerchantByStore,
 } from "../services/storeMerchantService";
 import HalfStarRating from "../components/HalfStarRating";
+import { formatTimestamp } from "../components/PostDetail/types";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
@@ -565,66 +566,65 @@ const StoreDetailScreen = () => {
 
   // 渲染评论项
   const renderCommentItem = ({ item }: { item: StoreComment }) => (
-    <Box mb="$md" pb="$md" borderBottomWidth={1} borderBottomColor="$gray100">
-      <HStack alignItems="start" mb="$sm">
-        <Box
-          w={36}
-          h={36}
-          rounded="$sm"
-          bg="$gray100"
-          justifyContent="center"
-          alignItems="center"
-          mr="$sm"
-          style={{ borderRadius: 18 }}
-        >
+    <VStack mt="$md" mx="$md" pb="$md" borderBottomWidth={StyleSheet.hairlineWidth} borderBottomColor="$gray100">
+      <HStack space="sm" alignItems="flex-start">
+        {/* 头像 */}
+        <Box style={styles.commentAvatar}>
           {item.userAvatar ? (
             <OptimizedImage
               uri={item.userAvatar}
               size={ImageSize.THUMBNAIL}
-              style={{ width: 40, height: 40, borderRadius: 20 }}
+              style={styles.commentAvatarImage}
               contentFit="cover"
               lazy={true}
             />
           ) : (
-            <Ionicons name="person" size={20} color={theme.colors.gray300} />
+            <Ionicons name="person" size={16} color={theme.colors.gray300} />
           )}
         </Box>
-        <VStack flex={1}>
+
+        {/* 内容区 */}
+        <VStack flex={1} space="xs">
+          {/* 用户名 + 时间 */}
           <HStack justifyContent="between" alignItems="center">
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black" style={styles.textBold}>
+            <Text fontSize={13} fontWeight="$semibold" color="$black" style={styles.textBold}>
               {item.username}
             </Text>
-            <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
-              {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+            <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+              {formatTimestamp(item.createdAt)}
             </Text>
           </HStack>
-          <Text fontSize="$md" color="$black" mt="$xs" lineHeight={22} style={styles.textRegular}>
+
+          {/* 评论正文 */}
+          <Text fontSize={13} color="$gray800" lineHeight={20} style={styles.textRegular}>
             {item.content}
           </Text>
-          <HStack mt="$sm" gap="$lg">
+
+          {/* 操作行 */}
+          <HStack mt={6} gap={16} alignItems="center">
             <Pressable
-              flexDirection="row"
-              alignItems="center"
               onPress={() => openCommentInput({ id: item.id, username: item.username })}
+              style={styles.commentAction}
             >
-              <Ionicons
-                name="chatbubble-outline"
-                size={14}
-                color={theme.colors.gray300}
-              />
-              <Text fontSize="$xs" color="$gray300" ml="$xs" style={styles.textRegular}>
-                {t("store.reply")}{item.replyCount > 0 ? ` ${item.replyCount}` : ""}
+              <Ionicons name="chatbubble-outline" size={13} color={theme.colors.gray400} />
+              <Text fontSize={12} color="$gray400" ml={4} style={styles.textRegular}>
+                {t("store.reply")}
+                {item.replyCount > 0 ? ` · ${item.replyCount}` : ""}
               </Text>
             </Pressable>
-            <HStack alignItems="center">
-              <Ionicons name="heart-outline" size={14} color={theme.colors.gray300} />
-              <Text fontSize="$xs" color="$gray300" ml="$xs" style={styles.textRegular}>
-                {item.likeCount > 0 ? item.likeCount : ""}
-              </Text>
+
+            <HStack alignItems="center" gap={4}>
+              <Ionicons name="heart-outline" size={13} color={theme.colors.gray400} />
+              {item.likeCount > 0 && (
+                <Text fontSize={12} color="$gray400" style={styles.textRegular}>
+                  {item.likeCount}
+                </Text>
+              )}
             </HStack>
+
             {user && item.userId === Number(user.id) && (
               <Pressable onPress={() => handleDeleteComment(item.id)}>
-                <Text fontSize="$xs" color="$error" style={styles.textRegular}>
+                <Text fontSize={12} color="$error" style={styles.textRegular}>
                   {t("common.delete")}
                 </Text>
               </Pressable>
@@ -635,33 +635,37 @@ const StoreDetailScreen = () => {
 
       {/* 回复列表 */}
       {item.replies.length > 0 && (
-        <Box ml={48} mt="$sm" bg="$gray50" rounded="$md" p="$sm">
+        <VStack ml={44} mt={8} gap={8}>
           {item.replies.map((reply) => (
-            <Box
-              key={reply.id}
-              mb={reply === item.replies[item.replies.length - 1] ? 0 : "$sm"}
-            >
-              <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                <Text fontWeight="$semibold" style={styles.textBold}>{reply.username}</Text>
+            <VStack key={reply.id}>
+              <HStack alignItems="center" gap={4} mb={2}>
+                <Text fontSize={12} fontWeight="$semibold" color="$black" style={styles.textBold}>
+                  {reply.username}
+                </Text>
                 {reply.replyToUsername && (
-                  <Text color="$gray300" style={styles.textRegular}>
-                    {" "}{t("store.reply")} <Text fontWeight="$medium" style={styles.textRegular}>{reply.replyToUsername}</Text>
-                  </Text>
+                  <>
+                    <Ionicons name="arrow-forward" size={10} color={theme.colors.gray300} />
+                    <Text fontSize={12} color="$gray400" style={styles.textRegular}>
+                      {reply.replyToUsername}
+                    </Text>
+                  </>
                 )}
-                : {reply.content}
+              </HStack>
+              <Text fontSize={13} color="$gray700" lineHeight={19} style={styles.textRegular}>
+                {reply.content}
               </Text>
-            </Box>
+            </VStack>
           ))}
           {item.replyCount > item.replies.length && (
-            <Pressable mt="$xs">
-              <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+            <Pressable>
+              <Text fontSize={12} color="$gray400" style={styles.textRegular}>
                 {t("store.viewAllReplies", { count: item.replyCount })}
               </Text>
             </Pressable>
           )}
-        </Box>
+        </VStack>
       )}
-    </Box>
+    </VStack>
   );
 
   if (isLoading) {
@@ -1137,7 +1141,7 @@ const StoreDetailScreen = () => {
               borderTopWidth={StyleSheet.hairlineWidth}
               borderTopColor="$gray100"
             >
-              <Text fontSize={13} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
+              <Text fontSize={12} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
                 {t("store.userReviews").toUpperCase()} ({commentsTotal})
               </Text>
               <Pressable flexDirection="row" alignItems="center" onPress={() => openCommentInput()}>
@@ -1679,6 +1683,24 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: theme.borderRadius.md,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.gray100,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  },
+  commentAvatarImage: {
+    width: 36,
+    height: 36,
+  },
+  commentAction: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   // 商家内容样式
   bannerItem: {

@@ -18,7 +18,7 @@
  *   - DELETE /api/store-merchants/products/{productId}
  *
  * 金额：入参 / 出参全部走整数 `priceCents`；表单里用元为单位输入，
- * 经 `parsePriceYuanToCents` 换算，避免浮点误差传到后端.
+ * 经 `parsePriceInputToCents` 换算，避免浮点误差传到后端.
  */
 
 import { useMemo, useState } from "react";
@@ -48,7 +48,7 @@ import {
 import {
   storeProductService,
   formatPriceCents,
-  parsePriceYuanToCents,
+  parsePriceInputToCents,
   type ProductStatus,
   type StoreProduct,
   type StoreProductCreateParams,
@@ -95,8 +95,8 @@ interface ProductForm {
   description: string;
   brand: string;
   images: string[];
-  priceYuan: string;
-  discountPriceYuan: string;
+  priceInput: string;
+  discountPriceInput: string;
   hasDiscount: boolean;
   categoryId: number | null;
   isNew: boolean;
@@ -109,8 +109,8 @@ const EMPTY_FORM: ProductForm = {
   description: "",
   brand: "",
   images: [],
-  priceYuan: "",
-  discountPriceYuan: "",
+  priceInput: "",
+  discountPriceInput: "",
   hasDiscount: false,
   categoryId: null,
   isNew: false,
@@ -215,9 +215,9 @@ export default function MerchantProductsPage() {
       description: p.description ?? "",
       brand: p.brand ?? "",
       images: p.images ?? [],
-      priceYuan: centsToYuanInput(p.priceCents),
-      discountPriceYuan:
-        p.discountPriceCents != null ? centsToYuanInput(p.discountPriceCents) : "",
+      priceInput: centsToInput(p.priceCents),
+      discountPriceInput:
+        p.discountPriceCents != null ? centsToInput(p.discountPriceCents) : "",
       hasDiscount: p.discountPriceCents != null,
       categoryId: p.categoryId ?? null,
       isNew: p.isNew,
@@ -237,10 +237,10 @@ export default function MerchantProductsPage() {
   const validateForm = (): string | null => {
     if (!form.title.trim()) return t("merchant.validateTitleRequired");
     if (form.images.length === 0) return t("merchant.validateImageRequired");
-    const priceCents = parsePriceYuanToCents(form.priceYuan);
+    const priceCents = parsePriceInputToCents(form.priceInput);
     if (priceCents == null) return t("merchant.validatePriceInvalid");
     if (form.hasDiscount) {
-      const dc = parsePriceYuanToCents(form.discountPriceYuan);
+      const dc = parsePriceInputToCents(form.discountPriceInput);
       if (dc == null) return t("merchant.validateDiscountInvalid");
       if (dc > priceCents) return t("merchant.validateDiscountExceed");
     }
@@ -256,9 +256,9 @@ export default function MerchantProductsPage() {
     setSaving(true);
     setErr(null);
     try {
-      const priceCents = parsePriceYuanToCents(form.priceYuan)!;
+      const priceCents = parsePriceInputToCents(form.priceInput)!;
       const discountPriceCents = form.hasDiscount
-        ? parsePriceYuanToCents(form.discountPriceYuan)
+        ? parsePriceInputToCents(form.discountPriceInput)
         : null;
 
       if (editing) {
@@ -488,15 +488,15 @@ export default function MerchantProductsPage() {
           </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t("merchant.priceYuan")} required>
+            <FormField label={t("merchant.priceLabel")} required>
               <TextInput
                 type="number"
-                value={form.priceYuan}
-                onChange={(v) => setForm({ ...form, priceYuan: v })}
+                value={form.priceInput}
+                onChange={(v) => setForm({ ...form, priceInput: v })}
                 placeholder={t("merchant.pricePlaceholder")}
               />
             </FormField>
-            <FormField label={t("merchant.discountPriceYuan")}>
+            <FormField label={t("merchant.discountPriceLabel")}>
               <div className="grid gap-2">
                 <Toggle
                   checked={form.hasDiscount}
@@ -504,7 +504,7 @@ export default function MerchantProductsPage() {
                     setForm({
                       ...form,
                       hasDiscount: v,
-                      discountPriceYuan: v ? form.discountPriceYuan : "",
+                      discountPriceInput: v ? form.discountPriceInput : "",
                     })
                   }
                   label={t("merchant.enableDiscount")}
@@ -512,9 +512,9 @@ export default function MerchantProductsPage() {
                 {form.hasDiscount && (
                   <TextInput
                     type="number"
-                    value={form.discountPriceYuan}
+                    value={form.discountPriceInput}
                     onChange={(v) =>
-                      setForm({ ...form, discountPriceYuan: v })
+                      setForm({ ...form, discountPriceInput: v })
                     }
                     placeholder={t("merchant.discountPricePlaceholder")}
                   />
@@ -768,7 +768,7 @@ function NoAccess({ merchantId }: { merchantId: number }) {
 
 // ── 金额输入辅助 ─────────────────────────────────────────────────────────
 
-function centsToYuanInput(cents: number): string {
+function centsToInput(cents: number): string {
   if (cents % 100 === 0) return String(Math.round(cents / 100));
   return (cents / 100).toFixed(2);
 }

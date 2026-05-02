@@ -201,35 +201,14 @@ const AllBuyerStoresScreen: React.FC = () => {
       <ScreenHeader
         title={t("store.allStores")}
         subtitle={total > 0 ? t('store.totalCount', { count: total }) : undefined}
+        rightActions={[{
+          icon: "search",
+          onPress: () => {
+            navigation.navigate("StoreSearch");
+          },
+        }]}
         showBack
       />
-
-      {/* 搜索框 */}
-      <Box mx="$md" my="$sm">
-        <HStack
-          style={styles.searchBar}
-          alignItems="center"
-          gap={8}
-        >
-          <Ionicons name="search" size={16} color={theme.colors.gray300} />
-          <TextInput
-            ref={searchInputRef}
-            value={searchInput}
-            onChangeText={setSearchInput}
-            placeholder={t("store.searchPlaceholder")}
-            placeholderTextColor={theme.colors.gray300}
-            returnKeyType="search"
-            onSubmitEditing={handleSearchSubmit}
-            style={styles.searchInput}
-          />
-          {searchInput.length > 0 && (
-            <Pressable onPress={handleClearSearch} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color={theme.colors.gray300} />
-            </Pressable>
-          )}
-        </HStack>
-      </Box>
-
       <FlatList
         data={stores}
         renderItem={renderItem}

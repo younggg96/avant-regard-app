@@ -468,6 +468,9 @@
     "suggestion4": "New arrivals just dropped, lots of new items worth checking out",
     "suggestion5": "This store has the best selection/prices for XX brand",
     "totalCount": "{{count}} total",
+    "verified": "Verified",
+    "noMoreData": "No more stores",
+    "noMatchStores": "No stores matched your search",
     "storeNotExist": "Store Not Found",
     "storeNotExistDesc": "This store may have been removed or is temporarily unavailable",
     "merchantApplyTitle": "Merchant Application",
@@ -514,7 +517,10 @@
     "likeFailed": "Like failed",
     "loadMoreComments": "Load more comments",
     "anonymous": "Anonymous",
-    "productNotFound": "Product not found"
+    "productNotFound": "Product not found",
+    "want": "Want",
+    "wanted": "Wanted",
+    "wantThisItem": "Want this item?"
   },
   "storeSubmit": {
     "title": "Submit Store",

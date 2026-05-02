@@ -378,6 +378,70 @@ async def list_my_liked_products(
 
 
 # ==========================================================================
+# 商品「想要」(愿望单)
+# ==========================================================================
+#
+# 路径与点赞对称：
+#   POST   /products/{id}/want          —— 加入愿望单
+#   DELETE /products/{id}/want          —— 移出愿望单
+#   GET    /products/{id}/want/check    —— 当前用户是否已加
+#   GET    /user/wanted-products        —— 当前用户的愿望单分页
+
+
+@router.post("/products/{product_id}/want")
+async def want_product(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    ok = store_product_service.want_product(product_id, current_user_id)
+    return success(
+        {
+            "wanted": True
+            if ok
+            else store_product_service.check_product_wanted(
+                product_id, current_user_id
+            )
+        },
+        message="已添加到愿望单" if ok else "已在愿望单中",
+    )
+
+
+@router.delete("/products/{product_id}/want")
+async def unwant_product(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    store_product_service.unwant_product(product_id, current_user_id)
+    return success({"wanted": False}, message="已从愿望单移除")
+
+
+@router.get("/products/{product_id}/want/check")
+async def check_product_wanted(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    wanted = store_product_service.check_product_wanted(product_id, current_user_id)
+    return success({"wanted": wanted})
+
+
+@router.get("/user/wanted-products")
+async def list_my_wanted_products(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user),
+):
+    products, total = store_product_service.list_user_wanted_products(
+        current_user_id, page=page, page_size=pageSize
+    )
+    return success({
+        "products": [p.model_dump() for p in products],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+# ==========================================================================
 # 商品评论
 # ==========================================================================
 

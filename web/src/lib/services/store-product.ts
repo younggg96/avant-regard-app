@@ -448,10 +448,10 @@ export function formatPriceCents(
 }
 
 /** 用户输入 "58.9" / "58" → 5890 分；无效则返回 null。 */
-export function parsePriceYuanToCents(input: string): number | null {
+export function parsePriceInputToCents(input: string): number | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  const yuan = Number(trimmed);
-  if (!Number.isFinite(yuan) || yuan < 0) return null;
-  return Math.round(yuan * 100);
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return Math.round(amount * 100);
 }

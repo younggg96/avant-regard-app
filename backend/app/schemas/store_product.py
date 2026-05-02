@@ -222,9 +222,11 @@ class StoreProduct(BaseModel):
     likeCount: int = 0
     commentCount: int = 0
     viewCount: int = 0
+    wantCount: int = 0
     status: str = "PUBLISHED"
-    # 当前登录用户是否已点喜欢；需要 userId 时才回填
+    # 当前登录用户是否已点喜欢 / 已加愿望单；需要 userId 时才回填
     likedByMe: Optional[bool] = None
+    wantedByMe: Optional[bool] = None
     publishedAt: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
