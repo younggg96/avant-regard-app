@@ -26,7 +26,21 @@ import {
   UserStoreActivity,
   CONTRIBUTION_PAGE_SIZE,
 } from "../../../services/buyerStoreService";
-import { TabType, TabData, initialTabState, ContribSubTab, StoreActivitySubTab } from "../types";
+import {
+  listMyFavoritedStoreProducts,
+  listMyLikedStoreProducts,
+  listMyWantedStoreProducts,
+} from "../../../services/storeProductService";
+import {
+  TabType,
+  TabData,
+  initialTabState,
+  ContribSubTab,
+  StoreActivitySubTab,
+  ProductActivitySubTab,
+  ProductListState,
+  initialProductListState,
+} from "../types";
 import { Alert } from "../../../utils/Alert";
 
 function convertToDisplayPost(
@@ -90,6 +104,14 @@ export function useProfileData() {
   const [storeActivityLoading, setStoreActivityLoading] = useState(false);
   const [storeActivityLoaded, setStoreActivityLoaded] = useState(false);
 
+  // 商品级活动 —— 嵌套在 storeActivity tab 下的"商品"二级 tab。三个独立列表，
+  // 每个有自己的加载/已加载/total，避免切换时复用脏数据。
+  const [productActivitySubTab, setProductActivitySubTab] =
+    useState<ProductActivitySubTab>("likes");
+  const [productLikes, setProductLikes] = useState<ProductListState>({ ...initialProductListState });
+  const [productSaved, setProductSaved] = useState<ProductListState>({ ...initialProductListState });
+  const [productWanted, setProductWanted] = useState<ProductListState>({ ...initialProductListState });
+
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     published: { ...initialTabState },
     pending: { ...initialTabState },
@@ -126,6 +148,9 @@ export function useProfileData() {
     });
     setContribLoaded(false);
     setStoreActivityLoaded(false);
+    setProductLikes({ ...initialProductListState });
+    setProductSaved({ ...initialProductListState });
+    setProductWanted({ ...initialProductListState });
   }, []);
 
   const loadUserInfo = useCallback(async () => {
@@ -238,6 +263,54 @@ export function useProfileData() {
     }
   }, [user?.userId, updateTabState]);
 
+  /**
+   * 按需加载商品级活动列表（lazy）。三种 sub-sub-tab 走同一个分发器：
+   *   - likes    -> /user/liked-products
+   *   - saved    -> /user/favorited-products
+   *   - wishlist -> /user/wanted-products
+   *
+   * `force=true` 时重拉，用于下拉刷新；否则若 hasLoaded 直接跳过。
+   */
+  const loadProductActivity = useCallback(
+    async (sub: ProductActivitySubTab, force = false) => {
+      if (!user?.userId) return;
+
+      const get = (s: ProductActivitySubTab) =>
+        s === "likes" ? productLikes : s === "saved" ? productSaved : productWanted;
+      const set = (s: ProductActivitySubTab, value: ProductListState) => {
+        if (s === "likes") setProductLikes(value);
+        else if (s === "saved") setProductSaved(value);
+        else setProductWanted(value);
+      };
+
+      const prev = get(sub);
+      if (!force && prev.hasLoaded) return;
+
+      set(sub, { ...prev, isLoading: true });
+      try {
+        const res =
+          sub === "likes"
+            ? await listMyLikedStoreProducts(1, 50)
+            : sub === "saved"
+              ? await listMyFavoritedStoreProducts(1, 50)
+              : await listMyWantedStoreProducts(1, 50);
+        set(sub, {
+          products: res.products || [],
+          total: res.total || 0,
+          isLoading: false,
+          hasLoaded: true,
+        });
+      } catch (err) {
+        console.error(`Error loading product ${sub}:`, err);
+        set(sub, { ...prev, isLoading: false, hasLoaded: true });
+      }
+    },
+    // 故意不把 productLikes/Saved/Wanted 放进 deps：闭包抓最新值就够了；
+    // 写进去会让每次 setState 都重建函数，触发 useEffect 链路重跑。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.userId]
+  );
+
   const fetchTabData = useCallback(
     async (targetTab: TabType, isRefresh = false) => {
       if (!user?.userId) return;
@@ -349,6 +422,12 @@ export function useProfileData() {
     storeActivity,
     storeActivityLoading,
     storeActivityLoaded,
+    productActivitySubTab,
+    setProductActivitySubTab,
+    productLikes,
+    productSaved,
+    productWanted,
+    loadProductActivity,
     tabsData,
     setTabsData,
     updateTabState,

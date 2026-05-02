@@ -57,6 +57,7 @@ class StoreProductService:
         row: dict,
         *,
         liked_by_me: Optional[bool] = None,
+        favorited_by_me: Optional[bool] = None,
         wanted_by_me: Optional[bool] = None,
     ) -> StoreProduct:
         category = row.get("store_product_categories") or {}
@@ -80,8 +81,10 @@ class StoreProductService:
             commentCount=row.get("comment_count", 0),
             viewCount=row.get("view_count", 0),
             wantCount=row.get("want_count", 0),
+            favoriteCount=row.get("favorite_count", 0),
             status=row.get("status", "PUBLISHED"),
             likedByMe=liked_by_me,
+            favoritedByMe=favorited_by_me,
             wantedByMe=wanted_by_me,
             publishedAt=row.get("published_at"),
             createdAt=row.get("created_at"),
@@ -190,12 +193,17 @@ class StoreProductService:
         if not result.data:
             return None
         liked = None
+        favorited = None
         wanted = None
         if user_id is not None:
             liked = self.check_product_liked(product_id, user_id)
+            favorited = self.check_product_favorited(product_id, user_id)
             wanted = self.check_product_wanted(product_id, user_id)
         return self._format_product(
-            result.data[0], liked_by_me=liked, wanted_by_me=wanted
+            result.data[0],
+            liked_by_me=liked,
+            favorited_by_me=favorited,
+            wanted_by_me=wanted,
         )
 
     def _get_product_raw(self, product_id: int) -> Optional[dict]:
@@ -256,18 +264,21 @@ class StoreProductService:
         rows = result.data or []
         total = result.count or 0
 
-        # 批量回填 likedByMe / wantedByMe
+        # 批量回填 likedByMe / favoritedByMe / wantedByMe
         liked_map: dict[int, bool] = {}
+        favorited_map: dict[int, bool] = {}
         wanted_map: dict[int, bool] = {}
         if user_id is not None and rows:
             ids = [r["id"] for r in rows]
             liked_map = self._check_products_liked_bulk(ids, user_id)
+            favorited_map = self._check_products_favorited_bulk(ids, user_id)
             wanted_map = self._check_products_wanted_bulk(ids, user_id)
 
         products = [
             self._format_product(
                 row,
                 liked_by_me=liked_map.get(row["id"]),
+                favorited_by_me=favorited_map.get(row["id"]),
                 wanted_by_me=wanted_map.get(row["id"]),
             )
             for row in rows
@@ -362,6 +373,115 @@ class StoreProductService:
         ordered = [by_id[pid] for pid in product_ids if pid in by_id]
         products = [
             self._format_product(row, liked_by_me=True) for row in ordered
+        ]
+        return products, total
+
+    # ========================================================================
+    # 收藏 (Save / Bookmark)
+    # ========================================================================
+    #
+    # 与 like 完全平行：独立表 + 独立计数 + 独立 likedByMe/favoritedByMe；
+    # 用 RPC 维护 favorite_count 与 posts 上的 favorite 行为命名对齐
+    # （`increment_post_favorite_count`），便于将来抽公共。
+
+    def favorite_product(self, product_id: int, user_id: int) -> bool:
+        try:
+            self.db_admin.table("store_product_favorites").insert(
+                {"product_id": product_id, "user_id": user_id}
+            ).execute()
+        except Exception:
+            # 唯一约束冲突 -> 视为幂等成功，不动计数
+            return False
+
+        try:
+            self.db_admin.rpc(
+                "increment_store_product_favorite_count",
+                {"product_id_param": product_id},
+            ).execute()
+        except Exception as e:
+            print(
+                f"[store_products] increment favorite_count failed id={product_id}: {e}"
+            )
+        return True
+
+    def unfavorite_product(self, product_id: int, user_id: int) -> bool:
+        result = (
+            self.db_admin.table("store_product_favorites")
+            .delete()
+            .eq("product_id", product_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if not result.data:
+            return False
+        try:
+            self.db_admin.rpc(
+                "decrement_store_product_favorite_count",
+                {"product_id_param": product_id},
+            ).execute()
+        except Exception as e:
+            print(
+                f"[store_products] decrement favorite_count failed id={product_id}: {e}"
+            )
+        return True
+
+    def check_product_favorited(self, product_id: int, user_id: int) -> bool:
+        result = (
+            self.db.table("store_product_favorites")
+            .select("id")
+            .eq("product_id", product_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        return bool(result.data)
+
+    def _check_products_favorited_bulk(
+        self, product_ids: Iterable[int], user_id: int
+    ) -> dict[int, bool]:
+        ids = list(product_ids)
+        if not ids:
+            return {}
+        result = (
+            self.db.table("store_product_favorites")
+            .select("product_id")
+            .in_("product_id", ids)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        favorited_set = {row["product_id"] for row in (result.data or [])}
+        return {pid: (pid in favorited_set) for pid in ids}
+
+    def list_user_favorited_products(
+        self, user_id: int, *, page: int = 1, page_size: int = 20
+    ) -> Tuple[List[StoreProduct], int]:
+        """用户收藏的商品分页列表（Profile 「我收藏的商品」会用）。"""
+        q = (
+            self.db.table("store_product_favorites")
+            .select("product_id, created_at", count="exact")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+        )
+        offset = (page - 1) * page_size
+        q = q.range(offset, offset + page_size - 1)
+        res = q.execute()
+
+        product_ids = [r["product_id"] for r in (res.data or [])]
+        total = res.count or 0
+        if not product_ids:
+            return [], total
+
+        products_res = (
+            self.db.table("store_products")
+            .select(_PRODUCT_SELECT)
+            .in_("id", product_ids)
+            .execute()
+        )
+        rows = products_res.data or []
+        by_id = {row["id"]: row for row in rows}
+        ordered = [by_id[pid] for pid in product_ids if pid in by_id]
+        products = [
+            self._format_product(row, favorited_by_me=True) for row in ordered
         ]
         return products, total
 

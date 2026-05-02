@@ -150,9 +150,18 @@
     "favorites": "Favorite Stores",
     "comments": "My Reviews",
     "ratings": "My Ratings",
+    "products": "Products",
     "noFavorites": "No favorite stores yet",
     "noComments": "No reviews yet",
     "noRatings": "No ratings yet"
+  },
+  "profileProductActivity": {
+    "likes": "Likes",
+    "saved": "Saved",
+    "wishlist": "Wishlist",
+    "noLikes": "No liked products yet",
+    "noSaved": "No saved products yet",
+    "noWishlist": "No wishlist products yet"
   },
   "auth": {
     "login": "Log In",

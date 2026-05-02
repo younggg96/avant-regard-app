@@ -378,6 +378,72 @@ async def list_my_liked_products(
 
 
 # ==========================================================================
+# 商品「收藏」(Save / Bookmark)
+# ==========================================================================
+#
+# 路径与点赞 / 想要严格对称：
+#   POST   /products/{id}/favorite        —— 收藏
+#   DELETE /products/{id}/favorite        —— 取消收藏
+#   GET    /products/{id}/favorite/check  —— 当前用户是否已收藏
+#   GET    /user/favorited-products       —— 当前用户的收藏分页
+
+
+@router.post("/products/{product_id}/favorite")
+async def favorite_product(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    ok = store_product_service.favorite_product(product_id, current_user_id)
+    return success(
+        {
+            "favorited": True
+            if ok
+            else store_product_service.check_product_favorited(
+                product_id, current_user_id
+            )
+        },
+        message="已收藏" if ok else "已在收藏中",
+    )
+
+
+@router.delete("/products/{product_id}/favorite")
+async def unfavorite_product(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    store_product_service.unfavorite_product(product_id, current_user_id)
+    return success({"favorited": False}, message="已取消收藏")
+
+
+@router.get("/products/{product_id}/favorite/check")
+async def check_product_favorited(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    favorited = store_product_service.check_product_favorited(
+        product_id, current_user_id
+    )
+    return success({"favorited": favorited})
+
+
+@router.get("/user/favorited-products")
+async def list_my_favorited_products(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user),
+):
+    products, total = store_product_service.list_user_favorited_products(
+        current_user_id, page=page, page_size=pageSize
+    )
+    return success({
+        "products": [p.model_dump() for p in products],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+# ==========================================================================
 # 商品「想要」(愿望单)
 # ==========================================================================
 #

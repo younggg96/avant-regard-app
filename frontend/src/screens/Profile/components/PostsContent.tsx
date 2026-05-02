@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text as RNText, ActivityIndicator } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text as RNText, ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
@@ -10,10 +10,19 @@ import {
   HStack,
   Image,
 } from "../../../components/ui";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import PostCard, { Post as DisplayPost } from "../../../components/PostCard";
 import ForumPostCard from "../../../components/ForumPostCard";
 import { splitIntoMasonryColumns } from "../../../utils/masonryLayout";
-import { TabType, TabData, ContribSubTab, StoreActivitySubTab } from "../types";
+import {
+  TabType,
+  TabData,
+  ContribSubTab,
+  StoreActivitySubTab,
+  ProductActivitySubTab,
+  ProductListState,
+} from "../types";
 import { Show } from "../../../services/showService";
 import { BrandSubmission } from "../../../services/brandService";
 import {
@@ -23,6 +32,10 @@ import {
   UserStoreCommentItem,
   UserStoreRatingItem,
 } from "../../../services/buyerStoreService";
+import {
+  StoreProduct,
+  formatPrice,
+} from "../../../services/storeProductService";
 import { contribStyles, storeActivityStyles, styles } from "../styles";
 
 interface PostsContentProps {
@@ -38,6 +51,14 @@ interface PostsContentProps {
   setStoreActivitySubTab: (tab: StoreActivitySubTab) => void;
   storeActivity: UserStoreActivity | null;
   storeActivityLoading: boolean;
+  // 嵌套的商品级活动 (likes/saved/wishlist) —— 仅当 storeActivitySubTab==="products" 时使用
+  productActivitySubTab: ProductActivitySubTab;
+  setProductActivitySubTab: (tab: ProductActivitySubTab) => void;
+  productLikes: ProductListState;
+  productSaved: ProductListState;
+  productWanted: ProductListState;
+  loadProductActivity: (sub: ProductActivitySubTab, force?: boolean) => Promise<void> | void;
+  onProductPress: (productId: number) => void;
   user: { userId?: number; username?: string; avatar?: string } | null;
   onPostPress: (post: DisplayPost) => void;
   onDeletePost: (post: DisplayPost) => void;
@@ -210,19 +231,43 @@ const StoreActivityContent = ({
   storeActivity,
   storeActivityLoading,
   onStoreActivityPress,
+  productActivitySubTab,
+  setProductActivitySubTab,
+  productLikes,
+  productSaved,
+  productWanted,
+  loadProductActivity,
+  onProductPress,
 }: {
   storeActivitySubTab: StoreActivitySubTab;
   setStoreActivitySubTab: (tab: StoreActivitySubTab) => void;
   storeActivity: UserStoreActivity | null;
   storeActivityLoading: boolean;
   onStoreActivityPress: (storeId: string) => void;
+  productActivitySubTab: ProductActivitySubTab;
+  setProductActivitySubTab: (tab: ProductActivitySubTab) => void;
+  productLikes: ProductListState;
+  productSaved: ProductListState;
+  productWanted: ProductListState;
+  loadProductActivity: (sub: ProductActivitySubTab, force?: boolean) => Promise<void> | void;
+  onProductPress: (productId: number) => void;
 }) => {
   const { t } = useTranslation();
+  // 4 个一级 chip：前 3 个店铺级活动 + 第 4 个"商品"展开 3 个 sub-sub-tab
+  const productTotal =
+    productLikes.total + productSaved.total + productWanted.total;
   const subTabs: { id: StoreActivitySubTab; label: string; count: number }[] = [
     { id: "favorites", label: t("profileStoreActivity.favorites"), count: storeActivity?.favoritesTotal ?? 0 },
     { id: "comments", label: t("profileStoreActivity.comments"), count: storeActivity?.commentsTotal ?? 0 },
     { id: "ratings", label: t("profileStoreActivity.ratings"), count: storeActivity?.ratingsTotal ?? 0 },
+    { id: "products", label: t("profileStoreActivity.products"), count: productTotal },
   ];
+
+  // 切到 products 时按需加载当前选中的 sub-sub-tab
+  useEffect(() => {
+    if (storeActivitySubTab !== "products") return;
+    loadProductActivity(productActivitySubTab);
+  }, [storeActivitySubTab, productActivitySubTab, loadProductActivity]);
 
   const renderFavorite = (item: UserFavoritedStore) => (
     <Pressable key={item.storeId} style={storeActivityStyles.card} onPress={() => onStoreActivityPress(item.storeId)}>
@@ -275,6 +320,7 @@ const StoreActivityContent = ({
       case "favorites": return { icon: "heart-outline", text: t("profileStoreActivity.noFavorites") };
       case "comments": return { icon: "chatbubble-outline", text: t("profileStoreActivity.noComments") };
       case "ratings": return { icon: "star-outline", text: t("profileStoreActivity.noRatings") };
+      case "products": return { icon: "cube-outline", text: "" }; // 走 products 自己的空态
     }
   };
 
@@ -284,6 +330,7 @@ const StoreActivityContent = ({
       case "favorites": return storeActivity.favorites.map(renderFavorite);
       case "comments": return storeActivity.comments.map(renderComment);
       case "ratings": return storeActivity.ratings.map(renderRating);
+      case "products": return null; // products 分支由 ProductActivityContent 接管
     }
   };
 
@@ -293,6 +340,7 @@ const StoreActivityContent = ({
       case "favorites": return storeActivity.favorites.length;
       case "comments": return storeActivity.comments.length;
       case "ratings": return storeActivity.ratings.length;
+      case "products": return 0; // products 自己处理
     }
   };
 
@@ -300,7 +348,7 @@ const StoreActivityContent = ({
 
   return (
     <VStack>
-      <HStack px="$md" py="$sm" style={{ gap: 8 }}>
+      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
         {subTabs.map((st) => {
           const isActive = storeActivitySubTab === st.id;
           return (
@@ -320,7 +368,16 @@ const StoreActivityContent = ({
         })}
       </HStack>
 
-      {storeActivityLoading ? (
+      {storeActivitySubTab === "products" ? (
+        <ProductActivityContent
+          productActivitySubTab={productActivitySubTab}
+          setProductActivitySubTab={setProductActivitySubTab}
+          productLikes={productLikes}
+          productSaved={productSaved}
+          productWanted={productWanted}
+          onProductPress={onProductPress}
+        />
+      ) : storeActivityLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Image
             source={require("../../../../assets/gif/profile-loading.gif")}
@@ -340,6 +397,223 @@ const StoreActivityContent = ({
   );
 };
 
+// ============================================================================
+// ProductActivityContent —— Stores tab 下「商品」二级 tab 内的三层 sub-sub-tab。
+// 与 StoreActivityContent 同行 chip 风格，但渲染商品卡片网格（2 列）。
+// ============================================================================
+
+const ProductActivityContent = ({
+  productActivitySubTab,
+  setProductActivitySubTab,
+  productLikes,
+  productSaved,
+  productWanted,
+  onProductPress,
+}: {
+  productActivitySubTab: ProductActivitySubTab;
+  setProductActivitySubTab: (tab: ProductActivitySubTab) => void;
+  productLikes: ProductListState;
+  productSaved: ProductListState;
+  productWanted: ProductListState;
+  onProductPress: (productId: number) => void;
+}) => {
+  const { t } = useTranslation();
+  const subSubTabs: { id: ProductActivitySubTab; label: string; count: number }[] = [
+    { id: "likes", label: t("profileProductActivity.likes"), count: productLikes.total },
+    { id: "saved", label: t("profileProductActivity.saved"), count: productSaved.total },
+    { id: "wishlist", label: t("profileProductActivity.wishlist"), count: productWanted.total },
+  ];
+
+  const current =
+    productActivitySubTab === "likes"
+      ? productLikes
+      : productActivitySubTab === "saved"
+        ? productSaved
+        : productWanted;
+
+  const emptyText =
+    productActivitySubTab === "likes"
+      ? t("profileProductActivity.noLikes")
+      : productActivitySubTab === "saved"
+        ? t("profileProductActivity.noSaved")
+        : t("profileProductActivity.noWishlist");
+  const emptyIcon =
+    productActivitySubTab === "likes"
+      ? "heart-outline"
+      : productActivitySubTab === "saved"
+        ? "bookmark-outline"
+        : "bag-handle-outline";
+
+  return (
+    <VStack>
+      {/* 内层 chip 行 —— 视觉上比外层稍轻，背景灰条暗示嵌套关系 */}
+      <HStack px="$md" py="$sm" style={{ gap: 8, backgroundColor: theme.colors.gray50 }}>
+        {subSubTabs.map((st) => {
+          const isActive = productActivitySubTab === st.id;
+          return (
+            <Pressable
+              key={st.id}
+              style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+              onPress={() => setProductActivitySubTab(st.id)}
+            >
+              <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
+                {st.label}
+              </RNText>
+              <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
+                {st.count}
+              </RNText>
+            </Pressable>
+          );
+        })}
+      </HStack>
+
+      {current.isLoading && !current.hasLoaded ? (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <ActivityIndicator color={theme.colors.gray400} />
+        </VStack>
+      ) : current.products.length === 0 ? (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <Ionicons name={emptyIcon as any} size={24} color={theme.colors.gray300} />
+          <Text color="$gray400" mt="$md">{emptyText}</Text>
+        </VStack>
+      ) : (
+        <View style={productGridStyles.grid}>
+          {current.products.map((p) => (
+            <ProductGridCard key={p.id} product={p} onPress={() => onProductPress(p.id)} />
+          ))}
+        </View>
+      )}
+    </VStack>
+  );
+};
+
+// 复用 StoreProductListScreen 的 2 列卡片视觉，但本地实现一份 —— 那一屏用的是
+// 屏幕宽度计算 CARD_WIDTH，profile 容器宽度可能不同；这里改用 flex:1 自适应。
+const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> = ({
+  product,
+  onPress,
+}) => {
+  const cover = product.images?.[0];
+  const hasDiscount =
+    product.discountPriceCents != null &&
+    product.discountPriceCents < product.priceCents;
+  return (
+    <Pressable onPress={onPress} style={productGridStyles.card}>
+      <View style={productGridStyles.cardCover}>
+        {cover ? (
+          <OptimizedImage
+            uri={cover}
+            size={ImageSize.MEDIUM}
+            style={productGridStyles.cardImage}
+            contentFit="cover"
+            lazy
+          />
+        ) : (
+          <View style={productGridStyles.cardImagePlaceholder}>
+            <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+          </View>
+        )}
+        {product.isNew && !hasDiscount && (
+          <View style={[productGridStyles.badge, productGridStyles.badgeNew]}>
+            <RNText style={productGridStyles.badgeText}>NEW</RNText>
+          </View>
+        )}
+        {hasDiscount && (
+          <View style={[productGridStyles.badge, productGridStyles.badgeSale]}>
+            <RNText style={[productGridStyles.badgeText, { color: theme.colors.white }]}>SALE</RNText>
+          </View>
+        )}
+      </View>
+      <VStack px="$sm" py="$sm" gap={3}>
+        <Text fontSize={13} fontWeight="$semibold" color="$black" numberOfLines={2}>
+          {product.title}
+        </Text>
+        {!!product.brand && (
+          <Text fontSize={10} color="$gray400" numberOfLines={1}>
+            {product.brand}
+          </Text>
+        )}
+        <HStack alignItems="baseline" gap={6} mt={2}>
+          <Text
+            fontSize={13}
+            fontWeight="$bold"
+            color={hasDiscount ? "$error" : "$black"}
+          >
+            {formatPrice(
+              hasDiscount
+                ? (product.discountPriceCents as number)
+                : product.priceCents,
+              product.currency
+            )}
+          </Text>
+          {hasDiscount && (
+            <Text
+              fontSize={11}
+              color="$gray300"
+              style={{ textDecorationLine: "line-through" }}
+            >
+              {formatPrice(product.priceCents, product.currency)}
+            </Text>
+          )}
+        </HStack>
+      </VStack>
+    </Pressable>
+  );
+};
+
+const productGridStyles = StyleSheet.create({
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  card: {
+    width: "47.5%",
+    backgroundColor: theme.colors.white,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray100,
+  },
+  cardCover: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: theme.colors.gray50,
+    position: "relative",
+  },
+  cardImage: {
+    width: "100%",
+    height: "100%",
+  },
+  cardImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeNew: {
+    backgroundColor: theme.colors.black,
+  },
+  badgeSale: {
+    backgroundColor: theme.colors.error,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: theme.colors.white,
+  },
+});
+
 export const PostsContent = ({
   activeTab,
   tabsData,
@@ -353,6 +627,13 @@ export const PostsContent = ({
   setStoreActivitySubTab,
   storeActivity,
   storeActivityLoading,
+  productActivitySubTab,
+  setProductActivitySubTab,
+  productLikes,
+  productSaved,
+  productWanted,
+  loadProductActivity,
+  onProductPress,
   user,
   onPostPress,
   onDeletePost,
@@ -371,6 +652,13 @@ export const PostsContent = ({
         storeActivity={storeActivity}
         storeActivityLoading={storeActivityLoading}
         onStoreActivityPress={onStoreActivityPress}
+        productActivitySubTab={productActivitySubTab}
+        setProductActivitySubTab={setProductActivitySubTab}
+        productLikes={productLikes}
+        productSaved={productSaved}
+        productWanted={productWanted}
+        loadProductActivity={loadProductActivity}
+        onProductPress={onProductPress}
       />
     );
   }

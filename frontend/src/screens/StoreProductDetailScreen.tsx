@@ -41,10 +41,12 @@ import { ImageSize } from "../utils/imageUtils";
 import { theme } from "../theme";
 import { Alert } from "../utils/Alert";
 import {
+  checkStoreProductFavorited,
   checkStoreProductLiked,
   checkStoreProductWanted,
   createStoreProductComment,
   deleteStoreProductComment,
+  favoriteStoreProduct,
   formatPrice,
   getStoreProductComments,
   getStoreProductDetail,
@@ -52,6 +54,7 @@ import {
   likeStoreProductComment,
   StoreProduct,
   StoreProductComment,
+  unfavoriteStoreProduct,
   unlikeStoreProduct,
   unlikeStoreProductComment,
   unwantStoreProduct,
@@ -110,6 +113,11 @@ const StoreProductDetailScreen: React.FC = () => {
   const [likeCount, setLikeCount] = useState(0);
   const [likePending, setLikePending] = useState(false);
 
+  // 「收藏」(Save / Bookmark) 独立乐观态 —— 与 like 同结构、与 want 同结构
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteCount, setFavoriteCount] = useState(0);
+  const [favoritePending, setFavoritePending] = useState(false);
+
   // 「想要」(愿望单) 同样独立乐观态，参考 useEngagement 在 posts 上的实现
   const [isWanted, setIsWanted] = useState(false);
   const [wantCount, setWantCount] = useState(0);
@@ -154,6 +162,8 @@ const StoreProductDetailScreen: React.FC = () => {
       setProduct(detail);
       setLikeCount(detail.likeCount ?? 0);
       setIsLiked(!!detail.likedByMe);
+      setFavoriteCount(detail.favoriteCount ?? 0);
+      setIsFavorited(!!detail.favoritedByMe);
       setWantCount(detail.wantCount ?? 0);
       setIsWanted(!!detail.wantedByMe);
     } catch (e) {
@@ -203,13 +213,22 @@ const StoreProductDetailScreen: React.FC = () => {
     loadComments("initial");
   }, [loadProduct, loadComments]);
 
-  // 登录后再补一次精确 liked / wanted 状态（后端 detail 已带，但冷缓存下可能失败）。
+  // 登录后再补一次精确 liked / favorited / wanted 状态（后端 detail 已带，
+  // 但冷缓存下可能失败）。三个独立请求并发，不彼此阻塞。
   useEffect(() => {
     if (!productId || !currentUser) return;
     checkStoreProductLiked(productId)
       .then((liked) => {
         if (!mountedRef.current) return;
         setIsLiked(liked);
+      })
+      .catch(() => {
+        /* 忽略 */
+      });
+    checkStoreProductFavorited(productId)
+      .then((favorited) => {
+        if (!mountedRef.current) return;
+        setIsFavorited(favorited);
       })
       .catch(() => {
         /* 忽略 */
@@ -259,6 +278,29 @@ const StoreProductDetailScreen: React.FC = () => {
       if (mountedRef.current) setLikePending(false);
     }
   }, [isLiked, likePending, currentUser, productId]);
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (favoritePending) return;
+    if (!currentUser) {
+      Alert.show(t("engagement.pleaseLogin"));
+      return;
+    }
+    const nextFavorited = !isFavorited;
+    setIsFavorited(nextFavorited);
+    setFavoriteCount((n) => Math.max(0, n + (nextFavorited ? 1 : -1)));
+    setFavoritePending(true);
+    try {
+      if (nextFavorited) await favoriteStoreProduct(productId);
+      else await unfavoriteStoreProduct(productId);
+    } catch (e) {
+      // 回滚乐观态
+      setIsFavorited(!nextFavorited);
+      setFavoriteCount((n) => Math.max(0, n + (nextFavorited ? -1 : 1)));
+      Alert.show(e instanceof Error ? e.message : t("store.operationFailed"));
+    } finally {
+      if (mountedRef.current) setFavoritePending(false);
+    }
+  }, [isFavorited, favoritePending, currentUser, productId]);
 
   const handleToggleWant = useCallback(async () => {
     if (wantPending) return;
@@ -731,10 +773,10 @@ const StoreProductDetailScreen: React.FC = () => {
           isSubmitting={isSubmittingComment}
           isFocused={isCommentFocused}
           displayLikes={likeCount}
-          displaySaves={0}
+          displaySaves={favoriteCount}
           displayComments={commentsTotal}
           displayIsLiked={isLiked}
-          displayIsSaved={false}
+          displayIsSaved={isFavorited}
           displayWants={wantCount}
           displayIsWanted={isWanted}
           isItemReview
@@ -752,7 +794,7 @@ const StoreProductDetailScreen: React.FC = () => {
           onInputBlur={handleInputBlur}
           onSubmit={handleSubmitComment}
           onLike={handleToggleLike}
-          onSave={() => {}}
+          onSave={handleToggleFavorite}
           onWant={handleToggleWant}
           onOverlayPress={handleOverlayPress}
           onCancelReply={handleCancelReply}

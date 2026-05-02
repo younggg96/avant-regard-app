@@ -150,9 +150,18 @@
     "favorites": "收藏的店铺",
     "comments": "我的评价",
     "ratings": "我的评分",
+    "products": "商品",
     "noFavorites": "暂无收藏的买手店",
     "noComments": "暂无评价",
     "noRatings": "暂无评分"
+  },
+  "profileProductActivity": {
+    "likes": "我喜欢的",
+    "saved": "我收藏的",
+    "wishlist": "我的愿望单",
+    "noLikes": "暂无喜欢的商品",
+    "noSaved": "暂无收藏的商品",
+    "noWishlist": "愿望单是空的"
   },
   "auth": {
     "login": "登录",

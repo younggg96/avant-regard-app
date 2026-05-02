@@ -91,6 +91,12 @@ const ProfileScreen = () => {
     storeActivity,
     storeActivityLoading,
     storeActivityLoaded,
+    productActivitySubTab,
+    setProductActivitySubTab,
+    productLikes,
+    productSaved,
+    productWanted,
+    loadProductActivity,
     tabsData,
     setTabsData,
     resetTabsData,
@@ -390,6 +396,10 @@ const ProfileScreen = () => {
     (navigation as any).navigate("StoreDetail", { storeId });
   };
 
+  const handleProductPress = (productId: number) => {
+    (navigation as any).navigate("StoreProductDetail", { productId });
+  };
+
   const avatarUri = userInfo?.avatarUrl || user?.avatar;
   const displayUsername = userInfo?.username || user?.username || "";
 
@@ -492,6 +502,13 @@ const ProfileScreen = () => {
             setStoreActivitySubTab={setStoreActivitySubTab}
             storeActivity={storeActivity}
             storeActivityLoading={storeActivityLoading}
+            productActivitySubTab={productActivitySubTab}
+            setProductActivitySubTab={setProductActivitySubTab}
+            productLikes={productLikes}
+            productSaved={productSaved}
+            productWanted={productWanted}
+            loadProductActivity={loadProductActivity}
+            onProductPress={handleProductPress}
             user={user}
             onPostPress={handlePostPress}
             onDeletePost={handleDeletePost}

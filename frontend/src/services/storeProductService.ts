@@ -167,8 +167,10 @@ export interface StoreProduct {
   commentCount: number;
   viewCount: number;
   wantCount: number;
+  favoriteCount: number;
   status: ProductStatus;
   likedByMe?: boolean | null;
+  favoritedByMe?: boolean | null;
   wantedByMe?: boolean | null;
   publishedAt?: string | null;
   createdAt?: string | null;
@@ -265,6 +267,51 @@ export const listMyLikedStoreProducts = async (
 ): Promise<StoreProductListResponse> => {
   return request<StoreProductListResponse>(
     `/api/store-merchants/user/liked-products?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+// ============================================================================
+// 商品「收藏」(Save / Bookmark)
+// ============================================================================
+//
+// 与 like / want 平行的一组幂等接口：独立表 + 独立计数；UI 上 bookmark 图标
+// 触发 favorite，profile「我收藏的商品」走 listMyFavoritedStoreProducts。
+
+/** POST /api/store-merchants/products/{productId}/favorite */
+export const favoriteStoreProduct = async (productId: number): Promise<void> => {
+  await request<{ favorited: boolean }>(
+    `/api/store-merchants/products/${productId}/favorite`,
+    { method: "POST" }
+  );
+};
+
+/** DELETE /api/store-merchants/products/{productId}/favorite */
+export const unfavoriteStoreProduct = async (productId: number): Promise<void> => {
+  await request<{ favorited: boolean }>(
+    `/api/store-merchants/products/${productId}/favorite`,
+    { method: "DELETE" }
+  );
+};
+
+/** GET /api/store-merchants/products/{productId}/favorite/check */
+export const checkStoreProductFavorited = async (
+  productId: number
+): Promise<boolean> => {
+  const result = await request<{ favorited: boolean }>(
+    `/api/store-merchants/products/${productId}/favorite/check`,
+    { method: "GET" }
+  );
+  return !!result?.favorited;
+};
+
+/** GET /api/store-merchants/user/favorited-products */
+export const listMyFavoritedStoreProducts = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<StoreProductListResponse> => {
+  return request<StoreProductListResponse>(
+    `/api/store-merchants/user/favorited-products?page=${page}&pageSize=${pageSize}`,
     { method: "GET" }
   );
 };
