@@ -216,10 +216,9 @@ class StoreProductService:
         - 过滤参数相互可组合：既可以查"分类 A 下的折扣商品"，也可以查"新品"。
         - user_id 传入时会批量回填 likedByMe，供详情页上的"喜欢"按钮定态。
         """
-        if page == 1:
-            query = self.db.table("store_products").select(_PRODUCT_SELECT, count="planned")
-        else:
-            query = self.db.table("store_products").select(_PRODUCT_SELECT)
+        # count 必须每页都请求且使用 exact —— 同 list_comments 的注释，
+        # planned + page==1-only 会让前端在第二页拿到 total=0、误判没有更多。
+        query = self.db.table("store_products").select(_PRODUCT_SELECT, count="exact")
 
         query = query.eq("store_id", store_id)
         if status:
@@ -319,14 +318,11 @@ class StoreProductService:
         self, user_id: int, *, page: int = 1, page_size: int = 20
     ) -> Tuple[List[StoreProduct], int]:
         """登录用户点过喜欢的商品列表（Profile 页会用）。"""
-        if page == 1:
-            q = self.db.table("store_product_likes").select(
-                "product_id, created_at", count="planned"
-            )
-        else:
-            q = self.db.table("store_product_likes").select(
-                "product_id, created_at"
-            )
+        # 同 list_comments / list_products，count 每页都用 exact，
+        # 否则第二页之后 total=0 会让前端误判分页结束。
+        q = self.db.table("store_product_likes").select(
+            "product_id, created_at", count="exact"
+        )
         q = q.eq("user_id", user_id).order("created_at", desc=True)
         offset = (page - 1) * page_size
         q = q.range(offset, offset + page_size - 1)
@@ -418,16 +414,24 @@ class StoreProductService:
         page_size: int = 20,
         user_id: Optional[int] = None,
     ) -> Tuple[List[ProductComment], int]:
-        """只列出顶层评论（parent_id IS NULL）；回复另开接口拉。"""
-        if page == 1:
-            q = (
-                self.db.table("store_product_comments")
-                .select(_COMMENT_SELECT, count="planned")
-            )
-        else:
-            q = self.db.table("store_product_comments").select(_COMMENT_SELECT)
-        q = q.eq("product_id", product_id).is_("parent_id", "null").order(
-            "created_at", desc=True
+        """只列出顶层评论（parent_id IS NULL）；回复另开接口拉。
+
+        count 必须每页都请求 —— 早先实现只在 page==1 请求，导致下一页拿到
+        `res.count == None` → `total == 0`，进而前端把 commentsTotal 写成 0、
+        把 hasMore 关掉，分页直接断在第二页。
+
+        count 走 exact 而非 planned：planner 估值在新表 / 大批量插入后会和实际值
+        相差几个数量级（postgres 的 pg_stats 不实时刷新），用户会看到
+        "Comments (1)" + 空列表 的错配。代价是 RPC 多扫一遍计数行，量级在
+        万行以下完全无感；和 admin_service / store_merchant_service 等
+        其它 39 处保持一致。
+        """
+        q = (
+            self.db.table("store_product_comments")
+            .select(_COMMENT_SELECT, count="exact")
+            .eq("product_id", product_id)
+            .is_("parent_id", "null")
+            .order("created_at", desc=True)
         )
         offset = (page - 1) * page_size
         q = q.range(offset, offset + page_size - 1)
