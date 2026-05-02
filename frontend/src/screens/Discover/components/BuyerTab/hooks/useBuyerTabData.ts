@@ -32,9 +32,11 @@ import {
   getStoreEntryCards,
   getStoreProducts,
   getStoreProfileConfig,
+  likeStoreProduct,
   StoreEntryCard,
   StoreProduct,
   StoreProfileConfig,
+  unlikeStoreProduct,
 } from "../../../../../services/storeProductService";
 import {
   getStoreBanners,
@@ -81,6 +83,9 @@ const buildProductsFromRemote = (
       priceCents: p.priceCents,
       discountPriceCents: p.discountPriceCents ?? undefined,
       badge,
+      // 把后端真值带到 view —— 卡片心形 = "我点过赞"，与 StoreProductDetail
+      // 顶部 like 按钮的同步逻辑见 useBuyerTabData.toggleProductFavorite。
+      isFavorited: !!p.likedByMe,
     };
   });
 };
@@ -248,9 +253,15 @@ export interface UseBuyerTabDataReturn {
   error: string | null;
   setSelectedStoreId: (storeId: string) => void;
   toggleFollow: () => void;
-  toggleProductFavorite: (productId: string) => void;
+  toggleProductFavorite: (productId: string) => Promise<void>;
   favoritedProductIds: Set<string>;
   refresh: () => Promise<void>;
+  /**
+   * 仅刷新当前店铺的商品列表（不动 profile / cards / banners）。
+   * 给页面 focus 时用 —— 用户从 StoreProductDetail 改了 like 后回到 Tab，
+   * 通过这个轻量 RPC 让卡片心形即时同步。
+   */
+  refreshSelectedStoreProducts: () => Promise<void>;
 }
 
 /** 顶部店铺选择条所需的条数。单屏横向滑动大约展示 6-7 张，多拉一些
@@ -272,9 +283,9 @@ export const useBuyerTabData = (
   const [followedStoreIds, setFollowedStoreIds] = useState<Set<string>>(
     () => new Set()
   );
-  const [favoritedProductIds, setFavoritedProductIds] = useState<Set<string>>(
-    () => new Set()
-  );
+  // favoritedProductIds 不再单独 setState，改为 useMemo 从 productsMap 派生
+  // —— 单一真值在 productsMap 上，避免"卡片心形 vs likedByMe"两个状态会
+  // 漂移（这正是用户报告的 bug：详情页 like 之后回来卡片仍是空心）。
 
   // 店铺 4 组可配置资源按 storeId 缓存 —— 同一次会话里用户来回切店
   // 不会反复打接口。`undefined` 表示"还没拉过"，`null`（仅 profileConfig）
@@ -518,14 +529,109 @@ export const useBuyerTabData = (
     });
   }, [selectedStoreId]);
 
-  const toggleProductFavorite = useCallback((productId: string) => {
-    setFavoritedProductIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
-  }, []);
+  /**
+   * 从 productsMap 直接派生当前选中店铺的"已点赞"商品 id 集合。
+   * 不再用独立 state —— productsMap 是唯一真值，toggle / focus refresh 都
+   * 写它。derive 法保证：详情页改动只要拉新数据回来，卡片心形即时更新。
+   */
+  const favoritedProductIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!selectedStoreId) return ids;
+    const list = productsMap[selectedStoreId];
+    if (!list) return ids;
+    for (const p of list) {
+      if (p.likedByMe) ids.add(`remote-${p.id}`);
+    }
+    return ids;
+  }, [selectedStoreId, productsMap]);
+
+  /**
+   * 卡片上心形的点击 —— 与 StoreProductDetailScreen.handleToggleLike 走同一
+   * 后端接口（store_product_likes）。乐观写入 productsMap，失败回滚。
+   *
+   * 用 productsMap 做乐观源是为了让其它消费方（同店铺的其它商品 view、
+   * favoritedProductIds memo）一次性同步。
+   */
+  const toggleProductFavorite = useCallback(
+    async (productId: string) => {
+      const realId = parseInt(productId.replace(/^remote-/, ""), 10);
+      if (!Number.isFinite(realId) || realId <= 0) return;
+
+      let nextLiked = false;
+      let didFlip = false;
+      setProductsMap((prev) => {
+        const next: Record<string, StoreProduct[]> = {};
+        for (const [key, list] of Object.entries(prev)) {
+          next[key] = list.map((p) => {
+            if (p.id !== realId) return p;
+            didFlip = true;
+            nextLiked = !p.likedByMe;
+            const likeDelta = nextLiked ? 1 : -1;
+            return {
+              ...p,
+              likedByMe: nextLiked,
+              likeCount: Math.max(0, (p.likeCount ?? 0) + likeDelta),
+            };
+          });
+        }
+        return next;
+      });
+      if (!didFlip) return; // productId 不在当前任何店铺缓存里，跳过 RPC
+
+      try {
+        if (nextLiked) await likeStoreProduct(realId);
+        else await unlikeStoreProduct(realId);
+      } catch (err) {
+        console.warn("[useBuyerTabData] toggle product like failed:", err);
+        // 回滚：再 flip 一次
+        setProductsMap((prev) => {
+          const next: Record<string, StoreProduct[]> = {};
+          for (const [key, list] of Object.entries(prev)) {
+            next[key] = list.map((p) => {
+              if (p.id !== realId) return p;
+              const rollbackLiked = !nextLiked;
+              const likeDelta = rollbackLiked ? 1 : -1;
+              return {
+                ...p,
+                likedByMe: rollbackLiked,
+                likeCount: Math.max(0, (p.likeCount ?? 0) + likeDelta),
+              };
+            });
+          }
+          return next;
+        });
+      }
+    },
+    []
+  );
+
+  /**
+   * 当前选中店铺的商品列表强制重拉。
+   * 给页面 focus 时用 —— 用户可能在 StoreProductDetail 改了 likedByMe，
+   * 回到 Discover/Stores 卡片需要看到最新心形。
+   *
+   * 不走 loadStoreConfig({force: true}) 是为了避免顺带把 profile-config /
+   * entry-cards / banners 也重拉一次（那 3 项基本不会随 like 改变）。
+   */
+  const refreshSelectedStoreProducts = useCallback(async () => {
+    if (!selectedStoreId) return;
+    try {
+      const result = await getStoreProducts({
+        storeId: selectedStoreId,
+        page: 1,
+        pageSize: PREVIEW_PRODUCT_COUNT,
+      });
+      setProductsMap((prev) => ({
+        ...prev,
+        [selectedStoreId]: result.products ?? [],
+      }));
+    } catch (err) {
+      console.warn(
+        "[useBuyerTabData] refreshSelectedStoreProducts failed:",
+        err
+      );
+    }
+  }, [selectedStoreId]);
 
   const isFollowed = selectedStoreId ? followedStoreIds.has(selectedStoreId) : false;
 
@@ -547,5 +653,6 @@ export const useBuyerTabData = (
     toggleProductFavorite,
     favoritedProductIds,
     refresh,
+    refreshSelectedStoreProducts,
   };
 };

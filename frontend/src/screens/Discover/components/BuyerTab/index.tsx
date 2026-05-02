@@ -23,6 +23,7 @@ import {
   RefreshControl,
   StyleSheet,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
@@ -104,7 +105,20 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     toggleProductFavorite,
     favoritedProductIds,
     refresh,
+    refreshSelectedStoreProducts,
   } = useBuyerTabData({ enabled: isActive });
+
+  // 用户从 StoreProductDetail 改了 like / favorite / want 后回到 Discover，
+  // 需要让卡片心形即时和后端同步。useFocusEffect 在 Discover 屏获得焦点时
+  // 触发；isActive 守门避免别的 Discover 子 Tab（Forum/For You）借机刷新
+  // 买手店数据。只刷新 products，不动 profile/cards/banners (轻量、高频)。
+  useFocusEffect(
+    useCallback(() => {
+      if (!isActive) return;
+      if (!selectedStoreId) return;
+      refreshSelectedStoreProducts();
+    }, [isActive, selectedStoreId, refreshSelectedStoreProducts])
+  );
 
   // Phase 4 —— 入口卡片点击后按 cardType 真实分流到 StoreProductList。
   // EVENT 类型暂无独立屏（活动列表是 Phase 5+ 的事），仍回退到 StoreDetail；

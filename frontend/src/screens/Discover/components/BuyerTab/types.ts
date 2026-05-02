@@ -45,6 +45,12 @@ export interface BuyerStoreProduct {
   /** 折扣价（存在即代表 has_discount = true，UI 会把原价划线）。 */
   discountPriceCents?: number;
   badge?: ProductBadge;
+  /**
+   * 卡片上的心形图标语义 = "点赞" (back-end `store_product_likes`)，与
+   * StoreProductDetailScreen 顶部 like 按钮指向同一张表 —— 保证用户在详情
+   * 页点的赞，回到买手店列表能立即看到红心。Detail/List 共用一份后端真值，
+   * UI 上的"收藏 (favorite)"和"想要 (want)"另有独立按钮，不在卡片上展示。
+   */
   isFavorited?: boolean;
 }
 
