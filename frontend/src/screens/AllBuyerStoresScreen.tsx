@@ -97,7 +97,11 @@ const AllBuyerStoresScreen: React.FC = () => {
       } catch (e) {
         console.error("加载全部买手店失败:", e);
         if (!mountedRef.current) return;
-        setError(e instanceof Error ? e.message : t("store.loadFailed"));
+        if (mode === "more") {
+          setHasMore(false);
+        } else {
+          setError(e instanceof Error ? e.message : t("store.loadFailed"));
+        }
       } finally {
         if (!mountedRef.current) return;
         if (mode === "initial") setIsLoading(false);

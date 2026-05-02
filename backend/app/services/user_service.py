@@ -83,6 +83,7 @@ class UserService:
             avatarUrl=info.get("avatar_url", ""),
             coverUrl=info.get("cover_url", ""),
             primaryTitle=primary_title,
+            preferredLanguage=info.get("preferred_language"),
         )
 
     def update_user_info(self, user_id: int, **kwargs) -> Optional[UserInfo]:
@@ -341,9 +342,9 @@ class UserService:
                 avatarUrl=info.get("avatar_url", ""),
                 coverUrl=info.get("cover_url", ""),
                 primaryTitle=self._get_primary_title(user_id),
+                preferredLanguage=info.get("preferred_language"),
             )
         else:
-            # 没有 user_info 记录，返回基本信息
             return UserInfo(
                 userId=user["id"],
                 infoId=0,
@@ -426,6 +427,14 @@ class UserService:
             })
 
         return leaderboard
+
+    def update_language_preference(self, user_id: int, language: str) -> Optional[UserInfo]:
+        """更新用户语言偏好"""
+        info_result = self.db.table("user_info").select("id").eq("user_id", user_id).execute()
+        if not info_result.data:
+            return None
+        self.db.table("user_info").update({"preferred_language": language}).eq("user_id", user_id).execute()
+        return self.get_user_info(user_id)
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
         """获取用户隐私设置"""

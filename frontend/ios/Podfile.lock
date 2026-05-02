@@ -253,6 +253,8 @@ PODS:
     - ExpoModulesCore
   - ExpoLinearGradient (13.0.2):
     - ExpoModulesCore
+  - ExpoLocalization (15.0.3):
+    - ExpoModulesCore
   - ExpoModulesCore (1.12.26):
     - DoubleConversion
     - glog
@@ -278,7 +280,7 @@ PODS:
     - Yoga
   - ExpoNativeWechat (0.1.8):
     - ExpoModulesCore
-    - WechatOpenSDK
+    - WechatOpenSDK-XCFramework
   - ExpoVideo (1.2.7):
     - ExpoModulesCore
   - ExpoVideoThumbnails (8.0.0):
@@ -1594,7 +1596,7 @@ PODS:
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
   - SocketRocket (0.7.0)
-  - WechatOpenSDK (2.0.5)
+  - WechatOpenSDK-XCFramework (2.0.5)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1623,6 +1625,7 @@ DEPENDENCIES:
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
+  - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoNativeWechat (from `../node_modules/expo-native-wechat/ios`)
   - ExpoVideo (from `../node_modules/expo-video/ios`)
@@ -1703,7 +1706,7 @@ SPEC REPOS:
     - SDWebImageSVGCoder
     - SDWebImageWebPCoder
     - SocketRocket
-    - WechatOpenSDK
+    - WechatOpenSDK-XCFramework
 
 EXTERNAL SOURCES:
   boost:
@@ -1756,6 +1759,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
     :path: "../node_modules/expo-linear-gradient/ios"
+  ExpoLocalization:
+    :path: "../node_modules/expo-localization/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
   ExpoNativeWechat:
@@ -1918,8 +1923,9 @@ SPEC CHECKSUMS:
   ExpoImagePicker: 7038c1740853c170002c491de63f9f9780c8139b
   ExpoKeepAwake: dd02e65d49f1cfd9194640028ae2857e536eb1c9
   ExpoLinearGradient: 4c44b3803b441724874b232e6520b51ca6a50db1
+  ExpoLocalization: 1b4195ed48148c7f52ce790d3965cc19483fcbf2
   ExpoModulesCore: 9ac73e2f60e0ea1d30137ca96cfc8c2aa34ef2b2
-  ExpoNativeWechat: d65b7650525da5b3dfa79f807f672c64969e889e
+  ExpoNativeWechat: 602ca5aacb5fa7a45258fce5e9ed492a8756aac1
   ExpoVideo: 34140ec2f01cfeb22d32165e79c4c819225e99cd
   ExpoVideoThumbnails: 4a88c3b1d2accb7ea8f36fce28d6de45974284a6
   EXSplashScreen: a4ce3dd5d28d48e8b9132bcd9b58ee8e340db78c
@@ -1992,7 +1998,7 @@ SPEC CHECKSUMS:
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
-  WechatOpenSDK: a363db41205f57abbc05bb6b80bf2d2ed1ea40bf
+  WechatOpenSDK-XCFramework: ff342ae616bb86df3d236aca38059dfd4bc4a949
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
 
 PODFILE CHECKSUM: 165a0f4f11df46ec750484a11d8da0aa5cf0db2f

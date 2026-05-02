@@ -22,6 +22,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { Eye, Heart, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
@@ -663,10 +664,19 @@ function ProductCard({
             </span>
           )}
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[11px] text-[color:var(--ink-muted)]">
-          <span>♥ {product.likeCount}</span>
-          <span>· 💬 {product.commentCount}</span>
-          <span>· 👁 {product.viewCount}</span>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[color:var(--ink-muted)]">
+          <span className="inline-flex items-center gap-0.5">
+            <Heart className="size-3 shrink-0" strokeWidth={2} aria-hidden />
+            {product.likeCount}
+          </span>
+          <span className="inline-flex items-center gap-0.5">
+            <MessageCircle className="size-3 shrink-0" strokeWidth={2} aria-hidden />
+            {product.commentCount}
+          </span>
+          <span className="inline-flex items-center gap-0.5">
+            <Eye className="size-3 shrink-0" strokeWidth={2} aria-hidden />
+            {product.viewCount}
+          </span>
         </div>
         <div className="mt-2 flex flex-wrap gap-1 text-[11px]">
           <button

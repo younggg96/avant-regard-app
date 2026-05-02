@@ -27,6 +27,7 @@ export interface UserInfo {
   avatarUrl: string;
   coverUrl?: string;
   primaryTitle?: string;
+  preferredLanguage?: string;
 }
 
 // 用户完整资料类型（包含性别、年龄、偏好等）
@@ -414,6 +415,20 @@ export async function getContributionLeaderboard(
 }
 
 /**
+ * 更新用户语言偏好
+ * PUT /api/user-info/{userId}/language
+ */
+export async function updateLanguagePreference(
+  userId: number,
+  language: string
+): Promise<UserInfo> {
+  return request<UserInfo>(`/api/user-info/${userId}/language`, {
+    method: "PUT",
+    body: JSON.stringify({ language }),
+  });
+}
+
+/**
  * Self-service account deletion (Apple Guideline 5.1.1(v))
  * DELETE /api/user-info/{userId}/account
  */
@@ -477,6 +492,7 @@ export const userInfoService = {
   searchUsers,
   getPrivacySettings,
   updatePrivacySettings,
+  updateLanguagePreference,
   getContributionLeaderboard,
   deleteAccount,
   getUserTitles,

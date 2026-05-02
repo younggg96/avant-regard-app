@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Switch,
-  ActivityIndicator,
-  Modal,
-} from "react-native";
+import { Switch, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,6 +19,17 @@ import {
   MinorProtectionContent,
 } from "./Auth/components";
 import { setStoredLanguage, type SupportedLanguage } from "../i18n";
+import {
+  Box,
+  Text,
+  ScrollView,
+  Pressable,
+  HStack,
+  VStack,
+  Button,
+  ActionSheet,
+} from "../components/ui";
+import { Modal } from "../components/ui/modal";
 
 interface SettingItem {
   id: string;
@@ -46,22 +48,24 @@ const SettingsScreen = () => {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuthStore();
 
-  // Language modal
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const currentLang = (i18n.language?.startsWith("zh") ? "zh" : "en") as SupportedLanguage;
 
   const handleLanguageChange = async (lang: SupportedLanguage) => {
     await setStoredLanguage(lang);
     setShowLanguageModal(false);
+    if (user?.userId) {
+      userInfoService.updateLanguagePreference(user.userId, lang).catch((err) =>
+        console.error("Error saving language preference:", err)
+      );
+    }
   };
 
-  // 隐私设置状态
   const [privacySettings, setPrivacySettings] =
     useState<UserPrivacySettings | null>(null);
   const [privacyLoading, setPrivacyLoading] = useState(false);
   const [updatingPrivacy, setUpdatingPrivacy] = useState<string | null>(null);
 
-  // 协议 Modal 状态
   const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [agreementType, setAgreementType] = useState<"terms" | "privacy" | "guidelines" | "minor">("terms");
 
@@ -70,7 +74,6 @@ const SettingsScreen = () => {
     setShowAgreementModal(true);
   };
 
-  // 加载隐私设置
   const loadPrivacySettings = useCallback(async () => {
     if (!user?.userId) return;
     setPrivacyLoading(true);
@@ -84,9 +87,22 @@ const SettingsScreen = () => {
     }
   }, [user?.userId]);
 
+  const syncLanguageFromServer = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const info = await userInfoService.getUserInfo(user.userId);
+      if (info.preferredLanguage && info.preferredLanguage !== currentLang) {
+        await setStoredLanguage(info.preferredLanguage as SupportedLanguage);
+      }
+    } catch (error) {
+      console.error("Error syncing language preference:", error);
+    }
+  }, [user?.userId, currentLang]);
+
   useEffect(() => {
     loadPrivacySettings();
-  }, [loadPrivacySettings]);
+    syncLanguageFromServer();
+  }, [loadPrivacySettings, syncLanguageFromServer]);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,7 +110,6 @@ const SettingsScreen = () => {
     }, [loadPrivacySettings])
   );
 
-  // 更新隐私设置
   const handlePrivacyToggle = async (
     key: "hideFollowing" | "hideFollowers" | "hideLikes" | "hideWishlist",
     value: boolean
@@ -102,7 +117,6 @@ const SettingsScreen = () => {
     if (!user?.userId || updatingPrivacy) return;
     setUpdatingPrivacy(key);
 
-    // 乐观更新
     setPrivacySettings((prev) =>
       prev ? { ...prev, [key]: value } : null
     );
@@ -114,7 +128,6 @@ const SettingsScreen = () => {
       setPrivacySettings(updated);
     } catch (error) {
       console.error("Error updating privacy settings:", error);
-      // 回滚
       setPrivacySettings((prev) =>
         prev ? { ...prev, [key]: !value } : null
       );
@@ -334,28 +347,40 @@ const SettingsScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title={t("settings.title")} showBack={true} />
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+          <Box key={section.title} style={{ paddingVertical: theme.spacing.md }}>
+            <Text
+              style={{
+                ...theme.typography.caption,
+                color: theme.colors.gray400,
+                letterSpacing: 1,
+                paddingHorizontal: theme.spacing.md,
+                marginBottom: theme.spacing.sm,
+              }}
+            >
+              {section.title}
+            </Text>
 
             {section.items.map((item) => (
-              <TouchableOpacity
+              <Pressable
                 key={item.id}
-                style={styles.settingItem}
                 onPress={item.onPress}
                 disabled={item.toggle}
+                style={styles.settingItem}
               >
-                <View style={styles.settingLeft}>
+                <HStack space="md" style={{ flex: 1 }}>
                   <Ionicons
                     name={item.icon as any}
                     size={20}
                     color={theme.colors.gray400}
                   />
-                  <Text style={styles.settingLabel}>{item.label}</Text>
-                </View>
+                  <Text style={{ ...theme.typography.body, color: theme.colors.black }}>
+                    {item.label}
+                  </Text>
+                </HStack>
 
-                <View style={styles.settingRight}>
+                <Box style={{ alignItems: "center" }}>
                   {item.toggle ? (
                     <Switch
                       value={item.value}
@@ -368,7 +393,11 @@ const SettingsScreen = () => {
                     />
                   ) : item.rightText ? (
                     <Text
-                      style={[styles.rightText, { color: item.rightColor }]}
+                      style={{
+                        ...theme.typography.caption,
+                        fontWeight: "500",
+                        color: item.rightColor,
+                      }}
                     >
                       {item.rightText}
                     </Text>
@@ -379,137 +408,158 @@ const SettingsScreen = () => {
                       color={theme.colors.gray300}
                     />
                   )}
-                </View>
-              </TouchableOpacity>
+                </Box>
+              </Pressable>
             ))}
-          </View>
+          </Box>
         ))}
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
-          <Text style={styles.logoutText}>{t("settings.logout")}</Text>
-        </TouchableOpacity>
+        <Button
+          variant="outline"
+          onPress={handleLogout}
+          leftIcon={
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+          }
+          style={{
+            marginHorizontal: theme.spacing.md,
+            marginTop: theme.spacing.lg,
+            borderColor: theme.colors.error,
+            backgroundColor: theme.colors.white,
+          }}
+        >
+          <Text style={{ color: theme.colors.error, fontWeight: "500" }}>
+            {t("settings.logout")}
+          </Text>
+        </Button>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Avant Regard v1.0.0</Text>
-          <Text style={styles.footerText}>{t("settings.copyright")}</Text>
-        </View>
+        <VStack alignItems="center" style={{ paddingVertical: theme.spacing.xxl }}>
+          <Text
+            style={{
+              ...theme.typography.caption,
+              color: theme.colors.gray300,
+              marginBottom: 2,
+            }}
+          >
+            Avant Regard v1.0.0
+          </Text>
+          <Text style={{ ...theme.typography.caption, color: theme.colors.gray300 }}>
+            {t("settings.copyright")}
+          </Text>
+        </VStack>
       </ScrollView>
 
-      {/* 注销账户确认 Modal */}
-      <Modal
+      {/* Delete account confirmation */}
+      <ActionSheet
         visible={showDeleteAccountModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDeleteAccountModal(false)}
+        onClose={() => setShowDeleteAccountModal(false)}
       >
-        <View style={styles.deleteOverlay}>
-          <View style={styles.deleteDialog}>
-            <Ionicons
-              name="warning-outline"
-              size={48}
-              color={theme.colors.error}
-              style={{ alignSelf: "center", marginBottom: 12 }}
-            />
-            <Text style={styles.deleteTitle}>{t("deleteAccount.title")}</Text>
-            <Text style={styles.deleteMessage}>
-              {t("deleteAccount.message")}
-            </Text>
-            <View style={styles.deleteActions}>
-              <TouchableOpacity
-                style={styles.deleteCancelButton}
-                onPress={() => setShowDeleteAccountModal(false)}
-                disabled={deletingAccount}
-              >
-                <Text style={styles.deleteCancelText}>{t("common.cancel")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deleteConfirmButton, deletingAccount && { opacity: 0.6 }]}
-                onPress={confirmDeleteAccount}
-                disabled={deletingAccount}
-              >
-                {deletingAccount ? (
-                  <ActivityIndicator size="small" color={theme.colors.white} />
-                ) : (
-                  <Text style={styles.deleteConfirmText}>{t("deleteAccount.confirm")}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <VStack alignItems="center" style={{ padding: 24 }}>
+          <Ionicons
+            name="warning-outline"
+            size={48}
+            color={theme.colors.error}
+            style={{ marginBottom: 12 }}
+          />
+          <Text style={styles.dialogTitle}>
+            {t("deleteAccount.title")}
+          </Text>
+          <Text style={styles.dialogMessage}>
+            {t("deleteAccount.message")}
+          </Text>
+          <Button
+            colorScheme="error"
+            onPress={confirmDeleteAccount}
+            isLoading={deletingAccount}
+            disabled={deletingAccount}
+            style={{ width: "100%" }}
+          >
+            {t("deleteAccount.confirm")}
+          </Button>
+        </VStack>
+      </ActionSheet>
 
-      {/* Language selector modal */}
-      <Modal
+      {/* Language selector */}
+      <ActionSheet
         visible={showLanguageModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowLanguageModal(false)}
+        onClose={() => setShowLanguageModal(false)}
       >
-        <View style={styles.deleteOverlay}>
-          <View style={styles.deleteDialog}>
-            <Text style={styles.deleteTitle}>{t("settings.selectLanguage")}</Text>
-            <View style={{ gap: 8 }}>
-              <TouchableOpacity
-                style={[
-                  styles.languageOption,
-                  currentLang === "zh" && styles.languageOptionActive,
-                ]}
-                onPress={() => handleLanguageChange("zh")}
-              >
-                <Text style={[
-                  styles.languageOptionText,
-                  currentLang === "zh" && styles.languageOptionTextActive,
-                ]}>
-                  中文
-                </Text>
-                {currentLang === "zh" && (
-                  <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.languageOption,
-                  currentLang === "en" && styles.languageOptionActive,
-                ]}
-                onPress={() => handleLanguageChange("en")}
-              >
-                <Text style={[
-                  styles.languageOptionText,
-                  currentLang === "en" && styles.languageOptionTextActive,
-                ]}>
-                  English
-                </Text>
-                {currentLang === "en" && (
-                  <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
-                )}
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.deleteCancelButton, { marginTop: 16 }]}
-              onPress={() => setShowLanguageModal(false)}
+        <VStack style={{ padding: 24 }} space="sm">
+          <Text style={[styles.dialogTitle, { marginBottom: 4 }]}>
+            {t("settings.selectLanguage")}
+          </Text>
+          <Pressable
+            onPress={() => handleLanguageChange("zh")}
+            style={[
+              styles.languageOption,
+              currentLang === "zh" && styles.languageOptionActive,
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                color: theme.colors.black,
+                fontWeight: currentLang === "zh" ? "600" : "400",
+              }}
             >
-              <Text style={styles.deleteCancelText}>{t("common.cancel")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+              中文
+            </Text>
+            {currentLang === "zh" && (
+              <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+            )}
+          </Pressable>
+          <Pressable
+            onPress={() => handleLanguageChange("en")}
+            style={[
+              styles.languageOption,
+              currentLang === "en" && styles.languageOptionActive,
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                color: theme.colors.black,
+                fontWeight: currentLang === "en" ? "600" : "400",
+              }}
+            >
+              English
+            </Text>
+            {currentLang === "en" && (
+              <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+            )}
+          </Pressable>
+        </VStack>
+      </ActionSheet>
 
+      {/* Agreement content viewer */}
       <Modal
         visible={showAgreementModal}
         animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAgreementModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
+        <SafeAreaView style={styles.agreementContainer}>
+          <HStack
+            justifyContent="between"
+            style={{
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.colors.gray100,
+            }}
+          >
+            <Pressable
               onPress={() => setShowAgreementModal(false)}
+              style={styles.modalCloseButton}
             >
               <Ionicons name="close" size={24} color={theme.colors.black} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
+            </Pressable>
+            <Text
+              style={{
+                fontSize: 17,
+                fontFamily: "PlayfairDisplay-Bold",
+                color: theme.colors.black,
+              }}
+            >
               {agreementType === "terms"
                 ? t("settings.termsOfService")
                 : agreementType === "privacy"
@@ -518,10 +568,10 @@ const SettingsScreen = () => {
                 ? t("settings.communityGuidelines")
                 : t("settings.minorProtection")}
             </Text>
-            <View style={styles.modalCloseButton} />
-          </View>
+            <Box style={styles.modalCloseButton} />
+          </HStack>
           <ScrollView
-            style={styles.modalContent}
+            style={{ paddingHorizontal: 16 }}
             showsVerticalScrollIndicator={false}
           >
             {agreementType === "terms" ? (
@@ -545,19 +595,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.white,
   },
-  content: {
-    flex: 1,
-  },
-  section: {
-    paddingVertical: theme.spacing.md,
-  },
-  sectionTitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    letterSpacing: 1,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -567,63 +604,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray100,
   },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  settingLabel: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    marginLeft: theme.spacing.md,
-  },
-  settingRight: {
-    alignItems: "center",
-  },
-  rightText: {
-    ...theme.typography.caption,
-    fontWeight: "500",
-  },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.white,
-  },
-  logoutText: {
-    ...theme.typography.body,
-    color: theme.colors.error,
-    fontWeight: "500",
-    marginLeft: theme.spacing.sm,
-  },
-  footer: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
-  },
-  footerText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginBottom: 2,
-  },
-  // Modal 样式
-  modalContainer: {
+  agreementContainer: {
     flex: 1,
     backgroundColor: theme.colors.white,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
   },
   modalCloseButton: {
     width: 40,
@@ -631,75 +614,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modalTitle: {
-    fontSize: 17,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  deleteOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 32,
-  },
-  deleteDialog: {
-    backgroundColor: theme.colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: "100%",
-  },
-  deleteTitle: {
+  dialogTitle: {
     fontSize: 18,
-    fontWeight: "700" as const,
+    fontWeight: "700",
     color: theme.colors.black,
-    textAlign: "center" as const,
+    textAlign: "center",
     marginBottom: 12,
   },
-  deleteMessage: {
+  dialogMessage: {
     fontSize: 14,
     color: theme.colors.gray600,
-    textAlign: "center" as const,
+    textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
   },
-  deleteActions: {
-    flexDirection: "row" as const,
-    gap: 12,
-  },
-  deleteCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    alignItems: "center" as const,
-  },
-  deleteCancelText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: theme.colors.black,
-  },
-  deleteConfirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: theme.colors.error,
-    alignItems: "center" as const,
-  },
-  deleteConfirmText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: theme.colors.white,
-  },
   languageOption: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "space-between" as const,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -709,13 +641,6 @@ const styles = StyleSheet.create({
   languageOptionActive: {
     borderColor: theme.colors.accent,
     backgroundColor: theme.colors.gray100,
-  },
-  languageOptionText: {
-    fontSize: 16,
-    color: theme.colors.black,
-  },
-  languageOptionTextActive: {
-    fontWeight: "600" as const,
   },
 });
 

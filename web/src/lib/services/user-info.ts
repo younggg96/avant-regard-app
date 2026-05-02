@@ -73,4 +73,9 @@ export const userInfoService = {
       `/api/user-info/${userId}/privacy`,
       params,
     ),
+
+  updateLanguagePreference: (userId: number, language: string) =>
+    apiClient.put<UserInfo>(`/api/user-info/${userId}/language`, {
+      language,
+    }),
 };

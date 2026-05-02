@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Eye, Heart, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import useSWR, { mutate as globalMutate } from "swr";
@@ -252,14 +253,21 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
                   : "border-[var(--border)] bg-[var(--canvas)] text-[var(--ink)] hover:border-[var(--ink)]"
               } disabled:opacity-50`}
             >
-              <span>{likedByMe ? "♥" : "♡"}</span>
+              <Heart
+                className="size-4 shrink-0"
+                fill={likedByMe ? "currentColor" : "none"}
+                strokeWidth={2}
+                aria-hidden
+              />
               <span>{product.likeCount}</span>
             </button>
-            <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-              💬 {product.commentCount}
+            <span className="inline-flex items-center gap-1 font-label text-[12px] text-[color:var(--ink-muted)]">
+              <MessageCircle className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              {product.commentCount}
             </span>
-            <span className="font-label text-[12px] text-[color:var(--ink-muted)]">
-              👁 {product.viewCount}
+            <span className="inline-flex items-center gap-1 font-label text-[12px] text-[color:var(--ink-muted)]">
+              <Eye className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              {product.viewCount}
             </span>
           </div>
 

@@ -2,7 +2,9 @@
 
 import { useTranslation } from "react-i18next";
 import { setLanguage, getCurrentLanguage, type SupportedLanguage } from "@/lib/i18n";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuthStore } from "@/lib/auth/store";
+import { userInfoService } from "@/lib/services/user-info";
 
 const LANGUAGES: { code: SupportedLanguage; label: string }[] = [
   { code: "zh", label: "中文" },
@@ -12,10 +14,30 @@ const LANGUAGES: { code: SupportedLanguage; label: string }[] = [
 export default function LanguageSettingsPage() {
   const { t } = useTranslation();
   const [current, setCurrent] = useState<SupportedLanguage>(getCurrentLanguage);
+  const user = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    userInfoService.get(user.userId).then((info) => {
+      if (
+        info.preferredLanguage &&
+        (info.preferredLanguage === "zh" || info.preferredLanguage === "en") &&
+        info.preferredLanguage !== getCurrentLanguage()
+      ) {
+        setLanguage(info.preferredLanguage);
+        setCurrent(info.preferredLanguage);
+      }
+    }).catch(() => {});
+  }, [user?.userId]);
 
   const handleSelect = (lang: SupportedLanguage) => {
     setLanguage(lang);
     setCurrent(lang);
+    if (user?.userId) {
+      userInfoService.updateLanguagePreference(user.userId, lang).catch((err) =>
+        console.error("Error saving language preference:", err),
+      );
+    }
   };
 
   return (

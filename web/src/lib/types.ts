@@ -82,6 +82,7 @@ export interface UserInfo {
   gender?: string;
   location?: string;
   primaryTitle?: string;
+  preferredLanguage?: string;
   postCount?: number;
   followerCount?: number;
   followingCount?: number;

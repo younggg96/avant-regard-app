@@ -22,6 +22,7 @@ class UserInfo(BaseModel):
     avatarUrl: str = ""
     coverUrl: str = ""
     primaryTitle: Optional[str] = None
+    preferredLanguage: Optional[str] = None
 
 
 class UserProfileInfo(BaseModel):
@@ -79,3 +80,8 @@ class UpdatePrivacySettingsRequest(BaseModel):
     hideFollowers: Optional[bool] = None
     hideLikes: Optional[bool] = None
     hideWishlist: Optional[bool] = None
+
+
+class UpdateLanguageRequest(BaseModel):
+    """更新语言偏好请求"""
+    language: str = Field(..., pattern="^(zh|en)$")

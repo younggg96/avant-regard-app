@@ -136,8 +136,14 @@ async function hydrateProfile(userId: number, token: string) {
         state.updateUser({ avatar: data.avatarUrl });
       }
     }
+    if (data?.preferredLanguage && (data.preferredLanguage === "zh" || data.preferredLanguage === "en")) {
+      const { setLanguage, getCurrentLanguage } = await import("../i18n");
+      if (data.preferredLanguage !== getCurrentLanguage()) {
+        setLanguage(data.preferredLanguage);
+      }
+    }
   } catch {
-    /* best effort — avatar will show initial instead */
+    /* best effort */
   }
 }
 

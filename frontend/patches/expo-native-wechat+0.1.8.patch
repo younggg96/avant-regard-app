@@ -1,0 +1,62 @@
+diff --git a/node_modules/expo-native-wechat/ios/ExpoNativeWechat-Bridging-Header.h b/node_modules/expo-native-wechat/ios/ExpoNativeWechat-Bridging-Header.h
+index 6b8d64e..e756112 100644
+--- a/node_modules/expo-native-wechat/ios/ExpoNativeWechat-Bridging-Header.h
++++ b/node_modules/expo-native-wechat/ios/ExpoNativeWechat-Bridging-Header.h
+@@ -5,6 +5,6 @@
+ //  Created by Hector Chong on 4/2/24.
+ //
+ 
+-#import "WXApi.h"
++#import <WechatOpenSDK/WXApi.h>
+ #import "ExpoNativeWechatLogger.h"
+ #import "ResponseHandler.h"
+diff --git a/node_modules/expo-native-wechat/ios/ExpoNativeWechat.podspec b/node_modules/expo-native-wechat/ios/ExpoNativeWechat.podspec
+index aad9ed3..91ec4b7 100644
+--- a/node_modules/expo-native-wechat/ios/ExpoNativeWechat.podspec
++++ b/node_modules/expo-native-wechat/ios/ExpoNativeWechat.podspec
+@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
+   s.static_framework = true
+ 
+   s.dependency 'ExpoModulesCore'
+-  s.dependency "WechatOpenSDK"
++  s.dependency "WechatOpenSDK-XCFramework"
+ 
+   # Swift/Objective-C compatibility
+   s.pod_target_xcconfig = {
+diff --git a/node_modules/expo-native-wechat/ios/ExpoNativeWechatLogger.h b/node_modules/expo-native-wechat/ios/ExpoNativeWechatLogger.h
+index 1e7d04e..1bc5490 100644
+--- a/node_modules/expo-native-wechat/ios/ExpoNativeWechatLogger.h
++++ b/node_modules/expo-native-wechat/ios/ExpoNativeWechatLogger.h
+@@ -6,7 +6,7 @@
+ //
+ 
+ #import <Foundation/Foundation.h>
+-#import "WXApi.h"
++#import <WechatOpenSDK/WXApi.h>
+ 
+ @interface ExpoNativeWechatLogger : NSObject<WXApiLogDelegate>
+ 
+diff --git a/node_modules/expo-native-wechat/ios/RespDataHelper.h b/node_modules/expo-native-wechat/ios/RespDataHelper.h
+index 6eae1f0..b6fd24a 100644
+--- a/node_modules/expo-native-wechat/ios/RespDataHelper.h
++++ b/node_modules/expo-native-wechat/ios/RespDataHelper.h
+@@ -1,5 +1,5 @@
+ #import <Foundation/Foundation.h>
+-#import "WXApi.h"
++#import <WechatOpenSDK/WXApi.h>
+ 
+ @interface RespDataHelper: NSObject
+ 
+diff --git a/node_modules/expo-native-wechat/ios/ResponseHandler.h b/node_modules/expo-native-wechat/ios/ResponseHandler.h
+index 41c20a9..3a01109 100644
+--- a/node_modules/expo-native-wechat/ios/ResponseHandler.h
++++ b/node_modules/expo-native-wechat/ios/ResponseHandler.h
+@@ -6,7 +6,7 @@
+ //
+ 
+ #import <Foundation/Foundation.h>
+-#import "WXApi.h"
++#import <WechatOpenSDK/WXApi.h>
+ #import <ExpoNativeWechat/ExpoNativeWechatLogger.h>
+ #import <ExpoNativeWechat/ExpoNativeWechat.h>
+ 
