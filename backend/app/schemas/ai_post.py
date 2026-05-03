@@ -13,7 +13,7 @@ AI 发帖助手 (V3 #25) — 入参 / 出参 / 枚举
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from enum import Enum
 
 
@@ -44,13 +44,20 @@ class ImageBriefChip(str, Enum):
 # =====================================================
 
 class OptionCard(BaseModel):
-    """通用大卡片选项 (id + 名字 + 封面图)。"""
-    id: int                                 # styles/designers/shows/looks 主键
-    slug: Optional[str] = None              # styles 用 slug,其他表 None
+    """通用大卡片选项 (id + 名字 + 封面图)。
+
+    id 类型为 Union[int, str]:
+      - styles / brands / show_images 是 BIGSERIAL → int
+      - shows 表 id 是 MongoDB ObjectId 字符串 (从 memfire 迁移过来的历史
+        包袱), 与 post_service._validate_show_ids 处理一致。
+    前端 navigation params 也按 number | string 接收。
+    """
+    id: Union[int, str]
+    slug: Optional[str] = None
     name: str
     name_zh: Optional[str] = None
     cover_url: Optional[str] = None
-    subtitle: Optional[str] = None          # 例如 designer 的 brand,show 的 season
+    subtitle: Optional[str] = None
 
 
 class OptionListResponse(BaseModel):
@@ -70,12 +77,12 @@ class GenerateRequest(BaseModel):
     """
     QA_TEXT 模式:
         {
-          "style_id": 1,
-          "designer_id": 2,
-          "show_id": 3,
-          "look_id": 4 | null,
+          "style_id": 1,                                # int
+          "brand_id": 2,                                # int
+          "show_id": "6978b1bf...",                     # str (MongoDB ObjectId) 或 int
+          "look_id": 4 | null,                          # int
           "look_fallback_text": "细节文字描述" | null,    # Q4 fallback
-          "perspective": "OUTFIT"                            # AIPostPerspective
+          "perspective": "OUTFIT"                        # AIPostPerspective
         }
     IMAGE_BRIEF 模式:
         {

@@ -236,8 +236,11 @@ class AIPostService:
             )
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
 
-    def get_looks_options(self, show_id: int, limit: int = 5) -> OptionListResponse:
-        """Q4: show_images WHERE show_id = show_id AND image_type = 'LOOK'。"""
+    def get_looks_options(self, show_id, limit: int = 5) -> OptionListResponse:
+        """Q4: show_images WHERE show_id = show_id AND image_type = 'LOOK'。
+
+        show_id 接受 int 或 str (MongoDB ObjectId), Supabase 自动按列类型转换。
+        """
         result = (
             self.db.table("show_images")
             .select("id, image_url, sort_order")

@@ -127,8 +127,11 @@ const AIPostQAStepScreen: React.FC = () => {
     };
   }, [step]);
 
-  const handlePick = (chosenId: number, chosenSlug?: string | null) => {
-    // perspective 用 slug (枚举字符串),其他用 id
+  const handlePick = (
+    chosenId: number | string,
+    chosenSlug?: string | null,
+  ) => {
+    // perspective 用 slug (枚举字符串),其他用 id (id 可能是 ObjectId 字符串,见 OptionCard 注释)
     const value: any = config.field === "perspective" ? chosenSlug : chosenId;
     const nextAnswers = { ...answers, [config.field]: value } as QAAnswers;
 
@@ -165,7 +168,7 @@ const AIPostQAStepScreen: React.FC = () => {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <VStack px="$lg" pt="$md" pb="$xl" gap="$md">
-          <Text fontSize="$xl" fontWeight="$medium" color="$black">
+          <Text fontSize="$xl" fontWeight="$medium" color="$black" style={styles.textHero}>
             {t(config.titleKey)}
           </Text>
 
@@ -211,6 +214,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
+  },
+  textHero: {
+    lineHeight: 32,
   },
 });
 

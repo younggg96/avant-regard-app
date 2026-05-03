@@ -73,7 +73,8 @@ async def get_shows_options(
 
 @router.get("/options/looks")
 async def get_looks_options(
-    show_id: int = Query(..., description="Q3 选定的 show_id"),
+    # show_id 兼容字符串 ObjectId 与整数 (历史从 memfire 迁过来的脏数据)
+    show_id: str = Query(..., description="Q3 选定的 show_id"),
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Q4: 该秀场下的具体 Look。无 look 时 has_fallback=true,前端切到文字输入。"""

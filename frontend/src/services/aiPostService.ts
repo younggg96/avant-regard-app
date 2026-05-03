@@ -42,7 +42,12 @@ export type ImageBriefChip =
   | "CUSTOM";
 
 export interface OptionCard {
-  id: number;
+  /**
+   * styles / brands / show_images 是 BIGSERIAL → number;
+   * shows 表 id 是 MongoDB ObjectId 字符串 (历史 memfire 迁移遗留),
+   * 与 Post.showIds 的 (number | string) 处理一致。
+   */
+  id: number | string;
   slug?: string | null;
   name: string;
   name_zh?: string | null;
@@ -72,7 +77,8 @@ export interface QAAnswers {
   style_id?: number;
   /** Q2 在 053 之后改成品牌 (brands.id),原 designer_id 字段已弃用。 */
   brand_id?: number;
-  show_id?: number;
+  /** shows 表 id 是 ObjectId 字符串,见 OptionCard.id 注释。 */
+  show_id?: number | string;
   look_id?: number | null;
   look_fallback_text?: string | null;
   perspective?: AIPostPerspective;
@@ -140,10 +146,10 @@ export async function getShowsOptions(
 }
 
 export async function getLooksOptions(
-  showId: number,
+  showId: number | string,
 ): Promise<OptionListResponse> {
   return request<OptionListResponse>(
-    `${BASE}/options/looks?show_id=${showId}`,
+    `${BASE}/options/looks?show_id=${encodeURIComponent(String(showId))}`,
   );
 }
 
