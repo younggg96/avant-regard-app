@@ -240,6 +240,137 @@ export interface MerchantBuyerStoreUpdateParams {
   style?: string[];
 }
 
+// ==================== 看板 / Insights ====================
+//
+// 商家后台「看板」页面响应类型。和 backend `store_insights_service` 1:1 对齐.
+
+export interface InsightsOverview {
+  wantToGoTotal: number;
+  wantToGoToday: number;
+  visitedTotal: number;
+  visitedToday: number;
+  ratingAverage: number;
+  ratingCount: number;
+}
+
+export interface CityShare {
+  city: string;
+  count: number;
+}
+
+export interface HourBucket {
+  hour: number;
+  count: number;
+}
+
+export interface BrandShare {
+  brandId: number;
+  brandName: string;
+  count: number;
+}
+
+export interface FanProfile {
+  fansTotal: number;
+  cityDistribution: CityShare[];
+  activeHours: HourBucket[];
+  preferredBrands: BrandShare[];
+}
+
+export interface TrendPoint {
+  date: string;
+  count: number;
+}
+
+export interface PromotionMetric {
+  total: number;
+  today: number;
+  trend: TrendPoint[];
+}
+
+export interface PromotionStats {
+  wantToGo: PromotionMetric;
+  visited: PromotionMetric;
+}
+
+export interface VisitCommentReply {
+  id: number;
+  storeId: string;
+  parentId: number;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  replyToUserId?: number;
+  replyToUsername?: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VisitComment {
+  id: number;
+  storeId: string;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  content: string;
+  likeCount: number;
+  replyCount: number;
+  replies: VisitCommentReply[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface VisitCommentListResponse {
+  comments: VisitComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  storeId: string;
+}
+
+// 内容数据看板 V2 (品牌点击 & TOP 品牌)
+
+/** 时间窗口允许 7 / 30 / 0(=全部) —— 与后端 ALLOWED_BRAND_WINDOWS 对齐. */
+export type BrandStatsWindow = 7 | 30 | 0;
+
+export interface BrandClickBreakdown {
+  brand: string;
+  wantCount: number;
+  favoriteCount: number;
+  likeCount: number;
+  commentCount: number;
+  viewCount: number;
+  totalCount: number;
+}
+
+export interface BrandStatsResponse {
+  windowDays: number;
+  computedAt?: string | null;
+  topBrands: BrandClickBreakdown[];
+  allBrands: BrandClickBreakdown[];
+}
+
+export interface TopProductItem {
+  id: number;
+  title: string;
+  brand?: string | null;
+  coverImage?: string | null;
+  wantCount: number;
+  favoriteCount: number;
+  likeCount: number;
+  commentCount: number;
+  viewCount: number;
+  priceCents: number;
+  currency: string;
+  status: string;
+}
+
+interface TopProductsResponse {
+  items: TopProductItem[];
+  limit: number;
+}
+
 // ==================== 列表响应类型 ====================
 
 interface MyMerchantsResponse {
@@ -386,6 +517,45 @@ export const storeMerchantService = {
 
   deleteDiscount: (discountId: number) =>
     apiClient.delete<void>(`/api/store-merchants/discounts/${discountId}`),
+
+  // ── 看板 / Insights ──────────────────────────────────────────────
+  // 全部需要 merchant 本人鉴权，后端走 _ensure_merchant_owner。
+  getInsightsOverview: (merchantId: number) =>
+    apiClient.get<InsightsOverview>(
+      `/api/store-merchants/${merchantId}/insights/overview`,
+    ),
+
+  getInsightsFans: (merchantId: number) =>
+    apiClient.get<FanProfile>(
+      `/api/store-merchants/${merchantId}/insights/fans`,
+    ),
+
+  getInsightsPromotion: (merchantId: number) =>
+    apiClient.get<PromotionStats>(
+      `/api/store-merchants/${merchantId}/insights/promotion`,
+    ),
+
+  getVisitComments: (merchantId: number, page = 1, pageSize = 20) =>
+    apiClient.get<VisitCommentListResponse>(
+      `/api/store-merchants/${merchantId}/insights/visit-comments`,
+      { page, pageSize },
+    ),
+
+  getBrandStats: (
+    merchantId: number,
+    window: BrandStatsWindow = 7,
+    topN = 3,
+  ) =>
+    apiClient.get<BrandStatsResponse>(
+      `/api/store-merchants/${merchantId}/insights/brand-stats`,
+      { window, topN },
+    ),
+
+  getTopProducts: (merchantId: number, limit = 10) =>
+    apiClient.get<TopProductsResponse>(
+      `/api/store-merchants/${merchantId}/insights/top-products`,
+      { limit },
+    ),
 };
 
 // ==================== 状态 / 枚举常量 ====================

@@ -238,6 +238,11 @@ function ProductSystemNav({ merchantId }: { merchantId: number }) {
   const { t } = useTranslation();
   const items = [
     {
+      href: `/me/merchant/${merchantId}/dashboard`,
+      title: t("merchant.navDashboard"),
+      desc: t("merchant.navDashboardDesc"),
+    },
+    {
       href: `/me/merchant/${merchantId}/profile`,
       title: t("merchant.navProfile"),
       desc: t("merchant.navProfileDesc"),

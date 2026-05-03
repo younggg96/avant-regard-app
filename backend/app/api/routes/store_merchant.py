@@ -8,6 +8,7 @@ from typing import Optional
 
 from app.core.response import success
 from app.services.store_merchant_service import store_merchant_service
+from app.services.store_insights_service import store_insights_service
 from app.schemas.store_merchant import (
     StoreMerchantCreate,
     StoreMerchantUpdate,
@@ -617,6 +618,115 @@ async def get_merchant_discounts(
         "page": page,
         "pageSize": pageSize,
     })
+
+
+# ==================== 看板 / Insights 接口（商家受保护） ====================
+#
+# 看板路由分三段:
+#   1. /insights/overview        —— 顶部汇总卡 (累计/今日)
+#   2. /insights/fans            —— 粉丝画像 Tab
+#   3. /insights/promotion       —— 地推数据 (我想去/我去过 累计 + 今日 + 7d 趋势)
+#   4. /insights/visit-comments  —— 「我去过」评论列表
+#
+# 全部需要 merchant 本人 (userId 校验), 防止越权窥探别家店铺数据.
+
+
+def _ensure_merchant_owner(merchant_id: int, current_user_id: int):
+    """共用权限校验: 拿到的 merchant 必须属于当前用户且认证通过."""
+    merchant = store_merchant_service.get_merchant_by_id(merchant_id)
+    if not merchant or merchant.userId != current_user_id:
+        raise HTTPException(status_code=403, detail="无权限查看")
+    if merchant.status != "APPROVED":
+        raise HTTPException(status_code=403, detail="商家认证未通过")
+    return merchant
+
+
+@router.get("/{merchant_id}/insights/overview")
+async def get_merchant_insights_overview(
+    merchant_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """看板顶部汇总卡 (我想去 / 我去过 累计 + 今日, 评分均值)."""
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    return success(store_insights_service.get_overview(merchant.storeId))
+
+
+@router.get("/{merchant_id}/insights/fans")
+async def get_merchant_insights_fans(
+    merchant_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """粉丝画像: 城市分布 / 24h 活跃时段 / Top 偏好品牌."""
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    return success(store_insights_service.get_fan_profile(merchant.storeId))
+
+
+@router.get("/{merchant_id}/insights/promotion")
+async def get_merchant_insights_promotion(
+    merchant_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """地推数据看板 (累计 + 今日 + 7 天趋势)."""
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    return success(store_insights_service.get_promotion_stats(merchant.storeId))
+
+
+@router.get("/{merchant_id}/insights/visit-comments")
+async def get_merchant_visit_comments(
+    merchant_id: int,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user),
+):
+    """「我去过」打卡评论列表 —— 复用 buyer_store_comments, 商家在原评论
+    流里直接回复 (POST /api/buyer-stores/{storeId}/comments + parentId)."""
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    comments, total = store_insights_service.get_visit_comments(
+        merchant.storeId, page, pageSize
+    )
+    return success({
+        "comments": [c.model_dump() for c in comments],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+        "storeId": merchant.storeId,
+    })
+
+
+@router.get("/{merchant_id}/insights/brand-stats")
+async def get_merchant_brand_stats(
+    merchant_id: int,
+    window: int = Query(
+        7,
+        description="时间窗口 (天). 允许 7 / 30 / 0(=全部),其它值 400.",
+    ),
+    topN: int = Query(3, ge=1, le=20, description="排行 Top N"),
+    current_user_id: int = Depends(get_current_user),
+):
+    """内容数据看板 V2: 品牌点击 & TOP 品牌.
+
+    - 接口只查 store_brand_stats 缓存表; 缓存过期 (>1h) 时 lazy 重算.
+    - 浏览数为累计列 (没有事件表), 所有 window 下都是累计总浏览.
+    """
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    try:
+        return success(
+            store_insights_service.get_brand_stats(merchant.storeId, window, topN)
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{merchant_id}/insights/top-products")
+async def get_merchant_top_products(
+    merchant_id: int,
+    limit: int = Query(10, ge=1, le=50),
+    current_user_id: int = Depends(get_current_user),
+):
+    """单品维度 Top (V3 #16 保留): 按「我想要」倒序."""
+    merchant = _ensure_merchant_owner(merchant_id, current_user_id)
+    items = store_insights_service.get_top_products_by_want(merchant.storeId, limit)
+    return success({"items": items, "limit": limit})
 
 
 # ==================== 店铺商家内容接口（公开） ====================

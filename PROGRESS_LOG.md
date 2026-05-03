@@ -1,3 +1,101 @@
+## 2026-05-02: Web 商家「数据看板 V2」 — 品牌点击 & TOP 品牌
+
+### Summary
+按需求扩展 V3 #16，给商家后台数据看板新增「内容数据」第 4 个 Tab：
+- TOP 3 品牌排行榜（按综合点击量 = 我想要 + 收藏 + 点赞 + 评论 + 浏览）
+- 每个品牌的 5 维构成（堆叠条 + 明细标签）
+- 全部关联品牌完整表格（综合 + 5 维）
+- 单品维度按「我想要」倒序的 TOP 10（V3 #16 保留）
+- 时间窗口切换：近 7 天 / 30 天 / 全部
+- 后端结果走 `store_brand_stats` 缓存表，每小时自动刷新
+
+### 数据 & 缓存策略
+- 新增 migration `046_add_store_brand_stats.sql`：
+  - 唯一键 `(store_id, brand, window_days)`，`total_count` 是 GENERATED STORED 列
+  - `window_days` 离散枚举 7/30/0(=全部)，最大化缓存命中率
+- want / favorite / like / comment 4 项可按 `created_at` 切窗
+- view_count 是 `store_products.view_count` 累计列（无事件表），所有窗口下都是累计；
+  前端在 UI 提示「浏览数据为累计值」，避免误读
+- Lazy compute：API 命中时检查 `computed_at`，>1h 触发重算并 upsert 写回；
+  ≤1h 直接读缓存。等价"hourly refresh"但不依赖外部 cron
+
+### 后端
+- `backend/app/db/migrations/046_add_store_brand_stats.sql`（新增）
+- `backend/app/services/store_insights_service.py` 扩展：
+  - `_compute_brand_stats` / `_refresh_brand_stats_cache`
+  - `get_brand_stats(store_id, window, top_n)` —— TTL 1h
+  - `get_top_products_by_want(store_id, limit)` —— V3 #16 保留
+- `backend/app/schemas/store_merchant.py`：新增 `BrandClickBreakdown` /
+  `BrandStatsResponse` / `TopProductItem`
+- `backend/app/api/routes/store_merchant.py`：新增 2 个路由
+  - `GET /api/store-merchants/{merchantId}/insights/brand-stats?window=7|30|0`
+  - `GET /api/store-merchants/{merchantId}/insights/top-products?limit=10`
+
+### 前端 (/web)
+- `web/src/lib/services/store-merchant.ts`：新增 `BrandStatsWindow` /
+  `BrandClickBreakdown` / `BrandStatsResponse` / `TopProductItem` 类型
+  + `getBrandStats` / `getTopProducts` 方法
+- `web/src/app/me/merchant/[merchantId]/dashboard/page.tsx`：新增 `ContentTab`
+  + `BrandStatsSection` / `BrandRankCard`（堆叠条用 ink 透明度 1/.78/.58/.4/.22
+  保持 monochrome 风格）/ `BrandStatsTable` / `TopProductsTable` /
+  `WindowToggle`
+- 看板 Tab 从 3 个扩展为 4 个：概览 / 粉丝画像 / 地推数据 / 内容数据
+- i18n 新增 ~25 个 `merchant.content*` key（中英双语）
+
+### 验证
+- `tsc --noEmit` 通过
+- `next lint` 在 merchant 目录无 warning/error
+- `next build` 成功，dashboard route 体积 7.5 kB → 8.77 kB
+- `py_compile` 后端 3 个文件全部通过
+
+---
+
+## 2026-05-02: Web 商家「数据看板」 — 粉丝画像 + 地推数据
+
+### Summary
+按需求文档为商家后台 (`/me/merchant/[merchantId]/dashboard`) 新增数据看板：
+顶部汇总卡 (我想去 / 我去过 / 评分) + 三 Tab (概览 / 粉丝画像 / 地推数据)，
+点击「我去过」数字打开打卡评论 dialog，店主可在评论区直接回复
+（走原有 buyer_store_comments + parentId 流程，不引新表）。
+
+### 数据来源映射
+- 我想去 = `buyer_store_favorites`
+- 我去过 / 打卡评论 = `buyer_store_comments`（顶层评论 = 一次到访打卡）
+- 粉丝 = favorites 与 comments 用户合集（去重）
+- 城市分布 = `user_info.location` Top 5
+- 24h 活跃时段 = 近 30 天 favorites + comments 的 created_at 小时分桶
+- Top 3 偏好品牌 = 粉丝在 `brand_follows` 上的全站分布（不限本店）
+
+### 后端
+- 新增 `app/services/store_insights_service.py`：
+  - `get_overview` / `get_fan_profile` / `get_promotion_stats` / `get_visit_comments`
+  - 所有聚合在 Python 层做，不引入物化视图 / 新表 / 迁移
+- 新增 4 个路由（`store_merchant.py`，全部需要 merchant 本人鉴权）：
+  - `GET /api/store-merchants/{merchantId}/insights/overview`
+  - `GET /api/store-merchants/{merchantId}/insights/fans`
+  - `GET /api/store-merchants/{merchantId}/insights/promotion`
+  - `GET /api/store-merchants/{merchantId}/insights/visit-comments`
+- 新增 Pydantic 响应模型：`InsightsOverview` / `FanProfile` / `PromotionStats`
+  / `PromotionMetric` / `TrendPoint` / `CityShare` / `HourBucket` / `BrandShare`
+
+### 前端
+- `web/src/lib/services/store-merchant.ts`：新增类型 + 4 个 API 客户端方法
+- `web/src/lib/services/buyer-store.ts`：新增 `createBuyerStoreComment`
+  和 `getBuyerStoreCommentReplies`（店主回复直接走买手店评论 API）
+- `web/src/app/me/merchant/[merchantId]/dashboard/page.tsx`：新页面
+- `web/src/app/me/merchant/[merchantId]/page.tsx`：`ProductSystemNav` 顶部
+  新增「数据看板」入口卡片
+- 复用 `@/components/admin/LineChart` 画 7 天趋势；24h 热力条用纯 CSS 渲染
+  避免引第三方图表库
+- i18n：`zh.json` / `en.json` 在 `merchant.*` 下新增约 40 个 dashboard key
+
+### 验证
+- `npx tsc --noEmit` 通过
+- `next lint` 在 merchant 目录下无 warnings/errors
+- `next build` 成功，新路由 `/me/merchant/[merchantId]/dashboard` 已注册
+
+---
+
 ## 2026-04-30: Web Docker `npm ci` — `package-lock.json` 与 `package.json` 同步
 
 ### Summary

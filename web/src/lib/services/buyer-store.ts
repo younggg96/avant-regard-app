@@ -213,6 +213,54 @@ export async function getUserFavoriteStoreIds(
   );
 }
 
+// ---------- 评论 ----------
+//
+// Buyer store comment APIs。商家后台「我去过」打卡评论列表与回复都走这里:
+//   - 商家在打卡评论里回复 = 创建一条 parent_id != null 的评论
+//   - 用户和商家用同一个表 buyer_store_comments,通过 user_id 区分
+// 后端 Pydantic 已经校验 userId == current_user_id, 所以前端必须显式传.
+
+export interface CreateBuyerStoreCommentParams {
+  userId: number;
+  content: string;
+  parentId?: number;
+  replyToUserId?: number;
+}
+
+export async function createBuyerStoreComment(
+  storeId: string,
+  params: CreateBuyerStoreCommentParams,
+): Promise<unknown> {
+  return apiClient.post(
+    `/api/buyer-stores/${encodeURIComponent(storeId)}/comments`,
+    params,
+  );
+}
+
+export interface BuyerStoreCommentReply {
+  id: number;
+  storeId: string;
+  parentId: number;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  replyToUserId?: number;
+  replyToUsername?: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getBuyerStoreCommentReplies(
+  commentId: number,
+): Promise<BuyerStoreCommentReply[]> {
+  const data = await apiClient.get<{ replies: BuyerStoreCommentReply[] }>(
+    `/api/buyer-stores/comments/${commentId}/replies`,
+  );
+  return data.replies ?? [];
+}
+
 export function hasValidCoordinates(
   store: BuyerStore,
 ): store is BuyerStore & {

@@ -464,3 +464,96 @@ class StoreMerchantContent(BaseModel):
     announcements: List[StoreAnnouncement] = []
     activities: List[StoreActivity] = []
     discounts: List[StoreDiscount] = []
+
+
+# ==================== 看板 / Insights ====================
+#
+# 商家后台「看板」页面用的汇总响应模型。所有数据均由
+# `store_insights_service` 在请求时聚合, 不引入新表 / 物化视图.
+
+class InsightsOverview(BaseModel):
+    """顶部汇总卡 —— 累计 + 今日新增 + 评分."""
+    wantToGoTotal: int = 0
+    wantToGoToday: int = 0
+    visitedTotal: int = 0
+    visitedToday: int = 0
+    ratingAverage: float = 0.0
+    ratingCount: int = 0
+
+
+class CityShare(BaseModel):
+    city: str
+    count: int
+
+
+class HourBucket(BaseModel):
+    hour: int  # 0..23
+    count: int
+
+
+class BrandShare(BaseModel):
+    brandId: int
+    brandName: str
+    count: int
+
+
+class FanProfile(BaseModel):
+    """粉丝画像 —— 城市分布 / 24h 活跃时段 / Top 偏好品牌."""
+    fansTotal: int = 0
+    cityDistribution: List[CityShare] = []
+    activeHours: List[HourBucket] = []
+    preferredBrands: List[BrandShare] = []
+
+
+class TrendPoint(BaseModel):
+    date: str  # ISO date (YYYY-MM-DD)
+    count: int
+
+
+class PromotionMetric(BaseModel):
+    total: int = 0
+    today: int = 0
+    trend: List[TrendPoint] = []
+
+
+class PromotionStats(BaseModel):
+    """地推数据看板 —— 我想去 / 我去过 累计 + 今日 + 7 天趋势."""
+    wantToGo: PromotionMetric
+    visited: PromotionMetric
+
+
+# ── 内容数据看板 V2: 品牌点击 & TOP 品牌 ──────────────────────────────
+
+class BrandClickBreakdown(BaseModel):
+    """单品牌的 5 维点击构成 (我想要 + 收藏 + 点赞 + 评论 + 浏览)."""
+    brand: str
+    wantCount: int = 0
+    favoriteCount: int = 0
+    likeCount: int = 0
+    commentCount: int = 0
+    viewCount: int = 0
+    totalCount: int = 0
+
+
+class BrandStatsResponse(BaseModel):
+    """品牌看板响应. window_days = 7/30/0 (=全部)."""
+    windowDays: int
+    computedAt: Optional[str] = None
+    topBrands: List[BrandClickBreakdown] = []
+    allBrands: List[BrandClickBreakdown] = []
+
+
+class TopProductItem(BaseModel):
+    """单品维度 Top (V3 #16 按「我想要」倒序)."""
+    id: int
+    title: str
+    brand: Optional[str] = None
+    coverImage: Optional[str] = None
+    wantCount: int = 0
+    favoriteCount: int = 0
+    likeCount: int = 0
+    commentCount: int = 0
+    viewCount: int = 0
+    priceCents: int = 0
+    currency: str = "CNY"
+    status: str = "PUBLISHED"
