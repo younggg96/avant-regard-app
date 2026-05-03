@@ -98,6 +98,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     products,
     isFollowed,
     isLoading,
+    isProductsLoading,
     isRefreshing,
     error,
     setSelectedStoreId,
@@ -172,9 +173,19 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     onStorePress(selectedStoreId);
   }, [selectedStoreId, onStorePress]);
 
-  const handleFollowToggle = useCallback(() => {
-    toggleFollow();
-    Alert.show(isFollowed ? t("discover.buyerUnfollowed") : t("discover.buyerFollowSuccess"));
+  const handleFollowToggle = useCallback(async () => {
+    const willFollow = !isFollowed;
+    const consumed = await toggleFollow();
+    if (!consumed) {
+      // 未登录 —— 全局 favorites store 不会动，提示用户登录。
+      Alert.show(t("engagement.pleaseLogin"));
+      return;
+    }
+    Alert.show(
+      willFollow
+        ? t("discover.buyerFollowSuccess")
+        : t("discover.buyerUnfollowed")
+    );
   }, [toggleFollow, isFollowed, t]);
 
   const handleMorePress = useCallback(() => {
@@ -305,6 +316,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
           products={products}
           storeName={selectedStore?.name ?? ""}
           favoritedIds={favoritedProductIds}
+          isLoading={isProductsLoading}
           onProductPress={handleProductPress}
           onFavoriteToggle={handleProductFavorite}
         />
@@ -317,6 +329,12 @@ interface ProductGridProps {
   products: BuyerStoreProduct[];
   storeName: string;
   favoritedIds: Set<string>;
+  /**
+   * true 时渲染 loading GIF，跳过空态/网格分支。
+   * 由父组件根据 `useBuyerTabData.isProductsLoading` 推入 —— 切店铺
+   * 期间 products 也是 []，没有这个 flag 区分会被空态 UI 误判成"无商品"。
+   */
+  isLoading: boolean;
   onProductPress: (productId: string) => void;
   onFavoriteToggle: (productId: string) => void;
 }
@@ -328,6 +346,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   products,
   storeName,
   favoritedIds,
+  isLoading,
   onProductPress,
   onFavoriteToggle,
 }) => {
@@ -340,6 +359,26 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
     }
     return grouped;
   }, [products]);
+
+  // Loading 优先于空态：切店铺时 products 暂时为 [] 但实际还没拉回来，
+  // 直接走空态会让用户看到一闪而过的"暂无商品"——用 GIF 占位更稳。
+  if (isLoading) {
+    return (
+      <Box
+        mx={GRID_HORIZONTAL_PADDING}
+        mb="$lg"
+        py="$lg"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <RNImage
+          source={require("../../../../../assets/gif/profile-loading.gif")}
+          style={styles.gridLoadingGif}
+          resizeMode="contain"
+        />
+      </Box>
+    );
+  }
 
   if (products.length === 0) {
     return (
@@ -409,6 +448,12 @@ const styles = StyleSheet.create({
   loadingGif: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH,
+  },
+  // ProductGrid 内嵌的 loading 动画 —— 比首屏 loadingGif 略小，
+  // 避免占满屏幕、和顶部已经渲染好的 StoreSelector / ProfileCard 抢视线。
+  gridLoadingGif: {
+    width: SCREEN_WIDTH * 0.6,
+    height: SCREEN_WIDTH * 0.6,
   },
 });
 

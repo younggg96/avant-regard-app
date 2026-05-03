@@ -94,7 +94,8 @@
     "buyerFollowedBtn": "已关注",
     "buyerStatFollowers": "粉丝",
     "buyerStatFollowing": "关注",
-    "buyerStatPosts": "帖子"
+    "buyerStatPosts": "帖子",
+    "buyerStatProducts": "商品"
   },
   "profile": {
     "title": "个人主页",

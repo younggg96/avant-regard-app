@@ -174,9 +174,18 @@ export interface BuyerStoreProfileView {
   logoImage?: string;
   /** logo 占位字符，永远有值（`logoImage` 优先级高）。 */
   logoLetter: string;
-  followerLabel: string;
-  followingLabel: string;
-  postCountLabel: string;
+  /**
+   * 关注（粉丝）人数。直接来自后端 `buyer_stores.favorite_count` (列表接口的
+   * `favoriteCount` 字段) + `useStoreFavoritesStore` 里的乐观计数；
+   * UI 侧负责 1k/1w 的 compact 格式化（不在 view-model 里 stringify，
+   * 否则 follow 按钮点完之后 label 不会跟着乐观计数变）。
+   */
+  followerCount: number;
+  /**
+   * 该店铺已上架的商品数。来自 `getStoreProducts({...}).total`，
+   * 商家未上架商品时为 0，UI 侧仍渲染"0"而不是隐藏整列。
+   */
+  productCount: number;
   isVerified: boolean;
   tags: string[];
   /** 卡片底部长介绍；未配置时为空串，UI 会折叠。 */

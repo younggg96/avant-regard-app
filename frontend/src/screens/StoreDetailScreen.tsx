@@ -69,6 +69,11 @@ import {
   applyMerchant,
   getMerchantByStore,
 } from "../services/storeMerchantService";
+import {
+  StoreProduct,
+  getStoreProducts,
+  formatPrice,
+} from "../services/storeProductService";
 import HalfStarRating from "../components/HalfStarRating";
 import { formatTimestamp } from "../components/PostDetail/types";
 import { ShareToChatModal } from "../components/ShareToChatModal";
@@ -81,11 +86,20 @@ type RouteParams = {
   };
 };
 
+type StoreDetailNavigation = {
+  goBack: () => void;
+  navigate: (screen: string, params?: any) => void;
+};
+
+// 产品 preview 一次性加载多少条；超过后用户点 "View All" 进入完整列表屏。
+// 12 条 = 横向滚动列表上 4-5 屏宽，足够预览且不至于多请求一页数据。
+const PRODUCT_PREVIEW_LIMIT = 12;
+
 // 评论提示建议 - loaded from i18n in component
 
 const StoreDetailScreen = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<StoreDetailNavigation>();
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
   const { user } = useAuthStore();
@@ -131,6 +145,11 @@ const StoreDetailScreen = () => {
   const [merchantContent, setMerchantContent] = useState<StoreMerchantContent | null>(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
+
+  // 单品 preview 状态。详情页只展示一行横向滚动的 preview，
+  // 完整网格 / 搜索 / 分类筛选都在 StoreProductListScreen 里处理。
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [productsTotal, setProductsTotal] = useState(0);
 
   // 分享状态
   const [showShareToChat, setShowShareToChat] = useState(false);
@@ -219,12 +238,31 @@ const StoreDetailScreen = () => {
     }
   }, [storeId]);
 
+  // 加载单品 preview。这条接口只在该店有商家入驻并上架了商品时返回非空数组；
+  // 失败 / 空数据时静默 —— 详情页不应当因为一个 optional 区域报错而破相。
+  const loadProducts = useCallback(async () => {
+    try {
+      const result = await getStoreProducts({
+        storeId,
+        page: 1,
+        pageSize: PRODUCT_PREVIEW_LIMIT,
+      });
+      setProducts(result.products || []);
+      setProductsTotal(result.total || 0);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn("[StoreDetail] loadProducts failed:", error);
+      }
+    }
+  }, [storeId]);
+
   useEffect(() => {
     loadStoreDetail();
     loadComments();
     loadSuggestions();
     loadMerchantContent();
-  }, [loadStoreDetail, loadComments, loadSuggestions, loadMerchantContent]);
+    loadProducts();
+  }, [loadStoreDetail, loadComments, loadSuggestions, loadMerchantContent, loadProducts]);
 
   // Banner 自动轮播
   useEffect(() => {
@@ -247,7 +285,12 @@ const StoreDetailScreen = () => {
   // 下拉刷新
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([loadStoreDetail(), loadComments(1), loadMerchantContent()]);
+    await Promise.all([
+      loadStoreDetail(),
+      loadComments(1),
+      loadMerchantContent(),
+      loadProducts(),
+    ]);
     setIsRefreshing(false);
   };
 
@@ -564,6 +607,21 @@ const StoreDetailScreen = () => {
     }
   };
 
+  // 跳转到单品详情
+  const handleOpenProduct = (productId: number) => {
+    navigation.navigate("StoreProductDetail", { productId });
+  };
+
+  // 跳转到全部单品列表（mode=ALL，不带分类筛选）
+  const handleOpenAllProducts = () => {
+    if (!store) return;
+    navigation.navigate("StoreProductList", {
+      storeId,
+      storeName: store.name,
+      mode: "ALL",
+    });
+  };
+
   // 渲染评论项
   const renderCommentItem = ({ item }: { item: StoreComment }) => (
     <VStack mt="$md" mx="$md" pb="$md" borderBottomWidth={StyleSheet.hairlineWidth} borderBottomColor="$gray100">
@@ -739,7 +797,7 @@ const StoreDetailScreen = () => {
             <VStack px="$md" pt="$md" pb="$sm">
               {/* 名称行 */}
               <HStack justifyContent="between" alignItems="flex-start">
-                <Text fontSize={22} fontWeight="$bold" color="$black" flex={1} mr="$md" style={styles.textBold}>
+                <Text fontSize={20} fontWeight="$bold" color="$black" flex={1} mr="$md" style={[styles.textBold, styles.textHero]}>
                   {store.name}
                 </Text>
                 <HStack alignItems="center" gap={10}>
@@ -1128,6 +1186,142 @@ const StoreDetailScreen = () => {
                   </VStack>
                 )}
               </>
+            )}
+
+            {/* ── 单品列表 (preview) ── */}
+            {/* 只在该店有上架商品时显示。卡片横向滚动 + "View All"
+                跳到 StoreProductList；首屏 loading 静默，避免 detail 页
+                因为这条 optional 区域闪一下骨架屏。 */}
+            {products.length > 0 && (
+              <VStack mt="$lg">
+                {/* 整个标题行可点 —— "PRODUCTS · 6" + "View All" 指向同一个屏，
+                    不管 total > preview 与否，用户都能进到完整列表 / 搜索 /
+                    分类筛选界面（StoreProductListScreen mode=ALL）。
+                    设计稿里那种"看似只有标签"的 header 容易让人觉得不能点，
+                    所以右侧永远渲染 chevron 显示 affordance。 */}
+                <Pressable onPress={handleOpenAllProducts}>
+                  <HStack justifyContent="between" alignItems="center" px="$md" mb={8}>
+                    <Text fontSize={11} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
+                      {t("store.products").toUpperCase()}
+                      {productsTotal > 0 ? ` · ${productsTotal}` : ""}
+                    </Text>
+                    <HStack alignItems="center">
+                      <Text fontSize={12} color="$gray400" mr={2} style={styles.textRegular}>
+                        {t("common.viewAll")}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={13} color={theme.colors.gray300} />
+                    </HStack>
+                  </HStack>
+                </Pressable>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalList}
+                >
+                  {products.map((product) => {
+                    const cover = product.images?.[0];
+                    const hasDiscount =
+                      product.discountPriceCents != null &&
+                      product.discountPriceCents < product.priceCents;
+                    return (
+                      <Pressable
+                        key={product.id}
+                        style={styles.productCard}
+                        onPress={() => handleOpenProduct(product.id)}
+                      >
+                        <Box style={styles.productCover}>
+                          {cover ? (
+                            <OptimizedImage
+                              uri={cover}
+                              size={ImageSize.MEDIUM}
+                              style={styles.productImage}
+                              contentFit="cover"
+                              lazy={true}
+                            />
+                          ) : (
+                            <Box style={styles.productImagePlaceholder}>
+                              <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
+                            </Box>
+                          )}
+                          {product.isNew && !hasDiscount && (
+                            <Box style={[styles.productBadge, styles.productBadgeNew]}>
+                              <Text fontSize={9} fontWeight="$bold" color="$black" style={styles.textBold}>
+                                NEW
+                              </Text>
+                            </Box>
+                          )}
+                          {hasDiscount && (
+                            <Box style={[styles.productBadge, styles.productBadgeSale]}>
+                              <Text fontSize={9} fontWeight="$bold" color="$white" style={styles.textBold}>
+                                SALE
+                              </Text>
+                            </Box>
+                          )}
+                        </Box>
+                        <VStack mt={6} gap={2}>
+                          <Text
+                            fontSize={12}
+                            fontWeight="$semibold"
+                            color="$black"
+                            numberOfLines={2}
+                            style={styles.textBold}
+                          >
+                            {product.title}
+                          </Text>
+                          {!!product.brand && (
+                            <Text fontSize={10} color="$gray400" numberOfLines={1} style={styles.textRegular}>
+                              {product.brand}
+                            </Text>
+                          )}
+                          <HStack alignItems="baseline" gap={4} mt={2}>
+                            <Text
+                              fontSize={12}
+                              fontWeight="$bold"
+                              color={hasDiscount ? "#E65100" : "$black"}
+                              style={styles.textBold}
+                            >
+                              {formatPrice(
+                                hasDiscount
+                                  ? (product.discountPriceCents as number)
+                                  : product.priceCents,
+                                product.currency
+                              )}
+                            </Text>
+                            {hasDiscount && (
+                              <Text
+                                fontSize={10}
+                                color="$gray300"
+                                style={[styles.textRegular, styles.priceStrike]}
+                              >
+                                {formatPrice(product.priceCents, product.currency)}
+                              </Text>
+                            )}
+                          </HStack>
+                        </VStack>
+                      </Pressable>
+                    );
+                  })}
+                  {/* 横向滚动尾部的"查看全部"卡片：用户左滑到底自然引导到
+                      完整列表屏。即便 total <= preview 也保留这张卡 —— 进入
+                      列表屏可以做搜索 / 分类筛选，体验比横向滚动列表更完整。 */}
+                  <Pressable
+                    style={styles.productMoreCard}
+                    onPress={handleOpenAllProducts}
+                  >
+                    <Box style={styles.productMoreIconWrap}>
+                      <Ionicons name="arrow-forward" size={20} color={theme.colors.black} />
+                    </Box>
+                    <Text fontSize={12} color="$black" fontWeight="$semibold" mt={8} style={styles.textBold}>
+                      {t("common.viewAll")}
+                    </Text>
+                    {productsTotal > 0 && (
+                      <Text fontSize={10} color="$gray400" mt={2} style={styles.textRegular}>
+                        {productsTotal}
+                      </Text>
+                    )}
+                  </Pressable>
+                </ScrollView>
+              </VStack>
             )}
 
             {/* 评论区标题 */}
@@ -1726,6 +1920,66 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 8,
   },
+  // 单品 preview 卡片：宽 132（接近 1.5x activityCard 的紧凑感），
+  // 封面正方形让多张图片在横向滚动时高度齐整。
+  productCard: {
+    width: 132,
+  },
+  productCover: {
+    width: 132,
+    height: 132,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: theme.colors.gray100,
+    position: "relative",
+  },
+  productImage: {
+    width: "100%",
+    height: "100%",
+  },
+  productImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.colors.gray50,
+  },
+  productBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+  },
+  productBadgeNew: {
+    backgroundColor: theme.colors.white,
+  },
+  productBadgeSale: {
+    backgroundColor: "#E65100",
+  },
+  // 横向 product 列表的尾部 "查看全部" 卡片：尺寸严格对齐 productCover
+  // 132×132 让滚动行高度齐整；用 dashed border 区别于真实商品卡片，
+  // 避免用户误以为是另一件商品。
+  productMoreCard: {
+    width: 132,
+    height: 132 + 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  productMoreIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.black,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  priceStrike: {
+    textDecorationLine: "line-through",
+  },
   discountRow: {
     paddingVertical: 12,
     paddingHorizontal: 12,
@@ -1770,6 +2024,9 @@ const styles = StyleSheet.create({
   },
   textBold: {
     fontFamily: FONT_BOLD,
+  },
+  textHero: {
+    lineHeight: 24,
   },
 });
 

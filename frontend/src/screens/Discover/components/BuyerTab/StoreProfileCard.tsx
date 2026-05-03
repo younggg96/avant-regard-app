@@ -44,6 +44,23 @@ const resolveTagIcon = (tag: string, index: number): keyof typeof Ionicons.glyph
   return "pricetag-outline";
 };
 
+/**
+ * Compact 计数格式化 —— 把后端 `favoriteCount` / `productCount` 这类
+ * 整数压成 "12.3k" / "1.2w" 节省两列宽度。
+ *
+ * 放在组件文件内是因为只 StoreProfileCard 一处用（其它地方计数本身就是
+ * 标签字符串，由 hook 自己拼好）。如果将来有更多 view 复用，可以再提到 utils。
+ */
+const formatCompactCount = (count: number): string => {
+  if (count >= 10000) {
+    return `${(count / 10000).toFixed(1).replace(/\.0$/, "")}w`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  }
+  return String(count);
+};
+
 const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   profile,
   isFollowed,
@@ -58,9 +75,8 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
     coverImage,
     logoImage,
     logoLetter,
-    followerLabel,
-    followingLabel,
-    postCountLabel,
+    followerCount,
+    productCount,
     tags,
     longDescription,
   } = profile;
@@ -176,12 +192,20 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
         </HStack>
       </Pressable>
 
+      {/* 双列 stats：粉丝（关注本店人数）+ 商品（已上架数）。
+          原来的 3 列里"关注 / 帖子"两个语义对买手店 profile 卡片没有意义
+          （店铺不会去关注其他用户、也不发 post），并且当时填的是写死的 0。
+          砍成 2 列后版面更简洁，且全是真实数据。 */}
       <HStack style={styles.statsRow}>
-        <StatColumn value={followerLabel} label={t("discover.buyerStatFollowers")} />
+        <StatColumn
+          value={formatCompactCount(followerCount)}
+          label={t("discover.buyerStatFollowers")}
+        />
         <Box style={styles.statsDivider} />
-        <StatColumn value={followingLabel} label={t("discover.buyerStatFollowing")} />
-        <Box style={styles.statsDivider} />
-        <StatColumn value={postCountLabel} label={t("discover.buyerStatPosts")} />
+        <StatColumn
+          value={formatCompactCount(productCount)}
+          label={t("discover.buyerStatProducts")}
+        />
       </HStack>
 
       <Box px="$md" pb="$md">

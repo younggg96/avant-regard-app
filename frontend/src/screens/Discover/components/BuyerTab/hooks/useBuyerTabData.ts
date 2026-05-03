@@ -42,6 +42,8 @@ import {
   getStoreBanners,
   StoreBanner,
 } from "../../../../../services/storeMerchantService";
+import { useAuthStore } from "../../../../../store/authStore";
+import { useStoreFavoritesStore } from "../../../../../store/storeFavoritesStore";
 import {
   BuyerStoreFeatureBanner,
   BuyerStoreProduct,
@@ -90,16 +92,6 @@ const buildProductsFromRemote = (
   });
 };
 
-const formatCountLabel = (count: number): string => {
-  if (count >= 10000) {
-    return `${(count / 10000).toFixed(1).replace(/\.0$/, "")}w`;
-  }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k`;
-  }
-  return String(count);
-};
-
 /**
  * 根据店铺原始数据 + （可选）商家配置合成 UI 视图。
  *
@@ -107,15 +99,23 @@ const formatCountLabel = (count: number): string => {
  *   - 有配置的字段覆盖原始；
  *   - 配置里 tags 数组非空才覆盖原始店铺 tags（`config.tags` → `store.style`），
  *     防止商家只清空没重填导致一片空；
- *   - 粉丝数只用后端 `favoriteCount`；"关注 / 帖子"两列暂时走 0
- *     （真实接口出来后替换），不再用 hash 合成伪数字；
+ *   - 粉丝数（followerCount）走 useStoreFavoritesStore 的乐观计数：
+ *     用户点 follow 后立即 +1，回滚时 -1；初始值由 `syncCountsFromStores`
+ *     从列表接口的 `favoriteCount` 写入；
+ *   - 商品数（productCount）从 `getStoreProducts(...).total` 取，
+ *     商家没上架时显示 0；
  *   - 没有描述 / 封面时返回空串 / undefined，UI 侧（StoreProfileCard）
  *     已支持空态：coverImage 缺失 → 灰块，tags / description 空 → 不渲染；
  *   - `isRemote = config != null`，方便后续埋点 / 调试。
+ *
+ * 数字格式化（10k / 1.2w 等）放到 UI 侧，避免把 number 提前 stringify
+ * 后乐观更新时 label 不再变化。
  */
 const buildProfileView = (
   store: BuyerStore,
-  config?: StoreProfileConfig | null
+  config: StoreProfileConfig | null | undefined,
+  followerCount: number,
+  productCount: number
 ): BuyerStoreProfileView => {
   const location = [store.city, store.country].filter(Boolean).join(" · ");
 
@@ -140,11 +140,8 @@ const buildProfileView = (
     coverImage,
     logoImage: config?.logoImage?.trim() || undefined,
     logoLetter: (store.name?.trim()?.charAt(0) || "S").toUpperCase(),
-    followerLabel: formatCountLabel(store.favoriteCount ?? 0),
-    // 关注数 / 发帖数当前没有公开接口；暂时走 0，待后端补齐后再替换。
-    // 与其合成伪数字误导用户"这家店很火"，不如直接显示真实的零。
-    followingLabel: "0",
-    postCountLabel: "0",
+    followerCount,
+    productCount,
     isVerified: true,
     tags,
     longDescription,
@@ -249,10 +246,23 @@ export interface UseBuyerTabDataReturn {
   products: BuyerStoreProduct[];
   isFollowed: boolean;
   isLoading: boolean;
+  /**
+   * 当前选中店铺的商品是否正在加载。
+   * 真值条件：选中了 storeId 且 `productsMap[storeId] === undefined`
+   * （即从未拉过 / 切换到新店铺还没回结果）。一旦后端返回（无论 `[]` 还是
+   * 有值）都会落到 productsMap 里，本标志立即翻 false —— 与 productsMap
+   * 的"undefined = 未拉过 / [] = 已拉过但商家没上"三态语义对齐。
+   */
+  isProductsLoading: boolean;
   isRefreshing: boolean;
   error: string | null;
   setSelectedStoreId: (storeId: string) => void;
-  toggleFollow: () => void;
+  /**
+   * 切换当前选中店铺的关注态。返回 boolean 标记调用是否被消费：
+   * - `true`  ：用户已登录、请求已发起（成功或回滚由全局 store 内部处理）；
+   * - `false` ：未登录 / 没选中店铺；调用方应当弹登录提示。
+   */
+  toggleFollow: () => Promise<boolean>;
   toggleProductFavorite: (productId: string) => Promise<void>;
   favoritedProductIds: Set<string>;
   refresh: () => Promise<void>;
@@ -279,10 +289,21 @@ export const useBuyerTabData = (
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 用一个 Set 存所有已"关注"的店铺 id，这样多次切换店铺不会互相覆盖状态。
-  const [followedStoreIds, setFollowedStoreIds] = useState<Set<string>>(
-    () => new Set()
-  );
+
+  // ---- 关注 (favorite) 全局态：复用 useStoreFavoritesStore -----------------
+  // 之前这里维护过一份 `followedStoreIds: Set<string>`，但它纯前端、不与后端
+  // 通信，导致点 follow 看似"已关注"刷新后又变回未关注。改成共享全局 store
+  // 之后，BuyerTab / StoreDetail 任意一处的 toggle 都会同时刷新另一处。
+  //
+  // 一律按 selector 抽取，保证每个返回值都是稳定引用 —— 否则 zustand 会
+  // 每次都返回新的快照对象，把外面的 useCallback 全打成新引用。
+  const currentUser = useAuthStore((s) => s.user);
+  const favoritesLoaded = useStoreFavoritesStore((s) => s.loaded);
+  const favoriteIds = useStoreFavoritesStore((s) => s.favoriteIds);
+  const favoriteCounts = useStoreFavoritesStore((s) => s.favoriteCounts);
+  const loadFavoritesFromServer = useStoreFavoritesStore((s) => s.loadFavorites);
+  const syncCountsFromStores = useStoreFavoritesStore((s) => s.syncCountsFromStores);
+  const toggleFavoriteApi = useStoreFavoritesStore((s) => s.toggleFavorite);
   // favoritedProductIds 不再单独 setState，改为 useMemo 从 productsMap 派生
   // —— 单一真值在 productsMap 上，避免"卡片心形 vs likedByMe"两个状态会
   // 漂移（这正是用户报告的 bug：详情页 like 之后回来卡片仍是空心）。
@@ -308,6 +329,12 @@ export const useBuyerTabData = (
   const [bannersMap, setBannersMap] = useState<
     Record<string, StoreBanner[]>
   >({});
+  // 商品总数缓存（key = storeId, value = total）。来自 `getStoreProducts.total`，
+  // StoreProfileCard 顶部的 "Products" 列直接读这里；undefined = 还没拉过，UI
+  // 显示 0 即可（商家没上架也是 0，体感等价）。
+  const [productCountMap, setProductCountMap] = useState<
+    Record<string, number>
+  >({});
 
   // 首次 enabled 翻 true 才真正发请求；后续 enabled toggle 不再重拉，
   // 让用户手动下拉刷新或点击"重试"按钮。
@@ -332,6 +359,11 @@ export const useBuyerTabData = (
         withMerchantFirst: true,
       });
       setStores(result.stores);
+      // 把后端列表里的 favoriteCount 灌进全局 favorites store 的 counts 缓存，
+      // 这样 follow 按钮乐观 +1/-1 的起点就是真实的关注人数（而不是 0）。
+      // syncCountsFromStores 内部按 id 合并，不会覆盖已有的更高值（StoreDetail
+      // 那条路径写入的精确值依然保留）。
+      syncCountsFromStores(result.stores);
       // 初次加载自动选中第一家，保持页面不是空态。
       setSelectedStoreIdState((prev) => prev ?? result.stores[0]?.id ?? null);
     } catch (err) {
@@ -341,7 +373,17 @@ export const useBuyerTabData = (
       if (mode === "initial") setIsLoading(false);
       else setIsRefreshing(false);
     }
-  }, []);
+  }, [syncCountsFromStores]);
+
+  // 用户登录后把"我关注的店铺"列表灌进全局 favorites store —— 这样
+  // BuyerTab 切到任意店铺时 follow 按钮的初始状态都是正确的；不登录
+  // 直接跳过（按钮 idle，点的时候提示登录）。
+  useEffect(() => {
+    if (!enabled) return;
+    if (!currentUser?.userId) return;
+    if (favoritesLoaded) return;
+    loadFavoritesFromServer(currentUser.userId);
+  }, [enabled, currentUser?.userId, favoritesLoaded, loadFavoritesFromServer]);
 
   // 懒启动：仅当外部把 `enabled` 翻成 true 时才 kickoff，且只 kickoff 一次。
   useEffect(() => {
@@ -426,9 +468,16 @@ export const useBuyerTabData = (
 
         if (needProducts) {
           if (productsResult.status === "fulfilled") {
+            const value = productsResult.value;
             setProductsMap((prev) => ({
               ...prev,
-              [storeId]: productsResult.value?.products ?? [],
+              [storeId]: value?.products ?? [],
+            }));
+            // total 是后端已经按 PUBLISHED 过滤后的真实商品数 —— 即便我们
+            // 这里只取了 PREVIEW_PRODUCT_COUNT 条做预览，total 仍然反映全量。
+            setProductCountMap((prev) => ({
+              ...prev,
+              [storeId]: value?.total ?? 0,
             }));
           } else {
             console.warn(
@@ -436,6 +485,7 @@ export const useBuyerTabData = (
               productsResult.reason
             );
             setProductsMap((prev) => ({ ...prev, [storeId]: [] }));
+            setProductCountMap((prev) => ({ ...prev, [storeId]: 0 }));
           }
         }
 
@@ -493,8 +543,13 @@ export const useBuyerTabData = (
   const selectedProfile = useMemo<BuyerStoreProfileView | null>(() => {
     if (!selectedStore) return null;
     const config = selectedStore.id ? profileConfigMap[selectedStore.id] : null;
-    return buildProfileView(selectedStore, config ?? null);
-  }, [selectedStore, profileConfigMap]);
+    // followerCount 优先取全局 favorites store 里的乐观值（点 follow 后立刻
+    // +1），缺失时回退到 buyer-stores 列表接口写入的初值。
+    const favCount = favoriteCounts.get(selectedStore.id);
+    const followerCount = favCount ?? selectedStore.favoriteCount ?? 0;
+    const productCount = productCountMap[selectedStore.id] ?? 0;
+    return buildProfileView(selectedStore, config ?? null, followerCount, productCount);
+  }, [selectedStore, profileConfigMap, favoriteCounts, productCountMap]);
 
   const entryCards = useMemo<StoreEntryCardView[]>(() => {
     if (!selectedStoreId) return [];
@@ -510,6 +565,13 @@ export const useBuyerTabData = (
     return buildProductsFromRemote(remote);
   }, [selectedStore, productsMap]);
 
+  // 当前店铺的商品是否还在加载 —— 仅在缓存还没写过任何值时为 true。
+  // 注意 `productsMap[id] === []` 不算 loading（商家就是没上商品）。
+  const isProductsLoading = useMemo<boolean>(() => {
+    if (!selectedStoreId) return false;
+    return productsMap[selectedStoreId] === undefined;
+  }, [selectedStoreId, productsMap]);
+
   const banner = useMemo<BuyerStoreFeatureBanner | null>(() => {
     if (!selectedStoreId) return null;
     return buildFeatureBanner(bannersMap[selectedStoreId]);
@@ -519,15 +581,19 @@ export const useBuyerTabData = (
     setSelectedStoreIdState(storeId);
   }, []);
 
-  const toggleFollow = useCallback(() => {
-    if (!selectedStoreId) return;
-    setFollowedStoreIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(selectedStoreId)) next.delete(selectedStoreId);
-      else next.add(selectedStoreId);
-      return next;
-    });
-  }, [selectedStoreId]);
+  /**
+   * 关注 / 取消关注当前选中的店铺。直接走全局 favorites store —— 它内部
+   * 已经处理了乐观更新 + 失败回滚 + 与 StoreDetailScreen 共享 IDs / counts。
+   *
+   * 未登录用户：直接 no-op，调用方（BuyerTab/index.tsx）会用 Alert 提示登录。
+   * 这里返回 boolean 让上层知道是否真的进入了请求流程，便于决定要不要 toast。
+   */
+  const toggleFollow = useCallback(async (): Promise<boolean> => {
+    if (!selectedStoreId) return false;
+    if (!currentUser?.userId) return false;
+    await toggleFavoriteApi(selectedStoreId, currentUser.userId);
+    return true;
+  }, [selectedStoreId, currentUser?.userId, toggleFavoriteApi]);
 
   /**
    * 从 productsMap 直接派生当前选中店铺的"已点赞"商品 id 集合。
@@ -625,6 +691,12 @@ export const useBuyerTabData = (
         ...prev,
         [selectedStoreId]: result.products ?? [],
       }));
+      // total 同步刷新 —— 商家可能在 Web 后台新增 / 下架商品，focus 回来时
+      // StoreProfileCard 上的 "Products" 计数也要跟着变。
+      setProductCountMap((prev) => ({
+        ...prev,
+        [selectedStoreId]: result.total ?? 0,
+      }));
     } catch (err) {
       console.warn(
         "[useBuyerTabData] refreshSelectedStoreProducts failed:",
@@ -633,7 +705,7 @@ export const useBuyerTabData = (
     }
   }, [selectedStoreId]);
 
-  const isFollowed = selectedStoreId ? followedStoreIds.has(selectedStoreId) : false;
+  const isFollowed = selectedStoreId ? favoriteIds.has(selectedStoreId) : false;
 
   return {
     stores: shortcuts,
@@ -646,6 +718,7 @@ export const useBuyerTabData = (
     products,
     isFollowed,
     isLoading,
+    isProductsLoading,
     isRefreshing,
     error,
     setSelectedStoreId,

@@ -94,7 +94,8 @@
     "buyerFollowedBtn": "Following",
     "buyerStatFollowers": "Followers",
     "buyerStatFollowing": "Following",
-    "buyerStatPosts": "Posts"
+    "buyerStatPosts": "Posts",
+    "buyerStatProducts": "Products"
   },
   "profile": {
     "title": "Profile",

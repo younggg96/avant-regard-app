@@ -640,11 +640,11 @@ const StoreProductDetailScreen: React.FC = () => {
               {product.title}
             </Text>
 
-            {!!product.brand && (
+            {/* {!!product.brand && (
               <Text fontSize="$xs" color="$gray600">
                 {t("store.brandLabel")}{product.brand}
               </Text>
-            )}
+            )} */}
 
             <HStack alignItems="baseline" space="sm">
               <Text fontSize="$2xl" fontWeight="$bold" color={hasDiscount ? "$error" : "$black"}>
