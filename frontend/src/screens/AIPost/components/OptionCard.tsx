@@ -55,7 +55,7 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
               uri={data.cover_url}
               size={ImageSize.THUMBNAIL}
               style={{ width: "100%", height: "100%" }}
-              contentFit="cover"
+              contentFit="contain"
             />
           ) : (
             // 用裸 RN Text 而不是主题包装的 Text:

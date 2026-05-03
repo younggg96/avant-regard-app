@@ -403,6 +403,8 @@ export interface AdminBrand {
   country?: string;
   website?: string;
   coverImage?: string;
+  /** AI 发帖助手 (V3 #25): brand 关联的风格 id; null/undefined = 未关联。 */
+  primaryStyleId?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -421,6 +423,8 @@ export interface UpdateBrandParams {
   founder?: string;
   country?: string;
   website?: string;
+  /** 0 / null 都视为"清空风格关联"; undefined 表示不改。 */
+  primaryStyleId?: number | null;
 }
 
 export interface AdminBrandImage {
@@ -703,3 +707,50 @@ export async function uploadImage(file: File): Promise<string> {
   const res = await apiClient.post<{ url: string }>("/api/files/upload-image", formData);
   return res.url;
 }
+
+// ─── Styles (AI 发帖助手 V3 #25) ────────────────────────────────────────────
+
+/** Style 词典里的一行,所有 i18n 列原样透出, UI 自己 pick locale。 */
+export interface AdminStyle {
+  id: number;
+  slug: string;
+  nameI18n: Record<string, string>;
+  descriptionI18n: Record<string, string>;
+  coverUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  /** 后端聚合: 当前关联了多少个 brands;前端用来决定能否「无后顾之忧地删」。 */
+  brandCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateStyleParams {
+  slug: string;
+  nameI18n: Record<string, string>;
+  descriptionI18n?: Record<string, string>;
+  coverUrl?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateStyleParams {
+  slug?: string;
+  nameI18n?: Record<string, string>;
+  descriptionI18n?: Record<string, string>;
+  coverUrl?: string | null;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export const stylesApi = {
+  getAll: () => apiClient.get<AdminStyle[]>("/api/admin/styles"),
+
+  create: (params: CreateStyleParams) =>
+    apiClient.post<AdminStyle>("/api/admin/styles", params),
+
+  update: (id: number, params: UpdateStyleParams) =>
+    apiClient.put<AdminStyle>(`/api/admin/styles/${id}`, params),
+
+  delete: (id: number) => apiClient.delete<void>(`/api/admin/styles/${id}`),
+};

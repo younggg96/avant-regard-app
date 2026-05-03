@@ -54,6 +54,43 @@ class UpdateBrandRequest(BaseModel):
     founder: Optional[str] = None
     country: Optional[str] = None
     website: Optional[str] = None
+    # AI 发帖助手 (V3 #25): 把品牌挂到一个风格上,Q2 卡片来源。
+    # 传 0 / null 都按"清空关联"处理 (DB 设 NULL)。
+    primaryStyleId: Optional[int] = None
+
+
+# ==================== Styles ====================
+
+class CreateStyleRequest(BaseModel):
+    """创建风格请求 (V3 #25)。
+
+    name / description 用 i18n 字典; 至少要给 en, 否则后端 047 的 CHECK 约束
+    会拒绝写入。其他 locale 选填。
+    """
+    slug: str = Field(..., min_length=1, max_length=100,
+                      description="稳定标识符,前端 i18n key 与 URL slug")
+    nameI18n: Dict[str, str] = Field(..., description='{"en": "Avant-garde", "zh": "先锋"}')
+    descriptionI18n: Dict[str, str] = Field(default_factory=dict)
+    coverUrl: Optional[str] = None
+    sortOrder: int = 0
+    isActive: bool = True
+
+    @field_validator("nameI18n")
+    @classmethod
+    def must_have_en(cls, v: Dict[str, str]) -> Dict[str, str]:
+        if not v or not (v.get("en") or "").strip():
+            raise ValueError("nameI18n 至少需要 en 文案")
+        return v
+
+
+class UpdateStyleRequest(BaseModel):
+    """更新风格请求,所有字段可选。"""
+    slug: Optional[str] = Field(None, min_length=1, max_length=100)
+    nameI18n: Optional[Dict[str, str]] = None
+    descriptionI18n: Optional[Dict[str, str]] = None
+    coverUrl: Optional[str] = None
+    sortOrder: Optional[int] = None
+    isActive: Optional[bool] = None
 
 
 class BroadcastNotificationRequest(BaseModel):
@@ -454,6 +491,8 @@ async def update_brand(
         founder=request.founder,
         country=request.country,
         website=request.website,
+        # primaryStyleId 透传到 service; 0 视为"清空关联", None 视为"不改"
+        primary_style_id=request.primaryStyleId,
     )
     if not result:
         raise HTTPException(status_code=404, detail="品牌不存在")
@@ -900,3 +939,68 @@ async def update_recommend_config(
             f"保存推荐配置失败：{exc}（请确认 app_config 表已创建）"
         ) from exc
     return success(config)
+
+
+# ==================== Styles 风格字典 (V3 #25) ====================
+#
+# 用于 AI 发帖助手 Q1 风格选项 + brand.primary_style_id 的关联池。
+# 047 migration 已 seed 10 个基线,此后通过这一组接口由 admin 手工维护。
+
+@router.get("/styles")
+async def list_styles(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """列出所有风格 (含 inactive),按 sort_order 升序。"""
+    return success(admin_service.list_styles())
+
+
+@router.post("/styles")
+async def create_style(
+    request: CreateStyleRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """创建风格。slug 必须唯一,name_i18n 至少含 en (047 CHECK 约束)。"""
+    result = admin_service.create_style(
+        slug=request.slug,
+        name_i18n=request.nameI18n,
+        description_i18n=request.descriptionI18n,
+        cover_url=request.coverUrl,
+        sort_order=request.sortOrder,
+        is_active=request.isActive,
+    )
+    if not result:
+        raise HTTPException(status_code=400, detail="创建风格失败 (可能 slug 已存在)")
+    return success(result)
+
+
+@router.put("/styles/{style_id}")
+async def update_style(
+    style_id: int,
+    request: UpdateStyleRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新风格。所有字段可选,只更新非 None 的。"""
+    result = admin_service.update_style(
+        style_id,
+        slug=request.slug,
+        name_i18n=request.nameI18n,
+        description_i18n=request.descriptionI18n,
+        cover_url=request.coverUrl,
+        sort_order=request.sortOrder,
+        is_active=request.isActive,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="风格不存在")
+    return success(result)
+
+
+@router.delete("/styles/{style_id}")
+async def delete_style(
+    style_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """删除风格。下挂的 brands.primary_style_id 由 047 ON DELETE SET NULL 约束清空。"""
+    ok = admin_service.delete_style(style_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="风格不存在")
+    return success(None)

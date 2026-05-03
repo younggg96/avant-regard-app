@@ -1,7 +1,7 @@
 """
 管理员服务
 """
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.post import Post
@@ -621,6 +621,8 @@ class AdminService:
             "country": data.get("country"),
             "website": data.get("website"),
             "coverImage": cover_image_url,
+            # AI 发帖助手: 风格关联 (053) - 0 / null 都视为未关联
+            "primaryStyleId": data.get("primary_style_id"),
             "createdAt": data.get("created_at"),
             "updatedAt": data.get("updated_at"),
         }
@@ -672,6 +674,12 @@ class AdminService:
         for key, db_field in field_mapping.items():
             if key in kwargs and kwargs[key] is not None:
                 update_data[db_field] = kwargs[key]
+
+        # primary_style_id 单独处理: 0 / "" / None 都解释为"清空关联",
+        # 因为前端 select 把"未关联"映射成 0 比 null 更常见。
+        if "primary_style_id" in kwargs:
+            psid = kwargs["primary_style_id"]
+            update_data["primary_style_id"] = psid if psid else None
 
         if not update_data:
             result = self.db.table("brands").select("*").eq("id", brand_id).execute()
@@ -1286,6 +1294,124 @@ class AdminService:
             "ageBrackets": age_brackets,
             "regions": [{"name": n, "count": c} for n, c in sorted_regions],
         }
+
+    # ==================== Styles 风格字典 (V3 #25) ====================
+
+    def _format_style(self, row: dict) -> dict:
+        """JSONB 多语言列原样透出, 前端 (web admin) 自己根据当前 locale 取 key。
+        AI 发帖助手 mobile 端走 ai_post_service 那一路, 不读这里。"""
+        return {
+            "id": row["id"],
+            "slug": row["slug"],
+            "nameI18n": row.get("name_i18n") or {},
+            "descriptionI18n": row.get("description_i18n") or {},
+            "coverUrl": row.get("cover_url"),
+            "sortOrder": row.get("sort_order", 0),
+            "isActive": row.get("is_active", True),
+            "createdAt": row.get("created_at"),
+            "updatedAt": row.get("updated_at"),
+        }
+
+    def list_styles(self) -> List[dict]:
+        result = (
+            self.db.table("styles")
+            .select("*")
+            .order("sort_order")
+            .execute()
+        )
+        rows = result.data or []
+        styles = [self._format_style(r) for r in rows]
+
+        # 顺手统计每个 style 关联了多少 brands,前端列表直接展示。
+        # 这里用一次扫表 group-by 而不是 N+1; styles 总数 ~10-20,可接受。
+        try:
+            brands = (
+                self.db.table("brands")
+                .select("primary_style_id")
+                .not_.is_("primary_style_id", "null")
+                .execute()
+            )
+            counts: Dict[int, int] = {}
+            for b in brands.data or []:
+                sid = b.get("primary_style_id")
+                if sid:
+                    counts[sid] = counts.get(sid, 0) + 1
+            for s in styles:
+                s["brandCount"] = counts.get(s["id"], 0)
+        except Exception:
+            for s in styles:
+                s["brandCount"] = 0
+        return styles
+
+    def create_style(
+        self,
+        *,
+        slug: str,
+        name_i18n: Dict[str, Any],
+        description_i18n: Dict[str, Any],
+        cover_url: Optional[str],
+        sort_order: int,
+        is_active: bool,
+    ) -> Optional[dict]:
+        try:
+            result = (
+                self.db.table("styles")
+                .insert(
+                    {
+                        "slug": slug,
+                        "name_i18n": name_i18n,
+                        "description_i18n": description_i18n or {},
+                        "cover_url": cover_url,
+                        "sort_order": sort_order,
+                        "is_active": is_active,
+                    }
+                )
+                .execute()
+            )
+        except Exception as e:
+            # slug unique 冲突 / CHECK 约束失败都走这里。
+            # 不抛 HTTP 异常,让 route 层翻译成 400。
+            print(f"[admin] create_style failed: {e}", flush=True)
+            return None
+        return self._format_style(result.data[0]) if result.data else None
+
+    def update_style(
+        self,
+        style_id: int,
+        *,
+        slug: Optional[str] = None,
+        name_i18n: Optional[Dict[str, Any]] = None,
+        description_i18n: Optional[Dict[str, Any]] = None,
+        cover_url: Optional[str] = None,
+        sort_order: Optional[int] = None,
+        is_active: Optional[bool] = None,
+    ) -> Optional[dict]:
+        update_data: Dict[str, Any] = {}
+        if slug is not None:
+            update_data["slug"] = slug
+        if name_i18n is not None:
+            update_data["name_i18n"] = name_i18n
+        if description_i18n is not None:
+            update_data["description_i18n"] = description_i18n
+        if cover_url is not None:
+            update_data["cover_url"] = cover_url
+        if sort_order is not None:
+            update_data["sort_order"] = sort_order
+        if is_active is not None:
+            update_data["is_active"] = is_active
+
+        if update_data:
+            self.db.table("styles").update(update_data).eq("id", style_id).execute()
+
+        result = self.db.table("styles").select("*").eq("id", style_id).execute()
+        if not result.data:
+            return None
+        return self._format_style(result.data[0])
+
+    def delete_style(self, style_id: int) -> bool:
+        # ON DELETE SET NULL 由 047 的外键约束兜底,brands.primary_style_id 自动清空。
+        result = self.db.table("styles").delete().eq("id", style_id).execute()
+        return bool(result.data)
 
 
 # 单例

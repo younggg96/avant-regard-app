@@ -22,7 +22,7 @@ import {
   RouteProp,
 } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { Box, HStack, Text, VStack, ScrollView } from "../../components/ui";
+import { Box, Button, ButtonText, HStack, Text, VStack, ScrollView } from "../../components/ui";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import OptionCard from "./components/OptionCard";
@@ -111,10 +111,9 @@ const AIPostQAStepScreen: React.FC = () => {
       .then((res) => {
         if (cancelled) return;
         setData(res);
-        // 命中 fallback (例如 Q4 无 look) → 立刻跳到 fallback 屏
-        if (res.has_fallback && config.fallbackRoute) {
-          navigation.replace(config.fallbackRoute, { answers });
-        }
+        // 注意 (V3 #25.3): has_fallback=true 不再自动跳转,改为用户在底部
+        // 点「找不到合适的?自己写」按钮主动 opt-in。这样即便后端命中了 Q4
+        // 的 looks fallback (退到全库 top N),用户先看完图再决定要不要写字。
       })
       .catch((err: Error) => {
         if (!cancelled) setErrorMsg(err.message);
@@ -202,6 +201,21 @@ const AIPostQAStepScreen: React.FC = () => {
               </HStack>
             ))
           )}
+
+          {/* Opt-in 文字 fallback (Q4 always shows; 其他步骤永远不会出现) */}
+          {data && data.has_fallback && config.fallbackRoute ? (
+            <Button
+              mt="$md"
+              borderColor="$gray200"
+              onPress={() =>
+                navigation.replace(config.fallbackRoute as string, { answers })
+              }
+            >
+              <ButtonText color="$white">
+                {t("aiPost.qa.useTextFallback")}
+              </ButtonText>
+            </Button>
+          ) : null}
         </VStack>
       </ScrollView>
 

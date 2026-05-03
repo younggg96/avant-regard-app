@@ -26,6 +26,7 @@ const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/brands",         labelKey: "admin.brands",           groupKey: "admin.navGroupCommunity" },
   { href: "/admin/brands/submissions", labelKey: "admin.brandSubmissions", groupKey: "admin.navGroupCommunity" },
   { href: "/admin/brands/images",  labelKey: "admin.brandImages",      groupKey: "admin.navGroupCommunity" },
+  { href: "/admin/styles",         labelKey: "admin.styles",           groupKey: "admin.navGroupCommunity" },
 
   { href: "/admin/shows",          labelKey: "admin.shows",            groupKey: "admin.navGroupShows" },
   { href: "/admin/shows/review",   labelKey: "admin.showReview",       groupKey: "admin.navGroupShows" },

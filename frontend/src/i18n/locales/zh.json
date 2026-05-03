@@ -2220,6 +2220,7 @@
       "step4Title": "你最喜欢这场的哪个 Look?",
       "step5Title": "想用什么角度来写这篇帖子?",
       "noOptions": "暂无可选项, 请返回上一步换一个",
+      "useTextFallback": "都不是想要的?自己用文字描述",
       "fallbackTitle": "用文字描述这场秀的细节",
       "fallbackHint": "这场秀我们暂未收录 Look 图片, 用一两句话写下让你心动的细节, AI 会帮你扩写",
       "fallbackPlaceholder": "比如: 第三套那件解构外套的不对称肩线...",

@@ -237,9 +237,16 @@ class AIPostService:
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
 
     def get_looks_options(self, show_id, limit: int = 5) -> OptionListResponse:
-        """Q4: show_images WHERE show_id = show_id AND image_type = 'LOOK'。
+        """Q4: 该秀场下的具体 Look。
 
         show_id 接受 int 或 str (MongoDB ObjectId), Supabase 自动按列类型转换。
+
+        降级策略 (V3 #25.3 — 用户体验优化):
+            - 第一优先: show_id 命中的 looks。
+            - 0 命中时降级到全库其他 looks (按 sort_order),保证 Q4 总是有图。
+            - has_fallback 永远 True: 用户即便看到一堆 look,
+              也可能就是想自己用文字写细节。前端会展示"自己写"按钮 (opt-in),
+              不再像旧版那样在 0 命中时强制跳转到文字输入屏。
         """
         result = (
             self.db.table("show_images")
@@ -250,16 +257,29 @@ class AIPostService:
             .limit(limit)
             .execute()
         )
+        rows = result.data or []
+        # 当前 show 没有 look → 降级到全库 top N look
+        if not rows:
+            fallback = (
+                self.db.table("show_images")
+                .select("id, image_url, sort_order")
+                .eq("image_type", "LOOK")
+                .order("sort_order")
+                .limit(limit)
+                .execute()
+            )
+            rows = fallback.data or []
+
         cards = [
             OptionCard(
                 id=r["id"],
                 name=f"Look {idx + 1}",
                 cover_url=r.get("image_url"),
             )
-            for idx, r in enumerate(result.data or [])
+            for idx, r in enumerate(rows)
         ]
-        # 没有 look 时 fallback 到「描述细节」文字输入
-        return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
+        # Q4 永远允许 fallback 到文字输入,前端按钮 opt-in。
+        return OptionListResponse(options=cards, has_fallback=True)
 
     # -----------------------------------------------------------------
     # 配额

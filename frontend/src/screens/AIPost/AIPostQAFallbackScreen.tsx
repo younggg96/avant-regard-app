@@ -55,7 +55,7 @@ const AIPostQAFallbackScreen: React.FC = () => {
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <VStack px="$lg" pt="$md" pb="$xl" gap="$md">
-          <Text fontSize="$xl" fontWeight="$medium" color="$black">
+          <Text fontSize="$xl" fontWeight="$medium" color="$black" style={styles.textHero}>
             {t("aiPost.qa.fallbackTitle")}
           </Text>
           <Text fontSize="$sm" color="$gray500">
@@ -108,6 +108,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.gray500,
     textAlignVertical: "top",
+  },
+  textHero: {
+    lineHeight: 32,
   },
 });
 

@@ -2,7 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { brandsApi, type AdminBrand, type UpdateBrandParams } from "@/lib/services/admin";
+import {
+  brandsApi,
+  stylesApi,
+  type AdminBrand,
+  type AdminStyle,
+  type UpdateBrandParams,
+} from "@/lib/services/admin";
 import {
   PageHeader,
   SearchBar,
@@ -18,7 +24,7 @@ import {
 
 
 export default function BrandsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -31,6 +37,13 @@ export default function BrandsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<UpdateBrandParams>({});
+
+  // 风格选项: 跟品牌一起拉一次, 编辑表单的下拉用。
+  // 单独 useState 而不是 useMemo 是因为这是网络请求结果。
+  const [styles, setStyles] = useState<AdminStyle[]>([]);
+  const isZh = i18n.language?.startsWith("zh");
+  const labelOfStyle = (s: AdminStyle) =>
+    (isZh && s.nameI18n?.zh) || s.nameI18n?.en || s.slug;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,8 +60,30 @@ export default function BrandsPage() {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { setPage(1); }, [keyword]);
 
+  // 风格池: 一次性拉,放到组件顶层 state。失败不阻塞主表渲染。
+  useEffect(() => {
+    stylesApi.getAll().then(setStyles).catch(() => setStyles([]));
+  }, []);
+
+  const styleNameOf = useCallback(
+    (id?: number | null) => {
+      if (!id) return "";
+      const s = styles.find((x) => x.id === id);
+      return s ? labelOfStyle(s) : "";
+    },
+    [styles, isZh],
+  );
+
   const openEdit = (b: AdminBrand) => {
-    setForm({ name: b.name, category: b.category, foundedYear: b.foundedYear, founder: b.founder, country: b.country, website: b.website });
+    setForm({
+      name: b.name,
+      category: b.category,
+      foundedYear: b.foundedYear,
+      founder: b.founder,
+      country: b.country,
+      website: b.website,
+      primaryStyleId: b.primaryStyleId ?? null,
+    });
     setEditing(b);
   };
 
@@ -99,6 +134,7 @@ export default function BrandsPage() {
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colFounder")}</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colCountry")}</th>
                   <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colFoundedYear")}</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.style.colHeader")}</th>
                   <th className="px-4 py-2.5 text-right text-[11px] tracking-wider text-[color:var(--ink-muted)]">{t("admin.colActions")}</th>
                 </tr>
               </thead>
@@ -110,6 +146,9 @@ export default function BrandsPage() {
                     <td className="px-4 py-3 text-[color:var(--ink-muted)]">{b.founder || "—"}</td>
                     <td className="px-4 py-3 text-[color:var(--ink-muted)]">{b.country || "—"}</td>
                     <td className="px-4 py-3 text-[color:var(--ink-muted)]">{b.foundedYear || "—"}</td>
+                    <td className="px-4 py-3 text-[color:var(--ink-muted)]">
+                      {styleNameOf(b.primaryStyleId) || "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <button onClick={() => openEdit(b)} className="rounded px-2 py-1 text-[12px] text-[color:var(--ink-muted)] transition-colors hover:bg-[var(--canvas-raised)] hover:text-[var(--ink)]">{t("admin.edit")}</button>
@@ -133,6 +172,30 @@ export default function BrandsPage() {
           <FormField label={t("admin.colCountry")}><TextInput value={form.country || ""} onChange={(v) => setForm({ ...form, country: v })} /></FormField>
           <FormField label={t("admin.foundedYearLabel")}><TextInput value={form.foundedYear || ""} onChange={(v) => setForm({ ...form, foundedYear: v })} /></FormField>
           <FormField label={t("admin.websiteLabel")}><TextInput value={form.website || ""} onChange={(v) => setForm({ ...form, website: v })} /></FormField>
+
+          {/* AI 发帖助手 (V3 #25): brand → style 关联,Q2 卡片来源 */}
+          <FormField label={t("admin.style.brandFieldLabel")}>
+            <select
+              value={form.primaryStyleId ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  primaryStyleId: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+              className="h-9 w-full rounded border border-[var(--border)] bg-[var(--canvas)] px-3 font-label text-[13px] text-[var(--ink)] outline-none transition-colors focus:border-[var(--ink-muted)]"
+            >
+              <option value="">{t("admin.style.unlinked")}</option>
+              {styles
+                .filter((s) => s.isActive)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {labelOfStyle(s)}
+                  </option>
+                ))}
+            </select>
+          </FormField>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setEditing(null)}>{t("admin.cancel")}</Button>
             <Button onClick={handleSave} loading={saving}>{t("admin.save")}</Button>
