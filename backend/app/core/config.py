@@ -58,9 +58,60 @@ class Settings(BaseSettings):
         except:
             return ["*"]
 
+    # =====================================================
+    # AI 发帖助手 (V3 #25)
+    # =====================================================
+    # 文字生成主力: DeepSeek (OpenAI 兼容协议)
+    # 视觉理解: Qwen-VL (DashScope OpenAI 兼容协议)
+    # 图片内容安全: 阿里云绿网 (Green-CIP)
+    #
+    # 任一 *_API_KEY 缺失时,服务层会抛 RuntimeError 并落 status='error'
+    # 日志,而不是把请求挂死或静默降级,便于运维排查。
+    AI_DEFAULT_PROVIDER: str = "deepseek"        # deepseek / qwen / moonshot
+
+    # DeepSeek
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+
+    # 通义千问 (含视觉模型)
+    QWEN_API_KEY: str = ""
+    QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    QWEN_TEXT_MODEL: str = "qwen-plus"
+    QWEN_VL_MODEL: str = "qwen-vl-plus"          # 图片+简述模式专用
+
+    # Moonshot (Kimi)
+    MOONSHOT_API_KEY: str = ""
+    MOONSHOT_BASE_URL: str = "https://api.moonshot.cn/v1"
+    MOONSHOT_MODEL: str = "moonshot-v1-8k"
+
+    # LLM 调用通用配置
+    AI_REQUEST_TIMEOUT: int = 30                 # 秒, 超时后重试一次
+    AI_MAX_OUTPUT_TOKENS: int = 1024
+    AI_TEMPERATURE: float = 0.8
+
+    # 配额 (per user / day, UTC date 切日)
+    AI_DAILY_GENERATE_LIMIT: int = 10
+    AI_DAILY_REGEN_LIMIT: int = 3                # 需求硬规定: 重新生成 <= 3 次/天
+
+    # 图片内容安全 (阿里云绿网 Green-CIP)
+    # 未配置时服务层会拒绝 IMAGE_BRIEF 模式 (status='blocked'),
+    # 不做静默降级,避免违规图直接喂给 LLM 与发布。
+    IMAGE_MODERATION_ENABLED: bool = True
+    ALIYUN_GREEN_ACCESS_KEY_ID: str = ""
+    ALIYUN_GREEN_ACCESS_KEY_SECRET: str = ""
+    ALIYUN_GREEN_REGION: str = "cn-shanghai"     # 与子账号开通区域一致
+    # 命中即拦截的场景列表 (绿网 scenes 字段);广告与二维码默认开,
+    # 后续可放到 admin 后台动态调整。
+    ALIYUN_GREEN_IMAGE_SCENES: str = "porn,terrorism,ad"
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
+    @property
+    def aliyun_green_image_scenes_list(self) -> List[str]:
+        return [s.strip() for s in self.ALIYUN_GREEN_IMAGE_SCENES.split(",") if s.strip()]
 
 
 settings = Settings()

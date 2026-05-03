@@ -31,3 +31,12 @@ python-dotenv==1.0.1
 
 # HTTP Client
 httpx==0.28.1
+
+# AI 发帖助手 (V3 #25): OpenAI 兼容协议,统一调用 DeepSeek / Qwen / Moonshot.
+# Qwen-VL 视觉模型也走这个 SDK,无需额外多模态库。
+openai==1.59.5
+
+# AI 发帖助手图片内容安全: 阿里云内容审核 ImageAudit (Green-CIP) 同步接口
+# alibabacloud_tea_openapi 由 imageaudit 自带传递依赖 (>=0.3.16,<1.0.0),
+# 不要显式 pin,否则会跟 SDK 自己的版本约束冲突。
+alibabacloud_imageaudit20191230==2.0.6

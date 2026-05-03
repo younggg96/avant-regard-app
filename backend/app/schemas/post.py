@@ -134,6 +134,12 @@ class CreatePostRequest(BaseModel):
     itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
+    # AI 发帖助手 (V3 #25):
+    # 由 ai_post_service.generate() 返回 metadata 后,前端预览页确认发布时
+    # 原样回传。generatedByAi=True 时 generationMetadata.log_id 必填,
+    # 后端会校验并双向回填 ai_post_service_logs.post_id。
+    generatedByAi: bool = False
+    generationMetadata: Optional[dict] = None
 
     @field_validator("rating")
     @classmethod

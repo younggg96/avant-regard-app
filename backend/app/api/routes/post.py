@@ -165,6 +165,8 @@ async def create_post(
         item_category=request.itemCategory,
         item_sizes=request.itemSizes,
         item_colors=request.itemColors,
+        generated_by_ai=request.generatedByAi,
+        generation_metadata=request.generationMetadata,
     )
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")

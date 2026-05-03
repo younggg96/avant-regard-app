@@ -2196,5 +2196,85 @@
     "RU": "俄罗斯",
     "BR": "巴西",
     "NZ": "新西兰"
+  },
+  "aiPost": {
+    "entryCard": {
+      "qaTitle": "AI 帮我写帖子",
+      "qaDesc": "5 步问答, 让 AI 帮你写出第一篇穿搭/收藏分享"
+    },
+    "entry": {
+      "title": "AI 发帖助手",
+      "heading": "选择一种生成方式",
+      "subheading": "AI 会基于你的选择和现有档案库生成草稿, 你可以预览编辑后再发布",
+      "qaTitle": "5 步问答模式",
+      "qaDesc": "适合不知道怎么开头的首贴, 引导式生成文字帖",
+      "imageTitle": "图片+简述模式",
+      "imageDesc": "上传 1-9 张图, 选个意图, 3 秒生成分享帖",
+      "exhaustedHint": "今日 AI 生成次数已用完, 请明天再试或走普通发帖"
+    },
+    "qa": {
+      "headerTitle": "AI 发帖 ({{step}}/{{total}})",
+      "step1Title": "你今天想发什么风格?",
+      "step2Title": "选一位让你心动的设计师",
+      "step3Title": "哪一场秀让你印象深刻?",
+      "step4Title": "你最喜欢这场的哪个 Look?",
+      "step5Title": "想用什么角度来写这篇帖子?",
+      "noOptions": "暂无可选项, 请返回上一步换一个",
+      "fallbackTitle": "用文字描述这场秀的细节",
+      "fallbackHint": "这场秀我们暂未收录 Look 图片, 用一两句话写下让你心动的细节, AI 会帮你扩写",
+      "fallbackPlaceholder": "比如: 第三套那件解构外套的不对称肩线...",
+      "fallbackEmpty": "请先填写内容"
+    },
+    "imageBrief": {
+      "title": "图片+简述",
+      "imageTip": "上传 1-9 张图片",
+      "addImage": "添加图片",
+      "chipLabel": "选择一个意图",
+      "chip": {
+        "RECENT_BUY": "最近买了什么",
+        "FAVORITE_ITEM": "最喜欢的单品",
+        "LOOK_APPRECIATION": "造型欣赏",
+        "CUSTOM": "自定义"
+      },
+      "noteLabel": "再补一句话 (可选, 不超过 50 字)",
+      "notePlaceholder": "可以提一下品牌/购买理由/搭配场景等",
+      "generate": "生成帖子",
+      "needImages": "请至少上传 1 张图片",
+      "uploading": "图片上传中..."
+    },
+    "preview": {
+      "title": "AI 草稿预览",
+      "generating": "AI 正在生成草稿...",
+      "titleLabel": "标题",
+      "titlePlaceholder": "给这篇帖子起个标题",
+      "contentLabel": "正文",
+      "contentPlaceholder": "AI 没生成内容, 你也可以自己写",
+      "tagsLabel": "AI 推荐标签",
+      "communityLabel": "选择发布到的社区",
+      "regenerate": "重新生成",
+      "publish": "发布",
+      "delete": "丢弃",
+      "regenerateConfirmTitle": "重新生成?",
+      "regenerateConfirmBody": "你今天还可以重新生成 {{remaining}} 次",
+      "deleteConfirmTitle": "丢弃这篇 AI 草稿?",
+      "deleteConfirmBody": "丢弃后不会扣除你今日的生成次数, 但当前编辑会丢失",
+      "loginRequired": "请先登录",
+      "contentRequired": "标题和正文不能为空",
+      "communityRequired": "请选择一个社区",
+      "publishSuccess": "发布成功",
+      "publishFailed": "发布失败"
+    },
+    "quota": {
+      "remaining": "剩余 {{count}} 次",
+      "exhausted": "今日次数已用完"
+    },
+    "error": {
+      "imageBlockedTitle": "部分图片未通过审核",
+      "quotaTitle": "今日次数已用完",
+      "quotaBody": "明天再试, 或者使用普通发帖",
+      "llmTitle": "AI 暂时不可用",
+      "regenLimitTitle": "重新生成次数已用完",
+      "regenLimitBody": "今日重新生成次数已用完 (每天最多 3 次)"
+    }
   }
 }

@@ -66,6 +66,12 @@ import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
 import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
+// AI Post Assistant Screens
+import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
+import AIPostQAStepScreen from "./src/screens/AIPost/AIPostQAStepScreen";
+import AIPostQAFallbackScreen from "./src/screens/AIPost/AIPostQAFallbackScreen";
+import AIPostPreviewScreen from "./src/screens/AIPost/AIPostPreviewScreen";
+import AIPostImageBriefScreen from "./src/screens/AIPost/AIPostImageBriefScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 
 import CommunityDetailScreen from "./src/screens/CommunityDetailScreen";
@@ -520,6 +526,32 @@ function AppNavigator() {
           options={{
             headerShown: false,
           }}
+        />
+        {/* AI 发帖助手 (V3 #25) */}
+        <Stack.Screen
+          name="AIPostEntry"
+          component={AIPostEntryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AIPostQAStep"
+          component={AIPostQAStepScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AIPostQAFallback"
+          component={AIPostQAFallbackScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AIPostImageBrief"
+          component={AIPostImageBriefScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AIPostPreview"
+          component={AIPostPreviewScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="CommunityDetail"

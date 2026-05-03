@@ -2196,5 +2196,85 @@
     "RU": "Russia",
     "BR": "Brazil",
     "NZ": "New Zealand"
+  },
+  "aiPost": {
+    "entryCard": {
+      "qaTitle": "Let AI write my post",
+      "qaDesc": "5-step Q&A; AI drafts your first outfit/collection share"
+    },
+    "entry": {
+      "title": "AI Post Assistant",
+      "heading": "Pick a generation mode",
+      "subheading": "AI drafts based on your picks and our archive. Edit before you publish.",
+      "qaTitle": "5-Step Q&A",
+      "qaDesc": "Best for first-time posters. Guided text post generation.",
+      "imageTitle": "Photos + Brief",
+      "imageDesc": "Upload 1-9 photos, pick an intent, get a draft in 3s.",
+      "exhaustedHint": "Daily AI quota reached. Try again tomorrow or use the regular composer."
+    },
+    "qa": {
+      "headerTitle": "AI Post ({{step}}/{{total}})",
+      "step1Title": "What style do you want to share today?",
+      "step2Title": "Pick a designer that excites you",
+      "step3Title": "Which show stuck with you?",
+      "step4Title": "Which look from this show is your favorite?",
+      "step5Title": "What's the angle of this post?",
+      "noOptions": "No options yet — go back and pick a different parent",
+      "fallbackTitle": "Describe what struck you in this show",
+      "fallbackHint": "We don't have look photos for this show. Write a sentence or two — AI will expand on it.",
+      "fallbackPlaceholder": "e.g. The asymmetric shoulder of look 3...",
+      "fallbackEmpty": "Please write something first"
+    },
+    "imageBrief": {
+      "title": "Photos + Brief",
+      "imageTip": "Upload 1-9 photos",
+      "addImage": "Add photo",
+      "chipLabel": "Pick an intent",
+      "chip": {
+        "RECENT_BUY": "Recent buys",
+        "FAVORITE_ITEM": "Favorite item",
+        "LOOK_APPRECIATION": "Look appreciation",
+        "CUSTOM": "Custom"
+      },
+      "noteLabel": "Add a note (optional, ≤50 chars)",
+      "notePlaceholder": "e.g. brand, why you bought it, when you'd wear it",
+      "generate": "Generate post",
+      "needImages": "Please upload at least 1 photo",
+      "uploading": "Uploading photos..."
+    },
+    "preview": {
+      "title": "AI Draft Preview",
+      "generating": "AI is drafting...",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Give this post a title",
+      "contentLabel": "Body",
+      "contentPlaceholder": "AI didn't return content; feel free to write your own",
+      "tagsLabel": "Suggested tags",
+      "communityLabel": "Choose a community",
+      "regenerate": "Regenerate",
+      "publish": "Publish",
+      "delete": "Discard",
+      "regenerateConfirmTitle": "Regenerate?",
+      "regenerateConfirmBody": "{{remaining}} regenerations left today",
+      "deleteConfirmTitle": "Discard this AI draft?",
+      "deleteConfirmBody": "Discarding won't refund your daily quota but your edits will be lost.",
+      "loginRequired": "Please log in first",
+      "contentRequired": "Title and body cannot be empty",
+      "communityRequired": "Please choose a community",
+      "publishSuccess": "Published",
+      "publishFailed": "Publish failed"
+    },
+    "quota": {
+      "remaining": "{{count}} left",
+      "exhausted": "Out of quota today"
+    },
+    "error": {
+      "imageBlockedTitle": "Some photos didn't pass moderation",
+      "quotaTitle": "Daily quota reached",
+      "quotaBody": "Try again tomorrow or use the regular composer",
+      "llmTitle": "AI is temporarily unavailable",
+      "regenLimitTitle": "Regenerate limit reached",
+      "regenLimitBody": "Daily regenerate cap is 3"
+    }
   }
 }

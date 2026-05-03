@@ -23,6 +23,16 @@ const PublishTypeScreen = () => {
 
   const publishTypes: PublishType[] = [
     {
+      // AI 发帖助手 (V3 #25) — 放在第一张, 鼓励首贴用户走 AI 引导。
+      // 实际生成、配额、社区选择都在 AIPost stack 内部, 与普通发帖完全隔离。
+      id: "ai_post",
+      title: t("aiPost.entryCard.qaTitle"),
+      description: t("aiPost.entryCard.qaDesc"),
+      icon: "sparkles",
+      color: "#000000",
+      route: "AIPostEntry",
+    },
+    {
       id: "forum",
       title: t("publish.typeForumTitle"),
       description: t("publish.typeForumDesc"),

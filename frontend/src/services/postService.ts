@@ -103,6 +103,13 @@ export interface CreatePostParams {
   itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
+  /**
+   * AI 发帖助手 (V3 #25): 用户在 AI 预览页确认发布时, 把生成接口返回的
+   * `metadata` 原样塞进来。后端会校验 `generationMetadata.log_id` 必填,
+   * 并双向回填 `ai_post_service_logs.post_id`,用于运营 A/B 与漏斗分析。
+   */
+  generatedByAi?: boolean;
+  generationMetadata?: Record<string, unknown> | null;
 }
 
 // 更新帖子请求参数

@@ -244,10 +244,20 @@ class PostService:
         item_category: str = None,
         item_sizes: List[str] = None,
         item_colors: List[str] = None,
+        # AI 发帖助手 (V3 #25):
+        # generated_by_ai = True 时,generation_metadata 必须含 log_id, 用于
+        # 反查 ai_post_service_logs 与 A/B 实验。这里做一次最小校验,
+        # 其余字段交给上层 ai_post_service 保证完整性。
+        generated_by_ai: bool = False,
+        generation_metadata: Optional[dict] = None,
     ) -> Optional[Post]:
         """创建帖子"""
         # 验证 show_ids（确保是有效的整数列表）
         validated_show_ids = self._validate_show_ids(show_ids or [])
+
+        if generated_by_ai:
+            if not generation_metadata or "log_id" not in generation_metadata:
+                raise ValueError("AI 帖必须提供 generation_metadata.log_id")
 
         # 插入帖子
         insert_data = {
@@ -271,6 +281,8 @@ class PostService:
             "item_category": item_category,
             "item_sizes": item_sizes or [],
             "item_colors": item_colors or [],
+            "generated_by_ai": generated_by_ai,
+            "generation_metadata": generation_metadata,
         }
 
         result = self.db.table("posts").insert(insert_data).execute()
@@ -279,6 +291,17 @@ class PostService:
             return None
 
         post = result.data[0]
+
+        # AI 帖反向回填 ai_post_service_logs.post_id, 形成双向引用,
+        # 便于运营从任一端查另一端。失败不影响发帖主流程。
+        if generated_by_ai and generation_metadata:
+            log_id = generation_metadata.get("log_id")
+            if log_id:
+                try:
+                    from app.services.ai.log_repo import ai_post_log_repo
+                    ai_post_log_repo.attach_post(int(log_id), post["id"])
+                except Exception as e:
+                    print(f"[create_post] attach_post failed: {e}", flush=True)
 
         if post_status == "PUBLISHED":
             from app.services.grading_service import grade_post_async
