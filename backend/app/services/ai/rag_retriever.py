@@ -31,17 +31,17 @@ class RAGRetriever:
     def build_qa_context(self, answers: Dict[str, Any]) -> Dict[str, Any]:
         """
         answers: {
-          style_id, designer_id, show_id,
+          style_id, brand_id, show_id,
           look_id (optional), look_fallback_text (optional),
           perspective
         }
 
         返回:
           {
-            "style":    {"id","name","name_zh","description"} | None,
-            "designer": {"id","name","bio"} | None,
-            "show":     {"id","title","season","year","city","review_text"} | None,
-            "look":     {"id","image_url"} | None,
+            "style": {"id","name","name_zh","description"} | None,
+            "brand": {"id","name","country","founded_year","category"} | None,
+            "show":  {"id","title","season","year","city","brand_name","review_text"} | None,
+            "look":  {"id","image_url"} | None,
             "look_fallback_text": str | None,
             "perspective": str,
           }
@@ -49,7 +49,7 @@ class RAGRetriever:
         """
         ctx: Dict[str, Any] = {
             "style": None,
-            "designer": None,
+            "brand": None,
             "show": None,
             "look": None,
             "look_fallback_text": answers.get("look_fallback_text"),
@@ -78,22 +78,25 @@ class RAGRetriever:
                         or pick_locale(row.get("description_i18n"), "en"),
                 }
 
-        designer_id = answers.get("designer_id")
-        if designer_id:
+        brand_id = answers.get("brand_id")
+        if brand_id:
             r = (
-                self.db.table("designers")
-                .select("id, name, bio_i18n")
-                .eq("id", designer_id)
+                self.db.table("brands")
+                .select("id, name, country, founded_year, category_i18n, founder")
+                .eq("id", brand_id)
                 .execute()
             )
             if r.data:
                 row = r.data[0]
-                # name 是专有名词不翻译,直接透传。bio 取 zh,fallback en。
-                ctx["designer"] = {
+                # name 是专有名词不翻译,直接透传。category 拍平到 user_locale。
+                ctx["brand"] = {
                     "id": row["id"],
                     "name": row.get("name", ""),
-                    "bio": pick_locale(row.get("bio_i18n"), "zh")
-                        or pick_locale(row.get("bio_i18n"), "en"),
+                    "country": row.get("country"),
+                    "founded_year": row.get("founded_year"),
+                    "founder": row.get("founder"),
+                    "category": pick_locale(row.get("category_i18n"), "zh")
+                        or pick_locale(row.get("category_i18n"), "en"),
                 }
 
         show_id = answers.get("show_id")

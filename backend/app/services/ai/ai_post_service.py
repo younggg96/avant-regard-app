@@ -141,44 +141,88 @@ class AIPostService:
         ]
         return OptionListResponse(options=cards, has_fallback=False)
 
-    def get_designers_options(self, style_id: int, limit: int = 5) -> OptionListResponse:
-        """Q2: designers WHERE primary_style_id = style_id LIMIT N。"""
+    def get_brands_options(self, style_id: int, limit: int = 5) -> OptionListResponse:
+        """Q2: brands WHERE primary_style_id = style_id LIMIT N。
+
+        AI 发帖助手实际数据库里 designers 表为空,所有秀场挂在 brands 上,
+        因此 Q2 用 brands 替代 designers。primary_style_id 来自 053 seed。
+
+        降级策略: 0 命中时回退到全表 top N (按 id 排序保证稳定),保证流程
+        不死局。等 brands 全量回填完成 (每个 style >= 5),fallback 不触发。
+        """
         result = (
-            self.db.table("designers")
-            .select("id, name, slug, image_url")
+            self.db.table("brands")
+            .select("id, name, cover_image, vogue_slug")
             .eq("primary_style_id", style_id)
             .limit(limit)
             .execute()
         )
+        rows = result.data or []
+        if not rows:
+            fallback = (
+                self.db.table("brands")
+                .select("id, name, cover_image, vogue_slug")
+                .order("id")
+                .limit(limit)
+                .execute()
+            )
+            rows = fallback.data or []
+
         cards = [
             OptionCard(
                 id=r["id"],
-                slug=r.get("slug"),
+                slug=r.get("vogue_slug"),
                 name=r["name"],
-                cover_url=r.get("image_url"),
+                cover_url=r.get("cover_image"),
             )
-            for r in (result.data or [])
+            for r in rows
         ]
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
 
-    def get_shows_options(self, designer_id: int, limit: int = 5) -> OptionListResponse:
-        """Q3: shows WHERE designer_id = designer_id LIMIT N。
+    def get_shows_options(self, brand_id: int, limit: int = 5) -> OptionListResponse:
+        """Q3: shows WHERE brand_name = (brands.name from brand_id) LIMIT N。
+
+        shows.brand_name 是字符串列,与 brands.name 一一对应 (建表时就这么设计),
+        因此通过 brands.id → brands.name → shows.brand_name 间接关联。
 
         多语言: title_i18n 是 JSONB,这里 pick en 作为主名 (大多数秀场标题
         本身就是 EN 中性,如「Fall 2023 Ready-to-Wear」),无 i18n 时 fallback
         到 season。前端不需要拿 zh 译名 (秀场标题罕译),所以 OptionCard 的
         name_zh 留空。
         """
-        result = (
-            self.db.table("shows")
-            .select("id, season, title_i18n, cover_image, year")
-            .eq("designer_id", designer_id)
-            .order("year", desc=True)
-            .limit(limit)
+        # 先把 brand_id 翻译成 brand_name
+        brand_lookup = (
+            self.db.table("brands")
+            .select("name")
+            .eq("id", brand_id)
             .execute()
         )
+        brand_name = brand_lookup.data[0]["name"] if brand_lookup.data else None
+
+        rows: List[Dict[str, Any]] = []
+        if brand_name:
+            result = (
+                self.db.table("shows")
+                .select("id, season, title_i18n, cover_image, year")
+                .eq("brand_name", brand_name)
+                .order("year", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            rows = result.data or []
+
+        # 降级: 选到的 brand 还没录入秀场时,退到全库最新秀场,保证 Q3 不死局。
+        if not rows:
+            fallback = (
+                self.db.table("shows")
+                .select("id, season, title_i18n, cover_image, year")
+                .order("year", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            rows = fallback.data or []
         cards = []
-        for r in (result.data or []):
+        for r in rows:
             title = pick_locale(r.get("title_i18n"), "en")
             name = title or r.get("season") or "Show"
             subtitle = f"{r.get('year') or ''} {r.get('season') or ''}".strip()

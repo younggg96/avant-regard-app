@@ -38,8 +38,11 @@ def test_qa_prompt():
     print("[test] build_qa_messages")
     rag = {
         "style": {"id": 1, "name": "Avant-garde", "name_zh": "先锋", "description": "解构与实验"},
-        "designer": {"id": 2, "name": "Yohji Yamamoto", "bio": "Japanese designer..."},
-        "show": {"id": 3, "title": "FW23", "season": "Fall 23", "year": 2023, "city": "Paris", "brand_name": "Yohji"},
+        "brand": {
+            "id": 2, "name": "Yohji Yamamoto", "country": "JP",
+            "founded_year": "1972", "founder": "Yohji Yamamoto", "category": "先锋设计师品牌",
+        },
+        "show": {"id": 3, "title": "FW23", "season": "Fall 23", "year": 2023, "city": "Paris", "brand_name": "Yohji Yamamoto"},
         "look": {"id": 9, "image_url": "https://example.com/look.jpg"},
         "look_fallback_text": None,
         "perspective": "OUTFIT",
@@ -47,7 +50,7 @@ def test_qa_prompt():
     pool = [{"id": 1, "name": "复古风", "slug": "vintage"}, {"id": 2, "name": "极简", "slug": "minimal"}]
     sys_p, usr_p = build_qa_messages(rag, pool)
     _assert("严格 JSON" in sys_p, "system prompt 含格式约束")
-    _assert("Yohji Yamamoto" in usr_p, "user prompt 包含设计师名")
+    _assert("Yohji Yamamoto" in usr_p, "user prompt 包含品牌名")
     _assert("OUTFIT" in usr_p, "user prompt 含角度")
     _assert("复古风" in usr_p, "user prompt 含 community 池")
 

@@ -28,12 +28,12 @@ PROMPT_VERSION = "v1.0.0"
 # System Prompt: 全局约束 (V3 #25 反虚构条款)
 # =====================================================
 _QA_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
-任务是基于用户提供的【风格 / 设计师 / 秀场 / 单品 / 角度】,生成一篇真实
+任务是基于用户提供的【风格 / 品牌 / 秀场 / 单品 / 角度】,生成一篇真实
 有质感的中文帖子。
 
 严格约束:
-1. 仅引用用户上下文中明确给出的品牌、设计师、秀场。如果上下文里没有,
-   绝对不要编造名字、年份或地点。需要泛指时用「这位设计师」「这一季」。
+1. 仅引用用户上下文中明确给出的品牌、秀场。如果上下文里没有,
+   绝对不要编造名字、年份或地点。需要泛指时用「这一品牌」「这一季」。
 2. 风格描述必须与给定的风格短描一致,不要扩散到其他流派。
 3. 用户「角度」字段指明了帖子语气:
      - OUTFIT: 穿搭分享, 第一人称, 有具体单品搭配
@@ -77,9 +77,19 @@ def build_qa_user_prompt(ctx: Dict[str, Any], community_pool: List[Dict[str, Any
         parts.append(
             f"- 风格: {s.get('name')} ({s.get('name_zh') or ''}) — {s.get('description') or ''}"
         )
-    if ctx.get("designer"):
-        d = ctx["designer"]
-        parts.append(f"- 设计师: {d.get('name')}; bio: {(d.get('bio') or '')[:200]}")
+    if ctx.get("brand"):
+        b = ctx["brand"]
+        meta = []
+        if b.get("country"):
+            meta.append(f"产地 {b['country']}")
+        if b.get("founded_year"):
+            meta.append(f"创立 {b['founded_year']}")
+        if b.get("founder"):
+            meta.append(f"创始人 {b['founder']}")
+        if b.get("category"):
+            meta.append(b["category"])
+        meta_str = ", ".join(meta)
+        parts.append(f"- 品牌: {b.get('name')}" + (f" ({meta_str})" if meta_str else ""))
     if ctx.get("show"):
         sh = ctx["show"]
         parts.append(

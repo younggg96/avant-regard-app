@@ -29,7 +29,7 @@ import OptionCard from "./components/OptionCard";
 import StepProgressBar from "./components/StepProgressBar";
 import {
   getStylesOptions,
-  getDesignersOptions,
+  getBrandsOptions,
   getShowsOptions,
   getLooksOptions,
   getPerspectivesOptions,
@@ -63,14 +63,14 @@ const STEP_CONFIG: Record<StepKey, StepConfig> = {
   },
   2: {
     titleKey: "aiPost.qa.step2Title",
-    field: "designer_id",
-    fetch: (a) => getDesignersOptions(a.style_id!),
+    field: "brand_id",
+    fetch: (a) => getBrandsOptions(a.style_id!),
     nextRoute: "AIPostQAStep",
   },
   3: {
     titleKey: "aiPost.qa.step3Title",
     field: "show_id",
-    fetch: (a) => getShowsOptions(a.designer_id!),
+    fetch: (a) => getShowsOptions(a.brand_id!),
     nextRoute: "AIPostQAStep",
   },
   4: {

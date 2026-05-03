@@ -50,23 +50,24 @@ async def get_styles_options(
     return success(resp.model_dump())
 
 
-@router.get("/options/designers")
-async def get_designers_options(
+@router.get("/options/brands")
+async def get_brands_options(
     style_id: int = Query(..., description="Q1 选定的 style_id"),
     current_user_id: int = Depends(get_current_user_id),
 ):
-    """Q2: 该风格下的设计师"""
-    resp: OptionListResponse = ai_post_service.get_designers_options(style_id)
+    """Q2: 该风格下的品牌 (取代旧的 /options/designers,
+    因数据库实际只录入了 brands,designers 表为空)。"""
+    resp: OptionListResponse = ai_post_service.get_brands_options(style_id)
     return success(resp.model_dump())
 
 
 @router.get("/options/shows")
 async def get_shows_options(
-    designer_id: int = Query(..., description="Q2 选定的 designer_id"),
+    brand_id: int = Query(..., description="Q2 选定的 brand_id"),
     current_user_id: int = Depends(get_current_user_id),
 ):
-    """Q3: 该设计师的秀场/系列"""
-    resp: OptionListResponse = ai_post_service.get_shows_options(designer_id)
+    """Q3: 该品牌的秀场/系列"""
+    resp: OptionListResponse = ai_post_service.get_shows_options(brand_id)
     return success(resp.model_dump())
 
 

@@ -70,7 +70,8 @@ export interface SuggestedCommunity {
 
 export interface QAAnswers {
   style_id?: number;
-  designer_id?: number;
+  /** Q2 在 053 之后改成品牌 (brands.id),原 designer_id 字段已弃用。 */
+  brand_id?: number;
   show_id?: number;
   look_id?: number | null;
   look_fallback_text?: string | null;
@@ -122,19 +123,19 @@ export async function getStylesOptions(): Promise<OptionListResponse> {
   return request<OptionListResponse>(`${BASE}/options/styles`);
 }
 
-export async function getDesignersOptions(
+export async function getBrandsOptions(
   styleId: number,
 ): Promise<OptionListResponse> {
   return request<OptionListResponse>(
-    `${BASE}/options/designers?style_id=${styleId}`,
+    `${BASE}/options/brands?style_id=${styleId}`,
   );
 }
 
 export async function getShowsOptions(
-  designerId: number,
+  brandId: number,
 ): Promise<OptionListResponse> {
   return request<OptionListResponse>(
-    `${BASE}/options/shows?designer_id=${designerId}`,
+    `${BASE}/options/shows?brand_id=${brandId}`,
   );
 }
 

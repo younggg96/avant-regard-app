@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { Text as RNText } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, OptimizedImage } from "../../../components/ui";
 import { theme } from "../../../theme";
@@ -57,9 +58,25 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
               contentFit="cover"
             />
           ) : (
-            <Text fontSize={32} color="$gray300">
-              {displayName.slice(0, 1).toUpperCase()}
-            </Text>
+            // 用裸 RN Text 而不是主题包装的 Text:
+            //   1. 主题 Text 默认 fontFamily = PlayfairDisplay (Latin only),
+            //      渲染中文要走系统兜底字体, baseline 计算会乱。
+            //   2. 主题 Text 默认 lineHeight = $md (16), 与这里 36px 字号严重不匹配,
+            //      CJK 字形直接被竖向裁掉 (issue: 「先 / 极 / 街 / 红」只显示半个字).
+            // 这里 lineHeight = fontSize * 1.25, 给 CJK 留够基线空间。
+            <RNText
+              style={{
+                fontSize: 36,
+                lineHeight: 45,
+                fontWeight: "500",
+                color: theme.colors.gray300,
+                textAlign: "center",
+              }}
+              allowFontScaling={false}
+              numberOfLines={1}
+            >
+              {displayName.slice(0, 1)}
+            </RNText>
           )}
         </Box>
         <Box px="$sm" py="$sm">
