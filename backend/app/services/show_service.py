@@ -42,6 +42,7 @@ class ShowService:
         return Show(
             id=show["id"],
             brand=show.get("brand_name") or "",
+            brandName=show.get("brand_name") or "",
             season=show.get("season") or "",
             title=show.get("title"),
             coverImage=show.get("cover_image"),

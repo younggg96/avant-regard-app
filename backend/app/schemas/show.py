@@ -10,6 +10,9 @@ class Show(BaseModel):
     """秀场响应"""
     id: Union[int, str]                 # 支持整数或字符串类型的 ID
     brand: str                          # 品牌名称
+    # Web admin 历史上读的是 brandName；公开 API / mobile 读的是 brand。
+    # 两个字段同时保留，避免改动任一端已有调用。
+    brandName: Optional[str] = None
     season: str                         # 季度
     title: Optional[str] = None         # 标题
     coverImage: Optional[str] = None    # 封面图片

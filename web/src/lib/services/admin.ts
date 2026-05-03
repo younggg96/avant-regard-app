@@ -474,7 +474,7 @@ export const brandsApi = {
 // ─── Shows ───────────────────────────────────────────────────────────────────
 
 export interface AdminShow {
-  id: number;
+  id: number | string;
   brandName: string;
   season: string;
   title?: string;
@@ -503,16 +503,16 @@ export const showsApi = {
   create: (data: Partial<AdminShow>) =>
     apiClient.post<AdminShow>("/api/shows/admin/create", data),
 
-  update: (id: number, data: Partial<AdminShow>) =>
+  update: (id: number | string, data: Partial<AdminShow>) =>
     apiClient.put<AdminShow>(`/api/shows/admin/${id}`, data),
 
-  delete: (id: number) =>
+  delete: (id: number | string) =>
     apiClient.delete<void>(`/api/shows/admin/${id}`),
 
-  approve: (id: number) =>
+  approve: (id: number | string) =>
     apiClient.post<void>(`/api/shows/admin/${id}/approve`),
 
-  reject: (id: number, reason?: string) =>
+  reject: (id: number | string, reason?: string) =>
     apiClient.post<void>(
       `/api/shows/admin/${id}/reject${reason ? `?reason=${encodeURIComponent(reason)}` : ""}`,
     ),
