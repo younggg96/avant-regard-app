@@ -55,11 +55,20 @@ interface ContentBlock {
   content: string; // 文本内容或图片 URI
 }
 
+import type { AIDraftPrefill } from "../services/aiPostService";
+
 // 路由参数类型
 type PublishForumPostRouteParams = {
   editMode?: boolean;
   draftPost?: Post;
   communityId?: number;
+  /**
+   * AI 发帖助手 (V3 #25.4) 的草稿预填载荷。存在时:
+   *   - 进入页面后自动 setTitle / setContentBlocks / setCommunity
+   *   - createPost 时透传 generatedByAi=true + generationMetadata
+   * 与 editMode 互斥: AI 草稿走 create, 不进 update 路径。
+   */
+  aiDraft?: AIDraftPrefill;
 };
 
 // 生成唯一 ID
@@ -105,6 +114,8 @@ const PublishForumPostScreen = () => {
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
   const initialCommunityId = route.params?.communityId;
+  // AI 草稿预填载荷 (V3 #25.4): 与 editMode 互斥, 触发时走 create + generatedByAi
+  const aiDraft = route.params?.aiDraft;
 
   const [title, setTitle] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
@@ -158,6 +169,33 @@ const PublishForumPostScreen = () => {
     };
     loadCommunities();
   }, [initialCommunityId]);
+
+  // AI 草稿预填: 进入页面时一次性把 AI 写好的标题 / 正文 / 封面 / 推荐社区灌进 state。
+  // 故意只跑一次 (依赖 [] + ref-style guard) 避免后续用户编辑被覆盖。
+  const aiPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (!aiDraft || aiPrefilledRef.current || editMode) return;
+    aiPrefilledRef.current = true;
+    if (aiDraft.title) setTitle(aiDraft.title);
+    if (aiDraft.contentText) {
+      setContentBlocks([
+        { id: generateId(), type: "text", content: aiDraft.contentText },
+      ]);
+    }
+    if (aiDraft.imageUrls && aiDraft.imageUrls.length > 0) {
+      setCoverImage(aiDraft.imageUrls[0]);
+    }
+  }, [aiDraft, editMode]);
+
+  // AI 推荐的社区: 等社区列表加载完才能匹配, 单独一个 effect。
+  useEffect(() => {
+    if (!aiDraft?.suggestedCommunityId || communities.length === 0) return;
+    if (selectedCommunity) return;
+    const matched = communities.find(
+      (c) => c.id === aiDraft.suggestedCommunityId,
+    );
+    if (matched) setSelectedCommunity(matched);
+  }, [aiDraft, communities, selectedCommunity]);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {
@@ -430,6 +468,10 @@ const PublishForumPostScreen = () => {
         imageUrls: [],
         ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
         communityId: selectedCommunity?.id,
+        ...(aiDraft && {
+          generatedByAi: true,
+          generationMetadata: aiDraft.generationMetadata,
+        }),
       },
       updateParams: editMode && draftPostId
         ? {
@@ -531,6 +573,10 @@ const PublishForumPostScreen = () => {
           imageUrls: finalCoverImage ? [finalCoverImage] : [],
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
           communityId: selectedCommunity?.id,
+          ...(aiDraft && {
+            generatedByAi: true,
+            generationMetadata: aiDraft.generationMetadata,
+          }),
         });
       }
 

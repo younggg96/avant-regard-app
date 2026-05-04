@@ -1,5 +1,5 @@
 /**
- * AI 发帖助手 — 预览/编辑/发布屏幕。
+ * AI 发帖助手 — 预览/编辑屏幕 (V3 #25.4)。
  *
  * 路由参数:
  *   { mode: "QA_TEXT" | "IMAGE_BRIEF",
@@ -9,7 +9,12 @@
  * 进入时第一件事调 `generate` 拿草稿,本地编辑标题 + 正文 + 选择社区。
  *   - 重新生成: 调 `regenerate(log_id)`,每天 ≤ 3 次。
  *   - 删除: 直接 navigation.popToTop() 回到 PublishType。
- *   - 发布: postService.createPost(generatedByAi=true, generationMetadata=...)
+ *   - 继续编辑: 不直接发帖, 而是把草稿打包成 `aiDraft` 路由参数,
+ *     navigation.replace 跳到对应基础发布屏 (Outfit/Lookbook/Review/Forum),
+ *     由基础屏负责让用户补完类型独有字段后 createPost。
+ *
+ * 目标类型 (target post type) 由 perspective / promptChip 自动选,
+ * 用户可以点 "更换" 在 ActionSheet 里改成另外 3 种之一。
  *
  * 错误分支:
  *   - 配额超限: Alert + 禁用按钮
@@ -18,13 +23,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, StyleSheet, TextInput } from "react-native";
 import { Alert as RNAlert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -35,14 +34,14 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import {
+  ActionSheet,
   Box,
-  Button,
-  ButtonText,
   HStack,
   Pressable,
   ScrollView,
   Text,
   VStack,
+  type ActionSheetAction,
 } from "../../components/ui";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
@@ -53,13 +52,16 @@ import {
   regenerate as apiRegenerate,
   translateAIPostError,
   AIPostErrorCode,
+  AI_POST_TARGET_ROUTES,
+  pickTargetPostType,
   type GenerateRequest,
   type GenerateResponse,
   type AIPostMode,
+  type AIPostTargetPostType,
+  type AIDraftPrefill,
   type SuggestedCommunity,
   type QuotaInfo,
 } from "../../services/aiPostService";
-import { createPost } from "../../services/postService";
 import {
   getCommunities,
   type Community,
@@ -90,6 +92,15 @@ const AIPostPreviewScreen: React.FC = () => {
 
   const [allCommunities, setAllCommunities] = useState<Community[]>([]);
   const [publishing, setPublishing] = useState(false);
+
+  // 目标基础类型: 由 perspective / promptChip 自动选, 用户可改
+  const [targetType, setTargetType] = useState<AIPostTargetPostType>(() =>
+    pickTargetPostType({
+      perspective: (answers as any)?.perspective ?? null,
+      promptChip: (answers as any)?.prompt_chip ?? null,
+    }),
+  );
+  const [showTypeSheet, setShowTypeSheet] = useState(false);
 
   // 1. 进入页面: 同步触发 generate + 拉社区列表
   useEffect(() => {
@@ -192,7 +203,12 @@ const AIPostPreviewScreen: React.FC = () => {
     );
   };
 
-  const handlePublish = async () => {
+  /**
+   * 「继续编辑」: 不直接发帖, 把 AI 草稿打包成 aiDraft 跳到目标基础发布屏。
+   * 用户在那里补完类型独有字段 (穿搭单品 / lookbook 多图 / 测评评分 / 论坛 contentBlocks)
+   * 后再走基础屏的 createPost(generatedByAi=true)。
+   */
+  const handleContinueEdit = () => {
     if (!userId) {
       RNAlert.alert(t("aiPost.preview.loginRequired"));
       return;
@@ -202,37 +218,35 @@ const AIPostPreviewScreen: React.FC = () => {
       RNAlert.alert(t("aiPost.preview.contentRequired"));
       return;
     }
-    if (!selectedCommunityId) {
-      RNAlert.alert(t("aiPost.preview.communityRequired"));
-      return;
-    }
 
     setPublishing(true);
-    try {
-      await createPost({
-        userId,
-        postType: "ARTICLES",
-        postStatus: "PUBLISHED",
-        title: title.trim(),
-        contentText: content.trim(),
-        imageUrls: imageUrls || [],
-        communityId: selectedCommunityId,
-        generatedByAi: true,
-        generationMetadata: generatedResp.metadata,
-      });
-      RNAlert.alert(t("aiPost.preview.publishSuccess"), "", [
-        {
-          text: t("common.confirm"),
-          onPress: () => navigation.popToTop(),
-        },
-      ]);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : t("common.unknownError");
-      RNAlert.alert(t("aiPost.preview.publishFailed"), msg);
-    } finally {
-      setPublishing(false);
-    }
+    const aiDraft: AIDraftPrefill = {
+      title: title.trim(),
+      contentText: content.trim(),
+      imageUrls: imageUrls || [],
+      suggestedCommunityId: selectedCommunityId ?? undefined,
+      suggestedTags: generatedResp.suggested_tags,
+      generationMetadata: generatedResp.metadata,
+    };
+    // navigation.replace 把 AI 流程闭合, 用户在基础屏返回时直接回到 PublishType,
+    // 不再退回 AI 预览 (避免重复消耗 quota / 与基础屏 state 冲突)。
+    navigation.replace(AI_POST_TARGET_ROUTES[targetType], { aiDraft });
   };
+
+  const targetTypeLabel = (type: AIPostTargetPostType) =>
+    t(`aiPost.preview.targetType.${type}`);
+
+  const typeSheetActions: ActionSheetAction[] = useMemo(
+    () =>
+      (Object.keys(AI_POST_TARGET_ROUTES) as AIPostTargetPostType[]).map(
+        (type) => ({
+          label: targetTypeLabel(type) + (type === targetType ? "  ✓" : ""),
+          onPress: () => setTargetType(type),
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [targetType, t],
+  );
 
   // 如果 generated_text 头部就是 title,正文里去掉重复的 title
   const stripTitleFromBody = (text: string, title: string): string => {
@@ -343,7 +357,7 @@ const AIPostPreviewScreen: React.FC = () => {
                 </Box>
               ) : null}
 
-              {/* 社区选择 */}
+              {/* 社区选择 (这里只是 AI 推荐预选, 真正确认在下一屏) */}
               <Box>
                 <Text fontSize="$sm" color="$gray400" mb="$xs">
                   {t("aiPost.preview.communityLabel")}
@@ -373,10 +387,50 @@ const AIPostPreviewScreen: React.FC = () => {
                   })}
                 </HStack>
               </Box>
+
+              {/* 目标基础类型展示条 + 更换入口 */}
+              <Pressable
+                onPress={() => setShowTypeSheet(true)}
+                style={styles.targetTypeRow}
+              >
+                <Box style={styles.targetTypeIcon}>
+                  <Ionicons
+                    name={
+                      targetType === "OUTFIT"
+                        ? "shirt-outline"
+                        : targetType === "LOOKBOOK"
+                          ? "albums-outline"
+                          : targetType === "REVIEW"
+                            ? "star-outline"
+                            : "chatbubbles-outline"
+                    }
+                    size={18}
+                    color={theme.colors.black}
+                  />
+                </Box>
+                <VStack flex={1} ml="$sm">
+                  <Text fontSize="$xs" color="$gray400">
+                    {t("aiPost.preview.targetType.label")}
+                  </Text>
+                  <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                    {targetTypeLabel(targetType)}
+                  </Text>
+                </VStack>
+                <HStack alignItems="center" gap="$xs">
+                  <Text fontSize="$xs" color="$black">
+                    {t("aiPost.preview.targetType.change")}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.black}
+                  />
+                </HStack>
+              </Pressable>
             </VStack>
           </ScrollView>
 
-          {/* 底部三个按钮 */}
+          {/* 底部操作栏: 视觉层级 = 次要(丢弃 ghost) < 次要(重新生成 outline) < 主要(发布 solid CTA) */}
           <HStack
             px="$lg"
             py="$md"
@@ -384,41 +438,98 @@ const AIPostPreviewScreen: React.FC = () => {
             borderTopWidth={1}
             borderTopColor="$gray100"
             bg="$white"
+            alignItems="center"
           >
-            <Button
-              flex={1}
-              variant="outline"
-              borderColor="$gray200"
+            <Pressable
               onPress={handleDelete}
+              disabled={publishing}
+              style={[styles.btnGhost, publishing && styles.btnDisabled]}
             >
-              <ButtonText color="$gray500">
+              <Ionicons
+                name="trash-outline"
+                size={16}
+                color={theme.colors.gray500}
+              />
+              <Text
+                fontSize="$sm"
+                fontWeight="$medium"
+                color="$gray500"
+                ml="$xs"
+              >
                 {t("aiPost.preview.delete")}
-              </ButtonText>
-            </Button>
-            <Button
-              flex={1}
-              variant="outline"
-              borderColor="$gray200"
+              </Text>
+            </Pressable>
+
+            <Pressable
               onPress={handleRegenerate}
-              disabled={generating}
+              disabled={generating || publishing}
+              style={[
+                styles.btnOutline,
+                (generating || publishing) && styles.btnDisabled,
+              ]}
             >
-              <ButtonText color="$gray500">
+              {generating ? (
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.gray500}
+                />
+              ) : (
+                <Ionicons
+                  name="refresh-outline"
+                  size={16}
+                  color={theme.colors.black}
+                />
+              )}
+              <Text
+                fontSize="$sm"
+                fontWeight="$medium"
+                color="$black"
+                ml="$xs"
+                numberOfLines={1}
+              >
                 {t("aiPost.preview.regenerate")}
-              </ButtonText>
-            </Button>
-            <Button
-              flex={1.4}
-              bg="$black"
-              onPress={handlePublish}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleContinueEdit}
               disabled={publishing || generating}
+              style={[
+                styles.btnPrimary,
+                (publishing || generating) && styles.btnPrimaryDisabled,
+              ]}
             >
-              <ButtonText color="$white">
-                {publishing ? t("common.loading") : t("aiPost.preview.publish")}
-              </ButtonText>
-            </Button>
+              {publishing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={theme.colors.white}
+                  />
+                  <Text
+                    fontSize="$sm"
+                    fontWeight="$semibold"
+                    color="$white"
+                    ml="$xs"
+                    numberOfLines={1}
+                  >
+                    {t("aiPost.preview.continueEdit")}
+                  </Text>
+                </>
+              )}
+            </Pressable>
           </HStack>
         </>
       )}
+
+      <ActionSheet
+        visible={showTypeSheet}
+        onClose={() => setShowTypeSheet(false)}
+        title={t("aiPost.preview.targetType.sheetTitle")}
+        actions={typeSheetActions}
+      />
     </SafeAreaView>
   );
 };
@@ -440,6 +551,63 @@ const styles = StyleSheet.create({
     color: theme.colors.gray500,
     minHeight: 180,
     textAlignVertical: "top",
+  },
+  // -- 底部操作栏: 三档视觉层级 --
+  // 丢弃: ghost, 文字按钮, 占地最小, 防误触放最左
+  btnGhost: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  // 重新生成: outline, 次操作, 与丢弃同列但带 border 强调可点
+  btnOutline: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.gray200,
+    backgroundColor: theme.colors.white,
+  },
+  // 发布: 主 CTA, 黑底白字 + flex=1.6 抢视觉重量
+  btnPrimary: {
+    flex: 1.6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: theme.colors.black,
+  },
+  btnPrimaryDisabled: {
+    backgroundColor: theme.colors.gray400,
+  },
+  btnDisabled: {
+    opacity: 0.45,
+  },
+  // 目标基础类型展示条
+  targetTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: theme.colors.gray100,
+  },
+  targetTypeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.white,
   },
 });
 

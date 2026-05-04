@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Image as RNImage,
@@ -44,10 +44,14 @@ import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
+import type { AIDraftPrefill } from "../services/aiPostService";
+
 // 路由参数类型
 type PublishLookbookRouteParams = {
   editMode?: boolean;
   draftPost?: Post;
+  /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
+  aiDraft?: AIDraftPrefill;
 };
 
 const PublishLookbookScreen = () => {
@@ -59,6 +63,7 @@ const PublishLookbookScreen = () => {
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
+  const aiDraft = route.params?.aiDraft;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -152,6 +157,20 @@ const PublishLookbookScreen = () => {
       }
     }
   }, [editMode, draftPost]);
+
+  // AI 草稿预填 (V3 #25.4): 一次性把 AI 草稿灌入 lookbook state, 用户可继续编辑。
+  // Lookbook 的核心是图片集合, AI 文字模式没图;图片+简述模式才有 imageUrls。
+  const aiPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (!aiDraft || aiPrefilledRef.current || editMode) return;
+    aiPrefilledRef.current = true;
+    if (aiDraft.title) setTitle(aiDraft.title);
+    if (aiDraft.contentText) setDescription(aiDraft.contentText);
+    if (aiDraft.imageUrls && aiDraft.imageUrls.length > 0) {
+      setImages(aiDraft.imageUrls);
+      setCoverImage(aiDraft.imageUrls[0]);
+    }
+  }, [aiDraft, editMode]);
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageEditMenu, setShowImageEditMenu] = useState(false);
@@ -294,6 +313,10 @@ const PublishLookbookScreen = () => {
         ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
         ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
         ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+        ...(aiDraft && {
+          generatedByAi: true,
+          generationMetadata: aiDraft.generationMetadata,
+        }),
       },
       updateParams: editMode && draftPostId
         ? {
@@ -391,6 +414,10 @@ const PublishLookbookScreen = () => {
           ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
           ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
           ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+          ...(aiDraft && {
+            generatedByAi: true,
+            generationMetadata: aiDraft.generationMetadata,
+          }),
         });
       }
 

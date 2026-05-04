@@ -2245,9 +2245,10 @@
       "contentLabel": "正文",
       "contentPlaceholder": "AI 没生成内容, 你也可以自己写",
       "tagsLabel": "AI 推荐标签",
-      "communityLabel": "选择发布到的社区",
+      "communityLabel": "AI 推荐社区",
       "regenerate": "重新生成",
       "publish": "发布",
+      "continueEdit": "继续编辑",
       "delete": "丢弃",
       "regenerateConfirmTitle": "重新生成?",
       "regenerateConfirmBody": "你今天还可以重新生成 {{remaining}} 次",
@@ -2257,7 +2258,16 @@
       "contentRequired": "标题和正文不能为空",
       "communityRequired": "请选择一个社区",
       "publishSuccess": "发布成功",
-      "publishFailed": "发布失败"
+      "publishFailed": "发布失败",
+      "targetType": {
+        "label": "本帖将作为",
+        "change": "更换",
+        "sheetTitle": "选择要发布的帖子类型",
+        "FORUM": "论坛/文章",
+        "OUTFIT": "穿搭分享",
+        "LOOKBOOK": "图册 (Lookbook)",
+        "REVIEW": "单品测评"
+      }
     },
     "quota": {
       "remaining": "剩余 {{count}} 次",

@@ -39,10 +39,14 @@ import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 
 const PAGE_SIZE = 30;
 
+import type { AIDraftPrefill } from "../services/aiPostService";
+
 // 路由参数类型
 type PublishReviewRouteParams = {
   editMode?: boolean;
   draftPost?: Post;
+  /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
+  aiDraft?: AIDraftPrefill;
 };
 
 const PublishReviewScreen = () => {
@@ -54,6 +58,7 @@ const PublishReviewScreen = () => {
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
+  const aiDraft = route.params?.aiDraft;
 
   const [title, setTitle] = useState("");
   const [productName, setProductName] = useState("");
@@ -326,6 +331,19 @@ const PublishReviewScreen = () => {
     }
   }, [editMode, draftPost]);
 
+  // AI 草稿预填 (V3 #25.4): AI 不掌握 productName / rating / brand, 这些必填字段
+  // 用户进来后还得自己填; 标题、reviewText、图片可以直接灌进去。
+  const aiPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (!aiDraft || aiPrefilledRef.current || editMode) return;
+    aiPrefilledRef.current = true;
+    if (aiDraft.title) setTitle(aiDraft.title);
+    if (aiDraft.contentText) setReviewText(aiDraft.contentText);
+    if (aiDraft.imageUrls && aiDraft.imageUrls.length > 0) {
+      setImages(aiDraft.imageUrls);
+    }
+  }, [aiDraft, editMode]);
+
   // 获取显示的秀场列表：搜索模式返回搜索结果，否则返回分页数据
   const filteredShows = useMemo(() => {
     if (searchQuery.trim()) {
@@ -477,6 +495,10 @@ const PublishReviewScreen = () => {
         ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
         ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
         ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+        ...(aiDraft && {
+          generatedByAi: true,
+          generationMetadata: aiDraft.generationMetadata,
+        }),
       },
       updateParams: editMode && draftPostId
         ? {
@@ -587,6 +609,10 @@ const PublishReviewScreen = () => {
           ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
           ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
           ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+          ...(aiDraft && {
+            generatedByAi: true,
+            generationMetadata: aiDraft.generationMetadata,
+          }),
         });
       }
 

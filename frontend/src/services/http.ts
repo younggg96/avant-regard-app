@@ -254,7 +254,7 @@ async function readErrorMessage(
   if (contentType?.includes("application/json")) {
     try {
       const data = await response.json();
-      return data?.detail || data?.message || data?.error || fallback;
+      return extractMessage(data) ?? fallback;
     } catch {
       return fallback;
     }
@@ -265,4 +265,39 @@ async function readErrorMessage(
   } catch {
     return fallback;
   }
+}
+
+/**
+ * 从后端错误响应里抽出可读字符串。
+ *
+ * FastAPI 业务异常约定 (ai-post 等):
+ *     `raise HTTPException(status_code=502, detail={"code": "LLM_FAILED",
+ *                                                    "message": "...",
+ *                                                    "log_id": 123})`
+ * 序列化成 `{"detail": {"code": "...", "message": "...", ...}}`。
+ *
+ * 早期实现里直接 `return data?.detail`,detail 是对象时 JS 会按 `String(obj)`
+ * 强转成 `"[object Object]"`,把真实错误吞掉。这里递归从常见键 (message /
+ * detail / error) 中拿字符串,优先级: 顶层 -> detail 嵌套对象 -> error 嵌套
+ * 对象。命中字符串就返回,否则返回 null 让上层走 fallback。
+ */
+function extractMessage(data: unknown): string | undefined {
+  if (typeof data === "string") return data;
+  if (data == null || typeof data !== "object") return undefined;
+  const obj = data as Record<string, unknown>;
+
+  if (typeof obj.message === "string") return obj.message;
+  if (typeof obj.error === "string") return obj.error;
+  if (typeof obj.detail === "string") return obj.detail;
+
+  // detail 是嵌套对象 (FastAPI HTTPException(detail={...}) 的标准形态)
+  if (obj.detail && typeof obj.detail === "object") {
+    const nested = extractMessage(obj.detail);
+    if (nested) return nested;
+  }
+  if (obj.error && typeof obj.error === "object") {
+    const nested = extractMessage(obj.error);
+    if (nested) return nested;
+  }
+  return undefined;
 }

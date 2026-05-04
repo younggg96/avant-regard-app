@@ -52,10 +52,14 @@ import { resolveCoverDimensions } from "../utils/useMediaAspectRatio";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PAGE_SIZE = 30;
 
+import type { AIDraftPrefill } from "../services/aiPostService";
+
 // 路由参数类型
 type PublishOutfitRouteParams = {
   editMode?: boolean;
   draftPost?: Post;
+  /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
+  aiDraft?: AIDraftPrefill;
 };
 
 const PublishOutfitScreen = () => {
@@ -67,6 +71,7 @@ const PublishOutfitScreen = () => {
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
+  const aiDraft = route.params?.aiDraft;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -346,6 +351,21 @@ const PublishOutfitScreen = () => {
     }
   }, [editMode, draftPost]);
 
+  // AI 草稿预填 (V3 #25.4): 把 AI 生成好的标题 / 正文 / 图片灌入 outfit state。
+  // 一次性, 之后用户修改不再被覆盖。AI 不掌握穿搭独有的 selectedShows / selectedBrands /
+  // productInfo, 这些字段留给用户自己补完。
+  const aiPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (!aiDraft || aiPrefilledRef.current || editMode) return;
+    aiPrefilledRef.current = true;
+    if (aiDraft.title) setTitle(aiDraft.title);
+    if (aiDraft.contentText) setDescription(aiDraft.contentText);
+    if (aiDraft.imageUrls && aiDraft.imageUrls.length > 0) {
+      setImages(aiDraft.imageUrls);
+      setCoverImage(aiDraft.imageUrls[0]);
+    }
+  }, [aiDraft, editMode]);
+
   // 获取显示的秀场列表：搜索模式返回搜索结果，否则返回分页数据
   const filteredShows = useMemo(() => {
     if (searchQuery.trim()) {
@@ -489,6 +509,10 @@ const PublishOutfitScreen = () => {
         ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
         ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
         ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+        ...(aiDraft && {
+          generatedByAi: true,
+          generationMetadata: aiDraft.generationMetadata,
+        }),
       },
       updateParams: editMode && draftPostId
         ? {
@@ -596,6 +620,10 @@ const PublishOutfitScreen = () => {
           ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
           ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
           ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+          ...(aiDraft && {
+            generatedByAi: true,
+            generationMetadata: aiDraft.generationMetadata,
+          }),
         });
       }
 

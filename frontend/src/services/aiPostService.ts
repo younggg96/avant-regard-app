@@ -107,6 +107,94 @@ export interface GenerateResponse {
 }
 
 // =====================================================
+// AI 草稿 → 基础发帖类型 衔接 (V3 #25.4)
+// =====================================================
+
+/**
+ * AI 预览页 → 基础发布屏的 4 大目标类型。与 PublishTypeScreen 的 route 名一一对应。
+ */
+export type AIPostTargetPostType =
+  | "FORUM"
+  | "OUTFIT"
+  | "LOOKBOOK"
+  | "REVIEW";
+
+export const AI_POST_TARGET_ROUTES: Record<AIPostTargetPostType, string> = {
+  FORUM: "PublishForumPost",
+  OUTFIT: "PublishOutfit",
+  LOOKBOOK: "PublishLookbook",
+  REVIEW: "PublishReview",
+};
+
+/**
+ * AI 草稿带到基础发布屏的预填载荷。
+ *
+ * 设计要点:
+ *   - 与 `Post` 形态解耦; 基础屏只需读这个简单 shape, 不要混淆 editMode (= 改已有帖)
+ *   - 必带 `generationMetadata`, 基础屏 createPost 时回传给后端做漏斗回填
+ *   - `suggestedCommunityId` / `suggestedTags` 让基础屏能自动选中 AI 推荐的社区/标签
+ *   - 用 camelCase 与基础屏 state 命名一致, 避免每个屏自己再 snake↔camel 一次
+ */
+export interface AIDraftPrefill {
+  /** AI 解析出的标题 */
+  title: string;
+  /** AI 解析出的正文 */
+  contentText: string;
+  /** 图片+简述模式带过来的封面/正文图片;问答模式通常为空 */
+  imageUrls?: string[];
+  /** AI 推荐的社区 (顶选) */
+  suggestedCommunityId?: number;
+  /** AI 推荐的标签 (#xx) */
+  suggestedTags?: string[];
+  /**
+   * 后端校验必填的 generation 元数据,createPost 时原样透传。
+   * 至少包含 { log_id }。
+   */
+  generationMetadata: Record<string, unknown>;
+}
+
+/**
+ * 把 AI 4 步问答 / 图片+简述模式的"角度"映射成基础发帖类型。
+ *
+ * QA_TEXT 用 perspective; IMAGE_BRIEF 用 prompt_chip。两条产品线在这里收口,
+ * 业务层只关心枚举对到的目标 route, 不再分支。
+ *
+ * 默认 fallback = FORUM (论坛/文章), 容错任何未知值。
+ */
+export function pickTargetPostType(input: {
+  perspective?: AIPostPerspective | null;
+  promptChip?: ImageBriefChip | null;
+}): AIPostTargetPostType {
+  const { perspective, promptChip } = input;
+  if (perspective) {
+    switch (perspective) {
+      case "OUTFIT":
+        return "OUTFIT";
+      case "COLLECTION":
+        return "LOOKBOOK";
+      case "REVIEW":
+        return "REVIEW";
+      case "RANT":
+      case "INSPIRATION":
+        return "FORUM";
+    }
+  }
+  if (promptChip) {
+    switch (promptChip) {
+      case "RECENT_BUY":
+        return "REVIEW";
+      case "FAVORITE_ITEM":
+        return "OUTFIT";
+      case "LOOK_APPRECIATION":
+        return "LOOKBOOK";
+      case "CUSTOM":
+        return "FORUM";
+    }
+  }
+  return "FORUM";
+}
+
+// =====================================================
 // 业务错误码 (与后端 detail.code 对齐)
 // =====================================================
 

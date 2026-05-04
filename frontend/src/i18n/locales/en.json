@@ -2245,9 +2245,10 @@
       "contentLabel": "Body",
       "contentPlaceholder": "AI didn't return content; feel free to write your own",
       "tagsLabel": "Suggested tags",
-      "communityLabel": "Choose a community",
+      "communityLabel": "Suggested community",
       "regenerate": "Regenerate",
       "publish": "Publish",
+      "continueEdit": "Continue Editing",
       "delete": "Discard",
       "regenerateConfirmTitle": "Regenerate?",
       "regenerateConfirmBody": "{{remaining}} regenerations left today",
@@ -2257,7 +2258,16 @@
       "contentRequired": "Title and body cannot be empty",
       "communityRequired": "Please choose a community",
       "publishSuccess": "Published",
-      "publishFailed": "Publish failed"
+      "publishFailed": "Publish failed",
+      "targetType": {
+        "label": "Will be posted as",
+        "change": "Change",
+        "sheetTitle": "Choose post type",
+        "FORUM": "Forum / Article",
+        "OUTFIT": "Outfit",
+        "LOOKBOOK": "Lookbook",
+        "REVIEW": "Item Review"
+      }
     },
     "quota": {
       "remaining": "{{count}} left",
