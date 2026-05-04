@@ -18,7 +18,7 @@ export default function ShowReviewPage() {
   const [shows, setShows] = useState<AdminShow[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<AdminShow | null>(null);
-  const [acting, setActing] = useState<number | null>(null);
+  const [acting, setActing] = useState<number | string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -31,7 +31,7 @@ export default function ShowReviewPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: number | string) => {
     setActing(id);
     try {
       await showsApi.approve(id);
@@ -41,7 +41,7 @@ export default function ShowReviewPage() {
     }
   };
 
-  const handleReject = async (id: number, reason: string) => {
+  const handleReject = async (id: number | string, reason: string) => {
     setActing(id);
     try {
       await showsApi.reject(id, reason || undefined);
