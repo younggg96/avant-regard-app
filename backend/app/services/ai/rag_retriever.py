@@ -3,12 +3,12 @@
 
 设计理念:
   - 首期不上向量库 (pgvector / 外置 Milvus 都太重),用结构化关系召回
-    完全够用: styles → designers → shows → looks 已经形成强主键链路,
-    用户在 5 步问答里已经把要召回的档案手动选好了。
+    完全够用: styles → brands → shows 已经形成强主键链路,
+    用户在 4 步问答里已经把要召回的档案手动选好了。
   - 视觉模式下没有档案结构化输入,但用户上传图本身是最强的"上下文",
     交给 Qwen-VL 直接看图描述,prompt_chip 作为意图分类。
-  - 下一期升级到 pgvector: 仅在 Q4 fallback 文字 / IMAGE_BRIEF 用户写
-    50 字时,把这段文字 embedding 召回相似档案,丰富 prompt 上下文。
+  - 下一期升级到 pgvector: IMAGE_BRIEF 用户写 50 字时, 把这段文字
+    embedding 召回相似档案,丰富 prompt 上下文。
 
 返回结构 (字典) 直接灌进 prompt_builder, 不再做二次解析。
 """
@@ -30,19 +30,13 @@ class RAGRetriever:
     # -----------------------------------------------------------------
     def build_qa_context(self, answers: Dict[str, Any]) -> Dict[str, Any]:
         """
-        answers: {
-          style_id, brand_id, show_id,
-          look_id (optional), look_fallback_text (optional),
-          perspective
-        }
+        answers: { style_id, brand_id, show_id, perspective }
 
         返回:
           {
             "style": {"id","name","name_zh","description"} | None,
             "brand": {"id","name","country","founded_year","category"} | None,
             "show":  {"id","title","season","year","city","brand_name","review_text"} | None,
-            "look":  {"id","image_url"} | None,
-            "look_fallback_text": str | None,
             "perspective": str,
           }
         缺失的关节填 None,prompt_builder 自动跳过。
@@ -51,8 +45,6 @@ class RAGRetriever:
             "style": None,
             "brand": None,
             "show": None,
-            "look": None,
-            "look_fallback_text": answers.get("look_fallback_text"),
             "perspective": answers.get("perspective"),
         }
 
@@ -122,17 +114,6 @@ class RAGRetriever:
                     "review_text": pick_locale(row.get("review_text_i18n"), "zh")
                         or pick_locale(row.get("review_text_i18n"), "en"),
                 }
-
-        look_id = answers.get("look_id")
-        if look_id:
-            r = (
-                self.db.table("show_images")
-                .select("id, image_url")
-                .eq("id", look_id)
-                .execute()
-            )
-            if r.data:
-                ctx["look"] = r.data[0]
 
         return ctx
 

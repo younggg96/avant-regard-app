@@ -2200,13 +2200,13 @@
   "aiPost": {
     "entryCard": {
       "qaTitle": "AI 帮我写帖子",
-      "qaDesc": "5 步问答, 让 AI 帮你写出第一篇穿搭/收藏分享"
+      "qaDesc": "4 步问答, 让 AI 帮你写出第一篇穿搭/收藏分享"
     },
     "entry": {
       "title": "AI 发帖助手",
       "heading": "选择一种生成方式",
       "subheading": "AI 会基于你的选择和现有档案库生成草稿, 你可以预览编辑后再发布",
-      "qaTitle": "5 步问答模式",
+      "qaTitle": "4 步问答模式",
       "qaDesc": "适合不知道怎么开头的首贴, 引导式生成文字帖",
       "imageTitle": "图片+简述模式",
       "imageDesc": "上传 1-9 张图, 选个意图, 3 秒生成分享帖",
@@ -2217,14 +2217,8 @@
       "step1Title": "你今天想发什么风格?",
       "step2Title": "选一个让你心动的品牌",
       "step3Title": "哪一场秀让你印象深刻?",
-      "step4Title": "你最喜欢这场的哪个 Look?",
-      "step5Title": "想用什么角度来写这篇帖子?",
-      "noOptions": "暂无可选项, 请返回上一步换一个",
-      "useTextFallback": "都不是想要的?自己用文字描述",
-      "fallbackTitle": "用文字描述这场秀的细节",
-      "fallbackHint": "这场秀我们暂未收录 Look 图片, 用一两句话写下让你心动的细节, AI 会帮你扩写",
-      "fallbackPlaceholder": "比如: 第三套那件解构外套的不对称肩线...",
-      "fallbackEmpty": "请先填写内容"
+      "step4Title": "想用什么角度来写这篇帖子?",
+      "noOptions": "暂无可选项, 请返回上一步换一个"
     },
     "imageBrief": {
       "title": "图片+简述",

@@ -43,8 +43,6 @@ def test_qa_prompt():
             "founded_year": "1972", "founder": "Yohji Yamamoto", "category": "先锋设计师品牌",
         },
         "show": {"id": 3, "title": "FW23", "season": "Fall 23", "year": 2023, "city": "Paris", "brand_name": "Yohji Yamamoto"},
-        "look": {"id": 9, "image_url": "https://example.com/look.jpg"},
-        "look_fallback_text": None,
         "perspective": "OUTFIT",
     }
     pool = [{"id": 1, "name": "复古风", "slug": "vintage"}, {"id": 2, "name": "极简", "slug": "minimal"}]

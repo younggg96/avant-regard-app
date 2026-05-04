@@ -28,7 +28,7 @@ PROMPT_VERSION = "v1.0.0"
 # System Prompt: 全局约束 (V3 #25 反虚构条款)
 # =====================================================
 _QA_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
-任务是基于用户提供的【风格 / 品牌 / 秀场 / 单品 / 角度】,生成一篇真实
+任务是基于用户提供的【风格 / 品牌 / 秀场 / 角度】,生成一篇真实
 有质感的中文帖子。
 
 严格约束:
@@ -98,10 +98,6 @@ def build_qa_user_prompt(ctx: Dict[str, Any], community_pool: List[Dict[str, Any
         )
         if sh.get("review_text"):
             parts.append(f"  秀评摘要: {(sh.get('review_text') or '')[:300]}")
-    if ctx.get("look"):
-        parts.append(f"- 单品/Look 图片: {ctx['look'].get('image_url')}")
-    if ctx.get("look_fallback_text"):
-        parts.append(f"- 用户对细节的描述: {ctx['look_fallback_text']}")
 
     parts.append(f"\n【角度】 {ctx.get('perspective') or 'OUTFIT'}")
 

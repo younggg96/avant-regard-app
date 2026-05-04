@@ -1,16 +1,19 @@
 /**
- * AI 发帖助手 5 步问答 — 通用步骤屏幕。
+ * AI 发帖助手 4 步问答 — 通用步骤屏幕。
  *
- * 路由参数: { step: 1..5, answers: Partial<QAAnswers> }
+ * 路由参数: { step: 1..4, answers: Partial<QAAnswers> }
  *
  * 每步逻辑由 STEP_CONFIG 驱动:
  *   - title: 顶部问句 (i18n key)
  *   - field: 把选中 id 写到 answers 的哪个字段
  *   - fetch: 拉选项接口
  *   - next: 下一步路由
- *   - fallbackTo: 接口返回 has_fallback=true 时改跳转到的路由
  *
- * 选完即跳下一步,不需要"下一步"按钮。Q5 选完跳预览页 + 调 generate。
+ * 选完即跳下一步,不需要"下一步"按钮。Q4 选完跳预览页 + 调 generate。
+ *
+ * 历史: V3 原本是 5 步 (含 Q4 Look 选图),但秀场 look 图覆盖率低,
+ * 即便走 fallback 文字输入对最终文案帮助也有限,反而打断流程,
+ * 因此整步移除,只保留 style/brand/show/perspective 4 步。
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -22,7 +25,7 @@ import {
   RouteProp,
 } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { Box, Button, ButtonText, HStack, Text, VStack, ScrollView } from "../../components/ui";
+import { Box, HStack, Text, VStack, ScrollView } from "../../components/ui";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import OptionCard from "./components/OptionCard";
@@ -31,13 +34,12 @@ import {
   getStylesOptions,
   getBrandsOptions,
   getShowsOptions,
-  getLooksOptions,
   getPerspectivesOptions,
   type OptionListResponse,
   type QAAnswers,
 } from "../../services/aiPostService";
 
-type StepKey = 1 | 2 | 3 | 4 | 5;
+type StepKey = 1 | 2 | 3 | 4;
 
 interface RouteParams {
   step: StepKey;
@@ -48,10 +50,8 @@ interface StepConfig {
   titleKey: string;
   field: keyof QAAnswers;
   fetch: (answers: QAAnswers) => Promise<OptionListResponse>;
-  /** 选完后下一步 (5 = 跳到 Preview)。 */
+  /** 选完后下一步 (4 = 跳到 Preview)。 */
   nextRoute: string;
-  /** 后端 has_fallback=true 时改跳哪条路由。 */
-  fallbackRoute?: string;
 }
 
 const STEP_CONFIG: Record<StepKey, StepConfig> = {
@@ -75,21 +75,13 @@ const STEP_CONFIG: Record<StepKey, StepConfig> = {
   },
   4: {
     titleKey: "aiPost.qa.step4Title",
-    field: "look_id",
-    fetch: (a) => getLooksOptions(a.show_id!),
-    nextRoute: "AIPostQAStep",
-    // 后端无 look 时 has_fallback=true → 进文字输入屏
-    fallbackRoute: "AIPostQAFallback",
-  },
-  5: {
-    titleKey: "aiPost.qa.step5Title",
     field: "perspective",
     fetch: () => getPerspectivesOptions(),
     nextRoute: "AIPostPreview",
   },
 };
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 const AIPostQAStepScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -111,9 +103,6 @@ const AIPostQAStepScreen: React.FC = () => {
       .then((res) => {
         if (cancelled) return;
         setData(res);
-        // 注意 (V3 #25.3): has_fallback=true 不再自动跳转,改为用户在底部
-        // 点「找不到合适的?自己写」按钮主动 opt-in。这样即便后端命中了 Q4
-        // 的 looks fallback (退到全库 top N),用户先看完图再决定要不要写字。
       })
       .catch((err: Error) => {
         if (!cancelled) setErrorMsg(err.message);
@@ -134,7 +123,7 @@ const AIPostQAStepScreen: React.FC = () => {
     const value: any = config.field === "perspective" ? chosenSlug : chosenId;
     const nextAnswers = { ...answers, [config.field]: value } as QAAnswers;
 
-    if (step === 5) {
+    if (step === TOTAL_STEPS) {
       navigation.replace("AIPostPreview", {
         mode: "QA_TEXT",
         answers: nextAnswers,
@@ -201,21 +190,6 @@ const AIPostQAStepScreen: React.FC = () => {
               </HStack>
             ))
           )}
-
-          {/* Opt-in 文字 fallback (Q4 always shows; 其他步骤永远不会出现) */}
-          {data && data.has_fallback && config.fallbackRoute ? (
-            <Button
-              mt="$md"
-              borderColor="$gray200"
-              onPress={() =>
-                navigation.replace(config.fallbackRoute as string, { answers })
-              }
-            >
-              <ButtonText color="$white">
-                {t("aiPost.qa.useTextFallback")}
-              </ButtonText>
-            </Button>
-          ) : null}
         </VStack>
       </ScrollView>
 

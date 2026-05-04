@@ -69,7 +69,6 @@ import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 // AI Post Assistant Screens
 import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
 import AIPostQAStepScreen from "./src/screens/AIPost/AIPostQAStepScreen";
-import AIPostQAFallbackScreen from "./src/screens/AIPost/AIPostQAFallbackScreen";
 import AIPostPreviewScreen from "./src/screens/AIPost/AIPostPreviewScreen";
 import AIPostImageBriefScreen from "./src/screens/AIPost/AIPostImageBriefScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
@@ -536,11 +535,6 @@ function AppNavigator() {
         <Stack.Screen
           name="AIPostQAStep"
           component={AIPostQAStepScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AIPostQAFallback"
-          component={AIPostQAFallbackScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

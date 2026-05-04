@@ -3,9 +3,8 @@ AI 发帖助手路由 (V3 #25)。
 
 接口契约 (前端 aiPostService.ts 必须严格对齐):
   GET  /api/ai-post/options/styles
-  GET  /api/ai-post/options/designers?style_id=
-  GET  /api/ai-post/options/shows?designer_id=
-  GET  /api/ai-post/options/looks?show_id=
+  GET  /api/ai-post/options/brands?style_id=
+  GET  /api/ai-post/options/shows?brand_id=
   GET  /api/ai-post/options/perspectives
   POST /api/ai-post/generate
   POST /api/ai-post/regenerate
@@ -71,22 +70,11 @@ async def get_shows_options(
     return success(resp.model_dump())
 
 
-@router.get("/options/looks")
-async def get_looks_options(
-    # show_id 兼容字符串 ObjectId 与整数 (历史从 memfire 迁过来的脏数据)
-    show_id: str = Query(..., description="Q3 选定的 show_id"),
-    current_user_id: int = Depends(get_current_user_id),
-):
-    """Q4: 该秀场下的具体 Look。无 look 时 has_fallback=true,前端切到文字输入。"""
-    resp: OptionListResponse = ai_post_service.get_looks_options(show_id)
-    return success(resp.model_dump())
-
-
 @router.get("/options/perspectives")
 async def get_perspectives_options(
     current_user_id: int = Depends(get_current_user_id),
 ):
-    """Q5: 帖子角度 5 选 1 (枚举固定,不查 DB)"""
+    """Q4: 帖子角度 5 选 1 (枚举固定,不查 DB)"""
     options: List[OptionCard] = [
         OptionCard(id=1, slug=AIPostPerspective.OUTFIT.value, name="Outfit", name_zh="穿搭分享"),
         OptionCard(id=2, slug=AIPostPerspective.COLLECTION.value, name="Collection", name_zh="收藏分享"),

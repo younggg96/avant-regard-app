@@ -3,9 +3,8 @@
  *
  * 与后端 `backend/app/api/routes/ai_post.py` 一一对应:
  *   GET  /api/ai-post/options/styles
- *   GET  /api/ai-post/options/designers?style_id
- *   GET  /api/ai-post/options/shows?designer_id
- *   GET  /api/ai-post/options/looks?show_id
+ *   GET  /api/ai-post/options/brands?style_id
+ *   GET  /api/ai-post/options/shows?brand_id
  *   GET  /api/ai-post/options/perspectives
  *   POST /api/ai-post/generate
  *   POST /api/ai-post/regenerate
@@ -79,8 +78,6 @@ export interface QAAnswers {
   brand_id?: number;
   /** shows 表 id 是 ObjectId 字符串,见 OptionCard.id 注释。 */
   show_id?: number | string;
-  look_id?: number | null;
-  look_fallback_text?: string | null;
   perspective?: AIPostPerspective;
 }
 
@@ -142,14 +139,6 @@ export async function getShowsOptions(
 ): Promise<OptionListResponse> {
   return request<OptionListResponse>(
     `${BASE}/options/shows?brand_id=${brandId}`,
-  );
-}
-
-export async function getLooksOptions(
-  showId: number | string,
-): Promise<OptionListResponse> {
-  return request<OptionListResponse>(
-    `${BASE}/options/looks?show_id=${encodeURIComponent(String(showId))}`,
   );
 }
 

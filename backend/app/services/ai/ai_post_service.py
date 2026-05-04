@@ -2,8 +2,9 @@
 AI 发帖助手 — 业务编排层。
 
 职责 (V3 #25):
-  - get_qa_options(): Q1-Q5 的卡片选项,从档案表实拉取 (styles / designers /
-    shows / show_images),不能硬编码,Q4 无 look 时返回 has_fallback=True。
+  - get_qa_options(): Q1-Q4 的卡片选项,从档案表实拉取 (styles / brands /
+    shows + 固定枚举 perspectives),不能硬编码。Q4 角度由后端硬编码枚举给出。
+    历史 V3 原本 5 步, Q4 是 Look 选图,但秀场 look 覆盖率低,整步移除。
   - generate(): 配额预占 → RAG 召回 → prompt 拼装 → LLM 调用 → 解析 →
     内容安全后置过滤 → 写日志 → 返回。
   - regenerate(): 复用上一次 prompt_snapshot 重跑,新日志,链式 regenerated_from。
@@ -235,51 +236,6 @@ class AIPostService:
                 )
             )
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
-
-    def get_looks_options(self, show_id, limit: int = 5) -> OptionListResponse:
-        """Q4: 该秀场下的具体 Look。
-
-        show_id 接受 int 或 str (MongoDB ObjectId), Supabase 自动按列类型转换。
-
-        降级策略 (V3 #25.3 — 用户体验优化):
-            - 第一优先: show_id 命中的 looks。
-            - 0 命中时降级到全库其他 looks (按 sort_order),保证 Q4 总是有图。
-            - has_fallback 永远 True: 用户即便看到一堆 look,
-              也可能就是想自己用文字写细节。前端会展示"自己写"按钮 (opt-in),
-              不再像旧版那样在 0 命中时强制跳转到文字输入屏。
-        """
-        result = (
-            self.db.table("show_images")
-            .select("id, image_url, sort_order")
-            .eq("show_id", show_id)
-            .eq("image_type", "LOOK")
-            .order("sort_order")
-            .limit(limit)
-            .execute()
-        )
-        rows = result.data or []
-        # 当前 show 没有 look → 降级到全库 top N look
-        if not rows:
-            fallback = (
-                self.db.table("show_images")
-                .select("id, image_url, sort_order")
-                .eq("image_type", "LOOK")
-                .order("sort_order")
-                .limit(limit)
-                .execute()
-            )
-            rows = fallback.data or []
-
-        cards = [
-            OptionCard(
-                id=r["id"],
-                name=f"Look {idx + 1}",
-                cover_url=r.get("image_url"),
-            )
-            for idx, r in enumerate(rows)
-        ]
-        # Q4 永远允许 fallback 到文字输入,前端按钮 opt-in。
-        return OptionListResponse(options=cards, has_fallback=True)
 
     # -----------------------------------------------------------------
     # 配额

@@ -40,7 +40,7 @@ class ImageBriefChip(str, Enum):
 
 
 # =====================================================
-# Q&A 选项 (5 步问答的卡片)
+# Q&A 选项 (4 步问答的卡片)
 # =====================================================
 
 class OptionCard(BaseModel):
@@ -63,7 +63,9 @@ class OptionCard(BaseModel):
 class OptionListResponse(BaseModel):
     """Q1-Q4 通用选项列表返回。"""
     options: List[OptionCard]
-    has_fallback: bool = False              # Q4 走 fallback 时为 true,前端切到文字输入
+    # 历史保留: 旧版 Q4 looks 走 fallback 时为 true。当前 4 步问答已移除 Q4 looks,
+    # 字段恒为 false,但保留字段定义以维持前端 schema 兼容。
+    has_fallback: bool = False
 
 
 # =====================================================
@@ -80,8 +82,6 @@ class GenerateRequest(BaseModel):
           "style_id": 1,                                # int
           "brand_id": 2,                                # int
           "show_id": "6978b1bf...",                     # str (MongoDB ObjectId) 或 int
-          "look_id": 4 | null,                          # int
-          "look_fallback_text": "细节文字描述" | null,    # Q4 fallback
           "perspective": "OUTFIT"                        # AIPostPerspective
         }
     IMAGE_BRIEF 模式:

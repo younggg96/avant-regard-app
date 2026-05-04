@@ -2200,13 +2200,13 @@
   "aiPost": {
     "entryCard": {
       "qaTitle": "Let AI write my post",
-      "qaDesc": "5-step Q&A; AI drafts your first outfit/collection share"
+      "qaDesc": "4-step Q&A; AI drafts your first outfit/collection share"
     },
     "entry": {
       "title": "AI Post Assistant",
       "heading": "Pick a generation mode",
       "subheading": "AI drafts based on your picks and our archive. Edit before you publish.",
-      "qaTitle": "5-Step Q&A",
+      "qaTitle": "4-Step Q&A",
       "qaDesc": "Best for first-time posters. Guided text post generation.",
       "imageTitle": "Photos + Brief",
       "imageDesc": "Upload 1-9 photos, pick an intent, get a draft in 3s.",
@@ -2217,14 +2217,8 @@
       "step1Title": "What style do you want to share today?",
       "step2Title": "Pick a brand that excites you",
       "step3Title": "Which show stuck with you?",
-      "step4Title": "Which look from this show is your favorite?",
-      "step5Title": "What's the angle of this post?",
-      "noOptions": "No options yet — go back and pick a different parent",
-      "useTextFallback": "None of these? Describe in your own words",
-      "fallbackTitle": "Describe what struck you in this show",
-      "fallbackHint": "We don't have look photos for this show. Write a sentence or two — AI will expand on it.",
-      "fallbackPlaceholder": "e.g. The asymmetric shoulder of look 3...",
-      "fallbackEmpty": "Please write something first"
+      "step4Title": "What's the angle of this post?",
+      "noOptions": "No options yet — go back and pick a different parent"
     },
     "imageBrief": {
       "title": "Photos + Brief",
