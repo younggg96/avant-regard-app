@@ -94,7 +94,7 @@ def build_qa_user_prompt(ctx: Dict[str, Any], community_pool: List[Dict[str, Any
         sh = ctx["show"]
         parts.append(
             f"- 秀场: {sh.get('title') or sh.get('season') or ''} "
-            f"({sh.get('year') or ''} {sh.get('city') or ''}, {sh.get('brand_name') or ''})"
+            f"({sh.get('year') or ''}, {sh.get('brand_name') or ''})"
         )
         if sh.get("review_text"):
             parts.append(f"  秀评摘要: {(sh.get('review_text') or '')[:300]}")

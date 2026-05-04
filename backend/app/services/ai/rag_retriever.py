@@ -36,7 +36,7 @@ class RAGRetriever:
           {
             "style": {"id","name","name_zh","description"} | None,
             "brand": {"id","name","country","founded_year","category"} | None,
-            "show":  {"id","title","season","year","city","brand_name","review_text"} | None,
+            "show":  {"id","title","season","year","brand_name","review_text"} | None,
             "perspective": str,
           }
         缺失的关节填 None,prompt_builder 自动跳过。
@@ -93,10 +93,12 @@ class RAGRetriever:
 
         show_id = answers.get("show_id")
         if show_id:
+            # NB: shows.city 已在历史迁移 simplify_shows_table.sql 中 DROP,不要再
+            # select 该列,否则 Supabase 直接抛 column does not exist 拖垮整个生成链路。
             r = (
                 self.db.table("shows")
                 .select(
-                    "id, title_i18n, season, year, city, brand_name, review_text_i18n"
+                    "id, title_i18n, season, year, brand_name, review_text_i18n"
                 )
                 .eq("id", show_id)
                 .execute()
@@ -109,7 +111,6 @@ class RAGRetriever:
                         or pick_locale(row.get("title_i18n"), "en"),
                     "season": row.get("season"),
                     "year": row.get("year"),
-                    "city": row.get("city"),
                     "brand_name": row.get("brand_name"),
                     "review_text": pick_locale(row.get("review_text_i18n"), "zh")
                         or pick_locale(row.get("review_text_i18n"), "en"),
