@@ -754,3 +754,75 @@ export const stylesApi = {
 
   delete: (id: number) => apiClient.delete<void>(`/api/admin/styles/${id}`),
 };
+
+// ─── AI Prompts (V3 #25.5: 运行时 prompt 查看 + 编辑) ────────────────────────
+
+export type AIPromptKey = "qa_system" | "image_brief_system";
+
+export interface AdminAIPromptItem {
+  key: AIPromptKey;
+  /** 给 UI 用的可读名 (例如 "QA 文字模式 - System Prompt") */
+  label: string;
+  /** 一句话说明这条 prompt 在哪用 */
+  description: string;
+  /** 当前 runtime 实际生效的内容 (DB override 优先, 否则 default) */
+  current: string;
+  /** 代码层 hardcoded 默认值 */
+  default: string;
+  /** current 是否非默认值 (true 表示当前是 admin 改过的版本) */
+  is_overridden: boolean;
+  updated_at?: string | null;
+  updated_by?: number | null;
+  notes?: string | null;
+}
+
+export interface AdminAIPromptListResponse {
+  items: AdminAIPromptItem[];
+  prompt_version: string;
+}
+
+export interface AdminAIPromptPreviewResult {
+  system_prompt: string;
+  user_prompt: string;
+}
+
+export interface AdminAIPromptPreviewResponse {
+  qa: AdminAIPromptPreviewResult;
+  image_brief: AdminAIPromptPreviewResult;
+}
+
+export interface UpdatePromptParams {
+  content: string;
+  notes?: string;
+}
+
+export interface PreviewPromptParams {
+  qa_system_override?: string;
+  image_brief_system_override?: string;
+}
+
+export const aiPromptsApi = {
+  list: () =>
+    apiClient.get<AdminAIPromptListResponse>("/api/admin/ai-prompts"),
+
+  /** 覆盖某条 prompt; content 留空走 reset 而不是这里 */
+  update: (key: AIPromptKey, params: UpdatePromptParams) =>
+    apiClient.put<AdminAIPromptItem>(
+      `/api/admin/ai-prompts/${key}`,
+      params,
+    ),
+
+  /** 重置回 hardcoded default (删除 DB override 行) */
+  reset: (key: AIPromptKey) =>
+    apiClient.delete<AdminAIPromptItem>(`/api/admin/ai-prompts/${key}`),
+
+  /**
+   * 用 fixture 拼一次完整 (system+user) messages, 不打 LLM。
+   * 传 *_override 可以预览未保存的改动效果。
+   */
+  preview: (params: PreviewPromptParams) =>
+    apiClient.post<AdminAIPromptPreviewResponse>(
+      "/api/admin/ai-prompts/preview",
+      params,
+    ),
+};

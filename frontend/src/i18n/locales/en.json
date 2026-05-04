@@ -530,7 +530,13 @@
     "productNotFound": "Product not found",
     "want": "Want",
     "wanted": "Wanted",
-    "wantThisItem": "Want this item?"
+    "wantThisItem": "Want this item?",
+    "searchStores": "Search Stores",
+    "searchHint": "Search by store name or brand",
+    "noSearchResults": "No stores found",
+    "searching": "Searching...",
+    "foundStores": "{{count}} stores found",
+    "tryOtherKeywords": "Try other keywords"
   },
   "storeSubmit": {
     "title": "Submit Store",

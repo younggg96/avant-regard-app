@@ -44,6 +44,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota, variant = "generate" }) 
       <Text
         fontSize="$xs"
         color={exhausted ? "$error" : "$gray400"}
+        numberOfLines={1}
       >
         {exhausted
           ? t("aiPost.quota.exhausted")

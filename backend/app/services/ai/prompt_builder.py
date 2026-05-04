@@ -18,16 +18,34 @@ PROMPT_VERSION 由人工 bump,每次改 prompt 都要 +1。所有日志会带版
 from __future__ import annotations
 
 import json
+import logging
 import re
-from typing import Any, Dict, List, Tuple
+import time
+from typing import Any, Dict, List, Optional, Tuple
 
 PROMPT_VERSION = "v1.0.0"
 
+logger = logging.getLogger(__name__)
+
 
 # =====================================================
-# System Prompt: 全局约束 (V3 #25 反虚构条款)
+# Prompt key 枚举 (与 admin /api/admin/ai-prompts 路由 + 054 表 key 列严格对齐)
 # =====================================================
-_QA_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
+PROMPT_KEY_QA_SYSTEM = "qa_system"
+PROMPT_KEY_IMAGE_BRIEF_SYSTEM = "image_brief_system"
+
+ALL_PROMPT_KEYS = (PROMPT_KEY_QA_SYSTEM, PROMPT_KEY_IMAGE_BRIEF_SYSTEM)
+
+
+# =====================================================
+# System Prompt 默认值 (V3 #25 反虚构条款)
+#
+# 改动建议:
+#   - 改文案首选走 admin web `/admin/ai-prompts`,不要直接改这里的常量,
+#     省得每次微调都要部署。
+#   - 这里的常量是兜底:DB 表丢了 / 不可达时仍然能保证 LLM 流程不崩。
+# =====================================================
+DEFAULT_QA_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
 任务是基于用户提供的【风格 / 品牌 / 秀场 / 角度】,生成一篇真实
 有质感的中文帖子。
 
@@ -48,7 +66,7 @@ _QA_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
 """
 
 
-_IMAGE_BRIEF_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
+DEFAULT_IMAGE_BRIEF_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
 用户上传了一组图片以及一个意图标签 (prompt_chip), 可能附带一句话说明。
 请基于图片内容写一篇真实的中文分享帖。
 
@@ -64,6 +82,79 @@ _IMAGE_BRIEF_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手。
 4. 必须返回严格 JSON:
    {"title": "...", "content_text": "...", "tags": ["#xx"], "communities": ["xx"]}
 """
+
+
+_DEFAULTS_BY_KEY: Dict[str, str] = {
+    PROMPT_KEY_QA_SYSTEM: DEFAULT_QA_SYSTEM_PROMPT,
+    PROMPT_KEY_IMAGE_BRIEF_SYSTEM: DEFAULT_IMAGE_BRIEF_SYSTEM_PROMPT,
+}
+
+
+# =====================================================
+# DB override 读取 + 短缓存
+#
+# 设计:
+#   - generate / regenerate 路径每次都拼 prompt,不能为此读一次 DB。
+#   - 30s 缓存窗口对 admin "改完保存→稍等几秒看效果" 是可接受的代价,
+#     避免热点路径跟 Supabase 网关来回 RTT 拖慢 generate。
+#   - 缓存按 key 粒度,任意一项 admin 改完只需要刷它自己的 key
+#     (`invalidate_prompt_cache(key)`)。
+#   - DB 不可达时直接返 default,不抛异常,LLM 流程必须扛得住存储波动。
+# =====================================================
+_CACHE_TTL_SEC = 30.0
+_cache: Dict[str, Tuple[float, str]] = {}     # key → (expires_at, content)
+
+
+def _fetch_override_from_db(key: str) -> Optional[str]:
+    """读 DB override; 不存在返 None, 异常返 None (静默降级到 default)。"""
+    try:
+        # 这里晚 import 避免 prompt_builder 在不带 supabase 配置的脚本里被导入时报错
+        from app.db.supabase import get_supabase_admin
+        db = get_supabase_admin()
+        resp = (
+            db.table("ai_prompt_overrides")
+            .select("content")
+            .eq("key", key)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0].get("content")
+        return None
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[prompt_builder] read override key=%s failed: %s", key, e)
+        return None
+
+
+def get_prompt(key: str) -> str:
+    """运行时取某个 prompt 的当前值。DB 优先, 缓存 30s, 失败/缺失回 default。"""
+    if key not in _DEFAULTS_BY_KEY:
+        raise KeyError(f"unknown prompt key: {key}")
+
+    now = time.monotonic()
+    cached = _cache.get(key)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    override = _fetch_override_from_db(key)
+    content = override if (override and override.strip()) else _DEFAULTS_BY_KEY[key]
+    _cache[key] = (now + _CACHE_TTL_SEC, content)
+    return content
+
+
+def invalidate_prompt_cache(key: Optional[str] = None) -> None:
+    """admin 改完保存后由路由层显式调,免得等 30s 才生效。key=None 清全部。"""
+    if key is None:
+        _cache.clear()
+    else:
+        _cache.pop(key, None)
+
+
+def get_default_prompt(key: str) -> str:
+    """admin 「重置回默认」按钮要展示默认值,这里直接返代码里那段。"""
+    if key not in _DEFAULTS_BY_KEY:
+        raise KeyError(f"unknown prompt key: {key}")
+    return _DEFAULTS_BY_KEY[key]
 
 
 # =====================================================
@@ -147,13 +238,16 @@ def build_image_user_prompt(
 def build_qa_messages(
     rag_ctx: Dict[str, Any], community_pool: List[Dict[str, Any]]
 ) -> Tuple[str, str]:
-    return _QA_SYSTEM_PROMPT, build_qa_user_prompt(rag_ctx, community_pool)
+    return get_prompt(PROMPT_KEY_QA_SYSTEM), build_qa_user_prompt(rag_ctx, community_pool)
 
 
 def build_image_messages(
     image_ctx: Dict[str, Any], community_pool: List[Dict[str, Any]]
 ) -> Tuple[str, str]:
-    return _IMAGE_BRIEF_SYSTEM_PROMPT, build_image_user_prompt(image_ctx, community_pool)
+    return (
+        get_prompt(PROMPT_KEY_IMAGE_BRIEF_SYSTEM),
+        build_image_user_prompt(image_ctx, community_pool),
+    )
 
 
 # =====================================================

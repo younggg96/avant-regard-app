@@ -91,7 +91,10 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   const renderRightActions = () => {
     if (rightComponent) {
-      return <Box w={40}>{rightComponent}</Box>;
+      // 用 minW=40 占住对称位 (与左侧 back 按钮 w=40 配对, 让 title 视觉居中),
+      // 但允许内容自然撑开 — 历史这里写 w=40 把 QuotaBadge 等宽控件挤成竖排。
+      // 不加 alignItems, 保持子元素自然布局 (避免破坏既有图标按钮位置)。
+      return <Box minWidth={40}>{rightComponent}</Box>;
     }
 
     if (rightActions.length === 0) {

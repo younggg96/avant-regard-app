@@ -59,13 +59,8 @@ import {
   type AIPostMode,
   type AIPostTargetPostType,
   type AIDraftPrefill,
-  type SuggestedCommunity,
   type QuotaInfo,
 } from "../../services/aiPostService";
-import {
-  getCommunities,
-  type Community,
-} from "../../services/communityService";
 
 interface RouteParams {
   mode: AIPostMode;
@@ -88,9 +83,10 @@ const AIPostPreviewScreen: React.FC = () => {
   // 用户编辑后的内容
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [selectedCommunityId, setSelectedCommunityId] = useState<number | null>(null);
+  // AI 推荐的首选社区 id, 仅作为下一屏 (基础发布屏) 的默认值透传出去,
+  // 这一屏不再展示社区选择 (V3 #25.4): 选社区是基础类型流程的事。
+  const [suggestedCommunityId, setSuggestedCommunityId] = useState<number | null>(null);
 
-  const [allCommunities, setAllCommunities] = useState<Community[]>([]);
   const [publishing, setPublishing] = useState(false);
 
   // 目标基础类型: 由 perspective / promptChip 自动选, 用户可改
@@ -102,10 +98,9 @@ const AIPostPreviewScreen: React.FC = () => {
   );
   const [showTypeSheet, setShowTypeSheet] = useState(false);
 
-  // 1. 进入页面: 同步触发 generate + 拉社区列表
+  // 1. 进入页面: 触发 generate (社区列表已不在本屏使用, 不再额外拉取)
   useEffect(() => {
     void runGenerate();
-    void fetchCommunities();
   }, []);
 
   const runGenerate = async (regen = false) => {
@@ -125,9 +120,9 @@ const AIPostPreviewScreen: React.FC = () => {
       setTitle(meta?.title || "");
       const body = stripTitleFromBody(resp.generated_text, meta?.title || "");
       setContent(body);
-      // 默认选中第一个建议社区
-      if (resp.suggested_communities[0] && !selectedCommunityId) {
-        setSelectedCommunityId(resp.suggested_communities[0].id);
+      // 记下 AI 推荐的首选社区 id, 透传给下一屏 (基础发布屏) 当默认选中。
+      if (resp.suggested_communities[0]) {
+        setSuggestedCommunityId(resp.suggested_communities[0].id);
       }
     } catch (err) {
       const friendly = translateAIPostError(err);
@@ -154,20 +149,6 @@ const AIPostPreviewScreen: React.FC = () => {
       return;
     }
     RNAlert.alert(t("aiPost.error.llmTitle"), message);
-  };
-
-  const fetchCommunities = async () => {
-    try {
-      const list = await getCommunities();
-      // 把热门 + 全部 + 已关注合并去重
-      const map = new Map<number, Community>();
-      for (const c of [...list.following, ...list.popular, ...list.all]) {
-        map.set(c.id, c);
-      }
-      setAllCommunities(Array.from(map.values()));
-    } catch {
-      setAllCommunities([]);
-    }
   };
 
   const handleRegenerate = () => {
@@ -224,7 +205,7 @@ const AIPostPreviewScreen: React.FC = () => {
       title: title.trim(),
       contentText: content.trim(),
       imageUrls: imageUrls || [],
-      suggestedCommunityId: selectedCommunityId ?? undefined,
+      suggestedCommunityId: suggestedCommunityId ?? undefined,
       suggestedTags: generatedResp.suggested_tags,
       generationMetadata: generatedResp.metadata,
     };
@@ -257,18 +238,6 @@ const AIPostPreviewScreen: React.FC = () => {
     }
     return trimmed;
   };
-
-  const communityOptions = useMemo<SuggestedCommunity[]>(() => {
-    // 优先放 LLM 建议的, 其次放全部社区
-    if (!generatedResp) return [];
-    const suggestedIds = new Set(
-      generatedResp.suggested_communities.map((c) => c.id),
-    );
-    const rest: SuggestedCommunity[] = allCommunities
-      .filter((c) => !suggestedIds.has(c.id))
-      .map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
-    return [...generatedResp.suggested_communities, ...rest];
-  }, [generatedResp, allCommunities]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -335,58 +304,12 @@ const AIPostPreviewScreen: React.FC = () => {
                 </Box>
               </Box>
 
-              {/* 标签 (建议) */}
-              {generatedResp && generatedResp.suggested_tags.length > 0 ? (
-                <Box>
-                  <Text fontSize="$sm" color="$gray400" mb="$xs">
-                    {t("aiPost.preview.tagsLabel")}
-                  </Text>
-                  <HStack flexWrap="wrap" gap="$xs">
-                    {generatedResp.suggested_tags.map((tag) => (
-                      <Box
-                        key={tag}
-                        px="$sm"
-                        py={4}
-                        rounded={12}
-                        bg="$gray100"
-                      >
-                        <Text fontSize="$xs" color="$gray500">{tag}</Text>
-                      </Box>
-                    ))}
-                  </HStack>
-                </Box>
-              ) : null}
-
-              {/* 社区选择 (这里只是 AI 推荐预选, 真正确认在下一屏) */}
-              <Box>
-                <Text fontSize="$sm" color="$gray400" mb="$xs">
-                  {t("aiPost.preview.communityLabel")}
-                </Text>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {communityOptions.map((c) => {
-                    const selected = c.id === selectedCommunityId;
-                    return (
-                      <Pressable
-                        key={c.id}
-                        onPress={() => setSelectedCommunityId(c.id)}
-                        bg={selected ? "$black" : "$white"}
-                        borderWidth={1}
-                        borderColor={selected ? "$black" : "$gray100"}
-                        px="$sm"
-                        py={6}
-                        rounded={14}
-                      >
-                        <Text
-                          fontSize="$xs"
-                          color={selected ? "$white" : "$gray500"}
-                        >
-                          {c.name}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </HStack>
-              </Box>
+              {/* 标签 / 社区在这里不再展示:
+                * - tags: 当前帖子模型还没把 tag 字段透到 createPost,展示出来反而误导;
+                * - community: 用户在下一屏 (基础发布屏) 才真正选社区。
+                * 但 AI 仍然会把 suggested_tags / suggested_communities 通过 aiDraft
+                * 透传给基础屏, 由基础屏决定怎么用 (例如默认选中推荐社区)。
+                */}
 
               {/* 目标基础类型展示条 + 更换入口 */}
               <Pressable

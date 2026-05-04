@@ -530,7 +530,13 @@
     "productNotFound": "商品不存在",
     "want": "我想要",
     "wanted": "已想要",
-    "wantThisItem": "想要这件单品？"
+    "wantThisItem": "想要这件单品？",
+    "searchStores": "搜索买手店",
+    "searchHint": "输入店名或品牌名称查找",
+    "noSearchResults": "未找到相关买手店",
+    "searching": "搜索中...",
+    "foundStores": "共找到 {{count}} 家买手店",
+    "tryOtherKeywords": "试试其他关键词吧"
   },
   "storeSubmit": {
     "title": "提交买手店",
@@ -2263,9 +2269,9 @@
         "label": "本帖将作为",
         "change": "更换",
         "sheetTitle": "选择要发布的帖子类型",
-        "FORUM": "论坛/文章",
+        "LOOKBOOK": "Lookbook",
+        "FORUM": "论坛帖子",
         "OUTFIT": "穿搭分享",
-        "LOOKBOOK": "图册 (Lookbook)",
         "REVIEW": "单品测评"
       }
     },

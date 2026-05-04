@@ -42,6 +42,7 @@ from app.api.routes.level import (
     admin_lottery_router,
 )
 from app.api.routes.ai_post import router as ai_post_router
+from app.api.routes.ai_prompts_admin import router as ai_prompts_admin_router
 
 # 导入缓存服务
 from app.services.cache_service import cache_service
@@ -220,6 +221,7 @@ app.include_router(benefit_router, prefix="/api")
 app.include_router(admin_level_router, prefix="/api")
 app.include_router(admin_lottery_router, prefix="/api")
 app.include_router(ai_post_router, prefix="/api")
+app.include_router(ai_prompts_admin_router, prefix="/api")
 
 
 # 健康检查

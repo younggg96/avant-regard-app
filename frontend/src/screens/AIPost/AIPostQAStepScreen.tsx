@@ -25,7 +25,7 @@ import {
   RouteProp,
 } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { Box, HStack, Text, VStack, ScrollView } from "../../components/ui";
+import { Box, HStack, Text, VStack, ScrollView, Pressable } from "../../components/ui";
 import { theme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import OptionCard from "./components/OptionCard";
@@ -84,7 +84,7 @@ const STEP_CONFIG: Record<StepKey, StepConfig> = {
 const TOTAL_STEPS = 4;
 
 const AIPostQAStepScreen: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
   const { step, answers } = route.params;
@@ -136,15 +136,75 @@ const AIPostQAStepScreen: React.FC = () => {
     }
   };
 
-  // 2 列等宽布局
+  const isListLayout = step === 4;
+
   const cardRows = useMemo(() => {
-    if (!data) return [];
+    if (!data || isListLayout) return [];
     const rows: Array<typeof data.options> = [];
     for (let i = 0; i < data.options.length; i += 2) {
       rows.push(data.options.slice(i, i + 2));
     }
     return rows;
-  }, [data]);
+  }, [data, isListLayout]);
+
+  const isZh = i18n.language?.startsWith("zh");
+
+  const renderOptions = () => {
+    if (!data) return null;
+
+    if (isListLayout) {
+      return (
+        <Box mt="$md" borderTopWidth={1} borderColor="$gray100" rounded="$md" overflow="hidden">
+          {data.options.map((card) => {
+            const displayName = isZh && card.name_zh ? card.name_zh : card.name;
+            const subtitle = isZh && card.name_zh ? card.name : card.name_zh || card.subtitle;
+            return (
+              <Pressable key={card.id} onPress={() => handlePick(card.id, card.slug)}>
+                <HStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  px="$md"
+                  py="$md"
+                  bg="$white"
+                  borderBottomWidth={1}
+                  borderColor="$gray100"
+                >
+                  <Box flex={1}>
+                    <Text fontSize="$md" fontWeight="$medium" color="$black" numberOfLines={1}>
+                      {displayName}
+                    </Text>
+                    {subtitle ? (
+                      <Text fontSize="$xs" color="$gray400" mt={2} numberOfLines={1}>
+                        {subtitle}
+                      </Text>
+                    ) : null}
+                  </Box>
+                  <Text fontSize="$md" color="$gray300" ml="$sm">›</Text>
+                </HStack>
+              </Pressable>
+            );
+          })}
+        </Box>
+      );
+    }
+
+    return (
+      <VStack gap="$md" mt="$md">
+        {cardRows.map((row, rowIdx) => (
+          <HStack key={rowIdx} gap="$md">
+            {row.map((card) => (
+              <OptionCard
+                key={card.id}
+                data={card}
+                onPress={() => handlePick(card.id, card.slug)}
+              />
+            ))}
+            {row.length === 1 ? <Box flex={1} /> : null}
+          </HStack>
+        ))}
+      </VStack>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -155,7 +215,7 @@ const AIPostQAStepScreen: React.FC = () => {
       />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <VStack px="$lg" pt="$md" pb="$xl" gap="$md">
+        <VStack px="$lg" pt="$md" pb="$xl">
           <Text fontSize="$xl" fontWeight="$medium" color="$black" style={styles.textHero}>
             {t(config.titleKey)}
           </Text>
@@ -177,18 +237,7 @@ const AIPostQAStepScreen: React.FC = () => {
               </Text>
             </Box>
           ) : (
-            cardRows.map((row, rowIdx) => (
-              <HStack key={rowIdx} gap="$md">
-                {row.map((card) => (
-                  <OptionCard
-                    key={card.id}
-                    data={card}
-                    onPress={() => handlePick(card.id, card.slug)}
-                  />
-                ))}
-                {row.length === 1 ? <Box flex={1} /> : null}
-              </HStack>
-            ))
+            renderOptions()
           )}
         </VStack>
       </ScrollView>
