@@ -10,7 +10,10 @@
     "ios": "expo run:ios",
     "expo:web": "expo start --web",
     "check": "node scripts/check-setup.js",
-    "postinstall": "node scripts/ensure-local-wechat.js && patch-package"
+    "postinstall": "node scripts/ensure-local-wechat.js && patch-package",
+    "eas:build:ios": "npx eas-cli@latest build --platform ios --profile production",
+    "eas:build:android": "npx eas-cli@latest build --platform android --profile production",
+    "eas:submit:ios": "npx eas-cli@latest submit --platform ios --latest --profile production"
   },
   "dependencies": {
     "@babel/runtime": "^7.20.0",

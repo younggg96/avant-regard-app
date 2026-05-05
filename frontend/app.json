@@ -2,7 +2,7 @@
   "expo": {
     "name": "Avant Regard",
     "slug": "avant-regard",
-    "version": "1.3.2",
+    "version": "1.3.3",
     "orientation": "portrait",
     "icon": "./assets/images/logo.jpg",
     "userInterfaceStyle": "light",
@@ -36,7 +36,7 @@
         ]
       },
       "bundleIdentifier": "com.yanggg96.avant-regard",
-      "buildNumber": "11",
+      "buildNumber": "14",
       "associatedDomains": [
         "applinks:app.avantregard.com"
       ]
