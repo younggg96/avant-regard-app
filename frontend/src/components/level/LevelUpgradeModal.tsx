@@ -34,7 +34,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { theme } from "../../theme";
 import { useLevelStore } from "../../store/levelStore";
-import { getLevelTitleKey, LevelBadge } from "./LevelBadge";
+import { LevelBadge } from "./LevelBadge";
+import { getLevelTitleKey } from "./levelTitles";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 

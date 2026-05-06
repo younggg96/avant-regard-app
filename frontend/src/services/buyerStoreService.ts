@@ -629,6 +629,7 @@ export interface StoreComment {
   userAvatar?: string;
   content: string;
   likeCount: number;
+  likedByMe?: boolean;
   replyCount: number;
   replies: StoreCommentReply[];
   createdAt: string;

@@ -193,12 +193,14 @@ const UserProfileScreen = () => {
     { id: "archive", label: t("profile.contributions") },
   ];
 
+  const privacyReady = isCurrentUser || privacySettings !== null;
+
   const tabs = isCurrentUser
     ? allTabs
     : allTabs.filter((tab) => {
       if (tab.id === "saved") return true;
-      if (tab.id === "liked") return !(privacySettings?.hideLikes ?? false);
-      if (tab.id === "wishlist") return !(privacySettings?.hideWishlist ?? false);
+      if (tab.id === "liked") return !privacySettings?.hideLikes;
+      if (tab.id === "wishlist") return !privacySettings?.hideWishlist;
       return true;
     });
 
@@ -207,7 +209,7 @@ const UserProfileScreen = () => {
     authorInfo: { name: string; avatar: string }
   ): DisplayPost => {
     const validImages = (apiPost.imageUrls || []).filter((url) => url && url.trim() !== "");
-    const firstImage = validImages[0] || "https://picsum.photos/id/1/600/800";
+    const firstImage = validImages[0] || "";
 
     return {
       id: String(apiPost.id),
@@ -816,8 +818,11 @@ const UserProfileScreen = () => {
         {/* Content */}
         {contribLoading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-            <ActivityIndicator color={theme.colors.gray400} />
-            <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
+            <RNImage
+              source={require("../../assets/gif/profile-loading.gif")}
+              style={styles.loadingGif}
+              resizeMode="contain"
+            />
           </VStack>
         ) : data.length === 0 ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
@@ -924,8 +929,11 @@ const UserProfileScreen = () => {
     if (shouldShowLoading) {
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
+          <RNImage
+            source={require("../../assets/gif/profile-loading.gif")}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         </VStack>
       );
     }
@@ -1084,35 +1092,37 @@ const UserProfileScreen = () => {
       </Animated.View>
 
       {/* --- 吸顶 Tab 栏 (Sticky Tab Bar) --- */}
-      <Animated.View
-        style={[
-          styles.stickyTabBar,
-          { top: headerTotalHeight },
-          stickyTabBarAnimatedStyle,
-        ]}
-        pointerEvents="box-none"
-      >
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF' }}>
-          <RNScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabScrollContent}
-          >
-            {tabs.map((tab) => (
-              <Pressable
-                key={tab.id}
-                style={styles.tabItem}
-                onPress={() => handleTabPress(tab.id)}
-              >
-                <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                  {tab.label}
-                </RNText>
-                {activeTab === tab.id && <View style={styles.tabIndicator} />}
-              </Pressable>
-            ))}
-          </RNScrollView>
-        </View>
-      </Animated.View>
+      {privacyReady && (
+        <Animated.View
+          style={[
+            styles.stickyTabBar,
+            { top: headerTotalHeight },
+            stickyTabBarAnimatedStyle,
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF' }}>
+            <RNScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabScrollContent}
+            >
+              {tabs.map((tab) => (
+                <Pressable
+                  key={tab.id}
+                  style={styles.tabItem}
+                  onPress={() => handleTabPress(tab.id)}
+                >
+                  <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                    {tab.label}
+                  </RNText>
+                  {activeTab === tab.id && <View style={styles.tabIndicator} />}
+                </Pressable>
+              ))}
+            </RNScrollView>
+          </View>
+        </Animated.View>
+      )}
 
       {/* --- 滚动内容 --- */}
       <AnimatedScrollView
@@ -1369,31 +1379,33 @@ const UserProfileScreen = () => {
         )}
 
         {/* --- Inline Tab 栏 (随页面滚动) --- */}
-        <Animated.View
-          style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
-          onLayout={(event) => {
-            const layoutY = event.nativeEvent.layout.y;
-            if (Math.abs(tabBarAnchorY.value - layoutY) > 1) {
-              tabBarAnchorY.value = layoutY;
-            }
-          }}
-        >
-          <RNScrollView
-            ref={tabScrollViewRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabScrollContent}
+        {privacyReady && (
+          <Animated.View
+            style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
+            onLayout={(event) => {
+              const layoutY = event.nativeEvent.layout.y;
+              if (Math.abs(tabBarAnchorY.value - layoutY) > 1) {
+                tabBarAnchorY.value = layoutY;
+              }
+            }}
           >
-            {tabs.map((tab) => (
-              <Pressable key={tab.id} style={styles.tabItem} onPress={() => handleTabPress(tab.id)}>
-                <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                  {tab.label}
-                </RNText>
-                {activeTab === tab.id && <View style={styles.tabIndicator} />}
-              </Pressable>
-            ))}
-          </RNScrollView>
-        </Animated.View>
+            <RNScrollView
+              ref={tabScrollViewRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabScrollContent}
+            >
+              {tabs.map((tab) => (
+                <Pressable key={tab.id} style={styles.tabItem} onPress={() => handleTabPress(tab.id)}>
+                  <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+                    {tab.label}
+                  </RNText>
+                  {activeTab === tab.id && <View style={styles.tabIndicator} />}
+                </Pressable>
+              ))}
+            </RNScrollView>
+          </Animated.View>
+        )}
 
         {/* 帖子列表 */}
         <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: '#FFF' }]}>
@@ -1767,8 +1779,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabScrollContent: {
-    paddingHorizontal: 16,
-    flex: 1,
+    paddingLeft: 16,
+    paddingRight: 32,
   },
   tabItem: {
     paddingVertical: 12,
@@ -1806,6 +1818,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
     color: theme.colors.gray600,
+  },
+  loadingGif: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
   },
 });
 

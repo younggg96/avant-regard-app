@@ -1148,7 +1148,9 @@
     "loadFailed": "加载失败，请重试",
     "unlikeSuccess": "已取消点赞",
     "operationFailed": "操作失败，请重试",
-    "unlikeAction": "取消点赞"
+    "unlikeAction": "取消点赞",
+    "storeComment": "买手店",
+    "productComment": "商品"
   },
   "myReports": {
     "title": "我的举报",

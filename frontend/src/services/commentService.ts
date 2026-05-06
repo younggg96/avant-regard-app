@@ -236,11 +236,25 @@ export interface UserComment extends PostComment {
 }
 
 /**
- * 用户点赞的评论
+ * 用户点赞的评论（帖子 / 买手店 / 商品）
  */
+export interface LikedCommentData {
+  id: number;
+  postId?: number | null;
+  storeId?: string | null;
+  productId?: number | null;
+  userId: number;
+  username: string;
+  userAvatar?: string;
+  content: string;
+  likeCount: number;
+  createdAt: string;
+}
+
 export interface LikedComment {
-  comment: PostComment;
+  comment: LikedCommentData;
   likedAt: string;
+  source: "post" | "store" | "product";
 }
 
 /**

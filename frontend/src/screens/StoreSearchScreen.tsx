@@ -170,20 +170,6 @@ const StoreSearchScreen = () => {
                 {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
               </Text>
             </Pressable>
-            <Box
-              px="$sm"
-              py="$xs"
-              rounded="$sm"
-              bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-            >
-              <Text
-                fontSize="$xs"
-                fontWeight="$bold"
-                color={store.isOpen ? "#27AE60" : "$gray300"}
-              >
-                {store.isOpen ? t("store.open") : t("store.closed")}
-              </Text>
-            </Box>
           </HStack>
         </HStack>
 

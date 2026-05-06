@@ -47,7 +47,7 @@ const FavoritesScreen = () => {
     return {
       id: String(apiPost.id),
       title: apiPost.title || t("chat.noTitle"),
-      image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+      image: apiPost.imageUrls?.[0] || "",
       author: {
         id: String(apiPost.userId),
         name: apiPost.username || t("profile.user"),

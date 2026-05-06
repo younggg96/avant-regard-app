@@ -126,7 +126,7 @@ const mapApiPostToDisplayPost = (
       images:
         apiPost.imageUrls && apiPost.imageUrls.length > 0
           ? apiPost.imageUrls
-          : ["https://picsum.photos/id/1/600/800"],
+          : [],
       tags: [],
     },
     engagement: {
@@ -267,7 +267,7 @@ const CommunityDetailScreen = () => {
     return {
       id: post.id,
       title: post.content.title,
-      image: post.content.images[0] || "https://picsum.photos/id/1/600/800",
+      image: post.content.images[0] || "",
       auditStatus: post.auditStatus,
       author: {
         id: post.author.id,

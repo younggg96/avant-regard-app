@@ -189,11 +189,6 @@ function StoreCard({
                 {t("store.verified")}
               </span>
             )}
-            {store.isOpen && (
-              <span className="rounded bg-green-600 px-2 py-0.5 font-label text-[10px] uppercase tracking-widest text-white">
-                {t("store.open")}
-              </span>
-            )}
           </div>
           {isFavorited && (
             <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white">

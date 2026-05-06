@@ -1276,20 +1276,6 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 >
                   {store.name}
                 </Text>
-                <Box
-                  px="$sm"
-                  py="$xs"
-                  rounded="$sm"
-                  bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-                >
-                  <Text
-                    fontSize="$xs"
-                    fontWeight="$bold"
-                    color={store.isOpen ? "#27AE60" : "$gray300"}
-                  >
-                    {store.isOpen ? t("store.open") : t("store.closed")}
-                  </Text>
-                </Box>
               </HStack>
 
               {/* 地址 */}
@@ -1719,24 +1705,8 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 </HStack>
 
                 <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
-                  {/* 状态和营业时间 */}
+                  {/* 营业时间 */}
                   <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
-                    <HStack alignItems="center" mb="$sm">
-                      <Box
-                        w={8}
-                        h={8}
-                        rounded="$sm"
-                        bg={selectedStore.isOpen ? "#27AE60" : "$gray300"}
-                        mr="$sm"
-                      />
-                      <Text
-                        fontSize="$sm"
-                        fontWeight="$semibold"
-                        color={selectedStore.isOpen ? "#27AE60" : "$gray300"}
-                      >
-                        {selectedStore.isOpen ? t("store.open") : t("store.closed")}
-                      </Text>
-                    </HStack>
                     {selectedStore.hours && (
                       <HStack alignItems="start">
                         <Ionicons

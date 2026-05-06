@@ -344,7 +344,7 @@ const SearchScreen = () => {
     return {
       id: post.id?.toString() || "",
       title: post.title || "",
-      image: images[0] || "https://picsum.photos/id/1/600/800",
+      image: images[0] || "",
       author: {
         id: userId,
         name: post.username || t("profile.user"),

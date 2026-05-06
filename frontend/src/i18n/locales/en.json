@@ -1148,7 +1148,9 @@
     "loadFailed": "Load failed, please retry",
     "unlikeSuccess": "Like removed",
     "operationFailed": "Operation failed, please retry",
-    "unlikeAction": "Unlike"
+    "unlikeAction": "Unlike",
+    "storeComment": "Store",
+    "productComment": "Product"
   },
   "myReports": {
     "title": "My Reports",

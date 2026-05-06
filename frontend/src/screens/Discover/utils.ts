@@ -71,7 +71,7 @@ export const mapApiPostToDisplayPost = (
       images:
         apiPost.imageUrls && apiPost.imageUrls.length > 0
           ? apiPost.imageUrls
-          : ["https://picsum.photos/id/1/600/800"],
+          : [],
       tags: [],
       coverAspectRatio:
         apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0

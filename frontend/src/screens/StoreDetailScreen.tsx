@@ -588,6 +588,40 @@ const StoreDetailScreen = () => {
     ]);
   };
 
+  // 点赞评论
+  const handleLikeComment = async (commentId: number) => {
+    if (!user) return;
+    const uid = Number(user.id);
+    const target = comments.find((c) => c.id === commentId);
+    if (!target) return;
+
+    const wasLiked = !!target.likedByMe;
+
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? { ...c, likedByMe: !wasLiked, likeCount: wasLiked ? Math.max(0, c.likeCount - 1) : c.likeCount + 1 }
+          : c
+      )
+    );
+
+    try {
+      if (wasLiked) {
+        await unlikeStoreComment(commentId, uid);
+      } else {
+        await likeStoreComment(commentId, uid);
+      }
+    } catch {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === commentId
+            ? { ...c, likedByMe: wasLiked, likeCount: wasLiked ? c.likeCount + 1 : Math.max(0, c.likeCount - 1) }
+            : c
+        )
+      );
+    }
+  };
+
   // 打电话
   const handleCall = (phone: string) => {
     const phoneNumber = phone.replace(/[^0-9+]/g, "");
@@ -671,14 +705,18 @@ const StoreDetailScreen = () => {
               </Text>
             </Pressable>
 
-            <HStack alignItems="center" gap={4}>
-              <Ionicons name="heart-outline" size={13} color={theme.colors.gray400} />
+            <Pressable onPress={() => handleLikeComment(item.id)} style={styles.commentAction}>
+              <Ionicons
+                name={item.likedByMe ? "heart" : "heart-outline"}
+                size={13}
+                color={item.likedByMe ? "#FF3040" : theme.colors.gray400}
+              />
               {item.likeCount > 0 && (
-                <Text fontSize={12} color="$gray400" style={styles.textRegular}>
+                <Text fontSize={12} color={item.likedByMe ? "#FF3040" : "$gray400"} ml={4} style={styles.textRegular}>
                   {item.likeCount}
                 </Text>
               )}
-            </HStack>
+            </Pressable>
 
             {user && item.userId === Number(user.id) && (
               <Pressable onPress={() => handleDeleteComment(item.id)}>
@@ -806,12 +844,6 @@ const StoreDetailScreen = () => {
                       {store.isFavorited ? t("store.followed") : t("store.follow")}
                     </Text>
                   </Pressable>
-                  <HStack alignItems="center" gap={4}>
-                    <Box w={6} h={6} rounded="$sm" bg={store.isOpen ? "#27AE60" : "$gray300"} />
-                    <Text fontSize={12} color={store.isOpen ? "#27AE60" : "$gray300"} style={styles.textRegular}>
-                      {store.isOpen ? t("store.open") : t("store.closed")}
-                    </Text>
-                  </HStack>
                 </HStack>
               </HStack>
 

@@ -407,36 +407,86 @@ class CommentService:
         return [self._format_comment(c, None, user_info_cache) for c in result.data]
 
     def get_user_comment_likes(self, user_id: int) -> List[dict]:
-        """获取用户点赞的所有评论"""
-        # 获取用户点赞的评论 ID
-        result = self.db.table("comment_likes").select("comment_id, created_at").eq("user_id", user_id).order("created_at", desc=True).execute()
-        
-        if not result.data:
-            return []
-        
-        # 获取评论详情
-        comment_ids = [item["comment_id"] for item in result.data]
-        comments_result = self.db.table("post_comments").select("*").in_("id", comment_ids).execute()
-        
-        if not comments_result.data:
-            return []
-        
-        user_info_cache = {}
-        comments_map = {}
-        for c in comments_result.data:
-            comments_map[c["id"]] = self._format_comment(c, None, user_info_cache)
-        
-        # 按点赞时间排序返回
-        liked_comments = []
-        for item in result.data:
-            comment_id = item["comment_id"]
-            if comment_id in comments_map:
-                comment = comments_map[comment_id]
-                liked_comments.append({
-                    "comment": comment.model_dump(),
-                    "likedAt": item["created_at"]
-                })
-        
+        """获取用户点赞的所有评论（帖子评论 + 买手店评论 + 商品评论）"""
+        liked_comments: List[dict] = []
+
+        # 1) 帖子评论点赞
+        post_likes = self.db.table("comment_likes").select("comment_id, created_at").eq("user_id", user_id).execute()
+        if post_likes.data:
+            ids = [r["comment_id"] for r in post_likes.data]
+            rows = self.db.table("post_comments").select("*").in_("id", ids).execute()
+            user_info_cache: dict = {}
+            cmap = {c["id"]: self._format_comment(c, None, user_info_cache) for c in (rows.data or [])}
+            for r in post_likes.data:
+                if r["comment_id"] in cmap:
+                    liked_comments.append({
+                        "comment": cmap[r["comment_id"]].model_dump(),
+                        "likedAt": r["created_at"],
+                        "source": "post",
+                    })
+
+        # 2) 买手店评论点赞
+        store_likes = self.db.table("buyer_store_comment_likes").select("comment_id, created_at").eq("user_id", user_id).execute()
+        if store_likes.data:
+            ids = [r["comment_id"] for r in store_likes.data]
+            rows = self.db.table("buyer_store_comments").select(
+                "*, users!buyer_store_comments_user_id_fkey(username, user_info(avatar_url))"
+            ).in_("id", ids).execute()
+            cmap = {}
+            for c in (rows.data or []):
+                u = c.get("users") or {}
+                ui = u.get("user_info") or {}
+                cmap[c["id"]] = {
+                    "id": c["id"],
+                    "postId": None,
+                    "storeId": c.get("store_id"),
+                    "userId": c["user_id"],
+                    "username": u.get("username", ""),
+                    "userAvatar": ui.get("avatar_url"),
+                    "content": c["content"],
+                    "likeCount": c.get("like_count", 0),
+                    "createdAt": c.get("created_at"),
+                }
+            for r in store_likes.data:
+                if r["comment_id"] in cmap:
+                    liked_comments.append({
+                        "comment": cmap[r["comment_id"]],
+                        "likedAt": r["created_at"],
+                        "source": "store",
+                    })
+
+        # 3) 商品评论点赞
+        prod_likes = self.db.table("store_product_comment_likes").select("comment_id, created_at").eq("user_id", user_id).execute()
+        if prod_likes.data:
+            ids = [r["comment_id"] for r in prod_likes.data]
+            rows = self.db.table("store_product_comments").select(
+                "*, users!store_product_comments_user_id_fkey(username, user_info(avatar_url))"
+            ).in_("id", ids).execute()
+            cmap = {}
+            for c in (rows.data or []):
+                u = c.get("users") or {}
+                ui = u.get("user_info") or {}
+                cmap[c["id"]] = {
+                    "id": c["id"],
+                    "postId": None,
+                    "storeId": c.get("store_id"),
+                    "productId": c.get("product_id"),
+                    "userId": c["user_id"],
+                    "username": u.get("username", ""),
+                    "userAvatar": ui.get("avatar_url"),
+                    "content": c["content"],
+                    "likeCount": c.get("like_count", 0),
+                    "createdAt": c.get("created_at"),
+                }
+            for r in prod_likes.data:
+                if r["comment_id"] in cmap:
+                    liked_comments.append({
+                        "comment": cmap[r["comment_id"]],
+                        "likedAt": r["created_at"],
+                        "source": "product",
+                    })
+
+        liked_comments.sort(key=lambda x: x["likedAt"], reverse=True)
         return liked_comments
 
 

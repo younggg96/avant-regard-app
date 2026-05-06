@@ -52,7 +52,7 @@ function convertToDisplayPost(
     type: apiPost.postType,
     auditStatus: apiPost.auditStatus,
     title: apiPost.title || i18n.t("community.noTitle"),
-    image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+    image: apiPost.imageUrls?.[0] || "",
     author: {
       id: String(apiPost.userId),
       name: authorInfo.name,

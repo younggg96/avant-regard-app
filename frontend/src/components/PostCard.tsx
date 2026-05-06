@@ -102,8 +102,10 @@ const PostCardInner = ({
 
   const displayTitle = post.content?.title || post.title || "";
   const displayImage = post.content?.images?.[0] || post.image || "";
+  const displayDescription = post.content?.description || "";
   const displayLikes = post.engagement?.likes || post.likes || 0;
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
+  const hasImage = !!displayImage;
 
   const isPending = post.auditStatus === "PENDING";
 
@@ -112,13 +114,6 @@ const PostCardInner = ({
   );
 
   // Stable cover style — feed-scroll hot path.
-  //
-  // Without this, every PostCard re-render (point-and-shoot likes, feedItems
-  // append, MasonryFlashList cell recycle) hands `PostCoverMedia` → `OptimizedImage`
-  // a freshly-built array literal, defeating `OptimizedImage`'s `React.memo`
-  // shallow-compare and forcing a reconciliation down to the `expo-image`
-  // layer. Memoizing on the two actual inputs (`mediaRatio`, `isPending`)
-  // keeps the array identity stable and lets the memoized children bail out.
   const coverStyle = useMemo(
     () => [
       styles.image,
@@ -128,12 +123,6 @@ const PostCardInner = ({
     [mediaRatio, isPending]
   );
 
-  // Handlers only need `post.id` / `post.author.id` — not the whole post
-  // object. Depending on the post reference made `handlePressPost` churn on
-  // every like / feed mutation, which propagated re-renders into the
-  // Pressable tree. Narrowing the deps keeps handler identities stable as
-  // long as the author + post id are stable, matching how FlashList
-  // recycles cells.
   const postId = post.id;
   const authorId = post.author.id;
   const handlePressPost = useCallback(() => onPress?.(post), [onPress, post]);
@@ -145,39 +134,68 @@ const PostCardInner = ({
 
   return (
     <View style={styles.card}>
-      <Pressable onPress={handlePressPost}>
-        <View>
-          <PostCoverMedia
-            uri={displayImage}
-            size={coverImageSize}
-            priority={coverImagePriority}
-            showPlaceholder={showCoverPlaceholder}
-            transition={coverImageTransition}
-            style={coverStyle}
-          />
+      {hasImage ? (
+        <Pressable onPress={handlePressPost}>
+          <View>
+            <PostCoverMedia
+              uri={displayImage}
+              size={coverImageSize}
+              priority={coverImagePriority}
+              showPlaceholder={showCoverPlaceholder}
+              transition={coverImageTransition}
+              style={coverStyle}
+            />
 
-          {isPending && (
-            <View style={styles.pendingBadge}>
-              <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
-            </View>
-          )}
-          {!isPending && post.communityName && (
-            <View style={styles.communityBadge}>
-              <RNText style={styles.communityText}>
-                # {post.communityName}
+            {isPending && (
+              <View style={styles.pendingBadge}>
+                <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
+              </View>
+            )}
+            {!isPending && post.communityName && (
+              <View style={styles.communityBadge}>
+                <RNText style={styles.communityText}>
+                  # {post.communityName}
+                </RNText>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      ) : (
+        <Pressable onPress={handlePressPost}>
+          <View style={styles.textOnlyCover}>
+            {isPending && (
+              <View style={styles.pendingBadge}>
+                <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
+              </View>
+            )}
+            {!isPending && post.communityName && (
+              <View style={styles.communityBadge}>
+                <RNText style={styles.communityText}>
+                  # {post.communityName}
+                </RNText>
+              </View>
+            )}
+            <RNText style={styles.textOnlyTitle} numberOfLines={3}>
+              {displayTitle}
+            </RNText>
+            {displayDescription ? (
+              <RNText style={styles.textOnlyDesc} numberOfLines={5}>
+                {displayDescription}
               </RNText>
-            </View>
-          )}
-        </View>
-      </Pressable>
+            ) : null}
+          </View>
+        </Pressable>
+      )}
 
-      <Pressable onPress={handlePressPost}>
-        <View style={styles.titleArea}>
-          <RNText style={styles.title} numberOfLines={2}>
-            {displayTitle}
-          </RNText>
-        </View>
-      </Pressable>
+      {hasImage && (
+        <Pressable onPress={handlePressPost}>
+          <View style={styles.titleArea}>
+            <RNText style={styles.title} numberOfLines={2}>
+              {displayTitle}
+            </RNText>
+          </View>
+        </Pressable>
+      )}
 
       <View style={styles.footer}>
         <Pressable onPress={handlePressAuthor} style={styles.authorPressable}>
@@ -327,6 +345,25 @@ const styles = StyleSheet.create({
   },
   likeCountActive: {
     color: "#FF3040",
+  },
+  textOnlyCover: {
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
+    minHeight: 120,
+    justifyContent: "center",
+  },
+  textOnlyTitle: {
+    color: theme.colors.black,
+    fontWeight: "700",
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  textOnlyDesc: {
+    color: theme.colors.gray600,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: theme.spacing.sm,
   },
 });
 

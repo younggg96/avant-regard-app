@@ -29,13 +29,14 @@ import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
 import {
     commentService,
-    PostComment,
     LikedComment,
+    LikedCommentData,
 } from "../services/commentService";
 import {
     postService,
     Post,
 } from "../services/postService";
+import { unlikeStoreComment } from "../services/buyerStoreService";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 
@@ -71,7 +72,7 @@ const MyLikesScreen = () => {
         return {
             id: String(apiPost.id),
             title: apiPost.title || t('community.noTitle'),
-            image: apiPost.imageUrls?.[0] || "https://picsum.photos/id/1/600/800",
+            image: apiPost.imageUrls?.[0] || "",
             author: {
                 id: String(apiPost.userId),
                 name: apiPost.username || t('profile.user'),
@@ -162,12 +163,20 @@ const MyLikesScreen = () => {
         }
     };
 
-    const handleUnlikeComment = async (comment: PostComment) => {
+    const handleUnlikeComment = async (item: LikedComment) => {
         if (!user?.userId) return;
+        const comment = item.comment;
 
         try {
-            await commentService.unlikeComment(comment.id, user.userId);
-            setLikedComments((prev) => prev.filter((c) => c.comment.id !== comment.id));
+            if (item.source === "store") {
+                await unlikeStoreComment(comment.id, user.userId);
+            } else if (item.source === "product") {
+                const { unlikeStoreProductComment } = await import("../services/storeProductService");
+                await unlikeStoreProductComment(comment.id);
+            } else {
+                await commentService.unlikeComment(comment.id, user.userId);
+            }
+            setLikedComments((prev) => prev.filter((c) => !(c.comment.id === comment.id && c.source === item.source)));
             Alert.show(t('myLikes.unlikeSuccess'));
         } catch (error) {
             console.error("取消点赞失败:", error);
@@ -179,8 +188,18 @@ const MyLikesScreen = () => {
         (navigation as any).navigate("PostDetail", { postId: post.id });
     };
 
-    const handleCommentPress = (comment: PostComment) => {
-        (navigation as any).navigate("PostDetail", { postId: comment.postId });
+    const handleCommentPress = (item: LikedComment) => {
+        const comment = item.comment;
+        if (item.source === "store" && comment.storeId) {
+            (navigation as any).navigate("StoreDetail", { storeId: comment.storeId });
+        } else if (item.source === "product" && comment.productId) {
+            (navigation as any).navigate("StoreProductDetail", {
+                productId: comment.productId,
+                storeId: comment.storeId,
+            });
+        } else if (comment.postId) {
+            (navigation as any).navigate("PostDetail", { postId: comment.postId });
+        }
     };
 
     const formatTime = (dateString: string) => {
@@ -267,12 +286,18 @@ const MyLikesScreen = () => {
         );
     };
 
+    const sourceLabel = (source: LikedComment["source"]) => {
+        if (source === "store") return t("myLikes.storeComment");
+        if (source === "product") return t("myLikes.productComment");
+        return "";
+    };
+
     const renderCommentItem = ({ item }: { item: LikedComment }) => {
         const comment = item.comment;
         return (
             <Pressable
-                onPress={() => handleCommentPress(comment)}
-                onLongPress={() => handleUnlikeComment(comment)}
+                onPress={() => handleCommentPress(item)}
+                onLongPress={() => handleUnlikeComment(item)}
             >
                 <HStack
                     p="$md"
@@ -307,9 +332,18 @@ const MyLikesScreen = () => {
                     <VStack flex={1} ml="$sm">
                         {/* 用户名和时间 */}
                         <HStack justifyContent="space-between" alignItems="center">
-                            <Text fontSize="$sm" fontWeight="$medium" color="$black">
-                                {comment.username}
-                            </Text>
+                            <HStack alignItems="center" gap="$xs">
+                                <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                                    {comment.username}
+                                </Text>
+                                {item.source !== "post" && (
+                                    <Box bg="$gray100" px="$xs" py={1} rounded="$sm">
+                                        <Text fontSize={10} color="$gray400">
+                                            {sourceLabel(item.source)}
+                                        </Text>
+                                    </Box>
+                                )}
+                            </HStack>
                             <Text fontSize="$xs" color="$gray300">
                                 {formatTime(item.likedAt)}
                             </Text>
@@ -338,7 +372,7 @@ const MyLikesScreen = () => {
                                 </Text>
                             </HStack>
                             <Pressable
-                                onPress={() => handleUnlikeComment(comment)}
+                                onPress={() => handleUnlikeComment(item)}
                                 hitSlop={8}
                             >
                                 <HStack alignItems="center" gap="$xs">
@@ -394,7 +428,7 @@ const MyLikesScreen = () => {
             <FlatList
                 data={likedComments}
                 renderItem={renderCommentItem}
-                keyExtractor={(item) => String(item.comment.id)}
+                keyExtractor={(item) => `${item.source}-${item.comment.id}`}
                 refreshControl={
                     <RefreshControl refreshing={commentsRefreshing} onRefresh={onCommentsRefresh} />
                 }

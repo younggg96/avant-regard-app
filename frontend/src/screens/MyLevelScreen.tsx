@@ -234,7 +234,8 @@ const MyLevelScreen: React.FC = () => {
             const specSubtitle =
               t(`level.subtitles.${spec.level}`) || spec.subtitle;
             const specBenefit =
-              t(`level.benefits.${spec.level}`) || spec.benefit;
+              t(`level.benefits.${spec.level}`, { defaultValue: "" }) ||
+              spec.benefit;
             return (
               <View key={spec.level} style={styles.timelineRow}>
                 <View

@@ -81,16 +81,7 @@ export function StoreDetailSheet({
                 </button>
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded bg-[var(--canvas-raised)] px-2.5 py-1 font-label text-[11px]">
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      store.isOpen ? "bg-green-600" : "bg-gray-400"
-                    }`}
-                  />
-                  {store.isOpen ? "营业中" : "休息中"}
-                </div>
-
+              <div className="mt-3 flex items-center justify-end gap-3">
                 <div className="flex items-center gap-3">
                   {favoriteCount > 0 && (
                     <span className="font-label text-[11px] text-[color:var(--ink-muted)]">

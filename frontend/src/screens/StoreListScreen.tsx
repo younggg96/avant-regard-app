@@ -257,20 +257,6 @@ const StoreListScreen = () => {
                             {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
                         </Text>
                     </Pressable>
-                    <Box
-                        px="$sm"
-                        py="$xs"
-                        rounded="$sm"
-                        bg={store.isOpen ? "#E8F5E9" : "$gray100"}
-                    >
-                        <Text
-                            fontSize="$xs"
-                            fontWeight="$bold"
-                            color={store.isOpen ? "#27AE60" : "$gray300"}
-                        >
-                            {store.isOpen ? t("store.open") : t("store.closed")}
-                        </Text>
-                    </Box>
                 </HStack>
             </HStack>
 
@@ -525,24 +511,8 @@ const StoreListScreen = () => {
                                 </HStack>
 
                                 <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
-                                    {/* 状态和营业时间 */}
+                                    {/* 营业时间 */}
                                     <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
-                                        <HStack alignItems="center" mb="$sm">
-                                            <Box
-                                                w={8}
-                                                h={8}
-                                                rounded="$sm"
-                                                bg={selectedStore.isOpen ? "#27AE60" : "$gray300"}
-                                                mr="$sm"
-                                            />
-                                            <Text
-                                                fontSize="$sm"
-                                                fontWeight="$semibold"
-                                                color={selectedStore.isOpen ? "#27AE60" : "$gray300"}
-                                            >
-                                                {selectedStore.isOpen ? t("store.open") : t("store.closed")}
-                                            </Text>
-                                        </HStack>
                                         {selectedStore.hours && (
                                             <HStack alignItems="start">
                                                 <Ionicons
