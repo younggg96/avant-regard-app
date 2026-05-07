@@ -74,6 +74,12 @@ import {
   getStoreProducts,
   formatPrice,
 } from "../services/storeProductService";
+// 买手店帖子（migration 055）— Posts tab 用 postService.getPostsByStoreId
+// 拉数据, 横向滚动卡片视觉风格和单品 preview 对齐, 详情走 PostDetail.
+import {
+  postService,
+  Post as ApiPost,
+} from "../services/postService";
 import HalfStarRating from "../components/HalfStarRating";
 import { formatTimestamp } from "../components/PostDetail/types";
 import { ShareToChatModal } from "../components/ShareToChatModal";
@@ -150,6 +156,19 @@ const StoreDetailScreen = () => {
   // 完整网格 / 搜索 / 分类筛选都在 StoreProductListScreen 里处理。
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [productsTotal, setProductsTotal] = useState(0);
+
+  // 店铺帖子（migration 055）。 StoreDetail 在 Products / Posts 之间切 tab,
+  // 这里只放轻量列表（卡片+点击进入 PostDetail）, 不掺杂复杂的瀑布流。
+  const [storePosts, setStorePosts] = useState<ApiPost[]>([]);
+  // Tab 切换：products / posts. 默认停在「products」, 因为消费者首要意图是
+  // 看商品; posts tab 是次要内容入口。
+  // 用户手动切过 tab 后, 后续加载完数据不要再被自动切回去 (避免争用)。
+  const [storeTab, setStoreTab] = useState<"products" | "posts">("products");
+  const [storeTabUserSet, setStoreTabUserSet] = useState(false);
+  const handleStoreTabChange = useCallback((next: "products" | "posts") => {
+    setStoreTab(next);
+    setStoreTabUserSet(true);
+  }, []);
 
   // 分享状态
   const [showShareToChat, setShowShareToChat] = useState(false);
@@ -256,13 +275,42 @@ const StoreDetailScreen = () => {
     }
   }, [storeId]);
 
+  // 拉店铺帖子（migration 055）— 公开列表, 仅 PUBLISHED + APPROVED.
+  const loadStorePosts = useCallback(async () => {
+    try {
+      const result = await postService.getPostsByStoreId(storeId, { limit: 60 });
+      setStorePosts(result || []);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn("[StoreDetail] loadStorePosts failed:", error);
+      }
+    }
+  }, [storeId]);
+
+  // 智能默认 tab：商品为空但有店铺帖子时, 自动切到 posts tab, 避免用户
+  // 看到一片"products"占位却空空如也。 仅在用户没手动切过的初次场景生效。
+  useEffect(() => {
+    if (storeTabUserSet) return;
+    if (products.length === 0 && storePosts.length > 0) {
+      setStoreTab("posts");
+    }
+  }, [products.length, storePosts.length, storeTabUserSet]);
+
   useEffect(() => {
     loadStoreDetail();
     loadComments();
     loadSuggestions();
     loadMerchantContent();
     loadProducts();
-  }, [loadStoreDetail, loadComments, loadSuggestions, loadMerchantContent, loadProducts]);
+    loadStorePosts();
+  }, [
+    loadStoreDetail,
+    loadComments,
+    loadSuggestions,
+    loadMerchantContent,
+    loadProducts,
+    loadStorePosts,
+  ]);
 
   // Banner 自动轮播
   useEffect(() => {
@@ -290,6 +338,7 @@ const StoreDetailScreen = () => {
       loadComments(1),
       loadMerchantContent(),
       loadProducts(),
+      loadStorePosts(),
     ]);
     setIsRefreshing(false);
   };
@@ -297,14 +346,35 @@ const StoreDetailScreen = () => {
   // Banner 点击处理。打埋点是 fire-and-forget：埋点失败不应当阻塞用户跳转，
   // 也不应当用 ERROR 级别污染日志（迁移 043_add_increment_banner_click.sql
   // 还没在所有环境跑过时，调用会拿到 PostgREST 的 schema cache miss）。
+  //
+  // 跳转优先级（migration 055）：
+  //   1. linkedPostId 非空 → 跳到 PostDetail（店铺帖子）；
+  //   2. linkUrl 非空 → 走外链（保持向后兼容）；
+  //   3. 其它 → 不动（banner 仅作展示）。
+  const openLinkedPost = (postId: number) => {
+    (navigation as any).navigate("PostDetail", { postId });
+  };
+
   const handleBannerClick = async (banner: StoreBanner) => {
     recordBannerClick(banner.id).catch((error) => {
       if (__DEV__) {
         console.warn("[StoreDetail] recordBannerClick failed:", error);
       }
     });
+    if (banner.linkedPostId) {
+      openLinkedPost(banner.linkedPostId);
+      return;
+    }
     if (banner.linkUrl) {
       Linking.openURL(banner.linkUrl);
+    }
+  };
+
+  // 通用入口元素点击：announcement / activity / discount 都可以挂 linkedPostId.
+  // 如果挂了 → 进入对应店铺帖子的详情；否则保留原行为占位（不动）。
+  const handleEntryItemClick = (linkedPostId?: number | null) => {
+    if (linkedPostId) {
+      openLinkedPost(linkedPostId);
     }
   };
 
@@ -1093,7 +1163,13 @@ const StoreDetailScreen = () => {
                     </Text>
                     <VStack gap={10}>
                       {merchantContent.announcements.map((announcement) => (
-                        <VStack key={announcement.id}>
+                        <Pressable
+                          key={announcement.id}
+                          onPress={() =>
+                            handleEntryItemClick(announcement.linkedPostId)
+                          }
+                          disabled={!announcement.linkedPostId}
+                        >
                           <HStack alignItems="center" gap={6} mb={2}>
                             {announcement.isPinned && (
                               <Box bg="$gray100" px={6} py={1} rounded="$xs">
@@ -1112,11 +1188,18 @@ const StoreDetailScreen = () => {
                             >
                               {announcement.title}
                             </Text>
+                            {announcement.linkedPostId && (
+                              <Ionicons
+                                name="chevron-forward"
+                                size={14}
+                                color={theme.colors.gray300}
+                              />
+                            )}
                           </HStack>
                           <Text fontSize={13} color="$gray600" lineHeight={20} numberOfLines={3} style={styles.textRegular}>
                             {announcement.content}
                           </Text>
-                        </VStack>
+                        </Pressable>
                       ))}
                     </VStack>
                   </VStack>
@@ -1133,9 +1216,8 @@ const StoreDetailScreen = () => {
                         <Pressable
                           key={activity.id}
                           style={styles.activityCard}
-                          onPress={() => {
-                            // 可以跳转到活动详情页
-                          }}
+                          onPress={() => handleEntryItemClick(activity.linkedPostId)}
+                          disabled={!activity.linkedPostId}
                         >
                           {activity.coverImage && (
                             <OptimizedImage
@@ -1183,7 +1265,12 @@ const StoreDetailScreen = () => {
                     </Text>
                     <VStack gap={10}>
                       {merchantContent.discounts.map((discount) => (
-                        <Box key={discount.id} style={styles.discountRow}>
+                        <Pressable
+                          key={discount.id}
+                          style={styles.discountRow}
+                          onPress={() => handleEntryItemClick(discount.linkedPostId)}
+                          disabled={!discount.linkedPostId}
+                        >
                           <HStack justifyContent="between" alignItems="flex-start" gap={10}>
                             <VStack flex={1}>
                               <Text fontSize={14} fontWeight="$semibold" color="$black" style={styles.textBold}>
@@ -1214,7 +1301,7 @@ const StoreDetailScreen = () => {
                               </Box>
                             )}
                           </HStack>
-                        </Box>
+                        </Pressable>
                       ))}
                     </VStack>
                   </VStack>
@@ -1222,31 +1309,154 @@ const StoreDetailScreen = () => {
               </>
             )}
 
+            {/* ── 商品 / 帖子 Tab 切换（migration 055）──
+                把"单品 preview"和"店铺帖子"放到同一个内容区,
+                通过 tab 切换。 当任一边没有数据时, 该 tab 仍显示, 但
+                选中后展示空态文案, 避免商家看到"自己刚发的帖子怎么不见了"。
+
+                历史：原版只有 products 区, 没有 tab UI, 直接走横向滚动。
+                现在加了 storePosts, 我们让两者共享同一个标题/切换栏, 节省
+                屏幕高度（评论区已在下方占用大部分屏）. */}
+            {(products.length > 0 || storePosts.length > 0) && (
+              <VStack mt="$lg">
+                <HStack px="$md" mb={8} gap="$md" alignItems="center">
+                  <Pressable
+                    onPress={() => handleStoreTabChange("products")}
+                    flexDirection="row"
+                    alignItems="center"
+                  >
+                    <Text
+                      fontSize={12}
+                      fontWeight={storeTab === "products" ? "$semibold" : "$normal"}
+                      color={storeTab === "products" ? "$black" : "$gray400"}
+                      letterSpacing={0.5}
+                      style={
+                        storeTab === "products" ? styles.textBold : styles.textRegular
+                      }
+                    >
+                      {t("store.products").toUpperCase()}
+                      {productsTotal > 0 ? ` · ${productsTotal}` : ""}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleStoreTabChange("posts")}
+                    flexDirection="row"
+                    alignItems="center"
+                  >
+                    <Text
+                      fontSize={12}
+                      fontWeight={storeTab === "posts" ? "$semibold" : "$normal"}
+                      color={storeTab === "posts" ? "$black" : "$gray400"}
+                      letterSpacing={0.5}
+                      style={
+                        storeTab === "posts" ? styles.textBold : styles.textRegular
+                      }
+                    >
+                      {t("store.storePosts").toUpperCase()}
+                      {storePosts.length > 0 ? ` · ${storePosts.length}` : ""}
+                    </Text>
+                  </Pressable>
+                  <Box flex={1} />
+                  {storeTab === "products" && products.length > 0 && (
+                    <Pressable
+                      onPress={handleOpenAllProducts}
+                      flexDirection="row"
+                      alignItems="center"
+                    >
+                      <Text fontSize={12} color="$gray400" mr={2} style={styles.textRegular}>
+                        {t("common.viewAll")}
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={13}
+                        color={theme.colors.gray300}
+                      />
+                    </Pressable>
+                  )}
+                </HStack>
+              </VStack>
+            )}
+
+            {/* Posts tab 内容（migration 055）— 横向滚动卡片, 用 PostCoverMedia
+                下面的封面 + 标题 + 店铺/作者两行, 风格和 PostCard 主体一致.
+                空态时, 显示一行轻量文案, 不破坏页面结构. */}
+            {(products.length > 0 || storePosts.length > 0) && storeTab === "posts" && (
+              <VStack>
+                {storePosts.length === 0 ? (
+                  <VStack alignItems="center" py="$lg" px="$md">
+                    <Ionicons name="albums-outline" size={28} color={theme.colors.gray200} />
+                    <Text fontSize={12} color="$gray300" mt={6} textAlign="center" style={styles.textRegular}>
+                      {t("store.noStorePosts")}
+                    </Text>
+                  </VStack>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.horizontalList}
+                  >
+                    {storePosts.map((p) => {
+                      const cover = p.imageUrls?.[0];
+                      return (
+                        <Pressable
+                          key={p.id}
+                          style={styles.productCard}
+                          onPress={() =>
+                            (navigation as any).navigate("PostDetail", { postId: p.id })
+                          }
+                        >
+                          <Box style={styles.productCover}>
+                            {cover ? (
+                              <OptimizedImage
+                                uri={cover}
+                                size={ImageSize.MEDIUM}
+                                style={styles.productImage}
+                                contentFit="cover"
+                                lazy={true}
+                              />
+                            ) : (
+                              <Box style={styles.productImagePlaceholder}>
+                                <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
+                              </Box>
+                            )}
+                          </Box>
+                          <VStack mt={6} gap={2}>
+                            <Text
+                              fontSize={12}
+                              fontWeight="$semibold"
+                              color="$black"
+                              numberOfLines={2}
+                              style={styles.textBold}
+                            >
+                              {p.title}
+                            </Text>
+                            {!!p.username && (
+                              <Text fontSize={10} color="$gray400" numberOfLines={1} style={styles.textRegular}>
+                                @{p.username}
+                              </Text>
+                            )}
+                            <HStack alignItems="center" gap={4} mt={2}>
+                              <Ionicons name="heart-outline" size={11} color={theme.colors.gray400} />
+                              <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                                {p.likeCount || 0}
+                              </Text>
+                            </HStack>
+                          </VStack>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </VStack>
+            )}
+
             {/* ── 单品列表 (preview) ── */}
             {/* 只在该店有上架商品时显示。卡片横向滚动 + "View All"
                 跳到 StoreProductList；首屏 loading 静默，避免 detail 页
                 因为这条 optional 区域闪一下骨架屏。 */}
-            {products.length > 0 && (
-              <VStack mt="$lg">
-                {/* 整个标题行可点 —— "PRODUCTS · 6" + "View All" 指向同一个屏，
-                    不管 total > preview 与否，用户都能进到完整列表 / 搜索 /
-                    分类筛选界面（StoreProductListScreen mode=ALL）。
-                    设计稿里那种"看似只有标签"的 header 容易让人觉得不能点，
-                    所以右侧永远渲染 chevron 显示 affordance。 */}
-                <Pressable onPress={handleOpenAllProducts}>
-                  <HStack justifyContent="between" alignItems="center" px="$md" mb={8}>
-                    <Text fontSize={11} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
-                      {t("store.products").toUpperCase()}
-                      {productsTotal > 0 ? ` · ${productsTotal}` : ""}
-                    </Text>
-                    <HStack alignItems="center">
-                      <Text fontSize={12} color="$gray400" mr={2} style={styles.textRegular}>
-                        {t("common.viewAll")}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={13} color={theme.colors.gray300} />
-                    </HStack>
-                  </HStack>
-                </Pressable>
+            {products.length > 0 && storeTab === "products" && (
+              <VStack>
+                {/* Header 行已经移到上面的 Tab 切换处, 这里只保留横向滚动. */}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}

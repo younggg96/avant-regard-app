@@ -1809,7 +1809,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   primaryTitleBadge: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: "#1F2937",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1817,7 +1817,7 @@ const styles = StyleSheet.create({
   primaryTitleText: {
     fontSize: 11,
     fontWeight: "500",
-    color: theme.colors.gray600,
+    color: "#FFFFFF",
   },
   loadingGif: {
     width: SCREEN_WIDTH,

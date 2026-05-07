@@ -1021,7 +1021,9 @@
     "statFollow": "Following",
     "statFans": "Followers",
     "statLikesAndFavs": "Likes & Saves",
-    "verified": "Verified"
+    "verified": "Verified",
+    "tabPosts": "Posts",
+    "noStorePosts": "No store posts yet"
   },
   "product": {
     "noImage": "No image",
@@ -1380,7 +1382,22 @@
     "contentNoProducts": "No products yet",
     "contentColProduct": "Product",
     "contentRefreshedAt": "Updated {{time}}",
-    "contentCacheNote": "Aggregation refreshes hourly via store_brand_stats cache. Views are cumulative and not filtered by the time window."
+    "contentCacheNote": "Aggregation refreshes hourly via store_brand_stats cache. Views are cumulative and not filtered by the time window.",
+    "tabPost": "Posts",
+    "noStorePosts": "No store posts yet",
+    "newStorePost": "+ New Store Post",
+    "editStorePost": "Edit Store Post",
+    "deleteStorePost": "Delete this store post?",
+    "postCount": "{{count}} posts",
+    "postStats": "{{likes}} ♡ · {{comments}} 💬",
+    "postTitle": "Post Title",
+    "postTitlePlaceholder": "Enter post title",
+    "postContent": "Description",
+    "postContentPlaceholder": "Tell your followers what's happening...",
+    "postImages": "Images",
+    "postImagesHint": "{{count}}/{{max}} images. First image is the cover.",
+    "linkedPostLabel": "Link to Store Post",
+    "linkedPostEmptyHint": "Publish a store post first to enable linking"
   },
   "reports": {
     "myReports": "My Reports",

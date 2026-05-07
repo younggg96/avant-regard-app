@@ -495,9 +495,14 @@ class FeedService:
 
         user_ids = list({p["user_id"] for p in posts})
         post_ids = [p["id"] for p in posts]
+        # 买手店帖子（migration 055）批量取店名, 给 PostCard 角标显示用。
+        # 同样的 N+1 防御：如果 RPC 路径还没把 store_id 放进 RETURNS TABLE,
+        # 这里 store_ids 会是空集, fetch 跳过, 不浪费一次查询。
+        store_ids = list({p.get("store_id") for p in posts if p.get("store_id")})
 
         username_map = self._batch_fetch_usernames(user_ids)
         avatar_map = self._batch_fetch_avatars(user_ids)
+        store_name_map = self._batch_fetch_store_names(store_ids) if store_ids else {}
 
         liked_set: set = set()
         favorited_set: set = set()
@@ -515,8 +520,24 @@ class FeedService:
             p["_liked_by_me"] = pid in liked_set
             p["_favorited_by_me"] = pid in favorited_set
             p["_wanted_by_me"] = pid in wanted_set
+            sid = p.get("store_id")
+            p["_store_name"] = store_name_map.get(sid) if sid else None
 
         return posts
+
+    def _batch_fetch_store_names(self, store_ids: List[str]) -> dict:
+        if not store_ids:
+            return {}
+        try:
+            result = (
+                self.db.table("buyer_stores")
+                .select("id, name")
+                .in_("id", store_ids)
+                .execute()
+            )
+            return {r["id"]: r.get("name") for r in (result.data or [])}
+        except Exception:
+            return {}
 
     def _batch_fetch_usernames(self, user_ids: List[int]) -> dict:
         if not user_ids:
@@ -614,6 +635,13 @@ class FeedService:
             "itemSizes": post_data.get("item_sizes") or [],
             "itemColors": post_data.get("item_colors") or [],
             "communityId": post_data.get("community_id"),
+            # 买手店帖子（migration 055）— Stage 1 走 .select("*") 自带
+            # store_id; Stage 2/3 RPC 没改 RETURNS TABLE 列表（保持向后
+            # 兼容）, 因此 store_id 在 RPC 路径下会是 None, 前端 PostCard
+            # 看不到「店铺」角标。一旦后续重新生成 RPC, 把 store_id 加进
+            # 列表, 这里就能自然亮起。
+            "storeId": post_data.get("store_id"),
+            "storeName": post_data.get("_store_name"),
             "grade": grade_value,
             "gradeReward": grade_reward,
             "feedScore": post_data.get("feed_score"),

@@ -6,7 +6,12 @@
  */
 
 export type PostType = "OUTFIT" | "DAILY_SHARE" | "ITEM_REVIEW" | "ARTICLES";
-export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+// 后端 backend/app/schemas/post.py PostStatus 枚举只有这三档。
+// 历史: 早期 web 端的 ARCHIVED 是手误, 后端从未返回过该值; 与移动端
+// frontend/src/services/userPostService.ts 的 PostStatus 也对不齐
+// (移动端额外加了 PENDING, 但 PENDING 实际是 audit_status 概念)。
+// 这里以后端为准，避免店铺帖子 Hidden 状态在 web 上识别不出来。
+export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN";
 
 export interface Post {
   id: number;
@@ -40,6 +45,11 @@ export interface Post {
   communityId?: number;
   communityName?: string;
   communitySlug?: string;
+
+  // 买手店帖子（migration 055）— storeId 非空 → 该帖是某买手店发布的
+  // 「店铺帖子」, 在 PostCard 上显示「店铺」角标, 并可点击跳到 StoreDetail.
+  storeId?: string;
+  storeName?: string;
 
   // Current-user interaction state (present when caller is authenticated).
   likedByMe?: boolean;

@@ -127,6 +127,13 @@ CREATE TABLE IF NOT EXISTS posts (
     favorite_count INTEGER DEFAULT 0,
     comment_count INTEGER DEFAULT 0,
     want_count INTEGER DEFAULT 0,
+    -- 买手店帖子（migration 055）。NULL 表示普通用户帖子;
+    -- 非空 → 该帖子由买手店发布，PostCard 显示「店铺」角标。
+    -- FK 约束 (REFERENCES buyer_stores(id)) 由 migration 055 单独添加,
+    -- 因为 init_tables.sql 不创建 buyer_stores 表 (后者在 migrations
+    -- 008 / add_buyer_stores 里), 这里直接写 FK 会让 fresh 安装报
+    -- "relation buyer_stores does not exist".
+    store_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

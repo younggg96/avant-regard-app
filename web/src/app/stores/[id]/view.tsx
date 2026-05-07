@@ -35,8 +35,11 @@ import {
   StoreProductGrid,
   type ProductGridFilters,
 } from "@/components/stores/StoreProductGrid";
+// 买手店帖子（migration 055）— 在店铺详情页新增 Posts tab.
+import { postService } from "@/lib/services/post";
+import type { Post as ApiPost } from "@/lib/types";
 
-type TabKey = "home" | "all" | "new";
+type TabKey = "home" | "all" | "new" | "posts";
 
 function useTabs() {
   const { t } = useTranslation();
@@ -44,6 +47,9 @@ function useTabs() {
     { key: "home" as TabKey, label: t("store.tabHome") },
     { key: "all" as TabKey, label: t("store.tabAll") },
     { key: "new" as TabKey, label: t("store.tabNew") },
+    // 买手店帖子（migration 055）— 用 short label "Posts"/"帖子", 和其它
+    // tab 视觉对齐, 详情卡走列表布局, 不和商品网格混排.
+    { key: "posts" as TabKey, label: t("store.tabPosts") },
   ];
 }
 
@@ -84,7 +90,8 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
   // ---------- URL state (tab + filter) ----------
   const tab: TabKey = useMemo(() => {
     const t = sp.get("tab");
-    return t === "all" || t === "new" ? t : "home";
+    if (t === "all" || t === "new" || t === "posts") return t;
+    return "home";
   }, [sp]);
 
   const urlCategoryId = useMemo(() => {
@@ -251,6 +258,10 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
         <StoreProductGrid storeId={storeId} filters={{ isNew: true }} />
       )}
 
+      {/* 买手店帖子（migration 055）— Posts tab 走单独 grid 列表组件,
+          每张卡片可点击进入 PostDetail. */}
+      {tab === "posts" && <StorePostsTab storeId={storeId} />}
+
       {/* Toast（EVENT 卡片占位提示） */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 rounded-full bg-[var(--ink)] px-4 py-2 font-label text-[12px] text-[var(--canvas)] shadow-lg">
@@ -258,5 +269,73 @@ function StoreDetailViewInner({ initialStore }: { initialStore: BuyerStore }) {
         </div>
       )}
     </article>
+  );
+}
+
+// 买手店帖子（migration 055）—— 网格列表, 点击卡片跳到 /posts/[id].
+// 数据走 postService.getPostsByStoreId 公开接口（已在服务里默认 includeUnpublished=false）.
+function StorePostsTab({ storeId }: { storeId: string }) {
+  const { t } = useTranslation();
+  const { data: posts = [], isLoading } = useSWR(
+    ["public-store-posts", storeId],
+    () => postService.getPostsByStoreId(storeId, { limit: 60 }),
+    { revalidateOnFocus: false },
+  );
+
+  if (isLoading) {
+    return (
+      <div className="py-12 text-center font-label text-[12px] text-[color:var(--ink-muted)]">
+        {t("common.loading")}
+      </div>
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--canvas-soft)] p-10 text-center">
+        <div className="font-serif text-[15px] text-[var(--ink)]">
+          {t("store.noStorePosts")}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      {posts.map((p: ApiPost) => {
+        const cover = p.imageUrls?.[0];
+        return (
+          <li key={p.id}>
+            <Link
+              href={`/posts/${p.id}`}
+              className="group block overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] transition-shadow hover:shadow-md"
+            >
+              <div className="aspect-[3/4] w-full overflow-hidden bg-[var(--canvas)]">
+                {cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={cover}
+                    alt={p.title}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center font-label text-[11px] text-[color:var(--ink-muted)]">
+                    {t("merchant.noTitle")}
+                  </div>
+                )}
+              </div>
+              <div className="p-3 font-label">
+                <div className="line-clamp-2 font-serif text-[14px] text-[var(--ink)]">
+                  {p.title}
+                </div>
+                <div className="mt-1 text-[11px] text-[color:var(--ink-muted)]">
+                  @{p.username} · {p.likeCount} ♡
+                </div>
+              </div>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

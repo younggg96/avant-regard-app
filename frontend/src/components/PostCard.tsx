@@ -72,6 +72,10 @@ export interface Post {
   brands?: Brand[];
   communityId?: number;
   communityName?: string;
+  // 买手店帖子（migration 055）— 设置后 PostCard 会显示 "店铺" 角标,
+  // 点击进入对应 StoreDetail. 同时 PostDetail header 也要显示店铺名行。
+  storeId?: string;
+  storeName?: string;
 }
 
 interface PostCardProps {
@@ -158,6 +162,14 @@ const PostCardInner = ({
                 </RNText>
               </View>
             )}
+            {!isPending && !post.communityName && post.storeName && (
+              <View style={styles.storeBadge}>
+                <Ionicons name="storefront" size={10} color="#FFFFFF" />
+                <RNText style={styles.storeText} numberOfLines={1}>
+                  {post.storeName}
+                </RNText>
+              </View>
+            )}
           </View>
         </Pressable>
       ) : (
@@ -172,6 +184,14 @@ const PostCardInner = ({
               <View style={styles.communityBadge}>
                 <RNText style={styles.communityText}>
                   # {post.communityName}
+                </RNText>
+              </View>
+            )}
+            {!isPending && !post.communityName && post.storeName && (
+              <View style={styles.storeBadge}>
+                <Ionicons name="storefront" size={10} color="#FFFFFF" />
+                <RNText style={styles.storeText} numberOfLines={1}>
+                  {post.storeName}
                 </RNText>
               </View>
             )}
@@ -282,6 +302,26 @@ const styles = StyleSheet.create({
   communityText: {
     color: "#FFFFFF",
     fontSize: 12,
+  },
+  // 买手店帖子角标（migration 055）：和 community 角标视觉差异化, 用
+  // 浅色背景 + 店铺图标, 让消费者一眼区分「这是买手店发的」.
+  storeBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(20, 20, 20, 0.78)",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    maxWidth: 160,
+  },
+  storeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    marginLeft: 4,
+    fontWeight: "500",
   },
   titleArea: {
     paddingHorizontal: theme.spacing.sm,

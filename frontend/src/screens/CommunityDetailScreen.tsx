@@ -140,6 +140,11 @@ const mapApiPostToDisplayPost = (
     // 论坛帖子所属社区
     communityId: apiPost.communityId,
     communityName: apiPost.communityName,
+    // 买手店帖子（migration 055）— 让 community 详情里嵌入的店铺帖子也能
+    // 显示「店铺」角标。 实际上 community 帖子很少同时是店铺帖子, 但保持
+    // 字段透传一致, 避免后续混淆。
+    storeId: apiPost.storeId,
+    storeName: apiPost.storeName,
   };
 };
 
@@ -285,6 +290,8 @@ const CommunityDetailScreen = () => {
       isLiked: post.engagement.isLiked,
       communityId: post.communityId,
       communityName: post.communityName,
+      storeId: post.storeId,
+      storeName: post.storeName,
     };
   }, []);
 

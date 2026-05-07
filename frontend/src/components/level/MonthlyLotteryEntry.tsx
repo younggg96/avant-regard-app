@@ -8,16 +8,11 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  ActivityIndicator,
-} from "react-native";
+import { ActivityIndicator } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { Box, HStack, VStack, Pressable, Text } from "../ui";
 import { theme } from "../../theme";
 import {
   CurrentLotteryPayload,
@@ -78,61 +73,50 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
 
   return (
     <Pressable
-      style={styles.card}
-      onPress={() =>
-        navigation.navigate("MyLevel", { focus: "lottery" })
-      }
+      bg="$white"
+      borderWidth={1}
+      borderColor="$gray100"
+      p="$md"
+      mx="$md"
+      mt="$md"
+      onPress={() => navigation.navigate("MyLevel", { focus: "lottery" })}
     >
-      <View style={styles.left}>
-        <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
-      </View>
-      <View style={styles.middle}>
-        <Text style={styles.title}>{t("level.monthlyLottery")} · {round?.month ?? "--"}</Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {statusText}
-        </Text>
-      </View>
-      {loading && !data ? (
-        <ActivityIndicator size="small" color={theme.colors.gray300} />
-      ) : (
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={theme.colors.gray300}
-        />
-      )}
+      <HStack alignItems="center" gap="$md">
+        <Box
+          w={40}
+          h={40}
+          rounded={20}
+          bg="$black"
+          alignItems="center"
+          justifyContent="center"
+          mr="$md"
+        >
+          <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
+        </Box>
+        <VStack flex={1}>
+          <Text fontSize={16} fontWeight="$semibold" color="$black" lineHeight={22}>
+            {t("level.monthlyLottery")} · {round?.month ?? "--"}
+          </Text>
+          <Text
+            fontSize={12}
+            color="$gray300"
+            lineHeight={16}
+            mt={2}
+            numberOfLines={1}
+          >
+            {statusText}
+          </Text>
+        </VStack>
+        {loading && !data ? (
+          <ActivityIndicator size="small" color={theme.colors.gray300} />
+        ) : (
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={theme.colors.gray300}
+          />
+        )}
+      </HStack>
     </Pressable>
   );
 };
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    padding: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-  },
-  left: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: theme.spacing.md,
-  },
-  middle: { flex: 1 },
-  title: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
-  },
-  subtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: 2,
-  },
-});

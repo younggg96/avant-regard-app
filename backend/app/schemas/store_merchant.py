@@ -78,10 +78,15 @@ class DiscountType(str, Enum):
 
 
 class LinkType(str, Enum):
-    """链接类型"""
+    """链接类型
+
+    POST: 跳到关联的店铺帖子 (migration 055 新增)。entry 表上 linked_post_id
+          填了之后, 前端按 POST 处理, 旧数据 link_type 仍兼容。
+    """
     INTERNAL = "INTERNAL"
     EXTERNAL = "EXTERNAL"
     NONE = "NONE"
+    POST = "POST"
 
 
 # ==================== 商家认证相关 ====================
@@ -196,6 +201,7 @@ class StoreAnnouncementCreate(BaseModel):
     status: ContentStatus = Field(default=ContentStatus.PUBLISHED, description="发布状态")
     startTime: Optional[str] = Field(None, description="开始时间")
     endTime: Optional[str] = Field(None, description="结束时间")
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
 
 class StoreAnnouncementUpdate(BaseModel):
@@ -206,6 +212,7 @@ class StoreAnnouncementUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     startTime: Optional[str] = None
     endTime: Optional[str] = None
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
 
 class StoreAnnouncement(BaseModel):
@@ -219,6 +226,7 @@ class StoreAnnouncement(BaseModel):
     status: str
     startTime: Optional[str] = None
     endTime: Optional[str] = None
+    linkedPostId: Optional[int] = None
     createdAt: str
     updatedAt: str
 
@@ -235,6 +243,7 @@ class StoreBannerCreate(BaseModel):
     status: ContentStatus = Field(default=ContentStatus.PUBLISHED, description="发布状态")
     startTime: Optional[str] = Field(None, description="开始时间")
     endTime: Optional[str] = Field(None, description="结束时间")
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("imageUrl")
     @classmethod
@@ -252,6 +261,7 @@ class StoreBannerUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     startTime: Optional[str] = None
     endTime: Optional[str] = None
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("imageUrl")
     @classmethod
@@ -272,6 +282,7 @@ class StoreBanner(BaseModel):
     status: str
     startTime: Optional[str] = None
     endTime: Optional[str] = None
+    linkedPostId: Optional[int] = None
     clickCount: int = 0
     viewCount: int = 0
     createdAt: str
@@ -293,6 +304,7 @@ class StoreActivityCreate(BaseModel):
     status: ContentStatus = Field(default=ContentStatus.PUBLISHED, description="发布状态")
     needRegistration: bool = Field(default=False, description="是否需要报名")
     registrationLimit: Optional[int] = Field(None, description="报名人数限制")
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("coverImage")
     @classmethod
@@ -322,6 +334,7 @@ class StoreActivityUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     needRegistration: Optional[bool] = None
     registrationLimit: Optional[int] = None
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("coverImage")
     @classmethod
@@ -355,6 +368,7 @@ class StoreActivity(BaseModel):
     needRegistration: bool = False
     registrationLimit: Optional[int] = None
     registrationCount: int = 0
+    linkedPostId: Optional[int] = None
     createdAt: str
     updatedAt: str
 
@@ -377,6 +391,7 @@ class StoreDiscountCreate(BaseModel):
     status: ContentStatus = Field(default=ContentStatus.PUBLISHED, description="发布状态")
     needCode: bool = Field(default=False, description="是否需要优惠码")
     discountCode: Optional[str] = Field(None, max_length=50, description="优惠码")
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("coverImage")
     @classmethod
@@ -400,6 +415,7 @@ class StoreDiscountUpdate(BaseModel):
     status: Optional[ContentStatus] = None
     needCode: Optional[bool] = None
     discountCode: Optional[str] = Field(None, max_length=50)
+    linkedPostId: Optional[int] = Field(None, description="关联的店铺帖子ID")
 
     @field_validator("coverImage")
     @classmethod
@@ -426,6 +442,7 @@ class StoreDiscount(BaseModel):
     status: str
     needCode: bool = False
     discountCode: Optional[str] = None
+    linkedPostId: Optional[int] = None
     createdAt: str
     updatedAt: str
 
@@ -457,13 +474,20 @@ class ActivityRegistration(BaseModel):
 # ==================== 店铺商家信息汇总 ====================
 
 class StoreMerchantContent(BaseModel):
-    """店铺商家发布的所有内容汇总"""
+    """店铺商家发布的所有内容汇总
+
+    postCount 是该店铺已发布的店铺帖子数量, 由 store_merchant_service 一次
+    join posts 表统计, 给 StoreDetail 的 Posts tab 当 badge。具体帖子列表
+    走 /api/posts/store/{store_id}, 不在这里 inline 返回, 避免 detail 接口
+    膨胀（StoreMerchantContent 已经背了 banner/公告/活动/折扣）。
+    """
     isMerchant: bool = False  # 该店铺是否有认证商家
     merchantInfo: Optional[StoreMerchant] = None
     banners: List[StoreBanner] = []
     announcements: List[StoreAnnouncement] = []
     activities: List[StoreActivity] = []
     discounts: List[StoreDiscount] = []
+    postCount: int = 0
 
 
 # ==================== 看板 / Insights ====================

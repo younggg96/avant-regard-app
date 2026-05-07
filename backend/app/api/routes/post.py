@@ -145,29 +145,33 @@ async def create_post(
     if request.userId != current_user_id:
         raise HTTPException(status_code=403, detail="无权为其他用户创建帖子")
 
-    result = post_service.create_post(
-        user_id=request.userId,
-        post_type=request.postType.value,
-        post_status=request.postStatus.value,
-        title=request.title,
-        content_text=request.contentText,
-        image_urls=request.imageUrls,
-        cover_width=request.coverWidth,
-        cover_height=request.coverHeight,
-        product_name=request.productName,
-        brand_name=request.brandName,
-        rating=request.rating,
-        show_ids=request.showIds,
-        brand_ids=request.brandIds,
-        community_id=request.communityId,
-        item_brand=request.itemBrand,
-        item_brand_id=request.itemBrandId,
-        item_category=request.itemCategory,
-        item_sizes=request.itemSizes,
-        item_colors=request.itemColors,
-        generated_by_ai=request.generatedByAi,
-        generation_metadata=request.generationMetadata,
-    )
+    try:
+        result = post_service.create_post(
+            user_id=request.userId,
+            post_type=request.postType.value,
+            post_status=request.postStatus.value,
+            title=request.title,
+            content_text=request.contentText,
+            image_urls=request.imageUrls,
+            cover_width=request.coverWidth,
+            cover_height=request.coverHeight,
+            product_name=request.productName,
+            brand_name=request.brandName,
+            rating=request.rating,
+            show_ids=request.showIds,
+            brand_ids=request.brandIds,
+            community_id=request.communityId,
+            item_brand=request.itemBrand,
+            item_brand_id=request.itemBrandId,
+            item_category=request.itemCategory,
+            item_sizes=request.itemSizes,
+            item_colors=request.itemColors,
+            store_id=request.storeId,
+            generated_by_ai=request.generatedByAi,
+            generation_metadata=request.generationMetadata,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not result:
         raise HTTPException(status_code=500, detail="创建帖子失败")
 
@@ -187,7 +191,14 @@ async def update_post(
     if request.userId != current_user_id:
         raise HTTPException(status_code=403, detail="无权修改其他用户的帖子")
 
-    result = post_service.update_post(
+    # 买手店帖子（migration 055）防御 —— `store_id` 只在客户端「显式
+    # 携带」时才透传给 service 层。Pydantic v2 默认会把缺失字段填成 None,
+    # 如果直接传 None 进 service, update_post 会把 store_id 字段覆盖成
+    # NULL, 把已有的店铺帖子误降级为普通帖子。这条防御特别重要——非
+    # Lookbook 的发帖屏 (Outfit / Review / Forum / AI) 都不会传 storeId,
+    # 万一某条店铺帖子被通过这些屏改了一次, 历史 store_id 就会被静默
+    # 抹掉。
+    update_kwargs = dict(
         post_id=post_id,
         user_id=request.userId,
         post_type=request.postType.value,
@@ -209,6 +220,13 @@ async def update_post(
         item_sizes=request.itemSizes,
         item_colors=request.itemColors,
     )
+    if "storeId" in request.model_fields_set:
+        update_kwargs["store_id"] = request.storeId
+
+    try:
+        result = post_service.update_post(**update_kwargs)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     if not result:
         raise HTTPException(status_code=404, detail="帖子不存在或无权修改")
 
@@ -431,6 +449,45 @@ async def get_posts_by_community_id(
 ):
     """获取某个社区的帖子"""
     result = post_service.get_posts_by_community_id(community_id, current_user_id)
+    return success([p.model_dump() for p in result])
+
+
+# ==================== 店铺帖子（migration 055） ====================
+
+
+@router.get("/store/{store_id}")
+async def get_posts_by_store_id(
+    store_id: str,
+    limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
+    includeUnpublished: bool = Query(
+        False,
+        description=(
+            "是否包含未发布 / 审核中 / 被驳回 的帖子。需要登录, 且 user 必须是该 "
+            "store 的 APPROVED 商家, 否则即使传 true 也会被强制降级到 false。"
+        ),
+    ),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """获取某买手店发布的店铺帖子列表（migration 055）。
+
+    Public 入口: 默认只返回已发布且审核通过的, 给消费者端 StoreDetail
+    的 Posts tab 用。
+    商家入口: includeUnpublished=true 时, 服务端会再做一次商家身份校验,
+    通过后返回包含 DRAFT / PENDING 审核 / REJECTED 的所有店铺帖子, 让
+    商家在 MerchantManageScreen 的 Posts tab 看到完整草稿/审核状态。
+    """
+    include = bool(includeUnpublished)
+    if include:
+        # 防越权：includeUnpublished=true 时强制要求当前 user 是该 store 的
+        # APPROVED 商家。校验失败就静默降级到 public 视图, 而不是 403, 让
+        # 前端 UI 不被噪声打断（即拿到的是公开列表）。
+        if not current_user_id or not post_service._verify_merchant_owns_store(
+            current_user_id, store_id
+        ):
+            include = False
+    result = post_service.get_posts_by_store_id(
+        store_id, current_user_id, limit=limit, include_unpublished=include
+    )
     return success([p.model_dump() for p in result])
 
 

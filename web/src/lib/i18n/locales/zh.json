@@ -1021,7 +1021,9 @@
     "statFollow": "关注",
     "statFans": "粉丝",
     "statLikesAndFavs": "获赞与收藏",
-    "verified": "已认证"
+    "verified": "已认证",
+    "tabPosts": "帖子",
+    "noStorePosts": "暂无店铺帖子"
   },
   "product": {
     "noImage": "暂无图片",
@@ -1380,7 +1382,22 @@
     "contentNoProducts": "暂无单品数据",
     "contentColProduct": "商品",
     "contentRefreshedAt": "数据更新于 {{time}}",
-    "contentCacheNote": "聚合任务每小时刷新一次, 接口只查缓存表 store_brand_stats. 浏览数据为累计值,不参与时间窗过滤."
+    "contentCacheNote": "聚合任务每小时刷新一次, 接口只查缓存表 store_brand_stats. 浏览数据为累计值,不参与时间窗过滤.",
+    "tabPost": "帖子",
+    "noStorePosts": "暂无店铺帖子",
+    "newStorePost": "+ 新建帖子",
+    "editStorePost": "编辑帖子",
+    "deleteStorePost": "删除该帖子？",
+    "postCount": "共 {{count}} 篇",
+    "postStats": "{{likes}} ♡ · {{comments}} 💬",
+    "postTitle": "标题",
+    "postTitlePlaceholder": "请输入帖子标题",
+    "postContent": "正文",
+    "postContentPlaceholder": "和粉丝聊聊店里的最新动态…",
+    "postImages": "图片",
+    "postImagesHint": "{{count}}/{{max}} 张，第一张为封面",
+    "linkedPostLabel": "关联店铺帖子",
+    "linkedPostEmptyHint": "请先发布一条店铺帖子才能关联"
   },
   "reports": {
     "myReports": "我的举报",

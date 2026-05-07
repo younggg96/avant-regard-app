@@ -66,6 +66,12 @@ export interface Post {
   communityId?: number;
   communityName?: string;
   communitySlug?: string;
+  // 买手店帖子专用字段（migration 055）
+  // storeId 非空 → 这是某买手店发布的「店铺帖子」, 需要在 PostCard 角标
+  // 上显示「买手店」, 点击角标跳到 StoreDetail。 storeName 是后端 join 后
+  // 回填的, 前端拿来直接显示, 不用再发一次 store 详情请求。
+  storeId?: string;
+  storeName?: string;
   // 内容评级
   grade?: string;
   gradeReward?: number;
@@ -103,6 +109,10 @@ export interface CreatePostParams {
   itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
+  // 买手店帖子（migration 055）：商家在 MerchantManageScreen 里以"店铺
+  // 身份"发帖时透传当前 storeId, 后端会校验当前 user 是该 store 的
+  // APPROVED 商家, 否则 403。
+  storeId?: string;
   /**
    * AI 发帖助手 (V3 #25): 用户在 AI 预览页确认发布时, 把生成接口返回的
    * `metadata` 原样塞进来。后端会校验 `generationMetadata.log_id` 必填,
@@ -139,6 +149,8 @@ export interface UpdatePostParams {
   itemColors?: string[];
   // 论坛帖子专用字段
   communityId?: number;
+  // 买手店帖子（migration 055）— 同 CreatePostParams.storeId
+  storeId?: string;
 }
 
 // 通用请求方法 - 默认携带 token，支持自动刷新
@@ -951,6 +963,31 @@ export async function getPostsByCommunityId(
 }
 
 /**
+ * 获取某买手店的店铺帖子（migration 055）
+ * GET /api/posts/store/{store_id}
+ * @param storeId 店铺 ID（VARCHAR）
+ * @param options.includeUnpublished 是否包含 DRAFT/PENDING/REJECTED, 仅商家本人有效
+ *   传 true 时如果不是该 store 的认证商家, 后端会静默降级回 public 列表。
+ * @param options.limit 返回数量限制, 默认 50
+ */
+export async function getPostsByStoreId(
+  storeId: string,
+  options: { includeUnpublished?: boolean; limit?: number } = {},
+): Promise<Post[]> {
+  const limit = options.limit ?? 50;
+  const includeUnpublished = options.includeUnpublished ?? false;
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (includeUnpublished) {
+    query.set("includeUnpublished", "true");
+  }
+  return request<Post[]>(
+    `/api/posts/store/${encodeURIComponent(storeId)}?${query.toString()}`,
+    { method: "GET" },
+  );
+}
+
+/**
  * 获取所有论坛帖子
  * GET /api/posts/forum/all
  * 只返回 PUBLISHED 且审核通过(APPROVED) 的论坛帖子
@@ -1091,6 +1128,8 @@ export const postService = {
   // 社区帖子
   getPostsByCommunityId,
   getForumPosts,
+  // 买手店帖子（migration 055）
+  getPostsByStoreId,
   // 推荐与关注
   getRecommendPosts,
   getFollowingPosts,

@@ -25,7 +25,8 @@ export type ActivityType =
   | "EVENT"
   | "OTHER";
 export type DiscountType = "PERCENTAGE" | "FIXED" | "SPECIAL";
-export type LinkType = "INTERNAL" | "EXTERNAL" | "NONE";
+// POST 表示 banner / 入口卡片关联到了一篇买手店店铺帖子（migration 055）.
+export type LinkType = "INTERNAL" | "EXTERNAL" | "NONE" | "POST";
 
 // ==================== 商家 ====================
 
@@ -69,6 +70,8 @@ export interface StoreAnnouncement {
   status: ContentStatus;
   startTime?: string;
   endTime?: string;
+  /** 关联店铺帖子（migration 055）. */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +83,7 @@ export interface StoreAnnouncementCreateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 export type StoreAnnouncementUpdateParams = Partial<
@@ -100,6 +104,8 @@ export interface StoreBanner {
   status: ContentStatus;
   startTime?: string;
   endTime?: string;
+  /** 关联店铺帖子（migration 055）. */
+  linkedPostId?: number | null;
   clickCount: number;
   viewCount: number;
   createdAt: string;
@@ -115,6 +121,7 @@ export interface StoreBannerCreateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 export type StoreBannerUpdateParams = Partial<StoreBannerCreateParams>;
@@ -137,6 +144,8 @@ export interface StoreActivity {
   needRegistration: boolean;
   registrationLimit?: number;
   registrationCount: number;
+  /** 关联店铺帖子（migration 055）. */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -153,6 +162,7 @@ export interface StoreActivityCreateParams {
   status?: ContentStatus;
   needRegistration?: boolean;
   registrationLimit?: number;
+  linkedPostId?: number | null;
 }
 
 export type StoreActivityUpdateParams = Partial<StoreActivityCreateParams>;
@@ -177,6 +187,8 @@ export interface StoreDiscount {
   status: ContentStatus;
   needCode: boolean;
   discountCode?: string;
+  /** 关联店铺帖子（migration 055）. */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -196,6 +208,7 @@ export interface StoreDiscountCreateParams {
   status?: ContentStatus;
   needCode?: boolean;
   discountCode?: string;
+  linkedPostId?: number | null;
 }
 
 export type StoreDiscountUpdateParams = Partial<StoreDiscountCreateParams>;

@@ -101,6 +101,25 @@ class PostService:
             post_data["post_type"].strip() if post_data.get("post_type") else "ARTICLES"
         )
 
+        # 买手店帖子（migration 055）：取出 store_id 并 join 一次 buyer_stores
+        # 拿到名字, 给前端 PostCard 显示「店铺」角标用。store_id NULL 表示
+        # 普通用户帖, store_name 也保持 NULL。批量场景请走 feed_service 的
+        # batch enrichment, 避免 N+1。
+        store_id = post_data.get("store_id")
+        store_name = None
+        if store_id:
+            try:
+                store_result = (
+                    self.db.table("buyer_stores")
+                    .select("name")
+                    .eq("id", store_id)
+                    .execute()
+                )
+                if store_result.data:
+                    store_name = store_result.data[0].get("name")
+            except Exception:
+                pass
+
         grade_value = post_data.get("grade")
         grade_reward = None
         if grade_value:
@@ -141,6 +160,8 @@ class PostService:
             communityId=community_id,
             communityName=community_name,
             communitySlug=community_slug,
+            storeId=store_id,
+            storeName=store_name,
             grade=grade_value,
             gradeReward=grade_reward,
             likedByMe=liked_by_me,
@@ -223,6 +244,30 @@ class PostService:
             return None
         return self._format_post(result.data[0], current_user_id)
 
+    def _verify_merchant_owns_store(self, user_id: int, store_id: str) -> bool:
+        """校验 user 是否是该 store 的 APPROVED 商家。
+
+        买手店帖子（migration 055）允许商家以"店铺"身份发帖, 但必须满足:
+          1. 该 store 上有一条 store_merchants 记录;
+          2. user_id 一致;
+          3. status = 'APPROVED'.
+        管理员（admin）通过普通审核 / 编辑接口走另一条路, 不在这里 short
+        circuit, 避免越权写。
+        """
+        try:
+            res = (
+                self.db.table("store_merchants")
+                .select("id, status, user_id")
+                .eq("store_id", store_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+        except Exception:
+            return False
+        if not res.data:
+            return False
+        return res.data[0].get("status") == "APPROVED"
+
     def create_post(
         self,
         user_id: int,
@@ -244,6 +289,7 @@ class PostService:
         item_category: str = None,
         item_sizes: List[str] = None,
         item_colors: List[str] = None,
+        store_id: Optional[str] = None,
         # AI 发帖助手 (V3 #25):
         # generated_by_ai = True 时,generation_metadata 必须含 log_id, 用于
         # 反查 ai_post_service_logs 与 A/B 实验。这里做一次最小校验,
@@ -258,6 +304,11 @@ class PostService:
         if generated_by_ai:
             if not generation_metadata or "log_id" not in generation_metadata:
                 raise ValueError("AI 帖必须提供 generation_metadata.log_id")
+
+        # 买手店帖子（migration 055）：必须先验证发帖人是该 store 的
+        # APPROVED 商家, 否则 ValueError 让上层 401/403。
+        if store_id and not self._verify_merchant_owns_store(user_id, store_id):
+            raise ValueError("无权代表该买手店发帖（需要为已认证商家）")
 
         # 插入帖子
         insert_data = {
@@ -281,6 +332,7 @@ class PostService:
             "item_category": item_category,
             "item_sizes": item_sizes or [],
             "item_colors": item_colors or [],
+            "store_id": store_id,
             "generated_by_ai": generated_by_ai,
             "generation_metadata": generation_metadata,
         }
@@ -373,6 +425,13 @@ class PostService:
         # 论坛帖子专用字段
         if "community_id" in kwargs:
             update_data["community_id"] = kwargs["community_id"]
+        # 买手店帖子（migration 055）。校验和创建一致：只允许把 store_id
+        # 设给当前 user 已认证的 store; 传 None 表示把帖子降级回普通帖。
+        if "store_id" in kwargs:
+            new_store_id = kwargs["store_id"]
+            if new_store_id and not self._verify_merchant_owns_store(user_id, new_store_id):
+                raise ValueError("无权代表该买手店发帖（需要为已认证商家）")
+            update_data["store_id"] = new_store_id
 
         self.db.table("posts").update(update_data).eq("id", post_id).execute()
 
@@ -838,6 +897,50 @@ class PostService:
         )
         filtered = self._filter_blocked(result.data or [], blocked_ids)
         return [self._format_post(p, current_user_id) for p in filtered]
+
+    def get_posts_by_store_id(
+        self,
+        store_id: str,
+        current_user_id: Optional[int] = None,
+        limit: int = 50,
+        include_unpublished: bool = False,
+    ) -> List[Post]:
+        """获取某个买手店的帖子（migration 055）。
+
+        - include_unpublished=False（默认, 公开访问）: 只返回 PUBLISHED + APPROVED 的;
+        - include_unpublished=True（商家自己后台 / 管理员）: 返回所有状态, 让商家
+          能看到 DRAFT / 审核中 / 被驳回 的店铺帖子.
+        """
+        blocked_ids = self._get_blocked_user_ids(current_user_id)
+        query = (
+            self.db.table("posts")
+            .select("*")
+            .eq("store_id", store_id)
+        )
+        if not include_unpublished:
+            query = query.eq("status", "PUBLISHED").eq("audit_status", "APPROVED")
+        result = (
+            query.order("created_at", desc=True).limit(limit).execute()
+        )
+        filtered = self._filter_blocked(result.data or [], blocked_ids)
+        return [self._format_post(p, current_user_id) for p in filtered]
+
+    def count_published_posts_by_store(self, store_id: str) -> int:
+        """统计某买手店「已发布并通过审核」的店铺帖子数量。
+        用于 StoreMerchantContent.postCount, 让 StoreDetail 的 Posts tab
+        可以直接显示数字 badge, 不用前端再发一次 list 接口。"""
+        try:
+            res = (
+                self.db.table("posts")
+                .select("id", count="exact")
+                .eq("store_id", store_id)
+                .eq("status", "PUBLISHED")
+                .eq("audit_status", "APPROVED")
+                .execute()
+            )
+            return res.count or 0
+        except Exception:
+            return 0
 
     def get_forum_posts(
         self, current_user_id: Optional[int] = None, limit: int = 50

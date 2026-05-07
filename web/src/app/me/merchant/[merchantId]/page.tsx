@@ -59,6 +59,12 @@ import {
   type ActivityType,
   type DiscountType,
 } from "@/lib/services/store-merchant";
+// 买手店帖子（migration 055）— Web 端商家后台 Posts tab 用 postService
+// 拉/创建/更新/删除. 显示 + 简化的「文字+多张图片」编辑表单, 复杂的多媒体
+// (视频/品牌/单品评价等) 仍走移动端 PublishLookbookScreen。
+import { postService } from "@/lib/services/post";
+import type { Post as ApiPost } from "@/lib/types";
+import { useAuthStore } from "@/lib/auth/store";
 
 // ───────────────────────────── 图片兜底工具 ─────────────────────────────
 //
@@ -106,12 +112,22 @@ function MerchantThumb({
 
 // ───────────────────────────── Tab 配置 ─────────────────────────────
 
-type TabKey = "info" | "banner" | "announcement" | "activity" | "discount";
+type TabKey =
+  | "info"
+  | "post"
+  | "banner"
+  | "announcement"
+  | "activity"
+  | "discount";
 
 function useMerchantTabs() {
   const { t } = useTranslation();
   return [
     { key: "info" as TabKey, label: t("merchant.tabInfo") },
+    // 买手店帖子（migration 055）— 放在 info 之后, 比四类入口元素更前面,
+    // 因为帖子是商家最常更新的内容 (类似 Lookbook 上新), 使用频次高于
+    // banner/活动/折扣.
+    { key: "post" as TabKey, label: t("merchant.tabPost") },
     { key: "banner" as TabKey, label: t("merchant.tabBanner") },
     { key: "announcement" as TabKey, label: t("merchant.tabAnnouncement") },
     { key: "activity" as TabKey, label: t("merchant.tabActivity") },
@@ -216,6 +232,7 @@ export default function MerchantManagePage() {
 
       <div className="mt-6">
         {activeTab === "info" && <InfoTab merchant={merchant} />}
+        {activeTab === "post" && <PostTab merchant={merchant} />}
         {activeTab === "banner" && <BannerTab merchant={merchant} />}
         {activeTab === "announcement" && (
           <AnnouncementTab merchant={merchant} />
@@ -677,6 +694,7 @@ interface BannerForm {
   imageUrl: string;
   linkUrl: string;
   sortOrder: number;
+  linkedPostId: number | null;
 }
 
 function BannerTab({ merchant }: { merchant: StoreMerchant }) {
@@ -694,13 +712,14 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
     imageUrl: "",
     linkUrl: "",
     sortOrder: 0,
+    linkedPostId: null,
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StoreBanner | null>(null);
 
   const openCreate = () => {
-    setForm({ title: "", imageUrl: "", linkUrl: "", sortOrder: 0 });
+    setForm({ title: "", imageUrl: "", linkUrl: "", sortOrder: 0, linkedPostId: null });
     setCreating(true);
   };
 
@@ -710,6 +729,7 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
       imageUrl: b.imageUrl,
       linkUrl: b.linkUrl ?? "",
       sortOrder: b.sortOrder,
+      linkedPostId: b.linkedPostId ?? null,
     });
     setEditing(b);
   };
@@ -727,6 +747,7 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
         imageUrl: form.imageUrl,
         linkUrl: form.linkUrl || undefined,
         sortOrder: form.sortOrder,
+        linkedPostId: form.linkedPostId,
       };
       if (editing) {
         await storeMerchantService.updateBanner(editing.id, payload);
@@ -839,6 +860,13 @@ function BannerTab({ merchant }: { merchant: StoreMerchant }) {
               type="number"
             />
           </FormField>
+          <FormField label={t("merchant.linkedPostLabel")}>
+            <LinkedPostPicker
+              storeId={merchant.storeId}
+              value={form.linkedPostId}
+              onChange={(id) => setForm({ ...form, linkedPostId: id })}
+            />
+          </FormField>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
               {t("common.cancel")}
@@ -873,6 +901,7 @@ interface AnnouncementForm {
   title: string;
   content: string;
   isPinned: boolean;
+  linkedPostId: number | null;
 }
 
 function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
@@ -889,6 +918,7 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
     title: "",
     content: "",
     isPinned: false,
+    linkedPostId: null,
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -897,7 +927,7 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
   );
 
   const openCreate = () => {
-    setForm({ title: "", content: "", isPinned: false });
+    setForm({ title: "", content: "", isPinned: false, linkedPostId: null });
     setCreating(true);
   };
 
@@ -906,6 +936,7 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
       title: a.title,
       content: a.content,
       isPinned: a.isPinned,
+      linkedPostId: a.linkedPostId ?? null,
     });
     setEditing(a);
   };
@@ -1020,6 +1051,13 @@ function AnnouncementTab({ merchant }: { merchant: StoreMerchant }) {
             onChange={(v) => setForm({ ...form, isPinned: v })}
             label={t("merchant.pinAnnouncement")}
           />
+          <FormField label={t("merchant.linkedPostLabel")}>
+            <LinkedPostPicker
+              storeId={merchant.storeId}
+              value={form.linkedPostId}
+              onChange={(id) => setForm({ ...form, linkedPostId: id })}
+            />
+          </FormField>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
               {t("common.cancel")}
@@ -1060,6 +1098,7 @@ interface ActivityForm {
   activityEndTime: string;
   needRegistration: boolean;
   registrationLimit: string;
+  linkedPostId: number | null;
 }
 
 function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
@@ -1096,6 +1135,7 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
       registrationLimit: a.registrationLimit
         ? String(a.registrationLimit)
         : "",
+      linkedPostId: a.linkedPostId ?? null,
     });
     setEditing(a);
   };
@@ -1120,6 +1160,7 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
         registrationLimit: form.registrationLimit
           ? Number(form.registrationLimit)
           : undefined,
+        linkedPostId: form.linkedPostId,
       };
       if (editing) {
         await storeMerchantService.updateActivity(editing.id, payload);
@@ -1287,6 +1328,13 @@ function ActivityTab({ merchant }: { merchant: StoreMerchant }) {
               />
             </FormField>
           )}
+          <FormField label={t("merchant.linkedPostLabel")}>
+            <LinkedPostPicker
+              storeId={merchant.storeId}
+              value={form.linkedPostId}
+              onChange={(id) => setForm({ ...form, linkedPostId: id })}
+            />
+          </FormField>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
               {t("common.cancel")}
@@ -1330,6 +1378,7 @@ function emptyActivityForm(): ActivityForm {
     activityEndTime: toLocalDateInput(later.toISOString()),
     needRegistration: false,
     registrationLimit: "",
+    linkedPostId: null,
   };
 }
 
@@ -1345,6 +1394,7 @@ interface DiscountForm {
   discountEndTime: string;
   needCode: boolean;
   discountCode: string;
+  linkedPostId: number | null;
 }
 
 function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
@@ -1379,6 +1429,7 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
       discountEndTime: toLocalDateInput(d.discountEndTime),
       needCode: d.needCode,
       discountCode: d.discountCode ?? "",
+      linkedPostId: d.linkedPostId ?? null,
     });
     setEditing(d);
   };
@@ -1401,6 +1452,7 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
         discountEndTime: new Date(form.discountEndTime).toISOString(),
         needCode: form.needCode,
         discountCode: form.needCode ? form.discountCode || undefined : undefined,
+        linkedPostId: form.linkedPostId,
       };
       if (editing) {
         await storeMerchantService.updateDiscount(editing.id, payload);
@@ -1568,6 +1620,13 @@ function DiscountTab({ merchant }: { merchant: StoreMerchant }) {
               />
             </FormField>
           )}
+          <FormField label={t("merchant.linkedPostLabel")}>
+            <LinkedPostPicker
+              storeId={merchant.storeId}
+              value={form.linkedPostId}
+              onChange={(id) => setForm({ ...form, linkedPostId: id })}
+            />
+          </FormField>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={closeDialog}>
               {t("common.cancel")}
@@ -1611,7 +1670,433 @@ function emptyDiscountForm(): DiscountForm {
     discountEndTime: toLocalDateInput(later.toISOString()),
     needCode: false,
     discountCode: "",
+    linkedPostId: null,
   };
+}
+
+// ───────────────────────────── Post Tab（migration 055）─────────────────────────────
+//
+// 买手店帖子 CRUD: 商家可以以"店铺身份"发帖, 帖子和普通 Lookbook 走同一
+// 个 posts 表（postType=OUTFIT）, 仅 store_id 标记成本店铺。 这里只实现
+// 「文字 + 多张图片」的简化版本, 供 web 端商家快速上新; 复杂的"关联秀场 /
+// 单品评分 / 视频"仍走移动端 PublishLookbookScreen, 体验更完整。
+//
+// 列表显示 5 类状态徽章: APPROVED / PENDING / REJECTED / DRAFT / HIDDEN.
+
+interface StorePostForm {
+  title: string;
+  contentText: string;
+  imageUrls: string[];
+  status: "DRAFT" | "PUBLISHED";
+}
+
+function emptyStorePostForm(): StorePostForm {
+  return {
+    title: "",
+    contentText: "",
+    imageUrls: [],
+    status: "PUBLISHED",
+  };
+}
+
+function PostTab({ merchant }: { merchant: StoreMerchant }) {
+  const { t } = useTranslation();
+  const userId = useAuthStore((s) => s.user?.userId ?? null);
+  const { data, isLoading, mutate } = useSWR(
+    ["merchant-posts", merchant.id],
+    () =>
+      postService.getPostsByStoreId(merchant.storeId, {
+        includeUnpublished: true,
+        limit: 100,
+      }),
+  );
+
+  const posts = data ?? [];
+  const [editing, setEditing] = useState<ApiPost | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState<StorePostForm>(emptyStorePostForm());
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiPost | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const openCreate = () => {
+    setForm(emptyStorePostForm());
+    setErr(null);
+    setCreating(true);
+  };
+
+  const openEdit = (p: ApiPost) => {
+    setForm({
+      title: p.title,
+      contentText: p.contentText ?? "",
+      imageUrls: p.imageUrls ?? [],
+      status: p.status === "DRAFT" ? "DRAFT" : "PUBLISHED",
+    });
+    setErr(null);
+    setEditing(p);
+  };
+
+  const closeDialog = () => {
+    setCreating(false);
+    setEditing(null);
+    setErr(null);
+  };
+
+  const onSave = async () => {
+    if (!userId) {
+      setErr(t("common.notLoggedIn"));
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      if (editing) {
+        await postService.updateStorePost(editing.id, {
+          userId,
+          postType: "OUTFIT",
+          status: form.status,
+          title: form.title.trim(),
+          contentText: form.contentText.trim(),
+          imageUrls: form.imageUrls,
+          storeId: merchant.storeId,
+        });
+      } else {
+        await postService.createStorePost({
+          userId,
+          postType: "OUTFIT",
+          postStatus: form.status,
+          title: form.title.trim(),
+          contentText: form.contentText.trim(),
+          imageUrls: form.imageUrls,
+          storeId: merchant.storeId,
+        });
+      }
+      closeDialog();
+      await mutate();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("common.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onDelete = async () => {
+    if (!deleteTarget || !userId) return;
+    setDeleting(true);
+    try {
+      await postService.deletePost(deleteTarget.id, userId);
+      setDeleteTarget(null);
+      await mutate();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const statusBadge = (p: ApiPost) => {
+    // 商家视角下 4 类显式状态:
+    //   - REJECTED  → 「已驳回」红
+    //   - DRAFT     → 「草稿」灰
+    //   - HIDDEN    → 「已隐藏」灰
+    //   - PUBLISHED+审核中 → 「审核中」橙 (auditStatus == PENDING)
+    //   - PUBLISHED+APPROVED → 「已发布」绿 (默认)
+    // 注: web 上 Post 类型没暴露 auditStatus 字段, 这里偷懒用 status
+    // 直接判断, "已发布" 角标可能涵盖审核中. 如果未来需要精细化, 把
+    // auditStatus 加到 web/src/lib/types.ts 即可.
+    if (p.status === "DRAFT") return { label: t("merchant.draft"), tone: "neutral" as const };
+    if (p.status === "HIDDEN") return { label: t("merchant.statusHidden"), tone: "neutral" as const };
+    return { label: t("merchant.published"), tone: "ok" as const };
+  };
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
+          {t("merchant.postCount", { count: posts.length })}
+        </div>
+        <Button size="sm" onClick={openCreate}>
+          {t("merchant.newStorePost")}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <LoadingState />
+      ) : posts.length === 0 ? (
+        <EmptyState message={t("merchant.noStorePosts")} />
+      ) : (
+        <ul className="grid gap-3">
+          {posts.map((p) => {
+            const badge = statusBadge(p);
+            const cover = p.imageUrls?.[0];
+            return (
+              <li
+                key={p.id}
+                className="flex items-start gap-4 rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-4"
+              >
+                {cover ? (
+                  <MerchantThumb
+                    url={cover}
+                    alt={p.title}
+                    className="h-20 w-28 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded border border-dashed border-[var(--border)] font-label text-[10px] text-[color:var(--ink-muted)]">
+                    {t("merchant.noTitle")}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 font-label">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/posts/${p.id}`}
+                      className="font-serif text-[15px] text-[var(--ink)] hover:underline"
+                    >
+                      {p.title || t("merchant.noTitle")}
+                    </Link>
+                    <StatusBadge active={badge.tone === "ok"}>
+                      {badge.label}
+                    </StatusBadge>
+                  </div>
+                  {p.contentText && (
+                    <p className="mt-1 line-clamp-2 font-serif text-[13px] text-[color:var(--ink-muted)]">
+                      {p.contentText}
+                    </p>
+                  )}
+                  <div className="mt-1 text-[12px] text-[color:var(--ink-muted)]">
+                    {t("merchant.postStats", {
+                      likes: p.likeCount,
+                      comments: p.commentCount,
+                    })}
+                  </div>
+                </div>
+                <RowActions
+                  onEdit={() => openEdit(p)}
+                  onDelete={() => setDeleteTarget(p)}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <FormDialog
+        open={creating || !!editing}
+        title={editing ? t("merchant.editStorePost") : t("merchant.newStorePost")}
+        onClose={closeDialog}
+        wide
+      >
+        <div className="grid gap-4">
+          <FormField label={t("merchant.postTitle")} required>
+            <TextInput
+              value={form.title}
+              onChange={(v) => setForm({ ...form, title: v })}
+              placeholder={t("merchant.postTitlePlaceholder")}
+            />
+          </FormField>
+          <FormField label={t("merchant.postContent")}>
+            <TextInput
+              value={form.contentText}
+              onChange={(v) => setForm({ ...form, contentText: v })}
+              multiline
+              rows={5}
+              placeholder={t("merchant.postContentPlaceholder")}
+            />
+          </FormField>
+          <FormField label={t("merchant.postImages")}>
+            <PostImageList
+              value={form.imageUrls}
+              onChange={(arr) => setForm({ ...form, imageUrls: arr })}
+            />
+          </FormField>
+          <Toggle
+            checked={form.status === "PUBLISHED"}
+            onChange={(v) =>
+              setForm({ ...form, status: v ? "PUBLISHED" : "DRAFT" })
+            }
+            label={t("merchant.publishNow")}
+          />
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+            {err && (
+              <span className="font-label text-[12px] text-red-600">{err}</span>
+            )}
+            <Button variant="secondary" onClick={closeDialog}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={onSave}
+              loading={saving}
+              disabled={!form.title.trim()}
+            >
+              {editing ? t("common.save") : t("merchant.publish")}
+            </Button>
+          </div>
+        </div>
+      </FormDialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title={t("merchant.deleteStorePost")}
+        message={t("merchant.deleteIrreversible")}
+        confirmLabel={t("common.delete")}
+        loading={deleting}
+        onConfirm={onDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  );
+}
+
+// PostImageList —— 简化版的多图选择, 给店铺帖子表单用. 内部直接用单图
+// ImagePicker 反复调用就行, 不需要 MultiImagePicker 的拖拽排序复杂度
+// （帖子图最多 9 张, 上下移动就够了）.
+function PostImageList({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const max = 9;
+  const removeAt = (idx: number) => {
+    onChange(value.filter((_, i) => i !== idx));
+  };
+  const moveLeft = (idx: number) => {
+    if (idx <= 0) return;
+    const arr = [...value];
+    [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+    onChange(arr);
+  };
+  const moveRight = (idx: number) => {
+    if (idx >= value.length - 1) return;
+    const arr = [...value];
+    [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+    onChange(arr);
+  };
+  return (
+    <div className="grid gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {value.map((url, idx) => (
+          <div
+            key={`${url}-${idx}`}
+            className="relative h-24 overflow-hidden rounded border border-[var(--border)] bg-[var(--canvas)]"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/60 px-1 py-0.5 font-label text-[10px] text-white">
+              <button onClick={() => moveLeft(idx)} disabled={idx === 0} className="disabled:opacity-30">
+                ←
+              </button>
+              <button onClick={() => removeAt(idx)} className="hover:text-red-300">
+                {t("common.delete")}
+              </button>
+              <button
+                onClick={() => moveRight(idx)}
+                disabled={idx === value.length - 1}
+                className="disabled:opacity-30"
+              >
+                →
+              </button>
+            </div>
+            {idx === 0 && (
+              <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 font-label text-[9px] text-white">
+                {t("merchant.cover")}
+              </span>
+            )}
+          </div>
+        ))}
+        {value.length < max && (
+          <ImagePicker
+            value=""
+            onChange={(url) => {
+              if (!url) return;
+              if (value.length >= max) return;
+              onChange([...value, url]);
+            }}
+            height={96}
+          />
+        )}
+      </div>
+      <div className="font-label text-[11px] text-[color:var(--ink-muted)]">
+        {t("merchant.postImagesHint", { count: value.length, max })}
+      </div>
+    </div>
+  );
+}
+
+// LinkedPostPicker —— 给 banner / 公告 / 活动 / 折扣 编辑表单用的"关联店铺
+// 帖子选择器" (migration 055). 默认 null = 不关联; 选中后该入口元素被点击
+// 时会跳到对应 PostDetail 而不是外链.
+function LinkedPostPicker({
+  storeId,
+  value,
+  onChange,
+}: {
+  storeId: string;
+  value: number | null | undefined;
+  onChange: (id: number | null) => void;
+}) {
+  const { t } = useTranslation();
+  const { data: posts } = useSWR(
+    ["merchant-posts-for-link", storeId],
+    () =>
+      postService.getPostsByStoreId(storeId, {
+        includeUnpublished: true,
+        limit: 60,
+      }),
+  );
+
+  const list = posts ?? [];
+  const selected = value ? list.find((p) => p.id === value) ?? null : null;
+
+  if (list.length === 0) {
+    return (
+      <div className="rounded border border-dashed border-[var(--border)] bg-[var(--canvas)] p-3 font-label text-[12px] text-[color:var(--ink-muted)]">
+        {t("merchant.linkedPostEmptyHint")}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2">
+      {selected && (
+        <div className="flex items-center gap-3 rounded border border-[var(--border)] bg-[var(--canvas)] p-2">
+          {selected.imageUrls?.[0] ? (
+            <MerchantThumb
+              url={selected.imageUrls[0]}
+              alt={selected.title}
+              className="h-10 w-10 shrink-0 rounded object-cover"
+            />
+          ) : (
+            <div className="h-10 w-10 shrink-0 rounded bg-[var(--canvas-raised)]" />
+          )}
+          <span className="min-w-0 flex-1 truncate font-label text-[13px] text-[var(--ink)]">
+            {selected.title || t("merchant.noTitle")}
+          </span>
+          <button
+            onClick={() => onChange(null)}
+            className="font-label text-[12px] text-[color:var(--ink-muted)] hover:text-red-600"
+          >
+            {t("common.clear")}
+          </button>
+        </div>
+      )}
+      <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
+        {list.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onChange(p.id === value ? null : p.id)}
+            className={`rounded-full border px-3 py-1 font-label text-[12px] transition-colors ${
+              p.id === value
+                ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--canvas)]"
+                : "border-[var(--border)] text-[color:var(--ink-muted)] hover:border-[var(--ink-muted)]"
+            }`}
+          >
+            {p.title || `#${p.id}`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ───────────────────────────── 共用小组件 ─────────────────────────────

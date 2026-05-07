@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.gray100,
   },
   chipPrimary: {
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FDE68A",
+    backgroundColor: theme.colors.black,
+    borderColor: theme.colors.white,
   },
   chipText: {
     fontSize: 13,
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
   },
   chipTextPrimary: {
     fontWeight: "600",
-    color: "#92400E",
+    color: theme.colors.white,
   },
 });

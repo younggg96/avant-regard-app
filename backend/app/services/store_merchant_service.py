@@ -366,6 +366,7 @@ class StoreMerchantService:
             status=data.get("status", "PUBLISHED"),
             startTime=data.get("start_time"),
             endTime=data.get("end_time"),
+            linkedPostId=data.get("linked_post_id"),
             createdAt=data.get("created_at"),
             updatedAt=data.get("updated_at"),
         )
@@ -383,6 +384,7 @@ class StoreMerchantService:
             "status": data.status.value,
             "start_time": data.startTime,
             "end_time": data.endTime,
+            "linked_post_id": data.linkedPostId,
         }
 
         result = self.db_admin.table("store_announcements").insert(insert_data).execute()
@@ -405,6 +407,10 @@ class StoreMerchantService:
             update_data["start_time"] = data.startTime
         if data.endTime is not None:
             update_data["end_time"] = data.endTime
+        # linkedPostId 允许显式传 None 表示「解绑」, 用 model_fields_set 区分
+        # 「未传」和「传了 None」, 避免被默认值覆盖。
+        if "linkedPostId" in data.model_fields_set:
+            update_data["linked_post_id"] = data.linkedPostId
 
         result = (
             self.db_admin.table("store_announcements")
@@ -476,6 +482,7 @@ class StoreMerchantService:
             status=data.get("status", "PUBLISHED"),
             startTime=data.get("start_time"),
             endTime=data.get("end_time"),
+            linkedPostId=data.get("linked_post_id"),
             clickCount=data.get("click_count", 0),
             viewCount=data.get("view_count", 0),
             createdAt=data.get("created_at"),
@@ -486,17 +493,24 @@ class StoreMerchantService:
         self, merchant_id: int, store_id: str, data: StoreBannerCreate
     ) -> StoreBanner:
         """创建 Banner"""
+        # linkedPostId 不为空 → 自动把 link_type 升级成 POST, 让消费者端
+        # banner 点击时优先走 post 跳转分支。这保留了商家显式选了 link_type
+        # 的语义, 又避免遗漏切换的 footgun。
+        link_type_value = data.linkType.value
+        if data.linkedPostId is not None and link_type_value == "NONE":
+            link_type_value = "POST"
         insert_data = {
             "store_id": store_id,
             "merchant_id": merchant_id,
             "title": data.title,
             "image_url": data.imageUrl,
             "link_url": data.linkUrl,
-            "link_type": data.linkType.value,
+            "link_type": link_type_value,
             "sort_order": data.sortOrder,
             "status": data.status.value,
             "start_time": data.startTime,
             "end_time": data.endTime,
+            "linked_post_id": data.linkedPostId,
         }
 
         result = self.db_admin.table("store_banners").insert(insert_data).execute()
@@ -523,6 +537,15 @@ class StoreMerchantService:
             update_data["start_time"] = data.startTime
         if data.endTime is not None:
             update_data["end_time"] = data.endTime
+        if "linkedPostId" in data.model_fields_set:
+            update_data["linked_post_id"] = data.linkedPostId
+            # 显式传了 linkedPostId 但 linkType 没动 → 自动调整 link_type
+            # 与新值同步, 同样的 footgun 防御逻辑见 create_banner。
+            if data.linkType is None:
+                if data.linkedPostId is not None:
+                    update_data["link_type"] = "POST"
+                else:
+                    update_data["link_type"] = "NONE"
 
         result = (
             self.db_admin.table("store_banners")
@@ -627,6 +650,7 @@ class StoreMerchantService:
             needRegistration=data.get("need_registration", False),
             registrationLimit=data.get("registration_limit"),
             registrationCount=data.get("registration_count", 0),
+            linkedPostId=data.get("linked_post_id"),
             createdAt=data.get("created_at"),
             updatedAt=data.get("updated_at"),
         )
@@ -649,6 +673,7 @@ class StoreMerchantService:
             "status": data.status.value,
             "need_registration": data.needRegistration,
             "registration_limit": data.registrationLimit,
+            "linked_post_id": data.linkedPostId,
         }
 
         result = self.db_admin.table("store_activities").insert(insert_data).execute()
@@ -681,6 +706,8 @@ class StoreMerchantService:
             update_data["need_registration"] = data.needRegistration
         if data.registrationLimit is not None:
             update_data["registration_limit"] = data.registrationLimit
+        if "linkedPostId" in data.model_fields_set:
+            update_data["linked_post_id"] = data.linkedPostId
 
         result = (
             self.db_admin.table("store_activities")
@@ -772,6 +799,7 @@ class StoreMerchantService:
             status=data.get("status", "PUBLISHED"),
             needCode=data.get("need_code", False),
             discountCode=data.get("discount_code"),
+            linkedPostId=data.get("linked_post_id"),
             createdAt=data.get("created_at"),
             updatedAt=data.get("updated_at"),
         )
@@ -797,6 +825,7 @@ class StoreMerchantService:
             "status": data.status.value,
             "need_code": data.needCode,
             "discount_code": data.discountCode,
+            "linked_post_id": data.linkedPostId,
         }
 
         result = self.db_admin.table("store_discounts").insert(insert_data).execute()
@@ -835,6 +864,8 @@ class StoreMerchantService:
             update_data["need_code"] = data.needCode
         if data.discountCode is not None:
             update_data["discount_code"] = data.discountCode
+        if "linkedPostId" in data.model_fields_set:
+            update_data["linked_post_id"] = data.linkedPostId
 
         result = (
             self.db_admin.table("store_discounts")
@@ -998,6 +1029,15 @@ class StoreMerchantService:
         """获取店铺的所有商家发布内容"""
         merchant = self.get_merchant_by_store(store_id)
 
+        # 店铺帖子（migration 055）数量。用 lazy import 避免和 post_service
+        # 形成 module-level 的循环依赖。
+        post_count = 0
+        try:
+            from app.services.post_service import post_service as _post_service
+            post_count = _post_service.count_published_posts_by_store(store_id)
+        except Exception:
+            post_count = 0
+
         return StoreMerchantContent(
             isMerchant=merchant is not None,
             merchantInfo=merchant,
@@ -1005,6 +1045,7 @@ class StoreMerchantService:
             announcements=self.get_store_announcements(store_id) if merchant else [],
             activities=self.get_store_activities(store_id) if merchant else [],
             discounts=self.get_store_discounts(store_id) if merchant else [],
+            postCount=post_count,
         )
 
     # ==================== 店铺信息管理 ====================

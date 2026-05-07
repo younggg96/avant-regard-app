@@ -26,6 +26,7 @@ interface ModeCard {
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
+  comingSoon?: boolean;
 }
 
 const AIPostEntryScreen: React.FC = () => {
@@ -48,6 +49,7 @@ const AIPostEntryScreen: React.FC = () => {
   const exhausted =
     quota != null && quota.daily_generate_used >= quota.daily_generate_limit;
 
+  // 「图片+简述」入口暂时下线,卡片仍展示但标记 Coming soon 并禁用点击。
   const modes: ModeCard[] = [
     {
       id: "qa",
@@ -63,6 +65,7 @@ const AIPostEntryScreen: React.FC = () => {
       description: t("aiPost.entry.imageDesc"),
       icon: "images-outline",
       onPress: () => navigation.replace("AIPostImageBrief"),
+      comingSoon: true,
     },
   ];
 
@@ -90,51 +93,70 @@ const AIPostEntryScreen: React.FC = () => {
             </Text>
           </Box>
 
-          {modes.map((mode) => (
-            <Pressable
-              key={mode.id}
-              onPress={exhausted ? undefined : mode.onPress}
-              opacity={exhausted ? 0.4 : 1}
-              bg="$white"
-              borderWidth={1}
-              borderColor="$gray100"
-              rounded="$lg"
-              p="$lg"
-              sx={{
-                shadowColor: "$black",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 4,
-                elevation: 2,
-              }}
-            >
-              <HStack alignItems="center" gap="$md">
-                <Box
-                  w={56}
-                  h={56}
-                  rounded="$md"
-                  bg="$gray100"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Ionicons name={mode.icon} size={28} color={theme.colors.black} />
-                </Box>
-                <VStack flex={1}>
-                  <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
-                    {mode.title}
-                  </Text>
-                  <Text fontSize="$sm" color="$gray500">
-                    {mode.description}
-                  </Text>
-                </VStack>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={theme.colors.gray400}
-                />
-              </HStack>
-            </Pressable>
-          ))}
+          {modes.map((mode) => {
+            const disabled = exhausted || !!mode.comingSoon;
+            return (
+              <Pressable
+                key={mode.id}
+                onPress={disabled ? undefined : mode.onPress}
+                opacity={disabled ? 0.4 : 1}
+                bg="$white"
+                borderWidth={1}
+                borderColor="$gray100"
+                rounded="$lg"
+                p="$lg"
+                sx={{
+                  shadowColor: "$black",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
+                <HStack alignItems="center" gap="$md">
+                  <Box
+                    w={56}
+                    h={56}
+                    rounded="$md"
+                    bg="$gray100"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Ionicons name={mode.icon} size={28} color={theme.colors.black} />
+                  </Box>
+                  <VStack flex={1}>
+                    <HStack alignItems="center" gap="$xs" mb="$xs" flexWrap="wrap">
+                      <Text fontSize="$lg" fontWeight="$medium" color="$black">
+                        {mode.title}
+                      </Text>
+                      {mode.comingSoon ? (
+                        <Box
+                          px="$xs"
+                          py={2}
+                          rounded="$sm"
+                          bg="$gray100"
+                          borderWidth={1}
+                          borderColor="$gray200"
+                        >
+                          <Text fontSize="$xs" color="$gray500" fontWeight="$medium">
+                            {t("aiPost.entry.comingSoon")}
+                          </Text>
+                        </Box>
+                      ) : null}
+                    </HStack>
+                    <Text fontSize="$sm" color="$gray500">
+                      {mode.description}
+                    </Text>
+                  </VStack>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.colors.gray400}
+                  />
+                </HStack>
+              </Pressable>
+            );
+          })}
 
           {exhausted ? (
             <Box mt="$md" p="$md" bg="$gray100" rounded="$md">

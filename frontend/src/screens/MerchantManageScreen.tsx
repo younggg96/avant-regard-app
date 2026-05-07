@@ -17,7 +17,7 @@ import {
   Text as RNText,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
@@ -67,6 +67,9 @@ import {
   ActivityType,
   DiscountType,
 } from "../services/storeMerchantService";
+// 买手店帖子（migration 055）— Posts tab 直接复用 postService 拉/删 帖子,
+// 编辑跳到 PublishLookbookScreen, 不在本屏内重复实现复杂的图片九宫格 UI.
+import { postService, Post as ApiPost } from "../services/postService";
 import { uploadImageFromUri } from "./admin/adminUtils";
 
 type RouteParams = {
@@ -75,7 +78,13 @@ type RouteParams = {
   };
 };
 
-type TabType = "info" | "banner" | "announcement" | "activity" | "discount";
+type TabType =
+  | "info"
+  | "banner"
+  | "announcement"
+  | "activity"
+  | "discount"
+  | "post";
 
 const getActivityTypes = (t: (key: string) => string) => [
   { value: "TRUNK_SHOW" as ActivityType, label: "Trunk Show" },
@@ -206,6 +215,7 @@ const MerchantManageScreen = () => {
   // 完整 `merchant.announcement` / `merchant.activity` 等键，语义不丢失。
   const TABS: { key: TabType; label: string; icon: string }[] = [
     { key: "info", label: t("merchant.tabStore"), icon: "storefront-outline" },
+    { key: "post", label: t("merchant.tabPost"), icon: "albums-outline" },
     { key: "banner", label: t("merchant.tabBanner"), icon: "image-outline" },
     { key: "announcement", label: t("merchant.tabAnnouncement"), icon: "megaphone-outline" },
     { key: "activity", label: t("merchant.tabActivity"), icon: "calendar-outline" },
@@ -258,6 +268,9 @@ const MerchantManageScreen = () => {
   const [announcements, setAnnouncements] = useState<StoreAnnouncement[]>([]);
   const [activities, setActivities] = useState<StoreActivity[]>([]);
   const [discounts, setDiscounts] = useState<StoreDiscount[]>([]);
+  // 买手店帖子（migration 055）。商家可见所有状态（DRAFT / PENDING / APPROVED /
+  // REJECTED / HIDDEN）, 用于在后台直接管理。
+  const [storePosts, setStorePosts] = useState<ApiPost[]>([]);
 
   // 编辑模态框状态
   const [showEditModal, setShowEditModal] = useState(false);
@@ -298,24 +311,58 @@ const MerchantManageScreen = () => {
   }, [route.params?.merchantId]);
 
   // 加载内容
+  //
+  // 5 类资源 (banner / 公告 / 活动 / 折扣 / 店铺帖子) 互相独立, 用
+  // Promise.allSettled 而不是 Promise.all —— 任一接口失败都不应当让其他
+  // 4 类一起白屏。 特别是店铺帖子接口 (migration 055) 在后端 migration
+  // 还没全量铺开前可能 4xx, 但管理后台其他 tab 已经用了一年, 不能因此
+  // 退化。
   const loadContent = useCallback(async () => {
     if (!merchant) return;
 
-    try {
-      const [bannersRes, announcementsRes, activitiesRes, discountsRes] =
-        await Promise.all([
-          getMerchantBanners(merchant.id),
-          getMerchantAnnouncements(merchant.id),
-          getMerchantActivities(merchant.id),
-          getMerchantDiscounts(merchant.id),
-        ]);
+    const [bannersRes, announcementsRes, activitiesRes, discountsRes, postsRes] =
+      await Promise.allSettled([
+        getMerchantBanners(merchant.id),
+        getMerchantAnnouncements(merchant.id),
+        getMerchantActivities(merchant.id),
+        getMerchantDiscounts(merchant.id),
+        postService.getPostsByStoreId(merchant.storeId, {
+          includeUnpublished: true,
+          limit: 100,
+        }),
+      ]);
 
-      setBanners(bannersRes.banners);
-      setAnnouncements(announcementsRes.announcements);
-      setActivities(activitiesRes.activities);
-      setDiscounts(discountsRes.discounts);
+    if (bannersRes.status === "fulfilled") setBanners(bannersRes.value.banners);
+    else console.warn("Load banners failed:", bannersRes.reason);
+
+    if (announcementsRes.status === "fulfilled")
+      setAnnouncements(announcementsRes.value.announcements);
+    else console.warn("Load announcements failed:", announcementsRes.reason);
+
+    if (activitiesRes.status === "fulfilled")
+      setActivities(activitiesRes.value.activities);
+    else console.warn("Load activities failed:", activitiesRes.reason);
+
+    if (discountsRes.status === "fulfilled")
+      setDiscounts(discountsRes.value.discounts);
+    else console.warn("Load discounts failed:", discountsRes.reason);
+
+    if (postsRes.status === "fulfilled") setStorePosts(postsRes.value || []);
+    else console.warn("Load store posts failed:", postsRes.reason);
+  }, [merchant]);
+
+  // 仅刷新店铺帖子列表的轻量函数 — 给"删除帖子后"或回到此屏 reload 用,
+  // 避免连带把 banner / 公告 / 活动 / 折扣 都重拉一遍。
+  const reloadStorePosts = useCallback(async () => {
+    if (!merchant) return;
+    try {
+      const posts = await postService.getPostsByStoreId(merchant.storeId, {
+        includeUnpublished: true,
+        limit: 100,
+      });
+      setStorePosts(posts || []);
     } catch (error) {
-      console.error("Load content error:", error);
+      console.error("Reload store posts error:", error);
     }
   }, [merchant]);
 
@@ -336,6 +383,17 @@ const MerchantManageScreen = () => {
       loadBuyerStore();
     }
   }, [merchant, loadContent]);
+
+  // 编辑/发布店铺帖子返回此屏后, 自动 refresh Posts 列表 — 给买手店帖子
+  // (migration 055) 体验闭环。其他 tab 的内容由 modal 内部 loadContent
+  // 触发, 不会受影响。
+  useFocusEffect(
+    useCallback(() => {
+      if (merchant && activeTab === "post") {
+        reloadStorePosts();
+      }
+    }, [merchant, activeTab, reloadStorePosts]),
+  );
 
   // 加载店铺信息
   const loadBuyerStore = async () => {
@@ -461,6 +519,51 @@ const MerchantManageScreen = () => {
   const openEditModal = (type: TabType, item?: any) => {
     if (type === "info") {
       setIsEditingInfo(true);
+      return;
+    }
+
+    // 买手店帖子（migration 055）：CRUD 走独立屏 PublishLookbookScreen,
+    // 不在 modal 里再造一套九宫格图片选择器。两条路径:
+    //   - 新建: navigate(PublishLookbook, { storeMode })
+    //   - 编辑: navigate(PublishLookbook, { editMode, draftPost, storeMode })
+    // draftPost 复用 PublishLookbookScreen 已有的"草稿继续编辑"协议
+    // (content.title / content.description / content.images), 把后端返回
+    // 的 ApiPost 转成它能消费的形状即可。
+    if (type === "post") {
+      if (!merchant) return;
+      if (item) {
+        const apiPost = item as ApiPost;
+        const draftPost: any = {
+          id: String(apiPost.id),
+          type: apiPost.postType,
+          auditStatus: apiPost.auditStatus,
+          status: apiPost.status,
+          content: {
+            title: apiPost.title,
+            description: apiPost.contentText,
+            images: apiPost.imageUrls || [],
+          },
+          storeId: apiPost.storeId,
+          storeName: apiPost.storeName,
+        };
+        (navigation as any).navigate("PublishLookbook", {
+          editMode: true,
+          draftPost,
+          storeMode: {
+            storeId: merchant.storeId,
+            storeName: buyerStore?.name,
+            merchantId: merchant.id,
+          },
+        });
+      } else {
+        (navigation as any).navigate("PublishLookbook", {
+          storeMode: {
+            storeId: merchant.storeId,
+            storeName: buyerStore?.name,
+            merchantId: merchant.id,
+          },
+        });
+      }
       return;
     }
 
@@ -669,6 +772,11 @@ const MerchantManageScreen = () => {
               case "discount":
                 await deleteDiscount(id);
                 setDiscounts((prev) => prev.filter((d) => d.id !== id));
+                break;
+              case "post":
+                if (!user?.userId) return;
+                await postService.deletePost(id, user.userId);
+                setStorePosts((prev) => prev.filter((p) => p.id !== id));
                 break;
             }
           } catch (error: any) {
@@ -1098,6 +1206,287 @@ const MerchantManageScreen = () => {
       )}
     </VStack>
   );
+
+  // 渲染店铺帖子列表（migration 055）
+  // ─────────────────────────────────────────────────────────────────────
+  // 帖子卡片设计原则：
+  //   - 大图缩略图（4:3 cover）+ 标题/状态徽章 + 编辑/删除操作；
+  //   - 状态徽章覆盖 5 类: APPROVED 已发布 / PENDING 审核中 / REJECTED 被驳回
+  //     / DRAFT 草稿 / HIDDEN 已隐藏。 商家在此屏能看到全部状态, 跟普通用户
+  //     侧（仅看到 APPROVED+PUBLISHED）形成对比。
+  //   - 整张卡可点击跳到 PostDetail（消费者视角），方便商家自检最终展示效果.
+  const formatStorePostStatus = (
+    post: ApiPost,
+  ): { label: string; bg: string; color: string } => {
+    if (post.auditStatus === "REJECTED") {
+      return { label: t("merchant.statusRejected"), bg: "#FFEBEE", color: "#C62828" };
+    }
+    if (post.status === "DRAFT") {
+      return { label: t("merchant.draft"), bg: "$gray100", color: "$gray500" };
+    }
+    if (post.status === "HIDDEN") {
+      return { label: t("merchant.statusHidden"), bg: "$gray100", color: "$gray500" };
+    }
+    if (post.auditStatus === "PENDING") {
+      return { label: t("postDetail.pending"), bg: "#FFF3E0", color: "#E65100" };
+    }
+    return { label: t("merchant.published"), bg: "#E8F5E9", color: "#2E7D32" };
+  };
+
+  const renderStorePosts = () => (
+    <VStack p="$md" gap="$md">
+      {storePosts.length === 0 ? (
+        <VStack alignItems="center" py="$xl">
+          <Ionicons name="albums-outline" size={48} color={theme.colors.gray200} />
+          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+            {t("merchant.noStorePosts")}
+          </Text>
+          <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center" style={styles.textRegular}>
+            {t("merchant.noStorePostsHint")}
+          </Text>
+        </VStack>
+      ) : (
+        storePosts.map((post) => {
+          const cover = post.imageUrls?.[0];
+          const statusBadge = formatStorePostStatus(post);
+          return (
+            <Box
+              key={post.id}
+              bg="$white"
+              rounded="$md"
+              overflow="hidden"
+              borderWidth={1}
+              borderColor="$gray100"
+            >
+              <Pressable
+                onPress={() =>
+                  (navigation as any).navigate("PostDetail", { postId: post.id })
+                }
+              >
+                <HStack p="$md" gap="$md" alignItems="flex-start">
+                  <Box
+                    w={84}
+                    h={84}
+                    rounded="$sm"
+                    overflow="hidden"
+                    bg="$gray100"
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    {cover ? (
+                      <OptimizedImage
+                        uri={cover}
+                        size={ImageSize.MEDIUM}
+                        style={StyleSheet.absoluteFillObject}
+                        contentFit="cover"
+                        lazy={true}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="image-outline"
+                        size={28}
+                        color={theme.colors.gray300}
+                      />
+                    )}
+                  </Box>
+                  <VStack flex={1} gap="$xs">
+                    <Text
+                      fontSize="$md"
+                      fontWeight="$semibold"
+                      color="$black"
+                      numberOfLines={2}
+                      style={styles.textBold}
+                    >
+                      {post.title || t("merchant.noTitle")}
+                    </Text>
+                    {!!post.contentText && (
+                      <Text
+                        fontSize="$xs"
+                        color="$gray400"
+                        numberOfLines={2}
+                        style={styles.textRegular}
+                      >
+                        {post.contentText}
+                      </Text>
+                    )}
+                    <HStack gap="$sm" mt="$xs" alignItems="center" flexWrap="wrap">
+                      <Box
+                        px="$sm"
+                        py="$xs"
+                        rounded="$xs"
+                        bg={statusBadge.bg as any}
+                      >
+                        <Text
+                          fontSize="$xs"
+                          color={statusBadge.color as any}
+                          style={styles.textRegular}
+                        >
+                          {statusBadge.label}
+                        </Text>
+                      </Box>
+                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                        {t("merchant.likeCount", { count: post.likeCount || 0 })}
+                      </Text>
+                    </HStack>
+                  </VStack>
+                  <HStack gap="$sm">
+                    <Pressable
+                      p="$sm"
+                      onPress={(e: any) => {
+                        e?.stopPropagation?.();
+                        openEditModal("post", post);
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color={theme.colors.black} />
+                    </Pressable>
+                    <Pressable
+                      p="$sm"
+                      onPress={(e: any) => {
+                        e?.stopPropagation?.();
+                        handleDelete("post", post.id);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+                    </Pressable>
+                  </HStack>
+                </HStack>
+              </Pressable>
+            </Box>
+          );
+        })
+      )}
+    </VStack>
+  );
+
+  // 关联店铺帖子选择器（migration 055）
+  // ─────────────────────────────────────────────────────────────────────
+  // 通用组件: banner / 公告 / 活动 / 折扣 编辑表单底部都挂一个, 让商家
+  // 选一篇店铺帖子作为"点击跳转目标"。无帖子时显示「先去 Posts tab 发一篇」
+  // 引导, 避免空数据时 picker 看上去坏掉。已选中的帖子可以「取消关联」
+  // 把 linkedPostId 设回 null。
+  const renderLinkedPostPicker = (
+    value: number | null | undefined,
+    onChange: (id: number | null) => void,
+  ) => {
+    const selected = value
+      ? storePosts.find((p) => p.id === value) || null
+      : null;
+    return (
+      <VStack gap="$xs">
+        <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+          {t("merchant.linkedPostLabel")}
+        </Text>
+        {selected && (
+          <Box
+            bg="$gray100"
+            rounded="$sm"
+            p="$sm"
+            borderWidth={1}
+            borderColor="$gray200"
+          >
+            <HStack alignItems="center" gap="$sm">
+              {selected.imageUrls?.[0] ? (
+                <Box w={40} h={40} rounded="$sm" overflow="hidden">
+                  <OptimizedImage
+                    uri={selected.imageUrls[0]}
+                    size={ImageSize.THUMBNAIL}
+                    style={StyleSheet.absoluteFillObject}
+                    contentFit="cover"
+                    lazy={true}
+                  />
+                </Box>
+              ) : (
+                <Box
+                  w={40}
+                  h={40}
+                  rounded="$sm"
+                  bg="$gray200"
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
+                </Box>
+              )}
+              <Text
+                flex={1}
+                fontSize="$sm"
+                color="$black"
+                numberOfLines={1}
+                style={styles.textRegular}
+              >
+                {selected.title || t("merchant.noTitle")}
+              </Text>
+              <Pressable onPress={() => onChange(null)} p="$xs">
+                <Ionicons name="close-circle" size={18} color={theme.colors.gray400} />
+              </Pressable>
+            </HStack>
+          </Box>
+        )}
+        {storePosts.length === 0 ? (
+          <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+            {t("merchant.linkedPostEmptyHint")}
+          </Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ gap: 8, paddingVertical: 4 }}
+          >
+            {storePosts.slice(0, 30).map((post) => {
+              const isSelected = post.id === value;
+              return (
+                <Pressable
+                  key={post.id}
+                  onPress={() => onChange(isSelected ? null : post.id)}
+                  style={{
+                    width: 88,
+                  }}
+                >
+                  <Box
+                    w={88}
+                    h={88}
+                    rounded="$sm"
+                    overflow="hidden"
+                    borderWidth={2}
+                    borderColor={isSelected ? "$black" : "transparent"}
+                    bg="$gray100"
+                  >
+                    {post.imageUrls?.[0] ? (
+                      <OptimizedImage
+                        uri={post.imageUrls[0]}
+                        size={ImageSize.THUMBNAIL}
+                        style={StyleSheet.absoluteFillObject}
+                        contentFit="cover"
+                        lazy={true}
+                      />
+                    ) : (
+                      <VStack flex={1} justifyContent="center" alignItems="center">
+                        <Ionicons
+                          name="image-outline"
+                          size={24}
+                          color={theme.colors.gray300}
+                        />
+                      </VStack>
+                    )}
+                  </Box>
+                  <Text
+                    fontSize={11}
+                    color="$black"
+                    mt="$xs"
+                    numberOfLines={2}
+                    style={styles.textRegular}
+                  >
+                    {post.title || t("merchant.noTitle")}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </VStack>
+    );
+  };
 
   // 编辑表单的统一字段壳：左侧图标 + 字段名（可选 hint）+ 内容。
   // 把每个 input/chip 区域包成同样的视觉单元，保证整张表上下对齐、间距一致。
@@ -2138,6 +2527,8 @@ const MerchantManageScreen = () => {
         return renderActivities();
       case "discount":
         return renderDiscounts();
+      case "post":
+        return renderStorePosts();
     }
   };
 
@@ -2272,6 +2663,10 @@ const MerchantManageScreen = () => {
                 onChangeText={(text) => setFormData({ ...formData, linkUrl: text })}
               />
             </VStack>
+
+            {renderLinkedPostPicker(formData.linkedPostId ?? null, (id) =>
+              setFormData({ ...formData, linkedPostId: id }),
+            )}
           </VStack>
         );
 
@@ -2331,6 +2726,10 @@ const MerchantManageScreen = () => {
                 {t("merchant.pinAnnouncement")}
               </Text>
             </Pressable>
+
+            {renderLinkedPostPicker(formData.linkedPostId ?? null, (id) =>
+              setFormData({ ...formData, linkedPostId: id }),
+            )}
           </VStack>
         );
 
@@ -2492,6 +2891,10 @@ const MerchantManageScreen = () => {
                 />
               </VStack>
             )}
+
+            {renderLinkedPostPicker(formData.linkedPostId ?? null, (id) =>
+              setFormData({ ...formData, linkedPostId: id }),
+            )}
           </VStack>
         );
 
@@ -2645,6 +3048,10 @@ const MerchantManageScreen = () => {
                 />
               </VStack>
             )}
+
+            {renderLinkedPostPicker(formData.linkedPostId ?? null, (id) =>
+              setFormData({ ...formData, linkedPostId: id }),
+            )}
           </VStack>
         );
     }
@@ -2666,6 +3073,9 @@ const MerchantManageScreen = () => {
       announcement: t("merchant.announcement"),
       activity: t("merchant.activity"),
       discount: t("merchant.discount"),
+      // 买手店帖子（migration 055）— modal 不会被打开（openEditModal 直接
+      // navigate 到 PublishLookbook）, 但保留 label 以防后续重构。
+      post: t("merchant.tabPost"),
     };
     return `${action} ${typeLabels[editType] || ""}`.trim();
   };

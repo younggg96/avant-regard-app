@@ -54,6 +54,21 @@ type PublishLookbookRouteParams = {
   draftPost?: Post;
   /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
   aiDraft?: AIDraftPrefill;
+  /**
+   * 买手店发帖模式（migration 055）：当 MerchantManageScreen 的 Posts tab
+   * 点「新建帖子」/「编辑帖子」时透传, 表示这条 Lookbook 帖子要标记为该
+   * store 的店铺帖子。后端会校验当前 user 是该 store 的 APPROVED 商家。
+   *
+   * - storeId: 必填, 落库到 posts.store_id;
+   * - storeName: 仅做 header 显示提示, 不参与提交;
+   * - merchantId: 当前商家 ID, 仅用于编辑完成后回到 MerchantManage 时
+   *   带回路由参数, 让上游 refresh 列表。
+   */
+  storeMode?: {
+    storeId: string;
+    storeName?: string;
+    merchantId?: number;
+  };
 };
 
 const PublishLookbookScreen = () => {
@@ -66,6 +81,16 @@ const PublishLookbookScreen = () => {
   const editMode = route.params?.editMode || false;
   const draftPost = route.params?.draftPost;
   const aiDraft = route.params?.aiDraft;
+  // 买手店发帖模式参数（migration 055）。优先以路由参数为准；编辑模式下
+  // 如果 draftPost 自带 storeId（来自 PostCard / PostDetail 进入编辑时回填）,
+  // 也保留它, 让"编辑店铺帖子"流程不会意外把店铺标记丢掉。
+  const storeMode = route.params?.storeMode;
+  const storeIdToPublish: string | undefined =
+    storeMode?.storeId ||
+    (draftPost as any)?.storeId ||
+    undefined;
+  const storeNameForHeader: string | undefined =
+    storeMode?.storeName || (draftPost as any)?.storeName || undefined;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -315,6 +340,7 @@ const PublishLookbookScreen = () => {
         ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
         ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
         ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+        ...(storeIdToPublish && { storeId: storeIdToPublish }),
         ...(aiDraft && {
           generatedByAi: true,
           generationMetadata: aiDraft.generationMetadata,
@@ -337,6 +363,7 @@ const PublishLookbookScreen = () => {
               ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
               ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
               ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+              ...(storeIdToPublish && { storeId: storeIdToPublish }),
             },
           }
         : undefined,
@@ -400,6 +427,7 @@ const PublishLookbookScreen = () => {
           ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
           ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
           ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+          ...(storeIdToPublish && { storeId: storeIdToPublish }),
         });
       } else {
         await postService.createPost({
@@ -416,6 +444,7 @@ const PublishLookbookScreen = () => {
           ...productInfo.itemCategory && { itemCategory: productInfo.itemCategory },
           ...productInfo.itemSizes && { itemSizes: productInfo.itemSizes },
           ...productInfo.itemColors && { itemColors: productInfo.itemColors },
+          ...(storeIdToPublish && { storeId: storeIdToPublish }),
           ...(aiDraft && {
             generatedByAi: true,
             generationMetadata: aiDraft.generationMetadata,
@@ -987,10 +1016,33 @@ const PublishLookbookScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScreenHeader
-        title={editMode ? t("publish.editLookbook") : t("publish.publishLookbook")}
+        title={
+          storeIdToPublish
+            ? editMode
+              ? t("merchant.editStorePost")
+              : t("merchant.publishStorePost")
+            : editMode
+              ? t("publish.editLookbook")
+              : t("publish.publishLookbook")
+        }
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
+
+      {/* 买手店发帖模式（migration 055）— 显式提示当前是以买手店身份发布。
+          不能误删, 否则商家可能被误以为是自己个人主页发布。 */}
+      {storeIdToPublish && (
+        <Box bg="$gray100" px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="storefront" size={16} color={theme.colors.black} />
+            <Text color="$black" fontSize="$sm" flex={1} numberOfLines={1}>
+              {t("merchant.publishingAsStore", {
+                store: storeNameForHeader || storeIdToPublish,
+              })}
+            </Text>
+          </HStack>
+        </Box>
+      )}
 
       {/* 编辑已发布帖子时显示提示 */}
       {isEditingPublishedPost && (

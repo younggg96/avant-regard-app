@@ -91,5 +91,8 @@ export const mapApiPostToDisplayPost = (
     // 论坛帖子所属社区
     communityId: apiPost.communityId,
     communityName: apiPost.communityName,
+    // 买手店帖子（migration 055）
+    storeId: apiPost.storeId,
+    storeName: apiPost.storeName,
   };
 };

@@ -39,6 +39,9 @@ export interface DisplayPost {
   // 论坛帖子所属社区
   communityId?: number;
   communityName?: string;
+  // 买手店帖子（migration 055）— 设置后 PostCard 会显示「店铺」角标。
+  storeId?: string;
+  storeName?: string;
 }
 
 export type TabType = "forum" | "recommend" | "buyer" | "following";

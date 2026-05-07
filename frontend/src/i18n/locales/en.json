@@ -571,7 +571,10 @@
     "coordinates": "Coordinates",
     "styleTags": "Style Tags",
     "salesBrands": "Brands Carried",
-    "storeDescription": "Description"
+    "storeDescription": "Description",
+    "tabPosts": "Posts",
+    "storePosts": "Store Posts",
+    "noStorePosts": "No store posts yet"
   },
   "storeSubmit": {
     "title": "Submit Store",
@@ -826,7 +829,31 @@
     "validateImageRequired": "Please add at least one image",
     "validatePriceInvalid": "Please enter a valid price",
     "validateDiscountInvalid": "Please enter a valid discount price",
-    "validateDiscountExceed": "Discount price cannot exceed original price"
+    "validateDiscountExceed": "Discount price cannot exceed original price",
+    "tabPost": "Posts",
+    "tabInfo": "Store",
+    "noStorePosts": "No store posts yet",
+    "noStorePostsHint": "Tap + to publish a Lookbook as your store",
+    "publishStorePost": "Publish Store Post",
+    "editStorePost": "Edit Store Post",
+    "newStorePost": "New Post",
+    "deleteStorePost": "Delete Post",
+    "publishingAsStore": "Publishing as: {{store}}",
+    "linkedPostLabel": "Link to Store Post",
+    "linkedPostEmptyHint": "Publish a store post first to enable linking",
+    "statusRejected": "Rejected",
+    "statusHidden": "Hidden",
+    "likeCount": "{{count}} likes",
+    "postCount": "{{count}} posts",
+    "postStats": "{{likes}} ♡ · {{comments}} 💬",
+    "postTitle": "Post Title",
+    "postTitlePlaceholder": "Enter post title",
+    "postContent": "Description",
+    "postContentPlaceholder": "Tell your followers what's happening...",
+    "postImages": "Images",
+    "postImagesHint": "{{count}}/{{max}} images. First image is the cover.",
+    "publishNow": "Publish now (uncheck to save as draft)",
+    "cover": "Cover"
   },
   "publish": {
     "title": "Publish",
@@ -2334,6 +2361,7 @@
       "qaDesc": "Best for first-time posters. Guided text post generation.",
       "imageTitle": "Photos + Brief",
       "imageDesc": "Upload 1-9 photos, pick an intent, get a draft in 3s.",
+      "comingSoon": "Coming soon",
       "exhaustedHint": "Daily AI quota reached. Try again tomorrow or use the regular composer."
     },
     "qa": {

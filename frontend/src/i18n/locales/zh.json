@@ -571,7 +571,10 @@
     "coordinates": "位置坐标",
     "styleTags": "风格标签",
     "salesBrands": "销售品牌",
-    "storeDescription": "店铺描述"
+    "storeDescription": "店铺描述",
+    "tabPosts": "帖子",
+    "storePosts": "店铺帖子",
+    "noStorePosts": "暂无店铺帖子"
   },
   "storeSubmit": {
     "title": "提交买手店",
@@ -826,7 +829,31 @@
     "validateImageRequired": "至少上传一张商品图片",
     "validatePriceInvalid": "请输入有效的价格",
     "validateDiscountInvalid": "请输入有效的折扣价",
-    "validateDiscountExceed": "折扣价不能高于原价"
+    "validateDiscountExceed": "折扣价不能高于原价",
+    "tabPost": "帖子",
+    "tabInfo": "店铺",
+    "noStorePosts": "暂无店铺帖子",
+    "noStorePostsHint": "点击下方按钮以买手店身份发一条 Lookbook",
+    "publishStorePost": "发布店铺帖子",
+    "editStorePost": "编辑店铺帖子",
+    "newStorePost": "新建帖子",
+    "deleteStorePost": "删除帖子",
+    "publishingAsStore": "正在以「{{store}}」买手店身份发布",
+    "linkedPostLabel": "关联店铺帖子",
+    "linkedPostEmptyHint": "请先在 Posts 页面发布一条店铺帖子",
+    "statusRejected": "已驳回",
+    "statusHidden": "已隐藏",
+    "likeCount": "{{count}} 赞",
+    "postCount": "共 {{count}} 篇",
+    "postStats": "{{likes}} ♡ · {{comments}} 💬",
+    "postTitle": "标题",
+    "postTitlePlaceholder": "请输入帖子标题",
+    "postContent": "正文",
+    "postContentPlaceholder": "和粉丝聊聊店里的最新动态…",
+    "postImages": "图片",
+    "postImagesHint": "{{count}}/{{max}} 张，第一张为封面",
+    "publishNow": "立即发布（取消则保存为草稿）",
+    "cover": "封面"
   },
   "publish": {
     "title": "发布",
@@ -2334,6 +2361,7 @@
       "qaDesc": "适合不知道怎么开头的首贴, 引导式生成文字帖",
       "imageTitle": "图片+简述模式",
       "imageDesc": "上传 1-9 张图, 选个意图, 3 秒生成分享帖",
+      "comingSoon": "敬请期待",
       "exhaustedHint": "今日 AI 生成次数已用完, 请明天再试或走普通发帖"
     },
     "qa": {

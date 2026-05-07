@@ -212,6 +212,8 @@ const convertToPost = (post: DisplayPost): Post => {
     timestamp: post.timestamp,
     communityId: post.communityId,
     communityName: post.communityName,
+    storeId: post.storeId,
+    storeName: post.storeName,
   };
   displayToPostCache.set(post, mapped);
   return mapped;

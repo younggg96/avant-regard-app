@@ -80,6 +80,8 @@ export const convertApiPostToUiPost = async (
     brands: brands.length > 0 ? brands : undefined,
     communityId: apiPost.communityId,
     communityName: apiPost.communityName,
+    storeId: apiPost.storeId,
+    storeName: apiPost.storeName,
   };
 };
 

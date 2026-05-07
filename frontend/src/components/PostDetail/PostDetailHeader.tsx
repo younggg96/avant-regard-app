@@ -1,5 +1,6 @@
 import React from "react";
 import { View, ActivityIndicator } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack, Box } from "../ui";
@@ -25,6 +26,8 @@ interface PostDetailHeaderProps {
   onShowReportMenu?: () => void;
 }
 
+type NavTo = { navigate: (screen: string, params?: any) => void };
+
 export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   post,
   postStatus,
@@ -40,6 +43,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   onShowReportMenu,
 }) => {
   const { t } = useTranslation();
+  const navigation = useNavigation<NavTo>();
   return (
     <HStack
       px="$md"
@@ -104,6 +108,29 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
                     # {post.communityName}
                   </Text>
                 </View>
+              )}
+              {/* 买手店帖子角标（migration 055）：单独按钮跳到 StoreDetail.
+                   stopPropagation 是因为外层 Pressable 默认走 onAuthorPress,
+                   不挡住会让用户点店铺角标却落到「跳作者」逻辑里。 */}
+              {!post.communityName && post.storeName && post.storeId && (
+                <Pressable
+                  onPress={(e: any) => {
+                    e?.stopPropagation?.();
+                    navigation.navigate("StoreDetail", { storeId: post.storeId });
+                  }}
+                  bg="$gray100"
+                  px="$xs"
+                  py={1}
+                  rounded="$xs"
+                  flexShrink={1}
+                  flexDirection="row"
+                  alignItems="center"
+                >
+                  <Ionicons name="storefront" size={10} color={theme.colors.gray600} />
+                  <Text fontSize="$xs" color="$gray600" ml={3} numberOfLines={1}>
+                    {post.storeName}
+                  </Text>
+                </Pressable>
               )}
             </HStack>
           </VStack>

@@ -86,6 +86,12 @@ class Post(BaseModel):
     communityId: Optional[int] = None
     communityName: Optional[str] = None
     communitySlug: Optional[str] = None
+    # 买手店帖子专用字段（migration 055）
+    # storeId NOT NULL 表示该帖子是该买手店发布的「店铺帖子」, 在 PostCard
+    # 上要显示「店铺」角标, 并且点击角标跳到 StoreDetail。 storeName 是
+    # 服务端 join buyer_stores 后回填, 给前端避免再多发一次查店铺接口。
+    storeId: Optional[str] = None
+    storeName: Optional[str] = None
     # 内容评级
     grade: Optional[str] = None
     gradeReward: Optional[int] = None
@@ -134,6 +140,10 @@ class CreatePostRequest(BaseModel):
     itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
+    # 买手店帖子专用字段（migration 055）
+    # 商家在 MerchantManageScreen 的 Posts tab 内发帖时, 由前端把当前
+    # store_id 透传过来; 后端会校验 user 是该 store 的 APPROVED 商家。
+    storeId: Optional[str] = None
     # AI 发帖助手 (V3 #25):
     # 由 ai_post_service.generate() 返回 metadata 后,前端预览页确认发布时
     # 原样回传。generatedByAi=True 时 generationMetadata.log_id 必填,
@@ -175,6 +185,8 @@ class UpdatePostRequest(BaseModel):
     itemColors: List[str] = []
     # 论坛帖子专用字段
     communityId: Optional[int] = None
+    # 买手店帖子专用字段（migration 055）
+    storeId: Optional[str] = None
 
     @field_validator("rating")
     @classmethod

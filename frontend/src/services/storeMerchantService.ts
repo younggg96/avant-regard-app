@@ -33,7 +33,9 @@ export type ActivityType = "TRUNK_SHOW" | "POP_UP" | "SALE" | "EVENT" | "OTHER";
 export type DiscountType = "PERCENTAGE" | "FIXED" | "SPECIAL";
 
 // 链接类型
-export type LinkType = "INTERNAL" | "EXTERNAL" | "NONE";
+// POST: banner / 入口卡片关联到了一篇店铺帖子（migration 055）, 前端按
+//       linkedPostId 跳到 PostDetail。 旧数据 link_type 仍兼容。
+export type LinkType = "INTERNAL" | "EXTERNAL" | "NONE" | "POST";
 
 // 商家信息
 export interface StoreMerchant {
@@ -85,6 +87,8 @@ export interface StoreAnnouncement {
   status: ContentStatus;
   startTime?: string;
   endTime?: string;
+  /** 关联的店铺帖子 ID（migration 055）。点击公告卡片可进入 PostDetail。 */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,6 +101,7 @@ export interface StoreAnnouncementCreateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 // 更新公告参数
@@ -107,6 +112,7 @@ export interface StoreAnnouncementUpdateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 // Banner
@@ -122,6 +128,8 @@ export interface StoreBanner {
   status: ContentStatus;
   startTime?: string;
   endTime?: string;
+  /** 关联的店铺帖子 ID（migration 055）。优先级高于 linkUrl。 */
+  linkedPostId?: number | null;
   clickCount: number;
   viewCount: number;
   createdAt: string;
@@ -138,6 +146,7 @@ export interface StoreBannerCreateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 // 更新 Banner 参数
@@ -150,6 +159,7 @@ export interface StoreBannerUpdateParams {
   status?: ContentStatus;
   startTime?: string;
   endTime?: string;
+  linkedPostId?: number | null;
 }
 
 // 活动
@@ -169,6 +179,8 @@ export interface StoreActivity {
   needRegistration: boolean;
   registrationLimit?: number;
   registrationCount: number;
+  /** 关联的店铺帖子 ID（migration 055）。 */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -186,6 +198,7 @@ export interface StoreActivityCreateParams {
   status?: ContentStatus;
   needRegistration?: boolean;
   registrationLimit?: number;
+  linkedPostId?: number | null;
 }
 
 // 更新活动参数
@@ -201,6 +214,7 @@ export interface StoreActivityUpdateParams {
   status?: ContentStatus;
   needRegistration?: boolean;
   registrationLimit?: number;
+  linkedPostId?: number | null;
 }
 
 // 折扣
@@ -222,6 +236,8 @@ export interface StoreDiscount {
   status: ContentStatus;
   needCode: boolean;
   discountCode?: string;
+  /** 关联的店铺帖子 ID（migration 055）。 */
+  linkedPostId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -242,6 +258,7 @@ export interface StoreDiscountCreateParams {
   status?: ContentStatus;
   needCode?: boolean;
   discountCode?: string;
+  linkedPostId?: number | null;
 }
 
 // 更新折扣参数
@@ -260,6 +277,7 @@ export interface StoreDiscountUpdateParams {
   status?: ContentStatus;
   needCode?: boolean;
   discountCode?: string;
+  linkedPostId?: number | null;
 }
 
 // 活动报名
@@ -292,6 +310,8 @@ export interface StoreMerchantContent {
   announcements: StoreAnnouncement[];
   activities: StoreActivity[];
   discounts: StoreDiscount[];
+  /** 该店铺已发布的店铺帖子数量（migration 055），用于 StoreDetail Posts tab 角标 */
+  postCount?: number;
 }
 
 // 店铺信息
