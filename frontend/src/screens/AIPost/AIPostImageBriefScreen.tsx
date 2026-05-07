@@ -15,6 +15,8 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -139,7 +141,11 @@ const AIPostImageBriefScreen: React.FC = () => {
         rightComponent={<QuotaBadge quota={quota} />}
       />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         <VStack px="$lg" pt="$md" pb="$xl" gap="$lg">
           {/* 图片九宫格 */}
           <Box>
@@ -251,6 +257,7 @@ const AIPostImageBriefScreen: React.FC = () => {
           </Box>
         </VStack>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* 生成按钮 */}
       <Box

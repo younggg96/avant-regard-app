@@ -13,7 +13,9 @@ import {
   TextInput,
   Animated,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   View,
   ScrollView as RNScrollView,
   Switch,
@@ -764,6 +766,10 @@ const MerchantReviewScreen = () => {
         animationType="none"
         onRequestClose={closeRejectModal}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="center" px="$lg">
           <Animated.View
             style={[
@@ -830,6 +836,7 @@ const MerchantReviewScreen = () => {
             </HStack>
           </Animated.View>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* 管理弹窗 */}

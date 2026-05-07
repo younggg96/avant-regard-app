@@ -13,6 +13,8 @@ import {
   TextInput,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -242,22 +244,27 @@ export const ReportBlockModal: React.FC<ReportBlockModalProps> = ({
       transparent={true}
       onRequestClose={handleClose}
     >
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={handleClose}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <TouchableOpacity
+          style={styles.overlay}
           activeOpacity={1}
-          style={styles.container}
-          onPress={() => { }}
+          onPress={handleClose}
         >
-          <View style={styles.handle} />
-          {step === "menu" && renderMenu()}
-          {step === "report" && renderReportForm()}
-          {step === "block-confirm" && renderBlockConfirm()}
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.container}
+            onPress={() => { }}
+          >
+            <View style={styles.handle} />
+            {step === "menu" && renderMenu()}
+            {step === "report" && renderReportForm()}
+            {step === "block-confirm" && renderBlockConfirm()}
+          </TouchableOpacity>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

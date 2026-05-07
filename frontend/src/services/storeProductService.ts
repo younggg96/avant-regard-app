@@ -41,6 +41,29 @@ export const formatPrice = (
   }
 };
 
+/**
+ * 商家后台编辑商品时把"元"输入转换为整数"分"。
+ *
+ * 接受 "5"、"5.0"、"5.99" 这种宽松输入；负数 / NaN / 空串 → null（让 caller
+ * 决定是阻止提交还是按"未填"处理）。和 Web 版 `parsePriceInputToCents` 行为一致.
+ */
+export const parsePriceInputToCents = (input: string): number | null => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return Math.round(amount * 100);
+};
+
+/**
+ * 编辑场景：从已存的整数 cents 反向回填表单输入框（避免 "5" 被 toFixed 成 "5.00"）。
+ */
+export const centsToPriceInput = (cents: number | null | undefined): string => {
+  if (cents == null || Number.isNaN(cents)) return "";
+  if (cents % 100 === 0) return String(Math.round(cents / 100));
+  return (cents / 100).toFixed(2);
+};
+
 // ============================================================================
 // 店铺主页卡片配置（StoreProfileCard 数据源）
 // ============================================================================
@@ -220,6 +243,18 @@ export const getStoreProducts = async (
   );
 };
 
+/** GET /api/store-merchants/products/search — global product search */
+export const searchProductsGlobal = async (
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<StoreProductListResponse> => {
+  return request<StoreProductListResponse>(
+    `/api/store-merchants/products/search?q=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
 /** GET /api/store-merchants/products/{productId} */
 export const getStoreProductDetail = async (
   productId: number
@@ -227,6 +262,140 @@ export const getStoreProductDetail = async (
   return request<StoreProduct>(`/api/store-merchants/products/${productId}`, {
     method: "GET",
   });
+};
+
+// ============================================================================
+// 商家后台 - 商品 CRUD
+// ============================================================================
+//
+// 与上面公开端点最大的差别：
+//   1) `listMerchantProducts` 走 `/api/store-merchants/{merchantId}/products`，
+//      会把 DRAFT / HIDDEN / SOLD_OUT 也带回来，给商家做审视；
+//   2) Create / Update / Delete 都需要登录商家本人（后端 `_assert_merchant_owns`）。
+//
+// 之前 mobile 端只暴露消费者侧，商家管理依赖 Web 后台；现在补齐让 App 端商家
+// 也能在路上发布 / 上下架。
+
+export interface StoreProductCreateParams {
+  categoryId?: number | null;
+  title: string;
+  description?: string;
+  brand?: string;
+  images?: string[];
+  priceCents: number;
+  currency?: string;
+  discountPriceCents?: number | null;
+  isNew?: boolean;
+  tags?: string[];
+  status?: ProductStatus;
+}
+
+export type StoreProductUpdateParams = Partial<StoreProductCreateParams>;
+
+export interface MerchantProductListParams {
+  status?: ProductStatus | "";
+  categoryId?: number | null;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * GET /api/store-merchants/{merchantId}/products
+ * 商家后台列表（包含全部状态）。
+ */
+export const listMerchantStoreProducts = async (
+  merchantId: number,
+  params: MerchantProductListParams = {}
+): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.append("status", params.status);
+  if (params.categoryId != null) qs.append("categoryId", String(params.categoryId));
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 20));
+  return request<StoreProductListResponse>(
+    `/api/store-merchants/${merchantId}/products?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
+
+/** POST /api/store-merchants/{merchantId}/products */
+export const createMerchantStoreProduct = async (
+  merchantId: number,
+  data: StoreProductCreateParams
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/store-merchants/${merchantId}/products`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+/** PUT /api/store-merchants/products/{productId} */
+export const updateMerchantStoreProduct = async (
+  productId: number,
+  data: StoreProductUpdateParams
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/store-merchants/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+/** DELETE /api/store-merchants/products/{productId} */
+export const deleteMerchantStoreProduct = async (
+  productId: number
+): Promise<void> => {
+  await request<null>(`/api/store-merchants/products/${productId}`, {
+    method: "DELETE",
+  });
+};
+
+// ============================================================================
+// 商家后台 - 商品分类 CRUD
+// ============================================================================
+//
+// 商品创建时 categoryId 只能引用已存在的分类，所以管理界面要顺带提供
+// 「快速新增 / 删除分类」的能力。这里封装的是商家端写操作，公开列表见上面
+// `getStoreProductCategories`.
+
+export interface StoreProductCategoryCreateParams {
+  name: string;
+  coverImage?: string;
+  sortOrder?: number;
+}
+
+export type StoreProductCategoryUpdateParams =
+  Partial<StoreProductCategoryCreateParams>;
+
+/** POST /api/store-merchants/{merchantId}/product-categories */
+export const createMerchantProductCategory = async (
+  merchantId: number,
+  data: StoreProductCategoryCreateParams
+): Promise<StoreProductCategory> => {
+  return request<StoreProductCategory>(
+    `/api/store-merchants/${merchantId}/product-categories`,
+    { method: "POST", body: JSON.stringify(data) }
+  );
+};
+
+/** PUT /api/store-merchants/product-categories/{categoryId} */
+export const updateMerchantProductCategory = async (
+  categoryId: number,
+  data: StoreProductCategoryUpdateParams
+): Promise<StoreProductCategory> => {
+  return request<StoreProductCategory>(
+    `/api/store-merchants/product-categories/${categoryId}`,
+    { method: "PUT", body: JSON.stringify(data) }
+  );
+};
+
+/** DELETE /api/store-merchants/product-categories/{categoryId} */
+export const deleteMerchantProductCategory = async (
+  categoryId: number
+): Promise<void> => {
+  await request<null>(
+    `/api/store-merchants/product-categories/${categoryId}`,
+    { method: "DELETE" }
+  );
 };
 
 // ============================================================================

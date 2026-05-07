@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Switch,
   ScrollView as RNScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -703,11 +705,16 @@ const StoreManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setCreateModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.formModalContent]}>
             <RNScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
               <Text style={sharedStyles.modalTitle}>{t("admin.createStore")}</Text>
 
@@ -874,6 +881,7 @@ const StoreManagementTab = () => {
             </RNScrollView>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit Store Modal */}
@@ -883,11 +891,16 @@ const StoreManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setEditModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.formModalContent]}>
             <RNScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
               <Text style={sharedStyles.modalTitle}>{t("admin.editStore")}</Text>
 
@@ -1065,6 +1078,7 @@ const StoreManagementTab = () => {
             </RNScrollView>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

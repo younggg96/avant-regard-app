@@ -78,6 +78,7 @@ import AllCommunitiesScreen from "./src/screens/AllCommunitiesScreen";
 // Merchant Screens
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
+import MerchantProductsScreen from "./src/screens/MerchantProductsScreen";
 import MerchantReviewScreen from "./src/screens/MerchantReviewScreen";
 // Search Screens
 import SearchScreen from "./src/screens/SearchScreen";
@@ -569,6 +570,11 @@ function AppNavigator() {
         <Stack.Screen
           name="MerchantManage"
           component={MerchantManageScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MerchantProducts"
+          component={MerchantProductsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

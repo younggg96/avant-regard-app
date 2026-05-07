@@ -950,6 +950,7 @@ const PublishForumPostScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {/* 社区选择 */}
           <Pressable

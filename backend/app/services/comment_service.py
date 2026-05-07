@@ -308,7 +308,33 @@ class CommentService:
             self.db.table("post_comments").update({
                 "like_count": max(0, current - 1)
             }).eq("id", comment_id).execute()
+            # 同步删除对应的点赞通知，避免反复点赞累积多条记录
+            self._remove_comment_like_notification(comment_id, user_id)
         return True
+
+    def _remove_comment_like_notification(self, comment_id: int, liker_id: int):
+        """取消点赞评论时移除对应的通知"""
+        try:
+            comment_result = (
+                self.db.table("post_comments")
+                .select("user_id, post_id")
+                .eq("id", comment_id)
+                .execute()
+            )
+            if not comment_result.data:
+                return
+            comment_owner_id = comment_result.data[0]["user_id"]
+            post_id = comment_result.data[0]["post_id"]
+            if comment_owner_id == liker_id:
+                return
+            notification_service.delete_like_notification(
+                recipient_id=comment_owner_id,
+                actor_id=liker_id,
+                post_id=post_id,
+                comment_id=comment_id,
+            )
+        except Exception as e:
+            print(f"Failed to remove comment like notification: {e}")
 
     def delete_comment(self, comment_id: int, user_id: int) -> bool:
         """删除评论或回复"""

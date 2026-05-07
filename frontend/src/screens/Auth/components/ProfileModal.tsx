@@ -77,6 +77,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
           >
             {/* Modal 标题 */}

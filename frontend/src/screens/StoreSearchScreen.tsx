@@ -327,6 +327,8 @@ const StoreSearchScreen = () => {
             keyExtractor={(item) => item.id}
             renderItem={renderStoreItem}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             onEndReached={loadMore}
             onEndReachedThreshold={0.3}
             ListFooterComponent={renderFooter}

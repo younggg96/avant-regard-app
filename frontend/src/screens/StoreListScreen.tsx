@@ -432,6 +432,8 @@ const StoreListScreen = () => {
                         renderItem={renderStoreItem}
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
                         onEndReached={loadMoreStores}
                         onEndReachedThreshold={0.3}
                         ListFooterComponent={renderFooter}

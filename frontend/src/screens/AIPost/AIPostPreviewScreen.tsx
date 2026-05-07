@@ -23,7 +23,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, TextInput } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, TextInput } from "react-native";
 import { Alert as RNAlert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -257,7 +257,11 @@ const AIPostPreviewScreen: React.FC = () => {
         </Box>
       ) : (
         <>
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+          >
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
             <VStack px="$lg" pt="$md" pb="$xl" gap="$md">
               {/* 标题 */}
               <Box>
@@ -352,6 +356,7 @@ const AIPostPreviewScreen: React.FC = () => {
               </Pressable>
             </VStack>
           </ScrollView>
+          </KeyboardAvoidingView>
 
           {/* 底部操作栏: 视觉层级 = 次要(丢弃 ghost) < 次要(重新生成 outline) < 主要(发布 solid CTA) */}
           <HStack

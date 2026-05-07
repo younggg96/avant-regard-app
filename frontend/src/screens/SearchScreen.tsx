@@ -21,12 +21,14 @@ import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
 import { searchBrands, Brand } from "../services/brandService";
+import { getStoresPaginated, BuyerStore } from "../services/buyerStoreService";
+import { searchProductsGlobal, StoreProduct, formatPrice } from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 
-type SearchType = "posts" | "users" | "brands";
+type SearchType = "posts" | "users" | "brands" | "stores" | "products";
 
 interface SearchHistory {
   id: string;
@@ -44,21 +46,31 @@ const SearchScreen = () => {
     "posts",
     "users",
     "brands",
+    "stores",
+    "products",
   ];
-  const isRestricted = allowedTypes.length < 3;
+  const isRestricted = allowedTypes.length < 5;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<SearchType>(allowedTypes[0]);
   const [postResults, setPostResults] = useState<PostData[]>([]);
   const [userResults, setUserResults] = useState<UserInfo[]>([]);
   const [brandResults, setBrandResults] = useState<Brand[]>([]);
+  const [storeResults, setStoreResults] = useState<BuyerStore[]>([]);
+  const [storeTotal, setStoreTotal] = useState(0);
+  const [productResults, setProductResults] = useState<StoreProduct[]>([]);
+  const [productTotal, setProductTotal] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [postTotal, setPostTotal] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [hasMoreStores, setHasMoreStores] = useState(false);
+  const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const postOffsetRef = useRef(0);
+  const storePageRef = useRef(1);
+  const productPageRef = useRef(1);
 
   const POST_PAGE_SIZE = 20;
 
@@ -67,12 +79,19 @@ const SearchScreen = () => {
     setSearchHistory([]);
   }, []);
 
+  const STORE_PAGE_SIZE = 20;
+  const PRODUCT_PAGE_SIZE = 20;
+
   // 执行搜索
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) {
       setPostResults([]);
       setUserResults([]);
       setBrandResults([]);
+      setStoreResults([]);
+      setStoreTotal(0);
+      setProductResults([]);
+      setProductTotal(0);
       setIsSearching(false);
       setPostTotal(0);
       return;
@@ -95,9 +114,21 @@ const SearchScreen = () => {
       } else if (searchType === "users") {
         const users = await searchUsers(query);
         setUserResults(users);
-      } else {
+      } else if (searchType === "brands") {
         const brands = await searchBrands(query);
         setBrandResults(brands);
+      } else if (searchType === "stores") {
+        storePageRef.current = 1;
+        const result = await getStoresPaginated({ page: 1, pageSize: STORE_PAGE_SIZE, searchQuery: query });
+        setStoreResults(result.stores);
+        setStoreTotal(result.total);
+        setHasMoreStores(result.stores.length < result.total);
+      } else if (searchType === "products") {
+        productPageRef.current = 1;
+        const result = await searchProductsGlobal(query, 1, PRODUCT_PAGE_SIZE);
+        setProductResults(result.products);
+        setProductTotal(result.total);
+        setHasMoreProducts(result.products.length < result.total);
       }
 
       // 保存搜索历史
@@ -129,8 +160,16 @@ const SearchScreen = () => {
         setHasMorePosts(false);
       } else if (searchType === "users") {
         setUserResults([]);
-      } else {
+      } else if (searchType === "brands") {
         setBrandResults([]);
+      } else if (searchType === "stores") {
+        setStoreResults([]);
+        setStoreTotal(0);
+        setHasMoreStores(false);
+      } else if (searchType === "products") {
+        setProductResults([]);
+        setProductTotal(0);
+        setHasMoreProducts(false);
       }
     } finally {
       setIsLoading(false);
@@ -157,9 +196,21 @@ const SearchScreen = () => {
         } else if (type === "users") {
           const users = await searchUsers(query);
           setUserResults(users);
-        } else {
+        } else if (type === "brands") {
           const brands = await searchBrands(query);
           setBrandResults(brands);
+        } else if (type === "stores") {
+          storePageRef.current = 1;
+          const result = await getStoresPaginated({ page: 1, pageSize: STORE_PAGE_SIZE, searchQuery: query });
+          setStoreResults(result.stores);
+          setStoreTotal(result.total);
+          setHasMoreStores(result.stores.length < result.total);
+        } else if (type === "products") {
+          productPageRef.current = 1;
+          const result = await searchProductsGlobal(query, 1, PRODUCT_PAGE_SIZE);
+          setProductResults(result.products);
+          setProductTotal(result.total);
+          setHasMoreProducts(result.products.length < result.total);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -174,8 +225,16 @@ const SearchScreen = () => {
           setHasMorePosts(false);
         } else if (type === "users") {
           setUserResults([]);
-        } else {
+        } else if (type === "brands") {
           setBrandResults([]);
+        } else if (type === "stores") {
+          setStoreResults([]);
+          setStoreTotal(0);
+          setHasMoreStores(false);
+        } else if (type === "products") {
+          setProductResults([]);
+          setProductTotal(0);
+          setHasMoreProducts(false);
         }
       } finally {
         setIsLoading(false);
@@ -190,10 +249,18 @@ const SearchScreen = () => {
     setPostResults([]);
     setUserResults([]);
     setBrandResults([]);
+    setStoreResults([]);
+    setStoreTotal(0);
+    setProductResults([]);
+    setProductTotal(0);
     setIsSearching(false);
     setPostTotal(0);
     setHasMorePosts(false);
+    setHasMoreStores(false);
+    setHasMoreProducts(false);
     postOffsetRef.current = 0;
+    storePageRef.current = 1;
+    productPageRef.current = 1;
   }, []);
 
   // 点击历史记录
@@ -214,9 +281,21 @@ const SearchScreen = () => {
         } else if (searchType === "users") {
           const users = await searchUsers(keyword);
           setUserResults(users);
-        } else {
+        } else if (searchType === "brands") {
           const brands = await searchBrands(keyword);
           setBrandResults(brands);
+        } else if (searchType === "stores") {
+          storePageRef.current = 1;
+          const result = await getStoresPaginated({ page: 1, pageSize: STORE_PAGE_SIZE, searchQuery: keyword });
+          setStoreResults(result.stores);
+          setStoreTotal(result.total);
+          setHasMoreStores(result.stores.length < result.total);
+        } else if (searchType === "products") {
+          productPageRef.current = 1;
+          const result = await searchProductsGlobal(keyword, 1, PRODUCT_PAGE_SIZE);
+          setProductResults(result.products);
+          setProductTotal(result.total);
+          setHasMoreProducts(result.products.length < result.total);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -231,8 +310,16 @@ const SearchScreen = () => {
           setHasMorePosts(false);
         } else if (searchType === "users") {
           setUserResults([]);
-        } else {
+        } else if (searchType === "brands") {
           setBrandResults([]);
+        } else if (searchType === "stores") {
+          setStoreResults([]);
+          setStoreTotal(0);
+          setHasMoreStores(false);
+        } else if (searchType === "products") {
+          setProductResults([]);
+          setProductTotal(0);
+          setHasMoreProducts(false);
         }
       } finally {
         setIsLoading(false);
@@ -278,6 +365,20 @@ const SearchScreen = () => {
   const handleBrandPress = useCallback(
     (brand: Brand) => {
       (navigation.navigate as any)("BrandDetail", { name: brand.name });
+    },
+    [navigation]
+  );
+
+  const handleStorePress = useCallback(
+    (store: BuyerStore) => {
+      (navigation.navigate as any)("StoreDetail", { storeId: store.id });
+    },
+    [navigation]
+  );
+
+  const handleProductPress = useCallback(
+    (product: StoreProduct) => {
+      (navigation.navigate as any)("StoreProductDetail", { productId: product.id });
     },
     [navigation]
   );
@@ -379,6 +480,40 @@ const SearchScreen = () => {
       setIsLoadingMore(false);
     }
   }, [isLoadingMore, hasMorePosts, searchQuery]);
+
+  const loadMoreStores = useCallback(async () => {
+    if (isLoadingMore || !hasMoreStores || !searchQuery.trim()) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = storePageRef.current + 1;
+      const result = await getStoresPaginated({ page: nextPage, pageSize: STORE_PAGE_SIZE, searchQuery: searchQuery.trim() });
+      setStoreResults((prev) => [...prev, ...result.stores]);
+      setStoreTotal(result.total);
+      storePageRef.current = nextPage;
+      setHasMoreStores(storeResults.length + result.stores.length < result.total);
+    } catch (error) {
+      console.error("Load more stores failed:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMoreStores, searchQuery, storeResults.length]);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (isLoadingMore || !hasMoreProducts || !searchQuery.trim()) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = productPageRef.current + 1;
+      const result = await searchProductsGlobal(searchQuery.trim(), nextPage, PRODUCT_PAGE_SIZE);
+      setProductResults((prev) => [...prev, ...result.products]);
+      setProductTotal(result.total);
+      productPageRef.current = nextPage;
+      setHasMoreProducts(productResults.length + result.products.length < result.total);
+    } catch (error) {
+      console.error("Load more products failed:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMoreProducts, searchQuery, productResults.length]);
 
   const handlePostScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -549,6 +684,8 @@ const SearchScreen = () => {
     { type: "posts", label: t("search.posts") },
     { type: "users", label: t("search.users") },
     { type: "brands", label: t("search.brands") },
+    { type: "stores", label: t("search.stores") },
+    { type: "products", label: t("search.products") },
   ];
 
   const renderSearchTypeTabs = () => {
@@ -556,32 +693,32 @@ const SearchScreen = () => {
     if (visibleTabs.length <= 1) return null;
 
     return (
-      <HStack
-        px="$md"
-        py="$sm"
-        space="md"
-        borderBottomWidth={1}
-        borderBottomColor="$gray100"
-      >
-        {visibleTabs.map((tab) => (
-          <Pressable
-            key={tab.type}
-            onPress={() => handleSearchTypeChange(tab.type)}
-            px="$md"
-            py="$xs"
-            rounded="$sm"
-            bg={searchType === tab.type ? "$black" : "$gray100"}
-          >
-            <Text
-              fontSize="$sm"
-              fontWeight="$medium"
-              color={searchType === tab.type ? "$white" : "$gray600"}
+      <Box borderBottomWidth={1} borderBottomColor="$gray100">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContainer}
+        >
+          {visibleTabs.map((tab) => (
+            <Pressable
+              key={tab.type}
+              onPress={() => handleSearchTypeChange(tab.type)}
+              style={[
+                styles.tabPill,
+                searchType === tab.type ? styles.tabPillActive : styles.tabPillInactive,
+              ]}
             >
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </HStack>
+              <Text
+                fontSize="$sm"
+                fontWeight="$medium"
+                color={searchType === tab.type ? "$white" : "$gray600"}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </Box>
     );
   };
 
@@ -600,6 +737,8 @@ const SearchScreen = () => {
           contentContainerStyle={styles.scrollContent}
           onScroll={handlePostScroll}
           scrollEventThrottle={200}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <HStack px="$sm" pt="$sm" alignItems="flex-start">
             {postColumns.map((column, colIndex) => (
@@ -671,6 +810,8 @@ const SearchScreen = () => {
           renderItem={renderUserItem}
           keyExtractor={(item) => item.userId.toString()}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ItemSeparatorComponent={() => (
             <Box height={1} bg="$gray100" mx="$md" />
           )}
@@ -719,6 +860,8 @@ const SearchScreen = () => {
           renderItem={renderBrandItem}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ItemSeparatorComponent={() => (
             <Box height={1} bg="$gray100" mx="$md" />
           )}
@@ -746,6 +889,185 @@ const SearchScreen = () => {
             textAlign="center"
             lineHeight="$lg"
           >
+            {t("search.tryOtherKeywords")}
+          </Text>
+        </VStack>
+      )}
+    </VStack>
+  );
+
+  // 渲染店铺项
+  const renderStoreItem = useCallback(
+    ({ item: store }: { item: BuyerStore }) => (
+      <Pressable onPress={() => handleStorePress(store)} px="$md" py="$md">
+        <VStack space="sm">
+          <HStack alignItems="center" justifyContent="between">
+            <VStack flex={1} mr="$sm">
+              <Text fontSize="$md" fontWeight="$semibold" color="$black" numberOfLines={1}>
+                {store.name}
+              </Text>
+              <Text fontSize="$sm" color="$gray400" mt="$xs" numberOfLines={1}>
+                {store.city}, {store.country}
+              </Text>
+            </VStack>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
+          </HStack>
+          {store.address ? (
+            <HStack alignItems="center" space="xs">
+              <Ionicons name="location-outline" size={14} color={theme.colors.gray400} />
+              <Text fontSize="$xs" color="$gray400" flex={1} numberOfLines={1}>
+                {store.address}
+              </Text>
+            </HStack>
+          ) : null}
+          {store.style.length > 0 && (
+            <HStack space="xs" flexWrap="wrap">
+              {store.style.slice(0, 3).map((s, idx) => (
+                <Box key={idx} bg="$gray100" px="$sm" py={2} rounded="$sm">
+                  <Text fontSize="$xs" color="$gray600">{s}</Text>
+                </Box>
+              ))}
+            </HStack>
+          )}
+          {store.brands.length > 0 && (
+            <Text fontSize="$xs" color="$gray400" numberOfLines={1} fontStyle="italic">
+              {store.brands.slice(0, 5).join(" / ")}
+            </Text>
+          )}
+        </VStack>
+      </Pressable>
+    ),
+    [handleStorePress]
+  );
+
+  // 渲染店铺搜索结果
+  const renderStoreResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" color="$gray600">
+          {t("search.foundResults", { count: storeTotal, type: t("search.stores") })}
+        </Text>
+      </HStack>
+      {storeResults.length > 0 ? (
+        <FlatList
+          data={storeResults}
+          renderItem={renderStoreItem}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onEndReached={loadMoreStores}
+          onEndReachedThreshold={0.3}
+          ItemSeparatorComponent={() => <Box height={1} bg="$gray100" mx="$md" />}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <VStack py="$md" alignItems="center">
+                <ActivityIndicator size="small" color={theme.colors.gray400} />
+              </VStack>
+            ) : null
+          }
+        />
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons name="storefront-outline" size={64} color={theme.colors.gray300} />
+          <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+            {t("search.noResults")}
+          </Text>
+          <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
+            {t("search.tryOtherKeywords")}
+          </Text>
+        </VStack>
+      )}
+    </VStack>
+  );
+
+  // 渲染商品项
+  const renderProductItem = useCallback(
+    ({ item: product }: { item: StoreProduct }) => (
+      <Pressable onPress={() => handleProductPress(product)} px="$md" py="$md">
+        <HStack alignItems="center" space="md">
+          <Box width={72} height={72} rounded="$sm" overflow="hidden" bg="$gray100">
+            {product.images?.[0] ? (
+              <OptimizedImage
+                uri={product.images[0]}
+                size={ImageSize.THUMBNAIL}
+                style={{ width: 72, height: 72 }}
+                contentFit="cover"
+                lazy={true}
+              />
+            ) : (
+              <Box flex={1} alignItems="center" justifyContent="center">
+                <Ionicons name="bag-outline" size={28} color={theme.colors.gray300} />
+              </Box>
+            )}
+          </Box>
+          <VStack flex={1} space="xs">
+            <Text fontSize="$md" fontWeight="$semibold" color="$black" numberOfLines={2}>
+              {product.title}
+            </Text>
+            {product.brand ? (
+              <Text fontSize="$sm" color="$gray600" numberOfLines={1}>
+                {product.brand}
+              </Text>
+            ) : null}
+            <HStack alignItems="center" space="sm">
+              {product.hasDiscount && product.discountPriceCents != null ? (
+                <>
+                  <Text fontSize="$md" fontWeight="$bold" color="$black">
+                    {formatPrice(product.discountPriceCents, product.currency)}
+                  </Text>
+                  <Text fontSize="$xs" color="$gray400" style={{ textDecorationLine: "line-through" }}>
+                    {formatPrice(product.priceCents, product.currency)}
+                  </Text>
+                </>
+              ) : (
+                <Text fontSize="$md" fontWeight="$bold" color="$black">
+                  {formatPrice(product.priceCents, product.currency)}
+                </Text>
+              )}
+            </HStack>
+          </VStack>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.gray400} />
+        </HStack>
+      </Pressable>
+    ),
+    [handleProductPress]
+  );
+
+  // 渲染商品搜索结果
+  const renderProductResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" color="$gray600">
+          {t("search.foundResults", { count: productTotal, type: t("search.products") })}
+        </Text>
+      </HStack>
+      {productResults.length > 0 ? (
+        <FlatList
+          data={productResults}
+          renderItem={renderProductItem}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onEndReached={loadMoreProducts}
+          onEndReachedThreshold={0.3}
+          ItemSeparatorComponent={() => <Box height={1} bg="$gray100" mx="$md" />}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <VStack py="$md" alignItems="center">
+                <ActivityIndicator size="small" color={theme.colors.gray400} />
+              </VStack>
+            ) : null
+          }
+        />
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons name="bag-outline" size={64} color={theme.colors.gray300} />
+          <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+            {t("search.noResults")}
+          </Text>
+          <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
             {t("search.tryOtherKeywords")}
           </Text>
         </VStack>
@@ -792,7 +1114,11 @@ const SearchScreen = () => {
                 ? t("search.searchPostsPlaceholder")
                 : searchType === "users"
                   ? t("search.searchUsersPlaceholder")
-                  : t("search.searchBrandsPlaceholder")
+                  : searchType === "brands"
+                    ? t("search.searchBrandsPlaceholder")
+                    : searchType === "stores"
+                      ? t("search.searchStoresPlaceholder")
+                      : t("search.searchProductsPlaceholder")
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
@@ -871,7 +1197,17 @@ const SearchScreen = () => {
               px="$xl"
             >
               <Ionicons
-                name="search-outline"
+                name={
+                  searchType === "posts"
+                    ? "document-text-outline"
+                    : searchType === "users"
+                      ? "person-outline"
+                      : searchType === "brands"
+                        ? "pricetag-outline"
+                        : searchType === "stores"
+                          ? "storefront-outline"
+                          : "bag-outline"
+                }
                 size={64}
                 color={theme.colors.gray300}
               />
@@ -882,7 +1218,15 @@ const SearchScreen = () => {
                 mt="$md"
                 textAlign="center"
               >
-                {searchType === "posts" ? t("search.posts") : searchType === "users" ? t("search.users") : t("search.brands")}
+                {searchType === "posts"
+                  ? t("search.posts")
+                  : searchType === "users"
+                    ? t("search.users")
+                    : searchType === "brands"
+                      ? t("search.brands")
+                      : searchType === "stores"
+                        ? t("search.stores")
+                        : t("search.products")}
               </Text>
               <Text
                 fontSize="$sm"
@@ -895,7 +1239,11 @@ const SearchScreen = () => {
                   ? t("search.searchPostsHint")
                   : searchType === "users"
                     ? t("search.searchUsersHint")
-                    : t("search.searchBrandsHint")}
+                    : searchType === "brands"
+                      ? t("search.searchBrandsHint")
+                      : searchType === "stores"
+                        ? t("search.searchStoresHint")
+                        : t("search.searchProductsHint")}
               </Text>
             </VStack>
           )}
@@ -910,7 +1258,15 @@ const SearchScreen = () => {
         </VStack>
       ) : (
         // 显示搜索结果
-        searchType === "posts" ? renderPostResults() : searchType === "users" ? renderUserResults() : renderBrandResults()
+        searchType === "posts"
+          ? renderPostResults()
+          : searchType === "users"
+            ? renderUserResults()
+            : searchType === "brands"
+              ? renderBrandResults()
+              : searchType === "stores"
+                ? renderStoreResults()
+                : renderProductResults()
       )}
     </SafeAreaView>
   );
@@ -930,6 +1286,23 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 20,
+  },
+  tabsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  tabPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: theme.borderRadius.sm,
+    marginRight: 8,
+  },
+  tabPillActive: {
+    backgroundColor: theme.colors.black,
+  },
+  tabPillInactive: {
+    backgroundColor: theme.colors.gray100,
   },
 });
 

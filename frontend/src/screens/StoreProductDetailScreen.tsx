@@ -562,7 +562,7 @@ const StoreProductDetailScreen: React.FC = () => {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          onScrollEndDrag={() => Keyboard.dismiss()}
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
         >
           {/* 图片轮播 —— 与 LookbookContent 保持一致：FlatList 横向分页 + 圆点指示器 */}

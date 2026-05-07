@@ -6,6 +6,8 @@ import {
   Dimensions,
   FlatList,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { VideoThumbnailView } from "../components/VideoThumbnailView";
 import { Alert } from "../utils/Alert";
@@ -1168,95 +1170,103 @@ const PublishOutfitScreen = () => {
         </Box>
       )}
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        {renderPreviewSection()}
-        {images.length > 0 && renderImageGallery()}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
+          {renderPreviewSection()}
+          {images.length > 0 && renderImageGallery()}
 
-        <Box mx="$md" mb="$md">
-          <HStack mb="$sm" alignItems="center">
-            <Text color="$gray600" fontSize="$sm">
-              {t("publish.titleLabel")}
-            </Text>
-            <Text color="$red500" fontSize="$sm" ml="$xs">
-              *
-            </Text>
-          </HStack>
-          <Input
-            value={title}
-            onChangeText={setTitle}
-            placeholder={t("publish.outfitTitlePlaceholder")}
-            placeholderTextColor={theme.colors.gray400}
-            multiline
-            variant="outline"
-            sx={{
-              fontSize: 18,
-              fontWeight: "500",
-              minHeight: 50,
-              textAlignVertical: "top",
-              borderWidth: 0,
-              backgroundColor: "transparent",
-              padding: 0,
+          <Box mx="$md" mb="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                {t("publish.titleLabel")}
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
+            <Input
+              value={title}
+              onChangeText={setTitle}
+              placeholder={t("publish.outfitTitlePlaceholder")}
+              placeholderTextColor={theme.colors.gray400}
+              multiline
+              variant="outline"
+              sx={{
+                fontSize: 18,
+                fontWeight: "500",
+                minHeight: 50,
+                textAlignVertical: "top",
+                borderWidth: 0,
+                backgroundColor: "transparent",
+                padding: 0,
+              }}
+            />
+          </Box>
+
+          <Box mx="$md" mb="$md">
+            <HStack mb="$sm" alignItems="center">
+              <Text color="$gray600" fontSize="$sm">
+                {t("publish.outfitDetailsLabel")}
+              </Text>
+              <Text color="$red500" fontSize="$sm" ml="$xs">
+                *
+              </Text>
+            </HStack>
+            <Input
+              value={description}
+              onChangeText={setDescription}
+              placeholder={t("publish.outfitDescPlaceholder")}
+              placeholderTextColor={theme.colors.gray400}
+              multiline
+              variant="outline"
+              sx={{
+                color: theme.colors.gray600,
+                minHeight: 80,
+                textAlignVertical: "top",
+                borderWidth: 0,
+                backgroundColor: "transparent",
+                padding: 0,
+              }}
+            />
+          </Box>
+
+          {/* 关联秀场 */}
+          <ShowGridSelector
+            selectedShows={selectedShows}
+            onShowPress={(show) => {
+              setPreviewShow(show);
+              setShowPreview(true);
             }}
+            onRemoveShow={handleRemoveShow}
+            onAddShow={() => setShowSelector(true)}
+            maxShows={MAX_SHOWS}
+            label={t("publish.linkShow")}
+            required
           />
-        </Box>
 
-        <Box mx="$md" mb="$md">
-          <HStack mb="$sm" alignItems="center">
-            <Text color="$gray600" fontSize="$sm">
-              {t("publish.outfitDetailsLabel")}
-            </Text>
-            <Text color="$red500" fontSize="$sm" ml="$xs">
-              *
-            </Text>
-          </HStack>
-          <Input
-            value={description}
-            onChangeText={setDescription}
-            placeholder={t("publish.outfitDescPlaceholder")}
-            placeholderTextColor={theme.colors.gray400}
-            multiline
-            variant="outline"
-            sx={{
-              color: theme.colors.gray600,
-              minHeight: 80,
-              textAlignVertical: "top",
-              borderWidth: 0,
-              backgroundColor: "transparent",
-              padding: 0,
-            }}
+          <BrandGridSelector
+            selectedBrands={selectedBrands}
+            onBrandPress={() => { }}
+            onRemoveBrand={handleRemoveBrand}
+            onAddBrand={() => setShowBrandSelector(true)}
+            maxBrands={MAX_BRANDS}
+            label={t("publish.linkBrand")}
+            required={false}
           />
-        </Box>
 
-        {/* 关联秀场 */}
-        <ShowGridSelector
-          selectedShows={selectedShows}
-          onShowPress={(show) => {
-            setPreviewShow(show);
-            setShowPreview(true);
-          }}
-          onRemoveShow={handleRemoveShow}
-          onAddShow={() => setShowSelector(true)}
-          maxShows={MAX_SHOWS}
-          label={t("publish.linkShow")}
-          required
-        />
-
-        <BrandGridSelector
-          selectedBrands={selectedBrands}
-          onBrandPress={() => { }}
-          onRemoveBrand={handleRemoveBrand}
-          onAddBrand={() => setShowBrandSelector(true)}
-          maxBrands={MAX_BRANDS}
-          label={t("publish.linkBrand")}
-          required={false}
-        />
-
-        <ProductInfoSection value={productInfo} onChange={setProductInfo} />
-      </ScrollView>
+          <ProductInfoSection value={productInfo} onChange={setProductInfo} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <PublishButtons
         onSaveDraft={handleSaveDraft}

@@ -6,6 +6,8 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -639,11 +641,16 @@ const ShowManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setCreateModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
               <Text style={sharedStyles.modalTitle}>{t("admin.createShow")}</Text>
               {renderShowFormFields(createForm, setCreateForm, false)}
@@ -658,6 +665,7 @@ const ShowManagementTab = () => {
             </ScrollView>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit Modal */}
@@ -667,11 +675,16 @@ const ShowManagementTab = () => {
         animationType="fade"
         onRequestClose={() => setEditModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.editModalContent]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
               <Text style={sharedStyles.modalTitle}>{t("admin.editShow")}</Text>
               {renderShowFormFields(editForm, setEditForm, true)}
@@ -686,6 +699,7 @@ const ShowManagementTab = () => {
             </ScrollView>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

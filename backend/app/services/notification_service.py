@@ -113,6 +113,94 @@ class NotificationService:
         )
         return True
 
+    def delete_follow_notification(
+        self,
+        followed_user_id: int,
+        follower_id: int,
+    ) -> int:
+        """
+        删除某用户对另一用户的关注通知。
+
+        在「取消关注」时调用：避免「关注 → 取消 → 再关注」反复操作时，
+        同一个 follower 对同一目标累积多条 FOLLOW 通知。
+
+        返回被删除的通知数量。
+        """
+        try:
+            result = (
+                self.db.table("notifications")
+                .select("id, action_data")
+                .eq("user_id", followed_user_id)
+                .eq("type", NotificationType.FOLLOW.value)
+                .execute()
+            )
+            ids_to_delete: List[int] = []
+            for row in result.data or []:
+                ad = row.get("action_data") or {}
+                if ad.get("user_id") != follower_id:
+                    continue
+                ids_to_delete.append(row["id"])
+
+            if not ids_to_delete:
+                return 0
+
+            self.db.table("notifications").delete().in_("id", ids_to_delete).execute()
+            return len(ids_to_delete)
+        except Exception as e:
+            print(f"Failed to delete follow notification: {e}")
+            return 0
+
+    def delete_like_notification(
+        self,
+        recipient_id: int,
+        actor_id: int,
+        post_id: int,
+        comment_id: Optional[int] = None,
+    ) -> int:
+        """
+        删除某用户对某帖子/评论的点赞通知。
+
+        在用户取消点赞时调用：避免「点赞 → 取消 → 再点赞」反复操作时，
+        同一个 actor 对同一目标累积多条 LIKE 通知。
+
+        - comment_id is None: 仅匹配帖子点赞通知（action_data 不含 comment_id）。
+        - comment_id 非空: 仅匹配评论点赞通知。
+
+        返回被删除的通知数量。
+        """
+        try:
+            result = (
+                self.db.table("notifications")
+                .select("id, action_data")
+                .eq("user_id", recipient_id)
+                .eq("type", NotificationType.LIKE.value)
+                .execute()
+            )
+            ids_to_delete: List[int] = []
+            for row in result.data or []:
+                ad = row.get("action_data") or {}
+                if ad.get("user_id") != actor_id:
+                    continue
+                if ad.get("post_id") != post_id:
+                    continue
+                ad_comment_id = ad.get("comment_id")
+                if comment_id is None:
+                    if ad_comment_id is not None:
+                        continue
+                else:
+                    if ad_comment_id != comment_id:
+                        continue
+                ids_to_delete.append(row["id"])
+
+            if not ids_to_delete:
+                return 0
+
+            self.db.table("notifications").delete().in_("id", ids_to_delete).execute()
+            return len(ids_to_delete)
+        except Exception as e:
+            print(f"Failed to delete like notification: {e}")
+            return 0
+
     def create_notification(
         self,
         user_id: int,
@@ -275,6 +363,13 @@ class NotificationService:
             "post_image": post_image,
         }
 
+        # 先清理同一 actor 对同一帖子的旧点赞通知，避免反复点赞累积多条
+        self.delete_like_notification(
+            recipient_id=post_owner_id,
+            actor_id=liker_id,
+            post_id=post_id,
+        )
+
         self.create_notification(
             user_id=post_owner_id,
             notification_type=NotificationType.LIKE,
@@ -340,6 +435,14 @@ class NotificationService:
             "post_image": post_image,
         }
 
+        # 先清理同一 actor 对同一评论的旧点赞通知，避免反复点赞累积多条
+        self.delete_like_notification(
+            recipient_id=comment_owner_id,
+            actor_id=liker_id,
+            post_id=post_id,
+            comment_id=comment_id,
+        )
+
         self.create_notification(
             user_id=comment_owner_id,
             notification_type=NotificationType.LIKE,
@@ -396,6 +499,12 @@ class NotificationService:
             "actor_name": follower_name,
             "actor_avatar": follower_avatar,
         }
+
+        # 先清理同一 follower 的旧关注通知，避免反复关注/取关累积多条
+        self.delete_follow_notification(
+            followed_user_id=followed_user_id,
+            follower_id=follower_id,
+        )
 
         self.create_notification(
             user_id=followed_user_id,

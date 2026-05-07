@@ -5,6 +5,8 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -184,6 +186,10 @@ const ShowReviewTab = () => {
       </ScrollView>
 
       <Modal visible={rejectModalVisible} transparent animationType="fade" onRequestClose={() => setRejectModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
             <Text style={sharedStyles.modalTitle}>{t("admin.rejectReason")}</Text>
@@ -207,6 +213,7 @@ const ShowReviewTab = () => {
             </HStack>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

@@ -396,6 +396,8 @@ const FollowingUsersScreen = () => {
           keyExtractor={(item: any) =>
             activeTab === "brands" ? String(item.brandId) : String(item.userId)
           }
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={
             activeTab === "brands"
               ? (renderBrandItem as any)

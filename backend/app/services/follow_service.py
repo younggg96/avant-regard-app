@@ -64,7 +64,17 @@ class FollowService:
             .eq("following_id", target_user_id)
             .execute()
         )
-        return bool(result.data)
+        if result.data:
+            # 同步删除对应的关注通知，避免反复关注/取关累积多条记录
+            try:
+                notification_service.delete_follow_notification(
+                    followed_user_id=target_user_id,
+                    follower_id=follower_id,
+                )
+            except Exception as e:
+                print(f"Failed to remove follow notification: {e}")
+            return True
+        return False
 
     def _extract_user_info(self, user_info_data) -> dict:
         """从 user_info 数据中提取信息，处理列表或字典格式"""

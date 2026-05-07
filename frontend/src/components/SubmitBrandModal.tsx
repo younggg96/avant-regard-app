@@ -190,6 +190,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
                 style={styles.form}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
               >
                 {/* Brand Name (required) */}
                 <View style={styles.fieldGroup}>

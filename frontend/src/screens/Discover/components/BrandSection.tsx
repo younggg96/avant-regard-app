@@ -13,9 +13,8 @@ import {
   FollowingBrand,
 } from "../../../services/followService";
 
-const CARD_HEIGHT = 64;
-const CARD_WIDTH = 200;
-const IMAGE_SIZE = 48;
+const CARD_WIDTH = 180;
+const IMAGE_SIZE = 40;
 
 export const BrandSection: React.FC = () => {
   const { t } = useTranslation();
@@ -140,32 +139,31 @@ export const BrandSection: React.FC = () => {
             return (
               <Pressable
                 onPress={handleViewAll}
-                w={120}
-                h={CARD_HEIGHT}
-                flexDirection="row"
-                alignItems="center"
-                rounded="$lg"
+                w={100}
+                rounded="$md"
                 bg="#FAFAFA"
                 borderWidth={1}
                 borderColor="#F0F0F0"
                 sx={{ borderStyle: "dashed" }}
                 px={10}
+                py={10}
+                justifyContent="center"
+                alignItems="center"
                 gap={6}
               >
                 <Box
-                  w={36}
-                  h={36}
-                  rounded="$md"
+                  w={IMAGE_SIZE}
+                  h={IMAGE_SIZE}
+                  rounded={IMAGE_SIZE / 2}
                   bg="#F0F0F0"
                   justifyContent="center"
                   alignItems="center"
                 >
-                  <Ionicons name="grid-outline" size={22} color={theme.colors.black} />
+                  <Ionicons name="grid-outline" size={18} color={theme.colors.black} />
                 </Box>
-                <Text flex={1} fontSize="$xs" fontWeight="$semibold" color="$black" lineHeight="$2xs">
+                <Text fontSize={13} fontWeight="$semibold" color="$black">
                   {t("discover.all")}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.gray400} />
               </Pressable>
             );
           }
@@ -174,54 +172,54 @@ export const BrandSection: React.FC = () => {
             <Pressable
               onPress={() => handleBrandPress(item.name)}
               w={CARD_WIDTH}
-              h={CARD_HEIGHT}
-              flexDirection="row"
-              alignItems="center"
               rounded="$lg"
               bg="#FAFAFA"
               borderWidth={1}
               borderColor="#F0F0F0"
-              px="$sm"
-              gap={8}
+              px={10}
+              py={10}
             >
-              {item.coverImage ? (
-                <OptimizedImage
-                  uri={item.coverImage}
-                  size={ImageSize.THUMBNAIL}
-                  style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, borderRadius: 8 }}
-                  contentFit="cover"
-                  lazy={true}
-                />
-              ) : (
-                <Box
-                  w={IMAGE_SIZE}
-                  h={IMAGE_SIZE}
-                  rounded="$md"
-                  bg="$black"
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <Text fontSize="$lg" fontWeight="$bold" color="$white">
-                    {item.name?.charAt(0)?.toUpperCase() || "B"}
+              <HStack alignItems="center" gap={10}>
+                {item.coverImage ? (
+                  <OptimizedImage
+                    uri={item.coverImage}
+                    size={ImageSize.THUMBNAIL}
+                    style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, borderRadius: IMAGE_SIZE / 2 }}
+                    contentFit="cover"
+                    lazy={true}
+                  />
+                ) : (
+                  <Box
+                    w={IMAGE_SIZE}
+                    h={IMAGE_SIZE}
+                    rounded={IMAGE_SIZE / 2}
+                    bg="$black"
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    <Text fontSize="$md" fontWeight="$bold" color="$white">
+                      {item.name?.charAt(0)?.toUpperCase() || "B"}
+                    </Text>
+                  </Box>
+                )}
+
+                <Box flex={1}>
+                  <Text fontSize={13} fontWeight="$semibold" color="$black" numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text fontSize={11} color="$gray400" mt={2}>
+                    {formatFollowerCount(item.followersCount)} {t("discover.followersLabel")}
                   </Text>
                 </Box>
-              )}
-
-              <Box flex={1} justifyContent="center">
-                <Text fontSize={13} fontWeight="$semibold" color="$black" lineHeight="$xs" numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text fontSize={11} color="$gray400" mt={1}>
-                  {t("discover.followersCount", { count: formatFollowerCount(item.followersCount) })}
-                </Text>
-              </Box>
+              </HStack>
 
               <Pressable
                 onPress={() => handleUnfollow(item.brandId)}
-                px="$sm"
-                py="$xs"
+                mt={8}
+                py={5}
                 rounded={6}
                 bg="#F0F0F0"
+                alignItems="center"
               >
                 <Text fontSize={11} fontWeight="$semibold" color="$gray600">
                   {t("discover.following")}

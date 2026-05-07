@@ -3,6 +3,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   ScrollView as RNScrollView,
 } from "react-native";
@@ -579,6 +581,10 @@ const UsersSubTab = () => {
         animationType="fade"
         onRequestClose={() => setTitleModalVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, { maxHeight: "70%" }]}>
             <HStack style={sharedStyles.modalTitleRow}>
@@ -669,6 +675,7 @@ const UsersSubTab = () => {
             </HStack>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

@@ -285,6 +285,52 @@ class StoreProductService:
         ]
         return products, total
 
+    def search_products_global(
+        self,
+        search_query: str,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        user_id: Optional[int] = None,
+    ) -> Tuple[List[StoreProduct], int]:
+        """跨店铺全局商品搜索，只搜索 PUBLISHED 状态的商品。"""
+        kw = search_query.replace("%", "\\%").replace("_", "\\_").strip()
+        if not kw:
+            return [], 0
+
+        query = self.db.table("store_products").select(_PRODUCT_SELECT, count="exact")
+        query = query.eq("status", "PUBLISHED")
+        query = query.or_(f"title.ilike.%{kw}%,brand.ilike.%{kw}%,tags.cs.{{{kw}}}")
+        query = query.order("published_at", desc=True).order("id", desc=True)
+        offset = (page - 1) * page_size
+        query = query.range(offset, offset + page_size - 1)
+
+        result = execute_with_retry(
+            lambda: query.execute(), label="store_products.search_global"
+        )
+        rows = result.data or []
+        total = result.count or 0
+
+        liked_map: dict[int, bool] = {}
+        favorited_map: dict[int, bool] = {}
+        wanted_map: dict[int, bool] = {}
+        if user_id is not None and rows:
+            ids = [r["id"] for r in rows]
+            liked_map = self._check_products_liked_bulk(ids, user_id)
+            favorited_map = self._check_products_favorited_bulk(ids, user_id)
+            wanted_map = self._check_products_wanted_bulk(ids, user_id)
+
+        products = [
+            self._format_product(
+                row,
+                liked_by_me=liked_map.get(row["id"]),
+                favorited_by_me=favorited_map.get(row["id"]),
+                wanted_by_me=wanted_map.get(row["id"]),
+            )
+            for row in rows
+        ]
+        return products, total
+
     # ========================================================================
     # 点赞 / 喜欢
     # ========================================================================

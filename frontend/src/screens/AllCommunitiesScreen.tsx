@@ -315,6 +315,8 @@ const AllCommunitiesScreen = () => {
       <ScrollView
         flex={1}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

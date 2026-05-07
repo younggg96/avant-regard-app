@@ -305,6 +305,8 @@ const PostDetailScreen = () => {
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             style={styles.scrollView}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {/* Lookbook: 小红书风格 - 大图轮播在顶部 */}
             {post.type === "OUTFIT" && images.length > 0 && (

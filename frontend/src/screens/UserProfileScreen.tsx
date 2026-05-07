@@ -1358,16 +1358,16 @@ const UserProfileScreen = () => {
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 14,
-                    backgroundColor: t.isPrimary ? "#FEF3C7" : "#F9FAFB",
+                    backgroundColor: t.isPrimary ? "#1F2937" : "#F9FAFB",
                     borderWidth: 1,
-                    borderColor: t.isPrimary ? "#FDE68A" : "#F3F4F6",
+                    borderColor: t.isPrimary ? "#374151" : "#F3F4F6",
                   }}
                 >
                   <RNText
                     style={{
                       fontSize: 13,
                       fontWeight: t.isPrimary ? "600" : "500",
-                      color: t.isPrimary ? "#92400E" : "#000",
+                      color: t.isPrimary ? "#FFFFFF" : "#000",
                     }}
                   >
                     {t.title}

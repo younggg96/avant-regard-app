@@ -262,6 +262,28 @@ async def delete_product(
     raise HTTPException(status_code=404, detail="商品不存在或删除失败")
 
 
+@router.get("/products/search")
+async def search_products_global(
+    q: str = Query(..., min_length=1, description="搜索关键词"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """公开：跨店铺全局搜索商品（title / brand / tags 模糊匹配）。"""
+    products, total = store_product_service.search_products_global(
+        q,
+        page=page,
+        page_size=pageSize,
+        user_id=current_user_id,
+    )
+    return success({
+        "products": [p.model_dump() for p in products],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
 @router.get("/products/{product_id}")
 async def get_product_detail(
     product_id: int,

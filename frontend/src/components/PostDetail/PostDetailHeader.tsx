@@ -68,17 +68,18 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
 
         <Pressable onPress={onAuthorPress} flex={1}>
           <VStack>
-            <HStack space="xs" alignItems="center">
+            <HStack space="xs" alignItems="center" flex={1}>
               <Text
                 fontSize="$sm"
                 fontWeight="$semibold"
                 color="$black"
                 numberOfLines={1}
+                flexShrink={1}
               >
                 {post.author.name}
               </Text>
               {post.author.title ? (
-                <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                <Box bg="$gray100" px="$xs" py={1} rounded="$xs" flexShrink={1} maxWidth="50%">
                   <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
                     {post.author.title}
                   </Text>

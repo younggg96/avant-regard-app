@@ -12,6 +12,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   StyleSheet,
 } from "react-native";
@@ -507,6 +509,10 @@ const LevelReviewTab: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setRejectVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={sharedStyles.modalContent}>
             <Text style={sharedStyles.modalTitle}>{t("admin.levelRejectTitle")}</Text>
@@ -545,6 +551,7 @@ const LevelReviewTab: React.FC = () => {
             </HStack>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

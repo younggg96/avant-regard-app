@@ -14,6 +14,8 @@ import {
     Animated,
     TouchableWithoutFeedback,
     Dimensions,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView as RNScrollView,
 } from "react-native";
 
@@ -752,6 +754,10 @@ const StoreReviewScreen = () => {
                     }).start();
                 }}
             >
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                >
                 <TouchableWithoutFeedback onPress={closeRejectModal}>
                     <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="center" px="$lg">
                         <TouchableWithoutFeedback onPress={() => { }}>
@@ -823,6 +829,7 @@ const StoreReviewScreen = () => {
                         </TouchableWithoutFeedback>
                     </Box>
                 </TouchableWithoutFeedback>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );

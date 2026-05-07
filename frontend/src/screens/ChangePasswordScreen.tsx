@@ -88,6 +88,7 @@ const ChangePasswordScreen = () => {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <Text style={styles.description}>
             {t("changePassword.description")}

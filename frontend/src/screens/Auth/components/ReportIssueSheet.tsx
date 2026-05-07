@@ -153,6 +153,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
             <ScrollView
               style={styles.body}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.hint}>

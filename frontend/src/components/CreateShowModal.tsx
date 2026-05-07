@@ -9,6 +9,8 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -125,9 +127,12 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={sharedStyles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={sharedStyles.modalOverlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
         <View style={[sharedStyles.modalContent, styles.modalSize]}>
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
             <Text style={sharedStyles.modalTitle}>{t("brand.uploadShow")}</Text>
             <Text style={styles.brandLabel}>{brandName}</Text>
 
@@ -255,7 +260,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

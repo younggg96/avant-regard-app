@@ -247,6 +247,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
           >
             {/* 头部 */}

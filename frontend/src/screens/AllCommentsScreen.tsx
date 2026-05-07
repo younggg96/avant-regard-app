@@ -7,6 +7,8 @@ import {
   TextInput,
   FlatList,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -309,32 +311,39 @@ const AllCommentsScreen = () => {
         </View>
       </View>
 
-      <FlatList
-        data={comments}
-        renderItem={renderComment}
-        keyExtractor={(item) => item.id}
-        style={styles.commentsList}
-        contentContainerStyle={styles.commentsListContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name="chatbubbles-outline"
-              size={48}
-              color={theme.colors.gray400}
-            />
-            <Text style={styles.emptyText}>{t("post.noComments")}</Text>
-            <Text style={styles.emptySubtext}>{t("post.beFirstComment")}</Text>
-          </View>
-        }
-      />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <FlatList
+          data={comments}
+          renderItem={renderComment}
+          keyExtractor={(item) => item.id}
+          style={styles.commentsList}
+          contentContainerStyle={styles.commentsListContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}  />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={48}
+                color={theme.colors.gray400}
+              />
+              <Text style={styles.emptyText}>{t("post.noComments")}</Text>
+              <Text style={styles.emptySubtext}>{t("post.beFirstComment")}</Text>
+            </View>
+          }
+        />
 
-      <View style={styles.writeCommentContainer}>
-        {renderWriteCommentSection()}
-      </View>
+        <View style={styles.writeCommentContainer}>
+          {renderWriteCommentSection()}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

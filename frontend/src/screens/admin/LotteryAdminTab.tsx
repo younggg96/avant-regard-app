@@ -18,6 +18,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   RefreshControl,
   StyleSheet,
 } from "react-native";
@@ -467,6 +469,10 @@ const LotteryAdminTab: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setEditorVisible(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box
             style={[sharedStyles.modalContent, { maxHeight: "85%" }]}
@@ -500,6 +506,8 @@ const LotteryAdminTab: React.FC = () => {
             <ScrollView
               style={{ maxHeight: 260 }}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
             >
               {editorPrizes.map((p, idx) => (
                 <Box key={idx} style={styles.prizeEditorRow}>
@@ -578,6 +586,7 @@ const LotteryAdminTab: React.FC = () => {
             </HStack>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
     </Box>
   );

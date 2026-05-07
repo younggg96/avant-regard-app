@@ -5,6 +5,8 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -397,9 +399,13 @@ const CommunitiesTab = () => {
 
       {/* Community Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, styles.communityModalContent]}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
               <Text style={sharedStyles.modalTitle}>{editingCommunity ? t("admin.editCommunity") : t("admin.createCommunity")}</Text>
 
               <Text style={sharedStyles.formLabel}>{t("admin.communityIcon")}</Text>
@@ -548,6 +554,7 @@ const CommunitiesTab = () => {
             </ScrollView>
           </Box>
         </Box>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Community Posts Modal */}

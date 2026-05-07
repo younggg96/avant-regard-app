@@ -822,6 +822,8 @@ const StoreDetailScreen = () => {
         renderItem={renderCommentItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1675,7 +1677,7 @@ const StoreDetailScreen = () => {
                 {t("store.applyToBeMerchant", { name: store.name })}
               </Text>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
                 {/* 联系人姓名 */}
                 <VStack mb="$md">
                   <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>

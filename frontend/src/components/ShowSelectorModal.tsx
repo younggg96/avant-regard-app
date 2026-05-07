@@ -128,6 +128,8 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               contentContainerStyle={styles.listContent}
               columnWrapperStyle={styles.columnWrapper}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               onEndReached={handleEndReached}
               onEndReachedThreshold={0.5}
               renderItem={({ item }) => (

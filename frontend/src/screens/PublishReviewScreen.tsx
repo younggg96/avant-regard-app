@@ -802,6 +802,7 @@ const PublishReviewScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <Box mx="$md" mb="$md" mt="$md">
             <HStack mb="$sm" alignItems="center">

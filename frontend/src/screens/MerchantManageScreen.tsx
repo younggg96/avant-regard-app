@@ -2,7 +2,7 @@
  * 商家管理页面
  * 让商家可以管理店铺的 Banner、公告、活动、折扣等内容
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -13,6 +13,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Platform,
+  KeyboardAvoidingView,
+  Text as RNText,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -31,6 +33,9 @@ import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { useAuthStore } from "../store/authStore";
+import BrandSelectorModal from "../components/BrandSelectorModal";
+import { useBrandSearch } from "../hooks/useBrandSearch";
+import { Brand } from "../services/brandService";
 import {
   StoreMerchant,
   StoreAnnouncement,
@@ -86,8 +91,87 @@ const getDiscountTypes = (t: (key: string) => string) => [
   { value: "SPECIAL" as DiscountType, label: t("merchant.discountTypeSpecial") },
 ];
 
+// 营业时间快捷预设：覆盖大多数买手店的常见档期，让商家一键填好。
+const HOURS_PRESETS = [
+  "10:00-18:00",
+  "11:00-21:00",
+  "12:00-22:00",
+  "13:00-22:00",
+];
+
+// 风格标签预设：和消费者端搜索/筛选用到的关键词保持一致，避免商家随手
+// 写一些数据库里没有、永远搜不到的词。中文/英文都给一些常见的。
+const STYLE_PRESETS_ZH = [
+  "先锋", "暗黑", "极简", "解构", "复古", "中性", "街头", "运动", "日系", "韩系", "设计师",
+];
+const STYLE_PRESETS_EN = [
+  "Avant-garde", "Dark", "Minimal", "Deconstructed", "Vintage", "Genderless",
+  "Streetwear", "Sport", "Japanese", "Korean", "Designer",
+];
+
+// 一周七天 chips。`label` 用 i18n 短文案（"周一"/"Mon"），同时也是序列化
+// 后写入 `rest` 字段的 token —— 直接把展示和存储统一，避免再做 key→label
+// 的映射，向后兼容现有 "周日"/"周一,周三" 这类历史数据。
+const WEEK_DAY_KEYS: Array<
+  "weekMon" | "weekTue" | "weekWed" | "weekThu" | "weekFri" | "weekSat" | "weekSun"
+> = ["weekMon", "weekTue", "weekWed", "weekThu", "weekFri", "weekSat", "weekSun"];
+
+// 把 `rest` 字段（"周一,周三" 或 "Mon,Wed" 等）拆成一个 Set，方便 chip 组件
+// 判断"哪几个 day chip 处于选中态"。容忍中英逗号、空格、顿号。
+const parseRestDays = (rest: string): Set<string> => {
+  if (!rest) return new Set();
+  return new Set(
+    rest
+      .split(/[,，、]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+};
+
+// HH:MM-HH:MM 格式解析。失败时返回 null，调用方 fallback 到原始字符串。
+const parseHoursRange = (
+  hours: string
+): { open: string; close: string } | null => {
+  if (!hours) return null;
+  const m = hours
+    .replace(/[：]/g, ":") // 容忍中文冒号
+    .match(/^\s*(\d{1,2}):(\d{2})\s*[-–~至到]\s*(\d{1,2}):(\d{2})\s*$/);
+  if (!m) return null;
+  const oh = m[1].padStart(2, "0");
+  const om = m[2];
+  const ch = m[3].padStart(2, "0");
+  const cm = m[4];
+  return { open: `${oh}:${om}`, close: `${ch}:${cm}` };
+};
+
+// "11", "1100", "11:00" 都接受；自动补齐为 HH:MM。
+// 用于营业时间两个 TextInput 的 onBlur 标准化，让落库结果稳定。
+const normalizeHourMinute = (input: string): string => {
+  if (!input) return "";
+  const digits = input.replace(/\D/g, "");
+  if (!digits) return input;
+  let h = "0";
+  let m = "00";
+  if (digits.length === 1) {
+    h = `0${digits}`;
+  } else if (digits.length === 2) {
+    h = digits;
+  } else if (digits.length === 3) {
+    h = `0${digits[0]}`;
+    m = digits.slice(1);
+  } else {
+    h = digits.slice(0, 2);
+    m = digits.slice(2, 4);
+  }
+  const hh = Math.min(23, parseInt(h, 10) || 0).toString().padStart(2, "0");
+  const mm = Math.min(59, parseInt(m, 10) || 0).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+};
+
+const MAX_DESCRIPTION_LENGTH = 300;
+
 const MerchantManageScreen = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantManage">>();
   const { user } = useAuthStore();
@@ -95,12 +179,37 @@ const MerchantManageScreen = () => {
   const ACTIVITY_TYPES = getActivityTypes(t);
   const DISCOUNT_TYPES = getDiscountTypes(t);
 
+  const isZh = (i18n.language || "").startsWith("zh");
+  const STYLE_PRESETS = isZh ? STYLE_PRESETS_ZH : STYLE_PRESETS_EN;
+  const WEEK_DAY_OPTIONS = useMemo(
+    () => WEEK_DAY_KEYS.map((k) => ({ key: k, label: t(`merchant.${k}`) })),
+    [t]
+  );
+
+  // 品牌库搜索 hook —— 给店铺信息编辑里的 BrandSelectorModal 用。复用消费
+  // 者端发帖流程同款 hook，统一品牌数据来源（`brands` 表）。
+  const {
+    brands: displayedBrands,
+    searchQuery: brandSearchQuery,
+    isLoading: isLoadingBrands,
+    hasMore: hasMoreBrands,
+    setSearchQuery: setBrandSearchQuery,
+    search: searchBrands,
+    loadMore: loadMoreBrands,
+  } = useBrandSearch();
+
+  // Tab label 单独走 `tabXxx` 短文案：英文环境 5 个 Tab 等分 ~78px 单格，
+  // "Announcements" / "Activities" 这种长词直接被换行成 "Announcemen|ts"，
+  // 即使加了 numberOfLines/adjustsFontSizeToFit 也不可靠（RN Text 在嵌套
+  // styled-components / Pressable 内的字号自适应行为差异较大）。
+  // 解法：tab 用短文案（公告/Notices、活动/Events 等），把内容区还是用
+  // 完整 `merchant.announcement` / `merchant.activity` 等键，语义不丢失。
   const TABS: { key: TabType; label: string; icon: string }[] = [
-    { key: "info", label: t("merchant.storeInfo"), icon: "storefront-outline" },
-    { key: "banner", label: "Banner", icon: "image-outline" },
-    { key: "announcement", label: t("merchant.announcement"), icon: "megaphone-outline" },
-    { key: "activity", label: t("merchant.activity"), icon: "calendar-outline" },
-    { key: "discount", label: t("merchant.discount"), icon: "pricetag-outline" },
+    { key: "info", label: t("merchant.tabStore"), icon: "storefront-outline" },
+    { key: "banner", label: t("merchant.tabBanner"), icon: "image-outline" },
+    { key: "announcement", label: t("merchant.tabAnnouncement"), icon: "megaphone-outline" },
+    { key: "activity", label: t("merchant.tabActivity"), icon: "calendar-outline" },
+    { key: "discount", label: t("merchant.tabDiscount"), icon: "pricetag-outline" },
   ];
 
   // 商家信息
@@ -135,6 +244,14 @@ const MerchantManageScreen = () => {
   const [newPhone, setNewPhone] = useState("");
   const [newBrand, setNewBrand] = useState("");
   const [newStyle, setNewStyle] = useState("");
+  // 自定义品牌输入是默认折叠的（首选 BrandSelectorModal 选库内品牌，避免脏
+  // 数据），点 "手动添加" 才展开。
+  const [showCustomBrandInput, setShowCustomBrandInput] = useState(false);
+  const [showBrandSelector, setShowBrandSelector] = useState(false);
+  // 营业时间在编辑态拆成开/关两个 HH:MM；只在编辑模式下用，不直接和
+  // `storeFormData.hours` 双向绑定 —— 由 `commitHours()` 统一序列化回去。
+  const [openTime, setOpenTime] = useState("");
+  const [closeTime, setCloseTime] = useState("");
 
   // 各类内容列表
   const [banners, setBanners] = useState<StoreBanner[]>([]);
@@ -236,10 +353,40 @@ const MerchantManageScreen = () => {
         brands: store.brands || [],
         style: store.style || [],
       });
+      const parsed = parseHoursRange(store.hours || "");
+      setOpenTime(parsed?.open || "");
+      setCloseTime(parsed?.close || "");
     } catch (error) {
       console.error("Load buyer store error:", error);
     }
   };
+
+  // 把开/关两个时段序列化回 storeFormData.hours。两端都为空 → 清空 hours，
+  // 否则用 "HH:MM-HH:MM"（与现有数据格式一致，无需后端改动）。
+  const commitHours = useCallback(
+    (open: string, close: string) => {
+      const o = open ? normalizeHourMinute(open) : "";
+      const c = close ? normalizeHourMinute(close) : "";
+      const merged = o && c ? `${o}-${c}` : o || c || "";
+      setStoreFormData((prev) => ({ ...prev, hours: merged }));
+    },
+    []
+  );
+
+  // 切换某个 day chip：在 rest 字符串里插入/移除该 day label。
+  const toggleRestDay = useCallback((label: string) => {
+    setStoreFormData((prev) => {
+      const set = parseRestDays(prev.rest);
+      if (set.has(label)) set.delete(label);
+      else set.add(label);
+      // 按周一→周日的固定顺序输出，避免点击顺序影响展示。
+      const ordered = WEEK_DAY_KEYS
+        .map((k, idx) => ({ idx, label: t(`merchant.${k}`) }))
+        .filter((d) => set.has(d.label))
+        .map((d) => d.label);
+      return { ...prev, rest: ordered.join(",") };
+    });
+  }, [t]);
 
   // 下拉刷新
   const handleRefresh = async () => {
@@ -277,14 +424,21 @@ const MerchantManageScreen = () => {
 
     try {
       setIsSubmitting(true);
-      const updatedStore = await updateBuyerStore(merchant.storeId, storeFormData);
+      // 兜底：用户可能改完时间没失焦就点保存，先把 openTime/closeTime
+      // 标准化合并到 hours 再提交。
+      const o = openTime ? normalizeHourMinute(openTime) : "";
+      const c = closeTime ? normalizeHourMinute(closeTime) : "";
+      const mergedHours = o && c ? `${o}-${c}` : o || c || storeFormData.hours;
+      const payload = { ...storeFormData, hours: mergedHours };
+      const updatedStore = await updateBuyerStore(merchant.storeId, payload);
 
-      // 更新本地状态
       setBuyerStore(updatedStore);
+      setStoreFormData((prev) => ({ ...prev, hours: mergedHours }));
       setIsEditingStore(false);
       setNewPhone("");
       setNewBrand("");
       setNewStyle("");
+      setShowCustomBrandInput(false);
       Alert.alert(t("common.success"), t("merchant.storeInfoUpdated"));
     } catch (error: any) {
       Alert.alert(t("common.saveFailed"), error.message || t("common.retryLater"));
@@ -292,6 +446,16 @@ const MerchantManageScreen = () => {
       setIsSubmitting(false);
     }
   };
+
+  // 接收 BrandSelectorModal 选中的品牌：去重添加到 brands 列表，关闭模态框。
+  const handlePickBrand = useCallback((brand: Brand) => {
+    setStoreFormData((prev) =>
+      prev.brands.includes(brand.name)
+        ? prev
+        : { ...prev, brands: [...prev.brands, brand.name] }
+    );
+    setShowBrandSelector(false);
+  }, []);
 
   // 打开编辑模态框
   const openEditModal = (type: TabType, item?: any) => {
@@ -516,6 +680,11 @@ const MerchantManageScreen = () => {
   };
 
   // 渲染 Tab 切换
+  //
+  // UX 历史：原本用 gluestack 的 `<Text numberOfLines={1} adjustsFontSizeToFit>`，
+  // 但实测 styled-components 包装层下 numberOfLines 经常没生效（"Announcemen
+  // ts" 仍然换行）。改成直接用 RN 原生 Text + `numberOfLines={1}` 保证截断；
+  // 同时把 i18n 改成 tab 专用短文案（详见 TABS 注释）。
   const renderTabs = () => (
     <HStack bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
       {TABS.map((tab) => (
@@ -523,6 +692,7 @@ const MerchantManageScreen = () => {
           key={tab.key}
           flex={1}
           py="$md"
+          px="$xs"
           alignItems="center"
           borderBottomWidth={2}
           borderBottomColor={activeTab === tab.key ? "$black" : "transparent"}
@@ -533,21 +703,34 @@ const MerchantManageScreen = () => {
             size={20}
             color={activeTab === tab.key ? theme.colors.black : theme.colors.gray300}
           />
-          <Text
-            fontSize="$xs"
-            color={activeTab === tab.key ? "$black" : "$gray300"}
-            mt="$xs"
-            fontWeight={activeTab === tab.key ? "$semibold" : "$regular"}
-            style={styles.textRegular}
+          <RNText
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[
+              styles.tabLabel,
+              {
+                color:
+                  activeTab === tab.key
+                    ? theme.colors.black
+                    : theme.colors.gray300,
+                fontWeight: activeTab === tab.key ? "600" : "400",
+              },
+            ]}
           >
             {tab.label}
-          </Text>
+          </RNText>
         </Pressable>
       ))}
     </HStack>
   );
 
   // 渲染 Banner 列表
+  //
+  // 视觉调整：
+  //   - 图片走 16:9 比例（store Banner 在消费者端就是 16:9 横幅，让商家后台
+  //     和真实展示一致，所见即所得）；
+  //   - `imageUrl` 缺失或图加载中时不要留一片纯灰，给个 image-outline 占位
+  //     图标，避免被误以为"卡片坏了"。
   const renderBanners = () => (
     <VStack p="$md" gap="$md">
       {banners.length === 0 ? (
@@ -567,21 +750,45 @@ const MerchantManageScreen = () => {
             borderWidth={1}
             borderColor="$gray100"
           >
-            {banner.imageUrl && (
-              <OptimizedImage
-                uri={banner.imageUrl}
-                size={ImageSize.LARGE}
-                style={styles.bannerImage}
-                contentFit="cover"
-                lazy={true}
-              />
-            )}
+            <Box style={styles.bannerImage} bg="$gray100">
+              {banner.imageUrl ? (
+                <OptimizedImage
+                  uri={banner.imageUrl}
+                  size={ImageSize.LARGE}
+                  style={StyleSheet.absoluteFillObject}
+                  contentFit="cover"
+                  lazy={true}
+                />
+              ) : (
+                <VStack
+                  flex={1}
+                  justifyContent="center"
+                  alignItems="center"
+                  gap="$xs"
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={32}
+                    color={theme.colors.gray200}
+                  />
+                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    {t("merchant.noBannerImage")}
+                  </Text>
+                </VStack>
+              )}
+            </Box>
             <HStack p="$md" justifyContent="between" alignItems="center">
-              <VStack flex={1}>
-                <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+              <VStack flex={1} mr="$sm">
+                <Text
+                  fontSize="$md"
+                  fontWeight="$semibold"
+                  color="$black"
+                  numberOfLines={1}
+                  style={styles.textBold}
+                >
                   {banner.title || t("merchant.noTitle")}
                 </Text>
-                <HStack gap="$sm" mt="$xs">
+                <HStack gap="$sm" mt="$xs" alignItems="center">
                   <Box
                     px="$sm"
                     py="$xs"
@@ -892,6 +1099,35 @@ const MerchantManageScreen = () => {
     </VStack>
   );
 
+  // 编辑表单的统一字段壳：左侧图标 + 字段名（可选 hint）+ 内容。
+  // 把每个 input/chip 区域包成同样的视觉单元，保证整张表上下对齐、间距一致。
+  const renderEditField = ({
+    icon,
+    label,
+    hint,
+    children,
+  }: {
+    icon: React.ComponentProps<typeof Ionicons>["name"];
+    label: string;
+    hint?: string;
+    children: React.ReactNode;
+  }) => (
+    <VStack>
+      <HStack alignItems="center" gap="$xs" mb="$xs">
+        <Ionicons name={icon} size={14} color={theme.colors.gray400} />
+        <Text fontSize="$sm" color="$gray500" style={styles.textRegular}>
+          {label}
+        </Text>
+        {hint ? (
+          <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+            · {hint}
+          </Text>
+        ) : null}
+      </HStack>
+      {children}
+    </VStack>
+  );
+
   // 渲染店铺信息
   const renderStoreInfo = () => {
     if (!merchant) return null;
@@ -1127,6 +1363,57 @@ const MerchantManageScreen = () => {
           </HStack>
         </Box>
 
+        {/* 商品管理快捷入口 —— 单独一屏 MerchantProductsScreen，避免在本屏 modal 内塞进
+            又一套 CRUD 表单（标题/品牌/价格/折扣/标签/图片九宫格已经超过现有
+            modal 的承载量）。和 Web 后台 `/me/merchant/[id]/products` 等价。
+
+            布局注记：左侧 HStack 必须 `flex={1}` + `mr="$sm"`，否则当
+            description 是长英文时会撑爆右侧 chevron，把箭头挤出右边界。
+            内层 VStack 同样 `flex={1}` 才能让 numberOfLines 真正生效。 */}
+        <Pressable
+          bg="$white"
+          rounded="$lg"
+          p="$md"
+          borderWidth={1}
+          borderColor="$gray100"
+          onPress={() => (navigation as any).navigate("MerchantProducts", { merchantId: merchant.id })}
+        >
+          <HStack alignItems="center" justifyContent="space-between">
+            <HStack alignItems="center" gap="$md" flex={1} mr="$sm">
+              <Box
+                w={40}
+                h={40}
+                bg="$gray100"
+                rounded="$md"
+                justifyContent="center"
+                alignItems="center"
+              >
+                <Ionicons name="cube-outline" size={20} color={theme.colors.black} />
+              </Box>
+              <VStack flex={1}>
+                <Text
+                  fontSize="$md"
+                  fontWeight="$semibold"
+                  color="$black"
+                  numberOfLines={1}
+                  style={styles.textBold}
+                >
+                  {t("merchant.productsTitle")}
+                </Text>
+                <Text
+                  fontSize="$sm"
+                  color="$gray300"
+                  numberOfLines={2}
+                  style={styles.textRegular}
+                >
+                  {t("merchant.productsDesc")}
+                </Text>
+              </VStack>
+            </HStack>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.gray300} />
+          </HStack>
+        </Pressable>
+
         {/* 店铺信息 */}
         <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
@@ -1146,276 +1433,507 @@ const MerchantManageScreen = () => {
           </HStack>
 
           {isEditingStore ? (
-            <VStack gap="$md">
+            <VStack gap="$lg">
               {/* 店铺名称 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.storeName")}
-                </Text>
-                <TextInput
-                  style={styles.input}
+              {renderEditField({
+                icon: "storefront-outline",
+                label: t("merchant.storeName"),
+                children: (
+                  <TextInput
+                    style={styles.input}
                     placeholder={t("merchant.enterStoreName")}
-                  placeholderTextColor={theme.colors.gray200}
-                  value={storeFormData.name}
-                  onChangeText={(text) =>
-                    setStoreFormData({ ...storeFormData, name: text })
-                  }
-                />
-              </VStack>
+                    placeholderTextColor={theme.colors.gray200}
+                    value={storeFormData.name}
+                    onChangeText={(text) =>
+                      setStoreFormData({ ...storeFormData, name: text })
+                    }
+                  />
+                ),
+              })}
 
               {/* 店铺地址 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.storeAddress")}
-                </Text>
-                <TextInput
-                  style={styles.input}
+              {renderEditField({
+                icon: "location-outline",
+                label: t("merchant.storeAddress"),
+                children: (
+                  <TextInput
+                    style={[styles.input, styles.multilineInput]}
                     placeholder={t("merchant.enterStoreAddress")}
-                  placeholderTextColor={theme.colors.gray200}
-                  value={storeFormData.address}
-                  onChangeText={(text) =>
-                    setStoreFormData({ ...storeFormData, address: text })
-                  }
-                  multiline
-                />
-              </VStack>
-
-              {/* 联系电话 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.contactPhone")}
-                </Text>
-                <HStack gap="$sm" mb="$sm">
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder={t("merchant.addPhoneNumber")}
                     placeholderTextColor={theme.colors.gray200}
-                    value={newPhone}
-                    onChangeText={setNewPhone}
-                    keyboardType="phone-pad"
+                    value={storeFormData.address}
+                    onChangeText={(text) =>
+                      setStoreFormData({ ...storeFormData, address: text })
+                    }
+                    multiline
+                    textAlignVertical="top"
                   />
-                  <Pressable
-                    px="$md"
-                    bg="$black"
-                    rounded="$sm"
-                    justifyContent="center"
-                    onPress={() => {
-                      if (newPhone.trim()) {
-                        setStoreFormData({
-                          ...storeFormData,
-                          phone: [...storeFormData.phone, newPhone.trim()],
-                        });
-                        setNewPhone("");
-                      }
-                    }}
-                  >
-                    <Ionicons name="add" size={20} color={theme.colors.white} />
-                  </Pressable>
-                </HStack>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {storeFormData.phone.map((p, idx) => (
-                    <Box
-                      key={idx}
-                      bg="$gray100"
-                      px="$sm"
-                      py="$xs"
-                      rounded="$sm"
-                      flexDirection="row"
-                      alignItems="center"
-                    >
-                      <Text fontSize="$sm" color="$black" style={styles.textRegular}>
-                        {p}
-                      </Text>
-                      <Pressable
-                        ml="$xs"
-                        onPress={() => {
+                ),
+              })}
+
+              {/* 联系电话 —— 回车直接添加（onSubmitEditing）；同号去重 */}
+              {renderEditField({
+                icon: "call-outline",
+                label: t("merchant.contactPhone"),
+                children: (
+                  <>
+                    <HStack gap="$sm" alignItems="center">
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder={t("merchant.addPhoneNumber")}
+                        placeholderTextColor={theme.colors.gray200}
+                        value={newPhone}
+                        onChangeText={setNewPhone}
+                        keyboardType="phone-pad"
+                        returnKeyType="done"
+                        onSubmitEditing={() => {
+                          const v = newPhone.trim();
+                          if (!v) return;
+                          if (storeFormData.phone.includes(v)) {
+                            setNewPhone("");
+                            return;
+                          }
                           setStoreFormData({
                             ...storeFormData,
-                            phone: storeFormData.phone.filter((_, i) => i !== idx),
+                            phone: [...storeFormData.phone, v],
                           });
+                          setNewPhone("");
                         }}
-                      >
-                        <Ionicons name="close-circle" size={16} color={theme.colors.gray400} />
-                      </Pressable>
-                    </Box>
-                  ))}
-                </HStack>
-              </VStack>
-
-              {/* 营业时间 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.businessHours")}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                    placeholder={t("merchant.hoursPlaceholder")}
-                  placeholderTextColor={theme.colors.gray200}
-                  value={storeFormData.hours}
-                  onChangeText={(text) =>
-                    setStoreFormData({ ...storeFormData, hours: text })
-                  }
-                />
-              </VStack>
-
-              {/* 休息日 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.restDay")}
-                </Text>
-                <TextInput
-                  style={styles.input}
-                    placeholder={t("merchant.restDayPlaceholder")}
-                  placeholderTextColor={theme.colors.gray200}
-                  value={storeFormData.rest}
-                  onChangeText={(text) =>
-                    setStoreFormData({ ...storeFormData, rest: text })
-                  }
-                />
-              </VStack>
-
-              {/* 店铺描述 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.storeDescription")}
-                </Text>
-                <TextInput
-                  style={[styles.input, { height: 80, textAlignVertical: "top" }]}
-                    placeholder={t("merchant.descriptionPlaceholder")}
-                  placeholderTextColor={theme.colors.gray200}
-                  value={storeFormData.description}
-                  onChangeText={(text) =>
-                    setStoreFormData({ ...storeFormData, description: text })
-                  }
-                  multiline
-                  numberOfLines={3}
-                />
-              </VStack>
-
-              {/* 销售品牌 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.salesBrands")}
-                </Text>
-                <HStack gap="$sm" mb="$sm">
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder={t("merchant.addBrandName")}
-                    placeholderTextColor={theme.colors.gray200}
-                    value={newBrand}
-                    onChangeText={setNewBrand}
-                  />
-                  <Pressable
-                    px="$md"
-                    bg="$black"
-                    rounded="$sm"
-                    justifyContent="center"
-                    onPress={() => {
-                      if (newBrand.trim()) {
-                        setStoreFormData({
-                          ...storeFormData,
-                          brands: [...storeFormData.brands, newBrand.trim()],
-                        });
-                        setNewBrand("");
-                      }
-                    }}
-                  >
-                    <Ionicons name="add" size={20} color={theme.colors.white} />
-                  </Pressable>
-                </HStack>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {storeFormData.brands.map((b, idx) => (
-                    <Box
-                      key={idx}
-                      bg="#E3F2FD"
-                      px="$sm"
-                      py="$xs"
-                      rounded="$sm"
-                      flexDirection="row"
-                      alignItems="center"
-                    >
-                      <Text fontSize="$sm" color="#1976D2" style={styles.textRegular}>
-                        {b}
-                      </Text>
+                      />
                       <Pressable
-                        ml="$xs"
+                        style={styles.addBtn}
                         onPress={() => {
+                          const v = newPhone.trim();
+                          if (!v || storeFormData.phone.includes(v)) {
+                            setNewPhone("");
+                            return;
+                          }
                           setStoreFormData({
                             ...storeFormData,
-                            brands: storeFormData.brands.filter((_, i) => i !== idx),
+                            phone: [...storeFormData.phone, v],
                           });
+                          setNewPhone("");
                         }}
                       >
-                        <Ionicons name="close-circle" size={16} color="#1976D2" />
+                        <Ionicons name="add" size={20} color={theme.colors.white} />
                       </Pressable>
-                    </Box>
-                  ))}
-                </HStack>
-              </VStack>
+                    </HStack>
+                    {storeFormData.phone.length > 0 && (
+                      <HStack flexWrap="wrap" gap="$xs" mt="$sm">
+                        {storeFormData.phone.map((p, idx) => (
+                          <Box key={`${p}-${idx}`} style={styles.chipNeutral}>
+                            <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+                              {p}
+                            </Text>
+                            <Pressable
+                              ml="$xs"
+                              hitSlop={8}
+                              onPress={() => {
+                                setStoreFormData({
+                                  ...storeFormData,
+                                  phone: storeFormData.phone.filter((_, i) => i !== idx),
+                                });
+                              }}
+                            >
+                              <Ionicons
+                                name="close-circle"
+                                size={16}
+                                color={theme.colors.gray400}
+                              />
+                            </Pressable>
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+                  </>
+                ),
+              })}
 
-              {/* 风格标签 */}
-              <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                  {t("merchant.styleTags")}
-                </Text>
-                <HStack gap="$sm" mb="$sm">
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    placeholder={t("merchant.addStyleTag")}
-                    placeholderTextColor={theme.colors.gray200}
-                    value={newStyle}
-                    onChangeText={setNewStyle}
-                  />
-                  <Pressable
-                    px="$md"
-                    bg="$black"
-                    rounded="$sm"
-                    justifyContent="center"
-                    onPress={() => {
-                      if (newStyle.trim()) {
+              {/* 营业时间 —— 拆成 开始/结束 两个 HH:MM 输入；
+                  下面是常用时段一键填充。失焦时 normalize（"11" → "11:00"）。 */}
+              {renderEditField({
+                icon: "time-outline",
+                label: t("merchant.businessHours"),
+                children: (
+                  <>
+                    <HStack gap="$sm" alignItems="center">
+                      <VStack flex={1}>
+                        <Text fontSize={11} color="$gray300" mb={2} style={styles.textRegular}>
+                          {t("merchant.openTime")}
+                        </Text>
+                        <TextInput
+                          style={[styles.input, styles.timeInput]}
+                          placeholder="HH:MM"
+                          placeholderTextColor={theme.colors.gray200}
+                          value={openTime}
+                          onChangeText={setOpenTime}
+                          onBlur={() => {
+                            const n = normalizeHourMinute(openTime);
+                            setOpenTime(n);
+                            commitHours(n, closeTime);
+                          }}
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={5}
+                        />
+                      </VStack>
+                      <Text mt={14} color="$gray300" style={styles.textRegular}>
+                        —
+                      </Text>
+                      <VStack flex={1}>
+                        <Text fontSize={11} color="$gray300" mb={2} style={styles.textRegular}>
+                          {t("merchant.closeTime")}
+                        </Text>
+                        <TextInput
+                          style={[styles.input, styles.timeInput]}
+                          placeholder="HH:MM"
+                          placeholderTextColor={theme.colors.gray200}
+                          value={closeTime}
+                          onChangeText={setCloseTime}
+                          onBlur={() => {
+                            const n = normalizeHourMinute(closeTime);
+                            setCloseTime(n);
+                            commitHours(openTime, n);
+                          }}
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={5}
+                        />
+                      </VStack>
+                    </HStack>
+                    <HStack flexWrap="wrap" gap="$xs" mt="$sm">
+                      {HOURS_PRESETS.map((preset) => (
+                        <Pressable
+                          key={preset}
+                          style={styles.presetChip}
+                          onPress={() => {
+                            const parsed = parseHoursRange(preset);
+                            if (!parsed) return;
+                            setOpenTime(parsed.open);
+                            setCloseTime(parsed.close);
+                            commitHours(parsed.open, parsed.close);
+                          }}
+                        >
+                          <Text fontSize={12} color="$gray500" style={styles.textRegular}>
+                            {preset}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </HStack>
+                  </>
+                ),
+              })}
+
+              {/* 休息日 —— 周一～周日七个 chip 多选。
+                  存储格式："周一,周三" / "Mon,Wed"；不选则 hours 字段下方
+                  会展示"全年无休"提示，避免商家误以为忘填了。 */}
+              {renderEditField({
+                icon: "calendar-outline",
+                label: t("merchant.restDay"),
+                hint: t("merchant.restDayHint"),
+                children: (
+                  <>
+                    <HStack flexWrap="wrap" gap="$xs">
+                      {WEEK_DAY_OPTIONS.map((day) => {
+                        const set = parseRestDays(storeFormData.rest);
+                        const active = set.has(day.label);
+                        return (
+                          <Pressable
+                            key={day.key}
+                            style={[
+                              styles.dayChip,
+                              active && styles.dayChipActive,
+                            ]}
+                            onPress={() => toggleRestDay(day.label)}
+                          >
+                            <Text
+                              fontSize={13}
+                              color={active ? "$white" : "$black"}
+                              style={styles.textRegular}
+                            >
+                              {day.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </HStack>
+                    {!storeFormData.rest && (
+                      <Text fontSize={12} color="$gray300" mt="$xs" style={styles.textRegular}>
+                        {t("merchant.neverClose")}
+                      </Text>
+                    )}
+                  </>
+                ),
+              })}
+
+              {/* 店铺描述 + 字数计数器（max 300） */}
+              {renderEditField({
+                icon: "document-text-outline",
+                label: t("merchant.storeDescription"),
+                children: (
+                  <>
+                    <TextInput
+                      style={[styles.input, styles.descTextArea]}
+                      placeholder={t("merchant.descriptionPlaceholder")}
+                      placeholderTextColor={theme.colors.gray200}
+                      value={storeFormData.description}
+                      onChangeText={(text) =>
                         setStoreFormData({
                           ...storeFormData,
-                          style: [...storeFormData.style, newStyle.trim()],
-                        });
-                        setNewStyle("");
+                          description: text.slice(0, MAX_DESCRIPTION_LENGTH),
+                        })
                       }
-                    }}
-                  >
-                    <Ionicons name="add" size={20} color={theme.colors.white} />
-                  </Pressable>
-                </HStack>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {storeFormData.style.map((s, idx) => (
-                    <Box
-                      key={idx}
-                      bg="#FCE4EC"
-                      px="$sm"
-                      py="$xs"
-                      rounded="$sm"
-                      flexDirection="row"
-                      alignItems="center"
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      maxLength={MAX_DESCRIPTION_LENGTH}
+                    />
+                    <Text
+                      fontSize={11}
+                      color="$gray300"
+                      mt="$xs"
+                      textAlign="right"
+                      style={styles.textRegular}
                     >
-                      <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
-                        {s}
-                      </Text>
+                      {t("merchant.descCounter", {
+                        current: storeFormData.description.length,
+                        max: MAX_DESCRIPTION_LENGTH,
+                      })}
+                    </Text>
+                  </>
+                ),
+              })}
+
+              {/* 销售品牌 —— 主操作：从品牌库选；次操作：手动添加。
+                  这样选库内品牌名时拼写一致（"Vetements" 不会被写成
+                  "vetements" / "VETEMENTS"），让消费者端搜索/筛选准确。 */}
+              {renderEditField({
+                icon: "pricetags-outline",
+                label: t("merchant.salesBrands"),
+                children: (
+                  <>
+                    <HStack gap="$sm">
                       <Pressable
-                        ml="$xs"
-                        onPress={() => {
+                        flex={1}
+                        py="$sm"
+                        rounded="$sm"
+                        bg="$black"
+                        alignItems="center"
+                        onPress={() => setShowBrandSelector(true)}
+                      >
+                        <HStack alignItems="center" gap="$xs">
+                          <Ionicons
+                            name="search-outline"
+                            size={16}
+                            color={theme.colors.white}
+                          />
+                          <Text
+                            fontSize="$sm"
+                            color="$white"
+                            style={styles.textBold}
+                          >
+                            {t("merchant.pickFromBrandList")}
+                          </Text>
+                        </HStack>
+                      </Pressable>
+                      <Pressable
+                        py="$sm"
+                        px="$md"
+                        rounded="$sm"
+                        borderWidth={1}
+                        borderColor="$gray200"
+                        alignItems="center"
+                        onPress={() => setShowCustomBrandInput((v) => !v)}
+                      >
+                        <Text fontSize="$sm" color="$gray500" style={styles.textRegular}>
+                          {t("merchant.addCustomBrand")}
+                        </Text>
+                      </Pressable>
+                    </HStack>
+
+                    {showCustomBrandInput && (
+                      <HStack gap="$sm" mt="$sm" alignItems="center">
+                        <TextInput
+                          style={[styles.input, { flex: 1 }]}
+                          placeholder={t("merchant.addBrandName")}
+                          placeholderTextColor={theme.colors.gray200}
+                          value={newBrand}
+                          onChangeText={setNewBrand}
+                          returnKeyType="done"
+                          onSubmitEditing={() => {
+                            const v = newBrand.trim();
+                            if (!v) return;
+                            if (storeFormData.brands.includes(v)) {
+                              setNewBrand("");
+                              return;
+                            }
+                            setStoreFormData({
+                              ...storeFormData,
+                              brands: [...storeFormData.brands, v],
+                            });
+                            setNewBrand("");
+                          }}
+                          autoFocus
+                        />
+                        <Pressable
+                          style={styles.addBtn}
+                          onPress={() => {
+                            const v = newBrand.trim();
+                            if (!v || storeFormData.brands.includes(v)) {
+                              setNewBrand("");
+                              return;
+                            }
+                            setStoreFormData({
+                              ...storeFormData,
+                              brands: [...storeFormData.brands, v],
+                            });
+                            setNewBrand("");
+                          }}
+                        >
+                          <Ionicons name="add" size={20} color={theme.colors.white} />
+                        </Pressable>
+                      </HStack>
+                    )}
+
+                    {storeFormData.brands.length > 0 && (
+                      <HStack flexWrap="wrap" gap="$xs" mt="$sm">
+                        {storeFormData.brands.map((b, idx) => (
+                          <Box key={`${b}-${idx}`} style={styles.chipBrand}>
+                            <Text fontSize="$sm" color="#1976D2" style={styles.textRegular}>
+                              {b}
+                            </Text>
+                            <Pressable
+                              ml="$xs"
+                              hitSlop={8}
+                              onPress={() => {
+                                setStoreFormData({
+                                  ...storeFormData,
+                                  brands: storeFormData.brands.filter((_, i) => i !== idx),
+                                });
+                              }}
+                            >
+                              <Ionicons name="close-circle" size={16} color="#1976D2" />
+                            </Pressable>
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+                  </>
+                ),
+              })}
+
+              {/* 风格标签 —— 上面是常用风格预设 chip，一点即加；
+                  下面保留自由输入，支持长尾自定义。 */}
+              {renderEditField({
+                icon: "color-palette-outline",
+                label: t("merchant.styleTags"),
+                children: (
+                  <>
+                    <Text
+                      fontSize={11}
+                      color="$gray300"
+                      mb="$xs"
+                      style={styles.textRegular}
+                    >
+                      {t("merchant.stylePresets")}
+                    </Text>
+                    <HStack flexWrap="wrap" gap="$xs">
+                      {STYLE_PRESETS.map((preset) => {
+                        const added = storeFormData.style.includes(preset);
+                        return (
+                          <Pressable
+                            key={preset}
+                            style={[
+                              styles.presetChip,
+                              added && styles.presetChipDisabled,
+                            ]}
+                            disabled={added}
+                            onPress={() => {
+                              setStoreFormData({
+                                ...storeFormData,
+                                style: [...storeFormData.style, preset],
+                              });
+                            }}
+                          >
+                            <Text
+                              fontSize={12}
+                              color={added ? "$gray300" : "$gray500"}
+                              style={styles.textRegular}
+                            >
+                              {added ? `✓ ${preset}` : `+ ${preset}`}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </HStack>
+
+                    <HStack gap="$sm" mt="$sm" alignItems="center">
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder={t("merchant.addStyleTag")}
+                        placeholderTextColor={theme.colors.gray200}
+                        value={newStyle}
+                        onChangeText={setNewStyle}
+                        returnKeyType="done"
+                        onSubmitEditing={() => {
+                          const v = newStyle.trim();
+                          if (!v) return;
+                          if (storeFormData.style.includes(v)) {
+                            setNewStyle("");
+                            return;
+                          }
                           setStoreFormData({
                             ...storeFormData,
-                            style: storeFormData.style.filter((_, i) => i !== idx),
+                            style: [...storeFormData.style, v],
                           });
+                          setNewStyle("");
+                        }}
+                      />
+                      <Pressable
+                        style={styles.addBtn}
+                        onPress={() => {
+                          const v = newStyle.trim();
+                          if (!v || storeFormData.style.includes(v)) {
+                            setNewStyle("");
+                            return;
+                          }
+                          setStoreFormData({
+                            ...storeFormData,
+                            style: [...storeFormData.style, v],
+                          });
+                          setNewStyle("");
                         }}
                       >
-                        <Ionicons name="close-circle" size={16} color="#C2185B" />
+                        <Ionicons name="add" size={20} color={theme.colors.white} />
                       </Pressable>
-                    </Box>
-                  ))}
-                </HStack>
-              </VStack>
+                    </HStack>
 
-              {/* 按钮 */}
-              <HStack gap="$sm" mt="$sm">
+                    {storeFormData.style.length > 0 && (
+                      <HStack flexWrap="wrap" gap="$xs" mt="$sm">
+                        {storeFormData.style.map((s, idx) => (
+                          <Box key={`${s}-${idx}`} style={styles.chipStyle}>
+                            <Text fontSize="$sm" color="#C2185B" style={styles.textRegular}>
+                              {s}
+                            </Text>
+                            <Pressable
+                              ml="$xs"
+                              hitSlop={8}
+                              onPress={() => {
+                                setStoreFormData({
+                                  ...storeFormData,
+                                  style: storeFormData.style.filter((_, i) => i !== idx),
+                                });
+                              }}
+                            >
+                              <Ionicons name="close-circle" size={16} color="#C2185B" />
+                            </Pressable>
+                          </Box>
+                        ))}
+                      </HStack>
+                    )}
+                  </>
+                ),
+              })}
+
+              {/* 取消 / 保存 */}
+              <HStack gap="$sm" mt="$md">
                 <Pressable
                   flex={1}
                   py="$md"
@@ -1436,10 +1954,14 @@ const MerchantManageScreen = () => {
                         brands: buyerStore.brands || [],
                         style: buyerStore.style || [],
                       });
+                      const parsed = parseHoursRange(buyerStore.hours || "");
+                      setOpenTime(parsed?.open || "");
+                      setCloseTime(parsed?.close || "");
                     }
                     setNewPhone("");
                     setNewBrand("");
                     setNewStyle("");
+                    setShowCustomBrandInput(false);
                   }}
                 >
                   <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
@@ -1625,40 +2147,100 @@ const MerchantManageScreen = () => {
       case "banner":
         return (
           <VStack gap="$md">
-            <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
-                {t("merchant.bannerImageLabel")}
-              </Text>
+            <VStack gap="$xs">
+              <HStack alignItems="center" justifyContent="space-between">
+                <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+                  {t("merchant.bannerImageLabel")}
+                </Text>
+                <Text fontSize={11} color="$gray200" style={styles.textRegular}>
+                  {t("merchant.bannerImageHint")}
+                </Text>
+              </HStack>
+              {/* 图片选择区：
+                  - 16:9 aspect ratio，对齐消费者端 BannerCarousel 的展示比例，
+                    让商家所见即所得；
+                  - 已选图：完整覆盖 + 半透明叠加层提供"更换 / 移除"的二级操作，
+                    避免在小屏上把按钮塞到图片外面；
+                  - 空态：虚线边框 + 居中加号 + 提示语，比之前的纯灰背景视觉
+                    引导更明确。 */}
               <Pressable
-                h={150}
-                bg="$gray50"
-                rounded="$md"
-                justifyContent="center"
-                alignItems="center"
-                overflow="hidden"
+                style={styles.bannerPicker}
                 onPress={() => pickImage("imageUrl")}
                 disabled={uploadingField === "imageUrl"}
               >
                 {uploadingField === "imageUrl" ? (
-                  <VStack alignItems="center">
+                  <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
                     <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
                       {t("merchant.uploading")}
                     </Text>
                   </VStack>
                 ) : formData.imageUrl ? (
-                  <OptimizedImage
-                    uri={formData.imageUrl}
-                    size={ImageSize.MEDIUM}
-                    style={styles.formImage}
-                    contentFit="cover"
-                    lazy={true}
-                  />
+                  <>
+                    <OptimizedImage
+                      uri={formData.imageUrl}
+                      size={ImageSize.MEDIUM}
+                      style={StyleSheet.absoluteFillObject}
+                      contentFit="cover"
+                      lazy={true}
+                    />
+                    <HStack
+                      style={styles.bannerPickerOverlay}
+                      gap="$sm"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Pressable
+                        style={styles.bannerPickerOverlayBtn}
+                        onPress={() => pickImage("imageUrl")}
+                      >
+                        <Ionicons
+                          name="camera-outline"
+                          size={14}
+                          color={theme.colors.white}
+                        />
+                        <Text style={styles.bannerPickerOverlayText}>
+                          {t("merchant.replaceImage")}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.bannerPickerOverlayBtn}
+                        onPress={() =>
+                          setFormData({ ...formData, imageUrl: "" })
+                        }
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={14}
+                          color={theme.colors.white}
+                        />
+                        <Text style={styles.bannerPickerOverlayText}>
+                          {t("common.delete")}
+                        </Text>
+                      </Pressable>
+                    </HStack>
+                  </>
                 ) : (
-                  <VStack alignItems="center">
-                    <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                  <VStack flex={1} justifyContent="center" alignItems="center" gap="$xs">
+                    <Box
+                      w={48}
+                      h={48}
+                      rounded="$full"
+                      bg="$gray100"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Ionicons
+                        name="add"
+                        size={28}
+                        color={theme.colors.gray400}
+                      />
+                    </Box>
+                    <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
                       {t("merchant.tapSelectImage")}
+                    </Text>
+                    <Text fontSize={11} color="$gray200" style={styles.textRegular}>
+                      {t("merchant.bannerImageHint")}
                     </Text>
                   </VStack>
                 )}
@@ -2069,8 +2651,15 @@ const MerchantManageScreen = () => {
   };
 
   // 获取编辑模态框标题
+  //
+  // 历史 bug：英文环境下出现 "EditBanner"（"Edit" 与 "Banner" 之间没有空格），
+  // 因为 `merchant.add` 在 EN 文案里有 trailing space（"Add "），而
+  // `common.edit` 是 "Edit"（无 trailing），直接 concat 就丢空格。
+  //
+  // 修复：把 action 先 trim() 标准化，再用空格分隔统一拼接，最后 trim()
+  // 兜底；中文输出会变成 "编辑 Banner"，多一空格但比 "EditBanner" 可读。
   const getEditModalTitle = () => {
-    const action = editItem ? t("common.edit") : t("merchant.add");
+    const action = (editItem ? t("common.edit") : t("merchant.add")).trim();
     const typeLabels: Record<string, string> = {
       info: t("merchant.storeInfo"),
       banner: "Banner",
@@ -2078,7 +2667,7 @@ const MerchantManageScreen = () => {
       activity: t("merchant.activity"),
       discount: t("merchant.discount"),
     };
-    return `${action}${typeLabels[editType] || ""}`;
+    return `${action} ${typeLabels[editType] || ""}`.trim();
   };
 
   if (isLoading) {
@@ -2188,51 +2777,71 @@ const MerchantManageScreen = () => {
         animationType="fade"
         onRequestClose={closeEditModal}
       >
-        <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
-          <TouchableWithoutFeedback onPress={closeEditModal}>
-            <Box flex={1} />
-          </TouchableWithoutFeedback>
-          <Box
-            bg="$white"
-            borderTopLeftRadius={24}
-            borderTopRightRadius={24}
-            maxHeight="90%"
-          >
-            {/* 模态框头部 */}
-            <HStack
-              px="$lg"
-              py="$md"
-              justifyContent="between"
-              alignItems="center"
-              borderBottomWidth={1}
-              borderBottomColor="$gray100"
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Box flex={1} bg="rgba(0,0,0,0.4)" justifyContent="flex-end">
+            <TouchableWithoutFeedback onPress={closeEditModal}>
+              <Box flex={1} />
+            </TouchableWithoutFeedback>
+            <Box
+              bg="$white"
+              borderTopLeftRadius={24}
+              borderTopRightRadius={24}
+              maxHeight="90%"
             >
-              <Pressable onPress={closeEditModal}>
-                <Text fontSize="$md" color="$gray300" style={styles.textRegular}>
-                  {t("common.cancel")}
-                </Text>
-              </Pressable>
-              <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
-                {getEditModalTitle()}
-              </Text>
-              <Pressable onPress={handleSave} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <ActivityIndicator  color={theme.colors.black} />
-                ) : (
-                  <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
-                    {t("common.save")}
+              {/* 模态框头部 */}
+              <HStack
+                px="$lg"
+                py="$md"
+                justifyContent="between"
+                alignItems="center"
+                borderBottomWidth={1}
+                borderBottomColor="$gray100"
+              >
+                <Pressable onPress={closeEditModal}>
+                  <Text fontSize="$md" color="$gray300" style={styles.textRegular}>
+                    {t("common.cancel")}
                   </Text>
-                )}
-              </Pressable>
-            </HStack>
+                </Pressable>
+                <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
+                  {getEditModalTitle()}
+                </Text>
+                <Pressable onPress={handleSave} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <ActivityIndicator  color={theme.colors.black} />
+                  ) : (
+                    <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                      {t("common.save")}
+                    </Text>
+                  )}
+                </Pressable>
+              </HStack>
 
-            {/* 表单内容 */}
-            <ScrollView style={styles.modalContent}>
-              {renderEditForm()}
-            </ScrollView>
+              {/* 表单内容 */}
+              <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
+                {renderEditForm()}
+              </ScrollView>
+            </Box>
           </Box>
-        </Box>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {/* 品牌库选择器 —— 用于店铺信息编辑表单的"销售品牌"快速添加。
+          消费者发帖流程也用同一个组件，统一品牌数据来源。 */}
+      <BrandSelectorModal
+        visible={showBrandSelector}
+        brands={displayedBrands}
+        searchQuery={brandSearchQuery}
+        isLoading={isLoadingBrands}
+        hasMore={hasMoreBrands}
+        onSearchChange={setBrandSearchQuery}
+        onSearch={searchBrands}
+        onSelectBrand={handlePickBrand}
+        onClose={() => setShowBrandSelector(false)}
+        onLoadMore={loadMoreBrands}
+      />
     </SafeAreaView>
   );
 };
@@ -2249,9 +2858,44 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  // Banner 列表卡片图：用 16:9 (与消费者端 BannerCarousel 一致)，避免硬编码
+  // 高度在不同屏宽下显得过高/过矮。
   bannerImage: {
     width: "100%",
-    height: 150,
+    aspectRatio: 16 / 9,
+    overflow: "hidden",
+  },
+  // 编辑表单里的图片选择器：同样 16:9 占位 + 虚线边框 + 灰底，明确"可点击
+  // 选图"的可供性。空态/加载中/有图叠加层共用同一个外壳。
+  bannerPicker: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: theme.colors.gray50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+    borderStyle: "dashed",
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bannerPickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.0)",
+  },
+  bannerPickerOverlayBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  bannerPickerOverlayText: {
+    color: theme.colors.white,
+    fontSize: 12,
+    fontFamily: FONT_REGULAR,
   },
   activityImage: {
     width: "100%",
@@ -2277,15 +2921,104 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
     fontFamily: FONT_REGULAR,
   },
+  multilineInput: {
+    minHeight: 64,
+    paddingTop: 12,
+  },
+  // 描述区文本框：高度比通用 textArea 矮一点，给计数器留位置不显得拥挤。
+  descTextArea: {
+    minHeight: 88,
+    paddingTop: 12,
+  },
   textArea: {
     minHeight: 100,
     paddingTop: 12,
+  },
+  // 营业时间两个 HH:MM 输入：固定居中、字体稍大些便于辨认。
+  timeInput: {
+    textAlign: "center",
+    fontSize: 16,
+    paddingVertical: 12,
+  },
+  // 圆角加号按钮（与左侧 input 同高度）：去掉旧的内联 style 拼装，复用此 class。
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: theme.colors.black,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // 已选项 chip 三种配色：phone 中性灰、brand 蓝、style 粉。
+  // 把 "padding+rounded+row+center" 这套属性集中起来，比每处再写一遍干净很多。
+  chipNeutral: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  chipBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  chipStyle: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FCE4EC",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  // 预设 chip：常用时段、常用风格的"快速填充"按钮 —— 边框轻、低存在感，
+  // 视觉上不抢主输入框的焦点。
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+    backgroundColor: theme.colors.white,
+  },
+  presetChipDisabled: {
+    backgroundColor: theme.colors.gray50,
+    borderColor: theme.colors.gray100,
+  },
+  // 周一～周日 chip：未选灰底，已选黑底白字 —— 高对比让用户明确"哪几天闭店"。
+  dayChip: {
+    minWidth: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: theme.colors.gray50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayChipActive: {
+    backgroundColor: theme.colors.black,
   },
   textRegular: {
     fontFamily: FONT_REGULAR,
   },
   textBold: {
     fontFamily: FONT_BOLD,
+  },
+  // Tab label 用 RN 原生 Text 渲染，所以这里手动还原 gluestack `<Text>` 的
+  // 默认字体（PlayfairDisplay）+ 我们想要的 size / 行高 / 居中。
+  // `width: '100%'` 让 numberOfLines 在 Pressable 等分布局下生效（不约束
+  // 宽度，长 label 会无限撑开 Pressable 把箭头/边框挤变形）。
+  tabLabel: {
+    width: "100%",
+    marginTop: 4,
+    fontSize: 11,
+    lineHeight: 14,
+    fontFamily: FONT_REGULAR,
+    textAlign: "center",
   },
 });
 

@@ -326,6 +326,8 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         contentContainerStyle={styles.contentContainer}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {groupedBrands.map((group) => (
           <Box key={group.letter}>

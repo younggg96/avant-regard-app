@@ -488,8 +488,32 @@ class PostService:
             self.db.rpc(
                 "decrement_post_like_count", {"post_id_param": post_id}
             ).execute()
+            # 同步删除对应的点赞通知，避免反复点赞累积多条记录
+            self._remove_like_notification(post_id, user_id)
             return True
         return False
+
+    def _remove_like_notification(self, post_id: int, liker_id: int):
+        """取消点赞时移除对应的通知"""
+        try:
+            post_result = (
+                self.db.table("posts")
+                .select("user_id")
+                .eq("id", post_id)
+                .execute()
+            )
+            if not post_result.data:
+                return
+            post_owner_id = post_result.data[0]["user_id"]
+            if post_owner_id == liker_id:
+                return
+            notification_service.delete_like_notification(
+                recipient_id=post_owner_id,
+                actor_id=liker_id,
+                post_id=post_id,
+            )
+        except Exception as e:
+            print(f"Failed to remove like notification: {e}")
 
     def favorite_post(self, post_id: int, user_id: int) -> bool:
         """收藏帖子"""

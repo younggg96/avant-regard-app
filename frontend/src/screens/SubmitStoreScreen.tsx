@@ -258,6 +258,7 @@ const SubmitStoreScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {/* 提示信息 */}
           <Box mx="$md" mt="$md" mb="$lg" p="$md" bg="$gray50" borderRadius="$md">
