@@ -2,22 +2,22 @@
  * 等级称号单一事实源.
  *
  * 与 PRD 保持一致:
- *   Lv1 萌新 · Lv2 活跃 · Lv3 探店官 · Lv4 档案官 · Lv5 荣誉官
+ *   Lv1 Rookie · Lv2 Head · Lv3 Digger · Lv4 Archivist · Lv5 CONNOISSEUR
  *
  * 多语言使用方式:
  *   - React 组件: const { t } = useTranslation(); t(getLevelTitleKey(level))
  *   - Server 组件: const t = getServerT(); t(getLevelTitleKey(level))
  *   - 选项列表:    getLevelOptions(t)
  *
- * LEVEL_TITLES 保留为中文兜底, 仅在无法获取 t 函数时使用.
+ * LEVEL_TITLES 保留为兜底, 仅在无法获取 t 函数时使用.
  */
 
 export const LEVEL_TITLES: Record<number, string> = {
-  1: "萌新",
-  2: "活跃",
-  3: "探店官",
-  4: "档案官",
-  5: "荣誉官",
+  1: "Rookie",
+  2: "Head",
+  3: "Digger",
+  4: "Archivist",
+  5: "CONNOISSEUR",
 };
 
 /** 返回等级称号的 i18n key, 供 t() 调用. */

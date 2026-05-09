@@ -42,7 +42,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, playfairFonts } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { postService, Post as ApiPost, likePost, unlikePost } from "../services/postService";
@@ -78,6 +78,7 @@ import {
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import { LevelBadge } from "../components/level";
 import { levelService } from "../services/levelService";
+import { titlesShownOnProfile } from "./Profile/components/UserTitlesSection";
 
 type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
 
@@ -827,7 +828,9 @@ const UserProfileScreen = () => {
         ) : data.length === 0 ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
             <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
-            <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
+            <Text color="$gray400" mt="$md" style={{ fontFamily: playfairFonts.regular, textAlign: "center" }}>
+              {emptyTexts[contribSubTab]}
+            </Text>
           </VStack>
         ) : (
           (() => {
@@ -995,7 +998,7 @@ const UserProfileScreen = () => {
             size={24}
             color={theme.colors.gray300}
           />
-          <Text color="$gray400" mt="$md">
+          <Text color="$gray400" mt="$md" style={{ fontFamily: playfairFonts.regular, textAlign: "center" }}>
             {activeTab === "posts" && t("profile.noPublishedPosts")}
             {activeTab === "forum" && t("profile.noForumPosts")}
             {activeTab === "saved" && t("profile.noSavedPosts")}
@@ -1009,6 +1012,7 @@ const UserProfileScreen = () => {
   };
 
   const avatarUri = userInfo?.avatarUrl || avatar;
+  const profileTitlesShown = titlesShownOnProfile(userTitles);
 
   return (
     <View style={[styles.container, { backgroundColor: '#FFF' }]}>
@@ -1343,34 +1347,34 @@ const UserProfileScreen = () => {
           </View>
         )}
 
-        {/* 用户头衔 */}
-        {userTitles.length > 0 && (
+        {/* 用户头衔：仅展示主头衔（或唯一头衔） */}
+        {profileTitlesShown.length > 0 && (
           <View style={styles.followedBrandsSection}>
             <View style={styles.followedBrandsHeader}>
               <RNText style={styles.followedBrandsTitle}>{t("myTitles.title")}</RNText>
-              <RNText style={styles.followedBrandsCount}>{userTitles.length}</RNText>
             </View>
             <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8 }}>
-              {userTitles.map((t) => (
+              {profileTitlesShown.map((titleRow) => (
                 <View
-                  key={t.id}
+                  key={titleRow.id}
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 14,
-                    backgroundColor: t.isPrimary ? "#1F2937" : "#F9FAFB",
+                    backgroundColor: "#1F2937",
                     borderWidth: 1,
-                    borderColor: t.isPrimary ? "#374151" : "#F3F4F6",
+                    borderColor: "#374151",
                   }}
                 >
                   <RNText
                     style={{
                       fontSize: 13,
-                      fontWeight: t.isPrimary ? "600" : "500",
-                      color: t.isPrimary ? "#FFFFFF" : "#000",
+                      fontWeight: "600",
+                      color: "#FFFFFF",
+                      fontFamily: playfairFonts.medium,
                     }}
                   >
-                    {t.title}
+                    {titleRow.title}
                   </RNText>
                 </View>
               ))}
@@ -1545,6 +1549,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#1A1A1A",
+    fontFamily: playfairFonts.medium,
   },
   headerRightButtons: {
     flexDirection: "row",
@@ -1564,6 +1569,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
   },
   stickyTabBar: {
     position: "absolute",
@@ -1611,6 +1617,7 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 22,
     fontWeight: "bold",
+    fontFamily: playfairFonts.bold,
   },
   actionButtonsRow: {
     flexDirection: "row",
@@ -1633,9 +1640,11 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 14,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
   },
   followingButtonText: {
     color: theme.colors.white,
+    fontFamily: playfairFonts.medium,
   },
   chatButton: {
     flexDirection: "row",
@@ -1651,6 +1660,7 @@ const styles = StyleSheet.create({
     color: theme.colors.black,
     fontSize: 14,
     fontWeight: "500",
+    fontFamily: playfairFonts.medium,
   },
   editProfileButton: {
     paddingHorizontal: 16,
@@ -1664,6 +1674,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: theme.colors.black,
+    fontFamily: playfairFonts.medium,
   },
   userNameSection: {
     paddingHorizontal: 16,
@@ -1673,12 +1684,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: theme.colors.black,
+    fontFamily: playfairFonts.bold,
   },
   bio: {
     fontSize: 14,
     color: theme.colors.gray600,
     marginTop: 4,
     lineHeight: 20,
+    fontFamily: playfairFonts.regular,
   },
   tagsContainer: {
     flexDirection: "row",
@@ -1696,6 +1709,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     color: theme.colors.gray600,
+    fontFamily: playfairFonts.regular,
   },
   statsContainer: {
     flexDirection: "row",
@@ -1712,10 +1726,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: theme.colors.black,
+    fontFamily: playfairFonts.bold,
   },
   statLabel: {
     fontSize: 12,
     color: theme.colors.gray600,
+    fontFamily: playfairFonts.regular,
   },
   followedBrandsSection: {
     paddingBottom: 14,
@@ -1732,11 +1748,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: theme.colors.gray400,
+    fontFamily: playfairFonts.medium,
   },
   followedBrandsCount: {
     fontSize: 12,
     fontWeight: "600",
     color: theme.colors.gray300,
+    fontFamily: playfairFonts.medium,
   },
   brandChip: {
     flexDirection: "row",
@@ -1765,12 +1783,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#FFF",
+    fontFamily: playfairFonts.bold,
   },
   brandChipName: {
     fontSize: 13,
     fontWeight: "500",
     color: theme.colors.black,
     maxWidth: 100,
+    fontFamily: playfairFonts.medium,
   },
   tabBarContainer: {
     borderBottomWidth: 1,
@@ -1791,10 +1811,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.gray600,
     fontWeight: "500",
+    fontFamily: playfairFonts.medium,
   },
   tabTextActive: {
     color: theme.colors.black,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
   },
   tabIndicator: {
     position: "absolute",
@@ -1818,6 +1840,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
     color: "#FFFFFF",
+    fontFamily: playfairFonts.medium,
   },
   loadingGif: {
     width: SCREEN_WIDTH,
@@ -1845,6 +1868,7 @@ const contribStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     color: theme.colors.gray600,
+    fontFamily: playfairFonts.medium,
   },
   filterChipTextActive: {
     color: "#FFF",
@@ -1853,6 +1877,7 @@ const contribStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: theme.colors.gray400,
+    fontFamily: playfairFonts.bold,
   },
   filterChipCountActive: {
     color: "rgba(255,255,255,0.7)",

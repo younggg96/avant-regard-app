@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -45,11 +45,20 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
   return (
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
-        <Text color="$gray600" fontSize="$sm">
+        <Text
+          color="$gray600"
+          fontSize="$sm"
+          style={{ fontFamily: playfairFonts.regular }}
+        >
           {displayLabel}
         </Text>
         {required && (
-          <Text color="$red500" fontSize="$sm" ml="$xs">
+          <Text
+            color="$red500"
+            fontSize="$sm"
+            ml="$xs"
+            style={{ fontFamily: playfairFonts.regular }}
+          >
             *
           </Text>
         )}
@@ -76,17 +85,20 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               />
               <View style={styles.showInfo}>
                 <Text
-                  fontFamily="PlayfairDisplay-Bold"
                   fontSize={11}
                   color="$white"
                   numberOfLines={1}
+                  style={{ fontFamily: playfairFonts.bold }}
                 >
                   {show.brand}
                 </Text>
                 <Text
-                  fontFamily="PlayfairDisplay-Regular"
                   fontSize={10}
-                  style={{ color: "rgba(255,255,255,0.8)", marginTop: 2 }}
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginTop: 2,
+                    fontFamily: playfairFonts.regular,
+                  }}
                   numberOfLines={1}
                 >
                   {show.season}
@@ -126,7 +138,12 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               size={28}
               color={theme.colors.gray400}
             />
-            <Text color="$gray400" fontSize="$xs" mt="$xs">
+            <Text
+              color="$gray400"
+              fontSize="$xs"
+              mt="$xs"
+              style={{ fontFamily: playfairFonts.regular }}
+            >
               {t("showSelector.addShow")}
             </Text>
           </Pressable>

@@ -22,6 +22,7 @@ import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
 import { SCREEN_WIDTH } from "../../constants";
 import type { StoreEntryCardView } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 interface CategoryCardsProps {
   cards: StoreEntryCardView[];
@@ -30,7 +31,7 @@ interface CategoryCardsProps {
 
 // 布局常量：4 等宽时每张卡片宽度 = (屏宽 - 左右外边距 2×16 - 3 个间距) / 4。
 const HORIZONTAL_MARGIN = 16;
-const CARD_GAP = 8;
+const CARD_GAP = 10;
 const FOUR_COL_WIDTH =
   (SCREEN_WIDTH - HORIZONTAL_MARGIN * 2 - CARD_GAP * 3) / 4;
 
@@ -56,9 +57,6 @@ const CardItem: React.FC<{
       {!!item.labelEn && (
         <Text style={styles.cardLabelEn}>{item.labelEn}</Text>
       )}
-      <Box style={styles.cardArrow}>
-        <Ionicons name="arrow-forward" size={14} color={theme.colors.white} />
-      </Box>
     </Box>
   </Pressable>
 ));
@@ -81,7 +79,7 @@ const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => 
   // 卡片数 ≤ 4：等宽铺满一行（HStack 配合 flex:1）；> 4：横向滚动，单卡固定宽。
   if (cards.length <= 4) {
     return (
-      <Box mx={HORIZONTAL_MARGIN} my="$md">
+      <Box mx={HORIZONTAL_MARGIN} mt="$sm" mb="$md">
         <HStack gap={CARD_GAP}>
           {cards.map((card) => (
             <Box key={card.id} flex={1}>
@@ -98,7 +96,7 @@ const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => 
   }
 
   return (
-    <Box my="$md">
+    <Box mt="$sm" mb="$md">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -128,7 +126,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: HORIZONTAL_MARGIN,
   },
   card: {
-    borderRadius: 10,
+    borderRadius: 4,
     overflow: "hidden",
     backgroundColor: theme.colors.black,
   },
@@ -141,35 +139,28 @@ const styles = StyleSheet.create({
   },
   cardOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: "rgba(0,0,0,0.42)",
   },
   cardContent: {
     flex: 1,
-    padding: 10,
+    padding: 8,
     justifyContent: "flex-start",
   },
   cardLabel: {
-    fontSize: 15,
+    fontFamily: PLAYFAIR.bold,
+    fontSize: 12,
     fontWeight: "700",
     color: theme.colors.white,
+    lineHeight: 18,
+    letterSpacing: 0.2,
   },
   cardLabelEn: {
-    fontSize: 9,
-    fontWeight: "600",
-    letterSpacing: 1,
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 2,
-  },
-  cardArrow: {
-    position: "absolute",
-    left: 10,
-    bottom: 10,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    justifyContent: "center",
-    alignItems: "center",
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 8,
+    fontWeight: "500",
+    letterSpacing: 1.4,
+    color: "rgba(255,255,255,0.88)",
+    marginTop: 4,
   },
 });
 

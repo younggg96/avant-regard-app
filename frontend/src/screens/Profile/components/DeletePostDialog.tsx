@@ -2,6 +2,7 @@ import React from "react";
 import { View, Modal, TouchableWithoutFeedback, ActivityIndicator } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack } from "../../../components/ui";
+import { playfairFonts } from "../../../theme";
 import { SCREEN_WIDTH } from "../constants";
 
 interface DeletePostDialogProps {
@@ -38,10 +39,22 @@ export const DeletePostDialog = ({
           <TouchableWithoutFeedback>
             <VStack bg="$white" borderRadius={16} width={SCREEN_WIDTH - 80} overflow="hidden">
               <VStack px="$lg" pt="$lg" pb="$md">
-                <Text fontSize="$lg" fontWeight="$semibold" color="$black" textAlign="center">
+                <Text
+                  fontSize="$lg"
+                  fontWeight="$semibold"
+                  color="$black"
+                  textAlign="center"
+                  style={{ fontFamily: playfairFonts.bold }}
+                >
                   {t("profile.deletePostTitle")}
                 </Text>
-                <Text fontSize="$sm" color="$gray600" textAlign="center" mt="$sm">
+                <Text
+                  fontSize="$sm"
+                  color="$gray600"
+                  textAlign="center"
+                  mt="$sm"
+                  style={{ fontFamily: playfairFonts.regular }}
+                >
                   {t("profile.deletePostMessage")}
                 </Text>
               </VStack>
@@ -59,7 +72,12 @@ export const DeletePostDialog = ({
                   disabled={isDeleting}
                   opacity={isDeleting ? 0.5 : 1}
                 >
-                  <Text fontSize="$md" fontWeight="$medium" color="$gray600">
+                  <Text
+                    fontSize="$md"
+                    fontWeight="$medium"
+                    color="$gray600"
+                    style={{ fontFamily: playfairFonts.medium }}
+                  >
                     {t("common.cancel")}
                   </Text>
                 </Pressable>
@@ -75,12 +93,22 @@ export const DeletePostDialog = ({
                     {isDeleting ? (
                       <>
                         <ActivityIndicator color="#FF3040" style={{ marginRight: 8 }} />
-                        <Text fontSize="$md" fontWeight="$semibold" color="#FF3040">
+                        <Text
+                          fontSize="$md"
+                          fontWeight="$semibold"
+                          color="#FF3040"
+                          style={{ fontFamily: playfairFonts.bold }}
+                        >
                           {t("common.loading")}
                         </Text>
                       </>
                     ) : (
-                      <Text fontSize="$md" fontWeight="$semibold" color="#FF3040">
+                      <Text
+                        fontSize="$md"
+                        fontWeight="$semibold"
+                        color="#FF3040"
+                        style={{ fontFamily: playfairFonts.bold }}
+                      >
                         {t("common.delete")}
                       </Text>
                     )}

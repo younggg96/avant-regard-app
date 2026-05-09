@@ -22,6 +22,7 @@ import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
 import { BuyerStoreProduct, ProductBadge } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 interface ProductCardProps {
   product: BuyerStoreProduct;
@@ -100,7 +101,7 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
           </Box>
         )}
       </Box>
-      <Box px={2} pt={8}>
+      <Box px={0} pt={10}>
         <Text
           numberOfLines={2}
           style={styles.title}
@@ -110,7 +111,7 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
         <Text numberOfLines={1} style={styles.storeName}>
           {storeName}
         </Text>
-        <HStack alignItems="center" justifyContent="space-between" mt={4}>
+        <HStack alignItems="center" justifyContent="space-between" mt={6}>
           <HStack alignItems="baseline" gap={6} flex={1}>
             <Text
               style={[styles.price, hasDiscount && styles.priceDiscounted]}
@@ -133,8 +134,8 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
           >
             <Ionicons
               name={isFavorited ? "heart" : "heart-outline"}
-              size={18}
-              color={isFavorited ? theme.colors.error : theme.colors.gray300}
+              size={20}
+              color={isFavorited ? theme.colors.error : theme.colors.gray200}
             />
           </Pressable>
         </HStack>
@@ -148,12 +149,12 @@ export const ProductCard = React.memo(ProductCardImpl);
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   imageWrapper: {
     width: "100%",
     aspectRatio: 3 / 4,
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: "hidden",
     backgroundColor: theme.colors.gray100,
     position: "relative",
@@ -166,35 +167,42 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     left: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 3,
   },
   badgeText: {
-    fontSize: 10,
+    fontFamily: PLAYFAIR.bold,
+    fontSize: 9,
     fontWeight: "700",
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   title: {
-    fontSize: 12,
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 13,
     fontWeight: "600",
     color: theme.colors.black,
-    lineHeight: 16,
+    lineHeight: 18,
+    letterSpacing: -0.1,
   },
   storeName: {
-    fontSize: 10,
+    fontFamily: PLAYFAIR.regular,
+    fontSize: 11,
     color: theme.colors.gray300,
-    marginTop: 2,
+    marginTop: 4,
   },
   price: {
-    fontSize: 13,
+    fontFamily: PLAYFAIR.bold,
+    fontSize: 14,
     fontWeight: "700",
     color: theme.colors.black,
+    letterSpacing: -0.2,
   },
   priceDiscounted: {
     color: theme.colors.error,
   },
   priceOriginal: {
+    fontFamily: PLAYFAIR.regular,
     fontSize: 11,
     color: theme.colors.gray300,
     textDecorationLine: "line-through",

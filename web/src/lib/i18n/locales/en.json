@@ -410,11 +410,11 @@
     "taskTarget": "Target {{target}}",
     "benefit": "Benefit",
     "titles": {
-      "1": "Newcomer",
-      "2": "Active",
-      "3": "Explorer",
+      "1": "Rookie",
+      "2": "Head",
+      "3": "Digger",
       "4": "Archivist",
-      "5": "Honorary"
+      "5": "CONNOISSEUR"
     },
     "subtitles": {
       "1": "Take your first step",
@@ -656,7 +656,7 @@
     "rejectReasonExample": "e.g. Archive quality insufficient, please add front-facing brand photos",
     "confirmReject": "Confirm Reject",
     "grantTitle": "Manual Level Grant",
-    "grantDesc": "The only path to Lv5 Honor Officer. Lv1-3 should use the rule engine; use only for special cases.",
+    "grantDesc": "The only path to Lv5 CONNOISSEUR. Lv1-3 should use the rule engine; use only for special cases.",
     "userId": "User ID",
     "userIdPlaceholder": "e.g. 1024",
     "targetLevelLabel": "Target Level",

@@ -15,7 +15,7 @@
  *     FlatList(numColumns=2) 就够了，Masonry 带来的复杂度 / 估算开销
  *     在这里是反收益。
  */
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   Image as RNImage,
   NativeScrollEvent,
@@ -36,9 +36,12 @@ import { StoreProfileCard } from "./StoreProfileCard";
 import { CategoryCards } from "./CategoryCards";
 import { NewArrivalBanner } from "./NewArrivalBanner";
 import { ProductCard } from "./ProductCard";
+import { StorePostCard } from "./StorePostCard";
 import { useBuyerTabData } from "./hooks/useBuyerTabData";
 import { recordBannerClick } from "../../../../services/storeMerchantService";
+import type { Post as ApiPost } from "../../../../services/postService";
 import type { BuyerStoreProduct, StoreEntryCardView } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 /**
  * 入口卡片派发到商品列表屏的参数。和 StoreProductListScreen 的 RouteParams
@@ -63,6 +66,11 @@ export interface BuyerTabContentProps {
   onSearchPress: () => void;
   onStorePress: (storeId: string) => void;
   onProductPress: (product: BuyerStoreProduct) => void;
+  /**
+   * 店铺帖子（migration 055）卡片点击 → PostDetail. 由 DiscoverScreen
+   * 透传 navigation, 避免本组件持有 navigation 实例。
+   */
+  onPostPress?: (postId: number) => void;
   /** 点击顶部横向选择条末尾的"查看全部"入口时触发。 */
   onOpenAllStores: () => void;
   /**
@@ -76,7 +84,7 @@ export interface BuyerTabContentProps {
  * 2 列网格间距，设计稿列间距约 12，左右外边距 16。
  */
 const GRID_HORIZONTAL_PADDING = 16;
-const GRID_GAP = 10;
+const GRID_GAP = 12;
 
 const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   isActive,
@@ -84,6 +92,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   onSearchPress,
   onStorePress,
   onProductPress,
+  onPostPress,
   onOpenAllStores,
   onOpenProductList,
 }) => {
@@ -96,6 +105,8 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     entryCards,
     banner,
     products,
+    storePosts,
+    isStorePostsLoading,
     isFollowed,
     isLoading,
     isProductsLoading,
@@ -108,6 +119,43 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     refresh,
     refreshSelectedStoreProducts,
   } = useBuyerTabData({ enabled: isActive });
+
+  // 店铺内容 tab 切换 (migration 055): "products" | "posts"
+  // 默认 "products"; 切换到不同 store 后保留用户上次选的 tab, 这样浏览
+  // 多家店时不会被强制弹回 products. 但当一家店没有商品却有帖子时, 智能
+  // 默认到 posts (避免空 tab); 详见下面 useEffect.
+  const [contentTab, setContentTab] = useState<"products" | "posts">("products");
+  const [contentTabUserSet, setContentTabUserSet] = useState(false);
+  const handleContentTabChange = useCallback(
+    (next: "products" | "posts") => {
+      setContentTab(next);
+      setContentTabUserSet(true);
+    },
+    [],
+  );
+
+  // 切店时如果当前店没商品但有帖子, 自动切到 posts; 同理反过来.
+  // 用户手动切过 (contentTabUserSet=true) 后不再自动覆盖, 尊重用户选择.
+  // 切到下一家店时重置 user-set 标志 — 不同店是不同上下文, 智能默认要重新生效.
+  useEffect(() => {
+    setContentTabUserSet(false);
+  }, [selectedStoreId]);
+
+  useEffect(() => {
+    if (contentTabUserSet) return;
+    if (isProductsLoading || isStorePostsLoading) return; // 等数据回来再决定, 避免抖动
+    if (products.length === 0 && storePosts.length > 0) {
+      setContentTab("posts");
+    } else if (storePosts.length === 0 && products.length > 0) {
+      setContentTab("products");
+    }
+  }, [
+    contentTabUserSet,
+    products.length,
+    storePosts.length,
+    isProductsLoading,
+    isStorePostsLoading,
+  ]);
 
   // 用户从 StoreProductDetail 改了 like / favorite / want 后回到 Discover，
   // 需要让卡片心形即时和后端同步。useFocusEffect 在 Discover 屏获得焦点时
@@ -223,6 +271,19 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     [toggleProductFavorite]
   );
 
+  // 店铺帖子卡片点击 → PostDetail. 没传 onPostPress 兜底跳到 StoreDetail
+  // (用户至少能看到帖子所在的店铺), 比静默无响应好.
+  const handlePostPress = useCallback(
+    (postId: number) => {
+      if (onPostPress) {
+        onPostPress(postId);
+      } else if (selectedStoreId) {
+        onStorePress(selectedStoreId);
+      }
+    },
+    [onPostPress, onStorePress, selectedStoreId]
+  );
+
   const refreshControl = useMemo(
     () => (
       <RefreshControl
@@ -258,14 +319,14 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     return (
       <Box style={styles.centerPadded}>
         <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
-        <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
+        <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm" style={styles.errorTitle}>
           {t("discover.buyerLoadFailed")}
         </Text>
-        <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
+        <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center" style={styles.errorDetail}>
           {error}
         </Text>
         <Pressable onPress={refresh} px="$lg" py="$sm" mt="$md" bg="$black" rounded="$md">
-          <Text color="$white" fontWeight="$semibold" fontSize="$sm">
+          <Text color="$white" fontWeight="$semibold" fontSize="$sm" style={styles.errorRetryLabel}>
             {t("discover.buyerTapRetry")}
           </Text>
         </Pressable>
@@ -301,6 +362,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
         {selectedProfile && (
           <StoreProfileCard
             profile={selectedProfile}
+            postsCount={storePosts.length}
             isFollowed={isFollowed}
             onFollowToggle={handleFollowToggle}
             onDetailPress={handleStorePress}
@@ -312,18 +374,205 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
 
         {banner && <NewArrivalBanner banner={banner} onPress={handleBannerPress} />}
 
-        <ProductGrid
-          products={products}
-          storeName={selectedStore?.name ?? ""}
-          favoritedIds={favoritedProductIds}
-          isLoading={isProductsLoading}
-          onProductPress={handleProductPress}
-          onFavoriteToggle={handleProductFavorite}
+        {/* 店铺内容 tab 切换条 (migration 055) —— Products / Posts.
+            视觉风格: 类似 StoreDetailScreen, 选中态用黑色加粗 + 数量徽章.
+            两个 tab 始终都显示, 即使一边数据为 0, 让用户感知"这家店有/没有
+            帖子"也是信息; 选中空 tab 时下面走空态文案. */}
+        <ContentTabBar
+          activeTab={contentTab}
+          onChange={handleContentTabChange}
+          productsCount={products.length}
+          postsCount={storePosts.length}
         />
+
+        {contentTab === "products" ? (
+          <ProductGrid
+            products={products}
+            storeName={selectedStore?.name ?? ""}
+            favoritedIds={favoritedProductIds}
+            isLoading={isProductsLoading}
+            onProductPress={handleProductPress}
+            onFavoriteToggle={handleProductFavorite}
+          />
+        ) : (
+          <PostGrid
+            posts={storePosts}
+            isLoading={isStorePostsLoading}
+            onPostPress={handlePostPress}
+          />
+        )}
       </ScrollView>
     </Box>
   );
 };
+
+// ---------------------------------------------------------------------------
+// ContentTabBar —— Products / Posts 二选一切换条
+// ---------------------------------------------------------------------------
+// 复刻 StoreDetailScreen 的 tab 视觉规范 (大写字母 + 数字徽章), 让用户在
+// Discover 和 StoreDetail 两个上下文里看到同一种交互模式.
+//
+// 使用 letterSpacing + 大写排版而不是常见 Pill 样式, 是和 BuyerTab 整体的
+// "杂志感"基调对齐 (店主页 / 入口卡片都是大写 sans).
+
+interface ContentTabBarProps {
+  activeTab: "products" | "posts";
+  onChange: (next: "products" | "posts") => void;
+  productsCount: number;
+  postsCount: number;
+}
+
+const ContentTabBarImpl: React.FC<ContentTabBarProps> = ({
+  activeTab,
+  onChange,
+  productsCount,
+  postsCount,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <HStack
+      mx={GRID_HORIZONTAL_PADDING}
+      mt="$md"
+      mb="$sm"
+      gap="$xl"
+      alignItems="flex-end"
+      borderBottomWidth={StyleSheet.hairlineWidth}
+      borderBottomColor="$gray100"
+    >
+      <Pressable
+        onPress={() => onChange("products")}
+        style={tabStyles.tabHit}
+      >
+        <Text style={[tabStyles.label, activeTab === "products" && tabStyles.labelActive]}>
+          {t("discover.buyerTabProducts").toUpperCase()}
+          {productsCount > 0 ? ` · ${productsCount}` : ""}
+        </Text>
+        {activeTab === "products" && <Box style={tabStyles.activeBar} />}
+      </Pressable>
+      <Pressable
+        onPress={() => onChange("posts")}
+        style={tabStyles.tabHit}
+      >
+        <Text style={[tabStyles.label, activeTab === "posts" && tabStyles.labelActive]}>
+          {t("discover.buyerTabPosts").toUpperCase()}
+          {postsCount > 0 ? ` · ${postsCount}` : ""}
+        </Text>
+        {activeTab === "posts" && <Box style={tabStyles.activeBar} />}
+      </Pressable>
+    </HStack>
+  );
+};
+
+const ContentTabBar = React.memo(ContentTabBarImpl);
+
+const tabStyles = StyleSheet.create({
+  tabHit: {
+    position: "relative",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 10,
+  },
+  label: {
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 13,
+    color: theme.colors.gray300,
+    fontWeight: "500",
+    letterSpacing: 1.2,
+  },
+  labelActive: {
+    fontFamily: PLAYFAIR.bold,
+    color: theme.colors.black,
+    fontWeight: "700",
+  },
+  activeBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 3,
+    backgroundColor: theme.colors.black,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// PostGrid —— 2 列店铺帖子网格 (migration 055)
+// ---------------------------------------------------------------------------
+// 和 ProductGrid 共用 GRID_HORIZONTAL_PADDING / GRID_GAP, 视觉对齐;
+// 显式分行渲染避开 FlatList-in-ScrollView 警告 (同 ProductGrid 的注释).
+
+interface PostGridProps {
+  posts: ApiPost[];
+  isLoading: boolean;
+  onPostPress: (postId: number) => void;
+}
+
+const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }) => {
+  const { t } = useTranslation();
+  const rows = useMemo(() => {
+    const grouped: ApiPost[][] = [];
+    for (let i = 0; i < posts.length; i += 2) {
+      grouped.push(posts.slice(i, i + 2));
+    }
+    return grouped;
+  }, [posts]);
+
+  if (isLoading) {
+    return (
+      <Box
+        mx={GRID_HORIZONTAL_PADDING}
+        mb="$lg"
+        py="$lg"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <RNImage
+          source={require("../../../../../assets/gif/profile-loading.gif")}
+          style={styles.gridLoadingGif}
+          resizeMode="contain"
+        />
+      </Box>
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <Box
+        mx="$md"
+        mb="$lg"
+        py="$lg"
+        alignItems="center"
+        borderWidth={StyleSheet.hairlineWidth}
+        borderColor="$gray100"
+        rounded="$lg"
+      >
+        <Ionicons name="albums-outline" size={28} color={theme.colors.gray300} />
+        <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
+          {t("discover.buyerNoStorePosts")}
+        </Text>
+        <Text fontSize="$xs" color="$gray300" mt="$xs" style={styles.emptyPanelHint}>
+          {t("discover.buyerNoStorePostsHint")}
+        </Text>
+      </Box>
+    );
+  }
+
+  return (
+    <VStack mx={GRID_HORIZONTAL_PADDING} mb="$lg" gap={GRID_GAP}>
+      {rows.map((row, rowIdx) => (
+        <HStack key={`post-row-${rowIdx}`} gap={GRID_GAP}>
+          {row.map((post) => (
+            <Box key={post.id} flex={1}>
+              <StorePostCard post={post} onPress={onPostPress} />
+            </Box>
+          ))}
+          {row.length === 1 && <Box flex={1} />}
+        </HStack>
+      ))}
+    </VStack>
+  );
+};
+
+const PostGrid = React.memo(PostGridImpl);
 
 interface ProductGridProps {
   products: BuyerStoreProduct[];
@@ -384,10 +633,10 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
     return (
       <Box mx="$md" mb="$lg" py="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} borderColor="$gray100" rounded="$lg">
         <Ionicons name="bag-handle-outline" size={28} color={theme.colors.gray300} />
-        <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm">
+        <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
           {t("discover.buyerNoProducts")}
         </Text>
-        <Text fontSize="$xs" color="$gray300" mt="$xs">
+        <Text fontSize="$xs" color="$gray300" mt="$xs" style={styles.emptyPanelHint}>
           {t("discover.buyerStayTuned")}
         </Text>
       </Box>
@@ -430,7 +679,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 48,
+    paddingBottom: 56,
   },
   center: {
     flex: 1,
@@ -454,6 +703,21 @@ const styles = StyleSheet.create({
   gridLoadingGif: {
     width: SCREEN_WIDTH * 0.6,
     height: SCREEN_WIDTH * 0.6,
+  },
+  errorTitle: {
+    fontFamily: PLAYFAIR.medium,
+  },
+  errorDetail: {
+    fontFamily: PLAYFAIR.regular,
+  },
+  errorRetryLabel: {
+    fontFamily: PLAYFAIR.medium,
+  },
+  emptyPanelTitle: {
+    fontFamily: PLAYFAIR.medium,
+  },
+  emptyPanelHint: {
+    fontFamily: PLAYFAIR.regular,
   },
 });
 

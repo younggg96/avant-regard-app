@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
 import { isVideoUrl } from "../services/postService";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import { Post } from "./PostCard";
 
 interface ForumPostCardProps {
@@ -103,7 +103,12 @@ const ForumPostCardInner = ({
                 justifyContent="center"
                 alignItems="center"
               >
-                <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                <Text
+                  color="$white"
+                  fontSize="$sm"
+                  fontWeight="$semibold"
+                  style={{ fontFamily: playfairFonts.bold }}
+                >
                   +{remainingCount}
                 </Text>
               </Box>
@@ -147,12 +152,19 @@ const ForumPostCardInner = ({
                 fontWeight="$semibold"
                 fontSize="$sm"
                 numberOfLines={1}
+                style={{ fontFamily: playfairFonts.medium }}
               >
                 {post.author.name}
               </Text>
               {post.author.title ? (
                 <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
-                  <Text color="$gray600" fontSize={10} fontWeight="$medium" numberOfLines={1}>
+                  <Text
+                    color="$gray600"
+                    fontSize={10}
+                    fontWeight="$medium"
+                    numberOfLines={1}
+                    style={{ fontFamily: playfairFonts.medium }}
+                  >
                     {post.author.title}
                   </Text>
                 </Box>
@@ -169,6 +181,7 @@ const ForumPostCardInner = ({
           lineHeight="$md"
           numberOfLines={2}
           mt="$sm"
+          style={{ fontFamily: playfairFonts.bold }}
         >
           {displayTitle}
         </Text>
@@ -181,6 +194,7 @@ const ForumPostCardInner = ({
             lineHeight="$sm"
             numberOfLines={2}
             mt="$xs"
+            style={{ fontFamily: playfairFonts.regular }}
           >
             {displayDescription}
           </Text>
@@ -201,7 +215,11 @@ const ForumPostCardInner = ({
                   py="$xs"
                   rounded="$sm"
                 >
-                  <Text color="$gray600" fontSize="$xs">
+                  <Text
+                    color="$gray600"
+                    fontSize="$xs"
+                    style={{ fontFamily: playfairFonts.regular }}
+                  >
                     {post.communityName}
                   </Text>
                 </Box>
@@ -210,7 +228,11 @@ const ForumPostCardInner = ({
 
             {/* 时间 */}
             {post.timestamp && (
-              <Text color="$gray400" fontSize="$xs">
+              <Text
+                color="$gray400"
+                fontSize="$xs"
+                style={{ fontFamily: playfairFonts.regular }}
+              >
                 {post.timestamp}
               </Text>
             )}
@@ -225,7 +247,11 @@ const ForumPostCardInner = ({
                 size={14}
                 color={theme.colors.gray400}
               />
-              <Text color="$gray400" fontSize="$xs">
+              <Text
+                color="$gray400"
+                fontSize="$xs"
+                style={{ fontFamily: playfairFonts.regular }}
+              >
                 {displayComments}
               </Text>
             </HStack>
@@ -244,6 +270,7 @@ const ForumPostCardInner = ({
                 <Text
                   color={displayIsLiked ? "#FF3040" : "$gray400"}
                   fontSize="$xs"
+                  style={{ fontFamily: playfairFonts.regular }}
                 >
                   {displayLikes}
                 </Text>

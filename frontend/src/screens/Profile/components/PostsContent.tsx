@@ -36,7 +36,7 @@ import {
   StoreProduct,
   formatPrice,
 } from "../../../services/storeProductService";
-import { contribStyles, storeActivityStyles, styles } from "../styles";
+import { contribStyles, storeActivityStyles, styles, PF } from "../styles";
 
 interface PostsContentProps {
   activeTab: TabType;
@@ -167,12 +167,16 @@ const ContributionContent = ({
       {contribLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">{t("common.loading")}</Text>
+          <Text fontSize="$sm" color="$gray400" mt="$sm" style={{ fontFamily: PF.regular }}>
+            {t("common.loading")}
+          </Text>
         </VStack>
       ) : data.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md">{emptyTexts[contribSubTab]}</Text>
+          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+            {emptyTexts[contribSubTab]}
+          </Text>
         </VStack>
       ) : (
         (() => {
@@ -388,7 +392,9 @@ const StoreActivityContent = ({
       ) : getDataLength() === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$sm" style={{ minHeight: 200 }}>
           <Ionicons name={empty.icon as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md">{empty.text}</Text>
+          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+            {empty.text}
+          </Text>
         </VStack>
       ) : (
         <VStack py="$sm">{renderList()}</VStack>
@@ -474,7 +480,9 @@ const ProductActivityContent = ({
       ) : current.products.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcon as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md">{emptyText}</Text>
+          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+            {emptyText}
+          </Text>
         </VStack>
       ) : (
         <View style={productGridStyles.grid}>
@@ -525,11 +533,17 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
         )}
       </View>
       <VStack px="$sm" py="$sm" gap={3}>
-        <Text fontSize={13} fontWeight="$semibold" color="$black" numberOfLines={2}>
+        <Text
+          fontSize={13}
+          fontWeight="$semibold"
+          color="$black"
+          numberOfLines={2}
+          style={{ fontFamily: PF.medium }}
+        >
           {product.title}
         </Text>
         {!!product.brand && (
-          <Text fontSize={10} color="$gray400" numberOfLines={1}>
+          <Text fontSize={10} color="$gray400" numberOfLines={1} style={{ fontFamily: PF.regular }}>
             {product.brand}
           </Text>
         )}
@@ -538,6 +552,7 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
             fontSize={13}
             fontWeight="$bold"
             color={hasDiscount ? "$error" : "$black"}
+            style={{ fontFamily: PF.bold }}
           >
             {formatPrice(
               hasDiscount
@@ -550,7 +565,7 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
             <Text
               fontSize={11}
               color="$gray300"
-              style={{ textDecorationLine: "line-through" }}
+              style={{ textDecorationLine: "line-through", fontFamily: PF.regular }}
             >
               {formatPrice(product.priceCents, product.currency)}
             </Text>
@@ -611,6 +626,7 @@ const productGridStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: theme.colors.white,
+    fontFamily: PF.bold,
   },
 });
 
@@ -761,7 +777,7 @@ export const PostsContent = ({
           size={24}
           color={theme.colors.gray300}
         />
-        <Text color="$gray400" mt="$md">
+        <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular, textAlign: "center" }}>
           {activeTab === "published" && t("profile.noPublishedPosts")}
           {activeTab === "pending" && t("profile.noPendingPosts")}
           {activeTab === "draft" && t("profile.noDrafts")}

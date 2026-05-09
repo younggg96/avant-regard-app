@@ -127,14 +127,14 @@ export const styles = StyleSheet.create({
     color: theme.colors.black,
   },
   phoneInput: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,
     color: theme.colors.black,
   },
   input: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,
@@ -236,7 +236,7 @@ export const styles = StyleSheet.create({
     paddingRight: 16,
   },
   passwordInput: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: "PlayfairDisplay-Regular",
     flex: 1,
     paddingVertical: 16,

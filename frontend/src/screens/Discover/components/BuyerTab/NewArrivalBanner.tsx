@@ -16,6 +16,7 @@ import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
 import { BuyerStoreFeatureBanner } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 interface NewArrivalBannerProps {
   banner: BuyerStoreFeatureBanner;
@@ -30,11 +31,11 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
   const hasText = !!(banner.title || banner.subtitle || banner.cta);
 
   return (
-    <Box mx="$md" mb="$md">
+    <Box mx="$md" mb="$lg" mt="$xs">
       <Pressable onPress={onPress} style={styles.container}>
         <HStack flex={1} alignItems="center">
           {hasText && (
-            <VStack flex={1} pl={16} py={14}>
+            <VStack flex={1} pl={18} pr={10} py={14} justifyContent="center">
               {banner.subtitle && (
                 <Text style={styles.subtitle}>{banner.subtitle}</Text>
               )}
@@ -43,11 +44,11 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
                   {banner.title}
                 </Text>
               )}
-              <HStack alignItems="center" mt={8} gap={6}>
+              <HStack alignItems="center" mt={10} gap={6}>
                 <Text style={styles.cta}>{banner.cta || t("discover.buyerViewDetails")}</Text>
                 <Ionicons
                   name="arrow-forward"
-                  size={12}
+                  size={13}
                   color={theme.colors.black}
                 />
               </HStack>
@@ -57,7 +58,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
             <OptimizedImage
               uri={banner.image}
               size={ImageSize.MEDIUM}
-              style={styles.image}
+              style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               lazy
             />
@@ -72,43 +73,48 @@ export const NewArrivalBanner = React.memo(NewArrivalBannerImpl);
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#F2EDE5",
-    borderRadius: 10,
+    backgroundColor: "#F2F2F0",
+    borderRadius: 8,
     overflow: "hidden",
-    height: 108,
     flexDirection: "row",
   },
   subtitle: {
+    fontFamily: PLAYFAIR.medium,
     fontSize: 10,
     fontWeight: "600",
-    letterSpacing: 1.2,
+    letterSpacing: 2,
     color: theme.colors.gray400,
   },
   title: {
-    fontSize: 22,
+    fontFamily: PLAYFAIR.bold,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: "700",
     color: theme.colors.black,
     marginTop: 4,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   cta: {
+    fontFamily: PLAYFAIR.medium,
     fontSize: 12,
     fontWeight: "600",
     color: theme.colors.black,
+    letterSpacing: 0.2,
   },
+  // 固定宽高，避免竖图把整卡撑得很高、左侧文字区留大片空底。
   imageWrapper: {
-    width: 140,
-    height: "100%",
+    width: 118,
+    height: 132,
+    alignSelf: "center",
+    overflow: "hidden",
   },
   // 商家只给了图、没给任何文案时，让图片铺满整条 banner，避免左侧
   // 出现一块空白。
   imageFull: {
     flex: 1,
     width: "100%",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
+    height: 148,
+    alignSelf: "stretch",
   },
 });
 

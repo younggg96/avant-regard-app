@@ -21,7 +21,7 @@ import {
   Input,
   HStack,
 } from "../components/ui";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
@@ -812,7 +812,7 @@ const PublishLookbookScreen = () => {
 
   const previewHeight = useMemo(() => {
     if (!coverImage || !imageDimensions[coverImage]) {
-      return 300;
+      return 240;
     }
 
     const { width, height } = imageDimensions[coverImage];
@@ -820,7 +820,7 @@ const PublishLookbookScreen = () => {
     const containerWidth = SCREEN_WIDTH - 32;
     const calculatedHeight = containerWidth / aspectRatio;
 
-    return Math.min(Math.max(calculatedHeight, 200), 500);
+    return Math.min(Math.max(calculatedHeight, 160), 400);
   }, [coverImage, imageDimensions]);
 
   const previewImages = useMemo(() => {
@@ -832,7 +832,7 @@ const PublishLookbookScreen = () => {
   const renderPreviewSection = () => {
     if (images.length === 0) {
       return (
-        <Box h={300} mx="$md" my="$md">
+        <Box h={200} mx="$md" my="$md">
           <Pressable
             flex={1}
             rounded="$md"
@@ -847,7 +847,11 @@ const PublishLookbookScreen = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text color="$gray500" mt="$sm">
+            <Text
+              color="$gray500"
+              mt="$sm"
+              style={{ fontFamily: playfairFonts.regular }}
+            >
               {t("publish.tapToAddMedia")}
             </Text>
           </Pressable>
@@ -942,7 +946,7 @@ const PublishLookbookScreen = () => {
                     py={2}
                     alignItems="center"
                   >
-                    <Text color="$white" fontSize={10} fontWeight="$medium">
+                    <Text color="$white" fontSize={10} fontWeight="$medium" style={{ fontFamily: playfairFonts.medium }}>
                       {t("publish.cover")}
                     </Text>
                   </Box>
@@ -982,6 +986,7 @@ const PublishLookbookScreen = () => {
           textAlign="center"
           mt="$xs"
           fontWeight={isReorderMode ? "$medium" : "$normal"}
+          style={{ fontFamily: playfairFonts.regular }}
         >
           {isReorderMode
             ? t("publish.reorderModeHint")
@@ -1035,7 +1040,7 @@ const PublishLookbookScreen = () => {
         <Box bg="$gray100" px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="storefront" size={16} color={theme.colors.black} />
-            <Text color="$black" fontSize="$sm" flex={1} numberOfLines={1}>
+            <Text color="$black" fontSize="$sm" flex={1} numberOfLines={1} style={{ fontFamily: playfairFonts.regular }}>
               {t("merchant.publishingAsStore", {
                 store: storeNameForHeader || storeIdToPublish,
               })}
@@ -1049,7 +1054,7 @@ const PublishLookbookScreen = () => {
         <Box bg="$accent" px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
-            <Text color="$white" fontSize="$sm" flex={1}>
+            <Text color="$white" fontSize="$sm" flex={1} style={{ fontFamily: playfairFonts.regular }}>
               {t("publish.reAuditWarning")}
             </Text>
           </HStack>
@@ -1073,10 +1078,10 @@ const PublishLookbookScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text color="$gray600" fontSize="$sm" style={{ fontFamily: playfairFonts.medium }}>
                 {t("publish.titleLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text color="$red500" fontSize="$sm" ml="$xs" style={{ fontFamily: playfairFonts.medium }}>
                 *
               </Text>
             </HStack>
@@ -1090,6 +1095,8 @@ const PublishLookbookScreen = () => {
               sx={{
                 fontSize: 18,
                 fontWeight: "500",
+                fontFamily: playfairFonts.medium,
+                color: theme.colors.black,
                 minHeight: 50,
                 textAlignVertical: "top",
                 borderWidth: 0,
@@ -1101,10 +1108,10 @@ const PublishLookbookScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text color="$gray600" fontSize="$sm" style={{ fontFamily: playfairFonts.medium }}>
                 {t("publish.descriptionLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text color="$red500" fontSize="$sm" ml="$xs" style={{ fontFamily: playfairFonts.medium }}>
                 *
               </Text>
             </HStack>
@@ -1116,7 +1123,9 @@ const PublishLookbookScreen = () => {
               multiline
               variant="filled"
               sx={{
+                fontFamily: playfairFonts.regular,
                 color: theme.colors.gray600,
+                fontSize: 16,
                 minHeight: 80,
                 textAlignVertical: "top",
                 borderWidth: 0,

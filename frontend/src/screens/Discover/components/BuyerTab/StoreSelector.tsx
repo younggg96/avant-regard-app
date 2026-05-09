@@ -14,6 +14,7 @@ import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
 import { BuyerStoreShortcut } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 interface StoreSelectorProps {
   stores: BuyerStoreShortcut[];
@@ -147,7 +148,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
     return (
       <Box py="$md" alignItems="center">
         <Ionicons name="storefront-outline" size={24} color={theme.colors.gray300} />
-        <Text fontSize="$xs" color="$gray400" mt="$xs">
+        <Text fontSize="$xs" color="$gray400" mt="$xs" style={styles.emptyHint}>
           {t("discover.buyerNoStoreData")}
         </Text>
       </Box>
@@ -170,13 +171,13 @@ export const StoreSelector = React.memo(StoreSelectorImpl);
 
 const styles = StyleSheet.create({
   listContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 12,
   },
   item: {
     alignItems: "center",
-    width: 64,
+    width: 68,
   },
   logoRing: {
     width: LOGO_SIZE,
@@ -219,32 +220,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoPlaceholderText: {
+    fontFamily: PLAYFAIR.bold,
     color: theme.colors.white,
     fontSize: 16,
     fontWeight: "700",
   },
   name: {
-    marginTop: 6,
+    marginTop: 8,
     fontSize: 11,
     textAlign: "center",
-    maxWidth: 64,
+    maxWidth: 68,
   },
   nameIdle: {
+    fontFamily: PLAYFAIR.medium,
     color: theme.colors.gray300,
-    fontWeight: "500",
   },
   nameSelected: {
+    fontFamily: PLAYFAIR.bold,
     color: theme.colors.black,
-    fontWeight: "700",
+  },
+  emptyHint: {
+    fontFamily: PLAYFAIR.regular,
   },
   skeletonRow: {
     flexDirection: "row",
-    paddingHorizontal: 12,
-    gap: 14,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   skeletonCell: {
     alignItems: "center",
-    width: 64,
+    width: 68,
   },
   skeletonLogo: {
     width: LOGO_SIZE,

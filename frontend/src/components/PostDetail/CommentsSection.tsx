@@ -2,7 +2,8 @@ import React from "react";
 import { ActivityIndicator, Image as RNImage } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";import { ImageSize } from "../../utils/imageUtils";
+import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
+import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { styles } from "./styles";
@@ -155,6 +156,11 @@ const CommentItem: React.FC<{
   onReportReply,
 }) => {
   const { t } = useTranslation();
+  const replies = comment.replies ?? [];
+  const [firstReply, ...otherReplies] = replies;
+  const hasMoreReplies = otherReplies.length > 0;
+  const repliesExpanded = comment.showReplies === true;
+
   return (
     <VStack mt="$md">
       <HStack space="sm">
@@ -231,41 +237,58 @@ const CommentItem: React.FC<{
                 </HStack>
               </Pressable>
             )}
-            {comment.replyCount > 0 && !comment.showReplies && (
-              <Pressable onPress={onToggleReplies}>
-                <Text fontSize="$xs" color="$accent" fontWeight="$medium">
-                  {t("postDetail.viewReplies", { count: comment.replyCount })}
-                </Text>
-              </Pressable>
-            )}
           </HStack>
         </VStack>
       </HStack>
 
-      {/* 回复列表 */}
-      {comment.showReplies && comment.replies && comment.replies.length > 0 && (
+      {/* 回复：首条默认展示，其余折叠后通过「查看其余」展开 */}
+      {firstReply ? (
         <VStack mt="$xs">
-          {comment.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              isOwner={currentUserId === reply.userId}
-              onLike={() => onReplyLike(reply.id)}
-              onDelete={() => onDeleteReply(reply.id)}
-              onUserPress={onUserPress}
-              onReply={() => onReplyToReply(reply)}
-              onReport={() => onReportReply(reply)}
-            />
-          ))}
-          {comment.replies.length > 0 && (
+          <ReplyItem
+            key={firstReply.id}
+            reply={firstReply}
+            isOwner={currentUserId === firstReply.userId}
+            onLike={() => onReplyLike(firstReply.id)}
+            onDelete={() => onDeleteReply(firstReply.id)}
+            onUserPress={onUserPress}
+            onReply={() => onReplyToReply(firstReply)}
+            onReport={() => onReportReply(firstReply)}
+          />
+          {hasMoreReplies && !repliesExpanded ? (
+            <Pressable onPress={onToggleReplies} mt="$xs" ml="$xl" pl="$md">
+              <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+                {t("postDetail.viewMoreReplies", { count: otherReplies.length })}
+              </Text>
+            </Pressable>
+          ) : null}
+          {repliesExpanded &&
+            otherReplies.map((reply) => (
+              <ReplyItem
+                key={reply.id}
+                reply={reply}
+                isOwner={currentUserId === reply.userId}
+                onLike={() => onReplyLike(reply.id)}
+                onDelete={() => onDeleteReply(reply.id)}
+                onUserPress={onUserPress}
+                onReply={() => onReplyToReply(reply)}
+                onReport={() => onReportReply(reply)}
+              />
+            ))}
+          {repliesExpanded && hasMoreReplies ? (
             <Pressable onPress={onToggleReplies} mt="$sm" ml="$xl" pl="$md">
               <Text fontSize="$xs" color="$gray500">
                 {t("postDetail.collapseReplies")}
               </Text>
             </Pressable>
-          )}
+          ) : null}
         </VStack>
-      )}
+      ) : comment.replyCount > 0 ? (
+        <Pressable onPress={onToggleReplies} mt="$xs" ml="$xl" pl="$md">
+          <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+            {t("postDetail.viewReplies", { count: comment.replyCount })}
+          </Text>
+        </Pressable>
+      ) : null}
     </VStack>
   );
 };

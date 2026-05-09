@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage } from "./ui";
 import { PostCoverMedia } from "./PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import { Show } from "../services/showService";
 import { Brand } from "../services/brandService";
 import {
@@ -289,6 +289,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
   },
   communityBadge: {
     position: "absolute",
@@ -302,6 +303,7 @@ const styles = StyleSheet.create({
   communityText: {
     color: "#FFFFFF",
     fontSize: 12,
+    fontFamily: playfairFonts.regular,
   },
   // 买手店帖子角标（migration 055）：和 community 角标视觉差异化, 用
   // 浅色背景 + 店铺图标, 让消费者一眼区分「这是买手店发的」.
@@ -322,6 +324,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginLeft: 4,
     fontWeight: "500",
+    fontFamily: playfairFonts.medium,
   },
   titleArea: {
     paddingHorizontal: theme.spacing.sm,
@@ -333,6 +336,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: playfairFonts.medium,
   },
   footer: {
     flexDirection: "row",
@@ -361,6 +365,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontSize: 12,
     flex: 1,
+    fontFamily: playfairFonts.medium,
   },
   authorTitleBadge: {
     backgroundColor: theme.colors.gray100,
@@ -372,6 +377,7 @@ const styles = StyleSheet.create({
     color: theme.colors.gray600,
     fontSize: 9,
     fontWeight: "500",
+    fontFamily: playfairFonts.medium,
   },
   likeRow: {
     flexDirection: "row",
@@ -382,6 +388,7 @@ const styles = StyleSheet.create({
     color: theme.colors.gray400,
     fontWeight: "600",
     fontSize: 12,
+    fontFamily: playfairFonts.medium,
   },
   likeCountActive: {
     color: "#FF3040",
@@ -398,12 +405,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
     lineHeight: 22,
+    fontFamily: playfairFonts.bold,
   },
   textOnlyDesc: {
     color: theme.colors.gray600,
     fontSize: 13,
     lineHeight: 19,
     marginTop: theme.spacing.sm,
+    fontFamily: playfairFonts.regular,
   },
 });
 

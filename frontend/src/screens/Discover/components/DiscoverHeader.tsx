@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     searchText: {
         flex: 1,
         fontSize: 16,
-        fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+        fontFamily: "PlayfairDisplay-Regular",
         color: theme.colors.gray400,
     },
     interactionButton: {

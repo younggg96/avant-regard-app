@@ -16,7 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
@@ -1280,7 +1280,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    fontFamily: playfairFonts.regular,
     color: theme.colors.black,
     paddingVertical: 8,
   },

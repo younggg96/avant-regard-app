@@ -91,6 +91,11 @@ export interface BuyerTabSlotProps extends TabContentBaseProps {
   onSearchPress: () => void;
   onStorePress: (storeId: string) => void;
   onProductPress: (product: BuyerStoreProduct) => void;
+  /**
+   * 店铺帖子（migration 055）卡片点击 → PostDetail.
+   * 留 optional, 让其它消费方不强制实现 (默认会回退到 onStorePress).
+   */
+  onPostPress?: (postId: number) => void;
   /** 点击顶部"查看全部"入口时触发；上游决定跳哪个屏。 */
   onOpenAllStores: () => void;
   /**
@@ -233,11 +238,9 @@ const ESTIMATED_ITEM_SIZE = 320;
 // expo-image promotes them once they actually scroll into view.
 const ABOVE_FOLD_COUNT = 8;
 
-// Shared per-card height constants, used both for (a) pre-balancing the
-// feed (`arrangeForNaiveMasonry`) and (b) giving the inner column FlashLists
-// precise item heights via `overrideItemLayout`. Keep in sync with
-// `masonryItemStyles.wrapper` and the fixed chrome of `PostCard`
-// (title 2 lines + author row + paddings).
+// Shared per-card height constants, used for `estimateCardHeight` /
+// `overrideItemLayout` so MasonryFlashList can balance columns. Keep in sync
+// with `masonryItemStyles.wrapper` and the fixed chrome of `PostCard`.
 const CARD_WRAPPER_PADDING_H = 8; // wrapper paddingHorizontal × 2
 const CARD_WRAPPER_MARGIN_B = 8; // wrapper marginBottom
 const CARD_CHROME_HEIGHT = 80;   // title (2 lines ≈40) + author row (≈28) + vertical padding (≈12)
@@ -261,56 +264,15 @@ const estimateCardHeight = (post: Post): number => {
 };
 
 /**
- * Pre-arrange a post list so that the naïve `i % numColumns` masonry
- * distribution produces visually balanced columns.
- *
- * Why not `MasonryFlashList.optimizeItemArrangement`?
- *   That flag lets the list push items to the shortest column, but it also
- *   lets one column grow substantially more items than the other. The outer
- *   FlashList's `estimatedItemSize` is hard-coded to
- *   `dataSet[0].length × estimatedItemSize` (see
- *   `@shopify/flash-list/src/MasonryFlashList.tsx:176`) — it ignores our
- *   per-item `overrideItemLayout`. Skewed column counts therefore make the
- *   outer/inner layout estimates diverge, producing the "big gap on top,
- *   cards peeking at the bottom" rendering bug we hit in production.
- *
- * Strategy:
- *   Simulate a two-column greedy placement locally using each post's
- *   estimated height, then interleave the two columns back into the feed
- *   array — even indices go to the conceptual "left" column, odd to
- *   "right". The naïve `i % 2` split inside MasonryFlashList then lands
- *   every post on the column we already balanced it toward, guaranteeing
- *   `dataSet[0].length ≈ dataSet[1].length` and keeping column heights
- *   within one card's worth of each other.
- *
- * Ordering contract:
- *   Feed recommendation order is preserved within each column (items stay
- *   in their relative position among same-column peers). Adjacent pairs
- *   may swap left/right, which is acceptable for a visual feed.
+ * MasonryFlashList 在未开启优化时按「数据源下标 % 列数」拆列。旧的
+ * `arrangeForNaiveMasonry` 先按高度贪心分两列再交错合并；一旦两列条数
+ * 不一致，交错后的尾部元素会按 %2 落到错误的一列，出现一侧很长、另一侧
+ * 大量留白的假象。改用官方 `optimizeItemArrangement` + `overrideItemLayout`
+ *（按估算高度把每条放到当前更矮的一列），由库内与数据源顺序一致的逻辑
+ * 分配列，避免手工交错与 %2 语义冲突。
  */
 const MASONRY_COLUMNS = 2;
 const MASONRY_DRAW_DISTANCE = Math.round(SCREEN_HEIGHT * 0.35);
-const arrangeForNaiveMasonry = <T extends Post>(posts: T[]): T[] => {
-  if (posts.length <= MASONRY_COLUMNS) return posts;
-
-  const columns: T[][] = [[], []];
-  const heights: number[] = [0, 0];
-
-  for (const post of posts) {
-    const h = estimateCardHeight(post);
-    const target = heights[0] <= heights[1] ? 0 : 1;
-    columns[target].push(post);
-    heights[target] += h;
-  }
-
-  const merged: T[] = [];
-  const maxLen = Math.max(columns[0].length, columns[1].length);
-  for (let i = 0; i < maxLen; i++) {
-    if (i < columns[0].length) merged.push(columns[0][i]);
-    if (i < columns[1].length) merged.push(columns[1][i]);
-  }
-  return merged;
-};
 
 // Only clones for *duplicate* ids (replay-mode looping). First occurrences
 // pass through as-is so upstream reference stability is preserved — the
@@ -366,12 +328,8 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   const currentPosts = useMemo(() => {
     if (!Array.isArray(tabPosts)) return [];
     const mapped = tabPosts.map(convertToPost);
-    const keyed = withStableRenderKeys(mapped);
-    // Only the masonry tabs benefit from (and survive) pre-balancing. The
-    // forum tab is single-column so reshuffling would only scramble order.
-    if (tab === "forum") return keyed;
-    return arrangeForNaiveMasonry(keyed);
-  }, [tabPosts, tab]);
+    return withStableRenderKeys(mapped);
+  }, [tabPosts]);
 
   const keyExtractor = useCallback(
     (item: RenderablePost) => item.renderKey ?? item.id,
@@ -449,12 +407,8 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   );
 
   // Feed a precise per-item height to the inner column FlashLists so they
-  // recycle/scroll smoothly even when card aspect ratios vary a lot. We do
-  // NOT pair this with `optimizeItemArrangement` — see `arrangeForNaiveMasonry`
-  // for why. With column pre-balancing done upstream and a naïve `i % 2`
-  // column assignment, `overrideItemLayout` is pure scroll-perf polish; the
-  // outer FlashList's crude estimate stays honest because column lengths
-  // stay symmetric.
+  // recycle/scroll smoothly. Required when `optimizeItemArrangement` is on:
+  // MasonryFlashList uses these sizes to place each row on the shorter column.
   const overrideItemLayout = useCallback(
     (layout: { size?: number }, item: Post) => {
       layout.size = estimateCardHeight(item);
@@ -646,6 +600,7 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
         ref={masonryListRef}
         data={currentPosts}
         numColumns={MASONRY_COLUMNS}
+        optimizeItemArrangement
         keyExtractor={keyExtractor}
         renderItem={renderMasonryItem}
         estimatedItemSize={ESTIMATED_ITEM_SIZE}
@@ -723,6 +678,7 @@ const TabContentInner: React.FC<TabContentProps> = (props) => {
         onSearchPress={props.onSearchPress}
         onStorePress={props.onStorePress}
         onProductPress={props.onProductPress}
+        onPostPress={props.onPostPress}
         onOpenAllStores={props.onOpenAllStores}
         onOpenProductList={props.onOpenProductList}
       />

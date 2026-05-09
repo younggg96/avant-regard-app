@@ -410,11 +410,11 @@
     "taskTarget": "达标 {{target}}",
     "benefit": "权益",
     "titles": {
-      "1": "萌新",
-      "2": "活跃",
-      "3": "探店官",
-      "4": "档案官",
-      "5": "荣誉官"
+      "1": "Rookie",
+      "2": "Head",
+      "3": "Digger",
+      "4": "Archivist",
+      "5": "CONNOISSEUR"
     },
     "subtitles": {
       "1": "迈出第一步",
@@ -656,7 +656,7 @@
     "rejectReasonExample": "例如:  档案质量不达标, 请补充品牌正面照",
     "confirmReject": "确认拒绝",
     "grantTitle": "手动授予等级",
-    "grantDesc": "Lv5 荣誉官的唯一通道. Lv1-3 建议交给规则引擎, 仅在特殊补偿时使用.",
+    "grantDesc": "Lv5 CONNOISSEUR 的唯一通道. Lv1-3 建议交给规则引擎, 仅在特殊补偿时使用.",
     "userId": "用户 ID",
     "userIdPlaceholder": "例如 1024",
     "targetLevelLabel": "目标等级",

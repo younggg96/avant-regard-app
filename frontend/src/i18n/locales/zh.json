@@ -79,6 +79,10 @@
     "buyerTapRetry": "点击重试",
     "buyerNoProducts": "暂无匹配的单品",
     "buyerStayTuned": "敬请期待买手店上新",
+    "buyerTabProducts": "单品",
+    "buyerTabPosts": "帖子",
+    "buyerNoStorePosts": "暂无店铺帖子",
+    "buyerNoStorePostsHint": "这家店还没有发过帖子",
     "buyerUnfollowed": "已取消关注",
     "buyerFollowSuccess": "关注成功",
     "buyerMoreComingSoon": "更多功能敬请期待",
@@ -833,7 +837,7 @@
     "tabPost": "帖子",
     "tabInfo": "店铺",
     "noStorePosts": "暂无店铺帖子",
-    "noStorePostsHint": "点击下方按钮以买手店身份发一条 Lookbook",
+    "noStorePostsHint": "点击下方按钮以买手店身份发布帖子",
     "publishStorePost": "发布店铺帖子",
     "editStorePost": "编辑店铺帖子",
     "newStorePost": "新建帖子",
@@ -927,9 +931,9 @@
     "publishLookbook": "发布Lookbook",
     "reAuditWarning": "编辑后帖子将重新进入审核状态",
     "titleLabel": "标题",
-    "lookbookTitlePlaceholder": "请输入您的 Lookbook 标题（例：2025 我的春夏穿搭合集）",
+    "lookbookTitlePlaceholder": "请输入帖子标题（例：2025 春夏系列穿搭）",
     "descriptionLabel": "简介",
-    "lookbookDescPlaceholder": "请简单介绍您的 Lookbook 灵感或主题",
+    "lookbookDescPlaceholder": "请简单介绍这则帖子的灵感或主题",
     "linkBrand": "关联品牌",
     "addMedia": "添加媒体",
     "loadShowsFailed": "加载秀场数据失败",
@@ -971,7 +975,7 @@
     "coverImageSubtitle": "支持自由裁剪、1:1、4:3、16:9、9:16",
     "forumTitlePlaceholder": "帖子标题，支持长标题",
     "forumAddHint": "点击文本框下方的 + 按钮可以添加更多文字或图片",
-    "lookbookPreview": "Lookbook 预览"
+    "lookbookPreview": "帖子预览"
   },
   "interaction": {
     "title": "消息",
@@ -1626,7 +1630,7 @@
     "levelRejected": "已驳回",
     "userNotified": "已通知用户",
     "grantLevelTitle": "手动授予等级",
-    "grantLevelHint": "Lv5 荣誉官的唯一通道. Lv1/2/3 建议交给规则引擎自动升, 仅在特殊情况补偿时使用.",
+    "grantLevelHint": "Lv5 CONNOISSEUR 的唯一通道. Lv1/2/3 建议交给规则引擎自动升, 仅在特殊情况补偿时使用.",
     "userId": "用户 ID",
     "targetLevel": "目标等级",
     "remarkOptional": "备注 (可选)",
@@ -1996,6 +2000,7 @@
     "delete": "删除",
     "report": "举报",
     "viewReplies": "查看 {{count}} 条回复",
+    "viewMoreReplies": "查看其余 {{count}} 条回复",
     "collapseReplies": "收起回复",
     "comments": "评论 ({{count}})",
     "noComments": "暂无评论，快来发表第一条评论吧",
@@ -2064,11 +2069,11 @@
     "registerSuccess": "报名成功, 免费门票剩余 {{remaining}}",
     "redeemFailed": "核销失败, 请稍后重试",
     "titles": {
-      "1": "萌新",
-      "2": "活跃",
-      "3": "探店官",
-      "4": "档案官",
-      "5": "荣誉官"
+      "1": "Rookie",
+      "2": "Head",
+      "3": "Digger",
+      "4": "Archivist",
+      "5": "CONNOISSEUR"
     },
     "subtitles": {
       "1": "迈出第一步",
@@ -2432,6 +2437,20 @@
       "llmTitle": "AI 暂时不可用",
       "regenLimitTitle": "重新生成次数已用完",
       "regenLimitBody": "今日重新生成次数已用完 (每天最多 3 次)"
+    }
+  },
+  "engagementNudge": {
+    "aiPost": {
+      "title": "试试 AI 发帖助手",
+      "message": "你已经使用了一会儿啦，AI 可以帮你更快写出第一篇帖子。",
+      "cta": "去试试",
+      "later": "稍后再说"
+    },
+    "forumFollow": {
+      "title": "去关注一个论坛帖子",
+      "message": "下次逛论坛时，可以先关注一个你感兴趣的帖子，后续更新更容易看到。",
+      "cta": "去论坛看看",
+      "later": "稍后"
     }
   }
 }

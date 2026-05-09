@@ -226,7 +226,7 @@ const MyLevelScreen: React.FC = () => {
         />
 
         {/* ============ 全量规则时间线 ============ */}
-        <View style={[styles.card, { marginBottom: 32 }]}>
+        <View style={[styles.card, { marginTop: theme.spacing.md, marginBottom: theme.spacing.md }]}>
           <Text style={styles.cardTitle}>{t("level.levelRoadmap")}</Text>
           {rules.map((spec) => {
             const reached = currentLevel >= spec.level;

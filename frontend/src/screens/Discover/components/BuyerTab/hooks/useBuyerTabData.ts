@@ -42,6 +42,13 @@ import {
   getStoreBanners,
   StoreBanner,
 } from "../../../../../services/storeMerchantService";
+// 买手店帖子（migration 055）— Discover/Stores tab 在 Banner 下面新增
+// "Products / Posts" tab 切换, posts 数据走 postService.getPostsByStoreId
+// 的公开列表 (PUBLISHED + APPROVED).
+import {
+  postService,
+  Post as ApiPost,
+} from "../../../../../services/postService";
 import { useAuthStore } from "../../../../../store/authStore";
 import { useStoreFavoritesStore } from "../../../../../store/storeFavoritesStore";
 import {
@@ -141,6 +148,7 @@ const buildProfileView = (
     logoImage: config?.logoImage?.trim() || undefined,
     logoLetter: (store.name?.trim()?.charAt(0) || "S").toUpperCase(),
     followerCount,
+    followingCount: 0,
     productCount,
     isVerified: true,
     tags,
@@ -244,6 +252,10 @@ export interface UseBuyerTabDataReturn {
   entryCards: StoreEntryCardView[];
   banner: BuyerStoreFeatureBanner | null;
   products: BuyerStoreProduct[];
+  /** 当前选中店铺的店铺帖子（migration 055）。商家未发帖 / 未入驻时为空数组。 */
+  storePosts: ApiPost[];
+  /** 当前选中店铺的店铺帖子是否还在加载（与 isProductsLoading 同语义）。 */
+  isStorePostsLoading: boolean;
   isFollowed: boolean;
   isLoading: boolean;
   /**
@@ -329,6 +341,13 @@ export const useBuyerTabData = (
   const [bannersMap, setBannersMap] = useState<
     Record<string, StoreBanner[]>
   >({});
+  // 店铺帖子（migration 055）缓存. 三态语义和 productsMap 对齐:
+  //   undefined = 未拉过 (此时 isStorePostsLoading=true)
+  //   []        = 拉过但商家没发帖 (UI 走"暂无店铺帖子"空态)
+  //   有值      = 真实店铺帖子, Posts tab 渲染网格
+  const [storePostsMap, setStorePostsMap] = useState<
+    Record<string, ApiPost[]>
+  >({});
   // 商品总数缓存（key = storeId, value = total）。来自 `getStoreProducts.total`，
   // StoreProfileCard 顶部的 "Products" 列直接读这里；undefined = 还没拉过，UI
   // 显示 0 即可（商家没上架也是 0，体感等价）。
@@ -402,6 +421,10 @@ export const useBuyerTabData = (
   // 卡片会跳 StoreProductList 走完整分页接口。
   const PREVIEW_PRODUCT_COUNT = 8;
 
+  // Discover/Stores tab 的 Posts tab 用的预览条数。8 条对齐 PREVIEW_PRODUCT_COUNT,
+  // 给一行 4 张缩略图 + 第二行 4 张; 用户想看完整列表点 "View All" 跳 StoreDetail.
+  const PREVIEW_POST_COUNT = 8;
+
   const loadStoreConfig = useCallback(
     async (storeId: string, opts?: { force?: boolean }) => {
       if (!storeId) return;
@@ -413,12 +436,27 @@ export const useBuyerTabData = (
         opts?.force || productsMap[storeId] === undefined;
       const needBanners =
         opts?.force || bannersMap[storeId] === undefined;
-      if (!needProfile && !needCards && !needProducts && !needBanners) return;
+      const needPosts =
+        opts?.force || storePostsMap[storeId] === undefined;
+      if (
+        !needProfile &&
+        !needCards &&
+        !needProducts &&
+        !needBanners &&
+        !needPosts
+      ) {
+        return;
+      }
 
       configInFlightRef.current.add(storeId);
       try {
-        const [profileResult, cardsResult, productsResult, bannersResult] =
-          await Promise.allSettled([
+        const [
+          profileResult,
+          cardsResult,
+          productsResult,
+          bannersResult,
+          postsResult,
+        ] = await Promise.allSettled([
             needProfile
               ? getStoreProfileConfig(storeId)
               : Promise.resolve(null),
@@ -433,6 +471,11 @@ export const useBuyerTabData = (
             needBanners
               ? getStoreBanners(storeId)
               : Promise.resolve({ banners: [], total: 0 }),
+            // 店铺帖子（migration 055）。public 入口 → includeUnpublished=false,
+            // 后端只返回 PUBLISHED + APPROVED. 失败仅打 warn, 走空数组空态.
+            needPosts
+              ? postService.getPostsByStoreId(storeId, { limit: PREVIEW_POST_COUNT })
+              : Promise.resolve([] as ApiPost[]),
           ]);
 
         if (needProfile) {
@@ -503,11 +546,27 @@ export const useBuyerTabData = (
             setBannersMap((prev) => ({ ...prev, [storeId]: [] }));
           }
         }
+
+        if (needPosts) {
+          if (postsResult.status === "fulfilled") {
+            setStorePostsMap((prev) => ({
+              ...prev,
+              [storeId]: postsResult.value ?? [],
+            }));
+          } else {
+            console.warn(
+              "[useBuyerTabData] load store posts failed:",
+              postsResult.reason
+            );
+            // 失败也写 [], 让 isStorePostsLoading 立刻翻 false, 避免空 tab 一直转圈.
+            setStorePostsMap((prev) => ({ ...prev, [storeId]: [] }));
+          }
+        }
       } finally {
         configInFlightRef.current.delete(storeId);
       }
     },
-    [profileConfigMap, entryCardsMap, productsMap, bannersMap]
+    [profileConfigMap, entryCardsMap, productsMap, bannersMap, storePostsMap]
   );
 
   // 选中店铺变化时 kickoff 一次配置拉取；已有缓存则立即跳过。
@@ -576,6 +635,18 @@ export const useBuyerTabData = (
     if (!selectedStoreId) return null;
     return buildFeatureBanner(bannersMap[selectedStoreId]);
   }, [selectedStoreId, bannersMap]);
+
+  // 当前店铺的店铺帖子（migration 055）。空数组与 productsMap 一致,
+  // 表示"商家没发店铺帖子"——UI 走空态。
+  const storePosts = useMemo<ApiPost[]>(() => {
+    if (!selectedStoreId) return [];
+    return storePostsMap[selectedStoreId] ?? [];
+  }, [selectedStoreId, storePostsMap]);
+
+  const isStorePostsLoading = useMemo<boolean>(() => {
+    if (!selectedStoreId) return false;
+    return storePostsMap[selectedStoreId] === undefined;
+  }, [selectedStoreId, storePostsMap]);
 
   const setSelectedStoreId = useCallback((storeId: string) => {
     setSelectedStoreIdState(storeId);
@@ -716,6 +787,8 @@ export const useBuyerTabData = (
     entryCards,
     banner,
     products,
+    storePosts,
+    isStorePostsLoading,
     isFollowed,
     isLoading,
     isProductsLoading,

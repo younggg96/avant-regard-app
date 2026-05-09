@@ -1,6 +1,11 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
-import { View } from "react-native";
-import { NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
+import { View, AppState, AppStateStatus } from "react-native";
+import {
+  NavigationContainer,
+  NavigationContainerRef,
+  NavigationState,
+  PartialState,
+} from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -70,7 +75,7 @@ import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
 import AIPostQAStepScreen from "./src/screens/AIPost/AIPostQAStepScreen";
 import AIPostPreviewScreen from "./src/screens/AIPost/AIPostPreviewScreen";
-import AIPostImageBriefScreen from "./src/screens/AIPost/AIPostImageBriefScreen";
+import AIPostImageBriefScreen from "@/screens/AIPost/AIPostImageBriefScreen";
 import AllCommentsScreen from "./src/screens/AllCommentsScreen";
 
 import CommunityDetailScreen from "./src/screens/CommunityDetailScreen";
@@ -109,7 +114,7 @@ import TabBarIcon from "./src/components/TabBarIcon";
 import PublishTabButton from "./src/components/PublishTabButton";
 import UploadProgressBanner from "./src/components/UploadProgressBanner";
 import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
-import FpsMonitor from "./src/components/FpsMonitor";
+import CustomAlert from "./src/components/CustomAlert";
 
 // Theme
 import { theme } from "./src/theme";
@@ -136,6 +141,46 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+type EngagementNudgeStage = "aiPost" | "forumFollow" | "done";
+
+interface EngagementNudgeState {
+  stage: EngagementNudgeStage;
+  accumulatedMs: number;
+  behaviorCount: number;
+}
+
+const ENGAGEMENT_NUDGE_USAGE_THRESHOLD_MS = 3 * 60 * 1000;
+const ENGAGEMENT_NUDGE_BEHAVIOR_THRESHOLD = 3;
+const ENGAGEMENT_NUDGE_STORAGE_PREFIX = "engagement_nudge_state";
+const ENGAGEMENT_NUDGE_BEHAVIOR_ROUTES = new Set([
+  "PostDetail",
+  "PublishType",
+  "PublishForumPost",
+  "Search",
+  "CommunityDetail",
+]);
+
+const DEFAULT_ENGAGEMENT_NUDGE_STATE: EngagementNudgeState = {
+  stage: "aiPost",
+  accumulatedMs: 0,
+  behaviorCount: 0,
+};
+
+const getEngagementNudgeStorageKey = (userId: string | number) =>
+  `${ENGAGEMENT_NUDGE_STORAGE_PREFIX}_${userId}`;
+
+const getActiveRouteName = (
+  state?: NavigationState | PartialState<NavigationState>
+): string | undefined => {
+  if (!state || state.routes.length === 0) return undefined;
+  const route = state.routes[state.index ?? 0];
+  const nestedState = route.state as NavigationState | PartialState<NavigationState> | undefined;
+  if (nestedState) {
+    return getActiveRouteName(nestedState);
+  }
+  return route.name;
+};
 
 function AuthNavigator() {
   return (
@@ -267,11 +312,24 @@ function TabNavigator() {
   );
 }
 
-function AppNavigator() {
+function AppNavigator({
+  engagementBehaviorSignal,
+  onNavigateToAIPost,
+  onNavigateToForum,
+}: {
+  engagementBehaviorSignal: number;
+  onNavigateToAIPost: () => void;
+  onNavigateToForum: () => void;
+}) {
+  const { t } = useTranslation();
   const { isAuthenticated, user, shouldShowProfileReminder, updateLastProfileReminderTime } = useAuthStore();
   const [showProfileReminder, setShowProfileReminder] = useState(false);
   const [showOnboardingGuide, setShowOnboardingGuide] = useState(false);
   const [guideChecked, setGuideChecked] = useState(false);
+  const [engagementNudgeState, setEngagementNudgeState] = useState<EngagementNudgeState | null>(null);
+  const [activeEngagementNudge, setActiveEngagementNudge] = useState<EngagementNudgeStage | null>(null);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const lastBehaviorSignalRef = useRef(engagementBehaviorSignal);
 
   // Push notifications
   usePushNotifications();
@@ -315,6 +373,166 @@ function AppNavigator() {
 
     checkGuide();
   }, [isAuthenticated, user?.userId]);
+
+  const persistEngagementNudgeState = useCallback(
+    async (nextState: EngagementNudgeState) => {
+      if (!user?.userId) return;
+      try {
+        await AsyncStorage.setItem(
+          getEngagementNudgeStorageKey(user.userId),
+          JSON.stringify(nextState)
+        );
+      } catch (error) {
+        console.log("Failed to persist engagement nudge state:", error);
+      }
+    },
+    [user?.userId]
+  );
+
+  const patchEngagementNudgeState = useCallback(
+    (patcher: (prev: EngagementNudgeState) => EngagementNudgeState) => {
+      setEngagementNudgeState((prev) => {
+        if (!prev) return prev;
+        const next = patcher(prev);
+        void persistEngagementNudgeState(next);
+        return next;
+      });
+    },
+    [persistEngagementNudgeState]
+  );
+
+  const advanceEngagementNudgeStage = useCallback(() => {
+    patchEngagementNudgeState((prev) => {
+      const nextStage: EngagementNudgeStage =
+        prev.stage === "aiPost" ? "forumFollow" : "done";
+      return {
+        stage: nextStage,
+        accumulatedMs: 0,
+        behaviorCount: 0,
+      };
+    });
+  }, [patchEngagementNudgeState]);
+
+  const closeEngagementNudge = useCallback(() => {
+    setActiveEngagementNudge(null);
+    advanceEngagementNudgeStage();
+  }, [advanceEngagementNudgeStage]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.userId) {
+      setEngagementNudgeState(null);
+      setActiveEngagementNudge(null);
+      lastBehaviorSignalRef.current = engagementBehaviorSignal;
+      return;
+    }
+
+    let cancelled = false;
+    const loadNudgeState = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(getEngagementNudgeStorageKey(user.userId));
+        if (cancelled) return;
+        if (!raw) {
+          setEngagementNudgeState(DEFAULT_ENGAGEMENT_NUDGE_STATE);
+          return;
+        }
+        const parsed = JSON.parse(raw) as Partial<EngagementNudgeState>;
+        if (
+          parsed.stage !== "aiPost" &&
+          parsed.stage !== "forumFollow" &&
+          parsed.stage !== "done"
+        ) {
+          setEngagementNudgeState(DEFAULT_ENGAGEMENT_NUDGE_STATE);
+          return;
+        }
+        setEngagementNudgeState({
+          stage: parsed.stage,
+          accumulatedMs: Number(parsed.accumulatedMs) || 0,
+          behaviorCount: Number(parsed.behaviorCount) || 0,
+        });
+      } catch (error) {
+        console.log("Failed to load engagement nudge state:", error);
+        if (!cancelled) {
+          setEngagementNudgeState(DEFAULT_ENGAGEMENT_NUDGE_STATE);
+        }
+      }
+    };
+
+    loadNudgeState();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.userId]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !guideChecked || showOnboardingGuide) return;
+    if (activeEngagementNudge || !engagementNudgeState) return;
+    if (showProfileReminder || engagementNudgeState.stage === "done") return;
+
+    const shouldOpen =
+      engagementNudgeState.accumulatedMs >= ENGAGEMENT_NUDGE_USAGE_THRESHOLD_MS ||
+      engagementNudgeState.behaviorCount >= ENGAGEMENT_NUDGE_BEHAVIOR_THRESHOLD;
+    if (shouldOpen) {
+      setActiveEngagementNudge(engagementNudgeState.stage);
+    }
+  }, [
+    isAuthenticated,
+    guideChecked,
+    showOnboardingGuide,
+    showProfileReminder,
+    activeEngagementNudge,
+    engagementNudgeState,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.userId || !engagementNudgeState) return;
+    if (engagementNudgeState.stage === "done") return;
+
+    const usageTimer = setInterval(() => {
+      if (appStateRef.current !== "active") return;
+      if (activeEngagementNudge) return;
+      if (showOnboardingGuide || showProfileReminder) return;
+      patchEngagementNudgeState((prev) => ({
+        ...prev,
+        accumulatedMs: prev.accumulatedMs + 15_000,
+      }));
+    }, 15_000);
+
+    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      appStateRef.current = nextState;
+    });
+
+    return () => {
+      clearInterval(usageTimer);
+      appStateSubscription.remove();
+    };
+  }, [
+    isAuthenticated,
+    user?.userId,
+    engagementNudgeState,
+    activeEngagementNudge,
+    showOnboardingGuide,
+    showProfileReminder,
+    patchEngagementNudgeState,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !engagementNudgeState) return;
+    if (engagementNudgeState.stage === "done") return;
+    if (activeEngagementNudge) return;
+    if (engagementBehaviorSignal === lastBehaviorSignalRef.current) return;
+
+    lastBehaviorSignalRef.current = engagementBehaviorSignal;
+    patchEngagementNudgeState((prev) => ({
+      ...prev,
+      behaviorCount: prev.behaviorCount + 1,
+    }));
+  }, [
+    isAuthenticated,
+    engagementBehaviorSignal,
+    engagementNudgeState,
+    activeEngagementNudge,
+    patchEngagementNudgeState,
+  ]);
 
   const handleGuideComplete = useCallback(async () => {
     if (user?.userId) {
@@ -646,6 +864,49 @@ function AppNavigator() {
         onClose={() => setShowProfileReminder(false)}
       />
 
+      <CustomAlert
+        visible={activeEngagementNudge !== null}
+        title={
+          activeEngagementNudge === "aiPost"
+            ? t("engagementNudge.aiPost.title")
+            : t("engagementNudge.forumFollow.title")
+        }
+        message={
+          activeEngagementNudge === "aiPost"
+            ? t("engagementNudge.aiPost.message")
+            : t("engagementNudge.forumFollow.message")
+        }
+        buttons={[
+          {
+            text:
+              activeEngagementNudge === "aiPost"
+                ? t("engagementNudge.aiPost.later")
+                : t("engagementNudge.forumFollow.later"),
+            style: "cancel",
+            onPress: closeEngagementNudge,
+          },
+          {
+            text:
+              activeEngagementNudge === "aiPost"
+                ? t("engagementNudge.aiPost.cta")
+                : t("engagementNudge.forumFollow.cta"),
+            style: "default",
+            onPress: () => {
+              const currentStage = activeEngagementNudge;
+              closeEngagementNudge();
+              if (currentStage === "aiPost") {
+                onNavigateToAIPost();
+              } else if (currentStage === "forumFollow") {
+                onNavigateToForum();
+              }
+            },
+          },
+        ]}
+        onClose={closeEngagementNudge}
+        icon={activeEngagementNudge === "aiPost" ? "sparkles-outline" : "chatbubbles-outline"}
+        iconColor={theme.colors.black}
+      />
+
       {/* 后台上传进度条 */}
       <UploadProgressBanner />
 
@@ -660,6 +921,8 @@ export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [showSplashVideo, setShowSplashVideo] = useState(true);
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const lastRouteNameRef = useRef<string | undefined>(undefined);
+  const [engagementBehaviorSignal, setEngagementBehaviorSignal] = useState(0);
 
   useEffect(() => {
     async function prepare() {
@@ -734,6 +997,33 @@ export default function App() {
     setShowSplashVideo(false);
   }, []);
 
+  const handleNavigationStateChange = useCallback(
+    (state?: NavigationState) => {
+      const routeName = getActiveRouteName(state);
+      if (!routeName) return;
+      if (routeName === lastRouteNameRef.current) return;
+
+      if (ENGAGEMENT_NUDGE_BEHAVIOR_ROUTES.has(routeName)) {
+        setEngagementBehaviorSignal((prev) => prev + 1);
+      }
+      lastRouteNameRef.current = routeName;
+    },
+    []
+  );
+
+  const handleNavigateToAIPost = useCallback(() => {
+    (navigationRef.current as any)?.navigate("AIPostEntry");
+  }, []);
+
+  const handleNavigateToForum = useCallback(() => {
+    (navigationRef.current as any)?.navigate("Main", {
+        screen: "Home",
+        params: {
+          targetDiscoverTab: "forum",
+        },
+      });
+  }, []);
+
   if (!appIsReady) {
     return null;
   }
@@ -747,15 +1037,19 @@ export default function App() {
               <NavigationContainer
                 ref={navigationRef}
                 linking={LINKING_CONFIG}
+                onStateChange={handleNavigationStateChange}
               >
-                <AppNavigator />
+                <AppNavigator
+                  engagementBehaviorSignal={engagementBehaviorSignal}
+                  onNavigateToAIPost={handleNavigateToAIPost}
+                  onNavigateToForum={handleNavigateToForum}
+                />
                 <StatusBar style="dark" />
               </NavigationContainer>
               {showSplashVideo && (
                 <SplashVideo onFinish={handleSplashVideoFinish} />
               )}
               <MaintenanceOverlay />
-              <FpsMonitor />
             </View>
           </ToastProvider>
         </SafeAreaProvider>

@@ -1,19 +1,11 @@
 /**
- * 买手店简介卡片。
- *
- * 视觉结构（按设计稿）：
- *   - 左上：圆形 logo（店铺首字母占位 / 或店铺封面）
- *   - 右上：店铺封面大图（占右半幅）
- *   - 左下：店铺名 + 「买手店」徽标 + 简介 + 标签 chips
- *   - 右上角 overlay：「关注 / 已关注」按钮 + 更多按钮
- *   - 分隔线下方：粉丝 / 关注 / 帖子 三列统计
- *   - 最底部：长简介
- *
- * 组件自身只负责渲染 + 把点击事件透传出去，所有文案都从
- * `BuyerStoreProfileView`（`useBuyerTabData` 合成）读取，避免在 UI 层
- * 里重复格式化数字或兜底空字段。
+ * 买手店简介区块 —— 视觉对齐 ETHOS 式买手店主页_demo：
+ *   白底扁平、系统性无衬线正文 + 克制的留白；
+ *   左：圆形 logo；中：店名 / 买手店徽标 / 一句话 / 信任标签行；
+ *   右上：关注（黑药丸）+ 更多；右：竖版封面图；
+ *   三列数据缩小排在标签行下方；底部长简介。
  */
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,9 +14,12 @@ import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { theme } from "../../../../theme";
 import { BuyerStoreProfileView } from "./types";
+import { PLAYFAIR } from "./playfair";
 
 interface StoreProfileCardProps {
   profile: BuyerStoreProfileView;
+  /** 当前店在 Discover 已拉取的帖子条数（与 Posts tab 一致） */
+  postsCount: number;
   isFollowed: boolean;
   onFollowToggle: () => void;
   onDetailPress: () => void;
@@ -39,18 +34,10 @@ const TAG_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 const resolveTagIcon = (tag: string, index: number): keyof typeof Ionicons.glyphMap => {
   if (TAG_ICONS[tag]) return TAG_ICONS[tag];
-  // 第一个 tag 通常是城市（"上海" / "东京"）；用定位图标最直观。
   if (index === 0) return "location-outline";
   return "pricetag-outline";
 };
 
-/**
- * Compact 计数格式化 —— 把后端 `favoriteCount` / `productCount` 这类
- * 整数压成 "12.3k" / "1.2w" 节省两列宽度。
- *
- * 放在组件文件内是因为只 StoreProfileCard 一处用（其它地方计数本身就是
- * 标签字符串，由 hook 自己拼好）。如果将来有更多 view 复用，可以再提到 utils。
- */
 const formatCompactCount = (count: number): string => {
   if (count >= 10000) {
     return `${(count / 10000).toFixed(1).replace(/\.0$/, "")}w`;
@@ -61,14 +48,21 @@ const formatCompactCount = (count: number): string => {
   return String(count);
 };
 
+/** 超过约此长度时显示「更多」（与 numberOfLines 配合，减少短文案误显示） */
+const BIO_TRUNCATE_LINES = 4;
+const BIO_MORE_MIN_CHARS = 48;
+
 const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   profile,
+  postsCount,
   isFollowed,
   onFollowToggle,
   onDetailPress,
   onMorePress,
 }) => {
   const { t } = useTranslation();
+  const [bioExpanded, setBioExpanded] = useState(false);
+
   const {
     name,
     description,
@@ -81,66 +75,79 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
     longDescription,
   } = profile;
 
+  const showBioToggle = useMemo(
+    () =>
+      !!longDescription && longDescription.trim().length >= BIO_MORE_MIN_CHARS,
+    [longDescription]
+  );
+
   return (
-    <Box mx="$md" mt="$sm" mb="$sm" bg="$white" borderWidth={1} borderColor="#F0F0F0" rounded="$md" overflow="hidden">
+    <Box px="$md" pt="$xs" pb="$md" mt="$md">
       <Pressable onPress={onDetailPress}>
-        <HStack>
-          <Box style={styles.leftPane}>
-            {/* <Box style={styles.logoWrapper}> */}
-              {/* 商家在 profile_config.logoImage 配了图就用图；没有就落回
-                  店名首字母占位。这是 Phase 3 把 StoreProfileCard 接上
-                  后端配置的核心改动之一（老逻辑只有 logoLetter 分支）。 */}
-              {/* {logoImage ? (
-                <OptimizedImage
-                  uri={logoImage}
-                  size={ImageSize.THUMBNAIL}
-                  style={styles.logoImage}
-                  contentFit="cover"
-                  lazy
-                />
-              ) : (
-                <Text style={styles.logoText}>{logoLetter}</Text>
-              )} */}
-            {/* </Box> */}
-            <VStack flex={1} mt="$sm" pr="$xs">
-              <HStack alignItems="center" gap={6} mb={2}>
-                <Text
-                  fontSize={17}
-                  fontWeight="$bold"
-                  color="$black"
-                  numberOfLines={1}
-                  style={styles.storeName}
+        <HStack alignItems="flex-start" style={styles.topRow}>
+          <VStack flex={1} style={styles.centerBlock} minWidth={0}>
+            <HStack alignItems="flex-start" justifyContent="space-between">
+              <VStack flex={1} pr="$2" minWidth={0}>
+                <HStack alignItems="center" flexWrap="wrap" gap={6}>
+                  <Text style={styles.storeName} numberOfLines={2}>
+                    {name}
+                  </Text>
+                </HStack>
+                {!!description && (
+                  <Text style={styles.tagline} numberOfLines={2}>
+                    {description}
+                  </Text>
+                )}
+              </VStack>
+              <HStack alignItems="center" gap={6} style={styles.actions}>
+                <Pressable
+                  onPress={(e: { stopPropagation?: () => void }) => {
+                    e?.stopPropagation?.();
+                    onFollowToggle();
+                  }}
+                  style={[
+                    styles.followButton,
+                    isFollowed ? styles.followButtonFollowed : styles.followButtonIdle,
+                  ]}
                 >
-                  {name}
-                </Text>
-                <Box style={styles.typeBadge}>
-                  <Text style={styles.typeBadgeText}>{t("discover.buyerStoreBadge")}</Text>
-                </Box>
-              </HStack>
-              <Text fontSize={12} color="$gray300" numberOfLines={2} lineHeight={16}>
-                {description}
-              </Text>
-              <HStack mt="$sm" flexWrap="wrap" gap={6}>
-                {tags.map((tag, idx) => (
-                  <HStack
-                    key={`${tag}-${idx}`}
-                    alignItems="center"
-                    gap={3}
-                    style={styles.tagChip}
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      isFollowed ? styles.followButtonTextFollowed : styles.followButtonTextIdle,
+                    ]}
                   >
+                    {isFollowed ? t("discover.buyerFollowedBtn") : t("discover.buyerFollowBtn")}
+                  </Text>
+                </Pressable>
+              </HStack>
+            </HStack>
+
+            {tags.length > 0 && (
+              <HStack mt={6} flexWrap="wrap" gap={2}>
+                {tags.map((tag, idx) => (
+                  <HStack key={`${tag}-${idx}`} alignItems="center" gap={4} style={styles.tagChip}>
                     <Ionicons
                       name={resolveTagIcon(tag, idx)}
-                      size={10}
+                      size={11}
                       color={theme.colors.gray300}
                     />
                     <Text style={styles.tagText}>{tag}</Text>
                   </HStack>
                 ))}
               </HStack>
-            </VStack>
-          </Box>
+            )}
 
-          <Box style={styles.rightPane}>
+            <HStack style={styles.statsRow}>
+              <StatColumn value={formatCompactCount(followerCount)} label={t("discover.buyerStatFollowers")} />
+              <StatColumn
+                value={formatCompactCount(productCount)}
+                label={t("discover.buyerStatProducts")}
+              />
+              <StatColumn value={formatCompactCount(postsCount)} label={t("discover.buyerStatPosts")} />
+            </HStack>
+          </VStack>
+
+          <Box style={styles.heroWrap}>
             {coverImage ? (
               <OptimizedImage
                 uri={coverImage}
@@ -152,67 +159,33 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
             ) : (
               <Box style={[styles.coverImage, styles.coverFallback]} />
             )}
-
-            <Box style={styles.overlayControls}>
-              <Pressable
-                onPress={(e: any) => {
-                  e?.stopPropagation?.();
-                  onFollowToggle();
-                }}
-                style={[
-                  styles.followButton,
-                  isFollowed
-                    ? styles.followButtonFollowed
-                    : styles.followButtonIdle,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.followButtonText,
-                    isFollowed
-                      ? styles.followButtonTextFollowed
-                      : styles.followButtonTextIdle,
-                  ]}
-                >
-                  {isFollowed ? t("discover.buyerFollowedBtn") : t("discover.buyerFollowBtn")}
-                </Text>
-              </Pressable>
-              {/* <Pressable
-                onPress={(e: any) => {
-                  e?.stopPropagation?.();
-                  onMorePress();
-                }}
-                style={styles.moreButton}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Ionicons name="ellipsis-horizontal" size={16} color={theme.colors.white} />
-              </Pressable> */}
-            </Box>
           </Box>
         </HStack>
       </Pressable>
 
-      {/* 双列 stats：粉丝（关注本店人数）+ 商品（已上架数）。
-          原来的 3 列里"关注 / 帖子"两个语义对买手店 profile 卡片没有意义
-          （店铺不会去关注其他用户、也不发 post），并且当时填的是写死的 0。
-          砍成 2 列后版面更简洁，且全是真实数据。 */}
-      <HStack style={styles.statsRow}>
-        <StatColumn
-          value={formatCompactCount(followerCount)}
-          label={t("discover.buyerStatFollowers")}
-        />
-        <Box style={styles.statsDivider} />
-        <StatColumn
-          value={formatCompactCount(productCount)}
-          label={t("discover.buyerStatProducts")}
-        />
-      </HStack>
-
-      <Box px="$md" pb="$md">
-        <Text fontSize={12} color="$gray300" lineHeight={18}>
-          {longDescription}
-        </Text>
-      </Box>
+      {!!longDescription && (
+        <Box mt="$2">
+          <Text
+            style={styles.bio}
+            selectable
+            numberOfLines={bioExpanded || !showBioToggle ? undefined : BIO_TRUNCATE_LINES}
+          >
+            {longDescription}
+          </Text>
+          {showBioToggle && (
+            <Pressable
+              onPress={() => setBioExpanded((e) => !e)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              mt="$1"
+              alignSelf="flex-start"
+            >
+              <Text style={styles.bioMoreText}>
+                {bioExpanded ? t("common.less") : t("common.more")}
+              </Text>
+            </Pressable>
+          )}
+        </Box>
+      )}
     </Box>
   );
 };
@@ -227,66 +200,95 @@ const StatColumn: React.FC<{ value: string; label: string }> = ({ value, label }
 export const StoreProfileCard = React.memo(StoreProfileCardImpl);
 
 const styles = StyleSheet.create({
-  leftPane: {
-    flex: 1,
-    padding: 12,
-    paddingRight: 8,
+  topRow: {
+    gap: 12,
   },
-  rightPane: {
-    width: 140,
-    height: 170,
-    position: "relative",
-    backgroundColor: theme.colors.gray100,
-  },
-  logoWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: theme.colors.gray50,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.colors.black,
-    letterSpacing: 1,
-  },
-  logoImage: {
-    width: "100%",
-    height: "100%",
+
+  centerBlock: {
+    flexShrink: 1,
   },
   storeName: {
-    maxWidth: 120,
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 16,
+    fontWeight: "600",
+    color: theme.colors.black,
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
   typeBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
-    backgroundColor: theme.colors.gray50,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    backgroundColor: theme.colors.gray100,
   },
   typeBadgeText: {
+    fontFamily: PLAYFAIR.medium,
     fontSize: 10,
     fontWeight: "600",
     color: theme.colors.gray400,
+    letterSpacing: 0.2,
+  },
+  tagline: {
+    fontFamily: PLAYFAIR.regular,
+    fontSize: 12,
+    lineHeight: 17,
+    color: theme.colors.gray300,
+    marginTop: 6,
   },
   tagChip: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: theme.colors.gray50,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
   },
   tagText: {
+    fontFamily: PLAYFAIR.medium,
     fontSize: 10,
     color: theme.colors.gray300,
     fontWeight: "500",
+  },
+  actions: {
+    flexShrink: 0,
+  },
+  followButton: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  followButtonIdle: {
+    backgroundColor: theme.colors.black,
+  },
+  followButtonFollowed: {
+    backgroundColor: theme.colors.white,
+    borderWidth: 1,
+    borderColor: theme.colors.black,
+  },
+  followButtonText: {
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  followButtonTextIdle: {
+    color: theme.colors.white,
+  },
+  followButtonTextFollowed: {
+    color: theme.colors.black,
+  },
+  moreButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray100,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: theme.colors.white,
+  },
+  heroWrap: {
+    width: 108,
+    height: 168,
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: theme.colors.gray100,
+    flexShrink: 0,
   },
   coverImage: {
     width: "100%",
@@ -295,71 +297,57 @@ const styles = StyleSheet.create({
   coverFallback: {
     backgroundColor: theme.colors.gray100,
   },
-  overlayControls: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  followButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 4,
-  },
-  followButtonIdle: {
-    backgroundColor: theme.colors.black,
-  },
-  followButtonFollowed: {
-    backgroundColor: "rgba(0,0,0,0.45)",
-    borderWidth: 1,
-    borderColor: theme.colors.white,
-  },
-  followButtonText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  followButtonTextIdle: {
-    color: theme.colors.white,
-  },
-  followButtonTextFollowed: {
-    color: theme.colors.white,
-  },
-  moreButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   statsRow: {
-    marginHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
-    alignItems: "center",
+    marginTop: 10,
+    paddingTop: 8,
+    alignItems: "stretch",
+    alignSelf: "stretch",
   },
   statsDivider: {
     width: StyleSheet.hairlineWidth,
-    height: 16,
-    backgroundColor: theme.colors.gray100,
+    alignSelf: "stretch",
+    marginVertical: 2,
+    backgroundColor: "#EAEAEA",
   },
   statCell: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
   statValue: {
-    fontSize: 15,
+    fontFamily: PLAYFAIR.bold,
+    fontSize: 14,
     fontWeight: "700",
     color: theme.colors.black,
+    letterSpacing: -0.25,
   },
   statLabel: {
-    fontSize: 11,
+    fontFamily: PLAYFAIR.regular,
+    fontSize: 10,
     color: theme.colors.gray300,
-    marginTop: 2,
+    marginTop: 3,
+    fontWeight: "400",
+  },
+  bio: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: theme.colors.gray100,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    fontFamily: PLAYFAIR.regular,
+    fontSize: 12,
+    lineHeight: 22,
+    color: theme.colors.gray300,
+    alignSelf: "stretch",
+  },
+  bioMoreText: {
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 11,
+    color: theme.colors.black,
+    textDecorationLine: "underline",
+    letterSpacing: 0.1,
   },
 });
 

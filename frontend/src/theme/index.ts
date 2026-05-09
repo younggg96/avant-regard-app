@@ -1,10 +1,3 @@
-const getFontFamily = (customFont: string) => {
-  if (__DEV__) {
-    return "Georgia";
-  }
-  return customFont;
-};
-
 export const theme = {
   colors: {
     black: "#000000",
@@ -23,48 +16,48 @@ export const theme = {
   },
   typography: {
     hero: {
-      fontFamily: getFontFamily("PlayfairDisplay-Bold"),
+      fontFamily: "PlayfairDisplay-Bold",
       fontSize: 48,
       lineHeight: 52,
       letterSpacing: -0.5,
     },
     h1: {
-      fontFamily: getFontFamily("PlayfairDisplay-Bold"),
+      fontFamily: "PlayfairDisplay-Bold",
       fontSize: 32,
       lineHeight: 38,
     },
     h2: {
-      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
+      fontFamily: "PlayfairDisplay-Regular",
       fontSize: 24,
       lineHeight: 30,
     },
     h3: {
-      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
+      fontFamily: "PlayfairDisplay-Medium",
       fontSize: 18,
       lineHeight: 24,
     },
     h4: {
-      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
+      fontFamily: "PlayfairDisplay-Medium",
       fontSize: 16,
       lineHeight: 22,
     },
     body: {
-      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
+      fontFamily: "PlayfairDisplay-Regular",
       fontSize: 16,
       lineHeight: 24,
     },
     bodySmall: {
-      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
+      fontFamily: "PlayfairDisplay-Regular",
       fontSize: 14,
       lineHeight: 20,
     },
     caption: {
-      fontFamily: getFontFamily("PlayfairDisplay-Regular"),
+      fontFamily: "PlayfairDisplay-Regular",
       fontSize: 12,
       lineHeight: 16,
     },
     button: {
-      fontFamily: getFontFamily("PlayfairDisplay-Medium"),
+      fontFamily: "PlayfairDisplay-Medium",
       fontSize: 16,
       lineHeight: 20,
       letterSpacing: 0.5,
@@ -109,3 +102,10 @@ export const theme = {
     },
   },
 };
+
+/** 与 `App.tsx` useFonts 注册名一致，便于在各处 StyleSheet 显式引用 */
+export const playfairFonts = {
+  regular: "PlayfairDisplay-Regular",
+  medium: "PlayfairDisplay-Medium",
+  bold: "PlayfairDisplay-Bold",
+} as const;

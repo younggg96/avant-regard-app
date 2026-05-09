@@ -12,6 +12,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface MediaGridProps {
   images: string[];
+  /** Width/height of the cover (first image); keeps every cell on this ratio. */
+  coverAspectRatio?: number;
   onOpenFullscreen: (index: number) => void;
 }
 
@@ -55,9 +57,10 @@ const MediaItem: React.FC<{
  */
 const SingleMediaItem: React.FC<{
   uri: string;
+  coverAspectRatio?: number;
   onOpenFullscreen: (index: number) => void;
-}> = ({ uri, onOpenFullscreen }) => {
-  const ratio = useMediaAspectRatio(uri, 4 / 5);
+}> = ({ uri, coverAspectRatio, onOpenFullscreen }) => {
+  const ratio = useMediaAspectRatio(uri, 4 / 5, coverAspectRatio);
   const wrapperStyle = [
     gridStyles.singleImageWrapperBase,
     { aspectRatio: ratio },
@@ -77,18 +80,28 @@ const SingleMediaItem: React.FC<{
 
 export const ImageGrid: React.FC<MediaGridProps> = ({
   images,
+  coverAspectRatio,
   onOpenFullscreen,
 }) => {
+  const leadRatio = useMediaAspectRatio(
+    images[0],
+    4 / 5,
+    coverAspectRatio
+  );
+
   if (images.length === 0) return null;
 
   const isSingleItem = images.length === 1;
   const isTwoItems = images.length === 2;
+  const twoImageWrapper = [gridStyles.twoImageWrapperBase, { aspectRatio: leadRatio }];
+  const gridImageWrapper = [gridStyles.gridImageWrapperBase, { aspectRatio: leadRatio }];
 
   return (
     <View style={gridStyles.container}>
       {isSingleItem ? (
         <SingleMediaItem
           uri={images[0]}
+          coverAspectRatio={coverAspectRatio}
           onOpenFullscreen={onOpenFullscreen}
         />
       ) : isTwoItems ? (
@@ -97,11 +110,12 @@ export const ImageGrid: React.FC<MediaGridProps> = ({
             <MediaItem
               key={index}
               uri={image}
-              wrapperStyle={gridStyles.twoImageWrapper}
+              wrapperStyle={twoImageWrapper}
               imageStyle={gridStyles.twoImage}
               imageSize={ImageSize.MEDIUM}
               index={index}
               onOpenFullscreen={onOpenFullscreen}
+              contentFit="contain"
             />
           ))}
         </View>
@@ -111,11 +125,12 @@ export const ImageGrid: React.FC<MediaGridProps> = ({
             <MediaItem
               key={index}
               uri={image}
-              wrapperStyle={gridStyles.gridImageWrapper}
+              wrapperStyle={gridImageWrapper}
               imageStyle={gridStyles.gridImage}
               imageSize={ImageSize.THUMBNAIL}
               index={index}
               onOpenFullscreen={onOpenFullscreen}
+              contentFit="contain"
             />
           ))}
         </View>
@@ -150,9 +165,8 @@ const gridStyles = StyleSheet.create({
     flexDirection: "row",
     gap: IMAGE_GAP,
   },
-  twoImageWrapper: {
+  twoImageWrapperBase: {
     flex: 1,
-    aspectRatio: 3 / 4,
     borderRadius: 6,
     overflow: "hidden",
   },
@@ -166,9 +180,8 @@ const gridStyles = StyleSheet.create({
     flexWrap: "wrap",
     gap: IMAGE_GAP,
   },
-  gridImageWrapper: {
+  gridImageWrapperBase: {
     width: GRID_IMAGE_WIDTH,
-    aspectRatio: 3 / 4,
     borderRadius: 4,
     overflow: "hidden",
   },

@@ -76,6 +76,10 @@ import { useTranslation } from "react-i18next";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+/** 详情轮播高度跟首图比例；放宽 clamp，避免竖图被收成 3:4 导致 contain 左右留边。 */
+const PRODUCT_HERO_RATIO_MIN = 0.38;
+const PRODUCT_HERO_RATIO_MAX = 2.25;
+
 interface RouteParams {
   productId: number;
 }
@@ -469,13 +473,11 @@ const StoreProductDetailScreen: React.FC = () => {
     [product?.images]
   );
   const hasProductImages = productImages.length > 0;
-  // Drive the carousel height from the cover (first) slide's natural aspect
-  // ratio, clamped to a pleasant range — mirrors LookbookContent so the
-  // post-detail and product-detail screens render identical hero frames.
+  // 轮播高度 = 首图宽高比（见文件顶 PRODUCT_HERO_RATIO_*）；首张 contain 填满此框。
   const coverRatio = clampAspectRatio(
     useMediaAspectRatio(productImages[0], 4 / 5),
-    3 / 4,
-    16 / 9
+    PRODUCT_HERO_RATIO_MIN,
+    PRODUCT_HERO_RATIO_MAX
   );
   const heroFrameStyle = useMemo(
     () => ({
@@ -484,8 +486,7 @@ const StoreProductDetailScreen: React.FC = () => {
     }),
     [coverRatio]
   );
-  // Inner media fills the wrapper; `contentFit="contain"` then letterboxes
-  // mismatched slides so nothing is cropped (same approach as LookbookContent).
+  // 首图 contain + 与首图一致的框高 → 无裁切；其它张 cover 填满同框（可裁切）。
   const heroMediaStyle = useMemo(
     () => ({ width: "100%" as const, height: "100%" as const }),
     []
@@ -578,13 +579,15 @@ const StoreProductDetailScreen: React.FC = () => {
                 renderItem={({ item, index }) => (
                   <Pressable
                     onPress={() => handleOpenFullscreen(index)}
-                    style={heroFrameStyle}
+                    style={[heroFrameStyle, styles.heroSlide]}
                   >
                     <OptimizedImage
                       uri={item}
                       size={ImageSize.LARGE}
                       style={heroMediaStyle}
-                      contentFit="contain"
+                      contentFit={index === 0 ? "contain" : "cover"}
+                      placeholderColor={theme.colors.white}
+                      errorColor={theme.colors.gray100}
                       lazy={index > 0}
                     />
                   </Pressable>
@@ -955,7 +958,10 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     position: "relative",
-    backgroundColor: theme.colors.black,
+    backgroundColor: theme.colors.white,
+  },
+  heroSlide: {
+    backgroundColor: theme.colors.white,
   },
   heroPlaceholder: {
     backgroundColor: theme.colors.gray100,
@@ -976,14 +982,14 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255, 255, 255, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.22)",
     marginHorizontal: 4,
   },
   dotIndicatorActive: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.black,
   },
   commentsLoading: {
     paddingVertical: 24,

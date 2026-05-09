@@ -8,12 +8,12 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Box, HStack, VStack, Pressable, Text } from "../ui";
-import { theme } from "../../theme";
+import { theme, playfairFonts } from "../../theme";
 import {
   CurrentLotteryPayload,
   levelService,
@@ -25,6 +25,23 @@ interface Props {
   /** 当前用户等级 */
   currentLevel: number;
 }
+
+const localStyles = StyleSheet.create({
+  title: {
+    fontFamily: playfairFonts.medium,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "600",
+    color: theme.colors.black,
+  },
+  status: {
+    fontFamily: playfairFonts.regular,
+    fontSize: 11,
+    lineHeight: 15,
+    color: theme.colors.gray300,
+    marginTop: 2,
+  },
+});
 
 export const MonthlyLotteryEntry: React.FC<Props> = ({
   isOwnProfile,
@@ -78,7 +95,7 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
       borderColor="$gray100"
       p="$md"
       mx="$md"
-      mt="$md"
+      mb="$md"
       onPress={() => navigation.navigate("MyLevel", { focus: "lottery" })}
     >
       <HStack alignItems="center" gap="$md">
@@ -94,16 +111,10 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
           <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
         </Box>
         <VStack flex={1}>
-          <Text fontSize={16} fontWeight="$semibold" color="$black" lineHeight={22}>
+          <Text style={localStyles.title}>
             {t("level.monthlyLottery")} · {round?.month ?? "--"}
           </Text>
-          <Text
-            fontSize={12}
-            color="$gray300"
-            lineHeight={16}
-            mt={2}
-            numberOfLines={1}
-          >
+          <Text style={localStyles.status} numberOfLines={1}>
             {statusText}
           </Text>
         </VStack>

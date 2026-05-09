@@ -43,7 +43,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   getStoreProducts,
@@ -463,6 +463,7 @@ const CategoryChip: React.FC<{
       fontSize={12}
       fontWeight={active ? "$semibold" : "$normal"}
       color={active ? "$white" : "$gray700"}
+      style={{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }}
     >
       {label}
     </Text>
@@ -516,11 +517,22 @@ const ProductCardItemImpl: React.FC<{
         )}
       </View>
       <VStack px="$sm" py="$sm" gap={3}>
-        <Text fontSize={13} fontWeight="$semibold" color="$black" numberOfLines={2}>
+        <Text
+          fontSize={13}
+          fontWeight="$semibold"
+          color="$black"
+          numberOfLines={2}
+          style={{ fontFamily: playfairFonts.medium }}
+        >
           {product.title}
         </Text>
         {!!product.brand && (
-          <Text fontSize={10} color="$gray400" numberOfLines={1}>
+          <Text
+            fontSize={10}
+            color="$gray400"
+            numberOfLines={1}
+            style={{ fontFamily: playfairFonts.regular }}
+          >
             {product.brand}
           </Text>
         )}
@@ -529,6 +541,7 @@ const ProductCardItemImpl: React.FC<{
             fontSize={13}
             fontWeight="$bold"
             color={hasDiscount ? "$error" : "$black"}
+            style={{ fontFamily: playfairFonts.bold }}
           >
             {formatPrice(
               hasDiscount
@@ -541,7 +554,10 @@ const ProductCardItemImpl: React.FC<{
             <Text
               fontSize={11}
               color="$gray300"
-              style={{ textDecorationLine: "line-through" }}
+              style={{
+                textDecorationLine: "line-through",
+                fontFamily: playfairFonts.regular,
+              }}
             >
               {formatPrice(product.priceCents, product.currency)}
             </Text>
@@ -649,6 +665,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.6,
     color: theme.colors.black,
+    fontFamily: playfairFonts.bold,
   },
   footerLoader: {
     paddingVertical: 16,

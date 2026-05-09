@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 LEVEL_RULES: List[LevelSpec] = [
     LevelSpec(
         level=1,
-        title="萌新",
+        title="Rookie",
         subtitle="迈出第一步",
         mode="AUTO",
         tasks=[
@@ -60,7 +60,7 @@ LEVEL_RULES: List[LevelSpec] = [
     ),
     LevelSpec(
         level=2,
-        title="活跃",
+        title="Head",
         subtitle="开始与社区互动",
         mode="AUTO",
         tasks=[
@@ -70,7 +70,7 @@ LEVEL_RULES: List[LevelSpec] = [
     ),
     LevelSpec(
         level=3,
-        title="探店官",
+        title="Digger",
         subtitle="解锁月度抽奖入口",
         benefit="每月参与一次专属抽奖",
         mode="AUTO",
@@ -81,7 +81,7 @@ LEVEL_RULES: List[LevelSpec] = [
     ),
     LevelSpec(
         level=4,
-        title="档案官",
+        title="Archivist",
         subtitle="达标后需 Admin 审核",
         benefit="获得免费活动门票 1 次",
         mode="AUDIT",
@@ -92,7 +92,7 @@ LEVEL_RULES: List[LevelSpec] = [
     ),
     LevelSpec(
         level=5,
-        title="荣誉官",
+        title="CONNOISSEUR",
         subtitle="仅运营人工授予",
         benefit="年度权益 (线下对接,联系运营使用)",
         mode="MANUAL",

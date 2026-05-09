@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { HStack, Pressable, Text } from "../../../../components/ui";
 import { theme } from "../../../../theme";
+import { PLAYFAIR } from "./playfair";
 
 interface SearchBarProps {
   onPress: () => void;
@@ -51,6 +52,7 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     flex: 1,
+    fontFamily: PLAYFAIR.regular,
     fontSize: 13,
     color: theme.colors.gray300,
   },

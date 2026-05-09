@@ -8,10 +8,7 @@ import { isVideoUrl } from "../../services/postService";
 import { Post } from "../PostCard";
 import { styles, SCREEN_WIDTH } from "./styles";
 import { VideoPlayer } from "./VideoPlayer";
-import {
-  useMediaAspectRatio,
-  clampAspectRatio,
-} from "../../utils/useMediaAspectRatio";
+import { useMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
 interface LookbookContentProps {
   post: Post;
@@ -29,16 +26,13 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
   onOpenFullscreen,
 }) => {
   const { t } = useTranslation();
-  // Drive the carousel height from the cover (first) slide's natural aspect
-  // ratio, clamped to a pleasant range. All slides share this height because
-  // a paginated horizontal FlatList needs a consistent viewport — mismatched
-  // slides fall back to `contentFit="contain"` so nothing is cropped. This
-  // replaces the old fixed `SCREEN_HEIGHT * 0.55` box that cover-cropped
-  // 16:9 videos into a tall portrait frame.
-  const coverRatio = clampAspectRatio(
-    useMediaAspectRatio(images[0], 4 / 5),
-    3 / 4, // tallest allowed frame (portrait 3:4)
-    16 / 9 // widest allowed frame (landscape 16:9)
+  // Viewport aspect ratio follows the first slide exactly (no clamp) so
+  // `contentFit="contain"` on the lead image never letterboxes. Later slides
+  // reuse the same frame and may show gutters if their ratio differs.
+  const coverRatio = useMediaAspectRatio(
+    images[0],
+    4 / 5,
+    post.content?.coverAspectRatio
   );
   const wrapperStyle = {
     width: SCREEN_WIDTH,

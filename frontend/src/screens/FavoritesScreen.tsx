@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    fontFamily: playfairFonts.regular,
     color: theme.colors.gray400,
     marginTop: 12,
   },
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    fontFamily: playfairFonts.medium,
     color: theme.colors.gray600,
   },
   activeTabText: {
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   },
   tabBadgeText: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    fontFamily: playfairFonts.medium,
     color: theme.colors.black,
   },
   content: {
@@ -499,14 +499,14 @@ const styles = StyleSheet.create({
   },
   itemTitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    fontFamily: playfairFonts.medium,
     color: theme.colors.black,
     flex: 1,
     marginRight: 8,
   },
   itemSubtitle: {
     fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    fontFamily: playfairFonts.regular,
     color: theme.colors.gray500,
     marginBottom: 8,
   },
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   },
   itemTimestamp: {
     fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    fontFamily: playfairFonts.regular,
     color: theme.colors.gray400,
   },
   likeButton: {
@@ -539,14 +539,14 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
+    fontFamily: playfairFonts.bold,
     color: theme.colors.black,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    fontFamily: playfairFonts.regular,
     color: theme.colors.gray500,
     textAlign: "center",
     lineHeight: 24,
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   },
   exploreButtonText: {
     fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    fontFamily: playfairFonts.medium,
     color: theme.colors.white,
   },
 });

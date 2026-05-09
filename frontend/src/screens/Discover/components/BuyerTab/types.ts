@@ -182,6 +182,11 @@ export interface BuyerStoreProfileView {
    */
   followerCount: number;
   /**
+   * 店铺「关注」数（设计稿 middle 列；例如品牌号关注的人数/同类指标）。
+   * 当前后端未返回时由 hook 填 0，仅占位与 UI 对齐。
+   */
+  followingCount: number;
+  /**
    * 该店铺已上架的商品数。来自 `getStoreProducts({...}).total`，
    * 商家未上架商品时为 0，UI 侧仍渲染"0"而不是隐藏整列。
    */

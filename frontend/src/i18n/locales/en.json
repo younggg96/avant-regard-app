@@ -79,6 +79,10 @@
     "buyerTapRetry": "Tap to retry",
     "buyerNoProducts": "No matching products",
     "buyerStayTuned": "Stay tuned for new arrivals",
+    "buyerTabProducts": "Products",
+    "buyerTabPosts": "Posts",
+    "buyerNoStorePosts": "No store posts yet",
+    "buyerNoStorePostsHint": "The store hasn't posted yet",
     "buyerUnfollowed": "Unfollowed",
     "buyerFollowSuccess": "Followed",
     "buyerMoreComingSoon": "More features coming soon",
@@ -833,7 +837,7 @@
     "tabPost": "Posts",
     "tabInfo": "Store",
     "noStorePosts": "No store posts yet",
-    "noStorePostsHint": "Tap + to publish a Lookbook as your store",
+    "noStorePostsHint": "Tap + to publish a post as your store",
     "publishStorePost": "Publish Store Post",
     "editStorePost": "Edit Store Post",
     "newStorePost": "New Post",
@@ -927,9 +931,9 @@
     "publishLookbook": "Publish Lookbook",
     "reAuditWarning": "Post will be re-reviewed after editing",
     "titleLabel": "Title",
-    "lookbookTitlePlaceholder": "Enter your Lookbook title (e.g. My 2025 Spring/Summer Collection)",
+    "lookbookTitlePlaceholder": "Enter your post title (e.g. My 2025 Spring/Summer Collection)",
     "descriptionLabel": "Description",
-    "lookbookDescPlaceholder": "Briefly describe your Lookbook inspiration or theme",
+    "lookbookDescPlaceholder": "Briefly describe your post inspiration or theme",
     "linkBrand": "Link Brand",
     "addMedia": "Add Media",
     "loadShowsFailed": "Failed to load show data",
@@ -971,7 +975,7 @@
     "coverImageSubtitle": "Free crop, 1:1, 4:3, 16:9, 9:16 supported",
     "forumTitlePlaceholder": "Post title, long titles supported",
     "forumAddHint": "Tap the + button below text blocks to add more text or images",
-    "lookbookPreview": "Lookbook Preview"
+    "lookbookPreview": "Post preview"
   },
   "interaction": {
     "title": "Messages",
@@ -1626,7 +1630,7 @@
     "levelRejected": "Rejected",
     "userNotified": "User notified",
     "grantLevelTitle": "Grant Level",
-    "grantLevelHint": "The only path to Lv5 Honor. Use for Lv1/2/3 only in special cases.",
+    "grantLevelHint": "The only path to Lv5 CONNOISSEUR. Use for Lv1/2/3 only in special cases.",
     "userId": "User ID",
     "targetLevel": "Target Level",
     "remarkOptional": "Remark (optional)",
@@ -1996,6 +2000,7 @@
     "delete": "Delete",
     "report": "Report",
     "viewReplies": "View {{count}} replies",
+    "viewMoreReplies": "View {{count}} more",
     "collapseReplies": "Collapse replies",
     "comments": "Comments ({{count}})",
     "noComments": "No comments yet, be the first to comment",
@@ -2064,11 +2069,11 @@
     "registerSuccess": "Registered! Free tickets remaining: {{remaining}}",
     "redeemFailed": "Redemption failed, please try again",
     "titles": {
-      "1": "Newcomer",
-      "2": "Active",
-      "3": "Explorer",
+      "1": "Rookie",
+      "2": "Head",
+      "3": "Digger",
       "4": "Archivist",
-      "5": "Honorary"
+      "5": "CONNOISSEUR"
     },
     "subtitles": {
       "1": "Take your first step",
@@ -2432,6 +2437,20 @@
       "llmTitle": "AI is temporarily unavailable",
       "regenLimitTitle": "Regenerate limit reached",
       "regenLimitBody": "Daily regenerate cap is 3"
+    }
+  },
+  "engagementNudge": {
+    "aiPost": {
+      "title": "Try AI Post Assistant",
+      "message": "You've been active for a while. AI can help you draft your first post faster.",
+      "cta": "Try now",
+      "later": "Maybe later"
+    },
+    "forumFollow": {
+      "title": "Follow a forum post",
+      "message": "Next time in Forum, follow one post you like so you can catch updates more easily.",
+      "cta": "Go to Forum",
+      "later": "Later"
     }
   }
 }

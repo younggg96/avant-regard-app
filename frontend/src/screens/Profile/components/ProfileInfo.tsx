@@ -72,20 +72,20 @@ export const ProfileInfo = ({
         <Pressable style={styles.avatarAddButton} onPress={onEditProfile}>
           <Ionicons name="add" size={14} color="white" />
         </Pressable>
-        {currentLevel > 0 ? (
-          <View style={{ position: "absolute", right: -6, top: -6 }}>
-            <LevelBadge
-              level={currentLevel}
-              size="sm"
-              pendingLevel={pendingLevel}
-            />
-          </View>
-        ) : null}
       </View>
     </View>
 
     <View style={styles.userNameSection}>
-      <RNText style={styles.userName}>{userInfo?.username || username || t("profile.user")}</RNText>
+      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <RNText style={styles.userName}>{userInfo?.username || username || t("profile.user")}</RNText>
+        {currentLevel > 0 ? (
+          <LevelBadge
+            level={currentLevel}
+            size="sm"
+            pendingLevel={pendingLevel}
+          />
+        ) : null}
+      </View>
       <RNText style={styles.bio} numberOfLines={2}>
         {userInfo?.bio || t("profile.editBioPlaceholder")}
       </RNText>

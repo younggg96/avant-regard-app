@@ -10,7 +10,7 @@ import React from "react";
 import { Text as RNText } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, OptimizedImage } from "../../../components/ui";
-import { theme } from "../../../theme";
+import { playfairFonts, theme } from "../../../theme";
 import { ImageSize } from "../../../utils/imageUtils";
 import type { OptionCard as OptionCardData } from "../../../services/aiPostService";
 
@@ -58,12 +58,7 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
               contentFit="contain"
             />
           ) : (
-            // 用裸 RN Text 而不是主题包装的 Text:
-            //   1. 主题 Text 默认 fontFamily = PlayfairDisplay (Latin only),
-            //      渲染中文要走系统兜底字体, baseline 计算会乱。
-            //   2. 主题 Text 默认 lineHeight = $md (16), 与这里 36px 字号严重不匹配,
-            //      CJK 字形直接被竖向裁掉 (issue: 「先 / 极 / 街 / 红」只显示半个字).
-            // 这里 lineHeight = fontSize * 1.25, 给 CJK 留够基线空间。
+            // 裸 RN Text：大字 + 显式 lineHeight，避免部分机型上主题默认行高裁切首字。
             <RNText
               style={{
                 fontSize: 36,
@@ -71,6 +66,7 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
                 fontWeight: "500",
                 color: theme.colors.gray300,
                 textAlign: "center",
+                fontFamily: playfairFonts.medium,
               }}
               allowFontScaling={false}
               numberOfLines={1}
@@ -80,11 +76,23 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
           )}
         </Box>
         <Box px="$sm" py="$sm">
-          <Text fontSize="$sm" fontWeight="$medium" color="$black" numberOfLines={1}>
+          <Text
+            fontSize="$sm"
+            fontWeight="$medium"
+            color="$black"
+            numberOfLines={1}
+            style={{ fontFamily: playfairFonts.medium }}
+          >
             {displayName}
           </Text>
           {subtitle ? (
-            <Text fontSize="$xs" color="$gray400" mt={2} numberOfLines={1}>
+            <Text
+              fontSize="$xs"
+              color="$gray400"
+              mt={2}
+              numberOfLines={1}
+              style={{ fontFamily: playfairFonts.regular }}
+            >
               {subtitle}
             </Text>
           ) : null}

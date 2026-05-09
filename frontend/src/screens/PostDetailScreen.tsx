@@ -326,6 +326,7 @@ const PostDetailScreen = () => {
             {post.type !== "OUTFIT" && images.length > 0 && (
               <ImageGrid
                 images={images}
+                coverAspectRatio={post.content?.coverAspectRatio}
                 onOpenFullscreen={handleOpenFullscreen}
               />
             )}

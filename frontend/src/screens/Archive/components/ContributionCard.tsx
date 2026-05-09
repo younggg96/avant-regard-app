@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, VStack, HStack, Pressable } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
-import { theme } from "../../../theme";
+import { playfairFonts, theme } from "../../../theme";
 import { STATUS_STYLES } from "../types";
 
 const CARD_GAP = 12;
@@ -177,17 +177,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.gray300,
     fontWeight: "400",
+    fontFamily: playfairFonts.regular,
   },
   title: {
     fontSize: 13,
     fontWeight: "600",
     color: "#1A1A1A",
     lineHeight: 18,
+    fontFamily: playfairFonts.medium,
   },
   subtitle: {
     fontSize: 11,
     color: "#999",
     marginTop: 2,
+    fontFamily: playfairFonts.regular,
   },
   rejectReasonBox: {
     backgroundColor: "#FFF5F5",
@@ -200,6 +203,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#C62828",
     lineHeight: 14,
+    fontFamily: playfairFonts.regular,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -209,10 +213,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
   },
   dateText: {
     fontSize: 10,
     color: theme.colors.gray300,
+    fontFamily: playfairFonts.regular,
   },
 });
 

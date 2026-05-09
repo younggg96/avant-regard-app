@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { theme } from "../../theme";
+import { theme, playfairFonts } from "../../theme";
 import {
   COVER_HEIGHT,
   AVATAR_SIZE,
@@ -10,6 +10,8 @@ import {
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
 } from "./constants";
+
+export const PF = playfairFonts;
 
 export const styles = StyleSheet.create({
   container: {
@@ -104,6 +106,7 @@ export const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 14,
     fontWeight: "bold",
+    fontFamily: PF.bold,
   },
   headerRightButtons: {
     flexDirection: "row",
@@ -151,6 +154,7 @@ export const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 22,
     fontWeight: "bold",
+    fontFamily: PF.bold,
   },
   avatarAddButton: {
     position: "absolute",
@@ -173,17 +177,20 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     color: theme.colors.black,
+    fontFamily: PF.bold,
   },
   userIdText: {
     fontSize: 12,
     color: theme.colors.gray400,
     marginTop: 2,
+    fontFamily: PF.regular,
   },
   bio: {
     fontSize: 14,
     color: theme.colors.gray600,
     marginTop: 4,
     lineHeight: 20,
+    fontFamily: PF.regular,
   },
   tagsContainer: {
     flexDirection: "row",
@@ -201,6 +208,7 @@ export const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     color: theme.colors.gray600,
+    fontFamily: PF.regular,
   },
   statsContainer: {
     flexDirection: "row",
@@ -217,10 +225,12 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: theme.colors.black,
+    fontFamily: PF.bold,
   },
   statLabel: {
     fontSize: 12,
     color: theme.colors.gray600,
+    fontFamily: PF.regular,
   },
   followedBrandsSection: {
     paddingBottom: 14,
@@ -237,11 +247,13 @@ export const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: theme.colors.gray400,
+    fontFamily: PF.medium,
   },
   followedBrandsCount: {
     fontSize: 12,
     fontWeight: "600",
     color: theme.colors.gray300,
+    fontFamily: PF.medium,
   },
   brandChip: {
     flexDirection: "row",
@@ -270,12 +282,14 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#FFF",
+    fontFamily: PF.bold,
   },
   brandChipName: {
     fontSize: 13,
     fontWeight: "500",
     color: theme.colors.black,
     maxWidth: 100,
+    fontFamily: PF.medium,
   },
   tabBarContainer: {
     borderBottomWidth: 1,
@@ -295,10 +309,12 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.gray600,
     fontWeight: "500",
+    fontFamily: PF.medium,
   },
   tabTextActive: {
     color: theme.colors.black,
     fontWeight: "600",
+    fontFamily: PF.medium,
   },
   tabIndicator: {
     position: "absolute",
@@ -336,8 +352,9 @@ export const contribStyles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: 13,
-    fontWeight: "500",
     color: theme.colors.gray600,
+    fontWeight: "500",
+    fontFamily: PF.medium,
   },
   filterChipTextActive: {
     color: "#FFF",
@@ -346,6 +363,7 @@ export const contribStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: theme.colors.gray400,
+    fontFamily: PF.bold,
   },
   filterChipCountActive: {
     color: "rgba(255,255,255,0.7)",
@@ -383,15 +401,18 @@ export const storeActivityStyles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: theme.colors.black,
+    fontFamily: PF.medium,
   },
   storeLocation: {
     fontSize: 12,
     color: theme.colors.gray400,
+    fontFamily: PF.regular,
   },
   commentContent: {
     fontSize: 13,
     color: theme.colors.gray600,
     lineHeight: 18,
+    fontFamily: PF.regular,
   },
   metaRow: {
     flexDirection: "row",
@@ -402,6 +423,7 @@ export const storeActivityStyles = StyleSheet.create({
   metaText: {
     fontSize: 11,
     color: theme.colors.gray400,
+    fontFamily: PF.regular,
   },
   ratingRow: {
     flexDirection: "row",
@@ -412,5 +434,6 @@ export const storeActivityStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#F5A623",
+    fontFamily: PF.medium,
   },
 });

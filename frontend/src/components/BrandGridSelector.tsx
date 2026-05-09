@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { playfairFonts, theme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -43,11 +43,20 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
   return (
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
-        <Text color="$gray600" fontSize="$sm">
+        <Text
+          color="$gray600"
+          fontSize="$sm"
+          style={{ fontFamily: playfairFonts.regular }}
+        >
           {displayLabel}
         </Text>
         {required && (
-          <Text color="$red500" fontSize="$sm" ml="$xs">
+          <Text
+            color="$red500"
+            fontSize="$sm"
+            ml="$xs"
+            style={{ fontFamily: playfairFonts.regular }}
+          >
             *
           </Text>
         )}
@@ -72,10 +81,10 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               ) : (
                 <View style={styles.brandPlaceholder}>
                   <Text
-                    fontFamily="PlayfairDisplay-Bold"
                     fontSize={16}
                     color="$gray400"
                     textAlign="center"
+                    style={{ fontFamily: playfairFonts.bold }}
                   >
                     {brand.name.substring(0, 2).toUpperCase()}
                   </Text>
@@ -83,19 +92,22 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               )}
               <View style={styles.brandInfo}>
                 <Text
-                  fontFamily="PlayfairDisplay-Bold"
                   fontSize={11}
                   color="$black"
                   numberOfLines={1}
-                  style={{ textAlign: "center" }}
+                  style={{ textAlign: "center", fontFamily: playfairFonts.bold }}
                 >
                   {brand.name}
                 </Text>
                 {brand.category && (
                   <Text
-                    fontFamily="PlayfairDisplay-Regular"
                     fontSize={10}
-                    style={{ color: theme.colors.gray500, marginTop: 2, textAlign: "center" }}
+                    style={{
+                      color: theme.colors.gray500,
+                      marginTop: 2,
+                      textAlign: "center",
+                      fontFamily: playfairFonts.regular,
+                    }}
                     numberOfLines={1}
                   >
                     {brand.category}
@@ -136,7 +148,12 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               size={28}
               color={theme.colors.gray400}
             />
-            <Text color="$gray400" fontSize="$xs" mt="$xs">
+            <Text
+              color="$gray400"
+              fontSize="$xs"
+              mt="$xs"
+              style={{ fontFamily: playfairFonts.regular }}
+            >
               {t("brandSelector.addBrand")}
             </Text>
           </Pressable>

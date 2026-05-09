@@ -38,12 +38,13 @@ const parseContent = (description: string | undefined): ContentBlock[] | null =>
   return null;
 };
 
-// The content blocks span the full screen width (see `blockImageContainer`
-// negative margin). Height is derived from each block's natural aspect ratio
-// so 16:9 videos / 3:4 photos all display uncropped at their true shape.
-const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => {
-  const ratio = useMediaAspectRatio(uri, 16 / 9);
-  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / ratio };
+// Full-bleed media blocks share the first media's aspect ratio so the lead
+// asset has no letterboxing under `contain`; later assets may pillar/letterbox.
+const VideoBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
+  uri,
+  frameRatio,
+}) => {
+  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / frameRatio };
   return (
     <VideoPlayer
       uri={uri}
@@ -54,12 +55,11 @@ const VideoBlockRenderer: React.FC<{ uri: string }> = ({ uri }) => {
   );
 };
 
-const ImageBlockRenderer: React.FC<{ uri: string; isForumPost?: boolean }> = ({
+const ImageBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
   uri,
-  isForumPost,
+  frameRatio,
 }) => {
-  const ratio = useMediaAspectRatio(uri, isForumPost ? 1 : 16 / 9);
-  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / ratio };
+  const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / frameRatio };
   return (
     <View style={[contentStyles.blockImageContainer, mediaSize]}>
       <OptimizedImage
@@ -73,7 +73,10 @@ const ImageBlockRenderer: React.FC<{ uri: string; isForumPost?: boolean }> = ({
   );
 };
 
-const ContentBlockRenderer: React.FC<{ block: ContentBlock; isForumPost?: boolean }> = ({ block, isForumPost }) => {
+const ContentBlockRenderer: React.FC<{
+  block: ContentBlock;
+  frameRatio: number;
+}> = ({ block, frameRatio }) => {
   if (block.type === "text") {
     if (!block.content.trim()) return null;
     return (
@@ -89,11 +92,11 @@ const ContentBlockRenderer: React.FC<{ block: ContentBlock; isForumPost?: boolea
   }
 
   if (block.type === "video" || (block.type === "image" && isVideoUrl(block.content))) {
-    return <VideoBlockRenderer uri={block.content} />;
+    return <VideoBlockRenderer uri={block.content} frameRatio={frameRatio} />;
   }
 
   if (block.type === "image") {
-    return <ImageBlockRenderer uri={block.content} isForumPost={isForumPost} />;
+    return <ImageBlockRenderer uri={block.content} frameRatio={frameRatio} />;
   }
 
   return null;
@@ -108,9 +111,33 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
     [post.content?.description]
   );
 
+  const firstMediaUri = useMemo(() => {
+    if (!contentBlocks) return undefined;
+    for (const b of contentBlocks) {
+      if (b.type === "video" || b.type === "image") {
+        const c = b.content?.trim();
+        if (c) return c;
+      }
+    }
+    return undefined;
+  }, [contentBlocks]);
+
   // 判断是否使用块格式
   const isBlockFormat = contentBlocks !== null;
   const isForumPost = !!post.communityName;
+
+  const firstMediaKnownRatio =
+    firstMediaUri &&
+    post.content?.images?.[0] === firstMediaUri &&
+    typeof post.content?.coverAspectRatio === "number"
+      ? post.content.coverAspectRatio
+      : undefined;
+
+  const frameRatio = useMediaAspectRatio(
+    firstMediaUri,
+    isForumPost ? 1 : 16 / 9,
+    firstMediaKnownRatio
+  );
 
   return (
     <VStack style={contentStyles.container}>
@@ -129,7 +156,11 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
         // 块格式：渲染每个内容块
         <VStack style={contentStyles.blocksContainer}>
           {contentBlocks.map((block) => (
-            <ContentBlockRenderer key={block.id} block={block} isForumPost={isForumPost} />
+            <ContentBlockRenderer
+              key={block.id}
+              block={block}
+              frameRatio={frameRatio}
+            />
           ))}
         </VStack>
       ) : (

@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import {
   Animated,
-  ScrollView as RNScrollView,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   Linking,
   StatusBar,
+  View,
 } from "react-native";
+import PagerView, {
+  type PagerViewOnPageScrollEvent,
+  type PagerViewOnPageSelectedEvent,
+} from "react-native-pager-view";
 import Reanimated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
@@ -18,7 +20,7 @@ import { getUnreadCount } from "../../services/notificationService";
 import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
 import { userInfoService, UserInfo } from "../../services/userInfoService";
 import { TabType } from "./types";
-import { SCREEN_WIDTH, TAB_INDEX_MAP } from "./constants";
+import { TAB_INDEX_MAP } from "./constants";
 import { styles } from "./styles";
 import { SkeletonPostCard, useSkeletonAnimation } from "./components/SkeletonPostCard";
 import { DiscoverHeader } from "./components/DiscoverHeader";
@@ -27,17 +29,48 @@ import { TabContent } from "./components/TabContent";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 
+/** 横向页顺序必须与 `TAB_INDEX_MAP` 一致（论坛 / 推荐 / 买手店 / 关注）。 */
+const TAB_PAGES = ["forum", "recommend", "buyer", "following"] as const satisfies readonly TabType[];
+
 const RECOMMEND_TAB_DOUBLE_TAP_MS = 700;
 
-// 骨架屏 Header 占位（匹配 DiscoverHeader 布局）
+/** 稳定在「当前 ±1」页的 React 挂载量，卸载远处 Tab 的重列表。 */
+const neighborMountSet = (center: number): Set<number> => {
+  const n = new Set<number>();
+  for (let i = center - 1; i <= center + 1; i++) {
+    if (i >= 0 && i < TAB_PAGES.length) n.add(i);
+  }
+  return n;
+};
+
+const SkeletonTabBar: React.FC<{
+  opacity: Animated.AnimatedInterpolation<number>;
+}> = ({ opacity }) => (
+  <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
+    <HStack justifyContent="center" alignItems="center" py="$xs">
+      {[0, 1, 2, 3].map((i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 44,
+            height: 18,
+            borderRadius: 4,
+            backgroundColor: "#e5e5e5",
+            opacity,
+            marginHorizontal: 14,
+          }}
+        />
+      ))}
+    </HStack>
+  </Box>
+);
+
 const SkeletonHeader: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
 }> = ({ opacity }) => (
   <Box bg="$white" px="$md" pt="$sm" pb="$md">
     <VStack space="sm">
-      {/* 第一行：Logo + 头像 + 通知 */}
       <HStack alignItems="center" justifyContent="space-between">
-        {/* 左侧 Logo 骨架 */}
         <Animated.View
           style={{
             width: 140,
@@ -47,9 +80,7 @@ const SkeletonHeader: React.FC<{
             opacity,
           }}
         />
-        {/* 右侧：头像 + 通知图标骨架 */}
         <HStack alignItems="center" space="md">
-          {/* 头像骨架 - 圆形 */}
           <Animated.View
             style={{
               width: 32,
@@ -59,7 +90,6 @@ const SkeletonHeader: React.FC<{
               opacity,
             }}
           />
-          {/* 通知图标骨架 */}
           <Animated.View
             style={{
               width: 32,
@@ -71,7 +101,6 @@ const SkeletonHeader: React.FC<{
           />
         </HStack>
       </HStack>
-      {/* 第二行：搜索框骨架 */}
       <Animated.View
         style={{
           height: 40,
@@ -84,65 +113,30 @@ const SkeletonHeader: React.FC<{
   </Box>
 );
 
-// 骨架屏 Tab 栏占位
-const SkeletonTabBar: React.FC<{
-  opacity: Animated.AnimatedInterpolation<number>;
-}> = ({ opacity }) => (
-  <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
-    <HStack justifyContent="center" alignItems="center" py="$xs">
-      <Animated.View
-        style={{
-          width: 40,
-          height: 20,
-          borderRadius: 4,
-          backgroundColor: "#e5e5e5",
-          opacity,
-          marginHorizontal: 20,
-        }}
-      />
-      <Animated.View
-        style={{
-          width: 40,
-          height: 20,
-          borderRadius: 4,
-          backgroundColor: "#e5e5e5",
-          opacity,
-          marginHorizontal: 20,
-        }}
-      />
-      <Animated.View
-        style={{
-          width: 40,
-          height: 20,
-          borderRadius: 4,
-          backgroundColor: "#e5e5e5",
-          opacity,
-          marginHorizontal: 20,
-        }}
-      />
-    </HStack>
-  </Box>
-);
-
 /**
- * 发现页主组件
+ * 首页：DiscoverHeader（Logo + 搜索）+ 四 Tab；横向分页用 `react-native-pager-view`。
+ *
+ * 性能：`mountedPages` 仅挂载当前 Tab ±1。更换/安装本依赖后需重新 `expo run:ios` /
+ * `expo run:android` 以链接原生 RNCViewPager。
  */
 const DiscoverScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<TabType>("recommend");
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const totalInteractionUnread = unreadNotificationCount + unreadChatCount;
   const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
+
+  const [pageIndex, setPageIndex] = useState<number>(TAB_INDEX_MAP.recommend);
+  const [mountedPages, setMountedPages] = useState(() => neighborMountSet(TAB_INDEX_MAP.recommend));
   const [recommendScrollToTopSignal, setRecommendScrollToTopSignal] = useState(0);
 
-  // 滑动视图引用
-  const scrollViewRef = useRef<RNScrollView>(null);
-  const hasInitialScrolled = useRef(false);
   const lastRecommendTabPressAt = useRef(0);
+  const pagerRef = useRef<PagerView>(null);
 
-  // 数据 Hook
+  const activeTab = TAB_PAGES[pageIndex];
+
   const {
     recommendPosts,
     forumPosts,
@@ -162,32 +156,14 @@ const DiscoverScreen: React.FC = () => {
     recommendLoadingMore,
   } = useDiscoverData();
 
-  // Header 动画 Hook（reanimated 版本，在 UI 线程驱动 height + opacity，
-  // 避免冷启动首次下滑时和滚动事件、图片解码在 JS 线程互相抢占）
   const { headerAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
 
-  // Sync refreshing state → header animation before paint so the very first
-  // scroll event after a refresh-start already sees the suppression flag.
   useLayoutEffect(() => {
     notifyRefreshing(refreshing);
   }, [refreshing, notifyRefreshing]);
 
-  // 骨架屏动画
   const { skeletonOpacity } = useSkeletonAnimation();
 
-  // 获取当前用户详细信息。
-  //
-  // Cold-start note: `user.avatar` from the auth store is already good
-  // enough to paint the header; this fetch only fills in title/bio that
-  // we don't display on the Discover header anyway. Push it 2s out so
-  // its response + `setState` doesn't land inside the first-paint window
-  // of the masonry feed.
-  //
-  // Race protection: `cancelled` flag guards the setState so that if
-  // `user.userId` switches (sign-out / account switch) while the async
-  // `getUserInfo` is in flight, the stale response from the previous
-  // user cannot overwrite the current user's state. `clearTimeout` alone
-  // only catches the case where the user id changes within the first 2s.
   useEffect(() => {
     if (!user?.userId) return;
     const currentUserId = user.userId;
@@ -208,7 +184,6 @@ const DiscoverScreen: React.FC = () => {
     };
   }, [user?.userId]);
 
-  // 获取未读消息数量
   const fetchUnreadCount = useCallback(async () => {
     try {
       const count = await getUnreadCount();
@@ -224,15 +199,6 @@ const DiscoverScreen: React.FC = () => {
     }
   }, []);
 
-  // 页面聚焦时刷新未读消息数。
-  //
-  // Cold-start budget: the very first `useFocusEffect` pass fires while
-  // the recommend feed is still decoding its first screen of images. Two
-  // HTTP requests + their `setState` landing in that window visibly drops
-  // FPS. Delay the first focus by 2s so the first-paint budget belongs to
-  // the feed alone; subsequent focuses (user switching back from another
-  // tab) fire immediately — the badge is more interesting then, and the
-  // Discover tree is already warm.
   const hasUnreadBootstrappedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
@@ -248,109 +214,88 @@ const DiscoverScreen: React.FC = () => {
     }, [fetchUnreadCount])
   );
 
-  // 初始化时滚动到推荐 tab —— 用 TAB_INDEX_MAP 而不是字面量 1，避免
-  // 以后再调整 Tab 顺序（比如把买手店挪到最左侧）时这里忘记同步更新。
-  useEffect(() => {
-    if (isInitialized && !hasInitialScrolled.current) {
-      hasInitialScrolled.current = true;
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({
-          x: TAB_INDEX_MAP.recommend * SCREEN_WIDTH,
-          animated: false,
-        });
-      }, 0);
-    }
-  }, [isInitialized]);
+  const augmentMountFromScrollFraction = useCallback((position: number, offset: number) => {
+    const p = position + offset;
+    const lo = Math.max(0, Math.min(TAB_PAGES.length - 1, Math.floor(p)));
+    const hi = Math.max(0, Math.min(TAB_PAGES.length - 1, Math.ceil(p)));
+    setMountedPages((prev) => {
+      if (prev.has(lo) && prev.has(hi)) return prev;
+      const n = new Set(prev);
+      n.add(lo);
+      n.add(hi);
+      return n;
+    });
+  }, []);
 
-  // 处理搜索按钮点击
-  const handleSearchPress = useCallback(() => {
-    (navigation.navigate as any)("Search");
-  }, [navigation]);
+  const onPageScroll = useCallback(
+    (e: PagerViewOnPageScrollEvent) => {
+      augmentMountFromScrollFraction(e.nativeEvent.position, e.nativeEvent.offset);
+    },
+    [augmentMountFromScrollFraction]
+  );
 
-  // 处理头像点击 - 跳转到个人主页
-  const handleAvatarPress = useCallback(() => {
-    (navigation.navigate as any)("Profile");
-  }, [navigation]);
-
-  const handleInteractionPress = useCallback(() => {
-    (navigation.navigate as any)("Main", { screen: "Interaction" });
-  }, [navigation]);
+  const onPageSelected = useCallback(
+    (e: PagerViewOnPageSelectedEvent) => {
+      const idx = Math.round(Number(e.nativeEvent.position));
+      if (idx < 0 || idx >= TAB_PAGES.length) return;
+      setPageIndex(idx);
+      setMountedPages(neighborMountSet(idx));
+      loadTabData(TAB_PAGES[idx]);
+    },
+    [loadTabData]
+  );
 
   const refreshRecommendAndScrollToTop = useCallback(() => {
-    setActiveTab("recommend");
-    scrollViewRef.current?.scrollTo({
-      x: TAB_INDEX_MAP.recommend * SCREEN_WIDTH,
-      animated: true,
-    });
-
-    // Give immediate visual feedback, then scroll again after refresh inserts
-    // newer items at the top.
-    setRecommendScrollToTopSignal((value) => value + 1);
+    pagerRef.current?.setPage(TAB_INDEX_MAP.recommend);
+    setPageIndex(TAB_INDEX_MAP.recommend);
+    setMountedPages(neighborMountSet(TAB_INDEX_MAP.recommend));
+    setRecommendScrollToTopSignal((v) => v + 1);
     void handleRefresh("recommend").finally(() => {
-      setRecommendScrollToTopSignal((value) => value + 1);
+      setRecommendScrollToTopSignal((v) => v + 1);
     });
   }, [handleRefresh]);
 
-  // 处理标签切换 - 点击 tab 时也触发懒加载。重按/双击推荐 Tab 时刷新并回到顶部。
-  const handleTabChange = useCallback((tab: TabType) => {
-    const now = Date.now();
-    const isRecommendTab = tab === "recommend";
-    const isRecommendDoubleTap =
-      isRecommendTab &&
-      now - lastRecommendTabPressAt.current <= RECOMMEND_TAB_DOUBLE_TAP_MS;
-    const isActiveRecommendRetap = isRecommendTab && activeTab === "recommend";
+  const handleTabChange = useCallback(
+    (tab: TabType) => {
+      const now = Date.now();
+      const isRecommendTab = tab === "recommend";
+      const isRecommendDoubleTap =
+        isRecommendTab && now - lastRecommendTabPressAt.current <= RECOMMEND_TAB_DOUBLE_TAP_MS;
+      const isActiveRecommendRetap = isRecommendTab && activeTab === "recommend";
 
-    lastRecommendTabPressAt.current = isRecommendTab ? now : 0;
+      lastRecommendTabPressAt.current = isRecommendTab ? now : 0;
 
-    if (isActiveRecommendRetap || isRecommendDoubleTap) {
-      refreshRecommendAndScrollToTop();
-      return;
-    }
-
-    setActiveTab(tab);
-    scrollViewRef.current?.scrollTo({
-      x: TAB_INDEX_MAP[tab] * SCREEN_WIDTH,
-      animated: true,
-    });
-    // 触发懒加载
-    loadTabData(tab);
-  }, [activeTab, loadTabData, refreshRecommendAndScrollToTop]);
-
-  // 处理滑动结束 - 切换 tab 时触发懒加载
-  const handleScrollEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
-      // 顺序与 TAB_INDEX_MAP 保持严格一致：0 forum / 1 recommend / 2 buyer / 3 following。
-      const newTab: TabType =
-        pageIndex === 0
-          ? "forum"
-          : pageIndex === 1
-          ? "recommend"
-          : pageIndex === 2
-          ? "buyer"
-          : "following";
-
-      if (newTab !== activeTab) {
-        setActiveTab(newTab);
-        // 触发懒加载：如果该 tab 尚未加载，则加载数据
-        loadTabData(newTab);
+      if (isActiveRecommendRetap || isRecommendDoubleTap) {
+        refreshRecommendAndScrollToTop();
+        return;
       }
+
+      const idx = TAB_INDEX_MAP[tab];
+      setMountedPages((prev) => {
+        const n = new Set(prev);
+        neighborMountSet(idx).forEach((i) => n.add(i));
+        return n;
+      });
+      pagerRef.current?.setPage(idx);
+      setPageIndex(idx);
+      loadTabData(tab);
     },
-    [activeTab, loadTabData]
+    [activeTab, loadTabData, refreshRecommendAndScrollToTop]
   );
 
-  // 处理刷新 — read `activeTab` through a ref so the callback identity stays
-  // stable across tab switches. Otherwise `onRefresh` changes every time
-  // `activeTab` flips, invalidating the `refreshControl` memo in every
-  // TabContent and defeating `TabContent.memo` on tab switches.
+  useEffect(() => {
+    const targetTab = route.params?.targetDiscoverTab as TabType | undefined;
+    if (!targetTab || !(targetTab in TAB_INDEX_MAP)) return;
+    handleTabChange(targetTab);
+    (navigation as any).setParams?.({ targetDiscoverTab: undefined });
+  }, [route.params?.targetDiscoverTab, handleTabChange, navigation]);
+
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
   const onRefresh = useCallback(() => {
     handleRefresh(activeTabRef.current);
   }, [handleRefresh]);
 
-  // 处理帖子点击
   const handlePostPress = useCallback(
     (post: Post) => {
       console.log("查看帖子详情:", post.id);
@@ -359,7 +304,6 @@ const DiscoverScreen: React.FC = () => {
     [navigation]
   );
 
-  // 处理作者点击 — use refs to avoid depending on entire post arrays
   const recommendPostsRef = useRef(recommendPosts);
   recommendPostsRef.current = recommendPosts;
   const forumPostsRef = useRef(forumPosts);
@@ -385,7 +329,6 @@ const DiscoverScreen: React.FC = () => {
     [navigation, userInfoCache]
   );
 
-  // 买手店 Tab 专用导航：选中的店铺卡片 / 分类入口 / 单品全部走 navigation
   const handleBuyerStorePress = useCallback(
     (storeId: string) => {
       (navigation.navigate as any)("StoreDetail", { storeId });
@@ -393,16 +336,10 @@ const DiscoverScreen: React.FC = () => {
     [navigation]
   );
 
-  // 顶部横向选择条末尾"查看全部"入口：跳到 AllBuyerStoresScreen。
-  // 这个回调独立出来的目的是让 BuyerTab 内部不感知具体路由名，只认
-  // "我要看全部"这个语义，后续如果换成 Modal/BottomSheet 也能原地替换。
   const handleOpenAllBuyerStores = useCallback(() => {
     (navigation.navigate as any)("AllBuyerStores");
   }, [navigation]);
 
-  // Phase 4：入口卡片（分类 / 折扣 / 新品）分流到 StoreProductList。
-  // 这里单纯做一次 `navigate(name, params)` 转发，业务语义（mode /
-  // categoryId）已经在 BuyerTab 里解释完毕，不再二次翻译。
   const handleOpenProductList = useCallback(
     (payload: {
       storeId: string;
@@ -417,7 +354,6 @@ const DiscoverScreen: React.FC = () => {
 
   const handleBuyerProductPress = useCallback(
     (product: { realProductId: number }) => {
-      // 买手店 Tab 现在只展示商家真实上架的单品（去 mock 后），必定有 realProductId。
       (navigation.navigate as any)("StoreProductDetail", {
         productId: product.realProductId,
       });
@@ -425,7 +361,13 @@ const DiscoverScreen: React.FC = () => {
     [navigation]
   );
 
-  // 处理 Banner 点击
+  const handleBuyerPostPress = useCallback(
+    (postId: number) => {
+      (navigation.navigate as any)("PostDetail", { postId });
+    },
+    [navigation]
+  );
+
   const handleBannerPress = useCallback(
     (banner: Banner) => {
       console.log("Banner 点击:", banner.linkType, banner.linkValue);
@@ -462,7 +404,108 @@ const DiscoverScreen: React.FC = () => {
     [navigation]
   );
 
-  // 加载中状态（骨架屏）
+  const handleSearchPress = useCallback(() => {
+    (navigation.navigate as any)("Search");
+  }, [navigation]);
+
+  const handleAvatarPress = useCallback(() => {
+    (navigation.navigate as any)("Profile");
+  }, [navigation]);
+
+  const handleInteractionPress = useCallback(() => {
+    (navigation.navigate as any)("Main", { screen: "Interaction" });
+  }, [navigation]);
+
+  const renderPageSlot = (tab: TabType, index: number) => {
+    if (!mountedPages.has(index)) {
+      return <View style={{ flex: 1 }} />;
+    }
+
+    const isFocused = pageIndex === index;
+
+    switch (tab) {
+      case "forum":
+        return (
+          <TabContent
+            tab="forum"
+            tabPosts={forumPosts}
+            banners={banners}
+            communities={communities}
+            error={error}
+            refreshing={refreshing}
+            tabLoading={tabLoading.forum}
+            tabLoaded={tabLoaded.forum}
+            isActive={isFocused}
+            onRefresh={onRefresh}
+            onScroll={handleVerticalScroll}
+            onPostPress={handlePostPress}
+            onAuthorPress={handleAuthorPress}
+            onLike={handleLike}
+            onBannerPress={handleBannerPress}
+          />
+        );
+      case "recommend":
+        return (
+          <TabContent
+            tab="recommend"
+            tabPosts={recommendPosts}
+            banners={banners}
+            communities={communities}
+            error={error}
+            refreshing={refreshing}
+            tabLoading={tabLoading.recommend}
+            tabLoaded={tabLoaded.recommend}
+            isActive={isFocused}
+            onRefresh={onRefresh}
+            onScroll={handleVerticalScroll}
+            onPostPress={handlePostPress}
+            onAuthorPress={handleAuthorPress}
+            onLike={handleLike}
+            onBannerPress={handleBannerPress}
+            onEndReached={loadMoreRecommend}
+            loadingMore={recommendLoadingMore}
+            scrollToTopSignal={recommendScrollToTopSignal}
+          />
+        );
+      case "buyer":
+        return (
+          <TabContent
+            tab="buyer"
+            isActive={isFocused}
+            onScroll={handleVerticalScroll}
+            onSearchPress={handleSearchPress}
+            onStorePress={handleBuyerStorePress}
+            onProductPress={handleBuyerProductPress}
+            onPostPress={handleBuyerPostPress}
+            onOpenAllStores={handleOpenAllBuyerStores}
+            onOpenProductList={handleOpenProductList}
+          />
+        );
+      case "following":
+        return (
+          <TabContent
+            tab="following"
+            tabPosts={followingPosts}
+            banners={banners}
+            communities={communities}
+            error={error}
+            refreshing={refreshing}
+            tabLoading={tabLoading.following}
+            tabLoaded={tabLoaded.following}
+            isActive={isFocused}
+            onRefresh={onRefresh}
+            onScroll={handleVerticalScroll}
+            onPostPress={handlePostPress}
+            onAuthorPress={handleAuthorPress}
+            onLike={handleLike}
+            onBannerPress={handleBannerPress}
+          />
+        );
+      default:
+        return <View style={{ flex: 1 }} />;
+    }
+  };
+
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -499,13 +542,11 @@ const DiscoverScreen: React.FC = () => {
     );
   }
 
-  // 获取用户头像URL
   const userAvatarUrl = currentUserInfo?.avatarUrl || user?.avatar;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" />
-      {/* 顶部栏 - Logo视频 + 头像 + 通知 + 搜索框（滚动时可收起） */}
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
         <DiscoverHeader
           avatar={userAvatarUrl}
@@ -515,91 +556,25 @@ const DiscoverScreen: React.FC = () => {
           onInteractionPress={handleInteractionPress}
         />
       </Reanimated.View>
+      <DiscoverTabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* Tab 栏 - 居中样式 */}
-      <DiscoverTabBar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-      />
-
-      {/* 水平滑动容器 */}
-      <RNScrollView
-        ref={scrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScrollEnd}
+      {/* @ts-expect-error RNC codegen typings omit `children`; runtime supports pages. */}
+      <PagerView
+        ref={pagerRef}
         style={{ flex: 1 }}
+        initialPage={TAB_INDEX_MAP.recommend}
+        keyboardDismissMode="on-drag"
+        scrollEnabled
+        offscreenPageLimit={1}
+        onPageScroll={onPageScroll}
+        onPageSelected={onPageSelected}
       >
-        <TabContent
-          tab="forum"
-          tabPosts={forumPosts}
-          banners={banners}
-          communities={communities}
-          error={error}
-          refreshing={refreshing}
-          tabLoading={tabLoading.forum}
-          tabLoaded={tabLoaded.forum}
-          isActive={activeTab === "forum"}
-          onRefresh={onRefresh}
-          onScroll={handleVerticalScroll}
-          onPostPress={handlePostPress}
-          onAuthorPress={handleAuthorPress}
-          onLike={handleLike}
-          onBannerPress={handleBannerPress}
-        />
-        <TabContent
-          tab="recommend"
-          tabPosts={recommendPosts}
-          banners={banners}
-          communities={communities}
-          error={error}
-          refreshing={refreshing}
-          tabLoading={tabLoading.recommend}
-          tabLoaded={tabLoaded.recommend}
-          isActive={activeTab === "recommend"}
-          onRefresh={onRefresh}
-          onScroll={handleVerticalScroll}
-          onPostPress={handlePostPress}
-          onAuthorPress={handleAuthorPress}
-          onLike={handleLike}
-          onBannerPress={handleBannerPress}
-          onEndReached={loadMoreRecommend}
-          loadingMore={recommendLoadingMore}
-          scrollToTopSignal={recommendScrollToTopSignal}
-        />
-        {/* 买手店 Tab —— 统一走 <TabContent tab="buyer" />，内部 dispatcher
-            会 delegate 到 BuyerTabContent 子组件。`isActive` 是懒加载开关，
-            避免冷启动瞬间和推荐 Feed 抢同一批 HTTP slot。 */}
-        <TabContent
-          tab="buyer"
-          isActive={activeTab === "buyer"}
-          onScroll={handleVerticalScroll}
-          onSearchPress={handleSearchPress}
-          onStorePress={handleBuyerStorePress}
-          onProductPress={handleBuyerProductPress}
-          onOpenAllStores={handleOpenAllBuyerStores}
-          onOpenProductList={handleOpenProductList}
-        />
-        <TabContent
-          tab="following"
-          tabPosts={followingPosts}
-          banners={banners}
-          communities={communities}
-          error={error}
-          refreshing={refreshing}
-          tabLoading={tabLoading.following}
-          tabLoaded={tabLoaded.following}
-          isActive={activeTab === "following"}
-          onRefresh={onRefresh}
-          onScroll={handleVerticalScroll}
-          onPostPress={handlePostPress}
-          onAuthorPress={handleAuthorPress}
-          onLike={handleLike}
-          onBannerPress={handleBannerPress}
-        />
-      </RNScrollView>
+        {TAB_PAGES.map((tab, index) => (
+          <View key={tab} style={{ flex: 1 }} collapsable={false}>
+            {renderPageSlot(tab, index)}
+          </View>
+        ))}
+      </PagerView>
     </SafeAreaView>
   );
 };
