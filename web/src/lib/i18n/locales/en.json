@@ -410,10 +410,10 @@
     "taskTarget": "Target {{target}}",
     "benefit": "Benefit",
     "titles": {
-      "1": "Rookie",
-      "2": "Head",
-      "3": "Digger",
-      "4": "Archivist",
+      "1": "ROOKIE",
+      "2": "HEAD",
+      "3": "DIGGER",
+      "4": "ARCHIVIST",
       "5": "CONNOISSEUR"
     },
     "subtitles": {
@@ -1611,5 +1611,19 @@
     "daysAgo": "{{count}} days ago",
     "monthsAgo": "{{count}} mo ago",
     "yearsAgo": "{{count}} yr ago"
+  },
+  "engagementNudge": {
+    "aiPost": {
+      "title": "Try AI Post Assistant",
+      "message": "AI Post is on iOS — a quick Q&A flow drafts your first outfit/collection share.",
+      "cta": "See iOS App",
+      "later": "Maybe later"
+    },
+    "forumFollow": {
+      "title": "Follow a forum post",
+      "message": "Pick a post you like and follow it — replies and updates will be easier to catch later.",
+      "cta": "Go to Forum",
+      "later": "Later"
+    }
   }
 }

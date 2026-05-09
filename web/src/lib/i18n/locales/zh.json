@@ -410,11 +410,11 @@
     "taskTarget": "达标 {{target}}",
     "benefit": "权益",
     "titles": {
-      "1": "Rookie",
-      "2": "Head",
-      "3": "Digger",
-      "4": "Archivist",
-      "5": "CONNOISSEUR"
+      "1": "新生",
+      "2": "内行",
+      "3": "挖手",
+      "4": "立档人",
+      "5": "大师"
     },
     "subtitles": {
       "1": "迈出第一步",
@@ -1611,5 +1611,19 @@
     "daysAgo": "{{count}} 天前",
     "monthsAgo": "{{count}} 个月前",
     "yearsAgo": "{{count}} 年前"
+  },
+  "engagementNudge": {
+    "aiPost": {
+      "title": "试试 AI 发帖助手",
+      "message": "AI 发帖目前在 iOS App 上, 几步问答就能帮你写出第一篇穿搭/收藏分享。",
+      "cta": "了解 iOS App",
+      "later": "稍后再说"
+    },
+    "forumFollow": {
+      "title": "去关注一个论坛帖子",
+      "message": "找到一篇你感兴趣的帖子先关注上, 之后的更新和讨论更容易追到。",
+      "cta": "去论坛看看",
+      "later": "稍后"
+    }
   }
 }

@@ -330,6 +330,13 @@ function AppNavigator({
   const [activeEngagementNudge, setActiveEngagementNudge] = useState<EngagementNudgeStage | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const lastBehaviorSignalRef = useRef(engagementBehaviorSignal);
+  // 避免定时器/订阅每次状态对象引用变化都重建，靠 ref 读最新值。
+  const activeEngagementNudgeRef = useRef(activeEngagementNudge);
+  activeEngagementNudgeRef.current = activeEngagementNudge;
+  const showOnboardingGuideRef = useRef(showOnboardingGuide);
+  showOnboardingGuideRef.current = showOnboardingGuide;
+  const showProfileReminderRef = useRef(showProfileReminder);
+  showProfileReminderRef.current = showProfileReminder;
 
   // Push notifications
   usePushNotifications();
@@ -484,13 +491,13 @@ function AppNavigator({
   ]);
 
   useEffect(() => {
-    if (!isAuthenticated || !user?.userId || !engagementNudgeState) return;
-    if (engagementNudgeState.stage === "done") return;
+    if (!isAuthenticated || !user?.userId) return;
+    if (!engagementNudgeState || engagementNudgeState.stage === "done") return;
 
     const usageTimer = setInterval(() => {
       if (appStateRef.current !== "active") return;
-      if (activeEngagementNudge) return;
-      if (showOnboardingGuide || showProfileReminder) return;
+      if (activeEngagementNudgeRef.current) return;
+      if (showOnboardingGuideRef.current || showProfileReminderRef.current) return;
       patchEngagementNudgeState((prev) => ({
         ...prev,
         accumulatedMs: prev.accumulatedMs + 15_000,
@@ -508,10 +515,7 @@ function AppNavigator({
   }, [
     isAuthenticated,
     user?.userId,
-    engagementNudgeState,
-    activeEngagementNudge,
-    showOnboardingGuide,
-    showProfileReminder,
+    engagementNudgeState?.stage,
     patchEngagementNudgeState,
   ]);
 

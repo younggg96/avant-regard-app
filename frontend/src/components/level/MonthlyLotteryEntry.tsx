@@ -11,13 +11,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
 import { Box, HStack, VStack, Pressable, Text } from "../ui";
 import { theme, playfairFonts } from "../../theme";
 import {
   CurrentLotteryPayload,
   levelService,
 } from "../../services/levelService";
+import { MonthlyLotteryDetailModal } from "./MonthlyLotteryDetailModal";
 
 interface Props {
   /** 是否处于"本人主页". 调用方必须显式传, 禁止默认 true. */
@@ -48,9 +48,9 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   currentLevel,
 }) => {
   const { t } = useTranslation();
-  const navigation = useNavigation<any>();
   const [data, setData] = useState<CurrentLotteryPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
 
   const canRender = isOwnProfile && currentLevel >= 3;
 
@@ -68,6 +68,13 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   }, [canRender]);
 
   useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Modal 关闭后重新拉一次, 让卡片状态文字保持最新
+  // (如用户在 Modal 打开期间后端正好开奖的极端场景).
+  const handleCloseDetail = useCallback(() => {
+    setDetailVisible(false);
     fetchData();
   }, [fetchData]);
 
@@ -89,45 +96,55 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   })();
 
   return (
-    <Pressable
-      bg="$white"
-      borderWidth={1}
-      borderColor="$gray100"
-      p="$md"
-      mx="$md"
-      mb="$md"
-      onPress={() => navigation.navigate("MyLevel", { focus: "lottery" })}
-    >
-      <HStack alignItems="center" gap="$md">
-        <Box
-          w={40}
-          h={40}
-          rounded={20}
-          bg="$black"
-          alignItems="center"
-          justifyContent="center"
-          mr="$md"
-        >
-          <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
-        </Box>
-        <VStack flex={1}>
-          <Text style={localStyles.title}>
-            {t("level.monthlyLottery")} · {round?.month ?? "--"}
-          </Text>
-          <Text style={localStyles.status} numberOfLines={1}>
-            {statusText}
-          </Text>
-        </VStack>
-        {loading && !data ? (
-          <ActivityIndicator size="small" color={theme.colors.gray300} />
-        ) : (
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={theme.colors.gray300}
-          />
-        )}
-      </HStack>
-    </Pressable>
+    <>
+      <Pressable
+        bg="$white"
+        borderWidth={1}
+        borderColor="$gray100"
+        p="$md"
+        mt="$md"
+        mx="$md"
+        mb="$md"
+        onPress={() => setDetailVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel={t("level.monthlyLottery")}
+      >
+        <HStack alignItems="center" gap="$md">
+          <Box
+            w={40}
+            h={40}
+            rounded={20}
+            bg="$black"
+            alignItems="center"
+            justifyContent="center"
+            mr="$md"
+          >
+            <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
+          </Box>
+          <VStack flex={1}>
+            <Text style={localStyles.title}>
+              {t("level.monthlyLottery")} · {round?.month ?? "--"}
+            </Text>
+            <Text style={localStyles.status} numberOfLines={1}>
+              {statusText}
+            </Text>
+          </VStack>
+          {loading && !data ? (
+            <ActivityIndicator size="small" color={theme.colors.gray300} />
+          ) : (
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.gray300}
+            />
+          )}
+        </HStack>
+      </Pressable>
+
+      <MonthlyLotteryDetailModal
+        visible={detailVisible}
+        onClose={handleCloseDetail}
+      />
+    </>
   );
 };

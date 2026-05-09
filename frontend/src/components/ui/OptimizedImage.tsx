@@ -50,6 +50,27 @@ interface OptimizedImageProps extends Omit<ImageProps, 'source' | 'contentFit' |
    * bleed hero media where text would compete with editorial content).
    */
   hideLoadingLabel?: boolean;
+  /**
+   * Forwarded to `expo-image`. Defaults to `true` (matching upstream) to
+   * keep avatars / icons memory-frugal — the bitmap is permanently
+   * resized to match the container's pixel size before being cached.
+   *
+   * Pass `false` for assets where quality must survive list recycling:
+   * `expo-image` runs `processImage` (iOS `ImageView.swift`) every time a
+   * load completes and uses `frame.size` *at that instant* as the resize
+   * target. Inside `MasonryFlashList` the cell may finish loading while
+   * its bounds are still in a transient (smaller) state during recycling,
+   * which permanently bakes a low-resolution bitmap into `SDWebImage`'s
+   * memory cache. Once iOS evicts and re-decodes that entry, the smaller
+   * version is what stays — visually manifesting as the "feed images
+   * gradually pixelate after using the app for a while" bug.
+   *
+   * Disabling downscaling lets the GPU minify the original bitmap with
+   * `trilinear` filtering (set in `ImageView.commonInit`) on every paint
+   * instead, so quality never drifts. Memory cost is bounded because we
+   * already serve covers at width 640–800 px from the proxy.
+   */
+  allowDownscaling?: boolean;
 }
 
 // Any container shorter than this (in dp) renders spinner-only; the text
@@ -66,6 +87,7 @@ const OptimizedImageInner = ({
   errorColor = theme.colors.gray200,
   contentFit = 'cover',
   hideLoadingLabel = false,
+  allowDownscaling = true,
   style,
   ...props
 }: OptimizedImageProps) => {
@@ -98,11 +120,17 @@ const OptimizedImageInner = ({
     [priority, lazy]
   );
 
-  // Use the raw URI as the recycling key so expo-image can share the
-  // decoded bitmap across different `size` presets (e.g. THUMBNAIL →
-  // MEDIUM upgrade when the user opens the detail screen). Keying on the
-  // transformed URL would make every size variant a cold cache miss.
-  const recyclingKey = React.useMemo(() => uri || undefined, [uri]);
+  // Recycling key includes the size preset so a recycled FlashList cell
+  // never re-uses a bitmap that was decoded against a different target
+  // resolution — the previous implementation keyed on the raw `uri` only,
+  // which let `SDWebImage` keep showing a stale, smaller bitmap after a
+  // cell flipped from THUMBNAIL → FEED_CARD (or vice versa). Combined
+  // with `allowDownscaling=false` on cover-sized callers this guarantees
+  // the masonry feed never drifts to a low-res cached variant.
+  const recyclingKey = React.useMemo(
+    () => (uri ? `${uri}|${size}` : undefined),
+    [uri, size]
+  );
 
   // Reset load state when the underlying uri changes so recycled cells
   // show the spinner again instead of a stale "loaded" flag.
@@ -153,6 +181,7 @@ const OptimizedImageInner = ({
         transition={150}
         cachePolicy="memory-disk"
         priority={resolvedPriority}
+        allowDownscaling={allowDownscaling}
         onError={handleError}
         onLoad={showPlaceholder ? handleLoad : undefined}
         recyclingKey={recyclingKey}

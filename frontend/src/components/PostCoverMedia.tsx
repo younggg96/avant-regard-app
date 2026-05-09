@@ -55,6 +55,20 @@ interface PostCoverMediaProps {
  *   path for every card on screen during a scroll. Other props are
  *   primitives (uri / size / contentFit / priority / transition / showPlaceholder)
  *   so shallow-compare handles them correctly.
+ *
+ * Quality note (`allowDownscaling=false`):
+ *   `expo-image` defaults to `allowDownscaling=true`, which permanently
+ *   resizes the decoded bitmap to the container's `frame.size` at the
+ *   instant `imageLoadCompleted` fires (see iOS `ImageView.swift` →
+ *   `processImage`). Inside `MasonryFlashList`, recycled cells routinely
+ *   complete loads while their bounds are still in a transient (smaller)
+ *   state, baking a low-resolution bitmap into `SDWebImage`'s memory
+ *   cache. Once iOS evicts that entry the resized version is what stays,
+ *   so feed covers gradually pixelate the longer the app session runs.
+ *   We disable downscaling here so the GPU's trilinear minification
+ *   handles fit-to-cell instead, keeping covers crisp across recycles.
+ *   Memory cost is bounded — covers are already served at 640–800 px by
+ *   the proxy, so the per-bitmap overhead is on the order of tens of KB.
  */
 const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
   uri,
@@ -85,6 +99,7 @@ const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
       showPlaceholder={showPlaceholder}
       transition={transition}
       priority={priority}
+      allowDownscaling={false}
     />
   );
 };

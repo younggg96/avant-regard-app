@@ -21,9 +21,14 @@ function getInitials(name?: string | null): string {
   return trimmed.slice(0, 2).toUpperCase();
 }
 
+// `ImageSize.SMALL` was referenced here historically but never existed in
+// the enum, so anything in (40, 80] silently fell through to `MEDIUM` via
+// `getOptimizedImageUrl`'s default. We make the mapping explicit and use
+// the real ladder: avatars up to 80dp are still well-served by THUMBNAIL
+// (400px source → 240px container @3x DPR ≈ 1.7× headroom), and only
+// genuinely large avatar/profile-header use cases need MEDIUM.
 function getImageSize(size: number): ImageSize {
-  if (size <= 40) return ImageSize.THUMBNAIL;
-  if (size <= 80) return ImageSize.SMALL;
+  if (size <= 80) return ImageSize.THUMBNAIL;
   return ImageSize.MEDIUM;
 }
 

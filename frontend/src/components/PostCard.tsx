@@ -12,6 +12,7 @@ import {
   useMediaAspectRatio,
   clampAspectRatio,
 } from "../utils/useMediaAspectRatio";
+import { getPostTextPreview } from "../utils/postContentPreview";
 
 export interface ShowImageInfo {
   id: number;
@@ -104,9 +105,17 @@ const PostCardInner = ({
     return null;
   }
 
+  const isForumPost = !!post.communityId || !!post.communityName;
   const displayTitle = post.content?.title || post.title || "";
   const displayImage = post.content?.images?.[0] || post.image || "";
-  const displayDescription = post.content?.description || "";
+  const displayDescription = getPostTextPreview(
+    post.content?.description,
+    isForumPost ? 120 : 140
+  );
+  const textOnlyPlaceholder = getPostTextPreview(
+    post.content?.description,
+    isForumPost ? 88 : 120
+  );
   const displayLikes = post.engagement?.likes || post.likes || 0;
   const displayIsLiked = post.engagement?.isLiked ?? post.isLiked ?? false;
   const hasImage = !!displayImage;
@@ -198,9 +207,9 @@ const PostCardInner = ({
             <RNText style={styles.textOnlyTitle} numberOfLines={3}>
               {displayTitle}
             </RNText>
-            {displayDescription ? (
+            {textOnlyPlaceholder ? (
               <RNText style={styles.textOnlyDesc} numberOfLines={5}>
-                {displayDescription}
+                {textOnlyPlaceholder}
               </RNText>
             ) : null}
           </View>

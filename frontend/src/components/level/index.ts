@@ -7,6 +7,7 @@ export { LevelBadge, getLevelTitle } from "./LevelBadge";
 export { getLevelTitleKey, getLevelOptions } from "./levelTitles";
 export { LevelProgressBar } from "./LevelProgressBar";
 export { MonthlyLotteryEntry } from "./MonthlyLotteryEntry";
+export { MonthlyLotteryDetailModal } from "./MonthlyLotteryDetailModal";
 export { LevelUpgradeModal } from "./LevelUpgradeModal";
 export { EventRegistrationButton } from "./EventRegistrationButton";
 export { useLevelWatcher } from "./useLevelWatcher";

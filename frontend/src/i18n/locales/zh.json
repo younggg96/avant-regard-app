@@ -146,7 +146,8 @@
     "deleteFailed": "删除失败，请重试",
     "invalidPostId": "无效的帖子 ID",
     "invalidUserId": "无效的用户 ID",
-    "titles": "头衔"
+    "titles": "头衔",
+    "levelProgress": "等级进度"
   },
   "profileContrib": {
     "show": "秀场",
@@ -2069,11 +2070,11 @@
     "registerSuccess": "报名成功, 免费门票剩余 {{remaining}}",
     "redeemFailed": "核销失败, 请稍后重试",
     "titles": {
-      "1": "Rookie",
-      "2": "Head",
-      "3": "Digger",
-      "4": "Archivist",
-      "5": "CONNOISSEUR"
+      "1": "新生",
+      "2": "内行",
+      "3": "挖手",
+      "4": "立档人",
+      "5": "大师"
     },
     "subtitles": {
       "1": "迈出第一步",
@@ -2100,6 +2101,7 @@
     "notStarted": "未达等级",
     "pendingReview": "Lv{{level}} 审核中",
     "toNextLevel": "距离 Lv{{level}} · {{title}}",
+    "howToLevelUp": "完成以下任务即可升级",
     "unlockBenefit": "解锁后: {{benefit}}",
     "manualGrantOnly": "该等级由运营人工授予, 暂无自动任务",
     "topReached": "已达顶级",
@@ -2452,5 +2454,22 @@
       "cta": "去论坛看看",
       "later": "稍后"
     }
+  },
+  "lotteryDetail": {
+    "title": "本月抽奖",
+    "statusOpen": "进行中",
+    "statusDrawn": "已开奖",
+    "statusClosed": "已关闭",
+    "entries": "参与人数",
+    "winners": "中奖人数",
+    "drawnAt": "开奖日期",
+    "drawnAtScheduled": "预计开奖",
+    "prizePool": "奖池",
+    "quotaSuffix": "{{count}} 个名额",
+    "noPrizes": "本期奖池尚未配置",
+    "history": "往期历史",
+    "historyMeta": "{{entries}} 人参与 · {{winners}} 人中奖",
+    "youWon": "你中奖了",
+    "footerHint": "Lv3 及以上用户每月会自动进入下月奖池. 25 号统一开奖, 中奖名单会通过通知告知."
   }
 }

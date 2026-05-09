@@ -126,14 +126,14 @@ const MyLevelScreen: React.FC = () => {
             </View>
           )}
 
-          <Text style={styles.heroLevel}>
+          {/* <Text style={styles.heroLevel}>
             {currentLevel > 0 ? `Lv${currentLevel}` : t("level.notStarted")}
           </Text>
           {currentLevel > 0 ? (
             <Text style={styles.heroTitle}>
               {t(getLevelTitleKey(currentLevel))}
             </Text>
-          ) : null}
+          ) : null} */}
 
           {pendingLevel ? (
             <View style={styles.pendingChip}>
@@ -156,7 +156,10 @@ const MyLevelScreen: React.FC = () => {
             <Text style={styles.cardTitle}>
               {t("level.toNextLevel", {
                 level: status.nextLevel,
-                title: status.nextLevelTitle ?? t(getLevelTitleKey(status.nextLevel!)),
+                title:
+                  t(getLevelTitleKey(status.nextLevel!)) ||
+                  status.nextLevelTitle ||
+                  "",
               })}
             </Text>
             {status.nextLevelBenefit ? (

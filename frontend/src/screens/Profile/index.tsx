@@ -39,6 +39,7 @@ import { CoverSection } from "./components/CoverSection";
 import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
+import { LevelProgressCard } from "./components/LevelProgressCard";
 import { UserTitlesSection } from "./components/UserTitlesSection";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
@@ -468,6 +469,8 @@ const ProfileScreen = () => {
           brands={followedBrands}
           onBrandPress={(name) => (navigation as any).navigate("BrandDetail", { name })}
         />
+
+        <LevelProgressCard />
 
         <UserTitlesSection titles={userTitles} />
 

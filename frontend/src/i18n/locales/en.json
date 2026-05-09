@@ -146,7 +146,8 @@
     "deleteFailed": "Delete failed, please try again",
     "invalidPostId": "Invalid post ID",
     "invalidUserId": "Invalid user ID",
-    "titles": "Titles"
+    "titles": "Titles",
+    "levelProgress": "Level Progress"
   },
   "profileContrib": {
     "show": "Shows",
@@ -2069,10 +2070,10 @@
     "registerSuccess": "Registered! Free tickets remaining: {{remaining}}",
     "redeemFailed": "Redemption failed, please try again",
     "titles": {
-      "1": "Rookie",
-      "2": "Head",
-      "3": "Digger",
-      "4": "Archivist",
+      "1": "ROOKIE",
+      "2": "HEAD",
+      "3": "DIGGER",
+      "4": "ARCHIVIST",
       "5": "CONNOISSEUR"
     },
     "subtitles": {
@@ -2100,6 +2101,7 @@
     "notStarted": "Not yet leveled",
     "pendingReview": "Lv{{level}} under review",
     "toNextLevel": "To Lv{{level}} · {{title}}",
+    "howToLevelUp": "Complete these tasks to level up",
     "unlockBenefit": "Unlocks: {{benefit}}",
     "manualGrantOnly": "This level is granted manually by operations",
     "topReached": "Top level reached",
@@ -2452,5 +2454,22 @@
       "cta": "Go to Forum",
       "later": "Later"
     }
+  },
+  "lotteryDetail": {
+    "title": "Monthly Lottery",
+    "statusOpen": "Open",
+    "statusDrawn": "Drawn",
+    "statusClosed": "Closed",
+    "entries": "Entries",
+    "winners": "Winners",
+    "drawnAt": "Drawn on",
+    "drawnAtScheduled": "Scheduled",
+    "prizePool": "Prize Pool",
+    "quotaSuffix": "{{count}} slot(s)",
+    "noPrizes": "Prize pool not configured yet",
+    "history": "Recent Rounds",
+    "historyMeta": "{{entries}} entered · {{winners}} won",
+    "youWon": "You won",
+    "footerHint": "Lv3+ users are auto-entered into next month's pool. The draw happens on the 25th and winners are notified."
   }
 }

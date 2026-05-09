@@ -2,7 +2,7 @@
  * 等级称号单一事实源 (RN 端).
  *
  * 与 `web/src/lib/levels/titles.ts` 对称, 与 PRD 保持一致:
- *   Lv1 Rookie · Lv2 Head · Lv3 Digger · Lv4 Archivist · Lv5 CONNOISSEUR
+ *   Lv1 ROOKIE · Lv2 HEAD · Lv3 DIGGER · Lv4 ARCHIVIST · Lv5 CONNOISSEUR
  *
  * 多语言使用方式:
  *   - React 组件: const { t } = useTranslation(); t(getLevelTitleKey(level))
@@ -12,10 +12,10 @@
  */
 
 export const LEVEL_TITLES: Record<number, string> = {
-  1: "Rookie",
-  2: "Head",
-  3: "Digger",
-  4: "Archivist",
+  1: "ROOKIE",
+  2: "HEAD",
+  3: "DIGGER",
+  4: "ARCHIVIST",
   5: "CONNOISSEUR",
 };
 
