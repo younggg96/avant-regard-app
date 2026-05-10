@@ -282,13 +282,13 @@ const AllCommunitiesScreen = () => {
       <HStack bg="$white" px="$md" py="$sm" gap="$md" borderBottomWidth={1} borderBottomColor="$gray100">
         <Pressable
           onPress={() => setActiveTab("following")}
-          py="$sm"
+          py="$xs"
           px="$md"
           borderBottomWidth={2}
           borderBottomColor={activeTab === "following" ? "$black" : "transparent"}
         >
           <Text
-            fontSize="$md"
+            fontSize="$sm"
             fontWeight={activeTab === "following" ? "$semibold" : "$regular"}
             color={activeTab === "following" ? "$black" : "$gray400"}
           >
@@ -297,13 +297,13 @@ const AllCommunitiesScreen = () => {
         </Pressable>
         <Pressable
           onPress={() => setActiveTab("all")}
-          py="$sm"
+          py="$xs"
           px="$md"
           borderBottomWidth={2}
           borderBottomColor={activeTab === "all" ? "$black" : "transparent"}
         >
           <Text
-            fontSize="$md"
+            fontSize="$sm"
             fontWeight={activeTab === "all" ? "$semibold" : "$regular"}
             color={activeTab === "all" ? "$black" : "$gray400"}
           >

@@ -43,6 +43,7 @@ const MediaItem: React.FC<{
         size={imageSize}
         style={imageStyle}
         contentFit={contentFit}
+        placeholderColor={theme.colors.gray50}
         lazy={true}
       />
     </Pressable>

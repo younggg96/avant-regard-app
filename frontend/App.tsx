@@ -71,6 +71,12 @@ import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
 import PublishOutfitScreen from "./src/screens/PublishOutfitScreen";
 import PublishReviewScreen from "./src/screens/PublishReviewScreen";
 import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
+// V2 Publish Flow Screens
+// Composer 是当前底部「+」按钮的图片优先入口（单屏完成媒体 + 类型 + 字段）。
+// ImageSelectScreen / TypeSelectScreen 文件保留但不再注册路由，作为 V2 早期分步流程的历史回退。
+import PublishV2ComposerScreen from "./src/screens/PublishV2/PublishV2ComposerScreen";
+import PublishV2ForumModeScreen from "./src/screens/PublishV2/PublishV2ForumModeScreen";
+import PublishV2ForumSelectScreen from "./src/screens/PublishV2/PublishV2ForumSelectScreen";
 // AI Post Assistant Screens
 import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
 import AIPostQAStepScreen from "./src/screens/AIPost/AIPostQAStepScreen";
@@ -111,7 +117,8 @@ import { useNotificationStore } from "./src/store/notificationStore";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
-import PublishTabButton from "./src/components/PublishTabButton";
+// V1 PublishTabButton 文件保留作为历史回退入口；当前 Tab 中央「+」走 V2 流程。
+import PublishTabButtonV2 from "./src/components/PublishTabButtonV2";
 import UploadProgressBanner from "./src/components/UploadProgressBanner";
 import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
 import CustomAlert from "./src/components/CustomAlert";
@@ -268,7 +275,7 @@ function TabNavigator() {
         options={{
           tabBarLabel: "",
           tabBarIcon: () => null,
-          tabBarButton: (props) => <PublishTabButton />,
+          tabBarButton: (props) => <PublishTabButtonV2 />,
         }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
@@ -748,6 +755,22 @@ function AppNavigator({
           options={{
             headerShown: false,
           }}
+        />
+        {/* V2 发布流程：底部「+」按钮根据 Discover 子 Tab 走不同入口 */}
+        <Stack.Screen
+          name="PublishV2Composer"
+          component={PublishV2ComposerScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishV2ForumMode"
+          component={PublishV2ForumModeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishV2ForumSelect"
+          component={PublishV2ForumSelectScreen}
+          options={{ headerShown: false }}
         />
         {/* AI 发帖助手 (V3 #25) */}
         <Stack.Screen

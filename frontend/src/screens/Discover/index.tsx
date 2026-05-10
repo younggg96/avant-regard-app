@@ -16,6 +16,7 @@ import { Box, ScrollView, VStack, HStack } from "../../components/ui";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useAuthStore } from "../../store/authStore";
+import { useDiscoverTabStore } from "../../store/discoverTabStore";
 import { getUnreadCount } from "../../services/notificationService";
 import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
 import { userInfoService, UserInfo } from "../../services/userInfoService";
@@ -136,6 +137,19 @@ const DiscoverScreen: React.FC = () => {
   const pagerRef = useRef<PagerView>(null);
 
   const activeTab = TAB_PAGES[pageIndex];
+
+  // V2 发帖入口：底部「+」按钮通过 discoverTabStore 读取当前子 Tab，
+  // 来决定跳「图片优先」流程还是「论坛模式选择」流程。
+  useEffect(() => {
+    useDiscoverTabStore.getState().setActiveTab(activeTab);
+  }, [activeTab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      useDiscoverTabStore.getState().setFocused(true);
+      return () => useDiscoverTabStore.getState().setFocused(false);
+    }, [])
+  );
 
   const {
     recommendPosts,

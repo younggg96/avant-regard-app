@@ -61,8 +61,8 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
             // 裸 RN Text：大字 + 显式 lineHeight，避免部分机型上主题默认行高裁切首字。
             <RNText
               style={{
-                fontSize: 36,
-                lineHeight: 45,
+                fontSize: 32,
+                lineHeight: 40,
                 fontWeight: "500",
                 color: theme.colors.gray300,
                 textAlign: "center",
@@ -75,9 +75,9 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
             </RNText>
           )}
         </Box>
-        <Box px="$sm" py="$sm">
+        <Box px="$sm" py="$xs">
           <Text
-            fontSize="$sm"
+            fontSize="$xs"
             fontWeight="$medium"
             color="$black"
             numberOfLines={1}
@@ -87,9 +87,9 @@ const OptionCard: React.FC<OptionCardProps> = ({ data, selected, onPress }) => {
           </Text>
           {subtitle ? (
             <Text
-              fontSize="$xs"
+              fontSize="$2xs"
               color="$gray400"
-              mt={2}
+              mt={1}
               numberOfLines={1}
               style={{ fontFamily: playfairFonts.regular }}
             >

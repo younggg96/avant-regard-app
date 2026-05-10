@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo, useCallback } from "react";
 import {
   ScrollView as RNScrollView,
   KeyboardAvoidingView,
@@ -12,9 +12,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { Box, Text, HStack } from "../components/ui";
+import { Box, Text, HStack, Pressable, OptimizedImage } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { theme } from "../theme";
+import { ImageSize } from "../utils/imageUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -215,6 +216,62 @@ const PostDetailScreen = () => {
     />
   );
 
+  const images = post?.content?.images || [];
+  const isForumPost = !!post?.communityId || !!post?.communityName;
+  const [viewerImages, setViewerImages] = useState<string[]>(images);
+
+  // 论坛正文可能是 JSON blocks（text/image/video），提取其中媒体用于全屏查看器滑动。
+  const articleMediaInfo = useMemo(() => {
+    const merged: string[] = [...images];
+    let hasInlineMediaBlocks = false;
+    const description = post?.content?.description;
+    if (description) {
+      try {
+        const parsed = JSON.parse(description);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((block) => {
+            const type = block?.type;
+            const content = typeof block?.content === "string" ? block.content.trim() : "";
+            if ((type === "image" || type === "video") && content) {
+              hasInlineMediaBlocks = true;
+              merged.push(content);
+            }
+          });
+        }
+      } catch {
+        // 纯文本内容不处理
+      }
+    }
+    return {
+      media: Array.from(new Set(merged)),
+      hasInlineMediaBlocks,
+    };
+  }, [images, post?.content?.description]);
+
+  const articleMedia = articleMediaInfo.media;
+  const hasInlineMediaBlocks = articleMediaInfo.hasInlineMediaBlocks;
+
+  useEffect(() => {
+    setViewerImages(images);
+  }, [post?.id]);
+
+  const handleOpenPostFullscreen = useCallback(
+    (index: number) => {
+      setViewerImages(images);
+      handleOpenFullscreen(index);
+    },
+    [images, handleOpenFullscreen]
+  );
+
+  const handleOpenCustomFullscreen = useCallback(
+    (index: number, mediaUris: string[]) => {
+      const resolved = mediaUris.length > 0 ? mediaUris : images;
+      setViewerImages(resolved);
+      handleOpenFullscreen(index);
+    },
+    [images, handleOpenFullscreen]
+  );
+
   // 加载中状态 - 骨架屏
   if (isLoading) {
     return (
@@ -264,7 +321,6 @@ const PostDetailScreen = () => {
     );
   }
 
-  const images = post.content?.images || [];
   const displayLikes = post.engagement?.likes || 0;
   const displaySaves = post.engagement?.saves || 0;
   const displayComments =
@@ -315,19 +371,47 @@ const PostDetailScreen = () => {
                 images={images}
                 currentImageIndex={currentImageIndex}
                 onImageIndexChange={setCurrentImageIndex}
-                onOpenFullscreen={handleOpenFullscreen}
+                onOpenFullscreen={handleOpenPostFullscreen}
               />
             )}
 
+            {/* 论坛文章封面图置顶 */}
+            {isForumPost && articleMedia.length > 0 && (
+              <Pressable onPress={() => handleOpenCustomFullscreen(0, articleMedia)}>
+                <Box style={localStyles.forumCoverContainer}>
+                  <OptimizedImage
+                    uri={articleMedia[0]}
+                    size={ImageSize.LARGE}
+                    style={localStyles.forumCoverImage}
+                    contentFit="cover"
+                    lazy={false}
+                  />
+                </Box>
+              </Pressable>
+            )}
+
             {/* 非 Lookbook 类型的标题和描述 */}
-            {post.type !== "OUTFIT" && <PostContentSection post={post} />}
+            {post.type !== "OUTFIT" && (
+              <PostContentSection
+                post={post}
+                onOpenMediaFullscreen={handleOpenCustomFullscreen}
+                mediaUrisForViewer={articleMedia}
+                hideFirstCoverImage={isForumPost && hasInlineMediaBlocks}
+              />
+            )}
 
             {/* Image Grid - 3 columns (非 lookbook 类型) */}
-            {post.type !== "OUTFIT" && images.length > 0 && (
+            {post.type !== "OUTFIT" &&
+              (!isForumPost || !hasInlineMediaBlocks) &&
+              (isForumPost ? images.slice(1).length > 0 : images.length > 0) && (
               <ImageGrid
-                images={images}
+                images={isForumPost ? images.slice(1) : images}
                 coverAspectRatio={post.content?.coverAspectRatio}
-                onOpenFullscreen={handleOpenFullscreen}
+                onOpenFullscreen={(index) =>
+                  isForumPost
+                    ? handleOpenCustomFullscreen(index + 1, images)
+                    : handleOpenPostFullscreen(index)
+                }
               />
             )}
 
@@ -422,7 +506,7 @@ const PostDetailScreen = () => {
         {/* Fullscreen Image Viewer */}
         <FullscreenImageViewer
           visible={fullscreenVisible}
-          images={images}
+          images={viewerImages}
           currentIndex={currentImageIndex}
           onClose={handleCloseFullscreen}
           onIndexChange={setCurrentImageIndex}
@@ -499,6 +583,15 @@ const localStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     zIndex: 10,
+  },
+  forumCoverContainer: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: theme.colors.gray50,
+  },
+  forumCoverImage: {
+    width: "100%",
+    height: "100%",
   },
 });
 

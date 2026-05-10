@@ -154,7 +154,7 @@ const AIPostQAStepScreen: React.FC = () => {
 
     if (isListLayout) {
       return (
-        <Box mt="$md" borderTopWidth={1} borderColor="$gray100" rounded="$md" overflow="hidden">
+        <Box mt="$sm" borderTopWidth={1} borderColor="$gray100" rounded="$md" overflow="hidden">
           {data.options.map((card) => {
             const displayName = isZh && card.name_zh ? card.name_zh : card.name;
             const subtitle = isZh && card.name_zh ? card.name : card.name_zh || card.subtitle;
@@ -164,22 +164,22 @@ const AIPostQAStepScreen: React.FC = () => {
                   alignItems="center"
                   justifyContent="space-between"
                   px="$md"
-                  py="$md"
+                  py="$sm"
                   bg="$white"
                   borderBottomWidth={1}
                   borderColor="$gray100"
                 >
                   <Box flex={1}>
-                    <Text fontSize="$md" fontWeight="$medium" color="$black" numberOfLines={1}>
+                    <Text fontSize="$sm" fontWeight="$medium" color="$black" numberOfLines={1}>
                       {displayName}
                     </Text>
                     {subtitle ? (
-                      <Text fontSize="$xs" color="$gray400" mt={2} numberOfLines={1}>
+                      <Text fontSize="$2xs" color="$gray400" mt={1} numberOfLines={1}>
                         {subtitle}
                       </Text>
                     ) : null}
                   </Box>
-                  <Text fontSize="$md" color="$gray300" ml="$sm">›</Text>
+                  <Text fontSize="$sm" color="$gray300" ml="$sm">›</Text>
                 </HStack>
               </Pressable>
             );
@@ -189,9 +189,9 @@ const AIPostQAStepScreen: React.FC = () => {
     }
 
     return (
-      <VStack gap="$md" mt="$md">
+      <VStack gap="$sm" mt="$sm">
         {cardRows.map((row, rowIdx) => (
-          <HStack key={rowIdx} gap="$md">
+          <HStack key={rowIdx} gap="$sm">
             {row.map((card) => (
               <OptionCard
                 key={card.id}
@@ -215,8 +215,8 @@ const AIPostQAStepScreen: React.FC = () => {
       />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <VStack px="$lg" pt="$md" pb="$xl">
-          <Text fontSize="$xl" fontWeight="$medium" color="$black" style={styles.textHero}>
+        <VStack px="$lg" pt="$sm" pb="$lg">
+          <Text fontSize="$md" fontWeight="$medium" color="$black" style={styles.textHero}>
             {t(config.titleKey)}
           </Text>
 
@@ -226,13 +226,13 @@ const AIPostQAStepScreen: React.FC = () => {
             </Box>
           ) : errorMsg ? (
             <Box p="$md" bg="$gray100" rounded="$md">
-              <Text fontSize="$sm" color="$gray500">
+              <Text fontSize="$xs" color="$gray500">
                 {errorMsg}
               </Text>
             </Box>
           ) : data && data.options.length === 0 ? (
             <Box p="$md" bg="$gray100" rounded="$md">
-              <Text fontSize="$sm" color="$gray500">
+              <Text fontSize="$xs" color="$gray500">
                 {t("aiPost.qa.noOptions")}
               </Text>
             </Box>
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.white,
   },
   textHero: {
-    lineHeight: 32,
+    lineHeight: 22,
   },
 });
 

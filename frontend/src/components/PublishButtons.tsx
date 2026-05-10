@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Box, Text, HStack, Pressable } from "./ui";
 import { theme } from "../theme";
 
@@ -24,19 +25,21 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
   draftDisabled = false,
 }) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const draftLabel = draftButtonText || t("publishButtons.saveDraft");
   const publishLabel = publishButtonText || t("publishButtons.publish");
   return (
     <Box
       position="absolute"
-      bottom={6}
+      bottom={0}
       left={0}
       right={0}
       bg="$white"
       px="$lg"
-      py="$md"
+      pt="$md"
       borderTopWidth={1}
       borderTopColor="$gray200"
+      style={{ paddingBottom: Math.max(insets.bottom, 12) }}
     >
       <HStack>
         {showDraftButton && (

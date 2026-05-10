@@ -83,12 +83,12 @@ const AIPostEntryScreen: React.FC = () => {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
-        <VStack px="$lg" py="$lg" gap="$md">
-          <Box mb="$sm">
-            <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
+        <VStack px="$lg" py="$md" gap="$sm">
+          <Box mb="$xs">
+            <Text fontSize="$md" fontWeight="$medium" color="$black" mb="$xs">
               {t("aiPost.entry.heading")}
             </Text>
-            <Text fontSize="$sm" color="$gray500">
+            <Text fontSize="$xs" color="$gray500">
               {t("aiPost.entry.subheading")}
             </Text>
           </Box>
@@ -104,53 +104,53 @@ const AIPostEntryScreen: React.FC = () => {
                 borderWidth={1}
                 borderColor="$gray100"
                 rounded="$lg"
-                p="$lg"
+                p="$md"
                 sx={{
                   shadowColor: "$black",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 3,
+                  elevation: 1,
                 }}
               >
                 <HStack alignItems="center" gap="$md">
                   <Box
-                    w={56}
-                    h={56}
+                    w={40}
+                    h={40}
                     rounded="$md"
                     bg="$gray100"
                     alignItems="center"
                     justifyContent="center"
                   >
-                    <Ionicons name={mode.icon} size={28} color={theme.colors.black} />
+                    <Ionicons name={mode.icon} size={20} color={theme.colors.black} />
                   </Box>
                   <VStack flex={1}>
-                    <HStack alignItems="center" gap="$xs" mb="$xs" flexWrap="wrap">
-                      <Text fontSize="$lg" fontWeight="$medium" color="$black">
+                    <HStack alignItems="center" gap="$xs" mb={2} flexWrap="wrap">
+                      <Text fontSize="$sm" fontWeight="$medium" color="$black">
                         {mode.title}
                       </Text>
                       {mode.comingSoon ? (
                         <Box
                           px="$xs"
-                          py={2}
+                          py={1}
                           rounded="$sm"
                           bg="$gray100"
                           borderWidth={1}
                           borderColor="$gray200"
                         >
-                          <Text fontSize="$xs" color="$gray500" fontWeight="$medium">
+                          <Text fontSize="$2xs" color="$gray500" fontWeight="$medium">
                             {t("aiPost.entry.comingSoon")}
                           </Text>
                         </Box>
                       ) : null}
                     </HStack>
-                    <Text fontSize="$sm" color="$gray500">
+                    <Text fontSize="$xs" color="$gray500">
                       {mode.description}
                     </Text>
                   </VStack>
                   <Ionicons
                     name="chevron-forward"
-                    size={20}
+                    size={16}
                     color={theme.colors.gray400}
                   />
                 </HStack>
@@ -159,8 +159,8 @@ const AIPostEntryScreen: React.FC = () => {
           })}
 
           {exhausted ? (
-            <Box mt="$md" p="$md" bg="$gray100" rounded="$md">
-              <Text fontSize="$sm" color="$gray400">
+            <Box mt="$sm" p="$md" bg="$gray100" rounded="$md">
+              <Text fontSize="$xs" color="$gray400">
                 {t("aiPost.entry.exhaustedHint")}
               </Text>
             </Box>

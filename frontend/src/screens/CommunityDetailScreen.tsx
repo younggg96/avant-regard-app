@@ -88,6 +88,7 @@ interface DisplayPost {
     description?: string;
     images: string[];
     tags?: string[];
+    coverAspectRatio?: number;
   };
   engagement: {
     likes: number;
@@ -100,6 +101,9 @@ interface DisplayPost {
   // 论坛帖子所属社区
   communityId?: number;
   communityName?: string;
+  // 买手店帖子（可选）
+  storeId?: string;
+  storeName?: string;
 }
 
 // API Post类型到前端Post类型的映射
@@ -128,6 +132,10 @@ const mapApiPostToDisplayPost = (
           ? apiPost.imageUrls
           : [],
       tags: [],
+      coverAspectRatio:
+        apiPost.coverWidth && apiPost.coverHeight && apiPost.coverHeight > 0
+          ? apiPost.coverWidth / apiPost.coverHeight
+          : undefined,
     },
     engagement: {
       likes: apiPost.likeCount || 0,
@@ -633,6 +641,19 @@ const CommunityDetailScreen = () => {
           </TouchableOpacity>
         </Modal>
       )}
+
+      {/*
+       * V2 论坛入口（社区粒度）：浮动按钮直接跳到 PublishForumPost 并把
+       * 当前 communityId 带过去，作为「论坛发帖按钮分别对应所属论坛」的实现。
+       */}
+      <TouchableOpacity
+        style={styles.publishButton}
+        onPress={handlePublishPress}
+        activeOpacity={0.85}
+        accessibilityLabel={t("community.createPost") || "Publish"}
+      >
+        <Ionicons name="add" size={24} color={theme.colors.white} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -661,23 +682,23 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     position: "absolute",
-    bottom: 100,
+    bottom: 24,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     backgroundColor: theme.colors.black,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 8,
   },
   loadingGif: {
-    width: Dimensions.get("window").width * 0.5,
-    height: Dimensions.get("window").width * 0.5,
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH,
   },
   descModalOverlay: {
     flex: 1,

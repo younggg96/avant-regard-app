@@ -62,6 +62,11 @@ type PublishOutfitRouteParams = {
   draftPost?: Post;
   /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
   aiDraft?: AIDraftPrefill;
+  /**
+   * V2 发布流程：见 `PublishLookbookScreen` 同名字段。从
+   * `PublishV2TypeSelect` 带过来的本地媒体，进屏后一次性预填到 `images`。
+   */
+  prefilledMedia?: string[];
 };
 
 const PublishOutfitScreen = () => {
@@ -367,6 +372,24 @@ const PublishOutfitScreen = () => {
       setCoverImage(aiDraft.imageUrls[0]);
     }
   }, [aiDraft, editMode]);
+
+  // V2 发布流程预填：与 Lookbook 同套机制，AI / editMode 优先。
+  const prefilledMedia = route.params?.prefilledMedia;
+  const v2PrefilledRef = useRef(false);
+  useEffect(() => {
+    if (
+      !prefilledMedia ||
+      prefilledMedia.length === 0 ||
+      v2PrefilledRef.current ||
+      editMode ||
+      aiDraft
+    ) {
+      return;
+    }
+    v2PrefilledRef.current = true;
+    setImages(prefilledMedia);
+    setCoverImage(prefilledMedia[0] ?? null);
+  }, [prefilledMedia, editMode, aiDraft]);
 
   // 获取显示的秀场列表：搜索模式返回搜索结果，否则返回分页数据
   const filteredShows = useMemo(() => {

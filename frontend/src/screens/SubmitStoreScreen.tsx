@@ -27,12 +27,15 @@ import { theme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageGridSelector from "../components/ImageGridSelector";
 import ImagePreviewModal from "../components/ImagePreviewModal";
+import BrandSelectorModal from "../components/BrandSelectorModal";
 import { useAuthStore } from "../store/authStore";
 import {
   submitStore,
   UserSubmittedStoreCreate,
 } from "../services/buyerStoreService";
 import { uploadImages } from "../services/postService";
+import { Brand } from "../services/brandService";
+import { useBrandSearch } from "../hooks/useBrandSearch";
 import { useTranslation } from "react-i18next";
 
 const STYLE_OPTIONS = [
@@ -73,7 +76,10 @@ const SubmitStoreScreen = () => {
   const [country, setCountry] = useState("");
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
-  const [brands, setBrands] = useState("");
+  // 销售品牌：UI 上以下拉框 + BrandSelectorModal 多选，
+  // 提交时再展开成字符串数组（保持后端接口不变）。
+  const [selectedBrands, setSelectedBrands] = useState<Brand[]>([]);
+  const [brandSelectorVisible, setBrandSelectorVisible] = useState(false);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [hours, setHours] = useState("");
@@ -84,6 +90,36 @@ const SubmitStoreScreen = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
+
+  // 品牌搜索（与 V1 publish 屏复用同一 hook，体验完全一致）
+  const {
+    brands: displayedBrands,
+    searchQuery: brandSearchQuery,
+    isLoading: isLoadingBrands,
+    hasMore: hasMoreBrands,
+    setSearchQuery: setBrandSearchQuery,
+    search: searchBrands,
+    loadMore: loadMoreBrands,
+  } = useBrandSearch();
+
+  const MAX_BRANDS = 10;
+
+  const handleSelectBrand = (brand: Brand) => {
+    if (selectedBrands.length >= MAX_BRANDS) {
+      Alert.show(t("publish.maxBrandsReached", { count: MAX_BRANDS }));
+      return;
+    }
+    if (selectedBrands.some((b) => b.id === brand.id)) {
+      Alert.show(t("publish.brandAlreadyAdded"));
+      return;
+    }
+    setSelectedBrands((prev) => [...prev, brand]);
+    setBrandSelectorVisible(false);
+  };
+
+  const handleRemoveBrand = (id: number | string) => {
+    setSelectedBrands((prev) => prev.filter((b) => b.id !== id));
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -210,10 +246,7 @@ const SubmitStoreScreen = () => {
         country: country.trim(),
         latitude: finalLat,
         longitude: finalLng,
-        brands: brands
-          .split(/[,，、]/)
-          .map((b) => b.trim())
-          .filter((b) => b),
+        brands: selectedBrands.map((b) => b.name).filter((n) => n.trim()),
         style: selectedStyles,
         phone: phone
           .split(/[,，、]/)
@@ -453,20 +486,79 @@ const SubmitStoreScreen = () => {
             </HStack>
           </Box>
 
-          {/* 销售品牌 */}
+          {/* 销售品牌 — 下拉触发 + BrandSelectorModal */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
               <Text color="$gray600" fontSize="$sm">
                 {t("storeSubmit.storeBrands")}
               </Text>
+              <Text color="$gray400" fontSize="$xs" ml="$xs">
+                {selectedBrands.length}/{MAX_BRANDS}
+              </Text>
             </HStack>
-            <Input
-              value={brands}
-              onChangeText={setBrands}
-              placeholder={t("storeSubmit.brandsPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-            />
+
+            <Pressable
+              onPress={() => setBrandSelectorVisible(true)}
+              bg="$gray50"
+              rounded="$md"
+              px="$md"
+              h={48}
+              flexDirection="row"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <HStack alignItems="center" gap="$sm" flex={1}>
+                <Ionicons
+                  name="search"
+                  size={18}
+                  color={theme.colors.gray400}
+                />
+                <Text
+                  color={selectedBrands.length === 0 ? "$gray400" : "$black"}
+                  fontSize="$sm"
+                  flex={1}
+                  numberOfLines={1}
+                >
+                  {selectedBrands.length === 0
+                    ? t("storeSubmit.brandsDropdownPlaceholder")
+                    : t("storeSubmit.brandsSelectedSummary", {
+                        count: selectedBrands.length,
+                      })}
+                </Text>
+              </HStack>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={theme.colors.gray400}
+              />
+            </Pressable>
+
+            {/* 已选品牌 chips */}
+            {selectedBrands.length > 0 ? (
+              <HStack flexWrap="wrap" mt="$sm" gap="$xs">
+                {selectedBrands.map((b) => (
+                  <Pressable
+                    key={`brand-chip-${b.id}`}
+                    onPress={() => handleRemoveBrand(b.id)}
+                    bg="$black"
+                    rounded="$sm"
+                    px="$sm"
+                    py={4}
+                    flexDirection="row"
+                    alignItems="center"
+                  >
+                    <Text color="$white" fontSize="$xs" mr="$xs">
+                      {b.name}
+                    </Text>
+                    <Ionicons
+                      name="close"
+                      size={12}
+                      color={theme.colors.white}
+                    />
+                  </Pressable>
+                ))}
+              </HStack>
+            ) : null}
           </Box>
 
           {/* 联系电话 */}
@@ -568,6 +660,19 @@ const SubmitStoreScreen = () => {
         imageUrls={images}
         initialIndex={previewImageIndex}
         onClose={() => setShowImagePreview(false)}
+      />
+
+      <BrandSelectorModal
+        visible={brandSelectorVisible}
+        brands={displayedBrands}
+        searchQuery={brandSearchQuery}
+        isLoading={isLoadingBrands}
+        hasMore={hasMoreBrands}
+        onSearchChange={setBrandSearchQuery}
+        onSearch={() => searchBrands()}
+        onSelectBrand={handleSelectBrand}
+        onClose={() => setBrandSelectorVisible(false)}
+        onLoadMore={loadMoreBrands}
       />
     </SafeAreaView>
   );

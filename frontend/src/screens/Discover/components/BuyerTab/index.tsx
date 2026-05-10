@@ -540,10 +540,12 @@ const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }
         mx="$md"
         mb="$lg"
         py="$lg"
+        my="$lg"
         alignItems="center"
         borderWidth={StyleSheet.hairlineWidth}
         borderColor="$gray100"
         rounded="$lg"
+        style={styles.emptyPanelContainer}
       >
         <Ionicons name="albums-outline" size={28} color={theme.colors.gray300} />
         <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
@@ -631,7 +633,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
 
   if (products.length === 0) {
     return (
-      <Box mx="$md" mb="$lg" py="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} borderColor="$gray100" rounded="$lg">
+      <Box mx="$md" mb="$lg" py="$lg" my="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} borderColor="$gray100" rounded="$lg" style={styles.emptyPanelContainer}>
         <Ionicons name="bag-handle-outline" size={28} color={theme.colors.gray300} />
         <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
           {t("discover.buyerNoProducts")}
@@ -718,6 +720,11 @@ const styles = StyleSheet.create({
   },
   emptyPanelHint: {
     fontFamily: PLAYFAIR.regular,
+  },
+  emptyPanelContainer: {
+    height: 300,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

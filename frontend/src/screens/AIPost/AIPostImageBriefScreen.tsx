@@ -146,10 +146,10 @@ const AIPostImageBriefScreen: React.FC = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
-        <VStack px="$lg" pt="$md" pb="$xl" gap="$lg">
+        <VStack px="$lg" pt="$sm" pb="$lg" gap="$md">
           {/* 图片九宫格 */}
           <Box>
-            <Text fontSize="$sm" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" color="$gray400" mb="$xs">
               {t("aiPost.imageBrief.imageTip")}
             </Text>
             <HStack flexWrap="wrap" gap={8}>
@@ -184,10 +184,10 @@ const AIPostImageBriefScreen: React.FC = () => {
                 >
                   <Ionicons
                     name="add"
-                    size={28}
+                    size={22}
                     color={theme.colors.gray300}
                   />
-                  <Text fontSize="$xs" color="$gray400" mt={2}>
+                  <Text fontSize="$2xs" color="$gray400" mt={2}>
                     {t("aiPost.imageBrief.addImage")}
                   </Text>
                 </Pressable>
@@ -197,7 +197,7 @@ const AIPostImageBriefScreen: React.FC = () => {
 
           {/* prompt chip */}
           <Box>
-            <Text fontSize="$sm" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" color="$gray400" mb="$xs">
               {t("aiPost.imageBrief.chipLabel")}
             </Text>
             <HStack flexWrap="wrap" gap="$xs">
@@ -210,12 +210,12 @@ const AIPostImageBriefScreen: React.FC = () => {
                     bg={selected ? "$black" : "$white"}
                     borderWidth={1}
                     borderColor={selected ? "$black" : "$gray100"}
-                    px="$md"
-                    py="$sm"
-                    rounded={20}
+                    px="$sm"
+                    py={6}
+                    rounded={16}
                   >
                     <Text
-                      fontSize="$sm"
+                      fontSize="$xs"
                       color={selected ? "$white" : "$gray500"}
                     >
                       {t(`aiPost.imageBrief.chip.${c}`)}
@@ -228,14 +228,14 @@ const AIPostImageBriefScreen: React.FC = () => {
 
           {/* note */}
           <Box>
-            <Text fontSize="$sm" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" color="$gray400" mb="$xs">
               {t("aiPost.imageBrief.noteLabel")}
             </Text>
             <Box
               borderWidth={1}
               borderColor="$gray100"
               rounded="$md"
-              p="$md"
+              p="$sm"
             >
               <TextInput
                 value={note}
@@ -246,7 +246,7 @@ const AIPostImageBriefScreen: React.FC = () => {
                 style={styles.noteInput}
               />
               <Text
-                fontSize="$xs"
+                fontSize="$2xs"
                 color="$gray300"
                 alignSelf="flex-end"
                 mt="$xs"
@@ -308,8 +308,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   noteInput: {
-    minHeight: 60,
-    fontSize: 15,
+    minHeight: 56,
+    fontSize: 13,
     color: theme.colors.gray500,
     textAlignVertical: "top",
   },

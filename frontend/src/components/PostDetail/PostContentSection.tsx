@@ -21,6 +21,9 @@ interface ContentBlock {
 
 interface PostContentSectionProps {
   post: Post;
+  onOpenMediaFullscreen?: (index: number, mediaUris: string[]) => void;
+  mediaUrisForViewer?: string[];
+  hideFirstCoverImage?: boolean;
 }
 
 // 解析内容：支持新的块格式和旧的纯文本格式
@@ -67,6 +70,7 @@ const ImageBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
         size={ImageSize.LARGE}
         style={mediaSize}
         contentFit="contain"
+        placeholderColor={theme.colors.gray50}
         lazy={true}
       />
     </View>
@@ -76,7 +80,8 @@ const ImageBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
 const ContentBlockRenderer: React.FC<{
   block: ContentBlock;
   frameRatio: number;
-}> = ({ block, frameRatio }) => {
+  onOpenMediaFullscreen?: () => void;
+}> = ({ block, frameRatio, onOpenMediaFullscreen }) => {
   if (block.type === "text") {
     if (!block.content.trim()) return null;
     return (
@@ -96,6 +101,13 @@ const ContentBlockRenderer: React.FC<{
   }
 
   if (block.type === "image") {
+    if (onOpenMediaFullscreen) {
+      return (
+        <Pressable onPress={onOpenMediaFullscreen}>
+          <ImageBlockRenderer uri={block.content} frameRatio={frameRatio} />
+        </Pressable>
+      );
+    }
     return <ImageBlockRenderer uri={block.content} frameRatio={frameRatio} />;
   }
 
@@ -104,6 +116,9 @@ const ContentBlockRenderer: React.FC<{
 
 export const PostContentSection: React.FC<PostContentSectionProps> = ({
   post,
+  onOpenMediaFullscreen,
+  mediaUrisForViewer,
+  hideFirstCoverImage = false,
 }) => {
   // 解析内容
   const contentBlocks = useMemo(
@@ -125,6 +140,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
   // 判断是否使用块格式
   const isBlockFormat = contentBlocks !== null;
   const isForumPost = !!post.communityName;
+  const coverUri = post.content?.images?.[0];
 
   const firstMediaKnownRatio =
     firstMediaUri &&
@@ -138,6 +154,38 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
     isForumPost ? 1 : 16 / 9,
     firstMediaKnownRatio
   );
+
+  const viewerMediaUris = useMemo(() => {
+    if (mediaUrisForViewer && mediaUrisForViewer.length > 0) return mediaUrisForViewer;
+    return post.content?.images || [];
+  }, [mediaUrisForViewer, post.content?.images]);
+
+  const mediaIndexByUri = useMemo(() => {
+    const map = new Map<string, number>();
+    viewerMediaUris.forEach((uri, idx) => {
+      if (!map.has(uri)) {
+        map.set(uri, idx);
+      }
+    });
+    return map;
+  }, [viewerMediaUris]);
+
+  const filteredBlocks = useMemo(() => {
+    if (!contentBlocks) return [];
+    if (!hideFirstCoverImage || !coverUri) return contentBlocks;
+    let hasHiddenCover = false;
+    return contentBlocks.filter((block) => {
+      if (
+        !hasHiddenCover &&
+        block.type === "image" &&
+        block.content?.trim() === coverUri
+      ) {
+        hasHiddenCover = true;
+        return false;
+      }
+      return true;
+    });
+  }, [contentBlocks, hideFirstCoverImage, coverUri]);
 
   return (
     <VStack style={contentStyles.container}>
@@ -155,13 +203,22 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
       {isBlockFormat ? (
         // 块格式：渲染每个内容块
         <VStack style={contentStyles.blocksContainer}>
-          {contentBlocks.map((block) => (
-            <ContentBlockRenderer
-              key={block.id}
-              block={block}
-              frameRatio={frameRatio}
-            />
-          ))}
+          {filteredBlocks.map((block) => {
+            const mediaUri = block.content?.trim();
+            const mediaIndex = mediaUri ? (mediaIndexByUri.get(mediaUri) ?? 0) : 0;
+            const openFullscreen =
+              block.type === "image" && onOpenMediaFullscreen
+                ? () => onOpenMediaFullscreen(mediaIndex, viewerMediaUris)
+                : undefined;
+            return (
+              <ContentBlockRenderer
+                key={block.id}
+                block={block}
+                frameRatio={frameRatio}
+                onOpenMediaFullscreen={openFullscreen}
+              />
+            );
+          })}
         </VStack>
       ) : (
         // 纯文本格式：直接渲染

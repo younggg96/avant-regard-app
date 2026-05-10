@@ -69,6 +69,13 @@ type PublishForumPostRouteParams = {
    * 与 editMode 互斥: AI 草稿走 create, 不进 update 路径。
    */
   aiDraft?: AIDraftPrefill;
+  /**
+   * V2 发布流程：从 `PublishV2TypeSelect` 选择「论坛帖子」时带过来。
+   * 论坛屏只有单张封面 + 内容块，因此首张作为 `coverImage`，其余每张
+   * 都生成一个 image 内容块（与现有 ImagePicker 多选追加图片块的语义
+   * 一致）。
+   */
+  prefilledMedia?: string[];
 };
 
 // 生成唯一 ID
@@ -196,6 +203,36 @@ const PublishForumPostScreen = () => {
     );
     if (matched) setSelectedCommunity(matched);
   }, [aiDraft, communities, selectedCommunity]);
+
+  // V2 发布流程预填：把首张作为封面，其余每张作为 image 内容块。
+  // AI / editMode 优先，避免被覆盖。
+  const prefilledMedia = route.params?.prefilledMedia;
+  const v2PrefilledRef = useRef(false);
+  useEffect(() => {
+    if (
+      !prefilledMedia ||
+      prefilledMedia.length === 0 ||
+      v2PrefilledRef.current ||
+      editMode ||
+      aiDraft
+    ) {
+      return;
+    }
+    v2PrefilledRef.current = true;
+    setCoverImage(prefilledMedia[0] ?? null);
+    if (prefilledMedia.length > 1) {
+      setContentBlocks((prev) => {
+        const text = prev.find((b) => b.type === "text" && b.content) ??
+          { id: generateId(), type: "text", content: "" };
+        const imageBlocks = prefilledMedia.slice(1).map((uri) => ({
+          id: generateId(),
+          type: "image" as const,
+          content: uri,
+        }));
+        return [text, ...imageBlocks];
+      });
+    }
+  }, [prefilledMedia, editMode, aiDraft]);
 
   // 编辑模式：初始化草稿数据
   useEffect(() => {

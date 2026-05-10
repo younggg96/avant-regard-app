@@ -55,6 +55,12 @@ type PublishLookbookRouteParams = {
   /** AI 发帖助手 (V3 #25.4): 见 PublishForumPostScreen 同名字段。 */
   aiDraft?: AIDraftPrefill;
   /**
+   * V2 发布流程：从 `PublishV2TypeSelect` 跳进来时带过来的本地媒体 URI。
+   * 进屏后自动灌入 `images` state，用户可继续追加 / 删除。与 `aiDraft`
+   * 互斥（V2 不走 AI 路径），与 `editMode` 互斥（编辑用 draftPost 数据）。
+   */
+  prefilledMedia?: string[];
+  /**
    * 买手店发帖模式（migration 055）：当 MerchantManageScreen 的 Posts tab
    * 点「新建帖子」/「编辑帖子」时透传, 表示这条 Lookbook 帖子要标记为该
    * store 的店铺帖子。后端会校验当前 user 是该 store 的 APPROVED 商家。
@@ -198,6 +204,25 @@ const PublishLookbookScreen = () => {
       setCoverImage(aiDraft.imageUrls[0]);
     }
   }, [aiDraft, editMode]);
+
+  // V2 发布流程预填: 从 PublishV2TypeSelect 带过来的本地媒体一次性填入,
+  // 用户仍可继续追加 / 删除。AI 草稿 / 编辑模式优先, 避免相互覆盖。
+  const prefilledMedia = route.params?.prefilledMedia;
+  const v2PrefilledRef = useRef(false);
+  useEffect(() => {
+    if (
+      !prefilledMedia ||
+      prefilledMedia.length === 0 ||
+      v2PrefilledRef.current ||
+      editMode ||
+      aiDraft
+    ) {
+      return;
+    }
+    v2PrefilledRef.current = true;
+    setImages(prefilledMedia);
+    setCoverImage(prefilledMedia[0] ?? null);
+  }, [prefilledMedia, editMode, aiDraft]);
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageEditMenu, setShowImageEditMenu] = useState(false);

@@ -600,6 +600,8 @@
     "styleLabel": "Style Tags (max 5)",
     "storeBrands": "Brands Carried",
     "brandsPlaceholder": "Comma separated, e.g. Rick Owens, Guidi, CCP",
+    "brandsDropdownPlaceholder": "Select brands…",
+    "brandsSelectedSummary": "{{count}} brand(s) selected",
     "storePhone": "Phone",
     "phonePlaceholder": "Separate multiple numbers with commas",
     "businessHours": "Business Hours",
@@ -977,6 +979,47 @@
     "forumTitlePlaceholder": "Post title, long titles supported",
     "forumAddHint": "Tap the + button below text blocks to add more text or images",
     "lookbookPreview": "Post preview"
+  },
+  "publishV2": {
+    "composer": {
+      "title": "Publish",
+      "mediaHint": "Add photos or a video, up to 9",
+      "mediaCount": "Selected {{count}}/{{max}}",
+      "typeLabel": "Choose post type",
+      "defaultBadge": "Default",
+      "pickerTitle": "Add Media"
+    },
+    "imageSelect": {
+      "title": "Select Media",
+      "subtitle": "Pick 1-9 photos or a video, then choose a post type",
+      "selectedCount": "Selected {{count}}/{{max}}",
+      "needAtLeastOne": "Please select at least one photo or video",
+      "addMedia": "Add photo or video",
+      "next": "Next",
+      "pickerTitle": "Add Media"
+    },
+    "typeSelect": {
+      "title": "Choose Post Type",
+      "heading": "Choose a type for your post",
+      "subtitle": "Lookbook is the default. You can also pick another type and fill in extra fields on the next screen.",
+      "defaultBadge": "Default",
+      "confirm": "Next"
+    },
+    "forumMode": {
+      "title": "Publish to Forum",
+      "heading": "Choose how to publish",
+      "subtitle": "Let AI pick the right forum and draft your post, or pick a forum manually.",
+      "aiTitle": "Let AI write my forum post",
+      "aiDesc": "AI picks the best forum (style, brand, or other communities)",
+      "manualTitle": "Manual forum post",
+      "manualDesc": "Pick a community and write the post yourself"
+    },
+    "forumSelect": {
+      "title": "Pick a Forum",
+      "searchPlaceholder": "Search community name or description",
+      "followingBadge": "Following",
+      "noResults": "No matching communities"
+    }
   },
   "interaction": {
     "title": "Messages",

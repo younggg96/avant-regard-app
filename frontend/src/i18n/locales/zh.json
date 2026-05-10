@@ -600,6 +600,8 @@
     "styleLabel": "风格标签（最多选5个）",
     "storeBrands": "销售品牌",
     "brandsPlaceholder": "用逗号分隔，如：Rick Owens, Guidi, CCP",
+    "brandsDropdownPlaceholder": "选择品牌…",
+    "brandsSelectedSummary": "已选 {{count}} 个品牌",
     "storePhone": "联系电话",
     "phonePlaceholder": "多个号码用逗号分隔",
     "businessHours": "营业时间",
@@ -977,6 +979,47 @@
     "forumTitlePlaceholder": "帖子标题，支持长标题",
     "forumAddHint": "点击文本框下方的 + 按钮可以添加更多文字或图片",
     "lookbookPreview": "帖子预览"
+  },
+  "publishV2": {
+    "composer": {
+      "title": "发布",
+      "mediaHint": "添加图片或视频，最多 9 张",
+      "mediaCount": "已选 {{count}}/{{max}}",
+      "typeLabel": "选择要发布的帖子类型",
+      "defaultBadge": "默认",
+      "pickerTitle": "添加媒体"
+    },
+    "imageSelect": {
+      "title": "选择媒体",
+      "subtitle": "选择 1–9 张图片或一段视频，下一步选择发布类型",
+      "selectedCount": "已选 {{count}}/{{max}}",
+      "needAtLeastOne": "请至少选择一张图片或视频",
+      "addMedia": "添加图片或视频",
+      "next": "下一步",
+      "pickerTitle": "添加媒体"
+    },
+    "typeSelect": {
+      "title": "选择发布类型",
+      "heading": "选择要发布的帖子类型",
+      "subtitle": "默认 Lookbook，你也可以发到其它类型，相关字段进入详情页继续填写",
+      "defaultBadge": "默认",
+      "confirm": "下一步"
+    },
+    "forumMode": {
+      "title": "发布论坛帖子",
+      "heading": "选择发布方式",
+      "subtitle": "AI 帮写出草稿，或者论坛发帖",
+      "aiTitle": "AI 发帖助手",
+      "aiDesc": "AI 自动判断属于风格论坛 / 品牌论坛或其它社区",
+      "manualTitle": "论坛发帖",
+      "manualDesc": "选择社区，自由撰写帖子内容"
+    },
+    "forumSelect": {
+      "title": "选择论坛",
+      "searchPlaceholder": "搜索社区名称或简介",
+      "followingBadge": "已关注",
+      "noResults": "没有匹配的社区"
+    }
   },
   "interaction": {
     "title": "消息",
