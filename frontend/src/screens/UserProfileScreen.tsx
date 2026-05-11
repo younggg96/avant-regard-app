@@ -45,7 +45,7 @@ import { ImageSize } from "../utils/imageUtils";
 import { theme, playfairFonts } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
-import { postService, Post as ApiPost, likePost, unlikePost } from "../services/postService";
+import { postService, Post as ApiPost, likePost, unlikePost, UserPostStats } from "../services/postService";
 import {
   followService,
   isFollowingUser,
@@ -152,6 +152,7 @@ const UserProfileScreen = () => {
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
   const [showShareToChat, setShowShareToChat] = useState(false);
   const [otherLevel, setOtherLevel] = useState<number>(0);
+  const [postStats, setPostStats] = useState<UserPostStats | null>(null);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -310,6 +311,15 @@ const UserProfileScreen = () => {
     }
   };
 
+  const loadPostStats = async () => {
+    try {
+      const stats = await postService.getUserPostStats(userId);
+      setPostStats(stats);
+    } catch (error) {
+      console.error("Error loading post stats:", error);
+    }
+  };
+
   const checkFollowStatus = async () => {
     if (!currentUser?.userId || isCurrentUser) return;
     try {
@@ -457,6 +467,7 @@ const UserProfileScreen = () => {
     loadPrivacySettings();
     loadFollowedBrands();
     loadUserTitles();
+    loadPostStats();
     setTabsData({
       posts: { ...initialTabState },
       forum: { ...initialTabState },
@@ -501,6 +512,7 @@ const UserProfileScreen = () => {
       loadPrivacySettings();
       loadFollowedBrands();
       loadUserTitles();
+      loadPostStats();
       if (activeTab === "archive") {
         loadContributions();
       } else {
@@ -518,6 +530,7 @@ const UserProfileScreen = () => {
       checkFollowStatus(),
       loadFollowedBrands(),
       loadUserTitles(),
+      loadPostStats(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
@@ -580,9 +593,11 @@ const UserProfileScreen = () => {
     (navigation as any).navigate("PostDetail", { postId: post.id });
   };
 
-  const getTotalLikes = () => {
-    return tabsData.posts.posts.reduce((sum, p) => sum + (p.likes || 0), 0);
-  };
+  // 注意：原先此处用 `tabsData.posts.posts.reduce((s,p)=>s+p.likes)` 计算"获赞与
+  // 收藏"，存在两个偏差：(1) 仅累加 likes，未包含 favorites；(2) 仅统计已加载到
+  // posts tab 的非论坛帖子，遗漏 forum / 未拉取分页。改用后端聚合接口
+  // /api/posts/user/{id}/stats，按 PUBLISHED + APPROVED 全量聚合，与单篇帖子
+  // 真实计数保持同步。
 
   const handleCropDone = async (croppedUri: string) => {
     setShowCropper(false);
@@ -1299,7 +1314,7 @@ const UserProfileScreen = () => {
               <RNText style={styles.statLabel}>{t("profile.followers")}</RNText>
             </Pressable>
             <View style={styles.statItem}>
-              <RNText style={styles.statNumber}>{tabsData.posts.hasLoaded ? getTotalLikes() : "-"}</RNText>
+              <RNText style={styles.statNumber}>{postStats ? postStats.totalLikesAndSaves : "-"}</RNText>
               <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
             </View>
           </View>

@@ -91,6 +91,10 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  headerLeftSpacer: {
+    width: 80,
+    height: 36,
+  },
   collapsedAvatarContainer: {
     flex: 1,
     alignItems: "center",

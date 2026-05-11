@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
+import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { useTranslation } from "react-i18next";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { useChatStore } from "../../store/chatStore";
@@ -70,8 +71,9 @@ const InteractionScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      useMainBottomTabStore.getState().setActiveMainTab("Interaction");
       refreshUnreadCount();
-    }, [])
+    }, [refreshUnreadCount])
   );
 
   const handleTabChange = useCallback((tab: SubTab) => {

@@ -22,6 +22,7 @@ import Animated, {
 import { Post as DisplayPost } from "../../components/PostCard";
 import { useAuthStore } from "../../store/authStore";
 import { Alert } from "../../utils/Alert";
+import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { postService, likePost, unlikePost } from "../../services/postService";
 import { Show } from "../../services/showService";
 import { BrandSubmission } from "../../services/brandService";
@@ -47,6 +48,8 @@ import { DeletePostDialog } from "./components/DeletePostDialog";
 import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
 import { MonthlyLotteryEntry } from "../../components/level";
 import { useLevelStore } from "../../store/levelStore";
+import { useChatStore } from "../../store/chatStore";
+import { useNotificationStore } from "../../store/notificationStore";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
@@ -56,6 +59,10 @@ const ProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
   const ownLevel = useLevelStore((s) => s.status?.currentLevel ?? 0);
+  const refreshLevel = useLevelStore((s) => s.refresh);
+  const totalChatUnread = useChatStore((s) => s.totalUnread);
+  const totalNotificationUnread = useNotificationStore((s) => s.unreadCount);
+  const totalInteractionUnread = totalChatUnread + totalNotificationUnread;
 
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
   const headerFadeThreshold = COVER_HEIGHT - headerTotalHeight;
@@ -80,6 +87,7 @@ const ProfileScreen = () => {
     coverImage,
     followedBrands,
     userTitles,
+    postStats,
     contribSubTab,
     setContribSubTab,
     myShows,
@@ -107,6 +115,7 @@ const ProfileScreen = () => {
     loadFollowersCount,
     loadFollowedBrands,
     loadUserTitles,
+    loadPostStats,
     loadContributions,
     loadStoreActivity,
     fetchTabData,
@@ -128,6 +137,9 @@ const ProfileScreen = () => {
   useEffect(() => {
     loadAllProfileData();
     resetTabsData();
+    // 等级 store 与本页 LevelProgressCard / MonthlyLotteryEntry 共享状态，
+    // 切换账号时强制再拉一次，避免保留上一个账号的任务进度。
+    refreshLevel();
   }, [user?.userId]);
 
   useEffect(() => {
@@ -142,7 +154,11 @@ const ProfileScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      useMainBottomTabStore.getState().setActiveMainTab("Profile");
       loadAllProfileData();
+      // 与「我的等级」页对齐：每次回到本页都同步最新等级 + 任务进度，
+      // 避免发帖/点赞/收藏后回到主页看到滞后的进度条。
+      refreshLevel();
       if (activeTab === "archive") {
         loadContributions();
       } else if (activeTab === "storeActivity") {
@@ -162,6 +178,8 @@ const ProfileScreen = () => {
       loadFollowersCount(),
       loadFollowedBrands(),
       loadUserTitles(),
+      loadPostStats(),
+      refreshLevel(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());
@@ -244,6 +262,13 @@ const ProfileScreen = () => {
 
   const navigateToSettings = useCallback(() => {
     (navigation as any).navigate("Settings");
+  }, [navigation]);
+
+  const navigateToMessages = useCallback(() => {
+    (navigation.navigate as any)("Main", {
+      screen: "Interaction",
+      params: { subTab: "messages" },
+    });
   }, [navigation]);
 
   const handlePostPress = (post: DisplayPost) => {
@@ -416,6 +441,8 @@ const ProfileScreen = () => {
         headerTotalHeight={headerTotalHeight}
         animatedStyle={collapsedHeaderAnimatedStyle}
         onSettingsPress={navigateToSettings}
+        onMessagesPress={navigateToMessages}
+        unreadCount={totalInteractionUnread}
         onAvatarPress={() => setAvatarPreviewVisible(true)}
       />
 
@@ -446,6 +473,8 @@ const ProfileScreen = () => {
           coverAnimatedStyle={coverAnimatedStyle}
           topActionsAnimatedStyle={topActionsAnimatedStyle}
           onSettingsPress={navigateToSettings}
+          onMessagesPress={navigateToMessages}
+          unreadCount={totalInteractionUnread}
         />
 
         <ProfileInfo
@@ -455,7 +484,7 @@ const ProfileScreen = () => {
           username={displayUsername}
           followingUsersCount={followingUsersCount}
           followersCount={followersCount}
-          publishedCount={tabsData.published.count}
+          likesAndSavesCount={postStats?.totalLikesAndSaves}
           userId={user?.userId}
           onEditProfile={() => (navigation as any).navigate("EditProfile")}
           onFollowingPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}

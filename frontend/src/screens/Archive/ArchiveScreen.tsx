@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   StyleSheet,
   View,
@@ -15,6 +16,7 @@ import ScreenHeader from "../../components/ScreenHeader";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { BrandListTab, MyContributionTab, LeaderboardTab } from "./components";
 import { ArchiveTab, MAIN_TAB_IDS, MAIN_TAB_KEYS } from "./types";
+import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -25,6 +27,12 @@ const ArchiveScreen: React.FC = () => {
   const tabs = useMemo(
     () => MAIN_TAB_IDS.map((id) => ({ id, label: t(MAIN_TAB_KEYS[id]) })),
     [t]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      useMainBottomTabStore.getState().setActiveMainTab("Archive");
+    }, [])
   );
 
   const headerHeight = useRef(new Animated.Value(1)).current;

@@ -80,6 +80,28 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
       );
     }
 
+    // 审核驳回：和草稿一样直接给一个「重新修改」主按钮，省掉 "..." 二次点击。
+    // 同时复用 onContinueEdit，跳过编辑确认弹窗（onContinueEdit 直达编辑页），
+    // 因为驳回帖子本来就不对外可见，没有「编辑会重置审核状态」的成本。
+    if (postStatus === "REJECTED") {
+      return (
+        <>
+          {isOwnPost && (
+            <TouchableOpacity onPress={onContinueEdit} style={h.rejectedBtn}>
+              <Text fontSize={11} fontWeight="$semibold" color="$white">
+                {t("postDetail.editAndResubmit")}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {isOwnPost && (
+            <TouchableOpacity onPress={onShowOptionsMenu} style={h.moreBtn}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={theme.colors.black} />
+            </TouchableOpacity>
+          )}
+        </>
+      );
+    }
+
     return (
       <>
         {!isOwnPost && (
@@ -289,6 +311,14 @@ const h = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: theme.colors.accent,
+    borderRadius: 12,
+  },
+  // 红色「修改后重新提交」按钮：饱和度 / 视觉权重高于草稿的黑色按钮，
+  // 强调违规驳回的紧迫感，但不堆叠多个 CTA。
+  rejectedBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#DC2626",
     borderRadius: 12,
   },
   moreBtn: {

@@ -375,6 +375,16 @@ async def get_posts_by_user_id(
     return success([p.model_dump() for p in result])
 
 
+@router.get("/user/{user_id}/stats")
+async def get_user_post_stats(user_id: int):
+    """获取用户帖子的聚合统计（累计获赞、收藏、评论数）。
+
+    前台个人主页 "获赞与收藏" 数据来源，避免客户端按已加载帖子做二次累加
+    导致与后台真实数据出现偏差。
+    """
+    return success(post_service.get_user_post_stats(user_id))
+
+
 @router.get("/user/{user_id}/liked")
 async def get_liked_posts_by_user_id(
     user_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)

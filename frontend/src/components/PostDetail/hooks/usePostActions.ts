@@ -74,15 +74,22 @@ export const usePostActions = ({
     });
   }, [post, navigation]);
 
-  // 处理继续编辑（草稿）- 直接导航，无需确认
+  // 处理继续编辑（草稿 / 驳回笔记）- 直接导航，无需确认。
+  // 驳回笔记本来就不对外可见，没有「编辑会重置审核状态」的副作用，
+  // 直接进编辑页修复违规内容是最顺的路径。
   const handleContinueEdit = useCallback(() => {
     navigateToEditScreen();
   }, [navigateToEditScreen]);
 
-  // 处理编辑已发布/审核中帖子 - 显示确认对话框
+  // 处理编辑已发布/审核中帖子 - 显示确认对话框（提示会重新进审核）。
+  // 驳回笔记走 handleContinueEdit，不会到这里。
   const handleEditPost = useCallback(() => {
+    if (post?.auditStatus === "REJECTED") {
+      navigateToEditScreen();
+      return;
+    }
     setShowEditConfirmDialog(true);
-  }, []);
+  }, [post?.auditStatus, navigateToEditScreen]);
 
   // 确认编辑（用户确认后导航到编辑页面）
   const handleConfirmEdit = useCallback(() => {

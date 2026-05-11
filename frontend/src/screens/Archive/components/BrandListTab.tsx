@@ -21,6 +21,7 @@ import { Box, Text, Image, HStack, VStack, ScrollView } from "../../../component
 import { theme } from "../../../theme";
 import { brandService, Brand } from "../../../services/brandService";
 import { useAuthStore } from "../../../store/authStore";
+import { useArchiveBrandListRefreshStore } from "../../../store/archiveBrandListRefreshStore";
 import SubmitBrandModal from "../../../components/SubmitBrandModal";
 import CategoryFilterModal from "./CategoryFilterModal";
 import { PAGE_SIZE } from "../types";
@@ -42,6 +43,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const brandListRefreshNonce = useArchiveBrandListRefreshStore((s) => s.refreshNonce);
 
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -144,6 +146,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   useEffect(() => {
     loadBrands();
   }, [loadBrands]);
+
+  useEffect(() => {
+    if (brandListRefreshNonce === 0) return;
+    loadBrands();
+  }, [brandListRefreshNonce, loadBrands]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {

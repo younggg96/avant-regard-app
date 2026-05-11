@@ -10,11 +10,27 @@ import {
   ActivityIndicator,
   Text,
   LayoutChangeEvent,
+  PixelRatio,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Image, ImageProps, ImageSource } from 'expo-image';
+import { Image, ImageProps, ImageSource, ImageLoadEventData } from 'expo-image';
 import { theme } from '../../theme';
 import { getOptimizedImageUrl, ImageSize } from '../../utils/imageUtils';
+
+/**
+ * Diagnostic flag — set to `true` to print, in DEV builds only, the actual
+ * decoded bitmap dimensions, cache type, and container size for every image
+ * load. We use this to chase down "feed images gradually pixelate after
+ * scrolling" — the logs let us tell apart:
+ *   - bad bytes from the backend (loaded width far below container px)
+ *   - SDWebImage memory cache returning a stale tiny variant (cacheType=memory
+ *     paired with a small `width`)
+ *   - container size briefly collapsing at recycle (`container` ≪ `loaded`)
+ *
+ * Default OFF so steady-state DEV logs aren't spammed; flip on while
+ * reproducing the bug.
+ */
+const DEBUG_IMAGE_QUALITY = false;
 
 type ImagePriority = 'low' | 'normal' | 'high';
 
@@ -152,12 +168,40 @@ const OptimizedImageInner = ({
     setIsLoaded(true);
   }, []);
 
-  const handleLoad = useCallback(() => {
-    if (!showPlaceholder) return;
-    setIsLoaded(true);
-  }, [showPlaceholder]);
+  // Latest measured container width (in dp) — fed by `onLayout` and used
+  // both to gate the loading-label and to calculate the px-vs-source ratio
+  // in DEV diagnostics.
+  const containerWidthRef = useRef(0);
+
+  const handleLoad = useCallback(
+    (event: ImageLoadEventData) => {
+      if (__DEV__ && DEBUG_IMAGE_QUALITY && uri) {
+        // Compare the actual decoded bitmap to the container's physical
+        // pixel dimensions. A healthy ratio is `loaded / containerPx ≥ 1`.
+        // Anything notably below 1 means the displayed bitmap is being
+        // upscaled — the visible "pixelation" pattern.
+        const dpr = PixelRatio.get();
+        const containerPxW = Math.round(containerWidthRef.current * dpr);
+        const containerPxH = Math.round(containerHeightRef.current * dpr);
+        const loadedW = Math.round(event.source?.width ?? 0);
+        const loadedH = Math.round(event.source?.height ?? 0);
+        const ratio = containerPxW > 0 ? (loadedW / containerPxW).toFixed(2) : "?";
+        const tag = uri.length > 60 ? `…${uri.slice(-50)}` : uri;
+        // eslint-disable-next-line no-console
+        console.log(
+          `[OptimizedImage] size=${size} cache=${event.cacheType} ` +
+            `loaded=${loadedW}×${loadedH} container=${containerPxW}×${containerPxH}px ` +
+            `ratio=${ratio} uri=${tag}`
+        );
+      }
+      if (!showPlaceholder) return;
+      setIsLoaded(true);
+    },
+    [showPlaceholder, uri, size]
+  );
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    containerWidthRef.current = event.nativeEvent.layout.width;
     containerHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
@@ -183,7 +227,11 @@ const OptimizedImageInner = ({
         priority={resolvedPriority}
         allowDownscaling={allowDownscaling}
         onError={handleError}
-        onLoad={showPlaceholder ? handleLoad : undefined}
+        // `onLoad` is always wired so the DEV diagnostic above runs even
+        // for callers that disable the placeholder (e.g. Discover masonry
+        // passes `showCoverPlaceholder={false}` to skip the spinner — but
+        // we still need the load event to inspect decoded bitmap sizes).
+        onLoad={handleLoad}
         recyclingKey={recyclingKey}
         {...props}
       />

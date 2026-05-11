@@ -17,9 +17,11 @@
  * 用户可以点 "更换" 在 ActionSheet 里改成另外 3 种之一。
  *
  * 错误分支:
- *   - 配额超限: Alert + 禁用按钮
- *   - 图片审核拦截: Alert 列出被拦截下标,引导回退到 ImageBrief 屏改图
- *   - LLM 失败: Alert + 提供"重新生成"按钮 (仍计入 quota)
+ *   - 配额超限: Alert + 跳回顶层 (终止性错误, 没法本屏恢复)
+ *   - 图片审核拦截: Alert 列出被拦截下标, 引导回 ImageBrief 屏改图 (终止性)
+ *   - LLM 失败 / 网络超时 / 未知错误: 进入"生成失败"卡片态,
+ *     提供「重试」和「返回」入口, 不再卡在空编辑器上 (V3 #25.4 修复)。
+ *     重新生成阶段失败则保留旧草稿, 顶部加横幅提示, 不擦除用户已有编辑。
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -59,6 +61,7 @@ import {
   type AIPostMode,
   type AIPostTargetPostType,
   type AIDraftPrefill,
+  type AIPostFriendlyError,
   type QuotaInfo,
 } from "../../services/aiPostService";
 
@@ -79,6 +82,13 @@ const AIPostPreviewScreen: React.FC = () => {
   const [generating, setGenerating] = useState(true);
   const [generatedResp, setGeneratedResp] = useState<GenerateResponse | null>(null);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  // 首次生成失败: 编辑器从未渲染, 进入"生成失败"卡片态供用户重试或返回。
+  const [generateError, setGenerateError] = useState<AIPostFriendlyError | null>(
+    null,
+  );
+  // 重新生成失败: 已经有 generatedResp, 不擦除用户当前编辑;
+  // 在编辑器顶部展示横幅,同时按钮恢复可点 (用户可重试或继续编辑现有内容)。
+  const [regenError, setRegenError] = useState<AIPostFriendlyError | null>(null);
 
   // 用户编辑后的内容
   const [title, setTitle] = useState("");
@@ -105,6 +115,10 @@ const AIPostPreviewScreen: React.FC = () => {
 
   const runGenerate = async (regen = false) => {
     setGenerating(true);
+    // 进入新的请求前先清掉之前的错误标记;
+    // 首次和重生成路径分别清各自的 banner。
+    if (regen) setRegenError(null);
+    else setGenerateError(null);
     try {
       const req: GenerateRequest = {
         mode,
@@ -124,15 +138,33 @@ const AIPostPreviewScreen: React.FC = () => {
       if (resp.suggested_communities[0]) {
         setSuggestedCommunityId(resp.suggested_communities[0].id);
       }
+      // 成功后兜底清掉两类错误标记 (例如刚刚 retry 成功)。
+      setGenerateError(null);
+      setRegenError(null);
     } catch (err) {
       const friendly = translateAIPostError(err);
-      handleGenerateError(friendly.code, friendly.message);
+      // 终止性错误: 用户在本屏没法恢复, 维持原 alert + 跳转的行为。
+      if (
+        friendly.code === AIPostErrorCode.IMAGE_BLOCKED ||
+        friendly.code === AIPostErrorCode.QUOTA_EXCEEDED
+      ) {
+        handleTerminalError(friendly.code, friendly.message);
+        return;
+      }
+      // 可恢复错误 (LLM_FAILED / 超时 / UNKNOWN):
+      //   - 首次生成失败 ⇒ 显示生成失败卡片,带「重试 / 返回」
+      //   - 重新生成失败 ⇒ 保留旧草稿,只在编辑器顶部加横幅提示
+      if (regen) {
+        setRegenError(friendly);
+      } else {
+        setGenerateError(friendly);
+      }
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleGenerateError = (code: string, message: string) => {
+  const handleTerminalError = (code: string, message: string) => {
     if (code === AIPostErrorCode.IMAGE_BLOCKED) {
       RNAlert.alert(t("aiPost.error.imageBlockedTitle"), message, [
         {
@@ -148,7 +180,10 @@ const AIPostPreviewScreen: React.FC = () => {
       ]);
       return;
     }
-    RNAlert.alert(t("aiPost.error.llmTitle"), message);
+  };
+
+  const handleRetryGenerate = () => {
+    void runGenerate(false);
   };
 
   const handleRegenerate = () => {
@@ -245,15 +280,95 @@ const AIPostPreviewScreen: React.FC = () => {
         title={t("aiPost.preview.title")}
         showBackButton
         onBackPress={() => navigation.goBack()}
-        rightComponent={<QuotaBadge quota={quota} variant="regenerate" />}
+        rightComponent={<QuotaBadge quota={quota} />}
       />
 
-      {generating && !generatedResp ? (
+      {generating && !generatedResp && !generateError ? (
         <Box flex={1} alignItems="center" justifyContent="center">
           <ActivityIndicator color={theme.colors.black} size="large" />
           <Text mt="$md" fontSize="$sm" color="$gray400">
             {t("aiPost.preview.generating")}
           </Text>
+        </Box>
+      ) : !generatedResp && generateError ? (
+        // 首次生成失败: 编辑器从未渲染过,
+        // 显示居中的失败卡片 + 「重试」「返回」入口,
+        // 避免出现空白可输入但提交按钮全失效的"假死"页面。
+        <Box flex={1} px="$lg" alignItems="center" justifyContent="center">
+          <Box
+            width="100%"
+            maxWidth={360}
+            p="$lg"
+            borderWidth={1}
+            borderColor="$gray100"
+            rounded="$md"
+            alignItems="center"
+          >
+            <Box
+              width={48}
+              height={48}
+              rounded="$lg"
+              bg="$gray100"
+              alignItems="center"
+              justifyContent="center"
+              mb="$md"
+            >
+              <Ionicons
+                name="alert-circle-outline"
+                size={28}
+                color={theme.colors.gray500}
+              />
+            </Box>
+            <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$xs">
+              {t("aiPost.preview.generateFailedTitle")}
+            </Text>
+            <Text
+              fontSize="$sm"
+              color="$gray500"
+              textAlign="center"
+              mb="$lg"
+            >
+              {generateError.message ||
+                (t("aiPost.preview.generateFailedBody") as string)}
+            </Text>
+            <Pressable
+              onPress={handleRetryGenerate}
+              disabled={generating}
+              style={[
+                styles.errorRetryBtn,
+                generating && styles.btnPrimaryDisabled,
+              ]}
+            >
+              {generating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="refresh"
+                    size={16}
+                    color={theme.colors.white}
+                  />
+                  <Text
+                    fontSize="$sm"
+                    fontWeight="$semibold"
+                    color="$white"
+                    ml="$xs"
+                  >
+                    {t("aiPost.preview.retryGenerate")}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              disabled={generating}
+              style={[styles.errorBackBtn, generating && styles.btnDisabled]}
+            >
+              <Text fontSize="$sm" color="$gray500">
+                {t("aiPost.preview.back")}
+              </Text>
+            </Pressable>
+          </Box>
         </Box>
       ) : (
         <>
@@ -263,6 +378,43 @@ const AIPostPreviewScreen: React.FC = () => {
           >
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
             <VStack px="$lg" pt="$md" pb="$xl" gap="$md">
+              {/* 重新生成失败横幅: 旧草稿仍在, 提示用户可重试或继续用现有内容编辑。 */}
+              {regenError ? (
+                <HStack
+                  alignItems="center"
+                  p="$md"
+                  rounded="$md"
+                  bg="$gray100"
+                  borderWidth={1}
+                  borderColor="$gray200"
+                  gap="$sm"
+                >
+                  <Ionicons
+                    name="warning-outline"
+                    size={18}
+                    color={theme.colors.gray500}
+                  />
+                  <VStack flex={1}>
+                    <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                      {t("aiPost.preview.regenFailedTitle")}
+                    </Text>
+                    <Text fontSize="$xs" color="$gray500" mt={2}>
+                      {regenError.message ||
+                        (t("aiPost.preview.regenFailedBody") as string)}
+                    </Text>
+                  </VStack>
+                  <Pressable
+                    onPress={() => setRegenError(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name="close"
+                      size={16}
+                      color={theme.colors.gray400}
+                    />
+                  </Pressable>
+                </HStack>
+              ) : null}
               {/* 标题 */}
               <Box>
                 <Text fontSize="$sm" color="$gray400" mb="$xs">
@@ -519,6 +671,22 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.45,
+  },
+  // 生成失败卡片态: 与底栏主 CTA 视觉一致 (黑底白字), 但宽度自适应卡片。
+  errorRetryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "stretch",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: theme.colors.black,
+  },
+  errorBackBtn: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   // 目标基础类型展示条
   targetTypeRow: {

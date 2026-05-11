@@ -150,7 +150,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
             />
             <Text
               color="$gray400"
-              fontSize="$xs"
+              fontSize="$sm"
               mt="$xs"
               style={{ fontFamily: playfairFonts.regular }}
             >

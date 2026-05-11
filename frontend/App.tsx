@@ -60,6 +60,7 @@ import FollowersScreen from "./src/screens/FollowersScreen";
 import BrandFollowersScreen from "./src/screens/BrandFollowersScreen";
 import AdminScreen from "./src/screens/admin/AdminScreen";
 import SubmitStoreScreen from "./src/screens/SubmitStoreScreen";
+import SubmitBrandScreen from "./src/screens/Archive/SubmitBrandScreen";
 import StoreDetailScreen from "./src/screens/StoreDetailScreen";
 import AllBuyerStoresScreen from "./src/screens/AllBuyerStoresScreen";
 import StoreReviewScreen from "./src/screens/StoreReviewScreen";
@@ -155,10 +156,16 @@ interface EngagementNudgeState {
   stage: EngagementNudgeStage;
   accumulatedMs: number;
   behaviorCount: number;
+  // 累计已主动弹出过的次数。一旦达到 ENGAGEMENT_NUDGE_MAX_PROMPTS，
+  // stage 永久置为 "done"，不再打扰用户（不论后续添加多少 stage）。
+  shownCount: number;
 }
 
 const ENGAGEMENT_NUDGE_USAGE_THRESHOLD_MS = 3 * 60 * 1000;
 const ENGAGEMENT_NUDGE_BEHAVIOR_THRESHOLD = 3;
+// 全局硬上限：整个用户生命周期内最多主动弹 2 次（AI 发帖 + 论坛关注），
+// 超过即冻结到 "done"，避免对老用户反复打扰。
+const ENGAGEMENT_NUDGE_MAX_PROMPTS = 2;
 const ENGAGEMENT_NUDGE_STORAGE_PREFIX = "engagement_nudge_state";
 const ENGAGEMENT_NUDGE_BEHAVIOR_ROUTES = new Set([
   "PostDetail",
@@ -172,10 +179,25 @@ const DEFAULT_ENGAGEMENT_NUDGE_STATE: EngagementNudgeState = {
   stage: "aiPost",
   accumulatedMs: 0,
   behaviorCount: 0,
+  shownCount: 0,
 };
 
 const getEngagementNudgeStorageKey = (userId: string | number) =>
   `${ENGAGEMENT_NUDGE_STORAGE_PREFIX}_${userId}`;
+
+// 老版本持久化里没有 shownCount。按 stage 推断已弹出的次数，
+// 让升级后的客户端立刻遵守 2 次上限，不会因为缺字段又开始弹一次。
+const inferShownCountFromStage = (
+  stage: EngagementNudgeStage,
+  raw: unknown
+): number => {
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return Math.min(Math.max(0, Math.floor(raw)), ENGAGEMENT_NUDGE_MAX_PROMPTS);
+  }
+  if (stage === "done") return ENGAGEMENT_NUDGE_MAX_PROMPTS;
+  if (stage === "forumFollow") return 1;
+  return 0;
+};
 
 const getActiveRouteName = (
   state?: NavigationState | PartialState<NavigationState>
@@ -203,11 +225,9 @@ function AuthNavigator() {
 
 function TabNavigator() {
   const { t } = useTranslation();
-  const { totalUnread } = useChatStore();
   // 统一从 notificationStore 读未读数。当页面内调用 markRead / markAllRead 时，
   // tab 角标会立刻更新，不用等 30 秒 polling。polling 仍保留作为兜底，覆盖
   // 后台推送在 App 处于前台但还没被任何页面消费的场景。
-  const notifUnread = useNotificationStore((s) => s.unreadCount);
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
   const refreshUnreadCount = useNotificationStore((s) => s.refreshUnreadCount);
 
@@ -226,8 +246,6 @@ function TabNavigator() {
       clearInterval(timer);
     };
   }, [loadNotifications, refreshUnreadCount]);
-
-  const interactionBadge = totalUnread + notifUnread;
 
   return (
     <Tab.Navigator
@@ -286,24 +304,18 @@ function TabNavigator() {
       <Tab.Screen
         name="Interaction"
         component={InteractionScreen}
+        initialParams={{ subTab: "map" }}
         options={{
           tabBarLabel: t("tabs.interaction"),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="interaction" color={color} focused={focused} />
           ),
-          tabBarBadge: interactionBadge > 0 ? interactionBadge : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: "#FF3B30",
-            fontSize: 10,
-            fontWeight: "700",
-            minWidth: 16,
-            height: 16,
-            lineHeight: 18,
-            borderRadius: 9,
-            textAlign: "center",
-            paddingHorizontal: 2,
-          },
         }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate("Interaction", { subTab: "map" });
+          },
+        })}
       />
       <Tab.Screen
         name="Profile"
@@ -415,22 +427,35 @@ function AppNavigator({
     [persistEngagementNudgeState]
   );
 
+  // 弹窗"打开"时立即推进一次，而不是关闭时推进。
+  // 这样可以避免 CustomAlert.handleButtonPress 同时调用 button.onPress
+  // 和 onClose（两者都指向 closeEngagementNudge）导致 stage 被推进 2 级、
+  // 用户实际只能看到 1 次弹窗的旧 bug。
   const advanceEngagementNudgeStage = useCallback(() => {
     patchEngagementNudgeState((prev) => {
-      const nextStage: EngagementNudgeStage =
-        prev.stage === "aiPost" ? "forumFollow" : "done";
+      const nextShownCount = Math.min(
+        prev.shownCount + 1,
+        ENGAGEMENT_NUDGE_MAX_PROMPTS
+      );
+      // 命中全局上限直接进入终态，后续永不再弹。
+      const reachedCap = nextShownCount >= ENGAGEMENT_NUDGE_MAX_PROMPTS;
+      const nextStage: EngagementNudgeStage = reachedCap
+        ? "done"
+        : prev.stage === "aiPost"
+          ? "forumFollow"
+          : "done";
       return {
         stage: nextStage,
         accumulatedMs: 0,
         behaviorCount: 0,
+        shownCount: nextShownCount,
       };
     });
   }, [patchEngagementNudgeState]);
 
   const closeEngagementNudge = useCallback(() => {
     setActiveEngagementNudge(null);
-    advanceEngagementNudgeStage();
-  }, [advanceEngagementNudgeStage]);
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {
@@ -458,10 +483,16 @@ function AppNavigator({
           setEngagementNudgeState(DEFAULT_ENGAGEMENT_NUDGE_STATE);
           return;
         }
+        const shownCount = inferShownCountFromStage(parsed.stage, parsed.shownCount);
+        // 老数据若已经"事实上"达到上限（比如旧 bug 让 stage 已经走到 forumFollow
+        // 或 done），直接钉死在 done，不再给一次额外的机会。
+        const stage: EngagementNudgeStage =
+          shownCount >= ENGAGEMENT_NUDGE_MAX_PROMPTS ? "done" : parsed.stage;
         setEngagementNudgeState({
-          stage: parsed.stage,
+          stage,
           accumulatedMs: Number(parsed.accumulatedMs) || 0,
           behaviorCount: Number(parsed.behaviorCount) || 0,
+          shownCount,
         });
       } catch (error) {
         console.log("Failed to load engagement nudge state:", error);
@@ -481,12 +512,17 @@ function AppNavigator({
     if (!isAuthenticated || !guideChecked || showOnboardingGuide) return;
     if (activeEngagementNudge || !engagementNudgeState) return;
     if (showProfileReminder || engagementNudgeState.stage === "done") return;
+    // 兜底：即使 stage 没及时收敛到 done，也要严格遵守 2 次硬上限。
+    if (engagementNudgeState.shownCount >= ENGAGEMENT_NUDGE_MAX_PROMPTS) return;
 
     const shouldOpen =
       engagementNudgeState.accumulatedMs >= ENGAGEMENT_NUDGE_USAGE_THRESHOLD_MS ||
       engagementNudgeState.behaviorCount >= ENGAGEMENT_NUDGE_BEHAVIOR_THRESHOLD;
     if (shouldOpen) {
       setActiveEngagementNudge(engagementNudgeState.stage);
+      // 在"打开"时立即记账并推进 stage，确保 shownCount + 1 与本次弹窗一一对应，
+      // 不依赖关闭路径（用户点按钮 / 系统返回 / 切后台）的回调到位。
+      advanceEngagementNudgeStage();
     }
   }, [
     isAuthenticated,
@@ -495,6 +531,7 @@ function AppNavigator({
     showProfileReminder,
     activeEngagementNudge,
     engagementNudgeState,
+    advanceEngagementNudgeStage,
   ]);
 
   useEffect(() => {
@@ -686,6 +723,14 @@ function AppNavigator({
         <Stack.Screen
           name="SubmitStore"
           component={SubmitStoreScreen}
+          options={{
+            headerShown: false,
+            presentation: "fullScreenModal",
+          }}
+        />
+        <Stack.Screen
+          name="SubmitBrand"
+          component={SubmitBrandScreen}
           options={{
             headerShown: false,
             presentation: "fullScreenModal",

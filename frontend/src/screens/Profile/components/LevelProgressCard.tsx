@@ -61,8 +61,8 @@ export const LevelProgressCard: React.FC = () => {
   const goDetail = () => navigation.navigate("MyLevel");
 
   return (
-    <Box pb={14} bg="$white">
-      <HStack px={16} mb={10} justifyContent="between">
+    <Box pb={10} bg="$white">
+      <HStack px={16} mb={6} justifyContent="between">
         <Text style={styles.sectionTitle}>{t("profile.levelProgress")}</Text>
         {currentLevel > 0 ? (
           <Box style={styles.lvChip}>
@@ -76,13 +76,14 @@ export const LevelProgressCard: React.FC = () => {
 
       <Pressable
         mx={16}
-        p="$md"
+        px="$md"
+        py="$sm"
         borderWidth={1}
         borderColor="$gray100"
         bg="$white"
         onPress={goDetail}
       >
-        <HStack justifyContent="between" alignItems="start">
+        <HStack justifyContent="between" alignItems="center">
           <VStack flex={1} pr={8}>
             <Text style={styles.cardTitle} numberOfLines={2}>
               {headlineText}
@@ -102,11 +103,15 @@ export const LevelProgressCard: React.FC = () => {
         </HStack>
 
         {!topReached && !isPendingAudit && tasks.length > 0 ? (
-          <VStack mt="$md">
+          <VStack mt="$sm">
             <Text style={styles.howToHint}>{t("level.howToLevelUp")}</Text>
             <Box>
               {tasks.map((task) => (
-                <LevelProgressBar key={task.action} task={task} />
+                <LevelProgressBar
+                  key={task.action}
+                  task={task}
+                  compact
+                />
               ))}
             </Box>
           </VStack>
@@ -167,18 +172,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   chevron: {
-    marginTop: 1,
+    marginTop: 0,
   },
   howToHint: {
     ...theme.typography.caption,
     color: theme.colors.gray400,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 4,
     letterSpacing: 0.5,
   },
   manualOnly: {
     ...theme.typography.bodySmall,
     color: theme.colors.gray300,
     fontStyle: "italic",
-    marginTop: theme.spacing.sm,
+    marginTop: 6,
   },
 });

@@ -17,6 +17,7 @@ import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useAuthStore } from "../../store/authStore";
 import { useDiscoverTabStore } from "../../store/discoverTabStore";
+import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { getUnreadCount } from "../../services/notificationService";
 import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
 import { userInfoService, UserInfo } from "../../services/userInfoService";
@@ -146,6 +147,7 @@ const DiscoverScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
+      useMainBottomTabStore.getState().setActiveMainTab("Home");
       useDiscoverTabStore.getState().setFocused(true);
       return () => useDiscoverTabStore.getState().setFocused(false);
     }, [])
@@ -427,7 +429,10 @@ const DiscoverScreen: React.FC = () => {
   }, [navigation]);
 
   const handleInteractionPress = useCallback(() => {
-    (navigation.navigate as any)("Main", { screen: "Interaction" });
+    (navigation.navigate as any)("Main", {
+      screen: "Interaction",
+      params: { subTab: "messages" },
+    });
   }, [navigation]);
 
   const renderPageSlot = (tab: TabType, index: number) => {

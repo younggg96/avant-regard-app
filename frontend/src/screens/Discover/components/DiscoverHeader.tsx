@@ -28,8 +28,10 @@ interface DiscoverHeaderProps {
 
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     avatar,
+    totalInteractionUnread = 0,
     onAvatarPress,
     onSearchPress,
+    onInteractionPress,
 }) => {
     const { t } = useTranslation();
 
@@ -40,6 +42,14 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                     <DiscoverLogo />
 
                     <HStack alignItems="center" space="md">
+                        <Pressable
+                            onPress={onInteractionPress}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            style={styles.interactionButton}
+                        >
+                            <Ionicons name="notifications-outline" size={22} color={theme.colors.black} />
+                            <NotificationBadge count={totalInteractionUnread} size="sm" showBorder />
+                        </Pressable>
                         <Pressable
                             onPress={onAvatarPress}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

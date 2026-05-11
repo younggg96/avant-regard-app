@@ -47,8 +47,11 @@ export interface ReplyTarget {
   userName: string;
 }
 
-// 帖子状态类型
-export type PostStatus = "DRAFT" | "PENDING" | "PUBLISHED" | "HIDDEN";
+// 帖子状态类型（含审核派生状态）
+// REJECTED 是 audit_status 维度的派生：DB 里 status='PUBLISHED' + audit_status='REJECTED'。
+// PostDetail 通过这一个枚举驱动 header/comments/edit 几条分支，避免到处分别判断
+// auditStatus，简化分发。
+export type PostStatus = "DRAFT" | "PENDING" | "PUBLISHED" | "HIDDEN" | "REJECTED";
 
 export const formatTimestamp = (dateString: string): string => {
   const t = i18n.t.bind(i18n);

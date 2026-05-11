@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Modal } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -122,6 +121,10 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     Alert.show(t("imageUploader.imageRemoved"));
   };
 
+  // 不再嵌套 SafeAreaProvider — 顶层 App 已经有一个全局 provider, 重复嵌套
+  // 在 react-native-safe-area-context 上是已知反模式, 会导致 inset 测算延迟
+  // 或第一次弹起尺寸错位 (体感: 裁切屏底部按钮被遮挡 / 顶部状态栏重叠)。
+  // ImageCropper 内部用 useSafeAreaInsets() 直接读取顶层 provider 的值即可。
   const cropperModal = enableCropper ? (
     <Modal
       visible={showCropper && !!rawImageUri}
@@ -129,16 +132,14 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
       presentationStyle="fullScreen"
       statusBarTranslucent
     >
-      <SafeAreaProvider>
-        {rawImageUri && (
-          <ImageCropper
-            sourceUri={rawImageUri}
-            aspect={defaultCropAspect}
-            onCancel={handleCropCancel}
-            onDone={handleCropDone}
-          />
-        )}
-      </SafeAreaProvider>
+      {rawImageUri && (
+        <ImageCropper
+          sourceUri={rawImageUri}
+          aspect={defaultCropAspect}
+          onCancel={handleCropCancel}
+          onDone={handleCropDone}
+        />
+      )}
     </Modal>
   ) : null;
 

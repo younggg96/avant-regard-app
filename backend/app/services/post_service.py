@@ -668,6 +668,35 @@ class PostService:
         result = query.order("created_at", desc=True).execute()
         return [self._format_post(p, current_user_id) for p in result.data or []]
 
+    def get_user_post_stats(self, user_id: int) -> dict:
+        """聚合用户已发布且审核通过的帖子的累计获赞 / 收藏 / 评论 数。
+
+        前台个人主页"获赞与收藏"统计依赖此接口，避免在客户端按已加载帖子
+        二次相加导致与后台真实数据偏差（包括论坛帖子、未加载分页等场景）。
+        仅统计 status='PUBLISHED' 且 audit_status='APPROVED' 的帖子，与列表
+        前端展示口径保持一致。
+        """
+        result = (
+            self.db.table("posts")
+            .select("like_count,favorite_count,comment_count")
+            .eq("user_id", user_id)
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .execute()
+        )
+        rows = result.data or []
+        total_likes = sum((r.get("like_count") or 0) for r in rows)
+        total_saves = sum((r.get("favorite_count") or 0) for r in rows)
+        total_comments = sum((r.get("comment_count") or 0) for r in rows)
+        return {
+            "userId": user_id,
+            "postCount": len(rows),
+            "totalLikes": total_likes,
+            "totalSaves": total_saves,
+            "totalLikesAndSaves": total_likes + total_saves,
+            "totalComments": total_comments,
+        }
+
     def get_liked_posts_by_user_id(
         self, user_id: int, current_user_id: Optional[int] = None
     ) -> List[Post]:

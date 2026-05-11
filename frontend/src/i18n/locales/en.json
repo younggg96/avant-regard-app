@@ -53,7 +53,7 @@
   "tabs": {
     "home": "Home",
     "archive": "Archive",
-    "interaction": "Messages",
+    "interaction": "Map",
     "profile": "Me"
   },
   "discover": {
@@ -115,7 +115,7 @@
     "followers": "Followers",
     "likesAndSaves": "Likes & Saves",
     "published": "Published",
-    "pending": "Pending",
+    "pending": "Review & Rejected",
     "forum": "Forum",
     "liked": "Liked",
     "saved": "Saved",
@@ -132,7 +132,7 @@
     "block": "Block",
     "report": "Report",
     "noPublishedPosts": "No published posts yet",
-    "noPendingPosts": "No pending posts",
+    "noPendingPosts": "No posts under review or rejected",
     "noForumPosts": "No forum posts yet",
     "noLikedPosts": "No liked posts yet",
     "noSavedPosts": "No saved posts yet",
@@ -933,6 +933,7 @@
     "editLookbook": "Edit Lookbook",
     "publishLookbook": "Publish Lookbook",
     "reAuditWarning": "Post will be re-reviewed after editing",
+    "rejectedEditNotice": "This post didn't pass review. Edit the images and text, then submit again — it will go back through review without needing to recreate.",
     "titleLabel": "Title",
     "lookbookTitlePlaceholder": "Enter your post title (e.g. My 2025 Spring/Summer Collection)",
     "descriptionLabel": "Description",
@@ -2028,6 +2029,10 @@
   "postDetail": {
     "continueEdit": "Continue Editing",
     "pending": "Under Review",
+    "rejected": "Rejected",
+    "editAndResubmit": "Edit & Resubmit",
+    "rejectedBannerTitle": "This post didn't pass review",
+    "rejectedBannerBody": "Edit the images and text, then resubmit — no need to recreate the post. It will go back through review and become visible once approved.",
     "followed": "Following",
     "follow": "Follow",
     "want": "Want",
@@ -2461,6 +2466,12 @@
       "communityRequired": "Please choose a community",
       "publishSuccess": "Published",
       "publishFailed": "Publish failed",
+      "generateFailedTitle": "AI draft failed",
+      "generateFailedBody": "The network or AI service is temporarily unavailable. Retry, or go back to use a different posting flow.",
+      "regenFailedTitle": "Regenerate failed",
+      "regenFailedBody": "Your previous draft has been preserved. Try again later or just edit the current content.",
+      "retryGenerate": "Retry",
+      "back": "Go back",
       "targetType": {
         "label": "Will be posted as",
         "change": "Change",

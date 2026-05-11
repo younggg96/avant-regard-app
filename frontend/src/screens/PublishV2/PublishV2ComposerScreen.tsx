@@ -127,15 +127,6 @@ const PublishV2ComposerScreen: React.FC = () => {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [singleCropperUri, setSingleCropperUri] = useState<string | null>(null);
   const [batchCropperUris, setBatchCropperUris] = useState<string[]>([]);
-  const autoOpenedRef = useRef(false);
-
-  // 进入屏后自动弹一次媒体选择，引导用户先挑图。
-  useEffect(() => {
-    if (autoOpenedRef.current) return;
-    autoOpenedRef.current = true;
-    const timer = setTimeout(() => setPickerVisible(true), 200);
-    return () => clearTimeout(timer);
-  }, []);
 
   // ==================== 共用字段 ====================
   const [selectedType, setSelectedType] = useState<V2ComposerType>("lookbook");
@@ -800,7 +791,7 @@ const PublishV2ComposerScreen: React.FC = () => {
               placeholder={t("publish.reviewTitlePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="underlined"
-              size="lg"
+              size="sm"
             />
           </Box>
 
@@ -816,7 +807,7 @@ const PublishV2ComposerScreen: React.FC = () => {
               placeholder={t("publish.productNamePlaceholder")}
               placeholderTextColor={theme.colors.gray400}
               variant="underlined"
-              size="md"
+              size="sm"
             />
           </Box>
 
@@ -844,7 +835,7 @@ const PublishV2ComposerScreen: React.FC = () => {
               />
             </View>
             <Text
-              fontSize="$xs"
+              fontSize="$sm"
               color={
                 reviewText.trim().length > 0 &&
                 (reviewText.trim().length < REVIEW_MIN_CHARS ||
@@ -884,7 +875,7 @@ const PublishV2ComposerScreen: React.FC = () => {
             }
             placeholderTextColor={theme.colors.gray400}
             variant="underlined"
-            size="lg"
+            size="sm"
           />
         </Box>
 
@@ -928,7 +919,6 @@ const PublishV2ComposerScreen: React.FC = () => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <ScrollView
           style={{ flex: 1 }}
@@ -1034,14 +1024,17 @@ const PublishV2ComposerScreen: React.FC = () => {
             <ProductInfoSection value={productInfo} onChange={setProductInfo} />
           </Box>
         </ScrollView>
-      </KeyboardAvoidingView>
 
-      <PublishButtons
-        onSaveDraft={handleSaveDraft}
-        onPublish={handlePublish}
-        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
-        draftDisabled={isPublishing || isSavingDraft}
-      />
+        {/* PublishButtons 必须在 KAV 内: 按钮自身是 position:absolute bottom:0,
+            放到 KAV 外面时键盘弹起 KAV 上推内容、按钮原地不动 → 被键盘整个盖住,
+            用户体感"返回 / 发布按键无响应"。 */}
+        <PublishButtons
+          onSaveDraft={handleSaveDraft}
+          onPublish={handlePublish}
+          publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+          draftDisabled={isPublishing || isSavingDraft}
+        />
+      </KeyboardAvoidingView>
 
       {/* 模态：选媒体 */}
       <ImagePickerModal

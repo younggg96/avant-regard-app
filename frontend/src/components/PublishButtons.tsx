@@ -59,7 +59,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
                 size={20}
                 color={theme.colors.white}
               />
-              <Text color="$white" ml="$xs" fontWeight="$medium">
+              <Text color="$white" ml="$xs" fontWeight="$medium" fontSize="$sm">
                 {draftLabel}
               </Text>
             </HStack>
@@ -77,7 +77,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
         >
           <HStack justifyContent="center" alignItems="center" gap="$xs">
             <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium">
+            <Text color="$white" ml="$xs" fontWeight="$medium" fontSize="$sm">
               {publishLabel}
             </Text>
           </HStack>

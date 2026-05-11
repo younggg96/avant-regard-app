@@ -1,7 +1,11 @@
 /**
  * AI 发帖助手 — 配额徽章。
  *
- * 显示「今日剩余 N/M 次」。配额由调用方传入,本组件只渲染。
+ * 顶栏右上角的"今日还能发几次 AI 帖"指示器,所有 AI 屏 (Entry / ImageBrief /
+ * Preview) 共用同一计数语义 = `daily_generate_*`,避免跨屏跳转时数字割裂。
+ * 重新生成 (regen) 的剩余次数由预览屏的 `regenerateConfirmBody` 弹窗承担,
+ * 不在徽章里展示,以免「同一徽章读两个不同计数器」造成用户错觉。
+ *
  * 余量 = 0 时整体变灰 + 警告色文案。
  */
 
@@ -14,17 +18,16 @@ import type { QuotaInfo } from "../../../services/aiPostService";
 
 interface QuotaBadgeProps {
   quota: QuotaInfo | null;
-  /** 是否在重新生成场景下显示（默认显示生成余量） */
-  variant?: "generate" | "regenerate";
 }
 
-const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota, variant = "generate" }) => {
+const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota }) => {
   const { t } = useTranslation();
   if (!quota) return null;
 
-  const used = variant === "regenerate" ? quota.daily_regen_used : quota.daily_generate_used;
-  const limit = variant === "regenerate" ? quota.daily_regen_limit : quota.daily_generate_limit;
-  const remaining = Math.max(0, limit - used);
+  const remaining = Math.max(
+    0,
+    quota.daily_generate_limit - quota.daily_generate_used,
+  );
   const exhausted = remaining === 0;
 
   return (

@@ -1,21 +1,24 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 import { theme } from "../theme";
 import { useDiscoverTabStore } from "../store/discoverTabStore";
+import { useMainBottomTabStore } from "../store/mainBottomTabStore";
+import { useAuthStore } from "../store/authStore";
 
 /**
  * 发布按钮 V2
  * ------------------------------------------------------------------
  * 与原 `PublishTabButton` 行为差异：
  *   - 原版：永远跳 `PublishType`（六选一聚合屏）。
- *   - V2  ：根据用户在 Discover 里所处的子 Tab 走不同入口：
- *       · 论坛 Tab    → `PublishV2ForumMode`（AI 发帖 / 论坛发帖）
- *       · 买手店 Tab  → `SubmitStore`（用户提交买手店申请，复用既有屏）
- *       · 推荐 / 关注 / 其它屏 → `PublishV2Composer`
- *           （单屏：媒体 + 类型切换 + 类型对应字段，默认 Lookbook）
+ *   - V2  ：根据主 Tab / Discover 子 Tab 分流：
+ *       · Archive Tab → `SubmitBrand`（上传品牌全屏，对齐 Archive 业务）
+ *       · Discover·论坛 → `PublishV2ForumMode`
+ *       · Discover·买手店 → `SubmitStore`
+ *       · 其它 → `PublishV2Composer`
  *
  * V2 完全独立于 V1 流程，原 `PublishTypeScreen` 等屏仍然保留并可被
  * 别的入口（例如 PostCard 编辑、AI 预览页）继续 navigate 进去。
@@ -23,8 +26,21 @@ import { useDiscoverTabStore } from "../store/discoverTabStore";
 
 const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const handlePress = () => {
+    const mainTab = useMainBottomTabStore.getState().activeMainTab;
+    if (mainTab === "Archive") {
+      const { user } = useAuthStore.getState();
+      if (!user?.userId) {
+        Alert.alert(t("common.hint"), t("archive.loginToSubmitBrand"));
+        return;
+      }
+      // @ts-expect-error - navigation types
+      navigation.navigate("SubmitBrand");
+      return;
+    }
+
     const { activeTab } = useDiscoverTabStore.getState();
     if (activeTab === "forum") {
       // @ts-expect-error - navigation types

@@ -113,9 +113,12 @@ export const usePostDetail = ({
     // 如果已经有 post 数据（从路由参数传入），不需要再加载
     if (params.post) {
       setPost(params.post);
-      // 从路由参数传入的帖子，根据 auditStatus 判断状态
-      // 如果有 auditStatus，说明是已发布的帖子
-      if (params.post.auditStatus) {
+      // 从路由参数传入的帖子，根据 auditStatus 推导显示态：
+      // - REJECTED：单独一类，header/footer 都按「已驳回」走，让作者直达编辑;
+      // - PENDING/APPROVED：按已发布走（DB status='PUBLISHED'）。
+      if (params.post.auditStatus === "REJECTED") {
+        setPostStatus("REJECTED");
+      } else if (params.post.auditStatus) {
         setPostStatus("PUBLISHED");
       }
       setIsLoading(false);
@@ -139,7 +142,11 @@ export const usePostDetail = ({
       }
 
       const apiPost = await postService.getPostById(postId);
-      setPostStatus(apiPost.status);
+      // 审核驳回的帖子 DB 仍是 status='PUBLISHED'，UI 这边显式归一到 'REJECTED'
+      // 以便 header 把 "继续修改" 按钮渲染出来、底栏隐藏评论输入。
+      setPostStatus(
+        apiPost.auditStatus === "REJECTED" ? "REJECTED" : apiPost.status
+      );
       if (!apiPost) {
         throw new Error(t("postActions.postNotFound"));
       }

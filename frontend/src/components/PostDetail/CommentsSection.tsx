@@ -311,6 +311,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const showComments: boolean = postStatus === "PUBLISHED";
 
   if (!showComments) {
+    // REJECTED 在屏幕顶部已经有红色横幅说明状态 + 「修改并重新提交」按钮，
+    // 这里就不再重复绘制一个大块「审核中」空态了——避免和顶部冲突。
+    if (postStatus === "REJECTED") {
+      return null;
+    }
     return (
       <VStack
         space="md"

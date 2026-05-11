@@ -30,16 +30,16 @@ const localStyles = StyleSheet.create({
   title: {
     fontFamily: playfairFonts.medium,
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 16,
     fontWeight: "600",
     color: theme.colors.black,
   },
   status: {
     fontFamily: playfairFonts.regular,
     fontSize: 11,
-    lineHeight: 15,
+    lineHeight: 14,
     color: theme.colors.gray300,
-    marginTop: 2,
+    marginTop: 1,
   },
 });
 
@@ -101,25 +101,25 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
         bg="$white"
         borderWidth={1}
         borderColor="$gray100"
-        p="$md"
-        mt="$md"
+        px="$md"
+        py="$sm"
+        mt="$sm"
         mx="$md"
-        mb="$md"
+        mb="$sm"
         onPress={() => setDetailVisible(true)}
         accessibilityRole="button"
         accessibilityLabel={t("level.monthlyLottery")}
       >
-        <HStack alignItems="center" gap="$md">
+        <HStack alignItems="center" gap="$sm">
           <Box
-            w={40}
-            h={40}
-            rounded={20}
+            w={32}
+            h={32}
+            rounded={16}
             bg="$black"
             alignItems="center"
             justifyContent="center"
-            mr="$md"
           >
-            <Ionicons name="ticket-outline" size={22} color={theme.colors.white} />
+            <Ionicons name="ticket-outline" size={18} color={theme.colors.white} />
           </Box>
           <VStack flex={1}>
             <Text style={localStyles.title}>

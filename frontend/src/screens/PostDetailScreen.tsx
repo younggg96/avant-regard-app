@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
 import { theme } from "../theme";
@@ -331,7 +332,10 @@ const PostDetailScreen = () => {
   const displayWants = post.engagement?.wants || 0;
   const displayIsWanted = post.engagement?.isWanted || false;
   const isItemReview = post.type === "ITEM_REVIEW";
+  // 驳回笔记对其它用户不可见，作者自己来看时也不需要看到评论入口/输入框，
+  // 直接引导其用 header 上的「修改后重新提交」按钮去编辑。
   const showComments = postStatus === "PUBLISHED";
+  const isRejected = postStatus === "REJECTED";
 
   return (
     <View style={localStyles.rootContainer}>
@@ -355,6 +359,23 @@ const PostDetailScreen = () => {
             onShowOptionsMenu={() => setShowOptionsMenu(true)}
             onShowReportMenu={() => setShowReportModal(true)}
           />
+
+          {/* 驳回提示横幅：放在 header 正下方，让作者打开就能看到「为什么我看不到
+              这条」并清晰知道下一步是「修改后重新提交」。文案不上锁定原因细节
+              ——通用提示更稳健，避免后端没有 reject_reason 字段时空文案。 */}
+          {isRejected && isOwnPost && (
+            <View style={localStyles.rejectedBanner}>
+              <View style={localStyles.rejectedBannerRow}>
+                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                <Text style={localStyles.rejectedBannerTitle}>
+                  {t("postDetail.rejectedBannerTitle")}
+                </Text>
+              </View>
+              <Text style={localStyles.rejectedBannerBody}>
+                {t("postDetail.rejectedBannerBody")}
+              </Text>
+            </View>
+          )}
 
           {/* Content */}
           <RNScrollView
@@ -515,7 +536,9 @@ const PostDetailScreen = () => {
         {/* Options Menu Modal */}
         <OptionsMenuModal
           visible={showOptionsMenu}
-          showEditOption={isOwnPost && postStatus === "PUBLISHED"}
+          showEditOption={
+            isOwnPost && (postStatus === "PUBLISHED" || postStatus === "REJECTED")
+          }
           onClose={() => setShowOptionsMenu(false)}
           onEdit={handleEditPost}
           onDelete={handleDeletePost}
@@ -592,6 +615,29 @@ const localStyles = StyleSheet.create({
   forumCoverImage: {
     width: "100%",
     height: "100%",
+  },
+  rejectedBanner: {
+    backgroundColor: "#FEF2F2",
+    borderLeftWidth: 3,
+    borderLeftColor: "#DC2626",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  rejectedBannerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  rejectedBannerTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#B91C1C",
+  },
+  rejectedBannerBody: {
+    fontSize: 12,
+    color: "#7F1D1D",
+    marginTop: 4,
+    lineHeight: 17,
   },
 });
 

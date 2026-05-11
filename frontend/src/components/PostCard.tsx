@@ -121,6 +121,9 @@ const PostCardInner = ({
   const hasImage = !!displayImage;
 
   const isPending = post.auditStatus === "PENDING";
+  const isRejected = post.auditStatus === "REJECTED";
+  // 审核中 + 驳回都需要在封面上压一层低饱和度滤镜，提示作者「这条不对外可见」。
+  const isUnderReviewOrRejected = isPending || isRejected;
 
   const mediaRatio = clampAspectRatio(
     useMediaAspectRatio(displayImage, 3 / 4, post.content?.coverAspectRatio)
@@ -131,9 +134,9 @@ const PostCardInner = ({
     () => [
       styles.image,
       { aspectRatio: mediaRatio },
-      isPending && styles.pendingImage,
+      isUnderReviewOrRejected && styles.pendingImage,
     ],
-    [mediaRatio, isPending]
+    [mediaRatio, isUnderReviewOrRejected]
   );
 
   const postId = post.id;
@@ -159,19 +162,27 @@ const PostCardInner = ({
               style={coverStyle}
             />
 
+            {isRejected && (
+              <View style={styles.rejectedBadge}>
+                <Ionicons name="alert-circle" size={11} color="#FFFFFF" />
+                <RNText style={styles.rejectedBadgeText}>
+                  {t("postDetail.rejected")}
+                </RNText>
+              </View>
+            )}
             {isPending && (
               <View style={styles.pendingBadge}>
                 <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
               </View>
             )}
-            {!isPending && post.communityName && (
+            {!isUnderReviewOrRejected && post.communityName && (
               <View style={styles.communityBadge}>
                 <RNText style={styles.communityText}>
                   # {post.communityName}
                 </RNText>
               </View>
             )}
-            {!isPending && !post.communityName && post.storeName && (
+            {!isUnderReviewOrRejected && !post.communityName && post.storeName && (
               <View style={styles.storeBadge}>
                 <Ionicons name="storefront" size={10} color="#FFFFFF" />
                 <RNText style={styles.storeText} numberOfLines={1}>
@@ -184,19 +195,27 @@ const PostCardInner = ({
       ) : (
         <Pressable onPress={handlePressPost}>
           <View style={styles.textOnlyCover}>
+            {isRejected && (
+              <View style={styles.rejectedBadge}>
+                <Ionicons name="alert-circle" size={11} color="#FFFFFF" />
+                <RNText style={styles.rejectedBadgeText}>
+                  {t("postDetail.rejected")}
+                </RNText>
+              </View>
+            )}
             {isPending && (
               <View style={styles.pendingBadge}>
                 <RNText style={styles.badgeText}>{t("postDetail.pending")}</RNText>
               </View>
             )}
-            {!isPending && post.communityName && (
+            {!isUnderReviewOrRejected && post.communityName && (
               <View style={styles.communityBadge}>
                 <RNText style={styles.communityText}>
                   # {post.communityName}
                 </RNText>
               </View>
             )}
-            {!isPending && !post.communityName && post.storeName && (
+            {!isUnderReviewOrRejected && !post.communityName && post.storeName && (
               <View style={styles.storeBadge}>
                 <Ionicons name="storefront" size={10} color="#FFFFFF" />
                 <RNText style={styles.storeText} numberOfLines={1}>
@@ -298,6 +317,26 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: playfairFonts.medium,
+  },
+  // 驳回角标：饱和度高的红色 + 警告图标，与「审核中」的橘色明显区分，
+  // 让用户在瀑布流中一眼定位需要修改的违规帖子。
+  rejectedBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(220, 38, 38, 0.95)",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    gap: 3,
+  },
+  rejectedBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
     fontFamily: playfairFonts.medium,
   },
   communityBadge: {

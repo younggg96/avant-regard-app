@@ -83,6 +83,9 @@ const PublishReviewScreen = () => {
 
   // 判断是否编辑已发布/审核中的帖子（需要重新审核）
   const isEditingPublishedPost = editMode && draftPost?.auditStatus;
+  // 编辑驳回笔记走不同提示：红色横幅 + 「修改后重新提交」措辞，
+  // 让用户清楚知道当前任务是「修复违规、再次过审」，而不是「随便改改」。
+  const isEditingRejectedPost = editMode && draftPost?.auditStatus === "REJECTED";
 
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showImageCropper, setShowImageCropper] = useState(false);
@@ -795,15 +798,28 @@ const PublishReviewScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    // 仅保留 top 安全区. bottom 由 PublishButtons 自己用 useSafeAreaInsets()
+    // 处理. 否则 SafeAreaView 吃 bottom inset + KAV 又按完整键盘高度加 padding,
+    // 在 iOS 上会双重抵扣 ~34px, 表现为键盘弹起时输入框错位 / 按钮被遮挡。
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
         title={editMode ? t("publish.editReview") : t("publish.typeReviewTitle")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
 
-      {/* 编辑已发布帖子时显示提示 */}
-      {isEditingPublishedPost && (
+      {/* 编辑已发布 / 驳回帖子时显示提示。驳回单独走红色 banner，
+          其它（PENDING / APPROVED）走原有橙色「会重新进审核」提示。 */}
+      {isEditingRejectedPost ? (
+        <Box style={{ backgroundColor: "#FEF2F2" }} px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="alert-circle" size={20} color="#DC2626" />
+            <Text style={{ color: "#7F1D1D" }} fontSize="$sm" flex={1}>
+              {t("publish.rejectedEditNotice")}
+            </Text>
+          </HStack>
+        </Box>
+      ) : isEditingPublishedPost ? (
         <Box bg="$accent" px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
@@ -812,12 +828,11 @@ const PublishReviewScreen = () => {
             </Text>
           </HStack>
         </Box>
-      )}
+      ) : null}
 
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ScrollView
           style={styles.content}
@@ -842,7 +857,7 @@ const PublishReviewScreen = () => {
               placeholderTextColor={theme.colors.gray400}
               variant="outline"
               sx={{
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: "500",
                 minHeight: 50,
                 borderWidth: 0,
@@ -881,7 +896,7 @@ const PublishReviewScreen = () => {
               placeholderTextColor={theme.colors.gray400}
               variant="outline"
               sx={{
-                fontSize: 16,
+                fontSize: 14,
                 borderWidth: 0,
                 padding: 0,
               }}
@@ -932,6 +947,7 @@ const PublishReviewScreen = () => {
               multiline
               variant="outline"
               sx={{
+                fontSize: 14,
                 color: theme.colors.gray600,
                 minHeight: 120,
                 textAlignVertical: "top",
@@ -948,7 +964,7 @@ const PublishReviewScreen = () => {
                     ? "$red500"
                     : "$gray400"
               }
-              fontSize="$xs"
+              fontSize="$sm"
               mt="$xs"
               textAlign="right"
             >

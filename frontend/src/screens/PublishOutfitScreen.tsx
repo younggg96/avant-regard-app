@@ -98,6 +98,8 @@ const PublishOutfitScreen = () => {
 
   // 判断是否编辑已发布/审核中的帖子（需要重新审核）
   const isEditingPublishedPost = editMode && draftPost?.auditStatus;
+  // 驳回笔记走红色 banner，措辞强调「修复违规、再次过审」。
+  const isEditingRejectedPost = editMode && draftPost?.auditStatus === "REJECTED";
 
   const [imageDimensions, setImageDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -978,7 +980,7 @@ const PublishOutfitScreen = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text color="$gray500" mt="$sm">
+            <Text color="$gray500" fontSize="$sm" mt="$sm">
               {t("publish.tapToAddMedia")}
             </Text>
           </Pressable>
@@ -1174,15 +1176,27 @@ const PublishOutfitScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    // 仅保留 top 安全区. bottom 由 PublishButtons 自己用 useSafeAreaInsets()
+    // 处理. 否则 SafeAreaView 吃 bottom inset + KAV 又按完整键盘高度加 padding,
+    // 在 iOS 上会双重抵扣 ~34px, 表现为键盘弹起时输入框错位 / 按钮被遮挡。
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
         title={editMode ? t("publish.editOutfit") : t("publish.shareOutfit")}
         showBackButton
         onBackPress={() => navigation.goBack()}
       />
 
-      {/* 编辑已发布帖子时显示提示 */}
-      {isEditingPublishedPost && (
+      {/* 编辑已发布 / 驳回帖子时显示提示。驳回单独走红色 banner，强调修复违规。 */}
+      {isEditingRejectedPost ? (
+        <Box style={{ backgroundColor: "#FEF2F2" }} px="$md" py="$sm">
+          <HStack alignItems="center" gap="$sm">
+            <Ionicons name="alert-circle" size={20} color="#DC2626" />
+            <Text style={{ color: "#7F1D1D" }} fontSize="$sm" flex={1}>
+              {t("publish.rejectedEditNotice")}
+            </Text>
+          </HStack>
+        </Box>
+      ) : isEditingPublishedPost ? (
         <Box bg="$accent" px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
@@ -1191,12 +1205,11 @@ const PublishOutfitScreen = () => {
             </Text>
           </HStack>
         </Box>
-      )}
+      ) : null}
 
       <KeyboardAvoidingView
         style={styles.content}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <ScrollView
           style={{ flex: 1 }}
@@ -1225,7 +1238,7 @@ const PublishOutfitScreen = () => {
               multiline
               variant="outline"
               sx={{
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: "500",
                 minHeight: 50,
                 textAlignVertical: "top",
@@ -1253,6 +1266,7 @@ const PublishOutfitScreen = () => {
               multiline
               variant="outline"
               sx={{
+                fontSize: 14,
                 color: theme.colors.gray600,
                 minHeight: 80,
                 textAlignVertical: "top",
@@ -1289,20 +1303,24 @@ const PublishOutfitScreen = () => {
 
           <ProductInfoSection value={productInfo} onChange={setProductInfo} />
         </ScrollView>
-      </KeyboardAvoidingView>
 
-      <PublishButtons
-        onSaveDraft={handleSaveDraft}
-        onPublish={handlePublish}
-        publishDisabled={!canPublish() || isPublishing || isSavingDraft}
-        draftDisabled={isPublishing || isSavingDraft}
-        publishButtonText={
-          isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")
-        }
-        draftButtonText={
-          isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")
-        }
-      />
+        {/* PublishButtons 必须在 KAV 内: 按钮自身是 position:absolute bottom:0,
+            放到 KAV 外面时键盘弹起 KAV 上推内容、按钮原地不动 → 被键盘整个盖住,
+            用户体感"返回 / 发布按键无响应". 放进 KAV 内, 键盘弹起 KAV 加 bottom
+            padding, 绝对定位的按钮跟着上抬, 始终保持在键盘上方可点。 */}
+        <PublishButtons
+          onSaveDraft={handleSaveDraft}
+          onPublish={handlePublish}
+          publishDisabled={!canPublish() || isPublishing || isSavingDraft}
+          draftDisabled={isPublishing || isSavingDraft}
+          publishButtonText={
+            isPublishing ? uploadProgress || t("publish.publishing") : t("publish.title")
+          }
+          draftButtonText={
+            isSavingDraft ? uploadProgress || t("publish.saving") : t("publish.saveDraft")
+          }
+        />
+      </KeyboardAvoidingView>
 
       <ImagePickerModal
         visible={showImagePicker}

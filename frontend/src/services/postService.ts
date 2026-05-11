@@ -834,6 +834,28 @@ export async function getFavoritePostsByUserId(
   });
 }
 
+/**
+ * 获取用户帖子聚合统计（累计获赞、收藏、评论数）
+ * GET /api/posts/user/{userId}/stats
+ *
+ * 个人主页"获赞与收藏"展示数据源——后台实时聚合 PUBLISHED + APPROVED
+ * 帖子的 like_count / favorite_count，避免前端依赖已加载分页做累加导致偏差。
+ */
+export interface UserPostStats {
+  userId: number;
+  postCount: number;
+  totalLikes: number;
+  totalSaves: number;
+  totalLikesAndSaves: number;
+  totalComments: number;
+}
+
+export async function getUserPostStats(userId: number): Promise<UserPostStats> {
+  return request<UserPostStats>(`/api/posts/user/${userId}/stats`, {
+    method: "GET",
+  });
+}
+
 // ==================== 秀场关联帖子 ====================
 
 // ==================== 想要（愿望单） ====================
@@ -1118,6 +1140,7 @@ export const postService = {
   getLikedPostsByUserId,
   getFavoritePostsByUserId,
   getWantedPostsByUserId,
+  getUserPostStats,
   // 秀场关联帖子
   getPostsByShowId,
   // 品牌关联帖子

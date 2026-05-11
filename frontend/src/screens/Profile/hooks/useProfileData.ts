@@ -4,6 +4,7 @@ import { useAuthStore } from "../../../store/authStore";
 import {
   postService,
   Post as ApiPost,
+  UserPostStats,
 } from "../../../services/postService";
 import {
   userInfoService,
@@ -91,6 +92,7 @@ export function useProfileData() {
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [followedBrands, setFollowedBrands] = useState<FollowingBrand[]>([]);
   const [userTitles, setUserTitles] = useState<UserTitle[]>([]);
+  const [postStats, setPostStats] = useState<UserPostStats | null>(null);
 
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
   const [myShows, setMyShows] = useState<Show[]>([]);
@@ -227,6 +229,16 @@ export function useProfileData() {
     }
   }, [user?.userId]);
 
+  const loadPostStats = useCallback(async () => {
+    if (!user?.userId) return;
+    try {
+      const stats = await postService.getUserPostStats(user.userId);
+      setPostStats(stats);
+    } catch (error) {
+      console.error("Error loading post stats:", error);
+    }
+  }, [user?.userId]);
+
   const loadContributions = useCallback(async () => {
     if (!user?.userId) return;
     setContribLoading(true);
@@ -331,8 +343,18 @@ export function useProfileData() {
         if (targetTab === "published" || targetTab === "pending") {
           const apiPosts = await postService.getPostsByUserId(user.userId, "PUBLISHED");
 
+          // "pending" tab 收纳所有「未对外可见」的笔记：审核中 + 已驳回。
+          // 不再按 communityId 过滤，让论坛被驳回帖子也能被作者找到、修改。
+          // REJECTED 在前面：用户看到时更紧迫，需要先处理。
           const pendingPosts = apiPosts
-            .filter((p: ApiPost) => p.auditStatus === "PENDING" && p.communityId == null)
+            .filter(
+              (p: ApiPost) =>
+                p.auditStatus === "PENDING" || p.auditStatus === "REJECTED"
+            )
+            .sort((a, b) => {
+              const rank = (p: ApiPost) => (p.auditStatus === "REJECTED" ? 0 : 1);
+              return rank(a) - rank(b);
+            })
             .map((p) => convertToDisplayPost(p, { name: authorName, avatar: authorAvatar }));
 
           const approvedPosts = apiPosts
@@ -400,7 +422,8 @@ export function useProfileData() {
     loadFollowersCount();
     loadFollowedBrands();
     loadUserTitles();
-  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadFollowedBrands, loadUserTitles]);
+    loadPostStats();
+  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadFollowedBrands, loadUserTitles, loadPostStats]);
 
   return {
     userInfo,
@@ -410,6 +433,7 @@ export function useProfileData() {
     coverImage,
     followedBrands,
     userTitles,
+    postStats,
     contribSubTab,
     setContribSubTab,
     myShows,
@@ -438,6 +462,7 @@ export function useProfileData() {
     loadFollowersCount,
     loadFollowedBrands,
     loadUserTitles,
+    loadPostStats,
     loadContributions,
     loadStoreActivity,
     fetchTabData,

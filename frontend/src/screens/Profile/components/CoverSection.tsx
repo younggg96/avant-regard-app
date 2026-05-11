@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { OptimizedImage, Pressable } from "../../../components/ui";
+import { OptimizedImage, Pressable, HStack, NotificationBadge } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
 import { styles } from "../styles";
 
@@ -13,6 +13,8 @@ interface CoverSectionProps {
   coverAnimatedStyle: any;
   topActionsAnimatedStyle: any;
   onSettingsPress: () => void;
+  onMessagesPress: () => void;
+  unreadCount?: number;
 }
 
 export const CoverSection = ({
@@ -21,6 +23,8 @@ export const CoverSection = ({
   coverAnimatedStyle,
   topActionsAnimatedStyle,
   onSettingsPress,
+  onMessagesPress,
+  unreadCount = 0,
 }: CoverSectionProps) => (
   <Animated.View style={[styles.coverContainer, coverAnimatedStyle]}>
     {coverImage ? (
@@ -34,10 +38,16 @@ export const CoverSection = ({
       style={styles.coverGradient}
     />
     <Animated.View style={[styles.topActions, { top: insetTop + 8 }, topActionsAnimatedStyle]}>
-      <Pressable />
-      <Pressable style={styles.actionButton} onPress={onSettingsPress}>
-        <Ionicons name="settings-outline" size={22} color="white" />
-      </Pressable>
+      <View style={[styles.actionButton, { opacity: 0 }]} />
+      <HStack alignItems="center" gap="$sm">
+        <Pressable style={styles.actionButton} onPress={onMessagesPress}>
+          <Ionicons name="notifications-outline" size={22} color="white" />
+          <NotificationBadge count={unreadCount} size="sm" showBorder />
+        </Pressable>
+        <Pressable style={styles.actionButton} onPress={onSettingsPress}>
+          <Ionicons name="settings-outline" size={22} color="white" />
+        </Pressable>
+      </HStack>
     </Animated.View>
   </Animated.View>
 );

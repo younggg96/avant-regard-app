@@ -16,7 +16,12 @@ interface ProfileInfoProps {
   username: string;
   followingUsersCount: number;
   followersCount: number;
-  publishedCount: number;
+  /**
+   * 累计获赞 + 收藏数（来自 /api/posts/user/{id}/stats）。
+   * 后端实时聚合 PUBLISHED + APPROVED 帖子的 like_count + favorite_count，
+   * 与单篇帖子真实数据保持同步；undefined 表示尚未加载。
+   */
+  likesAndSavesCount: number | undefined;
   userId: number | undefined;
   onEditProfile: () => void;
   onFollowingPress: () => void;
@@ -39,7 +44,7 @@ export const ProfileInfo = ({
   username,
   followingUsersCount,
   followersCount,
-  publishedCount,
+  likesAndSavesCount,
   userId,
   onEditProfile,
   onFollowingPress,
@@ -120,7 +125,7 @@ export const ProfileInfo = ({
       </Pressable>
       <View style={styles.statItem}>
         <RNText style={styles.statNumber}>
-          {publishedCount > 0 ? publishedCount : userId ? "0" : "-"}
+          {likesAndSavesCount != null ? likesAndSavesCount : userId ? "0" : "-"}
         </RNText>
         <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
       </View>
