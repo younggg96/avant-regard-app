@@ -9,6 +9,7 @@ from app.services.cache_service import cache_service
 from app.services.notification_service import notification_service
 from app.services.moderation_service import moderation_service
 from app.services.maintenance_service import maintenance_service
+from app.services.feature_flags_service import feature_flags_service
 from app.api.deps import get_current_admin_user
 from app.core.response import success
 
@@ -884,6 +885,40 @@ async def update_maintenance_config(
     """更新维护模式配置（管理员）"""
     config = maintenance_service.set_config(
         enabled=request.enabled, message=request.message
+    )
+    return success(config)
+
+
+# ==================== 功能开关 ====================
+
+class FeatureFlagsRequest(BaseModel):
+    """功能开关更新请求.
+
+    所有字段可选, None 表示保留原值. 当前仅暴露 ``lotteryEnabled`` 一项.
+    """
+
+    lotteryEnabled: Optional[bool] = Field(
+        None,
+        description="是否对所有 App / Web 用户开启月度抽奖入口与相关内容",
+    )
+
+
+@router.get("/feature-flags")
+async def get_feature_flags(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """获取全站功能开关 (管理员)."""
+    return success(feature_flags_service.get_config())
+
+
+@router.put("/feature-flags")
+async def update_feature_flags(
+    request: FeatureFlagsRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """更新全站功能开关 (管理员)."""
+    config = feature_flags_service.set_config(
+        lottery_enabled=request.lotteryEnabled,
     )
     return success(config)
 

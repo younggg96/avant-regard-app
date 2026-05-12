@@ -22,6 +22,7 @@ import {
   type UserLevelStatus,
   type CurrentLotteryPayload,
 } from "@/lib/services/level";
+import { useFeatureFlags } from "@/lib/services/feature-flags";
 import { LevelBadge } from "@/components/user/LevelBadge";
 
 export default function MyLevelPage() {
@@ -37,8 +38,12 @@ export default function MyLevelPage() {
 
   const { data: rules } = useSWR(["level-rules"], () => levelApi.getRules());
 
+  // Admin 全站开关 — 关掉抽奖时, 用户侧的入口/卡片/Lv3 文案全部隐藏.
+  const { flags } = useFeatureFlags();
+  const lotteryEnabled = flags.lotteryEnabled;
+
   const currentLevel = status?.currentLevel ?? 0;
-  const eligibleForLottery = currentLevel >= 3;
+  const eligibleForLottery = lotteryEnabled && currentLevel >= 3;
 
   const { data: lottery } = useSWR(
     eligibleForLottery ? ["lottery-current"] : null,
@@ -68,10 +73,21 @@ export default function MyLevelPage() {
       ) : (
         <>
           <CurrentLevelCard status={status} />
-          <NextLevelProgress status={status} />
+          <NextLevelProgress
+            status={status}
+            lotteryEnabled={lotteryEnabled}
+          />
           <BenefitsSection status={status} />
-          {eligibleForLottery && <LotterySection data={lottery} />}
-          {rules && <LevelTimeline rules={rules} current={currentLevel} />}
+          {eligibleForLottery && lottery?.enabled !== false && (
+            <LotterySection data={lottery} />
+          )}
+          {rules && (
+            <LevelTimeline
+              rules={rules}
+              current={currentLevel}
+              lotteryEnabled={lotteryEnabled}
+            />
+          )}
         </>
       )}
     </section>
@@ -110,7 +126,13 @@ function CurrentLevelCard({ status }: { status: UserLevelStatus }) {
   );
 }
 
-function NextLevelProgress({ status }: { status: UserLevelStatus }) {
+function NextLevelProgress({
+  status,
+  lotteryEnabled,
+}: {
+  status: UserLevelStatus;
+  lotteryEnabled: boolean;
+}) {
   const { t } = useTranslation();
   if (!status.nextLevel || status.nextTasks.length === 0) {
     return (
@@ -119,6 +141,9 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
       </div>
     );
   }
+
+  // Lv3 的权益就是抽奖, 关掉时不能再展示"解锁"提示, 否则用户被引到一个空的入口.
+  const hideBenefitCopy = status.nextLevel === 3 && !lotteryEnabled;
 
   return (
     <div className="mb-6 rounded border border-[var(--border)] p-6">
@@ -131,7 +156,7 @@ function NextLevelProgress({ status }: { status: UserLevelStatus }) {
             Lv{status.nextLevel} · {t(`level.titles.${status.nextLevel}`, { defaultValue: status.nextLevelTitle ?? "" })}
           </div>
         </div>
-        {status.nextLevelBenefit && (
+        {status.nextLevelBenefit && !hideBenefitCopy && (
           <div className="max-w-[60%] text-right font-label text-[12px] text-[color:var(--ink-muted)]">
             {t("level.unlock")}: {t(`level.benefits.${status.nextLevel}`, { defaultValue: status.nextLevelBenefit })}
           </div>
@@ -226,6 +251,9 @@ function LotterySection({
     );
   }
 
+  // 后端兜底: enabled=false 或 round 缺失时不渲染.
+  if (data.enabled === false || !data.round || !data.entry) return null;
+
   const { round, entry } = data;
   const drawn = round.status === "DRAWN";
 
@@ -283,9 +311,12 @@ function LotterySection({
 function LevelTimeline({
   rules,
   current,
+  lotteryEnabled,
 }: {
   rules: LevelSpec[];
   current: number;
+  /** 抽奖关闭时, Lv3 的 subtitle / benefit 文案要一并隐藏. */
+  lotteryEnabled: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -296,6 +327,8 @@ function LevelTimeline({
       <ol className="space-y-4">
         {rules.map((r) => {
           const reached = current >= r.level;
+          // Lv3 的副标题 / 权益文案都是抽奖, 关掉时整段抹掉, 与移动端 MyLevelScreen 保持一致.
+          const hideLotteryCopy = r.level === 3 && !lotteryEnabled;
           return (
             <li
               key={r.level}
@@ -322,9 +355,11 @@ function LevelTimeline({
                     : t("level.manualUpgrade")}
                 </span>
               </div>
-              <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
-                {t(`level.subtitles.${r.level}`, { defaultValue: r.subtitle })}
-              </div>
+              {!hideLotteryCopy && (
+                <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
+                  {t(`level.subtitles.${r.level}`, { defaultValue: r.subtitle })}
+                </div>
+              )}
               {r.tasks.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 font-label text-[12px] text-[color:var(--ink-muted)]">
                   {r.tasks.map((task) => (
@@ -337,7 +372,7 @@ function LevelTimeline({
                   ))}
                 </ul>
               )}
-              {r.benefit && (
+              {r.benefit && !hideLotteryCopy && (
                 <div className="mt-2 font-label text-[12px] text-[var(--ink)]">
                   {t("level.benefit")}: {t(`level.benefits.${r.level}`, { defaultValue: r.benefit })}
                 </div>

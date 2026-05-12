@@ -670,6 +670,21 @@ export const maintenanceApi = {
     apiClient.put<MaintenanceConfig>("/api/admin/maintenance", params),
 };
 
+// ─── Feature flags ───────────────────────────────────────────────────────────
+
+export interface FeatureFlagsConfig {
+  /** 抽奖功能是否对所有 App / Web 用户开启. 关闭时入口与相关内容全部隐藏. */
+  lotteryEnabled: boolean;
+}
+
+export const featureFlagsApi = {
+  getConfig: () =>
+    apiClient.get<FeatureFlagsConfig>("/api/admin/feature-flags"),
+
+  updateConfig: (params: Partial<FeatureFlagsConfig>) =>
+    apiClient.put<FeatureFlagsConfig>("/api/admin/feature-flags", params),
+};
+
 // ─── Growth stats ────────────────────────────────────────────────────────────
 
 export interface GrowthPoint {

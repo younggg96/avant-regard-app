@@ -24,6 +24,10 @@ import {
   type LotteryRoundInfo,
 } from "@/lib/services/level";
 import {
+  featureFlagsApi,
+  type FeatureFlagsConfig,
+} from "@/lib/services/admin";
+import {
   Button,
   ConfirmDialog,
   EmptyState,
@@ -33,7 +37,9 @@ import {
   PageHeader,
   StatusBadge,
   TextInput,
+  Toggle,
 } from "@/components/admin/ui";
+import { mutate } from "swr";
 
 function currentMonth(): string {
   const d = new Date();
@@ -45,6 +51,11 @@ export default function AdminLotteryPage() {
   const [rounds, setRounds] = useState<LotteryRoundInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // 功能开关 — 与 LotteryAdminTab (mobile) 保持同样的 UX:
+  // 关闭后所有用户立刻看不到入口, 但 admin 仍然可以建期 / 改奖池, 避免误关后无救.
+  const [flags, setFlags] = useState<FeatureFlagsConfig | null>(null);
+  const [flagSaving, setFlagSaving] = useState(false);
 
   // 编辑器
   const [editorOpen, setEditorOpen] = useState(false);
@@ -73,9 +84,43 @@ export default function AdminLotteryPage() {
     }
   }, []);
 
+  const loadFlags = useCallback(async () => {
+    try {
+      const data = await featureFlagsApi.getConfig();
+      setFlags(data);
+    } catch (e) {
+      console.warn("getFeatureFlags failed", e);
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadFlags();
+  }, [load, loadFlags]);
+
+  // 切换抽奖开关. 乐观更新 + 失败回滚, 同时让公开 SWR key 立刻 revalidate,
+  // 让 admin 在自己设备打开 /me/level 也能立刻看到/收起入口.
+  const handleToggleLottery = useCallback(
+    async (next: boolean) => {
+      if (!flags || flagSaving) return;
+      const before = flags;
+      setFlagSaving(true);
+      setFlags({ ...flags, lotteryEnabled: next });
+      try {
+        const saved = await featureFlagsApi.updateConfig({
+          lotteryEnabled: next,
+        });
+        setFlags(saved);
+        mutate(["feature-flags-public"]);
+      } catch (e) {
+        setFlags(before);
+        alert(e instanceof Error ? e.message : t("admin.saveFailed"));
+      } finally {
+        setFlagSaving(false);
+      }
+    },
+    [flags, flagSaving, t],
+  );
 
   // ── editor ──
   const openEditor = (round?: LotteryRoundInfo) => {
@@ -217,6 +262,32 @@ export default function AdminLotteryPage() {
           </div>
         }
       />
+
+      {/* ====== 全站抽奖开关 ====== */}
+      <div className="mb-5 rounded-lg border border-[var(--border)] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="font-serif text-base text-black dark:text-white">
+              {t("admin.lotteryFeatureToggle")}
+            </div>
+            <p className="mt-1 font-label text-[12px] text-[color:var(--ink-muted)]">
+              {flags?.lotteryEnabled === false
+                ? t("admin.lotteryFeatureOffHint")
+                : t("admin.lotteryFeatureOnHint")}
+            </p>
+            {flags?.lotteryEnabled === false && (
+              <p className="mt-2 font-label text-[12px] text-[var(--ink)]">
+                {t("admin.lotteryFeatureOffWarn")}
+              </p>
+            )}
+          </div>
+          <Toggle
+            checked={flags?.lotteryEnabled ?? false}
+            disabled={!flags || flagSaving}
+            onChange={handleToggleLottery}
+          />
+        </div>
+      </div>
 
       {rounds.length === 0 ? (
         <EmptyState message={t("admin.noRounds")} />

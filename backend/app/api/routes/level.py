@@ -21,6 +21,7 @@ from app.schemas.level import (
     RedeemTicketRequest,
     RedeemTicketResponse,
 )
+from app.services.feature_flags_service import feature_flags_service
 from app.services.level_service import LEVEL_RULES, level_service
 from app.services.lottery_service import lottery_service
 
@@ -65,7 +66,14 @@ lottery_router = APIRouter(prefix="/lottery", tags=["月度抽奖"])
 async def get_current_lottery(
     current_user_id: int = Depends(get_current_user_id),
 ):
-    """当月抽奖概况 + 当前用户的参与/中奖状态. Lv3+ 才能看到 `entered=True`."""
+    """当月抽奖概况 + 当前用户的参与/中奖状态. Lv3+ 才能看到 `entered=True`.
+
+    若管理员关闭了抽奖功能, 直接返回 ``enabled=False`` 占位结构, 不再执行
+    懒进池等副作用, 也不暴露任何期数信息. 客户端据此完全隐藏抽奖入口.
+    """
+    if not feature_flags_service.is_lottery_enabled():
+        return success({"enabled": False, "round": None, "entry": None})
+
     round_info = lottery_service.get_current_round()
     entry = lottery_service.get_user_entry(current_user_id)
 
@@ -75,6 +83,7 @@ async def get_current_lottery(
         entry = lottery_service.get_user_entry(current_user_id)
 
     return success({
+        "enabled": True,
         "round": round_info.model_dump(),
         "entry": entry.model_dump(),
     })
@@ -85,7 +94,9 @@ async def list_lottery_history(
     limit: int = Query(12, ge=1, le=24),
     _: int = Depends(get_current_user_id),
 ):
-    """最近 N 期的公开信息 (仅用来展示抽奖历史)."""
+    """最近 N 期的公开信息 (仅用来展示抽奖历史). 关闭时返回空数组."""
+    if not feature_flags_service.is_lottery_enabled():
+        return success([])
     rounds = lottery_service.list_rounds(limit)
     return success([r.model_dump() for r in rounds])
 

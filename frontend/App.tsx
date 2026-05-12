@@ -36,6 +36,12 @@ import {
 } from "./src/store/maintenanceStore";
 import MaintenanceOverlay from "./src/components/MaintenanceOverlay";
 
+// Feature flags (admin 控制的全站开关, 例如月度抽奖入口)
+import {
+  startFeatureFlagsPolling,
+  stopFeatureFlagsPolling,
+} from "./src/store/featureFlagsStore";
+
 // Share SDK
 import { initWechat } from "./src/services/shareService";
 
@@ -1045,6 +1051,19 @@ export default function App() {
     return () => {
       clearTimeout(kickoff);
       stopMaintenancePolling();
+    };
+  }, [appIsReady]);
+
+  // 功能开关轮询 (admin 控制月度抽奖等入口的可见性).
+  // 与维护模式一样错开 3s, 让首屏 paint 优先, 但不阻塞用户进入抽奖入口.
+  useEffect(() => {
+    if (!appIsReady) return;
+    const kickoff = setTimeout(() => {
+      startFeatureFlagsPolling();
+    }, 3500);
+    return () => {
+      clearTimeout(kickoff);
+      stopFeatureFlagsPolling();
     };
   }, [appIsReady]);
 

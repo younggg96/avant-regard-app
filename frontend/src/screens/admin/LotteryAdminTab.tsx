@@ -22,6 +22,7 @@ import {
   Platform,
   RefreshControl,
   StyleSheet,
+  Switch,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,15 @@ import {
   LotteryPrize,
   LotteryRoundInfo,
 } from "../../services/levelService";
+import {
+  FeatureFlagsConfig,
+  getFeatureFlagsAdmin,
+  updateFeatureFlagsAdmin,
+} from "../../services/adminService";
+import {
+  refreshFeatureFlags,
+  useFeatureFlagsStore,
+} from "../../store/featureFlagsStore";
 import { sharedStyles } from "./adminStyles";
 import {
   Box,
@@ -78,6 +88,13 @@ const LotteryAdminTab: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // 功能开关 (admin 控制全站抽奖入口的可见性).
+  // 与奖池管理同页, 让 admin 一眼能看到当前状态; 关闭后下拉/管理按钮仍可用,
+  // 避免误关后无法补救 (open 期数还能继续配奖品 / 同步 / 开奖).
+  const [flags, setFlags] = useState<FeatureFlagsConfig | null>(null);
+  const [flagSaving, setFlagSaving] = useState(false);
+  const setLocalFlags = useFeatureFlagsStore((s) => s.setFlags);
+
   // 奖池编辑 Modal
   //   editorMode = "create"  -> 建期, month 可输入
   //   editorMode = "edit"    -> 改奖池, month 锁死 (否则 upsert 会按 month 查找,
@@ -103,15 +120,52 @@ const LotteryAdminTab: React.FC = () => {
     }
   }, []);
 
+  const fetchFlags = useCallback(async () => {
+    try {
+      const data = await getFeatureFlagsAdmin();
+      setFlags(data);
+    } catch (e) {
+      // 失败不阻塞奖池主流程, 只在控制台留个痕迹
+      console.warn("[LotteryAdminTab] load feature flags failed:", e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRounds();
-  }, [fetchRounds]);
+    fetchFlags();
+  }, [fetchRounds, fetchFlags]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchRounds();
+    await Promise.all([fetchRounds(), fetchFlags()]);
     setRefreshing(false);
-  }, [fetchRounds]);
+  }, [fetchRounds, fetchFlags]);
+
+  // 切换抽奖开关. 乐观更新 + 失败回滚, 避免 admin 误以为关上了实际没生效.
+  const handleToggleLottery = useCallback(
+    async (next: boolean) => {
+      if (!flags || flagSaving) return;
+      const before = flags;
+      setFlagSaving(true);
+      setFlags({ ...flags, lotteryEnabled: next });
+      try {
+        const saved = await updateFeatureFlagsAdmin({ lotteryEnabled: next });
+        setFlags(saved);
+        // 同步本地 store + 异步刷新, 让 admin 自己的设备立刻生效
+        setLocalFlags({ lotteryEnabled: saved.lotteryEnabled });
+        refreshFeatureFlags();
+      } catch (e) {
+        setFlags(before);
+        Alert.alert(
+          t("admin.error"),
+          e instanceof Error ? e.message : t("admin.saveFailed"),
+        );
+      } finally {
+        setFlagSaving(false);
+      }
+    },
+    [flags, flagSaving, setLocalFlags, t],
+  );
 
   // ---------- 编辑奖池 ----------
 
@@ -299,6 +353,37 @@ const LotteryAdminTab: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* ====== 全站开关 ====== */}
+        <Box style={styles.flagCard}>
+          <HStack style={styles.flagHeader}>
+            <VStack style={{ flex: 1 }}>
+              <Text style={styles.flagTitle}>
+                {t("admin.lotteryFeatureToggle")}
+              </Text>
+              <Text style={styles.flagDesc}>
+                {flags?.lotteryEnabled === false
+                  ? t("admin.lotteryFeatureOffHint")
+                  : t("admin.lotteryFeatureOnHint")}
+              </Text>
+            </VStack>
+            <Switch
+              value={flags?.lotteryEnabled ?? false}
+              disabled={!flags || flagSaving}
+              onValueChange={handleToggleLottery}
+              trackColor={{
+                false: theme.colors.gray200,
+                true: theme.colors.black,
+              }}
+              thumbColor={theme.colors.white}
+            />
+          </HStack>
+          {flags?.lotteryEnabled === false ? (
+            <Text style={styles.flagWarning}>
+              {t("admin.lotteryFeatureOffWarn")}
+            </Text>
+          ) : null}
+        </Box>
+
         <HStack
           style={{
             justifyContent: "space-between",
@@ -593,6 +678,35 @@ const LotteryAdminTab: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  flagCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.gray100,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.borderRadius.md,
+  },
+  flagHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  flagTitle: {
+    ...theme.typography.body,
+    color: theme.colors.black,
+    fontWeight: "600",
+  },
+  flagDesc: {
+    ...theme.typography.caption,
+    color: theme.colors.gray400,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  flagWarning: {
+    ...theme.typography.caption,
+    color: theme.colors.error,
+    marginTop: theme.spacing.sm,
+    lineHeight: 18,
+  },
   sectionTitle: {
     ...theme.typography.h4,
     color: theme.colors.black,

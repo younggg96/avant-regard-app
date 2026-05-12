@@ -87,8 +87,14 @@ export interface LotteryEntryInfo {
 }
 
 export interface CurrentLotteryPayload {
-  round: LotteryRoundInfo;
-  entry: LotteryEntryInfo;
+  /**
+   * Admin 全站开关. true = 抽奖功能开启;
+   * false / 缺省 = 已被关闭 (后端默认), `round` / `entry` 为 null,
+   * 客户端必须隐藏所有抽奖入口与卡片.
+   */
+  enabled?: boolean;
+  round: LotteryRoundInfo | null;
+  entry: LotteryEntryInfo | null;
 }
 
 export interface UpgradeRequestInfo {

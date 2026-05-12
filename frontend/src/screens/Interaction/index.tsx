@@ -57,23 +57,40 @@ const InteractionScreen = () => {
   const [hasMountedMap, setHasMountedMap] = useState(initialTab === "map");
   const { refreshUnreadCount } = useChatStore();
   const horizontalScrollRef = useRef<RNScrollView>(null);
+  const hasAlignedAfterLayoutRef = useRef(false);
+
+  const alignToTab = useCallback((tab: SubTab) => {
+    horizontalScrollRef.current?.scrollTo({
+      x: TAB_INDEX[tab] * screenWidth,
+      animated: false,
+    });
+  }, []);
 
   useEffect(() => {
     if (initialTab && INDEX_TAB.includes(initialTab)) {
       setActiveTab(initialTab);
       if (initialTab === "map") setHasMountedMap(true);
-      horizontalScrollRef.current?.scrollTo({
-        x: TAB_INDEX[initialTab] * screenWidth,
-        animated: false,
-      });
+      alignToTab(initialTab);
     }
+  }, [alignToTab, initialTab]);
+
+  useEffect(() => {
+    // Reset layout-alignment guard when tab is driven by route params.
+    hasAlignedAfterLayoutRef.current = false;
   }, [initialTab]);
 
   useFocusEffect(
     useCallback(() => {
       useMainBottomTabStore.getState().setActiveMainTab("Interaction");
       refreshUnreadCount();
-    }, [refreshUnreadCount])
+
+      // Ensure page position always matches activeTab when the screen regains focus.
+      // This avoids a mismatch where tab highlight is updated from route params
+      // but the underlying horizontal ScrollView remains on the old page.
+      requestAnimationFrame(() => {
+        alignToTab(activeTab);
+      });
+    }, [activeTab, alignToTab, refreshUnreadCount])
   );
 
   const handleTabChange = useCallback((tab: SubTab) => {
@@ -119,6 +136,18 @@ const InteractionScreen = () => {
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
+        onLayout={() => {
+          if (hasAlignedAfterLayoutRef.current) return;
+          hasAlignedAfterLayoutRef.current = true;
+
+          // One more alignment after first layout to avoid occasional
+          // "tab selected but page not moved" race on some devices.
+          const targetTab =
+            initialTab && INDEX_TAB.includes(initialTab) ? initialTab : activeTab;
+          requestAnimationFrame(() => {
+            alignToTab(targetTab);
+          });
+        }}
         style={styles.swipeContainer}
       >
         <View style={{ width: screenWidth }}>

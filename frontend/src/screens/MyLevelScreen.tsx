@@ -40,6 +40,7 @@ import {
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { useLevelStore } from "../store/levelStore";
+import { useFeatureFlagsStore } from "../store/featureFlagsStore";
 import {
   LevelSpec,
   levelService,
@@ -52,6 +53,9 @@ const MyLevelScreen: React.FC = () => {
   const status = useLevelStore((s) => s.status);
   const refresh = useLevelStore((s) => s.refresh);
   const loading = useLevelStore((s) => s.loading);
+  // Admin 关掉抽奖时, 隐藏 Lv3 的抽奖文案 (subtitle / benefit / nextLevel 提示),
+  // 与 MonthlyLotteryEntry 的隐藏行为保持一致, 避免页面留下"已解锁但用不了"的矛盾.
+  const lotteryEnabled = useFeatureFlagsStore((s) => s.flags.lotteryEnabled);
 
   const [rules, setRules] = useState<LevelSpec[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -162,7 +166,8 @@ const MyLevelScreen: React.FC = () => {
                   "",
               })}
             </Text>
-            {status.nextLevelBenefit ? (
+            {status.nextLevelBenefit &&
+            !(status.nextLevel === 3 && !lotteryEnabled) ? (
               <Text style={styles.cardSubtitle}>
                 {t("level.unlockBenefit", { benefit: status.nextLevelBenefit })}
               </Text>
@@ -234,11 +239,17 @@ const MyLevelScreen: React.FC = () => {
           {rules.map((spec) => {
             const reached = currentLevel >= spec.level;
             const specTitle = t(getLevelTitleKey(spec.level)) || spec.title;
-            const specSubtitle =
-              t(`level.subtitles.${spec.level}`) || spec.subtitle;
-            const specBenefit =
-              t(`level.benefits.${spec.level}`, { defaultValue: "" }) ||
-              spec.benefit;
+            // Lv3 的副标题/权益说明都是抽奖文案. 关掉抽奖时整段抹掉,
+            // 不能让用户看到"解锁月度抽奖入口"却找不到入口.
+            const isLotteryLevel = spec.level === 3;
+            const hideLotteryCopy = isLotteryLevel && !lotteryEnabled;
+            const specSubtitle = hideLotteryCopy
+              ? ""
+              : t(`level.subtitles.${spec.level}`) || spec.subtitle;
+            const specBenefit = hideLotteryCopy
+              ? ""
+              : t(`level.benefits.${spec.level}`, { defaultValue: "" }) ||
+                spec.benefit;
             return (
               <View key={spec.level} style={styles.timelineRow}>
                 <View

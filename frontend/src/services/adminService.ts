@@ -975,6 +975,31 @@ export async function updateMaintenanceConfig(
   });
 }
 
+// ==================== 功能开关 ====================
+
+export interface FeatureFlagsConfig {
+  lotteryEnabled: boolean;
+}
+
+export interface UpdateFeatureFlagsParams {
+  lotteryEnabled?: boolean;
+}
+
+export async function getFeatureFlagsAdmin(): Promise<FeatureFlagsConfig> {
+  return request<FeatureFlagsConfig>("/api/admin/feature-flags", {
+    method: "GET",
+  });
+}
+
+export async function updateFeatureFlagsAdmin(
+  params: UpdateFeatureFlagsParams
+): Promise<FeatureFlagsConfig> {
+  return request<FeatureFlagsConfig>("/api/admin/feature-flags", {
+    method: "PUT",
+    body: JSON.stringify(params),
+  });
+}
+
 // ==================== 推荐算法配置 ====================
 
 export interface PoolRatios {

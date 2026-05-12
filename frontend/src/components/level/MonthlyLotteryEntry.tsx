@@ -1,10 +1,11 @@
 /**
  * 「本月抽奖」入口组件.
  *
- * 严格渲染条件 (两者同时满足):
- *   1. 当前浏览的是用户"本人主页"  (由调用方通过 `isOwnProfile` 保证)
- *   2. 用户等级 >= 3
- * 其余场景 (他人主页 / 未达 Lv3) 一律返回 null, 避免泄漏权益入口.
+ * 严格渲染条件 (三者同时满足):
+ *   1. Admin 未关闭月度抽奖功能 (`featureFlagsStore.lotteryEnabled === true`)
+ *   2. 当前浏览的是用户"本人主页"  (由调用方通过 `isOwnProfile` 保证)
+ *   3. 用户等级 >= 3
+ * 其余场景 (功能关闭 / 他人主页 / 未达 Lv3) 一律返回 null, 避免泄漏权益入口.
  */
 
 import React, { useCallback, useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import {
   CurrentLotteryPayload,
   levelService,
 } from "../../services/levelService";
+import { useFeatureFlagsStore } from "../../store/featureFlagsStore";
 import { MonthlyLotteryDetailModal } from "./MonthlyLotteryDetailModal";
 
 interface Props {
@@ -52,7 +54,14 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
 
-  const canRender = isOwnProfile && currentLevel >= 3;
+  // Admin 全站开关. 关闭 -> 不渲染入口, 也不发起请求.
+  // 后端的 /api/lottery/current 在关闭时会回 enabled=false, 这里再做一次兜底:
+  // 即使本地 store 还没刷到最新开关, 拿到 enabled=false 也不渲染.
+  const lotteryEnabled = useFeatureFlagsStore((s) => s.flags.lotteryEnabled);
+  const serverDisabled = data?.enabled === false;
+
+  const canRender =
+    lotteryEnabled && !serverDisabled && isOwnProfile && currentLevel >= 3;
 
   const fetchData = useCallback(async () => {
     if (!canRender) return;
