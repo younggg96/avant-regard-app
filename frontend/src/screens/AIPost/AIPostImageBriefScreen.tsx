@@ -12,7 +12,7 @@
  *   - 上传放在 Preview 之前是因为 generate 要的是公网 URL, 而非本地 uri。
  */
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -24,7 +24,7 @@ import {
 } from "react-native";
 import { Alert as RNAlert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
@@ -66,11 +66,21 @@ const AIPostImageBriefScreen: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
-  React.useEffect(() => {
-    getQuota()
-      .then((r) => setQuota(r.quota))
-      .catch(() => {});
-  }, []);
+  // focus 时重拉配额: 与 AIPostEntryScreen 同理,
+  // 用户在预览屏消耗 quota 后回到本屏时,徽章必须反映最新值。
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      getQuota()
+        .then((r) => {
+          if (!cancelled) setQuota(r.quota);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const handlePickImages = async () => {
     if (localUris.length >= MAX_IMAGES) {

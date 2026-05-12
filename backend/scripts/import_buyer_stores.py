@@ -34,32 +34,50 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 
 
 def load_json_data() -> list:
-    """加载 JSON 数据"""
-    json_path = project_root / "src" / "data" / "buyer-stores.json"
-    
-    if not json_path.exists():
-        print(f"错误: 找不到数据文件 {json_path}")
+    """加载 JSON 数据。
+
+    历史路径假设过 `backend/src/data/buyer-stores.json`，实际仓库里这份
+    种子数据放在 `frontend/src/data/buyer-stores.json`（前端 mock 期遗留）。
+    这里按优先级回退几个候选路径，省得未来再有人踩同一个坑。
+    """
+    # `project_root` = backend/，所以 ../frontend/... 才是真实位置
+    candidates = [
+        project_root.parent / "frontend" / "src" / "data" / "buyer-stores.json",
+        project_root / "src" / "data" / "buyer-stores.json",
+    ]
+
+    json_path = next((p for p in candidates if p.exists()), None)
+    if json_path is None:
+        print("错误: 找不到 buyer-stores.json，尝试过的位置:")
+        for p in candidates:
+            print(f"  - {p}")
         sys.exit(1)
-    
+
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
-    print(f"✅ 加载了 {len(data)} 条买手店数据")
+
+    print(f"✅ 从 {json_path} 加载了 {len(data)} 条买手店数据")
     return data
 
 
 def transform_store(store: dict) -> dict:
-    """转换数据格式"""
-    coordinates = store.get("coordinates", {})
-    
+    """前端 JSON → DB 列名格式。
+
+    迁移 018 把 latitude/longitude 改成可空，所以缺坐标时传 None 比传
+    `0` 更安全（0,0 落在几内亚湾，会污染 bbox / nearby 查询结果）。
+    """
+    coordinates = store.get("coordinates") or {}
+    lat = coordinates.get("latitude")
+    lng = coordinates.get("longitude")
+
     return {
         "id": store["id"],
         "name": store["name"],
         "address": store["address"],
         "city": store["city"],
         "country": store["country"],
-        "latitude": coordinates.get("latitude", 0),
-        "longitude": coordinates.get("longitude", 0),
+        "latitude": lat,
+        "longitude": lng,
         "brands": store.get("brands", []),
         "style": store.get("style", []),
         "is_open": store.get("isOpen", True),
@@ -117,25 +135,39 @@ def clear_existing_data():
 
 
 def main():
+    """CLI 入口。
+
+    支持的开关：
+      --clear   导入前清空 buyer_stores（仅用于全量重灌；用户提交的店铺也会被
+                清理，谨慎使用）
+      --yes     跳过所有交互确认，CI / 脚本里友好
+    """
+    clear_flag = "--clear" in sys.argv
+    yes_flag = "--yes" in sys.argv or "-y" in sys.argv
+
     print("=" * 50)
     print("买手店数据导入工具")
     print("=" * 50)
-    
-    # 询问是否清除现有数据
-    clear = input("\n是否清除现有数据? (y/N): ").strip().lower()
-    if clear == "y":
+
+    if clear_flag:
+        if not yes_flag:
+            confirm = input(
+                "\n⚠️  --clear 会删除 buyer_stores 表里所有现有数据"
+                "（包括用户提交的店铺）。确认继续? (y/N): "
+            ).strip().lower()
+            if confirm != "y":
+                print("已取消")
+                return
         clear_existing_data()
-    
-    # 加载数据
+
     print("\n📂 加载 JSON 数据...")
     stores = load_json_data()
-    
-    # 导入数据
-    print("\n📤 开始导入到 Supabase...")
+
+    print("\n📤 开始导入到 Supabase（upsert，按 id 去重）...")
     count = import_to_supabase(stores)
-    
+
     print("\n" + "=" * 50)
-    print(f"✅ 导入完成! 共导入 {count} 条记录")
+    print(f"✅ 导入完成! 本次 upsert 影响 {count} 条记录")
     print("=" * 50)
 
 

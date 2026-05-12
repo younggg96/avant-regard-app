@@ -8,10 +8,10 @@
  * 顺手把当前配额拉一下,展示在右上角徽章。配额耗尽时禁用入口。
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack, ScrollView } from "../../components/ui";
@@ -34,17 +34,23 @@ const AIPostEntryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    getQuota()
-      .then((r) => {
-        if (!cancelled) setQuota(r.quota);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // 用 useFocusEffect 而不是 useEffect: 用户在 Preview/QA 屏完成生成后,
+  // 后端 daily_count 已变,但本屏可能还在 Stack 缓存里 (例如 navigation.goBack
+  // 回到 Entry 而不是 replace)。focus 时重拉一遍配额,保证徽章总是反映最新消耗,
+  // 避免「退出再进来还显示原来的剩余次数」。
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      getQuota()
+        .then((r) => {
+          if (!cancelled) setQuota(r.quota);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const exhausted =
     quota != null && quota.daily_generate_used >= quota.daily_generate_limit;

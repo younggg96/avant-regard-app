@@ -95,7 +95,11 @@ const PostCardInner = ({
   onPress,
   onAuthorPress,
   onLike,
-  coverImageSize = ImageSize.MEDIUM,
+  // 默认走原图（ORIGINAL 在 getOptimizedImageUrl 里直通 Storage，不进
+  // proxy）。背景见 PostCoverMedia 的 Quality note：proxy 路径上每隔一段
+  // 时间会有概率把糊掉的字节永久写进 SDImageCache 磁盘，必须卸载重装才
+  // 能复原。直接用原图 + GPU decode 时下采样换掉这条故障路径。
+  coverImageSize = ImageSize.ORIGINAL,
   coverImagePriority,
   showCoverPlaceholder = true,
   coverImageTransition,

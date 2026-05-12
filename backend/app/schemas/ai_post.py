@@ -51,6 +51,13 @@ class OptionCard(BaseModel):
       - shows 表 id 是 MongoDB ObjectId 字符串 (从 memfire 迁移过来的历史
         包袱), 与 post_service._validate_show_ids 处理一致。
     前端 navigation params 也按 number | string 接收。
+
+    AI Studio 编辑式布局 (V3 #25.5) 新增字段:
+      - description: 风格/品牌长描述 (Q1 风格说明、Q3 秀场所属品牌名等),
+        用于卡片下方的二行小字。空字符串视同 None。
+      - tags: 短关键词数组,渲染为方块 chip (例: 风格关键词 ["先锋","极简"])。
+        默认空数组,旧前端忽略不显示即可。
+    两个字段都向后兼容: 旧客户端不会读它们,后端 None / [] 也不破坏旧 UI。
     """
     id: Union[int, str]
     slug: Optional[str] = None
@@ -58,6 +65,8 @@ class OptionCard(BaseModel):
     name_zh: Optional[str] = None
     cover_url: Optional[str] = None
     subtitle: Optional[str] = None
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
 
 
 class OptionListResponse(BaseModel):

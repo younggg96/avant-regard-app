@@ -41,7 +41,6 @@ import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
 import { LevelProgressCard } from "./components/LevelProgressCard";
-import { UserTitlesSection } from "./components/UserTitlesSection";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
@@ -486,6 +485,7 @@ const ProfileScreen = () => {
           followersCount={followersCount}
           likesAndSavesCount={postStats?.totalLikesAndSaves}
           userId={user?.userId}
+          userTitles={userTitles}
           onEditProfile={() => (navigation as any).navigate("EditProfile")}
           onFollowingPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}
           onFollowersPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}
@@ -500,8 +500,6 @@ const ProfileScreen = () => {
         />
 
         <LevelProgressCard />
-
-        <UserTitlesSection titles={userTitles} />
 
         <Animated.View
           style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}

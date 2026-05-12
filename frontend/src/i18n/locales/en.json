@@ -115,7 +115,7 @@
     "followers": "Followers",
     "likesAndSaves": "Likes & Saves",
     "published": "Published",
-    "pending": "Review & Rejected",
+    "pending": "Under Review",
     "forum": "Forum",
     "liked": "Liked",
     "saved": "Saved",
@@ -344,6 +344,14 @@
     "chinese": "中文",
     "english": "English",
     "followSystem": "Follow System",
+    "storage": "Storage",
+    "clearImageCache": "Clear Image Cache",
+    "clearImageCacheHint": "Tap if covers look pixelated",
+    "clearImageCacheTitle": "Clear Image Cache?",
+    "clearImageCacheMessage": "If post covers look blocky or pixelated, tap the button below to clear the local image cache, then pull to refresh the feed. Your account and posts are not affected.",
+    "clearImageCacheConfirm": "Clear Now",
+    "imageCacheCleared": "Image cache cleared. Pull to refresh.",
+    "imageCacheClearFailed": "Failed to clear cache. Please try again.",
     "copyright": "© 2024 Avant Regard"
   },
   "deleteAccount": {
@@ -2426,6 +2434,45 @@
       "step3Title": "Which show stuck with you?",
       "step4Title": "What's the angle of this post?",
       "noOptions": "No options yet — go back and pick a different parent"
+    },
+    "studio": {
+      "brand": "AI STUDIO",
+      "pageIndicator": "{{current}}/{{total}}",
+      "step1": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "CHOOSE YOUR STYLE",
+        "titleZh": "Pick today's mood",
+        "description": "From avant-garde to classic, explore a richer fashion language.\nAI drafts inspiration that matches your pick."
+      },
+      "step2": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI POST",
+        "titleZh": "Pick a brand that excites you",
+        "description": "AI drafts inspiration tuned to the brand's tone."
+      },
+      "step3": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI LOOKBOOK",
+        "titleZh": "AI Post",
+        "description": "Explore AI-curated inspiration,\nand discover new styling possibilities."
+      },
+      "step4": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI ANGLE",
+        "titleZh": "Pick a writing angle",
+        "description": "Which angle should this share take?\nAI tunes the tone and focus accordingly."
+      },
+      "insight": {
+        "title": "AI INSIGHT",
+        "body": "Based on your taste and trend signals,\nAI generates more professional, on-trend content."
+      },
+      "perspective": {
+        "OUTFIT": "Log today's outfit and share styling notes",
+        "COLLECTION": "Build a lookbook, knit pieces into one mood",
+        "REVIEW": "Focus on a single item — texture, fit, feel",
+        "RANT": "Vent about a design or trend; just say it",
+        "INSPIRATION": "Loose inspiration notes, turn fragments into prose"
+      }
     },
     "imageBrief": {
       "title": "Photos + Brief",

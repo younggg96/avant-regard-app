@@ -51,6 +51,46 @@ from app.services.ai.rag_retriever import rag_retriever
 logger = logging.getLogger(__name__)
 
 
+def _split_keywords(zh_text: str, en_text: str, limit: int = 4) -> List[str]:
+    """从风格/品牌描述里抽 chip 用的短关键词。
+
+    AI Studio 编辑式布局每张卡下方要展示 2-4 个短词 (例:「先锋 · 极简」),
+    047 seed 的 description_i18n 已经按「、」分隔写成短语,直接 split + trim
+    即可。zh 缺失时退到 en (用 ", " / "; " / " and " 当分隔符)。
+    """
+    text = (zh_text or "").strip()
+    if text:
+        # zh 描述常用「、」「,」「,」分割短语;按这些字符切并去掉空串
+        import re
+
+        parts = [p.strip() for p in re.split(r"[、,，;；]", text) if p.strip()]
+    else:
+        text = (en_text or "").strip()
+        if not text:
+            return []
+        import re
+
+        parts = [
+            p.strip()
+            for p in re.split(r"[,;]| and ", text, flags=re.IGNORECASE)
+            if p.strip()
+        ]
+
+    cleaned: List[str] = []
+    for p in parts:
+        # 句号兜底: 把整段长描述当一个 chip 显然违和, 这里掐到 6 字以内才收
+        # (zh 4 字就是「实验精神」这种好词, 6 字 hard cap 防止脏数据)。
+        # en 控在 18 字符以内 (例: "experimental fabrics")。
+        head = p.split("。")[0].split(".")[0].strip()
+        if not head:
+            continue
+        if len(head) <= 18:
+            cleaned.append(head)
+        if len(cleaned) >= limit:
+            break
+    return cleaned
+
+
 # 默认从 communities 表挑活跃池给 LLM, 避免它编社区。
 # 这里 LIMIT 30 + ORDER BY post_count 倒序就够,不再动态做用户偏好。
 def _fetch_community_pool(db, limit: int = 30) -> List[Dict[str, Any]]:
@@ -97,6 +137,12 @@ class AIPostService:
         填充到 OptionCard 的 name + name_zh,前端按 locale 选用 (与既有
         OptionCard 形态保持一致)。新增 locale 不需要改 schema 也不需要
         改 OptionCard, 只在这里多取一个 key 即可。
+
+        AI Studio 编辑式布局 (V3 #25.5):
+          - 把 description_i18n[zh] / [en] 填到 OptionCard.description,
+            前端在风格卡下方展示 1-2 行说明。
+          - 从描述里抽 ≤4 个短关键词填到 tags, 用作 chip 显示。
+            约定 zh 描述里用「、」或「," 」分割短语,en 用 "; " 或 ", "。
         """
         # 用户偏好优先 (user_preferred_designers → designers.primary_style_id → styles)
         preferred_style_ids: List[int] = []
@@ -118,7 +164,7 @@ class AIPostService:
 
         result = (
             self.db.table("styles")
-            .select("id, slug, name_i18n, cover_url, sort_order")
+            .select("id, slug, name_i18n, description_i18n, cover_url, sort_order")
             .eq("is_active", True)
             .order("sort_order")
             .execute()
@@ -130,16 +176,23 @@ class AIPostService:
             preferred_set = set(preferred_style_ids)
             rows = sorted(rows, key=lambda r: (0 if r["id"] in preferred_set else 1, r.get("sort_order", 0)))
 
-        cards = [
-            OptionCard(
-                id=r["id"],
-                slug=r.get("slug"),
-                name=pick_locale(r.get("name_i18n"), "en") or r.get("slug", ""),
-                name_zh=pick_locale(r.get("name_i18n"), "zh") or None,
-                cover_url=r.get("cover_url"),
+        cards: List[OptionCard] = []
+        for r in rows[:limit]:
+            desc_zh = pick_locale(r.get("description_i18n"), "zh") or ""
+            desc_en = pick_locale(r.get("description_i18n"), "en") or ""
+            description = desc_zh or desc_en or None
+            tags = _split_keywords(desc_zh, desc_en, limit=4)
+            cards.append(
+                OptionCard(
+                    id=r["id"],
+                    slug=r.get("slug"),
+                    name=pick_locale(r.get("name_i18n"), "en") or r.get("slug", ""),
+                    name_zh=pick_locale(r.get("name_i18n"), "zh") or None,
+                    cover_url=r.get("cover_url"),
+                    description=description,
+                    tags=tags,
+                )
             )
-            for r in rows[:limit]
-        ]
         return OptionListResponse(options=cards, has_fallback=False)
 
     def get_brands_options(self, style_id: int, limit: int = 5) -> OptionListResponse:
@@ -150,10 +203,15 @@ class AIPostService:
 
         降级策略: 0 命中时回退到全表 top N (按 id 排序保证稳定),保证流程
         不死局。等 brands 全量回填完成 (每个 style >= 5),fallback 不触发。
+
+        AI Studio 编辑式布局 (V3 #25.5):
+          - tags 填该品牌主风格名 (zh / en) + brands.category;
+            前端在品牌名下方展示 chip。category 可能为 None,Filter 掉空值。
+          - description 暂留空 (品牌没有结构化短描述), 前端按 falsy 处理。
         """
         result = (
             self.db.table("brands")
-            .select("id, name, cover_image, vogue_slug")
+            .select("id, name, cover_image, vogue_slug, category, primary_style_id")
             .eq("primary_style_id", style_id)
             .limit(limit)
             .execute()
@@ -162,22 +220,55 @@ class AIPostService:
         if not rows:
             fallback = (
                 self.db.table("brands")
-                .select("id, name, cover_image, vogue_slug")
+                .select("id, name, cover_image, vogue_slug, category, primary_style_id")
                 .order("id")
                 .limit(limit)
                 .execute()
             )
             rows = fallback.data or []
 
-        cards = [
-            OptionCard(
-                id=r["id"],
-                slug=r.get("vogue_slug"),
-                name=r["name"],
-                cover_url=r.get("cover_image"),
+        # 一次性把所有用到的 style_id → 名字 拉到内存,避免 N+1 SQL
+        style_ids = {r.get("primary_style_id") for r in rows if r.get("primary_style_id")}
+        style_name_map: Dict[int, Tuple[str, str]] = {}
+        if style_ids:
+            try:
+                styles_resp = (
+                    self.db.table("styles")
+                    .select("id, name_i18n")
+                    .in_("id", list(style_ids))
+                    .execute()
+                )
+                for s in styles_resp.data or []:
+                    style_name_map[s["id"]] = (
+                        pick_locale(s.get("name_i18n"), "zh") or "",
+                        pick_locale(s.get("name_i18n"), "en") or "",
+                    )
+            except Exception as e:
+                logger.warning("[ai_post_service] fetch style names failed: %s", e)
+
+        cards: List[OptionCard] = []
+        for r in rows:
+            tags: List[str] = []
+            sid = r.get("primary_style_id")
+            if sid and sid in style_name_map:
+                zh, en = style_name_map[sid]
+                # 优先 zh 名 (UI 跑 zh 居多), 退到 en
+                if zh:
+                    tags.append(zh)
+                elif en:
+                    tags.append(en)
+            cat = (r.get("category") or "").strip()
+            if cat and cat not in tags:
+                tags.append(cat)
+            cards.append(
+                OptionCard(
+                    id=r["id"],
+                    slug=r.get("vogue_slug"),
+                    name=r["name"],
+                    cover_url=r.get("cover_image"),
+                    tags=tags[:4],
+                )
             )
-            for r in rows
-        ]
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)
 
     def get_shows_options(self, brand_id: int, limit: int = 5) -> OptionListResponse:
@@ -227,12 +318,16 @@ class AIPostService:
             title = pick_locale(r.get("title_i18n"), "en")
             name = title or r.get("season") or "Show"
             subtitle = f"{r.get('year') or ''} {r.get('season') or ''}".strip()
+            # AI Studio 编辑式布局: 卡片大字 = 品牌名,小字 = "year season",
+            # 因此把 brand_name 放进 description 让前端单独排版,
+            # 同时 subtitle 仍保留 (老前端读 subtitle, 新前端读 description + subtitle)。
             cards.append(
                 OptionCard(
                     id=r["id"],
                     name=name,
                     cover_url=r.get("cover_image"),
                     subtitle=subtitle or None,
+                    description=brand_name or None,
                 )
             )
         return OptionListResponse(options=cards, has_fallback=len(cards) == 0)

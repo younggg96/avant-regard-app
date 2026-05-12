@@ -115,7 +115,7 @@
     "followers": "粉丝",
     "likesAndSaves": "获赞与收藏",
     "published": "笔记",
-    "pending": "审核中/驳回",
+    "pending": "审核中",
     "forum": "论坛",
     "liked": "赞过",
     "saved": "收藏",
@@ -344,6 +344,14 @@
     "chinese": "中文",
     "english": "English",
     "followSystem": "跟随系统",
+    "storage": "存储",
+    "clearImageCache": "清除图片缓存",
+    "clearImageCacheHint": "封面变糊时点这里",
+    "clearImageCacheTitle": "清除图片缓存？",
+    "clearImageCacheMessage": "如果帖子封面出现马赛克或像素失真，点击下方按钮清除本地缓存，再下拉刷新重新加载图片。不会影响你的账户和发布内容。",
+    "clearImageCacheConfirm": "立即清除",
+    "imageCacheCleared": "图片缓存已清除，请下拉刷新页面",
+    "imageCacheClearFailed": "清除失败，请稍后重试",
     "copyright": "© 2024 时装档案"
   },
   "deleteAccount": {
@@ -2426,6 +2434,45 @@
       "step3Title": "哪一场秀让你印象深刻?",
       "step4Title": "想用什么角度来写这篇帖子?",
       "noOptions": "暂无可选项, 请返回上一步换一个"
+    },
+    "studio": {
+      "brand": "AI STUDIO",
+      "pageIndicator": "{{current}}/{{total}}",
+      "step1": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "CHOOSE YOUR STYLE",
+        "titleZh": "选择今天想呈现的风格",
+        "description": "从先锋到经典, 探索多元时尚语言。\nAI 将为你生成匹配风格的灵感内容。"
+      },
+      "step2": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI 发帖",
+        "titleZh": "选择一个让你心动的品牌",
+        "description": "AI 将为你生成匹配品牌调性的灵感内容。"
+      },
+      "step3": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI LOOKBOOK",
+        "titleZh": "AI 发帖",
+        "description": "探索 AI 为你生成的时尚灵感,\n发现更多风格与搭配可能。"
+      },
+      "step4": {
+        "eyebrow": "AI STUDIO",
+        "titleEn": "AI ANGLE",
+        "titleZh": "选择写作角度",
+        "description": "你想从哪个视角呈现这次分享?\nAI 会调整文案的语气与重点。"
+      },
+      "insight": {
+        "title": "AI INSIGHT",
+        "body": "基于你的偏好与趋势数据,\nAI 将为你生成更专业、更具代表性的时尚内容。"
+      },
+      "perspective": {
+        "OUTFIT": "记录今日穿搭, 分享单品搭配心得",
+        "COLLECTION": "整理收藏 / Lookbook, 串成一组造型",
+        "REVIEW": "聚焦一件单品, 写下细节与体感",
+        "RANT": "吐槽设计或潮流现象, 直说就好",
+        "INSPIRATION": "灵感杂记, 把零散想法写成短文"
+      }
     },
     "imageBrief": {
       "title": "图片+简述",

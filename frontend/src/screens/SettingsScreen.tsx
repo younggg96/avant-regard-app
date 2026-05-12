@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { Image as ExpoImage } from "expo-image";
 import { theme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
@@ -150,6 +151,38 @@ const SettingsScreen = () => {
   const handleDeleteAccount = () => {
     setShowDeleteAccountModal(true);
   };
+
+  // 图片缓存清理
+  // ----------------
+  // expo-image 在 iOS 底层走 SDWebImage，磁盘缓存默认落在 app sandbox 里
+  // (`Library/Caches/com.hackemist.SDImageCache/`)。这部分目录会跨 app
+  // 进程共存活，只在「卸载重装」时才会被系统清掉，与用户报告的现象
+  //   1. 用一段时间后帖子封面出现 8x8 马赛克
+  //   2. 退到桌面再重新打开 app，糊的封面依然糊
+  //   3. 卸载重装后立刻恢复清晰
+  // 一一对应。我们把入口暴露在设置里，既是给用户的应急止血按钮（点
+  // 一下就能让所有糊掉的封面重新拉一份干净的字节），也是我们诊断
+  // 「问题就在 SDImageCache 磁盘缓存」这条假设最直接的检验工具。
+  const [showClearCacheModal, setShowClearCacheModal] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
+
+  const handleClearImageCache = useCallback(async () => {
+    if (clearingCache) return;
+    setClearingCache(true);
+    try {
+      // 内存缓存先清，避免 disk 清完后 UI 仍展示老的解码 bitmap，
+      // 让用户「按下按钮 -> 立即看到效果」的体感更强（也方便调试）。
+      await ExpoImage.clearMemoryCache();
+      await ExpoImage.clearDiskCache();
+      Alert.show(t("settings.imageCacheCleared"));
+    } catch (error) {
+      console.warn("[Settings] clear image cache failed:", error);
+      Alert.show(t("settings.imageCacheClearFailed"));
+    } finally {
+      setClearingCache(false);
+      setShowClearCacheModal(false);
+    }
+  }, [clearingCache, t]);
 
   const confirmDeleteAccount = async () => {
     if (!user?.userId || deletingAccount) return;
@@ -305,6 +338,19 @@ const SettingsScreen = () => {
       ],
     },
     {
+      title: t("settings.storage"),
+      items: [
+        {
+          id: "clearImageCache",
+          label: t("settings.clearImageCache"),
+          icon: "images-outline",
+          onPress: () => setShowClearCacheModal(true),
+          rightText: t("settings.clearImageCacheHint"),
+          rightColor: theme.colors.gray400,
+        },
+      ],
+    },
+    {
       title: t("settings.accountManagement"),
       items: [
         {
@@ -447,6 +493,35 @@ const SettingsScreen = () => {
           </Text>
         </VStack>
       </ScrollView>
+
+      {/* Clear image cache confirmation */}
+      <ActionSheet
+        visible={showClearCacheModal}
+        onClose={() => !clearingCache && setShowClearCacheModal(false)}
+      >
+        <VStack alignItems="center" style={{ padding: 24 }}>
+          <Ionicons
+            name="images-outline"
+            size={48}
+            color={theme.colors.black}
+            style={{ marginBottom: 12 }}
+          />
+          <Text style={styles.dialogTitle}>
+            {t("settings.clearImageCacheTitle")}
+          </Text>
+          <Text style={styles.dialogMessage}>
+            {t("settings.clearImageCacheMessage")}
+          </Text>
+          <Button
+            onPress={handleClearImageCache}
+            isLoading={clearingCache}
+            disabled={clearingCache}
+            style={{ width: "100%" }}
+          >
+            {t("settings.clearImageCacheConfirm")}
+          </Button>
+        </VStack>
+      </ActionSheet>
 
       {/* Delete account confirmation */}
       <ActionSheet

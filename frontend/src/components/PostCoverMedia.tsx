@@ -56,24 +56,27 @@ interface PostCoverMediaProps {
  *   primitives (uri / size / contentFit / priority / transition / showPlaceholder)
  *   so shallow-compare handles them correctly.
  *
- * Quality note (`allowDownscaling=false`):
- *   `expo-image` defaults to `allowDownscaling=true`, which permanently
- *   resizes the decoded bitmap to the container's `frame.size` at the
- *   instant `imageLoadCompleted` fires (see iOS `ImageView.swift` →
- *   `processImage`). Inside `MasonryFlashList`, recycled cells routinely
- *   complete loads while their bounds are still in a transient (smaller)
- *   state, baking a low-resolution bitmap into `SDWebImage`'s memory
- *   cache. Once iOS evicts that entry the resized version is what stays,
- *   so feed covers gradually pixelate the longer the app session runs.
- *   We disable downscaling here so the GPU's trilinear minification
- *   handles fit-to-cell instead, keeping covers crisp across recycles.
- *   Memory cost is bounded — covers are already served at 640–800 px by
- *   the proxy, so the per-bitmap overhead is on the order of tens of KB.
+ * Quality note (covers bypass the proxy):
+ *   Post covers default to `ImageSize.ORIGINAL`, which short-circuits
+ *   `getOptimizedImageUrl` and pulls the raw Storage URL directly. We
+ *   tried every shade of "transform-with-cache" first — FEED_CARD/MEDIUM
+ *   over a backend Pillow proxy — and every variant eventually started
+ *   serving 8x8-macroblock bitmaps to a fraction of users that survived
+ *   app restart and only cleared on uninstall, i.e. baked into the
+ *   on-device `SDImageCache` disk. Going straight to the original
+ *   uploaded asset removes the entire mutation surface (proxy resize +
+ *   re-encode + disk-cached transformed bytes) and lets us trust the
+ *   uploader's quality. `expo-image`'s default `allowDownscaling=true`
+ *   does the only "shrink" step left, at GPU decode time, where the
+ *   sampling math is lossless and disposable per-frame — it never
+ *   leaves a low-res copy behind for SDWebImage to re-serve later.
+ *   Cost: ~50KB → 1–5MB per cover download (Wi-Fi imperceptible, 4G
+ *   noticeable on first feed paint, free on cache hit).
  */
 const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
   uri,
   style,
-  size = ImageSize.MEDIUM,
+  size = ImageSize.ORIGINAL,
   contentFit = "cover",
   showPlaceholder = true,
   transition,
@@ -99,7 +102,6 @@ const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
       showPlaceholder={showPlaceholder}
       transition={transition}
       priority={priority}
-      allowDownscaling={false}
     />
   );
 };

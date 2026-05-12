@@ -12,11 +12,24 @@ import { userInfoService, UserInfo } from "../../../services/userInfoService";
 import { useAuthStore } from "../../../store/authStore";
 import { getActiveBanners, Banner } from "../../../services/bannerService";
 import { getCommunities, CommunityListResponse } from "../../../services/communityService";
+import {
+  forumPostsCacheService,
+  followingPostsCacheService,
+} from "../../../services/feedCacheService";
 import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
 import { Alert } from "../../../utils/Alert";
 import i18n from "../../../i18n";
 import { useFeedRecommendation } from "./useFeedRecommendation";
+
+// 推荐 Tab 冷启动「品牌 splash」最短时长。即使本地缓存命中能瞬间提供
+// 数据，我们仍要让 `home-loading.gif` 至少播一个完整循环，再切到内容 ——
+// 否则缓存提速反而把品牌动画吃掉了，用户的反馈是「loading 图片不见了」。
+//
+// 数值取舍：太短（< 500 ms）GIF 还没播完一遍就闪过去了观感更糟；太长
+// （> 1 s）会被有缓存的用户当成"打开变慢了"。700 ms 大致等于一个
+// home-loading.gif 循环，是观感最自然的最小值。
+const COLD_START_SPLASH_MS = 700;
 
 // 每个 Tab 的加载状态
 // 买手店 Tab 的实际数据获取由 BuyerTabContent 内部 `useBuyerTabData` 自行负责；
@@ -350,7 +363,100 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   }, [refreshFeed]);
 
   /**
+   * 论坛 / 关注 Tab 的「水合 + 静默重新校验」运行时（Discover 推荐 Tab 那条
+   * stale-while-revalidate 路径的对照实现）。
+   *
+   * 本地 AsyncStorage 命中时：
+   *   1. 立即把缓存的 Post[] 映射成 DisplayPost[] 推到上层 setState ——
+   *      用户进 Tab 的瞬间就能看到上次的内容，不再过 GifLoading。
+   *   2. 异步触发一次"silent revalidate"：拉一页新数据，按 id 去重后
+   *      把「真正新出现的帖子」prepend 到现有列表的最上面（保留用户
+   *      正在看的那些卡片的 ref 与位置；推荐 Tab 同款 UX）。
+   *   3. 重新写 cache，用合并后的列表（最新的若干条 Post），下次冷启动
+   *      命中后已经是包含新帖的状态。
+   *
+   * 缓存未命中时：
+   *   退化到原始 fetch 路径，调用方继续走 `setTabLoading(true)` + GIF。
+   *
+   * Returns `true` if cache was hydrated (caller should mark tabLoaded
+   * synchronously and skip the loading indicator).
+   */
+  const hydrateAndRevalidatePosts = useCallback(
+    async (params: {
+      cache: typeof forumPostsCacheService | typeof followingPostsCacheService;
+      fetcher: () => Promise<Post[]>;
+      setPosts: React.Dispatch<React.SetStateAction<DisplayPost[]>>;
+    }): Promise<boolean> => {
+      const { cache, fetcher, setPosts } = params;
+      const cached = await cache.get();
+      if (!cached || cached.length === 0) {
+        return false;
+      }
+
+      const hydratedUserInfoMap = new Map<number, UserInfo>(
+        userInfoCache.current
+      );
+      const hydratedDisplay = cached.map((post) =>
+        mapApiPostToDisplayPost(post, hydratedUserInfoMap)
+      );
+      setPosts(hydratedDisplay);
+
+      // Silent background revalidate. Errors are swallowed because the
+      // user already has the cached cards visible — they'll still see
+      // content; we just won't have the latest until the next cycle.
+      void (async () => {
+        try {
+          const fresh = await fetcher();
+          if (fresh.length === 0) return;
+
+          const cachedIds = new Set(cached.map((p) => p.id));
+          const trulyNew = fresh.filter((p) => !cachedIds.has(p.id));
+          if (trulyNew.length === 0) {
+            // Server has nothing newer — refresh the cached entry's
+            // mtime so the cache stays "warm" but don't disturb the UI.
+            void cache.set(cached);
+            return;
+          }
+
+          // Backfill author info for the newly arrived posts (existing
+          // ones already used the cached map). Done before the setPosts
+          // so freshly inserted cards render with their real avatars
+          // instead of the dicebear fallback.
+          const userIdsForNew = [...new Set(trulyNew.map((p) => p.userId))];
+          const userInfoMap = new Map<number, UserInfo>(userInfoCache.current);
+          await fetchUserInfos(userIdsForNew, userInfoMap);
+
+          const trulyNewDisplay = trulyNew.map((post) =>
+            mapApiPostToDisplayPost(post, userInfoMap)
+          );
+          // Functional updater (NOT setPosts(mergedDisplay)) so any
+          // optimistic mutations the user made between hydrate and
+          // revalidate completion — e.g. tapping ❤ on a cached card —
+          // survive the merge. Replacing the whole list with a re-mapped
+          // copy of the cached source would silently roll back those
+          // local edits, which the like-rollback code can't recover from
+          // because the network request already succeeded.
+          setPosts((prev) => [...trulyNewDisplay, ...prev]);
+          // Cache the merged set (capped inside `cache.set`) so next
+          // cold start hydrates with the freshest known top + recent
+          // context. We persist the API-shaped Posts (not DisplayPosts)
+          // because that's what the cache schema is.
+          void cache.set([...trulyNew, ...cached]);
+        } catch (err) {
+          console.warn("[Discover] silent revalidate failed:", err);
+        }
+      })();
+
+      return true;
+    },
+    [fetchUserInfos]
+  );
+
+  /**
    * 获取论坛帖子
+   *
+   * Persists the API response to `forumPostsCacheService` after success
+   * so the next cold start can hydrate via `hydrateAndRevalidatePosts`.
    */
   const fetchForumPosts = useCallback(async () => {
     try {
@@ -364,6 +470,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         mapApiPostToDisplayPost(post, userInfoMap)
       );
       setForumPosts(displayPosts);
+      void forumPostsCacheService.set(apiPosts);
     } catch (err) {
       console.error("获取论坛帖子失败:", err);
       setForumPosts([]);
@@ -385,6 +492,9 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
   /**
    * 获取关注用户的帖子
+   *
+   * Persists to `followingPostsCacheService` after success — see
+   * `fetchForumPosts` for why.
    */
   const fetchFollowingPosts = useCallback(async () => {
     try {
@@ -398,6 +508,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         mapApiPostToDisplayPost(post, userInfoMap)
       );
       setFollowingPosts(displayPosts);
+      void followingPostsCacheService.set(apiPosts);
     } catch (err) {
       console.error("获取关注帖子失败:", err);
       setFollowingPosts([]);
@@ -429,6 +540,15 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
   /**
    * 加载指定 Tab 的数据（懒加载）
+   *
+   * Forum / Following Tab 走 stale-while-revalidate：
+   *   - 缓存命中 → 立即翻 tabLoaded 标记跳过 GifLoading，先显示老数据，
+   *     `hydrateAndRevalidatePosts` 在后台静默拉新数据 + 智能 prepend。
+   *   - 缓存未命中 → 走原始路径，await fetch，全程 GifLoading。
+   *
+   * 推荐 Tab 在初始化 `useEffect` 里已经独立完成 hydrate（由
+   * `useFeedRecommendation.hydrateFromCache` 负责），这里走"切回 Tab 后
+   * 触发的强制刷新"路径，依赖上层 hook 的去重逻辑。
    */
   const loadTabData = useCallback(
     async (tab: TabType) => {
@@ -436,15 +556,61 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         return;
       }
 
-      setTabLoading((prev) => ({ ...prev, [tab]: true }));
-
-      try {
-        if (tab === "forum") {
+      // Forum: try cache first.
+      if (tab === "forum") {
+        const hydrated = await hydrateAndRevalidatePosts({
+          cache: forumPostsCacheService,
+          fetcher: getForumPosts,
+          setPosts: setForumPosts,
+        });
+        if (hydrated) {
+          setTabLoaded((prev) => ({ ...prev, forum: true }));
+          // Banners / communities are tiny, fetch in background — they
+          // don't block the visible feed.
+          void Promise.all([fetchBanners(), fetchCommunities()]);
+          return;
+        }
+        // Cache miss → standard load with GifLoading.
+        setTabLoading((prev) => ({ ...prev, forum: true }));
+        try {
           await Promise.all([fetchForumPosts(), fetchBanners(), fetchCommunities()]);
-        } else if (tab === "recommend") {
-          await fetchRecommendPosts();
-        } else if (tab === "following") {
+          setTabLoaded((prev) => ({ ...prev, forum: true }));
+        } catch (err) {
+          console.error("加载 forum tab 数据失败:", err);
+        } finally {
+          setTabLoading((prev) => ({ ...prev, forum: false }));
+        }
+        return;
+      }
+
+      // Following: try cache first.
+      if (tab === "following") {
+        const hydrated = await hydrateAndRevalidatePosts({
+          cache: followingPostsCacheService,
+          fetcher: getFollowingPosts,
+          setPosts: setFollowingPosts,
+        });
+        if (hydrated) {
+          setTabLoaded((prev) => ({ ...prev, following: true }));
+          return;
+        }
+        setTabLoading((prev) => ({ ...prev, following: true }));
+        try {
           await fetchFollowingPosts();
+          setTabLoaded((prev) => ({ ...prev, following: true }));
+        } catch (err) {
+          console.error("加载 following tab 数据失败:", err);
+        } finally {
+          setTabLoading((prev) => ({ ...prev, following: false }));
+        }
+        return;
+      }
+
+      // Recommend / buyer keep the original path.
+      setTabLoading((prev) => ({ ...prev, [tab]: true }));
+      try {
+        if (tab === "recommend") {
+          await fetchRecommendPosts();
         }
         // "buyer" tab 的数据由 BuyerTabContent 内部自行获取，这里只翻转加载标记，
         // 避免 CenteredTabBar 切到买手店时触发父层骨架屏 / 空态分支。
@@ -455,29 +621,53 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         setTabLoading((prev) => ({ ...prev, [tab]: false }));
       }
     },
-    [tabLoaded, tabLoading, fetchRecommendPosts, fetchForumPosts, fetchFollowingPosts, fetchBanners, fetchCommunities]
+    [
+      tabLoaded,
+      tabLoading,
+      fetchRecommendPosts,
+      fetchForumPosts,
+      fetchFollowingPosts,
+      fetchBanners,
+      fetchCommunities,
+      hydrateAndRevalidatePosts,
+    ]
   );
 
   /**
    * 初始化加载数据 — stale-while-revalidate for the recommend tab.
    *
-   * 1. Try the on-device feed cache. If it contains data, render the stale
-   *    feed immediately (skip the skeleton / loading-GIF entirely) and kick
-   *    off a silent background refresh that seamlessly swaps in fresh data.
-   * 2. On cache miss (first install, cleared storage), fall back to the
-   *    original synchronous fetch path with the loading GIF.
+   * 1. Try the on-device feed cache. If it contains data, kick off a silent
+   *    background refresh and hold the loading-GIF on screen for a minimum
+   *    splash window. The cached feed is already in state at that point;
+   *    flipping `tabLoaded` is purely the timing of when the GIF dissolves
+   *    into content. This re-instates the brand-loading animation on every
+   *    cold start without losing the cache's first-paint speed (the data is
+   *    ready well before the splash ends, so the post-splash transition is
+   *    a single frame instead of a network round-trip).
+   * 2. On cache miss (first install, cleared storage, hydrate failure), fall
+   *    back to the original synchronous fetch path — the GIF stays up for
+   *    however long the network actually takes, no artificial floor.
    */
   useEffect(() => {
+    let splashTimer: ReturnType<typeof setTimeout> | null = null;
+
     const initData = async () => {
       const cacheHit = await hydrateFromCache();
 
       if (cacheHit) {
-        setTabLoaded((prev) => ({ ...prev, recommend: true }));
         setIsInitialized(true);
         // Background revalidation — silent so no spinner / error overlay.
         fetchRecommendPosts({ silent: true }).catch((err) => {
           console.warn("后台刷新推荐数据失败:", err);
         });
+        // Cold-start brand splash floor: keep `tabLoaded` false for the
+        // duration so `TabContent` keeps `home-loading.gif` on screen.
+        // 700 ms ≈ one full loop of the GIF — long enough to feel
+        // intentional, short enough that users perceive the app as fast.
+        splashTimer = setTimeout(() => {
+          setTabLoaded((prev) => ({ ...prev, recommend: true }));
+          splashTimer = null;
+        }, COLD_START_SPLASH_MS);
         return;
       }
 
@@ -494,6 +684,17 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       setIsInitialized(true);
     };
     initData();
+
+    return () => {
+      // Component unmount before the splash floor elapses — drop the
+      // pending setState so React doesn't warn about updates on unmounted
+      // components and we don't accidentally flip `tabLoaded` from a
+      // stale closure on the next mount.
+      if (splashTimer) {
+        clearTimeout(splashTimer);
+        splashTimer = null;
+      }
+    };
   }, [fetchRecommendPosts, hydrateFromCache]);
 
   /**

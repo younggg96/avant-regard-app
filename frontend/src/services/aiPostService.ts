@@ -52,6 +52,14 @@ export interface OptionCard {
   name_zh?: string | null;
   cover_url?: string | null;
   subtitle?: string | null;
+  /**
+   * AI Studio 编辑式布局新增字段 (V3 #25.5):
+   *   - description: 风格说明 / 秀场所属品牌名等长文本, 卡片下方一行小字。
+   *   - tags: chip 数组, 渲染为方块小标签 (如风格关键词「先锋」「极简」)。
+   * 旧后端不返回这些字段时, 前端按 falsy / 空数组兜底, 视觉上自然 fallback 到老布局。
+   */
+  description?: string | null;
+  tags?: string[];
 }
 
 export interface OptionListResponse {

@@ -82,6 +82,16 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
   // `${type}:${id}`), but they advance independently so one path's
   // pagination never causes a visible jump in the other.
   const refreshRecycleCursorRef = useRef(0);
+  // True between the moment `hydrateFromCache` populates feedItems and the
+  // first post-hydration `refresh()` lands. Drives the "prepend deduped fresh
+  // items above the cached page instead of replacing the visible list"
+  // branch in `refresh` — preserves the user's perceived continuity (they
+  // see the same cards they saw before, with new ones inserted on top)
+  // instead of the entire feed flickering to a different set of posts.
+  // Single-shot: cleared after the first revalidate completes regardless of
+  // success / failure so subsequent pull-to-refresh uses the normal prepend
+  // path, not the dedupe-against-stale-cache path.
+  const hydratedFromCacheRef = useRef(false);
 
   const setFeedItems = useCallback<Dispatch<SetStateAction<FeedItem[]>>>(
     (value) => {
@@ -190,6 +200,9 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
         // Prevent premature loadMore while the background revalidation
         // hasn't populated excludeIds / postSkip yet.
         setHasMore(false);
+        // Mark "hydrated" so the next silent refresh prepends-deduped
+        // instead of replacing the visible list. Cleared after one fire.
+        hydratedFromCacheRef.current = true;
         return true;
       }
     } catch {
@@ -218,7 +231,42 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
       const postCount = countPosts(newItems);
       const newIds = extractExcludeIds(newItems);
 
-      if (isFirstLoad) {
+      if (isFirstLoad && options?.silent && hydratedFromCacheRef.current) {
+        // Cache-hit cold start: the user is already looking at hydrated
+        // cards (`feedItemsRef.current`). Don't replace that list — the
+        // jarring "everything you were just looking at suddenly becomes a
+        // different set of posts" is the worst part of a naive
+        // stale-while-revalidate. Instead:
+        //   1. Compute the diff `newItems \ hydrated` (truly new posts).
+        //   2. Prepend those above the hydrated list, so the user keeps
+        //      their perceived position + cards while fresh content
+        //      surfaces at the top of the feed (Twitter / Instagram
+        //      pattern).
+        //   3. Persist ONLY the fresh `newItems` to disk so the next cold
+        //      start hydrates from the latest server state, not the
+        //      ever-growing merged set (would otherwise drift forever).
+        // Single-shot: clear the flag so a subsequent failed-then-pulled
+        // refresh uses the normal prepend path, not this dedupe branch.
+        const previousItems = feedItemsRef.current;
+        const newKeys = new Set(newItems.map(getFeedItemKey));
+        const carryOver = previousItems.filter(
+          (item) => !newKeys.has(getFeedItemKey(item))
+        );
+        const merged = carryOver.length > 0 ? [...newItems, ...carryOver] : newItems;
+        setFeedItems(merged);
+        replayCursorRef.current = 0;
+        refreshRecycleCursorRef.current = 0;
+        isReplayingRef.current = false;
+        excludeIdsRef.current = trimExcludeIds([
+          ...newIds,
+          ...extractExcludeIds(carryOver),
+        ]);
+        postSkipRef.current = postCount + countPosts(carryOver);
+        setHasMore(postCount > 0);
+        hydratedFromCacheRef.current = false;
+        // Cache fresh items only — see step 3 above.
+        void feedCacheService.set(newItems);
+      } else if (isFirstLoad) {
         setFeedItems(newItems);
         replayCursorRef.current = 0;
         refreshRecycleCursorRef.current = 0;
@@ -226,6 +274,7 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
         excludeIdsRef.current = newIds;
         postSkipRef.current = postCount;
         setHasMore(postCount > 0);
+        hydratedFromCacheRef.current = false;
         // Persist the first page for instant next cold start.
         void feedCacheService.set(newItems);
       } else if (newItems.length > 0) {
@@ -253,6 +302,13 @@ export const useFeedRecommendation = (): UseFeedRecommendationReturn => {
       }
     } catch (err) {
       console.error("[FeedV2] refresh failed:", err);
+      // Clear the hydration flag on failure too. Otherwise a later
+      // user-initiated pull-to-refresh would erroneously hit the prepend
+      // branch when the user actually expects a clean reload of the feed
+      // (the silent revalidate didn't land, but the cached cards are
+      // still on screen). Subsequent pull-to-refresh re-enters the normal
+      // `else if (isFirstLoad)` replace branch.
+      hydratedFromCacheRef.current = false;
     } finally {
       if (!options?.silent) setRefreshing(false);
       requestInFlight.current = false;

@@ -380,10 +380,12 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
             onPress={onPostPress}
             onAuthorPress={onAuthorPress}
             onLike={onLike}
-            // THUMBNAIL(400px) 在 @3x DPR 两列瀑布流（每列 ≈555–645 物理像素）
-            // 上会被放大 ~1.5 倍，肉眼可见地糊。FEED_CARD(640px) 按"真实物理
-            // 像素"下发，取样清晰；比 MEDIUM(800px) 又省 ~30% 流量。
-            coverImageSize={ImageSize.FEED_CARD}
+            // 改为 ORIGINAL = 不走 backend proxy，直接拉 Storage 原图。
+            // 历史上 FEED_CARD(640px) / MEDIUM(800px) 都试过，每隔一段时间就
+            // 会有概率把糊掉的转换字节永久写进 SDImageCache 磁盘 —— 必须
+            // 卸载重装才能洗。原图 + GPU decode 时下采样彻底绕过这条故障
+            // 路径。代价是 4G 首屏多 ~1MB/张，命中本地缓存后无感。
+            coverImageSize={ImageSize.ORIGINAL}
             coverImagePriority={priority}
             showCoverPlaceholder={false}
             coverImageTransition={0}
