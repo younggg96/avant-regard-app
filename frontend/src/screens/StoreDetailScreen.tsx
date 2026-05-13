@@ -34,7 +34,7 @@ import {
   HStack,
   VStack,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -105,6 +105,7 @@ const PRODUCT_PREVIEW_LIMIT = 12;
 
 const StoreDetailScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<StoreDetailNavigation>();
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
@@ -2027,18 +2028,18 @@ const StoreDetailScreen = () => {
 const FONT_REGULAR = "PlayfairDisplay-Regular";
 const FONT_BOLD = "PlayfairDisplay-Bold";
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: t.spacing.xl,
   },
   // follow button
   followBtn: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 4,
@@ -2049,19 +2050,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   // style chip (outline)
   styleChip: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
   },
   // brand chip (light gray)
   brandChip: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
@@ -2074,7 +2075,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   // bottom bar buttons
   bottomBtnOutline: {
@@ -2083,7 +2084,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderRadius: 6,
   },
   bottomBtnFill: {
@@ -2091,42 +2092,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 6,
   },
   modalContent: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    padding: t.spacing.lg,
+    paddingTop: t.spacing.sm,
     paddingBottom: 34,
   },
   commentInputContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    padding: t.spacing.lg,
+    paddingTop: t.spacing.sm,
     paddingBottom: 34,
     maxHeight: "70%",
   },
   commentInput: {
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     minHeight: 80,
     fontFamily: FONT_REGULAR,
   },
   storeImage: {
     width: 160,
     height: 160,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: t.borderRadius.md,
   },
   commentAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -2144,7 +2145,7 @@ const styles = StyleSheet.create({
   bannerItem: {
     width: 340,
     height: 160,
-    marginRight: theme.spacing.sm,
+    marginRight: t.spacing.sm,
     borderRadius: 12,
     overflow: "hidden",
   },
@@ -2174,7 +2175,7 @@ const styles = StyleSheet.create({
     height: 132,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   productImage: {
@@ -2186,7 +2187,7 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   productBadge: {
     position: "absolute",
@@ -2197,7 +2198,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   productBadgeNew: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
   },
   productBadgeSale: {
     backgroundColor: "#E65100",
@@ -2216,7 +2217,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
@@ -2242,20 +2243,20 @@ const styles = StyleSheet.create({
   },
   // 商家申请弹窗样式
   merchantApplyContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    padding: t.spacing.lg,
+    paddingTop: t.spacing.sm,
     paddingBottom: 34,
     maxHeight: "85%",
   },
   applyInput: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
   },
   licenseImage: {

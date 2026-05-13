@@ -16,6 +16,7 @@ export interface AuthUser {
   is_admin: boolean;
   userType: string;
   profileCompleted?: boolean; // 是否已完善资料
+  preferredTheme?: "system" | "light" | "dark";
 }
 
 interface AuthTokens {

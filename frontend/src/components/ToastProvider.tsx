@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Animated, StyleSheet, Dimensions, View } from "react-native";
 import { Image } from "expo-image";
 import { toastEmitter, ToastConfig } from "../utils/Alert";
-import { theme } from "../theme";
+import { useThemedStyles, type AppTheme } from "../theme";
 
 const { width } = Dimensions.get("window");
 
@@ -31,6 +31,7 @@ function getActionGif(text: string) {
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<ToastConfig | null>(null);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -142,50 +143,52 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  toast: {
-    position: "absolute",
-    bottom: 100,
-    left: 16,
-    right: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    // Toast 始终采用深色底 + 白字，作为通知层叠在两种主题之上保持一致
+    toast: {
+      position: "absolute",
+      bottom: 100,
+      left: 16,
+      right: 16,
+      backgroundColor: "rgba(0, 0, 0, 0.85)",
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      zIndex: 9999,
+      alignSelf: "center",
+      maxWidth: width - 32,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 9999,
-    alignSelf: "center",
-    maxWidth: width - 32,
-  },
-  successToast: {
-    backgroundColor: theme.colors.black,
-  },
-  errorToast: {
-    backgroundColor: theme.colors.error,
-  },
-  toastContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toastGif: {
-    width: 28,
-    height: 28,
-    marginRight: 10,
-  },
-  toastText: {
-    color: "#ffffff",
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-});
+    successToast: {
+      backgroundColor: "#000000",
+    },
+    errorToast: {
+      backgroundColor: t.colors.error,
+    },
+    toastContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    toastGif: {
+      width: 28,
+      height: 28,
+      marginRight: 10,
+    },
+    toastText: {
+      color: "#ffffff",
+      fontSize: 15,
+      textAlign: "center",
+      lineHeight: 20,
+      fontWeight: "500",
+    },
+  });
 

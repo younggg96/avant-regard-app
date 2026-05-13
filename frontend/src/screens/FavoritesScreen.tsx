@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
@@ -35,6 +35,7 @@ const FavoritesScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -245,7 +246,7 @@ const FavoritesScreen = () => {
               <Ionicons
                 name={getTypeIcon(item.type)}
                 size={12}
-                color={theme.colors.white}
+                color="#FFFFFF"
               />
             </View>
           </View>
@@ -383,186 +384,187 @@ const FavoritesScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  loadingState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 80,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: playfairFonts.regular,
-    color: theme.colors.gray400,
-    marginTop: 12,
-  },
-  postsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    justifyContent: "space-between",
-  },
-  postItem: {
-    width: "48%",
-    marginBottom: theme.spacing.md,
-  },
-  tabBar: {
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
-  },
-  tabContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  tab: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.gray50,
-  },
-  activeTab: {
-    backgroundColor: theme.colors.black,
-  },
-  tabText: {
-    fontSize: 14,
-    fontFamily: playfairFonts.medium,
-    color: theme.colors.gray600,
-  },
-  activeTabText: {
-    color: theme.colors.white,
-  },
-  tabBadge: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 6,
-    minWidth: 20,
-    alignItems: "center",
-  },
-  tabBadgeText: {
-    fontSize: 12,
-    fontFamily: playfairFonts.medium,
-    color: theme.colors.black,
-  },
-  content: {
-    flex: 1,
-  },
-  favoritesList: {
-    padding: 20,
-  },
-  favoriteItem: {
-    flexDirection: "row",
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    shadowColor: theme.colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 2,
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray200,
-  },
-  itemContent: {
-    flex: 1,
-    marginLeft: 16,
-    justifyContent: "space-between",
-  },
-  itemHeader: {
-    flex: 1,
-  },
-  itemTitleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontFamily: playfairFonts.medium,
-    color: theme.colors.black,
-    flex: 1,
-    marginRight: 8,
-  },
-  itemSubtitle: {
-    fontSize: 14,
-    fontFamily: playfairFonts.regular,
-    color: theme.colors.gray500,
-    marginBottom: 8,
-  },
-  typeTag: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  itemTimestamp: {
-    fontSize: 12,
-    fontFamily: playfairFonts.regular,
-    color: theme.colors.gray400,
-  },
-  likeButton: {
-    padding: 4,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    paddingVertical: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: playfairFonts.bold,
-    color: theme.colors.black,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    fontFamily: playfairFonts.regular,
-    color: theme.colors.gray500,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  exploreButton: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  exploreButtonText: {
-    fontSize: 16,
-    fontFamily: playfairFonts.medium,
-    color: theme.colors.white,
-  },
-});
+    loadingState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 80,
+    },
+    loadingText: {
+      fontSize: 14,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray400,
+      marginTop: 12,
+    },
+    postsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: t.spacing.md,
+      paddingTop: t.spacing.md,
+      justifyContent: "space-between",
+    },
+    postItem: {
+      width: "48%",
+      marginBottom: t.spacing.md,
+    },
+    tabBar: {
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+      backgroundColor: t.colors.card,
+    },
+    tabContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    tab: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      marginRight: 12,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.gray50,
+    },
+    activeTab: {
+      backgroundColor: t.colors.text,
+    },
+    tabText: {
+      fontSize: 14,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.gray600,
+    },
+    activeTabText: {
+      color: t.colors.textInverted,
+    },
+    tabBadge: {
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.sm,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      marginLeft: 6,
+      minWidth: 20,
+      alignItems: "center",
+    },
+    tabBadgeText: {
+      fontSize: 12,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+    },
+    content: {
+      flex: 1,
+    },
+    favoritesList: {
+      padding: 20,
+    },
+    favoriteItem: {
+      flexDirection: "row",
+      backgroundColor: t.colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      shadowColor: t.colors.text,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    itemImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 8,
+      backgroundColor: t.colors.skeleton,
+    },
+    itemContent: {
+      flex: 1,
+      marginLeft: 16,
+      justifyContent: "space-between",
+    },
+    itemHeader: {
+      flex: 1,
+    },
+    itemTitleRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: 4,
+    },
+    itemTitle: {
+      fontSize: 16,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+      flex: 1,
+      marginRight: 8,
+    },
+    itemSubtitle: {
+      fontSize: 14,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray500,
+      marginBottom: 8,
+    },
+    typeTag: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    itemFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    itemTimestamp: {
+      fontSize: 12,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray400,
+    },
+    likeButton: {
+      padding: 4,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 40,
+      paddingVertical: 80,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontFamily: playfairFonts.bold,
+      color: t.colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 16,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray500,
+      textAlign: "center",
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    exploreButton: {
+      backgroundColor: t.colors.text,
+      paddingHorizontal: 32,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    exploreButtonText: {
+      fontSize: 16,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textInverted,
+    },
+  });
 
 export default FavoritesScreen;

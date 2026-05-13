@@ -14,9 +14,10 @@ import { useTranslation } from "react-i18next";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { useChatStore } from "../../store/chatStore";
 import BuyerMapScreen from "../BuyerMapScreen";
+import { useAppTheme } from "../../theme";
 import { SubTab, SUB_TAB_KEYS, TAB_INDEX, INDEX_TAB } from "./constants";
 import { MessagesContent } from "./components/MessagesContent";
-import { styles } from "./styles";
+import { useInteractionStyles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -32,22 +33,24 @@ const { width: screenWidth } = Dimensions.get("window");
  * 这个占位骨架。视觉上与 BuyerMapScreen 初始的加载 GIF 保持一致，用户真的切过来
  * 时不会有"空白 → 忽然出现地图 loading"的跳变。
  */
-const MapTabPlaceholder: React.FC = () => (
-  <View style={mapPlaceholderStyles.container}>
-    <ActivityIndicator size="small" color="#888" />
-  </View>
-);
-
-const mapPlaceholderStyles = {
-  container: {
-    flex: 1,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
-    backgroundColor: "#ffffff",
-  },
+const MapTabPlaceholder: React.FC = () => {
+  const t = useAppTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: t.colors.background,
+      }}
+    >
+      <ActivityIndicator size="small" color={t.colors.gray300} />
+    </View>
+  );
 };
 
 const InteractionScreen = () => {
+  const styles = useInteractionStyles();
   const { t } = useTranslation();
   const route = useRoute<any>();
   const initialTab = route.params?.subTab as SubTab | undefined;

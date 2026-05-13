@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import {
   BuyerStore,
   getStoresPaginated,
@@ -24,6 +24,7 @@ const PAGE_SIZE = 20;
 
 const StoreSearchScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
 
@@ -342,16 +343,16 @@ const StoreSearchScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.black,
+    color: t.colors.text,
     paddingVertical: 8,
   },
   listContent: {

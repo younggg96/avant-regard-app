@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text as RNText, StyleSheet, ViewStyle } from "react-native";
 import { OptimizedImage } from "./OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 
 interface UserAvatarProps {
   uri?: string | null;
@@ -10,9 +10,6 @@ interface UserAvatarProps {
   size?: number;
   style?: ViewStyle;
 }
-
-const FALLBACK_BG = theme.colors.gray100;
-const FALLBACK_TEXT_COLOR = theme.colors.gray400;
 
 function getInitials(name?: string | null): string {
   if (!name) return "U";
@@ -38,6 +35,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   size = 40,
   style,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   const borderRadius = size / 2;
   const fontSize = Math.max(10, Math.round(size * 0.36));
 
@@ -67,14 +65,14 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   placeholder: {
-    backgroundColor: FALLBACK_BG,
+    backgroundColor: t.colors.gray100,
     justifyContent: "center",
     alignItems: "center",
   },
   initials: {
-    color: FALLBACK_TEXT_COLOR,
+    color: t.colors.gray400,
     fontWeight: "600",
   },
 });

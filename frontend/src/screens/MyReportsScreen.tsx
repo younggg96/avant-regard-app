@@ -20,7 +20,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   ReportRecord,
@@ -48,6 +48,7 @@ const STATUS_CONFIG: Record<string, { labelKey: string; color: string; bg: strin
 const MyReportsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -291,29 +292,30 @@ const MyReportsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  coverImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  loadingGif: {
-    width: Dimensions.get("window").width * 0.5,
-    height: Dimensions.get("window").width * 0.5,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    coverImage: {
+      width: 56,
+      height: 56,
+      borderRadius: 8,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    statusText: {
+      fontSize: 11,
+      fontWeight: "600",
+    },
+    loadingGif: {
+      width: Dimensions.get("window").width * 0.5,
+      height: Dimensions.get("window").width * 0.5,
+    },
+  });
 
 export default MyReportsScreen;

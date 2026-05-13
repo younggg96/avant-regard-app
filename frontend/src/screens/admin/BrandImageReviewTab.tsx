@@ -7,14 +7,16 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, AdminBrandImage } from "../../services/adminService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { Box, HStack, Text, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const BrandImageReviewTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [images, setImages] = useState<AdminBrandImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,13 +183,13 @@ const BrandImageReviewTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   previewImage: {
     width: "100%",
     height: 200,
     borderRadius: 8,
     marginBottom: 8,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
 });
 

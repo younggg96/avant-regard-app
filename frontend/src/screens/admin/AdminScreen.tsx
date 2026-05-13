@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import PendingTab from "./PendingTab";
 import CommentsTab from "./CommentsTab";
@@ -62,6 +62,7 @@ const AdminScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState<TabType>("pending");
+  const styles = useThemedStyles(makeStyles);
 
   const TABS: TabConfig[] = useMemo(() => [
     { key: "pending", label: t("admin.pendingPosts") },
@@ -170,21 +171,21 @@ const AdminScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   tabScrollContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
     flexGrow: 0,
     flexShrink: 0,
   },
   tabContentContainer: {
     flexDirection: "row",
-    paddingHorizontal: theme.spacing.xs,
+    paddingHorizontal: t.spacing.xs,
     alignItems: "center",
   },
   tab: {
@@ -192,19 +193,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: theme.colors.black,
+    borderBottomColor: t.colors.text,
   },
   tabText: {
-    ...theme.typography.body,
-    color: theme.colors.gray300,
+    ...t.typography.body,
+    color: t.colors.gray300,
   },
   tabTextActive: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "600",
   },
   tabContent: {

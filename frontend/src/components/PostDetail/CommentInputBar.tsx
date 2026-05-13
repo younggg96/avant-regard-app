@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack } from "../ui";
 import { theme } from "../../theme";
 import { ReplyTarget } from "./types";
-import { styles } from "./styles";
+import { usePostDetailStyles } from "./styles";
 
 interface CommentInputBarProps {
   commentInput: string;
@@ -76,6 +76,7 @@ export const CommentInputBar = forwardRef<
     },
     ref
   ) => {
+    const styles = usePostDetailStyles();
     const inputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({

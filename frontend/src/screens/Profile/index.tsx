@@ -34,7 +34,8 @@ import {
   TAB_BAR_HEIGHT,
   SCREEN_HEIGHT,
 } from "./constants";
-import { styles } from "./styles";
+import { useProfileStyles } from "./styles";
+import { useAppTheme } from "../../theme";
 import { useProfileData } from "./hooks/useProfileData";
 import { CoverSection } from "./components/CoverSection";
 import { CollapsedHeader } from "./components/CollapsedHeader";
@@ -56,6 +57,8 @@ const ProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const styles = useProfileStyles();
+  const appTheme = useAppTheme();
   const { user, logout } = useAuthStore();
   const ownLevel = useLevelStore((s) => s.status?.currentLevel ?? 0);
   const refreshLevel = useLevelStore((s) => s.refresh);
@@ -429,8 +432,12 @@ const ProfileScreen = () => {
   const displayUsername = userInfo?.username || user?.username || "";
 
   return (
-    <View style={[styles.container, { backgroundColor: '#FFF' }]}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+      <StatusBar
+        barStyle={appTheme.mode === "dark" ? "light-content" : "dark-content"}
+        translucent
+        backgroundColor="transparent"
+      />
 
       <CollapsedHeader
         avatarUri={avatarUri}
@@ -502,7 +509,7 @@ const ProfileScreen = () => {
         <LevelProgressCard />
 
         <Animated.View
-          style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
+          style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: appTheme.colors.card }]}
           onLayout={(event) => {
             const layoutY = event.nativeEvent.layout.y;
             if (Math.abs(tabBarAnchorY.value - layoutY) > 1) {
@@ -518,7 +525,7 @@ const ProfileScreen = () => {
           />
         </Animated.View>
 
-        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: '#FFF' }]}>
+        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
           <PostsContent
             activeTab={activeTab}
             tabsData={tabsData}

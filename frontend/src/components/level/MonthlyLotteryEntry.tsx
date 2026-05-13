@@ -13,7 +13,7 @@ import { ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, VStack, Pressable, Text } from "../ui";
-import { theme, playfairFonts } from "../../theme";
+import { theme, playfairFonts, useThemedStyles, type AppTheme } from "../../theme";
 import {
   CurrentLotteryPayload,
   levelService,
@@ -28,28 +28,12 @@ interface Props {
   currentLevel: number;
 }
 
-const localStyles = StyleSheet.create({
-  title: {
-    fontFamily: playfairFonts.medium,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "600",
-    color: theme.colors.black,
-  },
-  status: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 11,
-    lineHeight: 14,
-    color: theme.colors.gray300,
-    marginTop: 1,
-  },
-});
-
 export const MonthlyLotteryEntry: React.FC<Props> = ({
   isOwnProfile,
   currentLevel,
 }) => {
   const { t } = useTranslation();
+  const localStyles = useThemedStyles(makeLocalStyles);
   const [data, setData] = useState<CurrentLotteryPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -157,3 +141,20 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
     </>
   );
 };
+
+const makeLocalStyles = (t: AppTheme) => StyleSheet.create({
+  title: {
+    fontFamily: playfairFonts.medium,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    color: t.colors.text,
+  },
+  status: {
+    fontFamily: playfairFonts.regular,
+    fontSize: 11,
+    lineHeight: 14,
+    color: t.colors.gray300,
+    marginTop: 1,
+  },
+});

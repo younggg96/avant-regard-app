@@ -22,7 +22,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { useLevelStore } from "../../store/levelStore";
 import { levelService } from "../../services/levelService";
 import { Alert } from "../../utils/Alert";
@@ -49,6 +49,7 @@ export const EventRegistrationButton: React.FC<Props> = ({
   style,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const status = useLevelStore((s) => s.status);
   const refresh = useLevelStore((s) => s.refresh);
   const [submitting, setSubmitting] = useState(false);
@@ -118,19 +119,19 @@ export const EventRegistrationButton: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   btn: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   btnDisabled: {
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
   },
   label: {
-    ...theme.typography.button,
-    color: theme.colors.white,
+    ...t.typography.button,
+    color: t.colors.textInverted,
     letterSpacing: 2,
   },
 });

@@ -28,6 +28,7 @@ export interface UserInfo {
   coverUrl?: string;
   primaryTitle?: string;
   preferredLanguage?: string;
+  preferredTheme?: "system" | "light" | "dark";
 }
 
 // 用户完整资料类型（包含性别、年龄、偏好等）
@@ -429,6 +430,20 @@ export async function updateLanguagePreference(
 }
 
 /**
+ * 更新用户主题偏好
+ * PUT /api/user-info/{userId}/theme
+ */
+export async function updateThemePreference(
+  userId: number,
+  theme: "system" | "light" | "dark"
+): Promise<UserInfo> {
+  return request<UserInfo>(`/api/user-info/${userId}/theme`, {
+    method: "PUT",
+    body: JSON.stringify({ theme }),
+  });
+}
+
+/**
  * Self-service account deletion (Apple Guideline 5.1.1(v))
  * DELETE /api/user-info/{userId}/account
  */
@@ -498,6 +513,7 @@ export const userInfoService = {
   getUserTitles,
   setPrimaryTitle,
   clearPrimaryTitle,
+  updateThemePreference,
 };
 
 export default userInfoService;

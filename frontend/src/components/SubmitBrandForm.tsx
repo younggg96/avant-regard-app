@@ -13,7 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { brandService, SubmitBrandParams } from "../services/brandService";
 import { uploadImage } from "../services/postService";
 import { OptimizedImage } from "./ui/OptimizedImage";
@@ -33,6 +33,7 @@ const SubmitBrandForm: React.FC<SubmitBrandFormProps> = ({
   variant = "modal",
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [foundedYear, setFoundedYear] = useState("");
@@ -327,155 +328,156 @@ const SubmitBrandForm: React.FC<SubmitBrandFormProps> = ({
   return body;
 };
 
-const styles = StyleSheet.create({
-  screenKeyboard: {
-    flex: 1,
-  },
-  form: {
-    paddingHorizontal: theme.spacing.lg,
-  },
-  formScreen: {
-    flex: 1,
-  },
-  formScreenContent: {
-    paddingBottom: theme.spacing.xxl,
-  },
-  fieldGroup: {
-    marginBottom: theme.spacing.lg,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: theme.colors.gray500,
-    marginBottom: 8,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-  required: {
-    color: "#D32F2F",
-  },
-  input: {
-    fontSize: 15,
-    color: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: theme.colors.gray50,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-  },
-  imagePickerButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray50,
-    overflow: "hidden",
-  },
-  imagePlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 24,
-    gap: 8,
-  },
-  imagePlaceholderText: {
-    fontSize: 13,
-    color: theme.colors.gray300,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-  },
-  imagePreviewWrapper: {
-    position: "relative",
-  },
-  imagePreview: {
-    width: "100%",
-    height: 180,
-    borderRadius: theme.borderRadius.md,
-  },
-  imageRemoveButton: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 12,
-  },
-  submitLoadingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  halfField: {
-    flex: 1,
-  },
-  errorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF3F3",
-    borderRadius: theme.borderRadius.md,
-    padding: 12,
-    marginBottom: theme.spacing.lg,
-    gap: 8,
-  },
-  errorText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#D32F2F",
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-  },
-  submitButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: theme.spacing.md,
-  },
-  submitButtonDisabled: {
-    opacity: 0.4,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.white,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-  resultContainer: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.xl,
-  },
-  successIcon: {
-    marginBottom: theme.spacing.lg,
-  },
-  resultTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-  resultText: {
-    fontSize: 14,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: theme.spacing.xl,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-  },
-  doneButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: 48,
-    paddingVertical: 14,
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.white,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    screenKeyboard: {
+      flex: 1,
+    },
+    form: {
+      paddingHorizontal: t.spacing.lg,
+    },
+    formScreen: {
+      flex: 1,
+    },
+    formScreenContent: {
+      paddingBottom: t.spacing.xxl,
+    },
+    fieldGroup: {
+      marginBottom: t.spacing.lg,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.gray500,
+      marginBottom: 8,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+    required: {
+      color: "#D32F2F",
+    },
+    input: {
+      fontSize: 15,
+      color: t.colors.text,
+      borderWidth: 1,
+      borderColor: t.colors.inputBorder,
+      borderRadius: t.borderRadius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: t.colors.inputBackground,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    },
+    imagePickerButton: {
+      borderWidth: 1,
+      borderColor: t.colors.inputBorder,
+      borderRadius: t.borderRadius.md,
+      backgroundColor: t.colors.inputBackground,
+      overflow: "hidden",
+    },
+    imagePlaceholder: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 24,
+      gap: 8,
+    },
+    imagePlaceholderText: {
+      fontSize: 13,
+      color: t.colors.gray300,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    },
+    imagePreviewWrapper: {
+      position: "relative",
+    },
+    imagePreview: {
+      width: "100%",
+      height: 180,
+      borderRadius: t.borderRadius.md,
+    },
+    imageRemoveButton: {
+      position: "absolute",
+      top: 8,
+      right: 8,
+      backgroundColor: "rgba(255,255,255,0.9)",
+      borderRadius: 12,
+    },
+    submitLoadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    row: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    halfField: {
+      flex: 1,
+    },
+    errorContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#FFF3F3",
+      borderRadius: t.borderRadius.md,
+      padding: 12,
+      marginBottom: t.spacing.lg,
+      gap: 8,
+    },
+    errorText: {
+      flex: 1,
+      fontSize: 13,
+      color: "#D32F2F",
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    },
+    submitButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: t.borderRadius.lg,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: t.spacing.md,
+    },
+    submitButtonDisabled: {
+      opacity: 0.4,
+    },
+    submitButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+    resultContainer: {
+      alignItems: "center",
+      paddingVertical: t.spacing.xxl,
+      paddingHorizontal: t.spacing.xl,
+    },
+    successIcon: {
+      marginBottom: t.spacing.lg,
+    },
+    resultTitle: {
+      fontSize: 20,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: t.spacing.sm,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+    resultText: {
+      fontSize: 14,
+      color: t.colors.gray400,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: t.spacing.xl,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    },
+    doneButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: t.borderRadius.lg,
+      paddingHorizontal: 48,
+      paddingVertical: 14,
+    },
+    doneButtonText: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+  });
 
 export default SubmitBrandForm;

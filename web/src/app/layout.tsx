@@ -5,6 +5,7 @@ import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { EngagementNudgeProvider } from "@/components/EngagementNudgeProvider";
+import { ThemePreferenceSync } from "@/components/ThemePreferenceSync";
 import { config } from "@/lib/config";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { getServerLanguage, getServerT } from "@/lib/i18n/server";
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <SiteHeader />
             <main className="flex-1">{children}</main>
             <SiteFooter />
+            <ThemePreferenceSync />
             <EngagementNudgeProvider />
           </ThemeProvider>
         </I18nProvider>

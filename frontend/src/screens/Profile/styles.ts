@@ -1,11 +1,10 @@
 import { StyleSheet } from "react-native";
-import { theme, playfairFonts } from "../../theme";
+import { useThemedStyles, type AppTheme, playfairFonts, lightTheme } from "../../theme";
 import {
   COVER_HEIGHT,
   AVATAR_SIZE,
   AVATAR_SIZE_SMALL,
   AVATAR_BORDER,
-  HEADER_CONTENT_HEIGHT,
   TAB_BAR_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
@@ -13,431 +12,447 @@ import {
 
 export const PF = playfairFonts;
 
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  coverContainer: {
-    height: COVER_HEIGHT,
-    overflow: "hidden",
-  },
-  coverImage: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-  },
-  defaultCover: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.black,
-  },
-  coverGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  topActions: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  collapsedHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#E0E0E0",
-  },
-  collapsedHeaderBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  collapsedHeaderContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-  },
-  headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerLeftSpacer: {
-    width: 80,
-    height: 36,
-  },
-  collapsedAvatarContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  collapsedAvatar: {
-    width: AVATAR_SIZE_SMALL,
-    height: AVATAR_SIZE_SMALL,
-    borderRadius: AVATAR_SIZE_SMALL / 2,
-    backgroundColor: theme.colors.gray200,
-  },
-  avatarTextSmall: {
-    color: theme.colors.white,
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: PF.bold,
-  },
-  headerRightButtons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  stickyTabBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 99,
-    height: TAB_BAR_HEIGHT,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  profileInfo: {
-    paddingBottom: 16,
-  },
-  avatarRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: -(AVATAR_SIZE / 2),
-    paddingHorizontal: 16,
-  },
-  avatarWrapper: {
-    borderRadius: (AVATAR_SIZE + AVATAR_BORDER * 2) / 2,
-    borderWidth: AVATAR_BORDER,
-    borderColor: '#FFF',
-    position: "relative",
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    backgroundColor: theme.colors.gray200,
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    color: theme.colors.white,
-    fontSize: 22,
-    fontWeight: "bold",
-    fontFamily: PF.bold,
-  },
-  avatarAddButton: {
-    position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#FFD700",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  userNameSection: {
-    paddingHorizontal: 16,
-    marginTop: 12,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: theme.colors.black,
-    fontFamily: PF.bold,
-  },
-  userIdText: {
-    fontSize: 12,
-    color: theme.colors.gray400,
-    marginTop: 2,
-    fontFamily: PF.regular,
-  },
-  bio: {
-    fontSize: 14,
-    color: theme.colors.gray600,
-    marginTop: 4,
-    lineHeight: 20,
-    fontFamily: PF.regular,
-  },
-  tagsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: 16,
-    marginTop: 12,
-  },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: theme.colors.gray100,
-  },
-  tagText: {
-    fontSize: 12,
-    color: theme.colors.gray600,
-    fontFamily: PF.regular,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    marginTop: 16,
-    gap: 24,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: theme.colors.black,
-    fontFamily: PF.bold,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: theme.colors.gray600,
-    fontFamily: PF.regular,
-  },
-  followedBrandsSection: {
-    paddingBottom: 14,
-    backgroundColor: "#FFF",
-  },
-  followedBrandsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    gap: 6,
-  },
-  followedBrandsTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-    fontFamily: PF.medium,
-  },
-  followedBrandsCount: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: theme.colors.gray300,
-    fontFamily: PF.medium,
-  },
-  brandChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    paddingRight: 14,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    gap: 8,
-  },
-  brandChipImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-  },
-  brandChipImagePlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  brandChipInitial: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#FFF",
-    fontFamily: PF.bold,
-  },
-  brandChipName: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: theme.colors.black,
-    maxWidth: 100,
-    fontFamily: PF.medium,
-  },
-  tabBarContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  tabScrollContent: {
-    paddingHorizontal: 16,
-  },
-  tabItem: {
-    paddingVertical: 12,
-    marginRight: 24,
-    position: "relative",
-  },
-  tabText: {
-    fontSize: 15,
-    color: theme.colors.gray600,
-    fontWeight: "500",
-    fontFamily: PF.medium,
-  },
-  tabTextActive: {
-    color: theme.colors.black,
-    fontWeight: "600",
-    fontFamily: PF.medium,
-  },
-  tabIndicator: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: theme.colors.black,
-    borderRadius: 1,
-  },
-  postsContainer: {
-    paddingBottom: theme.spacing.xl,
-  },
-  profileLoadingGif: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT / 2,
-  },
-});
+const makeProfileStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    coverContainer: {
+      height: COVER_HEIGHT,
+      overflow: "hidden",
+    },
+    coverImage: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: "100%",
+      height: "100%",
+    },
+    defaultCover: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: t.colors.text,
+    },
+    coverGradient: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    topActions: {
+      position: "absolute",
+      left: 12,
+      right: 12,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      zIndex: 10,
+    },
+    actionButton: {
+      width: 36,
+      height: 36,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: "rgba(0,0,0,0.3)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    collapsedHeader: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+      borderBottomWidth: 0.5,
+      borderBottomColor: t.colors.border,
+    },
+    collapsedHeaderBg: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    collapsedHeaderContent: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 12,
+    },
+    headerButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    headerLeftSpacer: {
+      width: 80,
+      height: 36,
+    },
+    collapsedAvatarContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    collapsedAvatar: {
+      width: AVATAR_SIZE_SMALL,
+      height: AVATAR_SIZE_SMALL,
+      borderRadius: AVATAR_SIZE_SMALL / 2,
+      backgroundColor: t.colors.skeleton,
+    },
+    avatarTextSmall: {
+      color: t.colors.textInverted,
+      fontSize: 14,
+      fontWeight: "bold",
+      fontFamily: PF.bold,
+    },
+    headerRightButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stickyTabBar: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      zIndex: 99,
+      height: TAB_BAR_HEIGHT,
+      backgroundColor: t.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    profileInfo: {
+      paddingBottom: 16,
+    },
+    avatarRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      marginTop: -(AVATAR_SIZE / 2),
+      paddingHorizontal: 16,
+    },
+    avatarWrapper: {
+      borderRadius: (AVATAR_SIZE + AVATAR_BORDER * 2) / 2,
+      borderWidth: AVATAR_BORDER,
+      borderColor: t.colors.card,
+      position: "relative",
+    },
+    avatar: {
+      width: AVATAR_SIZE,
+      height: AVATAR_SIZE,
+      borderRadius: AVATAR_SIZE / 2,
+      backgroundColor: t.colors.skeleton,
+    },
+    avatarPlaceholder: {
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    avatarText: {
+      color: t.colors.textInverted,
+      fontSize: 22,
+      fontWeight: "bold",
+      fontFamily: PF.bold,
+    },
+    avatarAddButton: {
+      position: "absolute",
+      bottom: 2,
+      right: 2,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: "#FFD700",
+      justifyContent: "center",
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: t.colors.card,
+    },
+    userNameSection: {
+      paddingHorizontal: 16,
+      marginTop: 12,
+    },
+    userName: {
+      fontSize: 20,
+      fontWeight: "bold",
+      color: t.colors.text,
+      fontFamily: PF.bold,
+    },
+    userIdText: {
+      fontSize: 12,
+      color: t.colors.gray400,
+      marginTop: 2,
+      fontFamily: PF.regular,
+    },
+    bio: {
+      fontSize: 14,
+      color: t.colors.gray600,
+      marginTop: 4,
+      lineHeight: 20,
+      fontFamily: PF.regular,
+    },
+    tagsContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingHorizontal: 16,
+      marginTop: 12,
+    },
+    tag: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: t.colors.gray100,
+    },
+    tagText: {
+      fontSize: 12,
+      color: t.colors.gray600,
+      fontFamily: PF.regular,
+    },
+    statsContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      marginTop: 16,
+      gap: 24,
+    },
+    statItem: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      gap: 4,
+    },
+    statNumber: {
+      fontSize: 16,
+      fontWeight: "bold",
+      color: t.colors.text,
+      fontFamily: PF.bold,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: t.colors.gray600,
+      fontFamily: PF.regular,
+    },
+    followedBrandsSection: {
+      paddingBottom: 14,
+      backgroundColor: t.colors.card,
+    },
+    followedBrandsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      marginBottom: 10,
+      gap: 6,
+    },
+    followedBrandsTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.gray400,
+      fontFamily: PF.medium,
+    },
+    followedBrandsCount: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.gray300,
+      fontFamily: PF.medium,
+    },
+    brandChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingRight: 14,
+      borderRadius: 20,
+      backgroundColor: t.colors.gray100,
+      gap: 8,
+    },
+    brandChipImage: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+    },
+    brandChipImagePlaceholder: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    brandChipInitial: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: t.colors.textInverted,
+      fontFamily: PF.bold,
+    },
+    brandChipName: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.text,
+      maxWidth: 100,
+      fontFamily: PF.medium,
+    },
+    tabBarContainer: {
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    tabScrollContent: {
+      paddingHorizontal: 16,
+    },
+    tabItem: {
+      paddingVertical: 12,
+      marginRight: 24,
+      position: "relative",
+    },
+    tabText: {
+      fontSize: 15,
+      color: t.colors.gray600,
+      fontWeight: "500",
+      fontFamily: PF.medium,
+    },
+    tabTextActive: {
+      color: t.colors.text,
+      fontWeight: "600",
+      fontFamily: PF.medium,
+    },
+    tabIndicator: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 2,
+      backgroundColor: t.colors.text,
+      borderRadius: 1,
+    },
+    postsContainer: {
+      paddingBottom: t.spacing.xl,
+    },
+    profileLoadingGif: {
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT / 2,
+    },
+  });
 
-export const contribStyles = StyleSheet.create({
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  filterChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: theme.colors.gray600,
-    fontWeight: "500",
-    fontFamily: PF.medium,
-  },
-  filterChipTextActive: {
-    color: "#FFF",
-  },
-  filterChipCount: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-    fontFamily: PF.bold,
-  },
-  filterChipCountActive: {
-    color: "rgba(255,255,255,0.7)",
-  },
-});
+const makeContribStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    filterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 12,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    filterChipActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    filterChipText: {
+      fontSize: 13,
+      color: t.colors.gray600,
+      fontWeight: "500",
+      fontFamily: PF.medium,
+    },
+    filterChipTextActive: {
+      color: t.colors.textInverted,
+    },
+    filterChipCount: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: t.colors.gray400,
+      fontFamily: PF.bold,
+    },
+    filterChipCountActive: {
+      color: "rgba(255,255,255,0.7)",
+    },
+  });
 
-export const storeActivityStyles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray200,
-    gap: 12,
-    alignItems: "center",
-  },
-  storeImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-  },
-  storeImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardBody: {
-    flex: 1,
-    gap: 4,
-  },
-  storeName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: theme.colors.black,
-    fontFamily: PF.medium,
-  },
-  storeLocation: {
-    fontSize: 12,
-    color: theme.colors.gray400,
-    fontFamily: PF.regular,
-  },
-  commentContent: {
-    fontSize: 13,
-    color: theme.colors.gray600,
-    lineHeight: 18,
-    fontFamily: PF.regular,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 2,
-  },
-  metaText: {
-    fontSize: 11,
-    color: theme.colors.gray400,
-    fontFamily: PF.regular,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#F5A623",
-    fontFamily: PF.medium,
-  },
-});
+const makeStoreActivityStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: "row",
+      padding: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.gray200,
+      gap: 12,
+      alignItems: "center",
+    },
+    storeImage: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      backgroundColor: t.colors.gray100,
+    },
+    storeImagePlaceholder: {
+      width: 60,
+      height: 60,
+      borderRadius: 8,
+      backgroundColor: t.colors.gray100,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    cardBody: {
+      flex: 1,
+      gap: 4,
+    },
+    storeName: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: t.colors.text,
+      fontFamily: PF.medium,
+    },
+    storeLocation: {
+      fontSize: 12,
+      color: t.colors.gray400,
+      fontFamily: PF.regular,
+    },
+    commentContent: {
+      fontSize: 13,
+      color: t.colors.gray600,
+      lineHeight: 18,
+      fontFamily: PF.regular,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 2,
+    },
+    metaText: {
+      fontSize: 11,
+      color: t.colors.gray400,
+      fontFamily: PF.regular,
+    },
+    ratingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    ratingText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#F5A623",
+      fontFamily: PF.medium,
+    },
+  });
+
+export const useProfileStyles = () => useThemedStyles(makeProfileStyles);
+export const useContribStyles = () => useThemedStyles(makeContribStyles);
+export const useStoreActivityStyles = () => useThemedStyles(makeStoreActivityStyles);
+
+/**
+ * Legacy static exports — frozen to the light theme. Migrate consumers to the
+ * matching hooks above for full dark-mode support.
+ */
+export const styles = makeProfileStyles(lightTheme);
+export const contribStyles = makeContribStyles(lightTheme);
+export const storeActivityStyles = makeStoreActivityStyles(lightTheme);

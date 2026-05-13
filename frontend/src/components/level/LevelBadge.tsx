@@ -9,7 +9,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import { getLevelTitle, getLevelTitleKey } from "./levelTitles";
 
 export { getLevelTitle };
@@ -37,6 +37,7 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
   pendingLevel,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   if (!level || level < 1) return null;
 
   const dim = DIM[size];
@@ -56,17 +57,17 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   base: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: theme.colors.white,
+    borderColor: t.colors.background,
   },
   text: {
-    color: theme.colors.white,
-    fontFamily: theme.typography.h4.fontFamily,
+    color: t.colors.textInverted,
+    fontFamily: t.typography.h4.fontFamily,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -77,8 +78,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.textInverted,
     borderWidth: 1,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
   },
 });

@@ -25,7 +25,7 @@ import {
     HStack,
     VStack,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
     BuyerStore,
@@ -39,6 +39,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
     const { t } = useTranslation();
+    const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
     const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
     const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -674,15 +675,15 @@ const StoreListScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.background,
     },
     listContent: {
-        paddingTop: theme.spacing.md,
-        paddingBottom: theme.spacing.xl,
-        backgroundColor: theme.colors.gray50,
+        paddingTop: t.spacing.md,
+        paddingBottom: t.spacing.xl,
+        backgroundColor: t.colors.gray50,
     },
     cardShadow: {
         shadowColor: "#000",
@@ -693,14 +694,14 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        marginLeft: theme.spacing.sm,
-        marginRight: theme.spacing.sm,
+        marginLeft: t.spacing.sm,
+        marginRight: t.spacing.sm,
         fontSize: 15,
-        color: theme.colors.black,
+        color: t.colors.text,
         paddingVertical: 0,
     },
     sheetContainer: {
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.card,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: SCREEN_HEIGHT * 0.9,

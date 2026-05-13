@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -55,6 +55,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const showWidth = (screenWidth - 48) / 2;
+  const styles = useThemedStyles(makeStyles);
 
   const handleEndReached = () => {
     if (!isLoading && hasMore && onLoadMore) {
@@ -197,47 +198,48 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    height: "85%",
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: "hidden",
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: theme.colors.gray300,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  listContent: {
-    padding: 12,
-    paddingBottom: 24,
-  },
-  columnWrapper: {
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-  },
-  showItem: {
-    marginBottom: 16,
-  },
-  showImage: {
-    width: "100%",
-    borderRadius: 8,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      height: "85%",
+      backgroundColor: t.colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: "hidden",
+    },
+    handleBar: {
+      width: 40,
+      height: 4,
+      backgroundColor: t.colors.gray300,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    listContent: {
+      padding: 12,
+      paddingBottom: 24,
+    },
+    columnWrapper: {
+      justifyContent: "space-between",
+      paddingHorizontal: 6,
+    },
+    showItem: {
+      marginBottom: 16,
+    },
+    showImage: {
+      width: "100%",
+      borderRadius: 8,
+    },
+  });
 
 export default ShowSelectorModal;

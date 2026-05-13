@@ -16,7 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
@@ -38,6 +38,7 @@ interface SearchHistory {
 
 const SearchScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { user } = useAuthStore();
@@ -1272,16 +1273,16 @@ const SearchScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     fontFamily: playfairFonts.regular,
-    color: theme.colors.black,
+    color: t.colors.text,
     paddingVertical: 8,
   },
   scrollContent: {
@@ -1295,14 +1296,14 @@ const styles = StyleSheet.create({
   tabPill: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     marginRight: 8,
   },
   tabPillActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   tabPillInactive: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
 });
 

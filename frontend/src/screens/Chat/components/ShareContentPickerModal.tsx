@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
@@ -114,6 +114,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.userId;
+  const styles = useThemedStyles(makeStyles);
 
   const [postTab, setPostTab] = useState<PostTab>("published");
   const [keyword, setKeyword] = useState("");
@@ -472,6 +473,22 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     [handleSelectUser]
   );
 
+  const renderEmpty = useCallback(
+    (keywordValue: string, noResultsText: string, emptyText: string) => (
+      <View style={styles.center}>
+        <Ionicons
+          name="search-outline"
+          size={32}
+          color={theme.colors.gray200}
+        />
+        <Text style={styles.emptyText}>
+          {keywordValue.trim() ? noResultsText : emptyText}
+        </Text>
+      </View>
+    ),
+    [styles]
+  );
+
   // ---------- List to render ----------
   const list = useMemo(() => {
     if (!category) return null;
@@ -553,6 +570,9 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     renderBrandItem,
     renderShowItem,
     renderUserItem,
+    renderEmpty,
+    styles,
+    t,
   ]);
 
   if (!category) return null;
@@ -639,32 +659,17 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   );
 };
 
-function renderEmpty(keyword: string, noResultsText: string, emptyText: string) {
-  return (
-    <View style={styles.center}>
-      <Ionicons
-        name="search-outline"
-        size={32}
-        color={theme.colors.gray200}
-      />
-      <Text style={styles.emptyText}>
-        {keyword.trim() ? noResultsText : emptyText}
-      </Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: t.colors.overlay,
   },
   container: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: 24,
@@ -677,30 +682,30 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
     borderRadius: 2,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 10,
   },
   title: {
-    ...theme.typography.h4,
+    ...t.typography.h4,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   closeBtn: {
     position: "absolute",
-    right: theme.spacing.md,
+    right: t.spacing.md,
     top: 6,
     padding: 6,
   },
   tabsRow: {
     flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     gap: 8,
     marginBottom: 10,
   },
@@ -708,34 +713,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   tabActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   tabText: {
-    ...theme.typography.caption,
+    ...t.typography.caption,
     fontWeight: "500",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   tabTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginHorizontal: theme.spacing.md,
+    marginHorizontal: t.spacing.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 10,
     marginBottom: 10,
   },
   searchInput: {
     flex: 1,
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     padding: 0,
   },
   listContainer: {
@@ -745,14 +750,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 10,
   },
   thumb: {
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   thumbPlaceholder: {
     alignItems: "center",
@@ -761,20 +766,20 @@ const styles = StyleSheet.create({
   thumbInitial: {
     fontSize: 20,
     fontWeight: "300",
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
   rowInfo: {
     flex: 1,
     gap: 2,
   },
   rowTitle: {
-    ...theme.typography.bodySmall,
+    ...t.typography.bodySmall,
     fontWeight: "500",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   rowSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   center: {
     flex: 1,
@@ -784,8 +789,8 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
   },
 });
 

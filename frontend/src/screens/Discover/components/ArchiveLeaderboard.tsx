@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, VStack, ScrollView } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
-import { theme } from "../../../theme";
+import { theme, useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 import {
   ContributionUser,
   getContributionLeaderboard,
@@ -20,6 +20,7 @@ import {
 const MEDAL_COLORS = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
 const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
+  const styles = useThemedStyles(makeStyles);
   if (rank <= 3) {
     return (
       <View style={[styles.medalBadge, { backgroundColor: MEDAL_COLORS[rank - 1] }]}>
@@ -39,6 +40,8 @@ const LeaderboardItem: React.FC<{
   onPress: (userId: number, username: string, avatarUrl: string) => void;
 }> = ({ user, onPress }) => {
   const { t } = useTranslation();
+  const themeCtx = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
       style={styles.itemContainer}
@@ -57,7 +60,7 @@ const LeaderboardItem: React.FC<{
           />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Ionicons name="person" size={16} color={theme.colors.white} />
+            <Ionicons name="person" size={16} color={themeCtx.colors.textInverted} />
           </View>
         )}
       </View>
@@ -69,7 +72,7 @@ const LeaderboardItem: React.FC<{
           {t("archive.contributionCount", { count: user.contributionCount })}
         </Text>
       </VStack>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
+      <Ionicons name="chevron-forward" size={16} color={themeCtx.colors.gray200} />
     </TouchableOpacity>
   );
 };
@@ -145,13 +148,13 @@ export const ArchiveLeaderboard: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   medalBadge: {
     width: 24,
@@ -161,7 +164,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   medalText: {
-    color: theme.colors.white,
+    // Medal background colors are fixed gold/silver/bronze regardless of theme;
+    // keep the text literally white so contrast is consistent in both modes.
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "700",
   },
@@ -172,7 +177,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   rankText: {
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     fontSize: 13,
     fontWeight: "600",
   },
@@ -184,21 +189,21 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   avatarPlaceholder: {
-    backgroundColor: theme.colors.gray300,
+    backgroundColor: t.colors.gray300,
     justifyContent: "center",
     alignItems: "center",
   },
   username: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   countText: {
     fontSize: 12,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 2,
   },
 });

@@ -7,7 +7,7 @@ import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
 import { formatTime, formatLastMessage } from "../utils";
-import { styles } from "../styles";
+import { useInteractionStyles } from "../styles";
 
 interface StrangerEntryProps {
   conversations: Conversation[];
@@ -16,6 +16,7 @@ interface StrangerEntryProps {
 
 export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) => {
   const { t } = useTranslation();
+  const styles = useInteractionStyles();
   if (conversations.length === 0) return null;
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);

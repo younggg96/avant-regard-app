@@ -27,7 +27,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   adminLevelService,
   LotteryPrize,
@@ -42,7 +42,7 @@ import {
   refreshFeatureFlags,
   useFeatureFlagsStore,
 } from "../../store/featureFlagsStore";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import {
   Box,
   Button,
@@ -67,6 +67,8 @@ function currentMonth(): string {
 
 const LotteryAdminTab: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
 
   const statusLabel = (status: LotteryRoundInfo["status"]): {
     text: string;
@@ -677,45 +679,45 @@ const LotteryAdminTab: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   flagCard: {
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.md,
+    borderColor: t.colors.border,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.md,
   },
   flagHeader: {
     alignItems: "center",
     justifyContent: "space-between",
   },
   flagTitle: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
     fontWeight: "600",
   },
   flagDesc: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     marginTop: 4,
     lineHeight: 18,
   },
   flagWarning: {
-    ...theme.typography.caption,
-    color: theme.colors.error,
-    marginTop: theme.spacing.sm,
+    ...t.typography.caption,
+    color: t.colors.error,
+    marginTop: t.spacing.sm,
     lineHeight: 18,
   },
   sectionTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
   },
   sectionHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
     lineHeight: 18,
   },
   statusBadge: {
@@ -724,33 +726,33 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusBadgeText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     letterSpacing: 1,
   },
   statRow: {
     flexDirection: "row",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: theme.colors.gray100,
-    paddingVertical: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
+    borderColor: t.colors.border,
+    paddingVertical: t.spacing.sm,
+    marginTop: t.spacing.sm,
   },
   statCell: {
     flex: 1,
     alignItems: "center",
   },
   statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginBottom: 2,
   },
   statValue: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
   },
   prizeList: {
-    marginTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
     gap: 4,
   },
   prizeRow: {
@@ -759,24 +761,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   prizeId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     minWidth: 40,
   },
   prizeName: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     flex: 1,
   },
   prizeQuota: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   emptyPrizeText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     fontStyle: "italic",
-    marginTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
   },
   prizeEditorRow: {
     marginBottom: 6,
@@ -792,14 +794,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
     borderStyle: "dashed",
     marginTop: 6,
   },
   addRowText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
   },
 });
 

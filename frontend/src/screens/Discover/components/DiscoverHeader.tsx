@@ -6,17 +6,20 @@ import { Image as ExpoImage } from "expo-image";
 import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
-import { theme } from "../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 
 const headerLogoSource = require("../../../../assets/gif/header-logo.gif");
 
-const DiscoverLogo: React.FC = () => (
-    <ExpoImage
-        source={headerLogoSource}
-        style={styles.logoImage}
-        contentFit="contain"
-    />
-);
+const DiscoverLogo: React.FC = () => {
+    const styles = useThemedStyles(makeStyles);
+    return (
+        <ExpoImage
+            source={headerLogoSource}
+            style={styles.logoImage}
+            contentFit="contain"
+        />
+    );
+};
 
 interface DiscoverHeaderProps {
     avatar?: string;
@@ -34,6 +37,8 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     onInteractionPress,
 }) => {
     const { t } = useTranslation();
+    const theme = useAppTheme();
+    const styles = useThemedStyles(makeStyles);
 
     return (
         <Box bg="$white" px="$md" pt="$xs">
@@ -47,7 +52,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             style={styles.interactionButton}
                         >
-                            <Ionicons name="notifications-outline" size={22} color={theme.colors.black} />
+                            <Ionicons name="notifications-outline" size={22} color={theme.colors.text} />
                             <NotificationBadge count={totalInteractionUnread} size="sm" showBorder />
                         </Pressable>
                         <Pressable
@@ -64,7 +69,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                                 />
                             ) : (
                                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                    <Ionicons name="person" size={18} color={theme.colors.white} />
+                                    <Ionicons name="person" size={18} color={theme.colors.textInverted} />
                                 </View>
                             )}
                         </Pressable>
@@ -89,7 +94,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
     logoImage: {
         width: 140,
         height: 36,
@@ -99,17 +104,17 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: theme.colors.gray100,
+        borderColor: t.colors.border,
     },
     avatarPlaceholder: {
-        backgroundColor: theme.colors.gray300,
+        backgroundColor: t.colors.gray300,
         justifyContent: "center",
         alignItems: "center",
     },
     searchContainer: {
         height: 40,
-        backgroundColor: theme.colors.gray50,
-        borderRadius: theme.borderRadius.sm,
+        backgroundColor: t.colors.gray50,
+        borderRadius: t.borderRadius.sm,
         paddingHorizontal: 12,
         justifyContent: "center",
     },
@@ -120,7 +125,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontFamily: "PlayfairDisplay-Regular",
-        color: theme.colors.gray400,
+        color: t.colors.gray400,
     },
     interactionButton: {
         position: "relative",

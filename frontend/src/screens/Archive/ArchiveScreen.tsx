@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { BrandListTab, MyContributionTab, LeaderboardTab } from "./components";
@@ -22,6 +22,7 @@ const { width: screenWidth } = Dimensions.get("window");
 
 const ArchiveScreen: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [activeTab, setActiveTab] = useState<ArchiveTab>("all");
 
   const tabs = useMemo(
@@ -152,14 +153,15 @@ const ArchiveScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  swipeContainer: {
-    flex: 1,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    swipeContainer: {
+      flex: 1,
+    },
+  });
 
 export default ArchiveScreen;

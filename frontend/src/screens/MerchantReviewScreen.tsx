@@ -33,7 +33,7 @@ import {
   VStack,
   ScrollView,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -51,6 +51,7 @@ type TabType = "pending" | "approved" | "all";
 
 const MerchantReviewScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const queryClient = useQueryClient();
 
@@ -1042,88 +1043,88 @@ const MerchantReviewScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   listContent: {
-    padding: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    padding: t.spacing.md,
+    paddingBottom: t.spacing.xl,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: t.colors.overlay,
     justifyContent: "flex-end",
   },
   modalBackdrop: {
     flex: 1,
   },
   modalContent: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    padding: t.spacing.lg,
+    paddingTop: t.spacing.sm,
     paddingBottom: 34,
     maxHeight: "85%",
   },
   modalHandle: {
     width: 40,
     height: 4,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   rejectModalContent: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 16,
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   rejectInput: {
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
+    backgroundColor: t.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.md,
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     minHeight: 100,
     textAlignVertical: "top",
   },
   licenseImage: {
     width: "100%",
     height: 200,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
   },
   tabContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
+    borderBottomColor: t.colors.border,
+    backgroundColor: t.colors.card,
   },
   tab: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.md,
+    paddingVertical: t.spacing.md,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: theme.colors.black,
+    borderBottomColor: t.colors.text,
   },
   tabText: {
     fontSize: 14,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
   tabTextActive: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "600",
   },
   tabBadge: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1133,7 +1134,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   tabBadgeText: {
-    color: theme.colors.white,
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -1141,9 +1142,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: theme.spacing.md,
+    paddingVertical: t.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
 });
 

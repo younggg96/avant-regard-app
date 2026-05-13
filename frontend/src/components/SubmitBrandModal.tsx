@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import SubmitBrandForm from "./SubmitBrandForm";
 
 interface SubmitBrandModalProps {
@@ -27,6 +27,7 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
   onSuccess,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Modal
@@ -68,47 +69,48 @@ const SubmitBrandModal: React.FC<SubmitBrandModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  keyboardView: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    maxHeight: "85%",
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: "hidden",
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: theme.colors.gray300,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.lg,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: theme.colors.black,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-  closeButton: {
-    padding: 4,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "flex-end",
+    },
+    keyboardView: {
+      flex: 1,
+      justifyContent: "flex-end",
+    },
+    modalContent: {
+      maxHeight: "85%",
+      backgroundColor: t.colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: "hidden",
+    },
+    handleBar: {
+      width: 40,
+      height: 4,
+      backgroundColor: t.colors.gray300,
+      borderRadius: 2,
+      alignSelf: "center",
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: t.spacing.lg,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.colors.text,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+    closeButton: {
+      padding: 4,
+    },
+  });
 
 export default SubmitBrandModal;

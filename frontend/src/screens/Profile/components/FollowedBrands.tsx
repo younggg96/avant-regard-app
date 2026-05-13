@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { OptimizedImage, Pressable } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
 import { FollowingBrand } from "../../../services/followService";
-import { styles } from "../styles";
+import { useProfileStyles } from "../styles";
 
 interface FollowedBrandsProps {
   brands: FollowingBrand[];
@@ -13,6 +13,7 @@ interface FollowedBrandsProps {
 
 export const FollowedBrands = ({ brands, onBrandPress }: FollowedBrandsProps) => {
   const { t } = useTranslation();
+  const styles = useProfileStyles();
 
   if (brands.length === 0) return null;
 

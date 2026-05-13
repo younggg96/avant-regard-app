@@ -21,7 +21,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import {
@@ -48,6 +48,7 @@ const FollowingUsersScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "FollowingUsers">>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   const [followingUsers, setFollowingUsers] = useState<FollowingUser[]>([]);
   const [followingBrands, setFollowingBrands] = useState<FollowingBrand[]>([]);
@@ -427,144 +428,145 @@ const FollowingUsersScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: theme.colors.black,
-  },
-  tabRow: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  tabChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 14,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  tabChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  tabChipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: theme.colors.gray600,
-  },
-  tabChipTextActive: {
-    color: "#FFF",
-  },
-  tabChipCount: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-  },
-  tabChipCountActive: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 38,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  searchBarFocused: {
-    borderColor: theme.colors.gray300,
-    backgroundColor: "#FFF",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.black,
-    padding: 0,
-  },
-  userItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  brandAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFF",
-  },
-  mutualBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    backgroundColor: "#F0F0F0",
-  },
-  mutualBadgeText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: theme.colors.gray600,
-  },
-  unfollowButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.white,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    backButton: {
+      padding: 4,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
+    tabRow: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    tabChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 14,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    tabChipActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    tabChipText: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.gray600,
+    },
+    tabChipTextActive: {
+      color: t.colors.textInverted,
+    },
+    tabChipCount: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: t.colors.gray400,
+    },
+    tabChipCountActive: {
+      color: "rgba(255,255,255,0.7)",
+    },
+    searchContainer: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.inputBackground,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      height: 38,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: "transparent",
+    },
+    searchBarFocused: {
+      borderColor: t.colors.gray300,
+      backgroundColor: t.colors.card,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: t.colors.text,
+      padding: 0,
+    },
+    userItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.divider,
+    },
+    avatar: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      marginRight: 12,
+    },
+    brandAvatar: {
+      width: 50,
+      height: 50,
+      borderRadius: 8,
+      marginRight: 12,
+    },
+    avatarPlaceholder: {
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    avatarText: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+    mutualBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 4,
+      backgroundColor: t.colors.gray100,
+    },
+    mutualBadgeText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: t.colors.gray600,
+    },
+    unfollowButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
+      justifyContent: "center",
+      alignItems: "center",
+      marginLeft: 8,
+    },
+  });
 
 export default FollowingUsersScreen;

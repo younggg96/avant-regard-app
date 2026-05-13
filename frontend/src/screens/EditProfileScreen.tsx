@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import { userInfoService, Gender } from "../services/userInfoService";
@@ -97,6 +97,7 @@ const EditProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, updateProfile } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   // 表单数据
   const [username, setUsername] = useState("");
@@ -563,7 +564,7 @@ const EditProfileScreen = () => {
               />
               {uploadingAvatar ? (
                 <View style={styles.avatarLoadingOverlay}>
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 </View>
               ) : (
                 <View style={styles.avatarEditIcon}>
@@ -606,7 +607,7 @@ const EditProfileScreen = () => {
               )}
               {uploadingCover ? (
                 <View style={styles.coverLoadingOverlay}>
-                  <ActivityIndicator size="small" color={theme.colors.white} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                   <Text style={styles.coverLoadingText}>{t("publish.uploading")}</Text>
                 </View>
               ) : (
@@ -1040,10 +1041,11 @@ const EditProfileScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   keyboardAvoid: {
     flex: 1,
@@ -1059,7 +1061,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   // 头像区域
   avatarSection: {
@@ -1074,7 +1076,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.skeleton,
   },
   avatarEditIcon: {
     position: "absolute",
@@ -1083,11 +1085,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: theme.colors.white,
+    borderColor: t.colors.card,
   },
   avatarLoadingOverlay: {
     position: "absolute",
@@ -1102,7 +1104,7 @@ const styles = StyleSheet.create({
   },
   avatarHint: {
     fontSize: 13,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   // 封面区域
   coverSection: {
@@ -1115,7 +1117,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   coverImage: {
@@ -1126,12 +1128,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   coverPlaceholderText: {
     marginTop: 8,
     fontSize: 14,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   coverEditIcon: {
     position: "absolute",
@@ -1157,12 +1159,12 @@ const styles = StyleSheet.create({
   coverLoadingText: {
     marginTop: 8,
     fontSize: 13,
-    color: theme.colors.white,
+    color: "#FFFFFF",
   },
   coverHint: {
     marginTop: 8,
     fontSize: 13,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     textAlign: "center",
   },
   // 表单区域
@@ -1175,18 +1177,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.inputBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: theme.colors.black,
-    backgroundColor: theme.colors.white,
+    color: t.colors.text,
+    backgroundColor: t.colors.inputBackground,
   },
   textArea: {
     height: 100,
@@ -1194,7 +1196,7 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     textAlign: "right",
     marginTop: 4,
   },
@@ -1204,18 +1206,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.inputBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 14,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.inputBackground,
   },
   selectInputText: {
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   selectInputPlaceholder: {
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   // Modal
   modalOverlay: {
@@ -1224,7 +1226,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: "70%",
@@ -1236,12 +1238,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   modalCloseButton: {
     padding: 4,
@@ -1253,26 +1255,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.divider,
   },
   provinceItemSelected: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   provinceItemText: {
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   provinceItemTextSelected: {
     fontWeight: "600",
   },
   selectedCount: {
     fontSize: 12,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     marginTop: 6,
   },
   // 性别弹窗
   genderModalContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -1284,24 +1286,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.divider,
   },
   designerItemSelected: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   designerInfo: {
     flex: 1,
   },
   brandName: {
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   designerNameSelected: {
     fontWeight: "600",
   },
   brandCategory: {
     fontSize: 12,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     marginTop: 2,
   },
   checkbox: {
@@ -1309,13 +1311,13 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.gray300,
+    borderColor: t.colors.gray300,
     justifyContent: "center",
     alignItems: "center",
   },
   checkboxSelected: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
   },
   emptyList: {
     padding: 40,
@@ -1323,7 +1325,7 @@ const styles = StyleSheet.create({
   },
   emptyListText: {
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   // 品牌搜索
   brandSearchContainer: {
@@ -1333,14 +1335,14 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 10,
     gap: 8,
   },
   brandSearchInput: {
     flex: 1,
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     paddingVertical: 0,
   },
   brandLoadingContainer: {
@@ -1351,7 +1353,7 @@ const styles = StyleSheet.create({
   brandLoadingText: {
     marginTop: 8,
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   loadMoreContainer: {
     flexDirection: "row",
@@ -1362,15 +1364,15 @@ const styles = StyleSheet.create({
   },
   loadMoreText: {
     fontSize: 13,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   loadMoreHint: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   confirmButton: {
     margin: 20,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
@@ -1378,7 +1380,7 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
 });
 

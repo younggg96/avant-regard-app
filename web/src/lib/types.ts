@@ -93,6 +93,7 @@ export interface UserInfo {
   location?: string;
   primaryTitle?: string;
   preferredLanguage?: string;
+  preferredTheme?: "system" | "light" | "dark";
   postCount?: number;
   followerCount?: number;
   followingCount?: number;

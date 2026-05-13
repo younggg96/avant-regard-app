@@ -10,14 +10,16 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { showService, Show } from "../../services/showService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { Box, HStack, VStack, Text, Input, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const ShowReviewTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,13 +221,13 @@ const ShowReviewTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   coverImage: {
     width: "100%",
     height: 160,
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   metaSection: {
     gap: 6,
@@ -237,20 +239,20 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 13,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     width: 52,
   },
   metaValue: {
     fontSize: 13,
-    color: theme.colors.black,
+    color: t.colors.text,
     flex: 1,
   },
   description: {
     fontSize: 13,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     lineHeight: 20,
     marginBottom: 8,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     padding: 10,
     borderRadius: 8,
   },

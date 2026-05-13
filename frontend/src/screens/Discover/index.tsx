@@ -23,7 +23,8 @@ import { getUnreadCount as getChatUnreadCount } from "../../services/chatService
 import { userInfoService, UserInfo } from "../../services/userInfoService";
 import { TabType } from "./types";
 import { TAB_INDEX_MAP } from "./constants";
-import { styles } from "./styles";
+import { useDiscoverStyles } from "./styles";
+import { useAppTheme } from "../../theme";
 import { SkeletonPostCard, useSkeletonAnimation } from "./components/SkeletonPostCard";
 import { DiscoverHeader } from "./components/DiscoverHeader";
 import { DiscoverTabBar } from "./components/DiscoverTabBar";
@@ -47,8 +48,11 @@ const neighborMountSet = (center: number): Set<number> => {
 
 const SkeletonTabBar: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
-}> = ({ opacity }) => (
-  <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
+  surfaceColor: string;
+  borderColor: string;
+  blockColor: string;
+}> = ({ opacity, surfaceColor, borderColor, blockColor }) => (
+  <Box style={{ backgroundColor: surfaceColor, borderBottomWidth: 1, borderBottomColor: borderColor }}>
     <HStack justifyContent="center" alignItems="center" py="$xs">
       {[0, 1, 2, 3].map((i) => (
         <Animated.View
@@ -57,7 +61,7 @@ const SkeletonTabBar: React.FC<{
             width: 44,
             height: 18,
             borderRadius: 4,
-            backgroundColor: "#e5e5e5",
+            backgroundColor: blockColor,
             opacity,
             marginHorizontal: 14,
           }}
@@ -69,8 +73,10 @@ const SkeletonTabBar: React.FC<{
 
 const SkeletonHeader: React.FC<{
   opacity: Animated.AnimatedInterpolation<number>;
-}> = ({ opacity }) => (
-  <Box bg="$white" px="$md" pt="$sm" pb="$md">
+  surfaceColor: string;
+  blockColor: string;
+}> = ({ opacity, surfaceColor, blockColor }) => (
+  <Box style={{ backgroundColor: surfaceColor }} px="$md" pt="$sm" pb="$md">
     <VStack space="sm">
       <HStack alignItems="center" justifyContent="space-between">
         <Animated.View
@@ -78,7 +84,7 @@ const SkeletonHeader: React.FC<{
             width: 140,
             height: 36,
             borderRadius: 4,
-            backgroundColor: "#e5e5e5",
+            backgroundColor: blockColor,
             opacity,
           }}
         />
@@ -88,7 +94,7 @@ const SkeletonHeader: React.FC<{
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: "#e5e5e5",
+              backgroundColor: blockColor,
               opacity,
             }}
           />
@@ -97,7 +103,7 @@ const SkeletonHeader: React.FC<{
               width: 32,
               height: 32,
               borderRadius: 4,
-              backgroundColor: "#e5e5e5",
+              backgroundColor: blockColor,
               opacity,
             }}
           />
@@ -107,7 +113,7 @@ const SkeletonHeader: React.FC<{
         style={{
           height: 40,
           borderRadius: 4,
-          backgroundColor: "#e5e5e5",
+          backgroundColor: blockColor,
           opacity,
         }}
       />
@@ -125,6 +131,10 @@ const DiscoverScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { user } = useAuthStore();
+  const t = useAppTheme();
+  const styles = useDiscoverStyles();
+  const isDark = t.mode === "dark";
+  const skeletonColor = isDark ? "#1F1F1F" : "#e5e5e5";
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const totalInteractionUnread = unreadNotificationCount + unreadChatCount;
@@ -528,9 +538,18 @@ const DiscoverScreen: React.FC = () => {
   if (!isInitialized) {
     return (
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <StatusBar barStyle="dark-content" />
-        <SkeletonHeader opacity={skeletonOpacity} />
-        <SkeletonTabBar opacity={skeletonOpacity} />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        <SkeletonHeader
+          opacity={skeletonOpacity}
+          surfaceColor={t.colors.card}
+          blockColor={skeletonColor}
+        />
+        <SkeletonTabBar
+          opacity={skeletonOpacity}
+          surfaceColor={t.colors.card}
+          borderColor={t.colors.border}
+          blockColor={skeletonColor}
+        />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
@@ -565,7 +584,7 @@ const DiscoverScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
         <DiscoverHeader
           avatar={userAvatarUrl}

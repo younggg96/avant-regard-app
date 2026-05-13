@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
 import { isVideoUrl } from "../services/postService";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import { Post } from "./PostCard";
 import { getPostTextPreview } from "../utils/postContentPreview";
 
@@ -25,6 +25,7 @@ const ForumPostCardInner = ({
   onAuthorPress,
   onLike,
 }: ForumPostCardProps) => {
+  const styles = useThemedStyles(makeStyles);
   // 安全检查
   if (!post || !post.id || !post.author) {
     return null;
@@ -272,24 +273,24 @@ const ForumPostCardInner = ({
 const ForumPostCard = React.memo(ForumPostCardInner);
 ForumPostCard.displayName = "ForumPostCard";
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   previewImage: {
     width: 100,
     height: 100,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     borderRadius: 4,
   },
 });

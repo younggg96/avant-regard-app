@@ -12,6 +12,12 @@ class Gender(str, Enum):
     OTHER = "OTHER"
 
 
+class ThemePreference(str, Enum):
+    SYSTEM = "system"
+    LIGHT = "light"
+    DARK = "dark"
+
+
 class UserInfo(BaseModel):
     """用户信息"""
     userId: int
@@ -23,6 +29,7 @@ class UserInfo(BaseModel):
     coverUrl: str = ""
     primaryTitle: Optional[str] = None
     preferredLanguage: Optional[str] = None
+    preferredTheme: ThemePreference = ThemePreference.SYSTEM
 
 
 class UserProfileInfo(BaseModel):
@@ -85,3 +92,8 @@ class UpdatePrivacySettingsRequest(BaseModel):
 class UpdateLanguageRequest(BaseModel):
     """更新语言偏好请求"""
     language: str = Field(..., pattern="^(zh|en)$")
+
+
+class UpdateThemeRequest(BaseModel):
+    """更新主题偏好请求"""
+    theme: ThemePreference

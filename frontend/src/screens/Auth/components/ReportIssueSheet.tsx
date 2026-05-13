@@ -14,7 +14,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import {
+  theme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { Alert } from "../../../utils/Alert";
 import {
   authReportService,
@@ -57,6 +61,7 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
   defaultContact,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [issueType, setIssueType] = useState<AuthIssueType>("OTP_NOT_RECEIVED");
   const [contactValue, setContactValue] = useState("");
   const [description, setDescription] = useState("");
@@ -248,135 +253,136 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheetWrapper: {
-    width: "100%",
-  },
-  sheet: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    maxHeight: "88%",
-  },
-  handle: {
-    alignSelf: "center",
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#E0E0E0",
-    marginBottom: 12,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-  body: {
-    marginBottom: 12,
-  },
-  hint: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    backgroundColor: "#F7F7F7",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    marginBottom: 10,
-    letterSpacing: 0.3,
-  },
-  sectionLabelOptional: {
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray200,
-  },
-  optionGroup: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
-  },
-  optionChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  optionChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  optionChipText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-  },
-  optionChipTextActive: {
-    color: theme.colors.white,
-  },
-  input: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    marginBottom: 20,
-  },
-  textarea: {
-    minHeight: 96,
-    textAlignVertical: "top",
-    paddingTop: 12,
-    marginBottom: 4,
-  },
-  charCount: {
-    alignSelf: "flex-end",
-    fontSize: 11,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray200,
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  submitButtonDisabled: {
-    backgroundColor: "#CCCCCC",
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-    letterSpacing: 0.5,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: t.colors.overlay,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    sheetWrapper: {
+      width: "100%",
+    },
+    sheet: {
+      backgroundColor: t.colors.card,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      maxHeight: "88%",
+    },
+    handle: {
+      alignSelf: "center",
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.colors.divider,
+      marginBottom: 12,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 20,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+    body: {
+      marginBottom: 12,
+    },
+    hint: {
+      fontSize: 13,
+      lineHeight: 20,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      backgroundColor: t.colors.gray100,
+      padding: 12,
+      borderRadius: 10,
+      marginBottom: 20,
+    },
+    sectionLabel: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      marginBottom: 10,
+      letterSpacing: 0.3,
+    },
+    sectionLabelOptional: {
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray200,
+    },
+    optionGroup: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20,
+    },
+    optionChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: t.colors.gray100,
+      borderWidth: 1,
+      borderColor: "transparent",
+    },
+    optionChipActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    optionChipText: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+    },
+    optionChipTextActive: {
+      color: t.colors.textInverted,
+    },
+    input: {
+      backgroundColor: t.colors.gray100,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 15,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      marginBottom: 20,
+    },
+    textarea: {
+      minHeight: 96,
+      textAlignVertical: "top",
+      paddingTop: 12,
+      marginBottom: 4,
+    },
+    charCount: {
+      alignSelf: "flex-end",
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray200,
+      marginBottom: 20,
+    },
+    submitButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+      marginTop: 4,
+      marginBottom: 8,
+    },
+    submitButtonDisabled: {
+      backgroundColor: t.colors.gray100,
+    },
+    submitButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+      letterSpacing: 0.5,
+    },
+  });
 
 export default ReportIssueSheet;

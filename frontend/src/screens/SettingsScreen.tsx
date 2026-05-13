@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Switch, StyleSheet } from "react-native";
+import { Switch, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
-import { theme } from "../theme";
+import {
+  theme,
+  resolveThemeMode,
+  getThemeByMode,
+  useThemedStyles,
+  type AppTheme,
+  type ThemePreference,
+} from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
@@ -47,9 +54,17 @@ interface SettingItem {
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { t, i18n } = useTranslation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateUser } = useAuthStore();
+  const systemColorScheme = useColorScheme();
+  const styles = useThemedStyles(makeStyles);
+  const [themePreference, setThemePreference] = useState<ThemePreference>(
+    (user?.preferredTheme as ThemePreference) ?? "system"
+  );
+  const resolvedThemeMode = resolveThemeMode(themePreference, systemColorScheme);
+  const activeTheme = getThemeByMode(resolvedThemeMode);
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const currentLang = (i18n.language?.startsWith("zh") ? "zh" : "en") as SupportedLanguage;
 
   const handleLanguageChange = async (lang: SupportedLanguage) => {
@@ -95,15 +110,34 @@ const SettingsScreen = () => {
       if (info.preferredLanguage && info.preferredLanguage !== currentLang) {
         await setStoredLanguage(info.preferredLanguage as SupportedLanguage);
       }
+      if (
+        info.preferredTheme &&
+        (info.preferredTheme === "system" ||
+          info.preferredTheme === "light" ||
+          info.preferredTheme === "dark")
+      ) {
+        setThemePreference(info.preferredTheme);
+        updateUser({ preferredTheme: info.preferredTheme });
+      }
     } catch (error) {
       console.error("Error syncing language preference:", error);
     }
-  }, [user?.userId, currentLang]);
+  }, [user?.userId, currentLang, updateUser]);
 
   useEffect(() => {
     loadPrivacySettings();
     syncLanguageFromServer();
   }, [loadPrivacySettings, syncLanguageFromServer]);
+
+  useEffect(() => {
+    if (
+      user?.preferredTheme === "system" ||
+      user?.preferredTheme === "light" ||
+      user?.preferredTheme === "dark"
+    ) {
+      setThemePreference(user.preferredTheme);
+    }
+  }, [user?.preferredTheme]);
 
   useFocusEffect(
     useCallback(() => {
@@ -135,6 +169,25 @@ const SettingsScreen = () => {
       Alert.show(t("privacy.updateFailed"));
     } finally {
       setUpdatingPrivacy(null);
+    }
+  };
+
+  const getThemeOptionLabel = (pref: ThemePreference) => {
+    if (pref === "light") return t("settings.themeLight");
+    if (pref === "dark") return t("settings.themeDark");
+    return t("settings.themeSystem");
+  };
+
+  const handleThemeChange = async (nextTheme: ThemePreference) => {
+    setThemePreference(nextTheme);
+    setShowThemeModal(false);
+    updateUser({ preferredTheme: nextTheme });
+    if (!user?.userId) return;
+    try {
+      await userInfoService.updateThemePreference(user.userId, nextTheme);
+    } catch (error) {
+      console.error("Error saving theme preference:", error);
+      Alert.show(t("settings.themeSaveFailed"));
     }
   };
 
@@ -244,6 +297,13 @@ const SettingsScreen = () => {
           onPress: () => setShowLanguageModal(true),
           rightText: currentLang === "zh" ? "中文" : "English",
         },
+        {
+          id: "appearance",
+          label: t("settings.appearance"),
+          icon: "contrast-outline",
+          onPress: () => setShowThemeModal(true),
+          rightText: getThemeOptionLabel(themePreference),
+        },
       ],
     },
     {
@@ -346,7 +406,7 @@ const SettingsScreen = () => {
           icon: "images-outline",
           onPress: () => setShowClearCacheModal(true),
           rightText: t("settings.clearImageCacheHint"),
-          rightColor: theme.colors.gray400,
+          rightColor: activeTheme.colors.gray300,
         },
       ],
     },
@@ -365,7 +425,7 @@ const SettingsScreen = () => {
           icon: "trash-outline",
           onPress: handleDeleteAccount,
           rightText: t("settings.permanentDelete"),
-          rightColor: theme.colors.error,
+          rightColor: activeTheme.colors.error,
         },
       ],
     },
@@ -382,7 +442,7 @@ const SettingsScreen = () => {
             icon: "shield-checkmark-outline",
             onPress: () => (navigation as any).navigate("Admin"),
             rightText: "Admin",
-            rightColor: theme.colors.error,
+            rightColor: activeTheme.colors.error,
           },
         ],
       },
@@ -391,7 +451,10 @@ const SettingsScreen = () => {
     : baseSections;
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: activeTheme.colors.background }]}
+      edges={["top"]}
+    >
       <ScreenHeader title={t("settings.title")} showBack={true} />
       <ScrollView showsVerticalScrollIndicator={false}>
         {settingSections.map((section) => (
@@ -399,7 +462,7 @@ const SettingsScreen = () => {
             <Text
               style={{
                 ...theme.typography.caption,
-                color: theme.colors.gray400,
+                color: activeTheme.colors.gray300,
                 letterSpacing: 1,
                 paddingHorizontal: theme.spacing.md,
                 marginBottom: theme.spacing.sm,
@@ -413,15 +476,15 @@ const SettingsScreen = () => {
                 key={item.id}
                 onPress={item.onPress}
                 disabled={item.toggle}
-                style={styles.settingItem}
+                style={[styles.settingItem, { borderBottomColor: activeTheme.colors.border }]}
               >
                 <HStack space="md" style={{ flex: 1 }}>
                   <Ionicons
                     name={item.icon as any}
                     size={20}
-                    color={theme.colors.gray400}
+                    color={activeTheme.colors.gray300}
                   />
-                  <Text style={{ ...theme.typography.body, color: theme.colors.black }}>
+                  <Text style={{ ...theme.typography.body, color: activeTheme.colors.text }}>
                     {item.label}
                   </Text>
                 </HStack>
@@ -432,10 +495,10 @@ const SettingsScreen = () => {
                       value={item.value}
                       onValueChange={item.onToggle}
                       trackColor={{
-                        false: theme.colors.gray200,
-                        true: theme.colors.accent,
+                        false: activeTheme.colors.gray200,
+                        true: activeTheme.colors.accent,
                       }}
-                      thumbColor={theme.colors.white}
+                      thumbColor={activeTheme.colors.white}
                     />
                   ) : item.rightText ? (
                     <Text
@@ -451,7 +514,7 @@ const SettingsScreen = () => {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color={theme.colors.gray300}
+                      color={activeTheme.colors.gray300}
                     />
                   )}
                 </Box>
@@ -464,16 +527,16 @@ const SettingsScreen = () => {
           variant="outline"
           onPress={handleLogout}
           leftIcon={
-            <Ionicons name="log-out-outline" size={20} color={theme.colors.error} />
+            <Ionicons name="log-out-outline" size={20} color={activeTheme.colors.error} />
           }
           style={{
             marginHorizontal: theme.spacing.md,
             marginTop: theme.spacing.lg,
-            borderColor: theme.colors.error,
-            backgroundColor: theme.colors.white,
+            borderColor: activeTheme.colors.error,
+            backgroundColor: activeTheme.colors.card,
           }}
         >
-          <Text style={{ color: theme.colors.error, fontWeight: "500" }}>
+          <Text style={{ color: activeTheme.colors.error, fontWeight: "500" }}>
             {t("settings.logout")}
           </Text>
         </Button>
@@ -482,13 +545,13 @@ const SettingsScreen = () => {
           <Text
             style={{
               ...theme.typography.caption,
-              color: theme.colors.gray300,
+              color: activeTheme.colors.gray300,
               marginBottom: 2,
             }}
           >
             Avant Regard v1.0.0
           </Text>
-          <Text style={{ ...theme.typography.caption, color: theme.colors.gray300 }}>
+          <Text style={{ ...theme.typography.caption, color: activeTheme.colors.gray300 }}>
             {t("settings.copyright")}
           </Text>
         </VStack>
@@ -503,13 +566,13 @@ const SettingsScreen = () => {
           <Ionicons
             name="images-outline"
             size={48}
-            color={theme.colors.black}
+            color={activeTheme.colors.text}
             style={{ marginBottom: 12 }}
           />
-          <Text style={styles.dialogTitle}>
+          <Text style={[styles.dialogTitle, { color: activeTheme.colors.text }]}>
             {t("settings.clearImageCacheTitle")}
           </Text>
-          <Text style={styles.dialogMessage}>
+          <Text style={[styles.dialogMessage, { color: activeTheme.colors.gray400 }]}>
             {t("settings.clearImageCacheMessage")}
           </Text>
           <Button
@@ -523,6 +586,50 @@ const SettingsScreen = () => {
         </VStack>
       </ActionSheet>
 
+      {/* Theme selector */}
+      <ActionSheet
+        visible={showThemeModal}
+        onClose={() => setShowThemeModal(false)}
+      >
+        <VStack style={{ padding: 24 }} space="sm">
+          <Text style={[styles.dialogTitle, { marginBottom: 4, color: activeTheme.colors.text }]}>
+            {t("settings.appearance")}
+          </Text>
+          {(["system", "light", "dark"] as ThemePreference[]).map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => handleThemeChange(option)}
+              style={[
+                styles.languageOption,
+                {
+                  borderColor:
+                    themePreference === option
+                      ? activeTheme.colors.accent
+                      : activeTheme.colors.gray200,
+                  backgroundColor:
+                    themePreference === option
+                      ? activeTheme.colors.gray100
+                      : activeTheme.colors.card,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: activeTheme.colors.text,
+                  fontWeight: themePreference === option ? "600" : "400",
+                }}
+              >
+                {getThemeOptionLabel(option)}
+              </Text>
+              {themePreference === option && (
+                <Ionicons name="checkmark" size={20} color={activeTheme.colors.accent} />
+              )}
+            </Pressable>
+          ))}
+        </VStack>
+      </ActionSheet>
+
       {/* Delete account confirmation */}
       <ActionSheet
         visible={showDeleteAccountModal}
@@ -532,13 +639,13 @@ const SettingsScreen = () => {
           <Ionicons
             name="warning-outline"
             size={48}
-            color={theme.colors.error}
+            color={activeTheme.colors.error}
             style={{ marginBottom: 12 }}
           />
-          <Text style={styles.dialogTitle}>
+          <Text style={[styles.dialogTitle, { color: activeTheme.colors.text }]}>
             {t("deleteAccount.title")}
           </Text>
-          <Text style={styles.dialogMessage}>
+          <Text style={[styles.dialogMessage, { color: activeTheme.colors.gray400 }]}>
             {t("deleteAccount.message")}
           </Text>
           <Button
@@ -559,47 +666,67 @@ const SettingsScreen = () => {
         onClose={() => setShowLanguageModal(false)}
       >
         <VStack style={{ padding: 24 }} space="sm">
-          <Text style={[styles.dialogTitle, { marginBottom: 4 }]}>
+          <Text style={[styles.dialogTitle, { marginBottom: 4, color: activeTheme.colors.text }]}>
             {t("settings.selectLanguage")}
           </Text>
           <Pressable
             onPress={() => handleLanguageChange("zh")}
             style={[
               styles.languageOption,
+              {
+                borderColor:
+                  currentLang === "zh"
+                    ? activeTheme.colors.accent
+                    : activeTheme.colors.gray200,
+                backgroundColor:
+                  currentLang === "zh"
+                    ? activeTheme.colors.gray100
+                    : activeTheme.colors.card,
+              },
               currentLang === "zh" && styles.languageOptionActive,
             ]}
           >
             <Text
               style={{
                 fontSize: 16,
-                color: theme.colors.black,
+                color: activeTheme.colors.text,
                 fontWeight: currentLang === "zh" ? "600" : "400",
               }}
             >
               中文
             </Text>
             {currentLang === "zh" && (
-              <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+              <Ionicons name="checkmark" size={20} color={activeTheme.colors.accent} />
             )}
           </Pressable>
           <Pressable
             onPress={() => handleLanguageChange("en")}
             style={[
               styles.languageOption,
+              {
+                borderColor:
+                  currentLang === "en"
+                    ? activeTheme.colors.accent
+                    : activeTheme.colors.gray200,
+                backgroundColor:
+                  currentLang === "en"
+                    ? activeTheme.colors.gray100
+                    : activeTheme.colors.card,
+              },
               currentLang === "en" && styles.languageOptionActive,
             ]}
           >
             <Text
               style={{
                 fontSize: 16,
-                color: theme.colors.black,
+                color: activeTheme.colors.text,
                 fontWeight: currentLang === "en" ? "600" : "400",
               }}
             >
               English
             </Text>
             {currentLang === "en" && (
-              <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+              <Ionicons name="checkmark" size={20} color={activeTheme.colors.accent} />
             )}
           </Pressable>
         </VStack>
@@ -612,27 +739,29 @@ const SettingsScreen = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowAgreementModal(false)}
       >
-        <SafeAreaView style={styles.agreementContainer}>
+        <SafeAreaView
+          style={[styles.agreementContainer, { backgroundColor: activeTheme.colors.background }]}
+        >
           <HStack
             justifyContent="between"
             style={{
               paddingHorizontal: 16,
               paddingVertical: 12,
               borderBottomWidth: 1,
-              borderBottomColor: theme.colors.gray100,
+              borderBottomColor: activeTheme.colors.border,
             }}
           >
             <Pressable
               onPress={() => setShowAgreementModal(false)}
               style={styles.modalCloseButton}
             >
-              <Ionicons name="close" size={24} color={theme.colors.black} />
+              <Ionicons name="close" size={24} color={activeTheme.colors.text} />
             </Pressable>
             <Text
               style={{
                 fontSize: 17,
                 fontFamily: "PlayfairDisplay-Bold",
-                color: theme.colors.black,
+                color: activeTheme.colors.text,
               }}
             >
               {agreementType === "terms"
@@ -665,58 +794,59 @@ const SettingsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  agreementContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.black,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  dialogMessage: {
-    fontSize: 14,
-    color: theme.colors.gray600,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  languageOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  languageOptionActive: {
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.gray100,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    settingItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.divider,
+    },
+    agreementContainer: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    modalCloseButton: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dialogTitle: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: t.colors.text,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    dialogMessage: {
+      fontSize: 14,
+      color: t.colors.gray600,
+      textAlign: "center",
+      lineHeight: 20,
+      marginBottom: 24,
+    },
+    languageOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: t.colors.inputBorder,
+    },
+    languageOptionActive: {
+      borderColor: t.colors.accent,
+      backgroundColor: t.colors.gray100,
+    },
+  });
 
 export default SettingsScreen;

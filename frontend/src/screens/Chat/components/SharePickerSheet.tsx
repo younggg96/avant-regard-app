@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 
 export type ShareCategory =
   | "post"
@@ -35,6 +35,7 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   if (!visible) return null;
 
@@ -59,14 +60,14 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
-    paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
+    paddingHorizontal: t.spacing.md,
+    paddingTop: t.spacing.md,
+    paddingBottom: t.spacing.sm,
+    backgroundColor: t.colors.card,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   row: {
     flexDirection: "row",
@@ -81,16 +82,16 @@ const styles = StyleSheet.create({
   iconBubble: {
     width: 48,
     height: 48,
-    borderRadius: theme.borderRadius.md, // 8 px – matches app card / button radius
+    borderRadius: t.borderRadius.md, // 8 px – matches app card / button radius
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   label: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
 });
 

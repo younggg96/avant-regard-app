@@ -3,6 +3,8 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "@/lib/auth/store";
+import { userInfoService } from "@/lib/services/user-info";
 
 /** Sun icon – light mode indicator */
 const SunIcon = () => (
@@ -50,6 +52,8 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
 
   // Avoid hydration mismatch – render nothing until client-side
   useEffect(() => { setMounted(true); }, []);
@@ -59,11 +63,24 @@ export function ThemeToggle() {
   }
 
   const isDark = resolvedTheme === "dark";
+  const saveThemePreference = (nextTheme: "light" | "dark") => {
+    updateUser({ preferredTheme: nextTheme });
+    if (!user?.userId) return;
+    userInfoService
+      .updateThemePreference(user.userId, nextTheme)
+      .catch((error) => {
+        console.error("Failed to save theme preference:", error);
+      });
+  };
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => {
+        const nextTheme = isDark ? "light" : "dark";
+        setTheme(nextTheme);
+        saveThemePreference(nextTheme);
+      }}
       aria-label={isDark ? t("user.switchToLight") : t("user.switchToDark")}
       title={isDark ? t("user.switchToLight") : t("user.switchToDark")}
       className="flex h-8 w-8 items-center justify-center rounded border text-black/70 transition-colors duration-200

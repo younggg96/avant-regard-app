@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { Post } from "../PostCard";
 import { PostStatus, formatTimestamp } from "./types";
 
@@ -43,6 +43,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavTo>();
+  const h = useThemedStyles(makeHeaderStyles);
   const displayAuthorName = post.author?.name?.trim() || "用户";
 
   const renderRightActions = () => {
@@ -217,111 +218,112 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   );
 };
 
-const h = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backBtn: {
-    padding: 4,
-    marginRight: 8,
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: theme.colors.gray100,
-    marginRight: 8,
-  },
-  infoArea: {
-    flex: 1,
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  nameText: {
-    flexShrink: 0,
-    maxWidth: "65%",
-  },
-  titleBadge: {
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    flexShrink: 1,
-    maxWidth: "45%",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    marginTop: 1,
-    overflow: "hidden",
-  },
-  timestamp: {
-    flexShrink: 0,
-  },
-  metaBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 3,
-    flexShrink: 1,
-  },
-  rightActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexShrink: 0,
-  },
-  followBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 52,
-  },
-  followBtnDefault: {
-    backgroundColor: theme.colors.black,
-  },
-  followBtnFollowed: {
-    backgroundColor: theme.colors.gray100,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray200,
-  },
-  draftBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: theme.colors.black,
-    borderRadius: 12,
-  },
-  pendingBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: theme.colors.accent,
-    borderRadius: 12,
-  },
-  // 红色「修改后重新提交」按钮：饱和度 / 视觉权重高于草稿的黑色按钮，
-  // 强调违规驳回的紧迫感，但不堆叠多个 CTA。
-  rejectedBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: "#DC2626",
-    borderRadius: 12,
-  },
-  moreBtn: {
-    padding: 4,
-  },
-});
+const makeHeaderStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: t.colors.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.border,
+    },
+    backBtn: {
+      padding: 4,
+      marginRight: 8,
+    },
+    avatar: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: t.colors.gray100,
+      marginRight: 8,
+    },
+    infoArea: {
+      flex: 1,
+      justifyContent: "center",
+      marginRight: 8,
+    },
+    nameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    nameText: {
+      flexShrink: 0,
+      maxWidth: "65%",
+    },
+    titleBadge: {
+      backgroundColor: t.colors.gray100,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 3,
+      flexShrink: 1,
+      maxWidth: "45%",
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 1,
+      overflow: "hidden",
+    },
+    timestamp: {
+      flexShrink: 0,
+    },
+    metaBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.gray100,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 3,
+      flexShrink: 1,
+    },
+    rightActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      flexShrink: 0,
+    },
+    followBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 4,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: 52,
+    },
+    followBtnDefault: {
+      backgroundColor: t.colors.text,
+    },
+    followBtnFollowed: {
+      backgroundColor: t.colors.gray100,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.gray200,
+    },
+    draftBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: t.colors.text,
+      borderRadius: 12,
+    },
+    pendingBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: t.colors.accent,
+      borderRadius: 12,
+    },
+    // 红色「修改后重新提交」按钮：饱和度 / 视觉权重高于草稿的黑色按钮，
+    // 强调违规驳回的紧迫感，但不堆叠多个 CTA。
+    rejectedBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: "#DC2626",
+      borderRadius: 12,
+    },
+    moreBtn: {
+      padding: 4,
+    },
+  });

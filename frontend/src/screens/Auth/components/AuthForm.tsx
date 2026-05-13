@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { AuthMode, LoginMethod, FormData, CountryCode } from "../types";
-import { styles } from "../styles";
+import { useAuthStyles } from "../styles";
 
 // 常用国家区号列表
 export const COUNTRY_CODES: (Omit<CountryCode, 'name'> & { code: string })[] = [
@@ -100,6 +100,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   handleConfirmPasswordSubmit,
 }) => {
   const { t } = useTranslation();
+  const styles = useAuthStyles();
   const [showCountryPicker, setShowCountryPicker] = useState(false);
 
   const handleSelectCountry = (country: CountryCode) => {

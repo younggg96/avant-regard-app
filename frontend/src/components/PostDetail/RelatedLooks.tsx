@@ -10,7 +10,7 @@ import { Text, VStack, HStack } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { Show } from "@/services/showService";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 
 interface RelatedShowsProps {
   shows: Show[];
@@ -21,6 +21,7 @@ export const RelatedLooks: React.FC<RelatedShowsProps> = ({
   shows,
   onShowPress,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   if (!shows || shows.length === 0) return null;
 
   return (
@@ -72,68 +73,69 @@ export const RelatedLooks: React.FC<RelatedShowsProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 20,
-  },
-  headerSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  headerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.gray100,
-  },
-  headerTitle: {
-    fontSize: 11,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-    letterSpacing: 3,
-    marginHorizontal: 16,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
-  showCard: {
-    width: 140,
-    height: 185,
-    borderRadius: 6,
-    overflow: "hidden",
-    marginRight: 12,
-    position: "relative",
-    backgroundColor: theme.colors.gray100,
-  },
-  showImage: {
-    width: "100%",
-    height: "100%",
-  },
-  showGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 90,
-  },
-  showInfo: {
-    position: "absolute",
-    bottom: 14,
-    left: 12,
-    right: 12,
-  },
-  brandText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
-    marginBottom: 3,
-  },
-  seasonText: {
-    fontSize: 11,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: "rgba(255,255,255,0.75)",
-    letterSpacing: 0.2,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 20,
+    },
+    headerSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      marginBottom: 16,
+    },
+    headerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: t.colors.gray100,
+    },
+    headerTitle: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+      letterSpacing: 3,
+      marginHorizontal: 16,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+    },
+    showCard: {
+      width: 140,
+      height: 185,
+      borderRadius: 6,
+      overflow: "hidden",
+      marginRight: 12,
+      position: "relative",
+      backgroundColor: t.colors.gray100,
+    },
+    showImage: {
+      width: "100%",
+      height: "100%",
+    },
+    showGradient: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 90,
+    },
+    showInfo: {
+      position: "absolute",
+      bottom: 14,
+      left: 12,
+      right: 12,
+    },
+    brandText: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: "#FFFFFF",
+      letterSpacing: 0.3,
+      marginBottom: 3,
+    },
+    seasonText: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: "rgba(255,255,255,0.75)",
+      letterSpacing: 0.2,
+    },
+  });

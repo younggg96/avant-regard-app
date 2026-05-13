@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { BuyerStoreFeatureBanner } from "./types";
 import { PLAYFAIR } from "./playfair";
 
@@ -28,6 +28,8 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
   onPress,
 }) => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const hasText = !!(banner.title || banner.subtitle || banner.cta);
 
   return (
@@ -49,7 +51,7 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
                 <Ionicons
                   name="arrow-forward"
                   size={13}
-                  color={theme.colors.black}
+                  color={theme.colors.text}
                 />
               </HStack>
             </VStack>
@@ -71,9 +73,12 @@ const NewArrivalBannerImpl: React.FC<NewArrivalBannerProps> = ({
 
 export const NewArrivalBanner = React.memo(NewArrivalBannerImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
-    backgroundColor: "#F2F2F0",
+    // The designer-cream "#F2F2F0" reads as a soft tinted surface; swap to
+    // the theme's gray50 token so it auto-inverts to a soft dark surface
+    // (#121212) under dark mode rather than staying cream-on-black.
+    backgroundColor: t.colors.gray50,
     borderRadius: 8,
     overflow: "hidden",
     flexDirection: "row",
@@ -83,14 +88,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     letterSpacing: 2,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   title: {
     fontFamily: PLAYFAIR.bold,
     fontSize: 16,
     lineHeight: 22,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
     marginTop: 4,
     letterSpacing: 0.2,
   },
@@ -98,7 +103,7 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.medium,
     fontSize: 12,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     letterSpacing: 0.2,
   },
   // 固定宽高，避免竖图把整卡撑得很高、左侧文字区留大片空底。

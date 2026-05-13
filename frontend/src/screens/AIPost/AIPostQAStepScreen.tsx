@@ -28,7 +28,7 @@ import {
 } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, ScrollView, VStack } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import EditorialHeader from "./components/EditorialHeader";
 import EditorialHero from "./components/EditorialHero";
 import OptionListRow, {
@@ -120,6 +120,7 @@ const AIPostQAStepScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
+  const styles = useThemedStyles(makeStyles);
   const { step, answers } = route.params;
 
   const config = STEP_CONFIG[step];
@@ -281,11 +282,12 @@ const AIPostQAStepScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+  });
 
 export default AIPostQAStepScreen;

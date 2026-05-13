@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   adminService,
   AdminUser,
@@ -22,7 +22,7 @@ import {
   createConversation,
   sendMessageREST,
 } from "../../services/chatService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VStack } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
@@ -48,7 +48,11 @@ function resolveUserKind(u: AdminUser): UserKind {
  *   MERCHANT — 黑色描边 (次醒目)
  *   USER     — 不挂 (卡片默认就是用户, 减噪)
  */
-function renderKindChip(u: AdminUser, t: (key: string) => string) {
+function renderKindChip(
+  u: AdminUser,
+  t: (key: string) => string,
+  styles: ReturnType<typeof makeStyles>
+) {
   const kind = resolveUserKind(u);
   if (kind === "USER") return null;
   if (kind === "ADMIN") {
@@ -70,7 +74,11 @@ function renderKindChip(u: AdminUser, t: (key: string) => string) {
  *   Lv ≥ 1  -> 黑底白字 "Lv3 · 探店官"
  *   Lv 0   -> 灰底灰字 "—"   (与 Web 对齐, 让运营一眼分辨 "未达标" vs "数据缺失")
  */
-function renderLevelChip(level: number, t: (key: string) => string) {
+function renderLevelChip(
+  level: number,
+  t: (key: string) => string,
+  styles: ReturnType<typeof makeStyles>
+) {
   if (!level || level < 1) {
     return (
       <Box style={styles.levelChipMuted}>
@@ -90,13 +98,6 @@ function renderLevelChip(level: number, t: (key: string) => string) {
 type SubTab = "users" | "reports" | "blocks";
 type ReportFilter = "ALL" | "PENDING" | "RESOLVED" | "DISMISSED";
 
-const REPORT_STATUS_COLORS: Record<string, string> = {
-  PENDING: "#F59E0B",
-  REVIEWED: "#3B82F6",
-  RESOLVED: theme.colors.success,
-  DISMISSED: theme.colors.gray300,
-};
-
 const TARGET_TYPE_ICONS: Record<string, string> = {
   POST: "document-text-outline",
   COMMENT: "chatbubble-outline",
@@ -107,6 +108,7 @@ const TARGET_TYPE_ICONS: Record<string, string> = {
 const UsersTab = () => {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTab>("users");
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Box style={styles.container}>
@@ -156,6 +158,8 @@ const UsersTab = () => {
 
 const UsersSubTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -297,8 +301,8 @@ const UsersSubTab = () => {
               <Text style={styles.userName} numberOfLines={1}>
                 {item.username}
               </Text>
-              {renderKindChip(item, t)}
-              {renderLevelChip(item.currentLevel ?? 0, t)}
+              {renderKindChip(item, t, styles)}
+              {renderLevelChip(item.currentLevel ?? 0, t, styles)}
               {item.merchant && item.merchant.status !== "APPROVED" && (
                 <Box style={styles.kindChipMuted}>
                   <Text style={styles.kindChipMutedText}>{t("admin.merchantPending")}</Text>
@@ -685,6 +689,14 @@ const UsersSubTab = () => {
 
 const ReportsSubTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
+  const REPORT_STATUS_COLORS: Record<string, string> = {
+    PENDING: "#F59E0B",
+    REVIEWED: "#3B82F6",
+    RESOLVED: theme.colors.success,
+    DISMISSED: theme.colors.gray300,
+  };
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -968,6 +980,8 @@ const ReportsSubTab = () => {
 
 const BlocksSubTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [blocks, setBlocks] = useState<AdminBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1083,46 +1097,46 @@ const BlocksSubTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   // Sub-tab bar
   subTabBar: {
     flexDirection: "row",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    gap: t.spacing.sm,
+    backgroundColor: t.colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   subTabItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderRadius: 20,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     gap: 4,
   },
   subTabItemActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   subTabText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontWeight: "500",
   },
   subTabTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   // Search
   searchBar: {
     flexDirection: "row",
-    padding: theme.spacing.md,
-    gap: theme.spacing.sm,
+    padding: t.spacing.md,
+    gap: t.spacing.sm,
     alignItems: "center",
   },
   searchInput: {
@@ -1132,30 +1146,30 @@ const styles = StyleSheet.create({
   searchBtn: {
     width: 40,
     height: 40,
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: t.colors.text,
+    borderRadius: t.borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
   },
   // List
   listContainer: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   listHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   totalText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   // Card
   card: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
   },
   cardHeader: {
     flexDirection: "row",
@@ -1163,17 +1177,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   cardBody: {
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingTop: t.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   cardActions: {
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    gap: t.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingTop: t.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   // User card
   avatar: {
@@ -1182,23 +1196,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   avatarPlaceholder: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   userName: {
-    ...theme.typography.body,
+    ...t.typography.body,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   userMeta: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
   },
   detailText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     marginBottom: 2,
   },
   statusBadge: {
@@ -1207,33 +1221,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusActive: {
-    backgroundColor: theme.colors.success + "15",
+    backgroundColor: t.colors.success + "15",
   },
   statusInactive: {
-    backgroundColor: theme.colors.error + "15",
+    backgroundColor: t.colors.error + "15",
   },
   statusText: {
-    ...theme.typography.caption,
+    ...t.typography.caption,
     fontWeight: "600",
     fontSize: 11,
   },
   statusTextActive: {
-    color: theme.colors.success,
+    color: t.colors.success,
   },
   statusTextInactive: {
-    color: theme.colors.error,
+    color: t.colors.error,
   },
   // 身份 chip (三档) — 与 /admin/users Web 端视觉对齐
   kindChipSolid: {
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   kindChipSolidText: {
     fontSize: 10,
     fontWeight: "700",
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     letterSpacing: 0.5,
   },
   kindChipOutline: {
@@ -1241,24 +1255,24 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
     backgroundColor: "transparent",
   },
   kindChipOutlineText: {
     fontSize: 10,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   kindChipMuted: {
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   kindChipMutedText: {
     fontSize: 10,
     fontWeight: "500",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   // 等级 chip (Lv ≥ 1 黑底 / Lv 0 占位)
   levelChip: {
@@ -1267,41 +1281,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   levelChipText: {
     fontSize: 10,
     fontWeight: "700",
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     letterSpacing: 0.5,
   },
   levelChipTitle: {
     fontSize: 10,
     fontWeight: "500",
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     opacity: 0.8,
   },
   levelChipMuted: {
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   levelChipMutedText: {
     fontSize: 11,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingVertical: t.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   statItem: {
     flex: 1,
@@ -1310,21 +1324,21 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   statLabel: {
     fontSize: 10,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 24,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.border,
   },
   bioText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontStyle: "italic",
     marginBottom: 6,
   },
@@ -1343,14 +1357,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingTop: t.spacing.sm,
   },
   titleChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   titleChipPrimary: {
     backgroundColor: "#FEF3C7",
@@ -1358,7 +1372,7 @@ const styles = StyleSheet.create({
   titleChipText: {
     fontSize: 11,
     fontWeight: "500",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   titleChipTextPrimary: {
     color: "#D97706",
@@ -1366,9 +1380,9 @@ const styles = StyleSheet.create({
   },
   // Report card
   reportTarget: {
-    ...theme.typography.body,
+    ...t.typography.body,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   reportStatusBadge: {
     paddingHorizontal: 8,
@@ -1376,86 +1390,86 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   reportStatusText: {
-    ...theme.typography.caption,
+    ...t.typography.caption,
     fontWeight: "600",
     fontSize: 11,
   },
   reportReason: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.error,
+    ...t.typography.bodySmall,
+    color: t.colors.error,
     fontWeight: "500",
   },
   reportDesc: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
     marginTop: 4,
   },
   reportDate: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 6,
   },
   // Filter
   filterBar: {
     flexGrow: 0,
     flexShrink: 0,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: t.spacing.sm,
   },
   filterChip: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: theme.colors.gray100,
-    marginRight: theme.spacing.sm,
+    backgroundColor: t.colors.gray100,
+    marginRight: t.spacing.sm,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   filterChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontWeight: "500",
   },
   filterChipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   // Block card
   blockRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: theme.spacing.md,
+    gap: t.spacing.md,
   },
   blockUser: {
     flex: 1,
     alignItems: "center",
   },
   blockUserName: {
-    ...theme.typography.body,
+    ...t.typography.body,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   blockUserId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
   },
   blockDate: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     textAlign: "center",
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
+    paddingTop: t.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   // Pagination
   pagination: {
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: t.spacing.lg,
   },
   paginationText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
   },
 });
 

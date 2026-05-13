@@ -28,7 +28,7 @@ import {
   HStack,
   OptimizedImage,
 } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import { getCommunities, Community } from "../../services/communityService";
 import { ImageSize } from "../../utils/imageUtils";
@@ -36,6 +36,7 @@ import { ImageSize } from "../../utils/imageUtils";
 const PublishV2ForumSelectScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const styles = useThemedStyles(makeStyles);
 
   const [allCommunities, setAllCommunities] = useState<Community[]>([]);
   const [followingCommunities, setFollowingCommunities] = useState<Community[]>([]);
@@ -256,44 +257,45 @@ const PublishV2ForumSelectScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: "hidden",
-  },
-  iconImage: {
-    width: "100%",
-    height: "100%",
-  },
-  iconPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    padding: 0,
-  },
-  searchContainer: {
-    height: 40,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.sm,
-    paddingHorizontal: 12,
-  },
-  searchIcon: {
-    marginRight: 6,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    icon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      overflow: "hidden",
+    },
+    iconImage: {
+      width: "100%",
+      height: "100%",
+    },
+    iconPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      padding: 0,
+    },
+    searchContainer: {
+      height: 40,
+      backgroundColor: t.colors.gray50,
+      borderRadius: t.borderRadius.sm,
+      paddingHorizontal: 12,
+    },
+    searchIcon: {
+      marginRight: 6,
+    },
+  });
 
 export default PublishV2ForumSelectScreen;

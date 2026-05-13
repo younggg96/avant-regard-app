@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { BuyerStoreShortcut } from "./types";
 import { PLAYFAIR } from "./playfair";
 
@@ -51,6 +51,8 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const items: SelectorItem[] = React.useMemo(() => {
     const base: SelectorItem[] = stores.map((s) => ({ kind: "store" as const, ...s }));
     if (onOpenAll && stores.length > 0) {
@@ -73,7 +75,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
                 <Ionicons
                   name="arrow-forward"
                   size={20}
-                  color={theme.colors.white}
+                  color={theme.colors.textInverted}
                 />
               </Box>
             </Box>
@@ -126,7 +128,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
         </Pressable>
       );
     },
-    [onSelect, onOpenAll, selectedStoreId]
+    [onSelect, onOpenAll, selectedStoreId, styles, theme.colors.textInverted]
   );
 
   if (isLoading && stores.length === 0) {
@@ -169,7 +171,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
 
 export const StoreSelector = React.memo(StoreSelectorImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -188,21 +190,21 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   logoRingIdle: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   logoRingSelected: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderWidth: 2,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
   },
   logoInner: {
     flex: 1,
     width: "100%",
     borderRadius: LOGO_SIZE / 2,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   logoImage: {
     width: "100%",
@@ -210,18 +212,18 @@ const styles = StyleSheet.create({
   },
   logoPlaceholder: {
     flex: 1,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   allLogoInner: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   logoPlaceholderText: {
     fontFamily: PLAYFAIR.bold,
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -233,11 +235,11 @@ const styles = StyleSheet.create({
   },
   nameIdle: {
     fontFamily: PLAYFAIR.medium,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
   nameSelected: {
     fontFamily: PLAYFAIR.bold,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   emptyHint: {
     fontFamily: PLAYFAIR.regular,
@@ -255,14 +257,14 @@ const styles = StyleSheet.create({
     width: LOGO_SIZE,
     height: LOGO_SIZE,
     borderRadius: LOGO_SIZE / 2,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.skeleton,
   },
   skeletonLabel: {
     marginTop: 6,
     width: 40,
     height: 10,
     borderRadius: 2,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.skeleton,
   },
 });
 

@@ -29,7 +29,7 @@ import {
   Input,
   Pressable,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
@@ -86,6 +86,14 @@ const generateId = () => `block_${Date.now()}_${Math.random().toString(36).subst
  * the media's natural aspect ratio so composition preview matches the final
  * post detail view (no 200px fixed-height cover-crop anymore).
  */
+// Module-level static style: not theme-aware (overlay color is intentional).
+const videoOverlayStyle = {
+  ...StyleSheet.absoluteFillObject,
+  justifyContent: "center" as const,
+  alignItems: "center" as const,
+  backgroundColor: "rgba(0,0,0,0.2)",
+};
+
 const MediaBlockPreview: React.FC<{ uri: string }> = ({ uri }) => {
   const ratio = useMediaAspectRatio(uri, 16 / 9);
   const size = { width: "100%" as const, aspectRatio: ratio };
@@ -93,7 +101,7 @@ const MediaBlockPreview: React.FC<{ uri: string }> = ({ uri }) => {
     return (
       <View style={size}>
         <VideoThumbnailView uri={uri} style={StyleSheet.absoluteFill} />
-        <View style={styles.videoOverlay}>
+        <View style={videoOverlayStyle}>
           <Ionicons name="play-circle" size={48} color="white" />
         </View>
       </View>
@@ -116,6 +124,7 @@ const PublishForumPostScreen = () => {
   const route = useRoute<RouteProp<{ params: PublishForumPostRouteParams }, "params">>();
   const { user } = useAuthStore();
   const scrollViewRef = useRef<any>(null);
+  const styles = useThemedStyles(makeStyles);
 
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
@@ -1179,119 +1188,120 @@ const PublishForumPostScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  textBlockInput: {
-    backgroundColor: theme.colors.white,
-    minHeight: 120,
-    padding: 12,
-    fontSize: 14,
-    lineHeight: 22,
-    color: theme.colors.gray700,
-    textAlignVertical: "top",
-  },
-  blockActionButton: {
-    padding: 6,
-  },
-  addMenuContainer: {
-    marginTop: 8,
-    alignItems: "center",
-  },
-  addMenuItem: {
-    alignItems: "center",
-    paddingHorizontal: 8,
-  },
-  imageActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addBetweenButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: theme.colors.gray100,
-    borderRadius: 16,
-  },
-  // 社区选择器样式
-  communityIconSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  communityIconImage: {
-    width: "100%",
-    height: "100%",
-  },
-  communityIconPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  communityPickerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "flex-end",
-  },
-  communityPickerBackdrop: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  communityPickerContainer: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "70%",
-  },
-  communityList: {
-    maxHeight: 400,
-  },
-  communityItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  communityItemSelected: {
-    backgroundColor: theme.colors.gray50,
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)",
-  } as any,
-  videoThumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  } as any,
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    textBlockInput: {
+      backgroundColor: t.colors.card,
+      minHeight: 120,
+      padding: 12,
+      fontSize: 14,
+      lineHeight: 22,
+      color: t.colors.text,
+      textAlignVertical: "top",
+    },
+    blockActionButton: {
+      padding: 6,
+    },
+    addMenuContainer: {
+      marginTop: 8,
+      alignItems: "center",
+    },
+    addMenuItem: {
+      alignItems: "center",
+      paddingHorizontal: 8,
+    },
+    imageActionButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addBetweenButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      backgroundColor: t.colors.gray100,
+      borderRadius: 16,
+    },
+    // 社区选择器样式
+    communityIconSmall: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      overflow: "hidden",
+    },
+    communityIconImage: {
+      width: "100%",
+      height: "100%",
+    },
+    communityIconPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    communityPickerOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: "flex-end",
+    },
+    communityPickerBackdrop: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: t.colors.overlay,
+    },
+    communityPickerContainer: {
+      backgroundColor: t.colors.card,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      maxHeight: "70%",
+    },
+    communityList: {
+      maxHeight: 400,
+    },
+    communityItem: {
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    communityItemSelected: {
+      backgroundColor: t.colors.gray50,
+    },
+    videoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.2)",
+    } as any,
+    videoThumbOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.3)",
+    } as any,
+  });
 
 export default PublishForumPostScreen;

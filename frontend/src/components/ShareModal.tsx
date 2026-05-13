@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import { Post } from "./PostCard";
 import {
   SharePlatform,
@@ -38,7 +38,11 @@ interface PlatformConfig {
   bgColor: string;
 }
 
-const SHARE_PLATFORMS: (PlatformConfig & { i18nKey: string })[] = [
+// Built per-render via useAppTheme so neutral platform icons (copy / more)
+// match the current theme rather than being frozen at module load.
+const buildSharePlatforms = (
+  t: AppTheme
+): (PlatformConfig & { i18nKey: string })[] => [
   {
     id: "wechat",
     name: "",
@@ -68,16 +72,16 @@ const SHARE_PLATFORMS: (PlatformConfig & { i18nKey: string })[] = [
     name: "",
     i18nKey: "shareTo.copyLink",
     icon: "link",
-    iconColor: theme.colors.gray700,
-    bgColor: theme.colors.gray100,
+    iconColor: t.colors.gray700,
+    bgColor: t.colors.gray100,
   },
   {
     id: "more",
     name: "",
     i18nKey: "shareTo.more",
     icon: "share-outline",
-    iconColor: theme.colors.gray700,
-    bgColor: theme.colors.gray100,
+    iconColor: t.colors.gray700,
+    bgColor: t.colors.gray100,
   },
 ];
 
@@ -99,6 +103,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [fadeAnim] = useState(new Animated.Value(0));
   const [isSharing, setIsSharing] = useState(false);
   const [sharingPlatform, setSharingPlatform] = useState<SharePlatform | null>(null);
+  const appTheme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
+  const sharePlatforms = buildSharePlatforms(appTheme);
 
   useEffect(() => {
     if (visible) {
@@ -240,7 +247,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         {/* 分享平台列表 */}
         <View style={styles.platformsContainer}>
           <HStack flexWrap="wrap" justifyContent="flex-start">
-            {SHARE_PLATFORMS.map((platform) => (
+            {sharePlatforms.map((platform) => (
               <TouchableOpacity
                 key={platform.id}
                 style={styles.platformItem}
@@ -294,71 +301,72 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  container: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: 34, // Safe area for iPhone
-  },
-  handleContainer: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.sm,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: theme.colors.gray300,
-    borderRadius: 2,
-  },
-  previewCard: {
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  previewImage: {
-    width: 60,
-    height: 60,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray200,
-  },
-  platformsContainer: {
-    paddingVertical: theme.spacing.md,
-  },
-  platformItem: {
-    width: "20%",
-    alignItems: "center",
-    marginBottom: theme.spacing.lg,
-  },
-  platformIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  platformIconDisabled: {
-    opacity: 0.4,
-  },
-  cancelButton: {
-    paddingVertical: theme.spacing.md,
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-    marginTop: theme.spacing.sm,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: t.colors.overlay,
+    },
+    container: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: t.colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: t.spacing.lg,
+      paddingBottom: 34, // Safe area for iPhone
+    },
+    handleContainer: {
+      alignItems: "center",
+      paddingVertical: t.spacing.sm,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      backgroundColor: t.colors.gray300,
+      borderRadius: 2,
+    },
+    previewCard: {
+      backgroundColor: t.colors.gray50,
+      borderRadius: t.borderRadius.lg,
+      padding: t.spacing.md,
+      marginBottom: t.spacing.lg,
+      borderWidth: 1,
+      borderColor: t.colors.gray100,
+    },
+    previewImage: {
+      width: 60,
+      height: 60,
+      borderRadius: t.borderRadius.md,
+      backgroundColor: t.colors.gray200,
+    },
+    platformsContainer: {
+      paddingVertical: t.spacing.md,
+    },
+    platformItem: {
+      width: "20%",
+      alignItems: "center",
+      marginBottom: t.spacing.lg,
+    },
+    platformIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    platformIconDisabled: {
+      opacity: 0.4,
+    },
+    cancelButton: {
+      paddingVertical: t.spacing.md,
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: t.colors.gray100,
+      marginTop: t.spacing.sm,
+    },
+  });
 
 export default ShareModal;

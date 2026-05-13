@@ -11,7 +11,8 @@ import {
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { Community, CommunityListResponse } from "../../../services/communityService";
-import { styles } from "../styles";
+import { useDiscoverStyles } from "../styles";
+import { useAppTheme } from "../../../theme";
 
 interface PopularCommunitiesProps {
   communities: CommunityListResponse | null;
@@ -26,6 +27,8 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const theme = useAppTheme();
+  const styles = useDiscoverStyles();
 
   // 处理社区点击
   const handleCommunityPress = useCallback(
@@ -45,13 +48,13 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
   }
 
   return (
-    <Box py="$md" px="$md" bg="$white">
+    <Box py="$md" px="$md" style={{ backgroundColor: theme.colors.card }}>
       <HStack justifyContent="space-between" alignItems="center" mb="$sm">
-        <Text fontSize="$md" fontWeight="$semibold" color="$black">
+        <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }}>
           {t("discover.hotCommunities")}
         </Text>
         <Pressable onPress={handleViewAll}>
-          <Text fontSize="$sm" color="$gray500">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
             {t("discover.viewAll")}
           </Text>
         </Pressable>
@@ -75,7 +78,7 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
                   />
                 ) : (
                   <View style={styles.communityPlaceholder}>
-                    <Text fontSize="$lg" fontWeight="$bold" color="$white">
+                    <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.textInverted }}>
                       {community.name.charAt(0)}
                     </Text>
                   </View>
@@ -83,10 +86,9 @@ export const PopularCommunities: React.FC<PopularCommunitiesProps> = ({
               </View>
               <Text
                 fontSize="$xs"
-                color="$black"
                 textAlign="center"
                 numberOfLines={1}
-                style={styles.communityName}
+                style={[styles.communityName, { color: theme.colors.text }]}
               >
                 {community.name}
               </Text>

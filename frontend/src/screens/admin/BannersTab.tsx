@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   Banner,
   getAllBanners,
@@ -21,13 +21,15 @@ import {
 } from "../../services/bannerService";
 import { searchPosts, Post } from "../../services/postService";
 import { searchShows, Show } from "../../services/showService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { getLinkTypeName, pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const BannersTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -493,186 +495,186 @@ const BannersTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   bannersList: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   addBannerButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.black,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
+    backgroundColor: t.colors.text,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.md,
+    gap: t.spacing.sm,
   },
   addBannerButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.white,
+    ...t.typography.button,
+    color: t.colors.textInverted,
   },
   bannersHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   bannersHeaderText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   bannerCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
     overflow: "hidden",
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
   },
   bannerPreviewImage: {
     width: "100%",
     height: 120,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   bannerStatusBadge: {
     position: "absolute",
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
+    top: t.spacing.sm,
+    right: t.spacing.sm,
+    paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
   },
   bannerStatusActive: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: t.colors.success,
   },
   bannerStatusInactive: {
-    backgroundColor: theme.colors.gray400,
+    backgroundColor: t.colors.gray400,
   },
   bannerStatusText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   bannerInfo: {
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   bannerTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
     marginBottom: 4,
   },
   bannerSubtitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginBottom: theme.spacing.sm,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
+    marginBottom: t.spacing.sm,
   },
   bannerMeta: {
     justifyContent: "space-between",
   },
   bannerMetaText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   bannerActions: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   bannerActionBtn: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.md,
+    paddingVertical: t.spacing.md,
   },
   bannerEditBtn: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   bannerEnableBtn: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: t.colors.success,
   },
   bannerDisableBtn: {
     backgroundColor: "#F59E0B",
   },
   bannerDeleteBtn: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
   },
   bannerModalContent: {
     height: "85%",
     width: "92%",
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   bannerFormPreview: {
     width: "100%",
     height: 160,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.md,
+    backgroundColor: t.colors.gray100,
   },
   bannerFormPlaceholder: {
     width: "100%",
     height: 160,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   bannerFormPlaceholderText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
-    marginTop: theme.spacing.sm,
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
+    marginTop: t.spacing.sm,
   },
   searchSection: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   searchInputRow: {
     alignItems: "center",
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.sm,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
+    paddingHorizontal: t.spacing.sm,
     minHeight: 44,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   searchIcon: {
-    marginRight: theme.spacing.xs,
+    marginRight: t.spacing.xs,
   },
   searchInput: {
     flex: 1,
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
-    paddingVertical: theme.spacing.sm,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
+    paddingVertical: t.spacing.sm,
   },
   searchResultsList: {
-    marginTop: theme.spacing.xs,
+    marginTop: t.spacing.xs,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
     maxHeight: 200,
     overflow: "hidden",
   },
   searchResultItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   searchResultItemSelected: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   searchResultTitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     fontWeight: "500",
   },
   searchResultMeta: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
   },
   searchNoResult: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     textAlign: "center",
-    paddingVertical: theme.spacing.md,
+    paddingVertical: t.spacing.md,
   },
 });
 

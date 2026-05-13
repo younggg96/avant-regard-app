@@ -29,7 +29,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
 import {
@@ -162,6 +162,7 @@ const CommunityDetailScreen = () => {
   const route = useRoute<RouteProp<RouteParams, "CommunityDetail">>();
   const { communityId } = route.params;
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   const [community, setCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<DisplayPost[]>([]);
@@ -658,78 +659,79 @@ const CommunityDetailScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  communityIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: "hidden",
-  },
-  communityImage: {
-    width: "100%",
-    height: "100%",
-  },
-  communityPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  publishButton: {
-    position: "absolute",
-    bottom: 24,
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  loadingGif: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH,
-  },
-  descModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  descModalContent: {
-    width: "100%",
-    maxHeight: Dimensions.get("window").height * 0.6,
-    backgroundColor: theme.colors.white,
-    borderRadius: 16,
-    padding: 20,
-  },
-  descModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  descModalTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    flex: 1,
-    marginRight: 12,
-  },
-  descModalText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray500,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    communityIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      overflow: "hidden",
+    },
+    communityImage: {
+      width: "100%",
+      height: "100%",
+    },
+    communityPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    publishButton: {
+      position: "absolute",
+      bottom: 24,
+      right: 20,
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    loadingGif: {
+      width: SCREEN_WIDTH,
+      height: SCREEN_WIDTH,
+    },
+    descModalOverlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 32,
+    },
+    descModalContent: {
+      width: "100%",
+      maxHeight: Dimensions.get("window").height * 0.6,
+      backgroundColor: t.colors.card,
+      borderRadius: 16,
+      padding: 20,
+    },
+    descModalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    descModalTitle: {
+      ...t.typography.h3,
+      color: t.colors.text,
+      flex: 1,
+      marginRight: 12,
+    },
+    descModalText: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray500,
+    },
+  });
 
 export default CommunityDetailScreen;

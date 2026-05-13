@@ -15,8 +15,8 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
-import { sharedStyles } from "./adminStyles";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useSharedStyles } from "./adminStyles";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../components/ui/NotificationBadge";
 import {
@@ -55,6 +55,8 @@ const DEFAULT_CONFIG: AutoReplyConfig = {
 const CustomerServiceTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -363,26 +365,26 @@ const CustomerServiceTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   // ---------- Auto-reply settings ----------
   settingsCard: {
-    margin: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
+    margin: t.spacing.md,
+    marginBottom: t.spacing.sm,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     overflow: "hidden",
   },
   settingsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 14,
   },
   settingsHeaderLeft: {
@@ -391,9 +393,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   settingsTitle: {
-    ...theme.typography.bodySmall,
+    ...t.typography.bodySmall,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   settingsHeaderRight: {
     flexDirection: "row",
@@ -406,58 +408,58 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   settingsBody: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
+    paddingBottom: t.spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
-    paddingTop: theme.spacing.md,
+    borderTopColor: t.colors.border,
+    paddingTop: t.spacing.md,
   },
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   fieldLabel: {
-    ...theme.typography.caption,
+    ...t.typography.caption,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     marginBottom: 6,
   },
   emailInput: {
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
+    borderColor: t.colors.border,
+    borderRadius: t.borderRadius.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 10,
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.md,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
+    marginBottom: t.spacing.md,
   },
   messageInput: {
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
+    borderColor: t.colors.border,
+    borderRadius: t.borderRadius.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 10,
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     minHeight: 120,
     textAlignVertical: "top",
   },
   fieldHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray200,
+    ...t.typography.caption,
+    color: t.colors.gray200,
     marginTop: 4,
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   saveButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: t.colors.text,
+    borderRadius: t.borderRadius.md,
     paddingVertical: 12,
     alignItems: "center",
   },
@@ -465,32 +467,32 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   saveButtonText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.white,
+    ...t.typography.bodySmall,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   // ---------- Conversation list ----------
   statsBar: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   statsText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   avatarWrap: {
     position: "relative",
-    marginRight: theme.spacing.md,
+    marginRight: t.spacing.md,
   },
   info: {
     flex: 1,
@@ -502,22 +504,22 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   username: {
-    ...theme.typography.bodySmall,
+    ...t.typography.bodySmall,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     flex: 1,
-    marginRight: theme.spacing.sm,
+    marginRight: t.spacing.sm,
   },
   time: {
-    ...theme.typography.caption,
-    color: theme.colors.gray200,
+    ...t.typography.caption,
+    color: t.colors.gray200,
   },
   message: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
   },
   messageUnread: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "500",
   },
 });

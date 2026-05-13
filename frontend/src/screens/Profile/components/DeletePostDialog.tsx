@@ -2,7 +2,7 @@ import React from "react";
 import { View, Modal, TouchableWithoutFeedback, ActivityIndicator } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack } from "../../../components/ui";
-import { playfairFonts } from "../../../theme";
+import { playfairFonts, useAppTheme } from "../../../theme";
 import { SCREEN_WIDTH } from "../constants";
 
 interface DeletePostDialogProps {
@@ -19,6 +19,7 @@ export const DeletePostDialog = ({
   onConfirm,
 }: DeletePostDialogProps) => {
   const { t } = useTranslation();
+  const appTheme = useAppTheme();
 
   return (
     <Modal
@@ -31,7 +32,7 @@ export const DeletePostDialog = ({
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backgroundColor: appTheme.colors.overlay,
             justifyContent: "center",
             alignItems: "center",
           }}

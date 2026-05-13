@@ -25,7 +25,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
 import { Box, Text, ScrollView, HStack, OptimizedImage } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import ImagePickerModal from "../../components/ImagePickerModal";
 import ImageCropper from "../../components/ImageCropper";
@@ -44,6 +44,7 @@ const MAX_MEDIA = 9;
 const PublishV2ImageSelectScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const styles = useThemedStyles(makeStyles);
   const [media, setMedia] = useState<string[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   // 单图裁切：拍照 / 单选画廊命中时走 ImageCropper。
@@ -366,57 +367,58 @@ const PublishV2ImageSelectScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  tile: {
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
-    position: "relative",
-  },
-  addTile: {
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removeBtn: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  videoBadge: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextBtn: {
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextBtnDisabled: {
-    opacity: 0.4,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    tile: {
+      borderRadius: 8,
+      overflow: "hidden",
+      backgroundColor: t.colors.gray100,
+      position: "relative",
+    },
+    addTile: {
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    removeBtn: {
+      position: "absolute",
+      top: 4,
+      right: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    videoBadge: {
+      position: "absolute",
+      bottom: 4,
+      left: 4,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: "rgba(0,0,0,0.55)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    nextBtn: {
+      height: 48,
+      borderRadius: 8,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    nextBtnDisabled: {
+      opacity: 0.4,
+    },
+  });
 
 export default PublishV2ImageSelectScreen;

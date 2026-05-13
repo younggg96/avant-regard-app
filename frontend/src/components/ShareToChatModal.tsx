@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { UserAvatar } from "./ui/UserAvatar";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -315,6 +315,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   const currentUser = useAuthStore((s) => s.user);
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
   const [fadeAnim] = useState(new Animated.Value(0));
+  const s = useThemedStyles(makeStyles);
 
   useEffect(() => {
     if (visible) {
@@ -602,175 +603,176 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   );
 };
 
-const s = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  container: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-    paddingBottom: 34,
-  },
-  handleContainer: {
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: theme.colors.gray200,
-    borderRadius: 2,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: theme.colors.black,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  previewCard: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 10,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    gap: 10,
-  },
-  previewImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 6,
-    backgroundColor: theme.colors.gray100,
-  },
-  previewPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  previewImageRound: {
-    borderRadius: 24,
-  },
-  previewInfo: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  previewTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: theme.colors.black,
-    lineHeight: 18,
-  },
-  previewAuthor: {
-    fontSize: 12,
-    color: theme.colors.gray300,
-    marginTop: 2,
-  },
-  list: {
-    maxHeight: 260,
-    paddingHorizontal: 16,
-  },
-  platformsScroll: {
-    flexGrow: 0,
-    marginBottom: 4,
-  },
-  platformsRow: {
-    paddingHorizontal: 16,
-    gap: 20,
-  },
-  platformItem: {
-    alignItems: "center",
-    width: 56,
-  },
-  platformIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  platformLabel: {
-    fontSize: 11,
-    color: theme.colors.gray300,
-    marginTop: 6,
-    textAlign: "center",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.gray100,
-    marginHorizontal: 16,
-    marginVertical: 8,
-  },
-  conversationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    gap: 12,
-  },
-  username: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "500",
-    color: theme.colors.black,
-  },
-  sendBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-  },
-  sendBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.white,
-  },
-  sentBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.gray200,
-    borderRadius: 16,
-    gap: 4,
-  },
-  sentText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.white,
-  },
-  loadingContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.colors.gray300,
-  },
-  cancelBtn: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-  },
-  cancelText: {
-    fontSize: 16,
-    color: theme.colors.gray300,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: t.colors.overlay,
+    },
+    container: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: t.colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: "70%",
+      paddingBottom: 34,
+    },
+    handleContainer: {
+      alignItems: "center",
+      paddingVertical: 10,
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      backgroundColor: t.colors.gray200,
+      borderRadius: 2,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: t.colors.text,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    previewCard: {
+      flexDirection: "row",
+      marginHorizontal: 16,
+      marginBottom: 12,
+      padding: 10,
+      backgroundColor: t.colors.gray50,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.colors.gray100,
+      gap: 10,
+    },
+    previewImage: {
+      width: 48,
+      height: 48,
+      borderRadius: 6,
+      backgroundColor: t.colors.gray100,
+    },
+    previewPlaceholder: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    previewImageRound: {
+      borderRadius: 24,
+    },
+    previewInfo: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    previewTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: t.colors.text,
+      lineHeight: 18,
+    },
+    previewAuthor: {
+      fontSize: 12,
+      color: t.colors.gray300,
+      marginTop: 2,
+    },
+    list: {
+      maxHeight: 260,
+      paddingHorizontal: 16,
+    },
+    platformsScroll: {
+      flexGrow: 0,
+      marginBottom: 4,
+    },
+    platformsRow: {
+      paddingHorizontal: 16,
+      gap: 20,
+    },
+    platformItem: {
+      alignItems: "center",
+      width: 56,
+    },
+    platformIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    platformLabel: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      marginTop: 6,
+      textAlign: "center",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: t.colors.divider,
+      marginHorizontal: 16,
+      marginVertical: 8,
+    },
+    conversationRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+      gap: 12,
+    },
+    username: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: "500",
+      color: t.colors.text,
+    },
+    sendBtn: {
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      backgroundColor: t.colors.accent,
+      borderRadius: 16,
+    },
+    sendBtnText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+    sentBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: t.colors.gray200,
+      borderRadius: 16,
+      gap: 4,
+    },
+    sentText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+    loadingContainer: {
+      paddingVertical: 40,
+      alignItems: "center",
+    },
+    emptyContainer: {
+      paddingVertical: 40,
+      alignItems: "center",
+      gap: 8,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.colors.gray300,
+    },
+    cancelBtn: {
+      marginHorizontal: 16,
+      marginTop: 12,
+      paddingVertical: 14,
+      alignItems: "center",
+      borderTopWidth: 1,
+      borderTopColor: t.colors.divider,
+    },
+    cancelText: {
+      fontSize: 16,
+      color: t.colors.gray300,
+    },
+  });
 
 export default ShareToChatModal;

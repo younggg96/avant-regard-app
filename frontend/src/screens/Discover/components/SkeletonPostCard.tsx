@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from "react";
 import { View, Animated } from "react-native";
-import { theme } from "../../../theme";
-import { styles } from "../styles";
+import { useAppTheme } from "../../../theme";
+import { useDiscoverStyles } from "../styles";
 
 interface SkeletonBoxProps {
   width: number | string;
   height: number;
   style?: any;
   opacity: Animated.AnimatedInterpolation<number>;
+  color: string;
 }
 
 /**
@@ -18,13 +19,14 @@ const SkeletonBox: React.FC<SkeletonBoxProps> = ({
   height,
   style,
   opacity,
+  color,
 }) => (
   <Animated.View
     style={[
       {
         width,
         height,
-        backgroundColor: theme.colors.gray200,
+        backgroundColor: color,
         borderRadius: 4,
         opacity,
       },
@@ -44,6 +46,9 @@ interface SkeletonPostCardProps {
 export const SkeletonPostCard: React.FC<SkeletonPostCardProps> = ({
   opacity,
 }) => {
+  const t = useAppTheme();
+  const styles = useDiscoverStyles();
+  const blockColor = t.colors.skeleton;
   return (
     <View style={styles.skeletonCard}>
       {/* 图片区域：3:4 比例 */}
@@ -55,16 +60,17 @@ export const SkeletonPostCard: React.FC<SkeletonPostCardProps> = ({
           height={14}
           style={{ marginBottom: 4 }}
           opacity={opacity}
+          color={blockColor}
         />
-        <SkeletonBox width="60%" height={14} opacity={opacity} />
+        <SkeletonBox width="60%" height={14} opacity={opacity} color={blockColor} />
       </View>
       {/* 底部：用户信息 + 点赞 */}
       <View style={styles.skeletonFooter}>
         <View style={styles.skeletonUserInfo}>
           <Animated.View style={[styles.skeletonAvatar, { opacity }]} />
-          <SkeletonBox width={50} height={10} opacity={opacity} />
+          <SkeletonBox width={50} height={10} opacity={opacity} color={blockColor} />
         </View>
-        <SkeletonBox width={30} height={14} opacity={opacity} />
+        <SkeletonBox width={30} height={14} opacity={opacity} color={blockColor} />
       </View>
     </View>
   );

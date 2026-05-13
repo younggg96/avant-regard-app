@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { authService } from "../services/authService";
 import ScreenHeader from "../components/ScreenHeader";
@@ -26,6 +26,7 @@ const ChangePasswordScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -197,72 +198,73 @@ const ChangePasswordScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  flex: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: theme.spacing.md,
-  },
-  description: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
-    marginBottom: theme.spacing.lg,
-  },
-  fieldGroup: {
-    marginBottom: theme.spacing.lg,
-  },
-  label: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    fontWeight: "500",
-    marginBottom: theme.spacing.sm,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray50,
-  },
-  input: {
-    flex: 1,
-    ...theme.typography.body,
-    color: theme.colors.black,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 14,
-  },
-  eyeButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 14,
-  },
-  errorHint: {
-    ...theme.typography.caption,
-    color: theme.colors.error,
-    marginTop: theme.spacing.xs,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: theme.spacing.md,
-  },
-  submitButtonDisabled: {
-    opacity: 0.4,
-  },
-  submitButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    flex: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: t.spacing.md,
+    },
+    description: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray300,
+      marginBottom: t.spacing.lg,
+    },
+    fieldGroup: {
+      marginBottom: t.spacing.lg,
+    },
+    label: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray400,
+      fontWeight: "500",
+      marginBottom: t.spacing.sm,
+    },
+    inputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: t.colors.inputBorder,
+      borderRadius: t.borderRadius.md,
+      backgroundColor: t.colors.inputBackground,
+    },
+    input: {
+      flex: 1,
+      ...t.typography.body,
+      color: t.colors.text,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: 14,
+    },
+    eyeButton: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: 14,
+    },
+    errorHint: {
+      ...t.typography.caption,
+      color: t.colors.error,
+      marginTop: t.spacing.xs,
+    },
+    submitButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: t.borderRadius.md,
+      paddingVertical: 16,
+      alignItems: "center",
+      marginTop: t.spacing.md,
+    },
+    submitButtonDisabled: {
+      opacity: 0.4,
+    },
+    submitButtonText: {
+      ...t.typography.button,
+      color: t.colors.textInverted,
+    },
+  });
 
 export default ChangePasswordScreen;

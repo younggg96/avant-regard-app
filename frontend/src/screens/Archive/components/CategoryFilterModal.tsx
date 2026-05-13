@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, HStack } from "../../../components/ui";
-import { theme } from "../../../theme";
+import { useThemedStyles, type AppTheme } from "../../../theme";
 
 interface CategoryFilter {
   label: string;
@@ -29,6 +29,7 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const hasActive = selectedValue !== "all";
 
   return (
@@ -87,73 +88,74 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    backgroundColor: theme.colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: "70%",
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.gray200,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginBottom: 16,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: theme.colors.gray50,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  chipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  chipText: {
-    fontSize: 14,
-    color: theme.colors.gray600,
-  },
-  chipTextActive: {
-    color: theme.colors.white,
-    fontWeight: "600",
-  },
-  resetButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    alignItems: "center",
-  },
-  resetText: {
-    fontSize: 14,
-    color: theme.colors.gray500,
-    fontWeight: "500",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "flex-end",
+    },
+    sheet: {
+      backgroundColor: t.colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingHorizontal: 20,
+      paddingBottom: 40,
+      maxHeight: "70%",
+    },
+    handle: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.colors.gray200,
+      alignSelf: "center",
+      marginTop: 12,
+      marginBottom: 20,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 16,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    chip: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 20,
+      backgroundColor: t.colors.gray50,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    chipActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    chipText: {
+      fontSize: 14,
+      color: t.colors.gray600,
+    },
+    chipTextActive: {
+      color: t.colors.textInverted,
+      fontWeight: "600",
+    },
+    resetButton: {
+      marginTop: 20,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+    },
+    resetText: {
+      fontSize: 14,
+      color: t.colors.gray500,
+      fontWeight: "500",
+    },
+  });
 
 export default CategoryFilterModal;

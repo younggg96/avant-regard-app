@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader, { HeaderAction } from "../components/ScreenHeader";
 import {
   Notification,
@@ -26,6 +26,7 @@ import { ImageSize } from "../utils/imageUtils";
 const NotificationsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
   const [refreshing, setRefreshing] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -281,10 +282,10 @@ const NotificationsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   content: {
     flex: 1,
@@ -293,38 +294,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: theme.spacing.xxl * 2,
-    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: t.spacing.xxl * 2,
+    paddingHorizontal: t.spacing.xl,
   },
   emptyTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    ...t.typography.h3,
+    color: t.colors.text,
+    marginTop: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
     textAlign: "center",
   },
   notificationsList: {
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: t.spacing.sm,
   },
   notificationCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   unreadNotification: {
-    backgroundColor: `${theme.colors.accent}08`,
+    backgroundColor: `${t.colors.accent}08`,
     borderLeftWidth: 3,
-    borderLeftColor: theme.colors.accent,
+    borderLeftColor: t.colors.accent,
   },
   notificationIcon: {
-    marginRight: theme.spacing.md,
+    marginRight: t.spacing.md,
   },
   avatarContainer: {
     position: "relative",
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 50,
     height: 50,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
   },
   iconBadge: {
     position: "absolute",
@@ -340,52 +341,52 @@ const styles = StyleSheet.create({
     right: -2,
     width: 20,
     height: 20,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: theme.colors.white,
+    borderColor: t.colors.card,
   },
   systemIcon: {
     width: 50,
     height: 50,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     justifyContent: "center",
     alignItems: "center",
   },
   notificationContent: {
     flex: 1,
-    marginRight: theme.spacing.sm,
+    marginRight: t.spacing.sm,
   },
   notificationTitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     fontWeight: "600",
-    marginBottom: theme.spacing.xs / 2,
+    marginBottom: t.spacing.xs / 2,
   },
   notificationMessage: {
-    ...theme.typography.body,
-    color: theme.colors.gray600,
-    marginBottom: theme.spacing.xs,
+    ...t.typography.body,
+    color: t.colors.gray600,
+    marginBottom: t.spacing.xs,
   },
   notificationTime: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   notificationImage: {
     width: 50,
     height: 60,
-    borderRadius: theme.borderRadius.sm,
-    marginLeft: theme.spacing.sm,
+    borderRadius: t.borderRadius.sm,
+    marginLeft: t.spacing.sm,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.accent,
+    backgroundColor: t.colors.accent,
     position: "absolute",
-    top: theme.spacing.md + 4,
-    right: theme.spacing.md,
+    top: t.spacing.md + 4,
+    right: t.spacing.md,
   },
 });
 

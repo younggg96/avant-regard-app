@@ -8,7 +8,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
@@ -18,7 +18,7 @@ import { Message } from "../../../services/chatService";
 import { PostSharePayload, StoreSharePayload, BrandSharePayload, ShowSharePayload, UserSharePayload } from "../../../components/ShareToChatModal";
 import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
-import { styles } from "../styles";
+import { useChatStyles } from "../styles";
 import HalfStarRating from "../../../components/HalfStarRating";
 
 interface MessageBubbleProps {
@@ -82,6 +82,13 @@ export const MessageBubble = ({
   const isMine = message.isMine;
   const [showMenu, setShowMenu] = useState(false);
   const navigation = useNavigation();
+  const styles = useChatStyles();
+  const titleStyles = useThemedStyles(makeTitleStyles);
+  const cardStyles = useThemedStyles(makeCardStyles);
+  const storeCardStyles = useThemedStyles(makeStoreCardStyles);
+  const brandCardStyles = useThemedStyles(makeBrandCardStyles);
+  const showCardStyles = useThemedStyles(makeShowCardStyles);
+  const userCardStyles = useThemedStyles(makeUserCardStyles);
 
   const canReport = !isMine && (onReportMessage || onReportUser);
 
@@ -216,7 +223,7 @@ export const MessageBubble = ({
               <Ionicons
                 name="person-outline"
                 size={14}
-                color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                color={isMine ? `${theme.colors.textInverted}8C` : theme.colors.gray200}
               />
               <Text
                 style={[
@@ -240,7 +247,7 @@ export const MessageBubble = ({
               <Ionicons
                 name="chevron-forward"
                 size={12}
-                color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                color={isMine ? `${theme.colors.textInverted}80` : theme.colors.gray200}
               />
             </View>
           </View>
@@ -273,7 +280,7 @@ export const MessageBubble = ({
               <Ionicons
                 name="sparkles-outline"
                 size={36}
-                color={isMine ? "rgba(255,255,255,0.3)" : theme.colors.gray200}
+                color={isMine ? `${theme.colors.textInverted}4D` : theme.colors.gray200}
               />
             </View>
           )}
@@ -314,7 +321,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="sparkles-outline"
                   size={14}
-                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}8C` : theme.colors.gray200}
                 />
                 <Text
                   style={[
@@ -338,7 +345,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="chevron-forward"
                   size={12}
-                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}80` : theme.colors.gray200}
                 />
               </View>
             </View>
@@ -410,7 +417,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="pricetag-outline"
                   size={14}
-                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}8C` : theme.colors.gray200}
                 />
                 <Text
                   style={[
@@ -434,7 +441,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="chevron-forward"
                   size={12}
-                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}80` : theme.colors.gray200}
                 />
               </View>
             </View>
@@ -487,7 +494,7 @@ export const MessageBubble = ({
                   rating={storeCard.rating!}
                   size={12}
                   color="#FFB800"
-                  inactiveColor={isMine ? "rgba(255,255,255,0.2)" : theme.colors.gray100}
+                  inactiveColor={isMine ? `${theme.colors.textInverted}33` : theme.colors.gray100}
                 />
               )}
             </View>
@@ -518,7 +525,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="storefront-outline"
                   size={14}
-                  color={isMine ? "rgba(255,255,255,0.55)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}8C` : theme.colors.gray200}
                 />
                 <Text
                   style={[
@@ -542,7 +549,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="chevron-forward"
                   size={12}
-                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}80` : theme.colors.gray200}
                 />
               </View>
             </View>
@@ -609,7 +616,7 @@ export const MessageBubble = ({
                 <Ionicons
                   name="chevron-forward"
                   size={12}
-                  color={isMine ? "rgba(255,255,255,0.5)" : theme.colors.gray200}
+                  color={isMine ? `${theme.colors.textInverted}80` : theme.colors.gray200}
                 />
               </View>
             </View>
@@ -680,9 +687,9 @@ export const MessageBubble = ({
   );
 };
 
-const titleStyles = StyleSheet.create({
+const makeTitleStyles = (t: AppTheme) => StyleSheet.create({
   badge: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -692,28 +699,28 @@ const titleStyles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: "500",
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
   },
 });
 
-const cardStyles = StyleSheet.create({
+const makeCardStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     borderRadius: 12,
     overflow: "hidden",
     width: 220,
   },
   containerMine: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   containerOther: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   image: {
     width: "100%",
     height: 140,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   body: {
     paddingHorizontal: 12,
@@ -727,10 +734,10 @@ const cardStyles = StyleSheet.create({
     lineHeight: 19,
   },
   titleMine: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   titleOther: {
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   footer: {
     flexDirection: "row",
@@ -749,10 +756,10 @@ const cardStyles = StyleSheet.create({
     flex: 1,
   },
   textMuted: {
-    color: "rgba(255,255,255,0.55)",
+    color: `${t.colors.textInverted}8C`,
   },
   textSubtle: {
-    color: theme.colors.gray200,
+    color: t.colors.gray200,
   },
   tapHint: {
     flexDirection: "row",
@@ -765,7 +772,7 @@ const cardStyles = StyleSheet.create({
   },
 });
 
-const storeCardStyles = StyleSheet.create({
+const makeStoreCardStyles = (t: AppTheme) => StyleSheet.create({
   meta: {
     flexDirection: "row",
     alignItems: "center",
@@ -787,37 +794,37 @@ const storeCardStyles = StyleSheet.create({
     borderRadius: 4,
   },
   tagMine: {
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: `${t.colors.textInverted}26`,
   },
   tagOther: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   tagText: {
     fontSize: 10,
     fontWeight: "500",
   },
   tagTextMine: {
-    color: "rgba(255,255,255,0.7)",
+    color: `${t.colors.textInverted}B3`,
   },
   tagTextOther: {
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
 });
 
-const brandCardStyles = StyleSheet.create({
+const makeBrandCardStyles = (t: AppTheme) => StyleSheet.create({
   placeholder: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   initial: {
     fontSize: 36,
     fontWeight: "300",
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     letterSpacing: 2,
   },
   initialMine: {
-    color: "rgba(255,255,255,0.3)",
+    color: `${t.colors.textInverted}4D`,
   },
   info: {
     fontSize: 12,
@@ -828,11 +835,11 @@ const brandCardStyles = StyleSheet.create({
   },
 });
 
-const showCardStyles = StyleSheet.create({
+const makeShowCardStyles = (t: AppTheme) => StyleSheet.create({
   placeholder: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   season: {
     fontSize: 12,
@@ -843,7 +850,7 @@ const showCardStyles = StyleSheet.create({
   },
 });
 
-const userCardStyles = StyleSheet.create({
+const makeUserCardStyles = (_t: AppTheme) => StyleSheet.create({
   container: {
     paddingHorizontal: 12,
     paddingVertical: 12,

@@ -15,7 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack, ScrollView } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { getQuota, type QuotaInfo } from "../../services/aiPostService";
@@ -32,6 +32,7 @@ interface ModeCard {
 const AIPostEntryScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const styles = useThemedStyles(makeStyles);
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
 
   // 用 useFocusEffect 而不是 useEffect: 用户在 Preview/QA 屏完成生成后,
@@ -177,11 +178,12 @@ const AIPostEntryScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+  });
 
 export default AIPostEntryScreen;

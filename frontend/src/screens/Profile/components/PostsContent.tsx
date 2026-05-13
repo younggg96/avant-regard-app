@@ -2,7 +2,12 @@ import React, { useEffect } from "react";
 import { View, Text as RNText, ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import {
+  theme,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import {
   Text,
   Pressable,
@@ -36,7 +41,12 @@ import {
   StoreProduct,
   formatPrice,
 } from "../../../services/storeProductService";
-import { contribStyles, storeActivityStyles, styles, PF } from "../styles";
+import {
+  useContribStyles,
+  useStoreActivityStyles,
+  useProfileStyles,
+  PF,
+} from "../styles";
 
 interface PostsContentProps {
   activeTab: TabType;
@@ -82,6 +92,7 @@ const ContributionContent = ({
   onStoreCardPress,
 }: Pick<PostsContentProps, 'contribSubTab' | 'setContribSubTab' | 'contribLoading' | 'myShows' | 'myBrands' | 'myStores' | 'user' | 'onShowPress' | 'onBrandSubmissionPress' | 'onStoreCardPress'>) => {
   const { t } = useTranslation();
+  const contribStyles = useContribStyles();
   const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
     { id: "show", label: t("profileContrib.show"), count: myShows.length },
     { id: "brand", label: t("profileContrib.brand"), count: myBrands.length },
@@ -208,6 +219,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const StoreImageOrPlaceholder = ({ uri }: { uri?: string }) => {
+  const storeActivityStyles = useStoreActivityStyles();
   if (uri) {
     return <Image source={{ uri }} style={storeActivityStyles.storeImage} resizeMode="cover" />;
   }
@@ -219,6 +231,7 @@ const StoreImageOrPlaceholder = ({ uri }: { uri?: string }) => {
 };
 
 const StarRating = ({ rating }: { rating: number }) => {
+  const storeActivityStyles = useStoreActivityStyles();
   const fullStars = Math.floor(rating);
   const hasHalf = rating % 1 >= 0.5;
   const stars = [];
@@ -257,6 +270,9 @@ const StoreActivityContent = ({
   onProductPress: (productId: number) => void;
 }) => {
   const { t } = useTranslation();
+  const contribStyles = useContribStyles();
+  const storeActivityStyles = useStoreActivityStyles();
+  const styles = useProfileStyles();
   // 4 个一级 chip：前 3 个店铺级活动 + 第 4 个"商品"展开 3 个 sub-sub-tab
   const productTotal =
     productLikes.total + productSaved.total + productWanted.total;
@@ -424,6 +440,8 @@ const ProductActivityContent = ({
   onProductPress: (productId: number) => void;
 }) => {
   const { t } = useTranslation();
+  const contribStyles = useContribStyles();
+  const productGridStyles = useThemedStyles(makeProductGridStyles);
   const subSubTabs: { id: ProductActivitySubTab; label: string; count: number }[] = [
     { id: "likes", label: t("profileProductActivity.likes"), count: productLikes.total },
     { id: "saved", label: t("profileProductActivity.saved"), count: productSaved.total },
@@ -501,6 +519,7 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
   product,
   onPress,
 }) => {
+  const productGridStyles = useThemedStyles(makeProductGridStyles);
   const cover = product.images?.[0];
   const hasDiscount =
     product.discountPriceCents != null &&
@@ -528,7 +547,7 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
         )}
         {hasDiscount && (
           <View style={[productGridStyles.badge, productGridStyles.badgeSale]}>
-            <RNText style={[productGridStyles.badgeText, { color: theme.colors.white }]}>SALE</RNText>
+            <RNText style={[productGridStyles.badgeText, { color: "#FFFFFF" }]}>SALE</RNText>
           </View>
         )}
       </View>
@@ -576,59 +595,60 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
   );
 };
 
-const productGridStyles = StyleSheet.create({
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  card: {
-    width: "47.5%",
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
-  },
-  cardCover: {
-    width: "100%",
-    aspectRatio: 1,
-    backgroundColor: theme.colors.gray50,
-    position: "relative",
-  },
-  cardImage: {
-    width: "100%",
-    height: "100%",
-  },
-  cardImagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  badge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  badgeNew: {
-    backgroundColor: theme.colors.black,
-  },
-  badgeSale: {
-    backgroundColor: theme.colors.error,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: theme.colors.white,
-    fontFamily: PF.bold,
-  },
-});
+const makeProductGridStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      gap: 12,
+    },
+    card: {
+      width: "47.5%",
+      backgroundColor: t.colors.card,
+      borderRadius: 12,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+    },
+    cardCover: {
+      width: "100%",
+      aspectRatio: 1,
+      backgroundColor: t.colors.skeleton,
+      position: "relative",
+    },
+    cardImage: {
+      width: "100%",
+      height: "100%",
+    },
+    cardImagePlaceholder: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    badge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    badgeNew: {
+      backgroundColor: t.colors.text,
+    },
+    badgeSale: {
+      backgroundColor: t.colors.error,
+    },
+    badgeText: {
+      fontSize: 10,
+      fontWeight: "700",
+      color: t.colors.textInverted,
+      fontFamily: PF.bold,
+    },
+  });
 
 export const PostsContent = ({
   activeTab,
@@ -660,6 +680,7 @@ export const PostsContent = ({
   onLike,
 }: PostsContentProps) => {
   const { t } = useTranslation();
+  const styles = useProfileStyles();
   if (activeTab === "storeActivity") {
     return (
       <StoreActivityContent

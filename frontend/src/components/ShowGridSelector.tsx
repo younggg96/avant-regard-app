@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -41,6 +41,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
   const displayLabel = label || t("showSelector.linkedShows");
   const showWidth = (screenWidth - 48 - 16) / 3;
   const showHeight = showWidth * 1.4;
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Box mx="$md" mb="$md">
@@ -153,31 +154,32 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  showCard: {
-    width: "100%",
-    borderRadius: 10,
-    overflow: "hidden",
-    position: "relative",
-  },
-  showImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
-  showGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  showInfo: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    right: 8,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    showCard: {
+      width: "100%",
+      borderRadius: 10,
+      overflow: "hidden",
+      position: "relative",
+    },
+    showImage: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.gray100,
+    },
+    showGradient: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 60,
+    },
+    showInfo: {
+      position: "absolute",
+      bottom: 8,
+      left: 8,
+      right: 8,
+    },
+  });
 
 export default ShowGridSelector;

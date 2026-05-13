@@ -32,7 +32,7 @@ import Animated, {
   runOnJS,
   Easing,
 } from "react-native-reanimated";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import { useLevelStore } from "../../store/levelStore";
 import { LevelBadge } from "./LevelBadge";
 import { getLevelTitleKey } from "./levelTitles";
@@ -46,6 +46,7 @@ const FADE_OUT_MS = 400;
 
 export const LevelUpgradeModal: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const celebrateLevel = useLevelStore((s) => s.celebrateLevel);
   const acknowledge = useLevelStore((s) => s.acknowledgeCelebration);
 
@@ -121,10 +122,11 @@ export const LevelUpgradeModal: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.black,
+    // Intentional: celebration screen is always pure black per design spec
+    backgroundColor: "#000000",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -133,8 +135,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   congrats: {
-    color: theme.colors.white,
-    fontFamily: theme.typography.caption.fontFamily,
+    color: "#FFFFFF",
+    fontFamily: t.typography.caption.fontFamily,
     fontSize: 14,
     letterSpacing: 6,
     marginBottom: 24,
@@ -144,15 +146,15 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   level: {
-    color: theme.colors.white,
-    fontFamily: theme.typography.hero.fontFamily,
+    color: "#FFFFFF",
+    fontFamily: t.typography.hero.fontFamily,
     fontSize: 72,
     lineHeight: 78,
     letterSpacing: -1,
   },
   title: {
-    color: theme.colors.white,
-    fontFamily: theme.typography.h2.fontFamily,
+    color: "#FFFFFF",
+    fontFamily: t.typography.h2.fontFamily,
     fontSize: 22,
     letterSpacing: 4,
     marginTop: 12,
@@ -160,7 +162,7 @@ const styles = StyleSheet.create({
   },
   line: {
     height: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: "#FFFFFF",
     marginTop: 32,
   },
 });

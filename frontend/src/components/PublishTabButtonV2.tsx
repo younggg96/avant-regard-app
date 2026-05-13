@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useDiscoverTabStore } from "../store/discoverTabStore";
 import { useMainBottomTabStore } from "../store/mainBottomTabStore";
 import { useAuthStore } from "../store/authStore";
@@ -27,6 +27,7 @@ import { useAuthStore } from "../store/authStore";
 const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   const handlePress = () => {
     const mainTab = useMainBottomTabStore.getState().activeMainTab;
@@ -64,34 +65,35 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
       activeOpacity={0.8}
     >
       <View style={styles.button}>
-        <Ionicons name="add" size={28} color={theme.colors.white} />
+        <Ionicons name="add" size={28} color={theme.colors.textInverted} />
       </View>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    top: -10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  button: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: theme.colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      top: -10,
+      justifyContent: "center",
+      alignItems: "center",
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-});
+    button: {
+      width: 56,
+      height: 56,
+      borderRadius: 8,
+      backgroundColor: t.colors.accent,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: t.colors.accent,
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+  });
 
 export default PublishTabButtonV2;

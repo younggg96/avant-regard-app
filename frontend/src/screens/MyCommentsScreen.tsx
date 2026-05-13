@@ -23,7 +23,7 @@ import {
     OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
@@ -38,6 +38,7 @@ const MyCommentsScreen = () => {
     const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
+    const appTheme = useAppTheme();
     const [comments, setComments] = useState<PostComment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -244,7 +245,7 @@ const MyCommentsScreen = () => {
 
     return (
         <SafeAreaView
-            style={{ flex: 1, backgroundColor: theme.colors.white }}
+            style={{ flex: 1, backgroundColor: appTheme.colors.background }}
             edges={["top"]}
         >
             <ScreenHeader title={t("myComments.title")} showBack={true} />
@@ -282,7 +283,7 @@ const MyCommentsScreen = () => {
                     <View
                         style={{
                             flex: 1,
-                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            backgroundColor: appTheme.colors.overlay,
                             justifyContent: "center",
                             alignItems: "center",
                         }}

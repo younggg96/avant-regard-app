@@ -26,7 +26,7 @@ import {
   VStack,
   ScrollView,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import {
   BuyerStore,
   getAllStores,
@@ -188,6 +188,7 @@ const SEARCH_BAR_HEIGHT = 48; // 40px input + 8px bottom padding
 
 const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
@@ -1866,16 +1867,16 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   searchPlaceholder: {
     flex: 1,
     fontSize: 16,
     fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   map: {
     flex: 1,
@@ -1902,7 +1903,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   sheetContainer: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: Dimensions.get("window").height * 0.9,

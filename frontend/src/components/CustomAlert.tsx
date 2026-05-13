@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 
 const { width } = Dimensions.get("window");
 
@@ -37,6 +37,8 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
   icon,
   iconColor = theme.colors.gray400,
 }) => {
+  const styles = useThemedStyles(makeStyles);
+
   const handleButtonPress = (button: AlertButton) => {
     if (button.onPress) {
       button.onPress();
@@ -159,75 +161,76 @@ export const useCustomAlert = () => {
   };
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: theme.spacing.md,
-  },
-  alertContainer: {
-    width: width - theme.spacing.md * 2,
-    maxWidth: 320,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    alignItems: "center",
-    ...theme.shadows.lg,
-  },
-  iconContainer: {
-    marginBottom: theme.spacing.md,
-  },
-  title: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    textAlign: "center",
-    marginBottom: theme.spacing.sm,
-  },
-  message: {
-    ...theme.typography.body,
-    color: theme.colors.gray500,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: theme.spacing.lg,
-  },
-  buttonContainer: {
-    width: "100%",
-    gap: theme.spacing.sm,
-  },
-  button: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
-    alignItems: "center",
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  defaultButton: {
-    backgroundColor: theme.colors.black,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.gray100,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  destructiveButton: {
-    backgroundColor: theme.colors.error,
-  },
-  buttonText: {
-    ...theme.typography.button,
-    fontSize: 16,
-  },
-  defaultButtonText: {
-    color: theme.colors.white,
-  },
-  cancelButtonText: {
-    color: theme.colors.gray500,
-  },
-  destructiveButtonText: {
-    color: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: t.spacing.md,
+    },
+    alertContainer: {
+      width: width - t.spacing.md * 2,
+      maxWidth: 320,
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.lg,
+      padding: t.spacing.lg,
+      alignItems: "center",
+      ...t.shadows.lg,
+    },
+    iconContainer: {
+      marginBottom: t.spacing.md,
+    },
+    title: {
+      ...t.typography.h3,
+      color: t.colors.text,
+      textAlign: "center",
+      marginBottom: t.spacing.sm,
+    },
+    message: {
+      ...t.typography.body,
+      color: t.colors.gray500,
+      textAlign: "center",
+      lineHeight: 22,
+      marginBottom: t.spacing.lg,
+    },
+    buttonContainer: {
+      width: "100%",
+      gap: t.spacing.sm,
+    },
+    button: {
+      paddingVertical: t.spacing.sm,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.borderRadius.sm,
+      alignItems: "center",
+      minHeight: 44,
+      justifyContent: "center",
+    },
+    defaultButton: {
+      backgroundColor: t.colors.text,
+    },
+    cancelButton: {
+      backgroundColor: t.colors.gray100,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    destructiveButton: {
+      backgroundColor: t.colors.error,
+    },
+    buttonText: {
+      ...t.typography.button,
+      fontSize: 16,
+    },
+    defaultButtonText: {
+      color: t.colors.textInverted,
+    },
+    cancelButtonText: {
+      color: t.colors.gray500,
+    },
+    destructiveButtonText: {
+      color: t.colors.textInverted,
+    },
+  });
 
 export default CustomAlert;

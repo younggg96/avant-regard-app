@@ -17,7 +17,7 @@ import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, Pressable, Text } from "../../../components/ui";
-import { playfairFonts, theme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
 
 interface EditorialHeaderProps {
   current: number;
@@ -33,6 +33,7 @@ const EditorialHeader: React.FC<EditorialHeaderProps> = ({
   rightComponent,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <HStack
@@ -75,29 +76,30 @@ const EditorialHeader: React.FC<EditorialHeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  brandText: {
-    fontFamily: playfairFonts.medium,
-    fontSize: 11,
-    letterSpacing: 2,
-    color: theme.colors.black,
-  },
-  pagePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    minWidth: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageText: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: theme.colors.gray400,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    brandText: {
+      fontFamily: playfairFonts.medium,
+      fontSize: 11,
+      letterSpacing: 2,
+      color: t.colors.text,
+    },
+    pagePill: {
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      minWidth: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pageText: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 11,
+      letterSpacing: 1,
+      color: t.colors.gray400,
+    },
+  });
 
 export default EditorialHeader;

@@ -3,7 +3,7 @@ import { View, TextInput, TouchableOpacity, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../../theme";
-import { styles } from "../styles";
+import { useChatStyles } from "../styles";
 
 interface MessageInputProps {
   inputText: string;
@@ -29,6 +29,7 @@ export const MessageInput = ({
   onToggleSharePicker,
 }: MessageInputProps) => {
   const { t } = useTranslation();
+  const styles = useChatStyles();
 
   if (disabled) {
     return (

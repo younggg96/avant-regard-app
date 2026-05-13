@@ -21,7 +21,7 @@ import {
   Input,
   HStack,
 } from "../components/ui";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
@@ -82,6 +82,7 @@ const PublishLookbookScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishLookbookRouteParams }, "params">>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
@@ -1268,33 +1269,34 @@ const PublishLookbookScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  thumbnail: {
-    width: "100%",
-    height: "100%",
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)",
-  } as any,
-  videoThumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  } as any,
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    thumbnail: {
+      width: "100%",
+      height: "100%",
+    },
+    videoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.2)",
+    } as any,
+    videoThumbOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.3)",
+    } as any,
+  });
 
 export default PublishLookbookScreen;

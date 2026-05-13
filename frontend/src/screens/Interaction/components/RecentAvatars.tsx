@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { Conversation, createConversation } from "../../../services/chatService";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { CS_USER_ID } from "../constants";
 import { isStrangerConversation } from "../utils";
 
@@ -28,6 +28,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [csLoading, setCsLoading] = useState(false);
+  const styles = useThemedStyles(makeStyles);
 
   const recent = conversations
     .filter((c) => c.otherUser?.userId !== CS_USER_ID && !isStrangerConversation(c))
@@ -121,13 +122,13 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   wrapper: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   container: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 12,
     gap: 14,
   },
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     height: RING_SIZE,
     borderRadius: RING_SIZE / 2,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
     height: RING_SIZE,
     borderRadius: RING_SIZE / 2,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
     height: RING_SIZE,
     borderRadius: RING_SIZE / 2,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
   name: {
     marginTop: 6,
     fontSize: 11,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     textAlign: "center",
     width: ITEM_WIDTH,
   },

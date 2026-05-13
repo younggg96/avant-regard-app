@@ -45,7 +45,7 @@ import {
   VStack,
   type ActionSheetAction,
 } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { useAuthStore } from "../../store/authStore";
@@ -75,6 +75,7 @@ const AIPostPreviewScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
+  const styles = useThemedStyles(makeStyles);
   const { mode, answers, imageUrls } = route.params;
   const userId = useAuthStore((s) => s.user?.userId);
 
@@ -614,97 +615,98 @@ const AIPostPreviewScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  titleInput: {
-    fontSize: 17,
-    fontWeight: "500",
-    color: theme.colors.black,
-  },
-  contentInput: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    color: theme.colors.gray500,
-    minHeight: 180,
-    textAlignVertical: "top",
-  },
-  // -- 底部操作栏: 三档视觉层级 --
-  // 丢弃: ghost, 文字按钮, 占地最小, 防误触放最左
-  btnGhost: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  // 重新生成: outline, 次操作, 与丢弃同列但带 border 强调可点
-  btnOutline: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.white,
-  },
-  // 发布: 主 CTA, 黑底白字 + flex=1.6 抢视觉重量
-  btnPrimary: {
-    flex: 1.6,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    backgroundColor: theme.colors.black,
-  },
-  btnPrimaryDisabled: {
-    backgroundColor: theme.colors.gray400,
-  },
-  btnDisabled: {
-    opacity: 0.45,
-  },
-  // 生成失败卡片态: 与底栏主 CTA 视觉一致 (黑底白字), 但宽度自适应卡片。
-  errorRetryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "stretch",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: theme.colors.black,
-  },
-  errorBackBtn: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  // 目标基础类型展示条
-  targetTypeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: theme.colors.gray100,
-  },
-  targetTypeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    titleInput: {
+      fontSize: 17,
+      fontWeight: "500",
+      color: t.colors.text,
+    },
+    contentInput: {
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 22,
+      color: t.colors.text,
+      minHeight: 180,
+      textAlignVertical: "top",
+    },
+    // -- 底部操作栏: 三档视觉层级 --
+    // 丢弃: ghost, 文字按钮, 占地最小, 防误触放最左
+    btnGhost: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      borderRadius: 10,
+    },
+    // 重新生成: outline, 次操作, 与丢弃同列但带 border 强调可点
+    btnOutline: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
+    },
+    // 发布: 主 CTA, 黑底白字 + flex=1.6 抢视觉重量
+    btnPrimary: {
+      flex: 1.6,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      borderRadius: 10,
+      backgroundColor: t.colors.accent,
+    },
+    btnPrimaryDisabled: {
+      backgroundColor: t.colors.gray400,
+    },
+    btnDisabled: {
+      opacity: 0.45,
+    },
+    // 生成失败卡片态: 与底栏主 CTA 视觉一致 (黑底白字), 但宽度自适应卡片。
+    errorRetryBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      alignSelf: "stretch",
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      backgroundColor: t.colors.accent,
+    },
+    errorBackBtn: {
+      marginTop: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    // 目标基础类型展示条
+    targetTypeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      backgroundColor: t.colors.gray100,
+    },
+    targetTypeIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.card,
+    },
+  });
 
 export default AIPostPreviewScreen;

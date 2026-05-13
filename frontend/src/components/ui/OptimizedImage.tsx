@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Image, ImageProps, ImageSource, ImageLoadEventData } from 'expo-image';
-import { theme } from '../../theme';
+import { theme, useThemedStyles, type AppTheme } from '../../theme';
 import { getOptimizedImageUrl, ImageSize } from '../../utils/imageUtils';
 
 /**
@@ -108,6 +108,7 @@ const OptimizedImageInner = ({
   ...props
 }: OptimizedImageProps) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const containerHeightRef = useRef(0);
@@ -262,7 +263,7 @@ const OptimizedImageInner = ({
 export const OptimizedImage = React.memo(OptimizedImageInner);
 OptimizedImage.displayName = 'OptimizedImage';
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     position: 'relative',
     overflow: 'hidden',
@@ -278,7 +279,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 6,
     fontSize: 12,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     letterSpacing: 0.3,
   },
   errorPlaceholder: {

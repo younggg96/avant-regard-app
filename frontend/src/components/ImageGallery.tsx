@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { useThemedStyles, type AppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -37,6 +37,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(initialIndex);
   const [isFullscreenVisible, setIsFullscreenVisible] = useState(false);
   const [fullscreenImageIndex, setFullscreenImageIndex] = useState(0);
+  const styles = useThemedStyles(makeStyles);
 
   const imageListRef = useRef<FlatList>(null);
   const fullscreenListRef = useRef<FlatList>(null);
@@ -206,94 +207,95 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  imageContainer: {
-    position: "relative",
-    width: screenWidth,
-  },
-  imageSlide: {
-    width: screenWidth,
-  },
-  mainImage: {
-    width: screenWidth,
-  },
-  imageCounter: {
-    position: "absolute",
-    top: 16,
-    right: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  imageCounterText: {
-    color: theme.colors.white,
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-  thumbnailContainer: {
-    marginTop: 16,
-  },
-  thumbnailContent: {
-    paddingHorizontal: 20,
-  },
-  thumbnail: {
-    marginRight: 12,
-    borderRadius: 8,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  activeThumbnail: {
-    borderColor: theme.colors.gray600,
-  },
-  thumbnailImage: {
-    width: 60,
-    height: 80,
-  },
-  // 全屏查看样式
-  fullscreenContainer: {
-    flex: 1,
-    backgroundColor: "black",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullscreenImageContainer: {
-    width: screenWidth,
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullscreenImage: {
-    width: screenWidth,
-    height: "100%",
-  },
-  fullscreenCounter: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: theme.borderRadius.sm,
-  },
-  fullscreenCounterText: {
-    color: "white",
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    imageContainer: {
+      position: "relative",
+      width: screenWidth,
+    },
+    imageSlide: {
+      width: screenWidth,
+    },
+    mainImage: {
+      width: screenWidth,
+    },
+    imageCounter: {
+      position: "absolute",
+      top: 16,
+      right: 16,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    imageCounterText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+    thumbnailContainer: {
+      marginTop: 16,
+    },
+    thumbnailContent: {
+      paddingHorizontal: 20,
+    },
+    thumbnail: {
+      marginRight: 12,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    activeThumbnail: {
+      borderColor: t.colors.gray600,
+    },
+    thumbnailImage: {
+      width: 60,
+      height: 80,
+    },
+    // 全屏查看样式 — always dark
+    fullscreenContainer: {
+      flex: 1,
+      backgroundColor: "black",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    closeButton: {
+      position: "absolute",
+      top: 50,
+      right: 20,
+      zIndex: 10,
+      width: 40,
+      height: 40,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    fullscreenImageContainer: {
+      width: screenWidth,
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    fullscreenImage: {
+      width: screenWidth,
+      height: "100%",
+    },
+    fullscreenCounter: {
+      position: "absolute",
+      top: 50,
+      left: 20,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: t.borderRadius.sm,
+    },
+    fullscreenCounterText: {
+      color: "white",
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+    },
+  });
 
 export default ImageGallery;

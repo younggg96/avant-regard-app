@@ -23,7 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   CurrentLotteryPayload,
   LotteryRoundInfo,
@@ -60,6 +60,7 @@ export const MonthlyLotteryDetailModal: React.FC<Props> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [current, setCurrent] = useState<CurrentLotteryPayload | null>(null);
   const [history, setHistory] = useState<LotteryRoundInfo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -303,23 +304,23 @@ export const MonthlyLotteryDetailModal: React.FC<Props> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   headerTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
+    ...t.typography.h3,
+    color: t.colors.text,
   },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 32 },
@@ -333,33 +334,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    ...theme.typography.body,
-    color: theme.colors.gray300,
+    ...t.typography.body,
+    color: t.colors.gray300,
   },
   retryButton: {
-    marginTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+    marginTop: t.spacing.md,
+    paddingHorizontal: t.spacing.lg,
+    paddingVertical: t.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
   },
   retryButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.black,
+    ...t.typography.button,
+    color: t.colors.text,
   },
 
   card: {
-    backgroundColor: theme.colors.white,
-    padding: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
+    backgroundColor: t.colors.card,
+    padding: t.spacing.md,
+    marginHorizontal: t.spacing.md,
+    marginTop: t.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   sectionTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
+    ...t.typography.h4,
+    color: t.colors.text,
+    marginBottom: t.spacing.sm,
   },
 
   roundHeader: {
@@ -368,86 +369,86 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   roundMonth: {
-    ...theme.typography.h2,
-    color: theme.colors.black,
+    ...t.typography.h2,
+    color: t.colors.text,
   },
   statusChip: {
     borderWidth: 1,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   statusChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
+    ...t.typography.caption,
+    color: t.colors.text,
     letterSpacing: 1,
   },
   myStatus: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
+    marginTop: t.spacing.sm,
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    marginTop: t.spacing.md,
+    paddingTop: t.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   statCell: {
     flex: 1,
     alignItems: "center",
   },
   statValue: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
   },
   statLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
     letterSpacing: 1,
   },
   statDivider: {
     width: 1,
     height: 28,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.border,
   },
 
   prizeRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: t.spacing.sm,
   },
   prizeRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   prizeName: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
     fontWeight: "600",
   },
   prizeQuota: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
     letterSpacing: 1,
   },
   wonChip: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   wonChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     letterSpacing: 1,
   },
   emptyText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
     fontStyle: "italic",
   },
 
@@ -455,34 +456,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    paddingVertical: t.spacing.sm,
+    gap: t.spacing.sm,
   },
   historyMonth: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
     fontWeight: "600",
     width: 80,
   },
   historyStatus: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     letterSpacing: 1,
     width: 64,
   },
   historyMeta: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     flex: 1,
     textAlign: "right",
   },
 
   footerHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     textAlign: "center",
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
+    marginTop: t.spacing.lg,
+    paddingHorizontal: t.spacing.lg,
     lineHeight: 18,
   },
 });

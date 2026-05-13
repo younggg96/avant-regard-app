@@ -37,7 +37,7 @@ import {
   MonthlyLotteryEntry,
   getLevelTitleKey,
 } from "../components/level";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { useLevelStore } from "../store/levelStore";
 import { useFeatureFlagsStore } from "../store/featureFlagsStore";
@@ -50,6 +50,7 @@ const MyLevelScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
+  const styles = useThemedStyles(makeStyles);
   const status = useLevelStore((s) => s.status);
   const refresh = useLevelStore((s) => s.refresh);
   const loading = useLevelStore((s) => s.loading);
@@ -306,176 +307,177 @@ const MyLevelScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 48 },
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    scroll: { flex: 1 },
+    scrollContent: { paddingBottom: 48 },
 
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.gray300,
-  },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyText: {
+      ...t.typography.body,
+      color: t.colors.gray300,
+    },
 
-  hero: {
-    alignItems: "center",
-    paddingVertical: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  heroLevel: {
-    ...theme.typography.hero,
-    color: theme.colors.black,
-    fontSize: 42,
-    lineHeight: 48,
-    marginTop: theme.spacing.md,
-  },
-  heroTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.gray400,
-    marginTop: 4,
-    letterSpacing: 2,
-  },
-  zeroBadge: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  zeroBadgeText: {
-    ...theme.typography.h2,
-    color: theme.colors.gray200,
-  },
-  pendingChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: theme.spacing.md,
-  },
-  pendingChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
-    letterSpacing: 1,
-  },
+    hero: {
+      alignItems: "center",
+      paddingVertical: t.spacing.xl,
+      backgroundColor: t.colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    heroLevel: {
+      ...t.typography.hero,
+      color: t.colors.text,
+      fontSize: 42,
+      lineHeight: 48,
+      marginTop: t.spacing.md,
+    },
+    heroTitle: {
+      ...t.typography.h3,
+      color: t.colors.gray400,
+      marginTop: 4,
+      letterSpacing: 2,
+    },
+    zeroBadge: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    zeroBadgeText: {
+      ...t.typography.h2,
+      color: t.colors.gray200,
+    },
+    pendingChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.text,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginTop: t.spacing.md,
+    },
+    pendingChipText: {
+      ...t.typography.caption,
+      color: t.colors.textInverted,
+      letterSpacing: 1,
+    },
 
-  card: {
-    backgroundColor: theme.colors.white,
-    padding: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  cardTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
-  },
-  cardSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: 4,
-  },
-  noTaskText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
-    fontStyle: "italic",
-  },
+    card: {
+      backgroundColor: t.colors.card,
+      padding: t.spacing.md,
+      marginHorizontal: t.spacing.md,
+      marginTop: t.spacing.md,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    cardTitle: {
+      ...t.typography.h4,
+      color: t.colors.text,
+    },
+    cardSubtitle: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginTop: 4,
+    },
+    noTaskText: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray300,
+      fontStyle: "italic",
+    },
 
-  benefitRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-  },
-  benefitName: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  benefitDesc: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: 2,
-  },
-  benefitQuota: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: 4,
-    letterSpacing: 1,
-  },
-  offlineChip: {
-    borderWidth: 1,
-    borderColor: theme.colors.black,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  offlineChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
-  },
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: t.spacing.md,
+      paddingTop: t.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+    benefitName: {
+      ...t.typography.body,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    benefitDesc: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginTop: 2,
+    },
+    benefitQuota: {
+      ...t.typography.caption,
+      color: t.colors.gray400,
+      marginTop: 4,
+      letterSpacing: 1,
+    },
+    offlineChip: {
+      borderWidth: 1,
+      borderColor: t.colors.text,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    offlineChipText: {
+      ...t.typography.caption,
+      color: t.colors.text,
+    },
 
-  timelineRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: theme.colors.black,
-    marginTop: 6,
-    marginRight: theme.spacing.md,
-    backgroundColor: theme.colors.white,
-  },
-  timelineDotActive: {
-    backgroundColor: theme.colors.black,
-  },
-  timelineLv: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
-  },
-  timelineSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: 2,
-  },
-  timelineBody: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  timelineBenefit: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
-    marginTop: 4,
-  },
-  timelineMode: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: 6,
-    letterSpacing: 1,
-  },
-});
+    timelineRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginTop: t.spacing.md,
+      paddingTop: t.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+    timelineDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: t.colors.text,
+      marginTop: 6,
+      marginRight: t.spacing.md,
+      backgroundColor: t.colors.card,
+    },
+    timelineDotActive: {
+      backgroundColor: t.colors.text,
+    },
+    timelineLv: {
+      ...t.typography.h4,
+      color: t.colors.text,
+    },
+    timelineSubtitle: {
+      ...t.typography.caption,
+      color: t.colors.gray400,
+      marginTop: 2,
+    },
+    timelineBody: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray400,
+      marginTop: 6,
+      lineHeight: 20,
+    },
+    timelineBenefit: {
+      ...t.typography.bodySmall,
+      color: t.colors.text,
+      marginTop: 4,
+    },
+    timelineMode: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginTop: 6,
+      letterSpacing: 1,
+    },
+  });
 
 export default MyLevelScreen;

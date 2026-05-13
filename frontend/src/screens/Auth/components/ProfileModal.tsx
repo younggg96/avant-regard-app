@@ -12,7 +12,11 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "../../../theme";
+import {
+  theme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { ProfileForm } from "./ProfileForm";
 import { FormData, BrandOption } from "../types";
 
@@ -60,6 +64,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onComplete,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Modal
@@ -124,53 +129,54 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    letterSpacing: 0.5,
-  },
-  completeButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  completeButtonDisabled: {
-    backgroundColor: "#E8E8E8",
-  },
-  completeButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-    letterSpacing: 0.5,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardAvoid: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 40,
+    },
+    header: {
+      alignItems: "center",
+      marginBottom: 32,
+    },
+    title: {
+      fontSize: 28,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      letterSpacing: 0.5,
+    },
+    completeButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+      marginTop: 20,
+    },
+    completeButtonDisabled: {
+      backgroundColor: t.colors.gray100,
+    },
+    completeButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+      letterSpacing: 0.5,
+    },
+  });

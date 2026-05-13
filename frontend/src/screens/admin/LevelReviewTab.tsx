@@ -20,13 +20,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   adminLevelService,
   BackfillResponse,
   UpgradeRequestInfo,
 } from "../../services/levelService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import {
   Box,
   Button,
@@ -42,6 +42,8 @@ import { getLevelOptions } from "../../components/level/levelTitles";
 
 const LevelReviewTab: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [items, setItems] = useState<UpgradeRequestInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -557,37 +559,37 @@ const LevelReviewTab: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   sectionTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
   },
   sectionHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
     lineHeight: 18,
   },
   targetRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   targetBadge: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginRight: theme.spacing.md,
+    marginRight: t.spacing.md,
   },
   targetBadgeText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     letterSpacing: 1,
   },
   userIdText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   levelRow: {
     flexDirection: "row",
@@ -596,39 +598,39 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   levelChip: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
   },
   levelChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
   },
   levelChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   levelChipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   backfillResultBox: {
-    marginTop: theme.spacing.md,
-    padding: theme.spacing.md,
+    marginTop: t.spacing.md,
+    padding: t.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.gray100,
-    borderRadius: theme.borderRadius.md,
+    borderColor: t.colors.gray200,
+    backgroundColor: t.colors.gray100,
+    borderRadius: t.borderRadius.md,
   },
   backfillResultLine: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
   },
   backfillResultCaption: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     marginTop: 2,
   },
 });

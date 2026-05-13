@@ -15,11 +15,10 @@
  */
 import React, { useCallback } from "react";
 import { StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, ScrollView, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useThemedStyles, type AppTheme } from "../../../../theme";
 import { SCREEN_WIDTH } from "../../constants";
 import type { StoreEntryCardView } from "./types";
 import { PLAYFAIR } from "./playfair";
@@ -39,27 +38,30 @@ const CardItem: React.FC<{
   item: StoreEntryCardView;
   width: number;
   onPress: (card: StoreEntryCardView) => void;
-}> = React.memo(({ item, width, onPress }) => (
-  <Pressable
-    onPress={() => onPress(item)}
-    style={[styles.card, { width, height: width }]}
-  >
-    <OptimizedImage
-      uri={item.image}
-      size={ImageSize.MEDIUM}
-      style={styles.cardImage}
-      contentFit="cover"
-      lazy
-    />
-    <Box style={styles.cardOverlay} />
-    <Box style={styles.cardContent}>
-      <Text style={styles.cardLabel}>{item.label}</Text>
-      {!!item.labelEn && (
-        <Text style={styles.cardLabelEn}>{item.labelEn}</Text>
-      )}
-    </Box>
-  </Pressable>
-));
+}> = React.memo(({ item, width, onPress }) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      style={[styles.card, { width, height: width }]}
+    >
+      <OptimizedImage
+        uri={item.image}
+        size={ImageSize.MEDIUM}
+        style={styles.cardImage}
+        contentFit="cover"
+        lazy
+      />
+      <Box style={styles.cardOverlay} />
+      <Box style={styles.cardContent}>
+        <Text style={styles.cardLabel}>{item.label}</Text>
+        {!!item.labelEn && (
+          <Text style={styles.cardLabelEn}>{item.labelEn}</Text>
+        )}
+      </Box>
+    </Pressable>
+  );
+});
 CardItem.displayName = "CategoryCardItem";
 
 const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => {
@@ -121,14 +123,23 @@ const CategoryCardsImpl: React.FC<CategoryCardsProps> = ({ cards, onPress }) => 
 
 export const CategoryCards = React.memo(CategoryCardsImpl);
 
+// `scrollContent` doesn't depend on theme — kept as a static sheet so the
+// horizontal ScrollView contentContainerStyle reference stays stable.
 const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: HORIZONTAL_MARGIN,
   },
+});
+
+// Card visuals are a fixed dark overlay over an image; the background and
+// label color must NOT invert in dark mode (otherwise we'd get near-white text
+// on a near-black overlay). Hard-code the dark/light literals here while still
+// taking the (unused-but-passed) `t` so future theme-aware tweaks are easy.
+const makeStyles = (_t: AppTheme) => StyleSheet.create({
   card: {
     borderRadius: 4,
     overflow: "hidden",
-    backgroundColor: theme.colors.black,
+    backgroundColor: "#000000",
   },
   cardImage: {
     width: "100%",
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.bold,
     fontSize: 12,
     fontWeight: "700",
-    color: theme.colors.white,
+    color: "#FFFFFF",
     lineHeight: 18,
     letterSpacing: 0.2,
   },

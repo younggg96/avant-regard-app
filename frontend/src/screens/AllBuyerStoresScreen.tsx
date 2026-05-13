@@ -27,7 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { BuyerStore, getAllBuyerStores } from "../services/buyerStoreService";
 import { SCREEN_WIDTH } from "./Discover/constants";
@@ -45,6 +45,7 @@ type NavigationProp = {
 
 const AllBuyerStoresScreen: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
 
   const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -271,6 +272,7 @@ interface StoreCardProps {
 
 const StoreCardImpl: React.FC<StoreCardProps> = ({ store, onPress }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const cover = store.images?.[0];
   const location = [store.city, store.country].filter(Boolean).join(" · ");
 
@@ -329,10 +331,10 @@ const StoreCard = React.memo(StoreCardImpl);
 // Styles
 // ======================================================================
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   center: {
     flex: 1,
@@ -341,7 +343,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   searchBar: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -349,7 +351,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: theme.colors.black,
+    color: t.colors.text,
     padding: 0,
   },
   listContent: {
@@ -362,16 +364,16 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     overflow: "hidden",
   },
   cardCover: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   cardImage: {
@@ -381,12 +383,12 @@ const styles = StyleSheet.create({
   cardImagePlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   cardImagePlaceholderText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 26,
     fontWeight: "700",
     letterSpacing: 1,
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.65)",
   },
   merchantBadgeText: {
-    color: theme.colors.white,
+    color: "#FFFFFF",
     fontSize: 9,
     fontWeight: "700",
   },

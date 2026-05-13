@@ -12,10 +12,10 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService } from "../../services/adminService";
 import { Post } from "../../services/postService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { formatDate, getPostTypeName } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
@@ -25,6 +25,8 @@ import HalfStarRating from "../../components/HalfStarRating";
 const PendingTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -503,46 +505,46 @@ const PendingTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   postCardSelected: {
     borderWidth: 2,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
   },
   checkbox: {
-    marginRight: theme.spacing.sm,
+    marginRight: t.spacing.sm,
   },
   imageScroll: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   postImage: {
     width: 80,
     height: 80,
-    borderRadius: theme.borderRadius.md,
-    marginRight: theme.spacing.sm,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    marginRight: t.spacing.sm,
+    backgroundColor: t.colors.gray100,
   },
   moreImages: {
     width: 80,
     height: 80,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   moreImagesText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
     fontWeight: "600",
   },
   reviewInfo: {
-    backgroundColor: theme.colors.gray50,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
+    backgroundColor: t.colors.gray50,
+    padding: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.sm,
   },
   reviewText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     marginBottom: 2,
   },
   ratingContainer: {
@@ -550,71 +552,71 @@ const styles = StyleSheet.create({
   },
   batchToolbar: {
     alignItems: "center",
-    backgroundColor: theme.colors.white,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    backgroundColor: t.colors.background,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
+    gap: t.spacing.sm,
   },
   batchModeButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
     gap: 4,
   },
   batchModeButtonActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   batchModeButtonText: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
+    ...t.typography.caption,
+    color: t.colors.text,
     fontWeight: "600",
   },
   batchModeButtonTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   selectAllButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     gap: 4,
   },
   selectAllText: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
+    ...t.typography.caption,
+    color: t.colors.text,
     fontWeight: "500",
   },
   batchActions: {
     alignItems: "center",
-    gap: theme.spacing.sm,
+    gap: t.spacing.sm,
     marginLeft: "auto",
   },
   batchActionButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
     gap: 4,
   },
   batchApproveButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: t.colors.success,
   },
   batchRejectButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
   },
   batchActionButtonDisabled: {
     opacity: 0.5,
   },
   batchActionText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
 });

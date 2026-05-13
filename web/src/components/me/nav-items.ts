@@ -17,6 +17,7 @@ export const ME_NAV_ITEMS: MeNavItem[] = [
   { href: "/me/chats", label: "私信", labelKey: "meNav.chats", group: "消息", groupKey: "meNav.groupMessages" },
   { href: "/me/notifications", label: "通知", labelKey: "meNav.notifications", group: "消息", groupKey: "meNav.groupMessages" },
   { href: "/settings/profile", label: "编辑资料", labelKey: "meNav.editProfile", group: "设置", groupKey: "meNav.groupSettings" },
+  { href: "/settings/appearance", label: "外观", labelKey: "meNav.appearance", group: "设置", groupKey: "meNav.groupSettings" },
   { href: "/settings/password", label: "修改密码", labelKey: "meNav.password", group: "设置", groupKey: "meNav.groupSettings" },
   { href: "/settings/language", label: "语言", labelKey: "meNav.language", group: "设置", groupKey: "meNav.groupSettings" },
   { href: "/settings/blocked", label: "屏蔽用户", labelKey: "meNav.blocked", group: "设置", groupKey: "meNav.groupSettings" },

@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import type { Post as ApiPost } from "../../../../services/postService";
 import { PLAYFAIR } from "./playfair";
 
@@ -25,6 +25,8 @@ interface StorePostCardProps {
 }
 
 const StorePostCardImpl: React.FC<StorePostCardProps> = ({ post, onPress }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const cover = post.imageUrls?.[0];
   return (
     <Pressable onPress={() => onPress(post.id)} style={styles.card}>
@@ -71,7 +73,7 @@ const StorePostCardImpl: React.FC<StorePostCardProps> = ({ post, onPress }) => {
 
 export const StorePostCard = React.memo(StorePostCardImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   card: {
     flex: 1,
     paddingBottom: 16,
@@ -81,7 +83,7 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   image: {
@@ -97,21 +99,21 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.medium,
     fontSize: 13,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     lineHeight: 18,
     letterSpacing: -0.1,
   },
   author: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 11,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     flex: 1,
     marginRight: 6,
   },
   likeCount: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 11,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
 });
 

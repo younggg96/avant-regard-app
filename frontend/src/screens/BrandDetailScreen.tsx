@@ -18,7 +18,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { brandService, Brand } from "../services/brandService";
 import { showService, Show } from "../services/showService";
 import { postService, Post } from "../services/postService";
@@ -53,6 +53,7 @@ interface RouteParams {
 
 const BrandDetailScreen = () => {
   const { t, i18n } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -771,10 +772,10 @@ const BrandDetailScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -797,26 +798,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    marginTop: theme.spacing.md,
+    marginTop: t.spacing.md,
     fontSize: 14,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: "PlayfairDisplay-Regular",
   },
   errorText: {
-    marginTop: theme.spacing.md,
+    marginTop: t.spacing.md,
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     fontFamily: "PlayfairDisplay-Regular",
   },
   retryButton: {
-    marginTop: theme.spacing.md,
+    marginTop: t.spacing.md,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.lg,
+    backgroundColor: t.colors.text,
+    borderRadius: t.borderRadius.lg,
   },
   retryButtonText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 14,
     fontFamily: "PlayfairDisplay-Medium",
   },
@@ -831,14 +832,14 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   placeholderCover: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     justifyContent: "center",
     alignItems: "center",
   },
   placeholderInitial: {
     fontFamily: "PlayfairDisplay-Bold",
     fontSize: 80,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
   heroGradient: {
     position: "absolute",
@@ -865,7 +866,7 @@ const styles = StyleSheet.create({
   backButtonCircle: {
     width: 40,
     height: 40,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
@@ -879,7 +880,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontFamily: "PlayfairDisplay-Bold",
     fontSize: 32,
-    color: theme.colors.white,
+    color: "#FFFFFF",
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -900,14 +901,14 @@ const styles = StyleSheet.create({
   },
   contributorText: {
     fontSize: 12,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     fontFamily: "PlayfairDisplay-Regular",
   },
   // Info Section
   infoSection: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   quickInfo: {
     flexDirection: "row",
@@ -923,7 +924,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   founderSection: {
     marginBottom: 20,
@@ -936,8 +937,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.lg,
+    backgroundColor: t.colors.gray50,
+    borderRadius: t.borderRadius.lg,
   },
   followInfo: {
     flexDirection: "row",
@@ -947,12 +948,12 @@ const styles = StyleSheet.create({
   followersCount: {
     fontFamily: "PlayfairDisplay-Bold",
     fontSize: 20,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   followersLabel: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 13,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   followButton: {
     flexDirection: "row",
@@ -961,8 +962,8 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: theme.colors.black,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: t.colors.text,
+    borderRadius: t.borderRadius.md,
     minWidth: 90,
   },
   followButtonFollowing: {
@@ -971,15 +972,15 @@ const styles = StyleSheet.create({
   followButtonText: {
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 14,
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   followButtonTextFollowing: {
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   sectionLabel: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 4,
@@ -987,7 +988,7 @@ const styles = StyleSheet.create({
   founderName: {
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 16,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   linksSection: {
     gap: 12,
@@ -995,17 +996,17 @@ const styles = StyleSheet.create({
   linkButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     gap: 10,
   },
   linkText: {
     flex: 1,
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   // Tab Navigation
   tabContainer: {
@@ -1013,7 +1014,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   tab: {
     flexDirection: "row",
@@ -1025,20 +1026,20 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: theme.colors.black,
+    borderBottomColor: t.colors.text,
   },
   tabText: {
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 15,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   tabTextActive: {
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   tabCount: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 13,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     marginLeft: 6,
   },
   // Hero dots
@@ -1058,7 +1059,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.4)",
   },
   heroDotActive: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: "#FFFFFF",
     width: 18,
   },
   // Upload brand image
@@ -1071,12 +1072,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderStyle: "dashed",
   },
   uploadBrandImageText: {
     fontSize: 13,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "500",
   },
   // Shows Section
@@ -1090,13 +1091,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderStyle: "dashed",
   },
   uploadShowButtonText: {
     fontSize: 14,
     fontWeight: "500",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   showsSection: {
     padding: 20,
@@ -1133,7 +1134,7 @@ const styles = StyleSheet.create({
   showSeason: {
     fontFamily: "PlayfairDisplay-Bold",
     fontSize: 13,
-    color: theme.colors.white,
+    color: "#FFFFFF",
   },
   showCategory: {
     fontFamily: "PlayfairDisplay-Regular",
@@ -1159,15 +1160,15 @@ const styles = StyleSheet.create({
   },
   postCard: {
     width: SHOW_CARD_WIDTH,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 12,
     overflow: "hidden",
-    ...theme.shadows.sm,
+    ...t.shadows.sm,
   },
   postImage: {
     width: "100%",
     aspectRatio: 3 / 4,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   postContent: {
     padding: 10,
@@ -1175,7 +1176,7 @@ const styles = StyleSheet.create({
   postTitle: {
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 13,
-    color: theme.colors.black,
+    color: t.colors.text,
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -1194,14 +1195,14 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     marginRight: 6,
   },
   postAvatarPlaceholder: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 6,
@@ -1209,12 +1210,12 @@ const styles = StyleSheet.create({
   postAvatarText: {
     fontFamily: "PlayfairDisplay-Medium",
     fontSize: 10,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   postUsername: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
     flex: 1,
   },
   postStats: {
@@ -1225,7 +1226,7 @@ const styles = StyleSheet.create({
   postLikes: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 11,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   loadingPosts: {
     alignItems: "center",
@@ -1240,7 +1241,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "PlayfairDisplay-Regular",
     fontSize: 15,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     marginTop: 12,
   },
 });

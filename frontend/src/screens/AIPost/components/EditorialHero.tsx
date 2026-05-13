@@ -14,7 +14,7 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Text, VStack } from "../../../components/ui";
-import { playfairFonts, theme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
 
 interface EditorialHeroProps {
   titleEn: string;
@@ -27,6 +27,7 @@ const EditorialHero: React.FC<EditorialHeroProps> = ({
   titleZh,
   description,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   return (
     <VStack px="$lg" pt="$lg" pb="$md" gap="$sm">
       <Text style={styles.titleEn}>{titleEn}</Text>
@@ -49,26 +50,27 @@ const EditorialHero: React.FC<EditorialHeroProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  titleEn: {
-    fontFamily: playfairFonts.medium,
-    fontSize: 30,
-    lineHeight: 36,
-    letterSpacing: 0.5,
-    color: theme.colors.black,
-  },
-  titleZh: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 16,
-    lineHeight: 22,
-    color: theme.colors.gray400,
-  },
-  description: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 13,
-    lineHeight: 20,
-    color: theme.colors.gray300,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    titleEn: {
+      fontFamily: playfairFonts.medium,
+      fontSize: 30,
+      lineHeight: 36,
+      letterSpacing: 0.5,
+      color: t.colors.text,
+    },
+    titleZh: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 16,
+      lineHeight: 22,
+      color: t.colors.gray400,
+    },
+    description: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 13,
+      lineHeight: 20,
+      color: t.colors.gray300,
+    },
+  });
 
 export default EditorialHero;

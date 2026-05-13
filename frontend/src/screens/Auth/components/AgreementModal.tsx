@@ -11,7 +11,11 @@ import {
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import {
+  theme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { TermsContent } from "./TermsContent";
 import { PrivacyContent } from "./PrivacyContent";
 
@@ -29,6 +33,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
   onConfirm,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [activeTab, setActiveTab] = useState<"terms" | "privacy">("terms");
 
   return (
@@ -113,86 +118,87 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E8",
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 8,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 8,
-    backgroundColor: "#F5F5F5",
-  },
-  tabActive: {
-    backgroundColor: theme.colors.black,
-  },
-  tabText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray500,
-  },
-  tabTextActive: {
-    color: theme.colors.white,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  bottomContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#E8E8E8",
-    backgroundColor: theme.colors.white,
-  },
-  agreementHint: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  confirmButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  confirmButtonDisabled: {
-    backgroundColor: "#E8E8E8",
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    closeButton: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+    tabContainer: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      gap: 8,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: "center",
+      borderRadius: 8,
+      backgroundColor: t.colors.gray100,
+    },
+    tabActive: {
+      backgroundColor: t.colors.text,
+    },
+    tabText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray500,
+    },
+    tabTextActive: {
+      color: t.colors.textInverted,
+    },
+    contentContainer: {
+      flex: 1,
+      paddingHorizontal: 16,
+    },
+    bottomContainer: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      paddingBottom: 24,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+      backgroundColor: t.colors.background,
+    },
+    agreementHint: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    confirmButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    confirmButtonDisabled: {
+      backgroundColor: t.colors.gray100,
+    },
+    confirmButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+    },
+  });

@@ -5,7 +5,7 @@ import { Text, HStack, VStack, Pressable, Box } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { Post } from "../PostCard";
 import HalfStarRating from "../HalfStarRating";
 import { VideoPlayer } from "./VideoPlayer";
@@ -47,6 +47,7 @@ const VideoBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
   uri,
   frameRatio,
 }) => {
+  const contentStyles = useThemedStyles(makeContentStyles);
   const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / frameRatio };
   return (
     <VideoPlayer
@@ -62,6 +63,7 @@ const ImageBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
   uri,
   frameRatio,
 }) => {
+  const contentStyles = useThemedStyles(makeContentStyles);
   const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / frameRatio };
   return (
     <View style={[contentStyles.blockImageContainer, mediaSize]}>
@@ -82,6 +84,7 @@ const ContentBlockRenderer: React.FC<{
   frameRatio: number;
   onOpenMediaFullscreen?: () => void;
 }> = ({ block, frameRatio, onOpenMediaFullscreen }) => {
+  const contentStyles = useThemedStyles(makeContentStyles);
   if (block.type === "text") {
     if (!block.content.trim()) return null;
     return (
@@ -120,6 +123,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
   mediaUrisForViewer,
   hideFirstCoverImage = false,
 }) => {
+  const contentStyles = useThemedStyles(makeContentStyles);
   // 解析内容
   const contentBlocks = useMemo(
     () => parseContent(post.content?.description),
@@ -277,89 +281,90 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
   );
 };
 
-const contentStyles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    letterSpacing: -0.3,
-    lineHeight: 30,
-    marginBottom: 12,
-  },
-  description: {
-    lineHeight: 24,
-    letterSpacing: 0.2,
-    marginBottom: 16,
-  },
-  // 块格式样式
-  blocksContainer: {
-    marginBottom: 16,
-  },
-  blockText: {
-    lineHeight: 24,
-    letterSpacing: 0.2,
-    marginBottom: 16,
-  },
-  blockImageContainer: {
-    marginHorizontal: -20, // 让图片撑满屏幕宽度
-    marginBottom: 16,
-    backgroundColor: theme.colors.gray50,
-  },
-  reviewMeta: {
-    marginTop: 4,
-    gap: 14,
-  },
-  tagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "wrap",
-  },
-  brandTag: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 4,
-  },
-  brandTagText: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.white,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  productTag: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  productTagText: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    letterSpacing: 0.5,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  ratingText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray400,
-    letterSpacing: 0.5,
-  },
-});
+const makeContentStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingHorizontal: 20,
+      paddingTop: 20,
+      paddingBottom: 16,
+    },
+    title: {
+      letterSpacing: -0.3,
+      lineHeight: 30,
+      marginBottom: 12,
+    },
+    description: {
+      lineHeight: 24,
+      letterSpacing: 0.2,
+      marginBottom: 16,
+    },
+    // 块格式样式
+    blocksContainer: {
+      marginBottom: 16,
+    },
+    blockText: {
+      lineHeight: 24,
+      letterSpacing: 0.2,
+      marginBottom: 16,
+    },
+    blockImageContainer: {
+      marginHorizontal: -20, // 让图片撑满屏幕宽度
+      marginBottom: 16,
+      backgroundColor: t.colors.gray50,
+    },
+    reviewMeta: {
+      marginTop: 4,
+      gap: 14,
+    },
+    tagRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap",
+    },
+    brandTag: {
+      backgroundColor: t.colors.text,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 4,
+    },
+    brandTagText: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.textInverted,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    productTag: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 4,
+    },
+    productTagText: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      letterSpacing: 0.5,
+    },
+    ratingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    starsContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    ratingText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray400,
+      letterSpacing: 0.5,
+    },
+  });
 
 // 搭配单品组件
 interface OutfitItemsSectionProps {
@@ -369,6 +374,7 @@ interface OutfitItemsSectionProps {
 export const OutfitItemsSection: React.FC<OutfitItemsSectionProps> = ({
   items,
 }) => {
+  const outfitStyles = useThemedStyles(makeOutfitStyles);
   if (!items || items.length === 0) return null;
 
   return (
@@ -413,63 +419,64 @@ export const OutfitItemsSection: React.FC<OutfitItemsSectionProps> = ({
   );
 };
 
-const outfitStyles = StyleSheet.create({
-  container: {
-    paddingVertical: 20,
-  },
-  headerSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  headerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.gray100,
-  },
-  headerTitle: {
-    fontSize: 11,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-    letterSpacing: 3,
-    marginHorizontal: 16,
-  },
-  itemCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  itemImage: {
-    width: 64,
-    height: 80,
-    borderRadius: 4,
-    backgroundColor: theme.colors.gray100,
-  },
-  itemInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  itemBrand: {
-    fontSize: 10,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  itemName: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    marginBottom: 6,
-  },
-  itemPrice: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-});
+const makeOutfitStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 20,
+    },
+    headerSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      marginBottom: 16,
+    },
+    headerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: t.colors.gray100,
+    },
+    headerTitle: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+      letterSpacing: 3,
+      marginHorizontal: 16,
+    },
+    itemCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.gray100,
+    },
+    itemImage: {
+      width: 64,
+      height: 80,
+      borderRadius: 4,
+      backgroundColor: t.colors.gray100,
+    },
+    itemInfo: {
+      flex: 1,
+      marginLeft: 14,
+    },
+    itemBrand: {
+      fontSize: 10,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+      letterSpacing: 1.5,
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    itemName: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      marginBottom: 6,
+    },
+    itemPrice: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+  });

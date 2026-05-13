@@ -9,7 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   adminService,
   AllPostsResponse,
@@ -17,7 +17,7 @@ import {
   ReportedPostItem,
 } from "../../services/adminService";
 import { Post } from "../../services/postService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { formatDate, getPostTypeName } from "./adminUtils";
 import {
   Box,
@@ -40,12 +40,6 @@ type GradeFilter = "ALL" | "A" | "B" | "C" | "D" | "F" | "NONE";
 const GRADE_FILTER_KEYS: GradeFilter[] = ["ALL", "A", "B", "C", "D", "F", "NONE"];
 const STATUS_KEYS: StatusFilter[] = ["ALL", "PUBLISHED", "DRAFT", "HIDDEN"];
 const AUDIT_KEYS: AuditFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
-
-const AUDIT_COLORS: Record<string, string> = {
-  PENDING: "#F59E0B",
-  APPROVED: theme.colors.success,
-  REJECTED: theme.colors.error,
-};
 
 const getGradeLabels = (t: (key: string) => string): Record<string, string> => ({
   A: t("admin.gradeLabelA"),
@@ -75,6 +69,7 @@ const GRADE_REWARDS: Record<string, string> = {
 const PostsManagementTab = () => {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTab>("all");
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Box style={styles.container}>
@@ -121,6 +116,13 @@ const PostsManagementTab = () => {
 const AllPostsSubTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
+  const AUDIT_COLORS: Record<string, string> = {
+    PENDING: "#F59E0B",
+    APPROVED: theme.colors.success,
+    REJECTED: theme.colors.error,
+  };
   const [data, setData] = useState<AllPostsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -773,6 +775,8 @@ const AllPostsSubTab = () => {
 const ReportedPostsSubTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [data, setData] = useState<ReportedPostsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1105,87 +1109,87 @@ const ReportedPostsSubTab = () => {
 
 // ==================== Styles ====================
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
   },
   subTabBar: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    gap: t.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
+    borderBottomColor: t.colors.border,
+    backgroundColor: t.colors.background,
   },
   subTabItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
     gap: 4,
   },
   subTabItemActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   subTabText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontWeight: "500",
   },
   subTabTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   searchRow: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: t.spacing.sm,
+    marginBottom: t.spacing.md,
     alignItems: "center",
   },
   searchInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    ...theme.typography.body,
-    color: theme.colors.black,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
+    paddingHorizontal: t.spacing.md,
+    paddingVertical: t.spacing.sm,
+    ...t.typography.body,
+    color: t.colors.text,
   },
   filterSection: {
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   filterLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontWeight: "600",
     marginBottom: 6,
     marginTop: 4,
   },
   filterScroll: {
-    marginBottom: theme.spacing.xs,
+    marginBottom: t.spacing.xs,
   },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: theme.colors.gray100,
-    marginRight: theme.spacing.xs,
+    backgroundColor: t.colors.gray100,
+    marginRight: t.spacing.xs,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   filterChipText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   filterChipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   batchRow: {
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
     flexWrap: "wrap",
     gap: 6,
   },
@@ -1199,20 +1203,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#7C3AED",
   },
   batchBtnAll: {
-    backgroundColor: theme.colors.gray400,
+    backgroundColor: t.colors.gray400,
   },
   batchBtnGlobal: {
     backgroundColor: "#DC2626",
   },
   batchBtnText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontSize: 11,
     fontWeight: "600",
   },
   totalText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   auditBadge: {
     paddingHorizontal: 8,
@@ -1220,15 +1224,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   auditBadgeText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontSize: 10,
     fontWeight: "600",
   },
   gradeRow: {
     alignItems: "center",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
+    gap: t.spacing.sm,
+    marginBottom: t.spacing.sm,
     flexWrap: "wrap",
   },
   gradeBadge: {
@@ -1237,20 +1241,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   gradeBadgeText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontSize: 10,
     fontWeight: "700",
   },
   gradeRewardText: {
-    ...theme.typography.caption,
+    ...t.typography.caption,
     color: "#F59E0B",
     fontWeight: "600",
     fontSize: 11,
   },
   noGradeText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     fontSize: 11,
   },
   regradeBtn: {
@@ -1260,16 +1264,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   regradeBtnText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     fontSize: 10,
   },
   statsRow: {
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    gap: t.spacing.md,
+    marginBottom: t.spacing.sm,
     alignItems: "center",
   },
   statItem: {
@@ -1277,55 +1281,55 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   statText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   imageScroll: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   postImage: {
     width: 70,
     height: 70,
-    borderRadius: theme.borderRadius.md,
-    marginRight: theme.spacing.sm,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    marginRight: t.spacing.sm,
+    backgroundColor: t.colors.gray100,
   },
   moreImages: {
     width: 70,
     height: 70,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   moreImagesText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
     fontWeight: "600",
   },
   pagination: {
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: t.spacing.lg,
   },
   paginationText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
   },
   // Report card
   reportCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
     overflow: "hidden",
   },
   reportHeader: {
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
     backgroundColor: "#FFF8E1",
     borderBottomWidth: 1,
     borderBottomColor: "#FFE082",
   },
   reportReasonText: {
-    ...theme.typography.bodySmall,
+    ...t.typography.bodySmall,
     color: "#E65100",
     fontWeight: "600",
   },
@@ -1335,34 +1339,34 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   reportStatusText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontSize: 10,
     fontWeight: "600",
   },
   reportMeta: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     marginTop: 4,
   },
   reportDescription: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
     marginTop: 4,
     fontStyle: "italic",
   },
   reportPostContent: {
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   deletedPostBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   deletedPostText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
   },
 });
 

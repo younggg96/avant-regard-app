@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { Box, Text, ScrollView, VStack, HStack, Pressable } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 
 type PublishV2TypeSelectRouteParams = {
@@ -40,6 +40,7 @@ const PublishV2TypeSelectScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route =
     useRoute<RouteProp<{ params: PublishV2TypeSelectRouteParams }, "params">>();
+  const styles = useThemedStyles(makeStyles);
 
   const prefilledMedia = route.params?.prefilledMedia ?? [];
 
@@ -214,31 +215,32 @@ const PublishV2TypeSelectScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: theme.colors.gray300,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  confirmBtn: {
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    radio: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      borderColor: t.colors.gray300,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioActive: {
+      backgroundColor: t.colors.accent,
+      borderColor: t.colors.accent,
+    },
+    confirmBtn: {
+      height: 48,
+      borderRadius: 8,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
 
 export default PublishV2TypeSelectScreen;

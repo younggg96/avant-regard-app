@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
 import {
   moderationService,
@@ -41,6 +41,7 @@ export const ChatReportModal = ({
   onClose,
 }: ChatReportModalProps) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -144,52 +145,53 @@ export const ChatReportModal = ({
   );
 };
 
-const styles = StyleSheet.create({
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: theme.colors.black,
-    marginBottom: 16,
-  },
-  reasonItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    marginBottom: 6,
-    gap: 10,
-  },
-  reasonItemSelected: {
-    backgroundColor: theme.colors.gray100,
-  },
-  reasonText: {
-    flex: 1,
-    fontSize: 15,
-    color: theme.colors.gray300,
-  },
-  reasonTextSelected: {
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  submitBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.black,
-    alignItems: "center",
-  },
-  submitBtnDisabled: {
-    opacity: 0.4,
-  },
-  submitText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 20,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: t.colors.text,
+      marginBottom: 16,
+    },
+    reasonItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 14,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      marginBottom: 6,
+      gap: 10,
+    },
+    reasonItemSelected: {
+      backgroundColor: t.colors.gray100,
+    },
+    reasonText: {
+      flex: 1,
+      fontSize: 15,
+      color: t.colors.gray300,
+    },
+    reasonTextSelected: {
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    submitBtn: {
+      flex: 1,
+      paddingVertical: 16,
+      borderRadius: 8,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+    },
+    submitBtnDisabled: {
+      opacity: 0.4,
+    },
+    submitText: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+  });

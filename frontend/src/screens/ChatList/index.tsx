@@ -9,11 +9,12 @@ import ScreenHeader from "../../components/ScreenHeader";
 import { useChatStore } from "../../store/chatStore";
 import { Conversation } from "../../services/chatService";
 import { ConversationItem } from "./components/ConversationItem";
-import { styles } from "./styles";
+import { useChatListStyles } from "./styles";
 
 const ChatListScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useChatListStyles();
   const {
     conversations,
     isLoadingConversations,

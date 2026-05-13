@@ -1,8 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { theme } from "../../../theme";
+import { useThemedStyles, type AppTheme } from "../../../theme";
 
 export const MinorProtectionContent: React.FC = () => {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
       <Text style={styles.mainTitle}>
@@ -162,106 +163,107 @@ export const MinorProtectionContent: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 20,
-  },
-  mainTitle: {
-    fontSize: 20,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  lastUpdated: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  companyInfo: {
-    backgroundColor: theme.colors.gray50,
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  companyText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    lineHeight: 20,
-  },
-  intro: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  warning: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    backgroundColor: theme.colors.gray50,
-    padding: 16,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.black,
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  content: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  bulletContent: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginBottom: 6,
-    paddingLeft: 8,
-  },
-  highlight: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    lineHeight: 22,
-    marginTop: 12,
-    backgroundColor: theme.colors.gray50,
-    padding: 12,
-    borderRadius: 8,
-  },
-  contactInfo: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 24,
-    marginVertical: 12,
-    backgroundColor: theme.colors.gray50,
-    padding: 16,
-    borderRadius: 8,
-  },
-  footer: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E8E8E8",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 20,
+    },
+    mainTitle: {
+      fontSize: 20,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    lastUpdated: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginBottom: 4,
+    },
+    companyInfo: {
+      backgroundColor: t.colors.gray50,
+      padding: 12,
+      borderRadius: 8,
+      marginTop: 16,
+      marginBottom: 16,
+    },
+    companyText: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      lineHeight: 20,
+    },
+    intro: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    warning: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      backgroundColor: t.colors.gray50,
+      padding: 16,
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: t.colors.text,
+      marginBottom: 8,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    content: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      marginBottom: 8,
+    },
+    bulletContent: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      marginBottom: 6,
+      paddingLeft: 8,
+    },
+    highlight: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      lineHeight: 22,
+      marginTop: 12,
+      backgroundColor: t.colors.gray50,
+      padding: 12,
+      borderRadius: 8,
+    },
+    contactInfo: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 24,
+      marginVertical: 12,
+      backgroundColor: t.colors.gray50,
+      padding: 16,
+      borderRadius: 8,
+    },
+    footer: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginTop: 24,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+  });

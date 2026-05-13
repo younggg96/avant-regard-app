@@ -38,7 +38,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Image, Pressable, ScrollView, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { Alert } from "../utils/Alert";
 import {
   checkStoreProductFavorited,
@@ -102,6 +102,7 @@ interface ReplyTarget {
 
 const StoreProductDetailScreen: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { productId } = route.params ?? ({} as RouteParams);
@@ -850,6 +851,7 @@ const CommentItemImpl: React.FC<{
   onLike: () => void;
 }> = ({ comment, currentUserId, onReply, onDelete, onLike }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const isMine = currentUserId != null && comment.userId === currentUserId;
   const timestamp = comment.createdAt
     ? formatTimestamp(comment.createdAt)
@@ -935,10 +937,10 @@ const CommentItem = React.memo(CommentItemImpl);
 // Styles
 // ============================================================================
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   scroll: {
     flex: 1,
@@ -958,13 +960,13 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     position: "relative",
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   heroSlide: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   heroPlaceholder: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -989,7 +991,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   commentsLoading: {
     paddingVertical: 24,
@@ -1007,11 +1009,11 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   contentOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: t.colors.overlay,
     zIndex: 10,
   },
 });

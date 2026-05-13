@@ -9,7 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack } from "../ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 
 interface WantPopupProps {
   visible: boolean;
@@ -32,6 +32,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
   onWant,
   onDismiss,
 }) => {
+  const popupStyles = useThemedStyles(makePopupStyles);
   const translateY = useRef(new Animated.Value(120)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,48 +148,49 @@ export const WantPopup: React.FC<WantPopupProps> = ({
   );
 };
 
-const popupStyles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 80,
-    left: 12,
-    right: 12,
-    zIndex: 20,
-  },
-  content: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: 10,
-  },
-  thumbnail: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-  },
-  wantButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  wantButtonActive: {
-    borderColor: "#D4AF37",
-    backgroundColor: "rgba(212, 175, 55, 0.08)",
-  },
-  closeButton: {
-    padding: 4,
-  },
-});
+const makePopupStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      position: "absolute",
+      bottom: 80,
+      left: 12,
+      right: 12,
+      zIndex: 20,
+    },
+    content: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.card,
+      borderRadius: 14,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+      gap: 10,
+    },
+    thumbnail: {
+      width: 40,
+      height: 40,
+      borderRadius: 8,
+      backgroundColor: t.colors.gray100,
+    },
+    wantButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    wantButtonActive: {
+      borderColor: "#D4AF37",
+      backgroundColor: "rgba(212, 175, 55, 0.08)",
+    },
+    closeButton: {
+      padding: 4,
+    },
+  });

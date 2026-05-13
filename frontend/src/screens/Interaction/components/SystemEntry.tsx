@@ -6,7 +6,7 @@ import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Notification } from "../../../services/notificationService";
 import { formatTime, isChatNotification } from "../utils";
-import { styles } from "../styles";
+import { useInteractionStyles } from "../styles";
 
 interface SystemEntryProps {
   notifications: Notification[];
@@ -15,6 +15,7 @@ interface SystemEntryProps {
 
 export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
   const { t } = useTranslation();
+  const styles = useInteractionStyles();
   const systemNotifs = notifications.filter(
     (n) => (n.type === "system" || n.type === "mention") && !isChatNotification(n)
   );

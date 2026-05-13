@@ -1,10 +1,12 @@
-import React, { useEffect, useCallback, useState, useRef } from "react";
-import { View, AppState, AppStateStatus } from "react-native";
+import React, { useEffect, useCallback, useState, useRef, useMemo } from "react";
+import { View, AppState, AppStateStatus, useColorScheme } from "react-native";
 import {
   NavigationContainer,
   NavigationContainerRef,
   NavigationState,
   PartialState,
+  DefaultTheme as NavigationDefaultTheme,
+  DarkTheme as NavigationDarkTheme,
 } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -131,7 +133,13 @@ import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
 import CustomAlert from "./src/components/CustomAlert";
 
 // Theme
-import { theme } from "./src/theme";
+import {
+  getThemeByMode,
+  resolveThemeMode,
+  ThemeProvider,
+  useAppTheme,
+  type ThemePreference,
+} from "./src/theme";
 
 // Store
 import { useAuthStore } from "./src/store/authStore";
@@ -140,6 +148,7 @@ import { useAuthStore } from "./src/store/authStore";
 import { ToastProvider } from "./src/components/ToastProvider";
 import ProfileReminderModal from "./src/components/ProfileReminderModal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { userInfoService } from "./src/services/userInfoService";
 
 // 防止原生 splash screen 自动隐藏
 SplashScreen.preventAutoHideAsync().catch(() => { });
@@ -230,6 +239,7 @@ function AuthNavigator() {
 }
 
 function TabNavigator() {
+  const appTheme = useAppTheme();
   const { t } = useTranslation();
   // 统一从 notificationStore 读未读数。当页面内调用 markRead / markAllRead 时，
   // tab 角标会立刻更新，不用等 30 秒 polling。polling 仍保留作为兜底，覆盖
@@ -258,15 +268,15 @@ function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.white,
+          backgroundColor: appTheme.colors.card,
           borderTopWidth: 1,
-          borderTopColor: theme.colors.gray100,
+          borderTopColor: appTheme.colors.border,
           height: 76,
           paddingBottom: 24,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: theme.colors.black,
-        tabBarInactiveTintColor: theme.colors.gray400,
+        tabBarActiveTintColor: appTheme.colors.text,
+        tabBarInactiveTintColor: appTheme.colors.gray300,
         tabBarLabelStyle: {
           fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
           fontSize: 11,
@@ -346,6 +356,7 @@ function AppNavigator({
   onNavigateToAIPost: () => void;
   onNavigateToForum: () => void;
 }) {
+  const appTheme = useAppTheme();
   const { t } = useTranslation();
   const { isAuthenticated, user, shouldShowProfileReminder, updateLastProfileReminderTime } = useAuthStore();
   const [showProfileReminder, setShowProfileReminder] = useState(false);
@@ -641,9 +652,9 @@ function AppNavigator({
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: theme.colors.white,
+            backgroundColor: appTheme.colors.card,
           },
-          headerTintColor: theme.colors.black,
+          headerTintColor: appTheme.colors.text,
           headerTitleStyle: {
             fontFamily: "PlayfairDisplay-Bold",
             fontSize: 20,
@@ -982,7 +993,7 @@ function AppNavigator({
         ]}
         onClose={closeEngagementNudge}
         icon={activeEngagementNudge === "aiPost" ? "sparkles-outline" : "chatbubbles-outline"}
-        iconColor={theme.colors.black}
+        iconColor={appTheme.colors.text}
       />
 
       {/* 后台上传进度条 */}
@@ -1001,6 +1012,64 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const lastRouteNameRef = useRef<string | undefined>(undefined);
   const [engagementBehaviorSignal, setEngagementBehaviorSignal] = useState(0);
+  const systemColorScheme = useColorScheme();
+  const userId = useAuthStore((state) => state.user?.userId);
+  const updateUser = useAuthStore((state) => state.updateUser);
+  const themePreference = useAuthStore(
+    (state) => (state.user?.preferredTheme ?? "system") as ThemePreference
+  );
+  const resolvedThemeMode = resolveThemeMode(themePreference, systemColorScheme);
+  const appTheme = getThemeByMode(resolvedThemeMode);
+  const navigationTheme = useMemo(
+    () =>
+      resolvedThemeMode === "dark"
+        ? {
+            ...NavigationDarkTheme,
+            colors: {
+              ...NavigationDarkTheme.colors,
+              background: appTheme.colors.background,
+              card: appTheme.colors.card,
+              border: appTheme.colors.border,
+              text: appTheme.colors.text,
+              primary: appTheme.colors.text,
+            },
+          }
+        : {
+            ...NavigationDefaultTheme,
+            colors: {
+              ...NavigationDefaultTheme.colors,
+              background: appTheme.colors.background,
+              card: appTheme.colors.card,
+              border: appTheme.colors.border,
+              text: appTheme.colors.text,
+              primary: appTheme.colors.text,
+            },
+          },
+    [appTheme, resolvedThemeMode]
+  );
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    userInfoService
+      .getUserInfo(userId)
+      .then((info) => {
+        if (cancelled) return;
+        if (
+          info.preferredTheme === "system" ||
+          info.preferredTheme === "light" ||
+          info.preferredTheme === "dark"
+        ) {
+          updateUser({ preferredTheme: info.preferredTheme });
+        }
+      })
+      .catch((error) => {
+        console.log("Failed to sync theme preference:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [updateUser, userId]);
 
   useEffect(() => {
     async function prepare() {
@@ -1120,31 +1189,37 @@ export default function App() {
   }
 
   return (
-    <GluestackUIProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <ToastProvider>
-            <View style={{ flex: 1 }}>
-              <NavigationContainer
-                ref={navigationRef}
-                linking={LINKING_CONFIG}
-                onStateChange={handleNavigationStateChange}
-              >
-                <AppNavigator
-                  engagementBehaviorSignal={engagementBehaviorSignal}
-                  onNavigateToAIPost={handleNavigateToAIPost}
-                  onNavigateToForum={handleNavigateToForum}
-                />
-                <StatusBar style="dark" />
-              </NavigationContainer>
-              {showSplashVideo && (
-                <SplashVideo onFinish={handleSplashVideoFinish} />
-              )}
-              <MaintenanceOverlay />
-            </View>
-          </ToastProvider>
-        </SafeAreaProvider>
-      </QueryClientProvider>
+    <GluestackUIProvider
+      config={config}
+      colorMode={resolvedThemeMode}
+    >
+      <ThemeProvider value={appTheme}>
+        <QueryClientProvider client={queryClient}>
+          <SafeAreaProvider>
+            <ToastProvider>
+              <View style={{ flex: 1, backgroundColor: appTheme.colors.background }}>
+                <NavigationContainer
+                  ref={navigationRef}
+                  linking={LINKING_CONFIG}
+                  theme={navigationTheme}
+                  onStateChange={handleNavigationStateChange}
+                >
+                  <AppNavigator
+                    engagementBehaviorSignal={engagementBehaviorSignal}
+                    onNavigateToAIPost={handleNavigateToAIPost}
+                    onNavigateToForum={handleNavigateToForum}
+                  />
+                  <StatusBar style={resolvedThemeMode === "dark" ? "light" : "dark"} />
+                </NavigationContainer>
+                {showSplashVideo && (
+                  <SplashVideo onFinish={handleSplashVideoFinish} />
+                )}
+                <MaintenanceOverlay />
+              </View>
+            </ToastProvider>
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </GluestackUIProvider>
   );
 }

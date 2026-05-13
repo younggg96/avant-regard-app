@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { OptimizedImage } from "./ui";
 import { PostCoverMedia } from "./PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import { Show } from "../services/showService";
 import { Brand } from "../services/brandService";
 import {
@@ -105,6 +105,7 @@ const PostCardInner = ({
   coverImageTransition,
 }: PostCardProps) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   if (!post || !post.id || !post.author) {
     return null;
   }
@@ -294,178 +295,179 @@ const PostCardInner = ({
 const PostCard = React.memo(PostCardInner);
 PostCard.displayName = "PostCard";
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: theme.borderRadius.md,
-    overflow: "hidden",
-    ...theme.shadows.sm,
-  },
-  image: {
-    width: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
-  pendingImage: {
-    opacity: 0.85,
-  },
-  pendingBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "rgba(255, 165, 0, 0.9)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  badgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-    fontFamily: playfairFonts.medium,
-  },
-  // 驳回角标：饱和度高的红色 + 警告图标，与「审核中」的橘色明显区分，
-  // 让用户在瀑布流中一眼定位需要修改的违规帖子。
-  rejectedBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(220, 38, 38, 0.95)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-    gap: 3,
-  },
-  rejectedBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "700",
-    fontFamily: playfairFonts.medium,
-  },
-  communityBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  communityText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: playfairFonts.regular,
-  },
-  // 买手店帖子角标（migration 055）：和 community 角标视觉差异化, 用
-  // 浅色背景 + 店铺图标, 让消费者一眼区分「这是买手店发的」.
-  storeBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(20, 20, 20, 0.78)",
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-    maxWidth: 160,
-  },
-  storeText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    marginLeft: 4,
-    fontWeight: "500",
-    fontFamily: playfairFonts.medium,
-  },
-  titleArea: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
-  },
-  title: {
-    color: theme.colors.black,
-    fontWeight: "600",
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: playfairFonts.medium,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-  },
-  authorPressable: {
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
-  authorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.xs,
-  },
-  avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.gray100,
-  },
-  authorName: {
-    color: theme.colors.gray600,
-    fontWeight: "500",
-    fontSize: 12,
-    flex: 1,
-    fontFamily: playfairFonts.medium,
-  },
-  authorTitleBadge: {
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 1,
-    borderRadius: theme.borderRadius.sm,
-  },
-  authorTitleText: {
-    color: theme.colors.gray600,
-    fontSize: 9,
-    fontWeight: "500",
-    fontFamily: playfairFonts.medium,
-  },
-  likeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: theme.spacing.xs,
-  },
-  likeCount: {
-    color: theme.colors.gray400,
-    fontWeight: "600",
-    fontSize: 12,
-    fontFamily: playfairFonts.medium,
-  },
-  likeCountActive: {
-    color: "#FF3040",
-  },
-  textOnlyCover: {
-    backgroundColor: theme.colors.gray100,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    minHeight: 120,
-    justifyContent: "center",
-  },
-  textOnlyTitle: {
-    color: theme.colors.black,
-    fontWeight: "700",
-    fontSize: 16,
-    lineHeight: 22,
-    fontFamily: playfairFonts.bold,
-  },
-  textOnlyDesc: {
-    color: theme.colors.gray600,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: theme.spacing.sm,
-    fontFamily: playfairFonts.regular,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.md,
+      overflow: "hidden",
+      ...t.shadows.sm,
+    },
+    image: {
+      width: "100%",
+      backgroundColor: t.colors.gray100,
+    },
+    pendingImage: {
+      opacity: 0.85,
+    },
+    pendingBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      backgroundColor: "rgba(255, 165, 0, 0.9)",
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+    },
+    badgeText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "600",
+      fontFamily: playfairFonts.medium,
+    },
+    // 驳回角标：饱和度高的红色 + 警告图标，与「审核中」的橘色明显区分，
+    // 让用户在瀑布流中一眼定位需要修改的违规帖子。
+    rejectedBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(220, 38, 38, 0.95)",
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+      gap: 3,
+    },
+    rejectedBadgeText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "700",
+      fontFamily: playfairFonts.medium,
+    },
+    communityBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+    },
+    communityText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontFamily: playfairFonts.regular,
+    },
+    // 买手店帖子角标（migration 055）：和 community 角标视觉差异化, 用
+    // 浅色背景 + 店铺图标, 让消费者一眼区分「这是买手店发的」.
+    storeBadge: {
+      position: "absolute",
+      top: 8,
+      left: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "rgba(20, 20, 20, 0.78)",
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+      maxWidth: 160,
+    },
+    storeText: {
+      color: "#FFFFFF",
+      fontSize: 11,
+      marginLeft: 4,
+      fontWeight: "500",
+      fontFamily: playfairFonts.medium,
+    },
+    titleArea: {
+      paddingHorizontal: t.spacing.sm,
+      paddingTop: t.spacing.sm,
+      paddingBottom: t.spacing.xs,
+    },
+    title: {
+      color: t.colors.text,
+      fontWeight: "600",
+      fontSize: 14,
+      lineHeight: 20,
+      fontFamily: playfairFonts.medium,
+    },
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: t.spacing.sm,
+      paddingBottom: t.spacing.sm,
+    },
+    authorPressable: {
+      flex: 1,
+      marginRight: t.spacing.sm,
+    },
+    authorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
+    },
+    avatar: {
+      width: 20,
+      height: 20,
+      borderRadius: t.borderRadius.full,
+      backgroundColor: t.colors.gray100,
+    },
+    authorName: {
+      color: t.colors.gray600,
+      fontWeight: "500",
+      fontSize: 12,
+      flex: 1,
+      fontFamily: playfairFonts.medium,
+    },
+    authorTitleBadge: {
+      backgroundColor: t.colors.gray100,
+      paddingHorizontal: t.spacing.xs,
+      paddingVertical: 1,
+      borderRadius: t.borderRadius.sm,
+    },
+    authorTitleText: {
+      color: t.colors.gray600,
+      fontSize: 9,
+      fontWeight: "500",
+      fontFamily: playfairFonts.medium,
+    },
+    likeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: t.spacing.xs,
+    },
+    likeCount: {
+      color: t.colors.gray400,
+      fontWeight: "600",
+      fontSize: 12,
+      fontFamily: playfairFonts.medium,
+    },
+    likeCountActive: {
+      color: "#FF3040",
+    },
+    textOnlyCover: {
+      backgroundColor: t.colors.gray100,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.lg,
+      minHeight: 120,
+      justifyContent: "center",
+    },
+    textOnlyTitle: {
+      color: t.colors.text,
+      fontWeight: "700",
+      fontSize: 16,
+      lineHeight: 22,
+      fontFamily: playfairFonts.bold,
+    },
+    textOnlyDesc: {
+      color: t.colors.gray600,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: t.spacing.sm,
+      fontFamily: playfairFonts.regular,
+    },
+  });
 
 export default PostCard;

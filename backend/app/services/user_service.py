@@ -84,6 +84,7 @@ class UserService:
             coverUrl=info.get("cover_url", ""),
             primaryTitle=primary_title,
             preferredLanguage=info.get("preferred_language"),
+            preferredTheme=info.get("preferred_theme", "system"),
         )
 
     def update_user_info(self, user_id: int, **kwargs) -> Optional[UserInfo]:
@@ -343,6 +344,7 @@ class UserService:
                 coverUrl=info.get("cover_url", ""),
                 primaryTitle=self._get_primary_title(user_id),
                 preferredLanguage=info.get("preferred_language"),
+                preferredTheme=info.get("preferred_theme", "system"),
             )
         else:
             return UserInfo(
@@ -354,6 +356,7 @@ class UserService:
                 avatarUrl="",
                 coverUrl="",
                 primaryTitle=self._get_primary_title(user_id),
+                preferredTheme="system",
             )
 
     def get_contribution_leaderboard(self, limit: int = 20) -> List[dict]:
@@ -434,6 +437,16 @@ class UserService:
         if not info_result.data:
             return None
         self.db.table("user_info").update({"preferred_language": language}).eq("user_id", user_id).execute()
+        return self.get_user_info(user_id)
+
+    def update_theme_preference(self, user_id: int, theme: str) -> Optional[UserInfo]:
+        """更新用户主题偏好"""
+        if theme not in ("system", "light", "dark"):
+            return None
+        info_result = self.db.table("user_info").select("id").eq("user_id", user_id).execute()
+        if not info_result.data:
+            return None
+        self.db.table("user_info").update({"preferred_theme": theme}).eq("user_id", user_id).execute()
         return self.get_user_info(user_id)
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:

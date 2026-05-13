@@ -35,6 +35,7 @@ export interface AuthUser {
   is_admin: boolean;
   userType: string;
   profileCompleted?: boolean;
+  preferredTheme?: "system" | "light" | "dark";
 }
 
 interface AuthTokens {
@@ -133,7 +134,15 @@ async function hydrateProfile(userId: number, token: string) {
     if (data?.avatarUrl) {
       const state = useAuthStore.getState();
       if (state.user && state.user.userId === userId) {
-        state.updateUser({ avatar: data.avatarUrl });
+        state.updateUser({
+          avatar: data.avatarUrl,
+          preferredTheme:
+            data.preferredTheme === "light" ||
+            data.preferredTheme === "dark" ||
+            data.preferredTheme === "system"
+              ? data.preferredTheme
+              : undefined,
+        });
       }
     }
     if (data?.preferredLanguage && (data.preferredLanguage === "zh" || data.preferredLanguage === "en")) {
@@ -167,6 +176,7 @@ export const useAuthStore = create<AuthStore>()(
           is_admin: response.is_admin,
           userType: response.userType,
           avatar: currentUser?.avatar,
+          preferredTheme: currentUser?.preferredTheme,
           profileCompleted:
             currentUser?.userId === response.userId
               ? currentUser.profileCompleted
@@ -249,6 +259,7 @@ export const useAuthStore = create<AuthStore>()(
             is_admin: response.is_admin,
             userType: response.userType,
             avatar: currentUser?.avatar,
+            preferredTheme: currentUser?.preferredTheme,
             profileCompleted: currentUser?.profileCompleted,
           };
 

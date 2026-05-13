@@ -23,7 +23,7 @@ import {
     OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
@@ -55,6 +55,7 @@ const MyLikesScreen = () => {
     const { t } = useTranslation();
     const navigation = useNavigation();
     const { user } = useAuthStore();
+    const appTheme = useAppTheme();
     const [activeTab, setActiveTab] = useState<TabType>("posts");
     const contentScrollViewRef = useRef<RNScrollView>(null);
 
@@ -463,7 +464,7 @@ const MyLikesScreen = () => {
 
     return (
         <SafeAreaView
-            style={{ flex: 1, backgroundColor: theme.colors.white }}
+            style={{ flex: 1, backgroundColor: appTheme.colors.background }}
             edges={["top"]}
         >
             <ScreenHeader title={t("myLikes.title")} showBack={true} />

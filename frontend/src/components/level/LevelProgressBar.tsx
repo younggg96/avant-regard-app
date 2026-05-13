@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import { LevelTaskProgress } from "../../services/levelService";
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 
 export const LevelProgressBar: React.FC<Props> = ({ task, compact }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const pct = task.target > 0
     ? Math.max(0, Math.min(1, task.progress / task.target))
     : 0;
@@ -47,7 +48,7 @@ export const LevelProgressBar: React.FC<Props> = ({ task, compact }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   row: { marginBottom: 14 },
   rowCompact: { marginBottom: 8 },
   labelRow: {
@@ -63,41 +64,41 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   label: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   labelCompact: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   count: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     letterSpacing: 0.5,
   },
   countCompact: {
-    fontFamily: theme.typography.caption.fontFamily,
+    fontFamily: t.typography.caption.fontFamily,
     fontSize: 11,
     lineHeight: 14,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     letterSpacing: 0.5,
   },
   countDone: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "600",
   },
   track: {
     height: 3,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     overflow: "hidden",
   },
   trackCompact: {
     height: 2,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
 });

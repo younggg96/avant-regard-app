@@ -15,7 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { userInfoService, Gender } from "../services/userInfoService";
 import { brandService } from "../services/brandService";
@@ -49,6 +49,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const { user, setProfileCompleted, updateLastProfileReminderTime } = useAuthStore();
 
   // 表单状态
@@ -565,315 +566,316 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-  },
-  hintContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 24,
-    gap: 8,
-  },
-  hintText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    flex: 1,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    marginBottom: 8,
-  },
-  input: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  bioInput: {
-    minHeight: 100,
-    textAlignVertical: "top",
-    paddingTop: 12,
-  },
-  preferenceInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
-    paddingTop: 12,
-  },
-  charCount: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    textAlign: "right",
-    marginTop: 4,
-  },
-  pickerButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  pickerText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    flex: 1,
-  },
-  pickerPlaceholder: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    flex: 1,
-  },
-  pickerOptionsContainer: {
-    marginTop: 8,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  pickerOptions: {
-    maxHeight: 200,
-  },
-  pickerOptionsSmall: {
-    maxHeight: 150,
-  },
-  pickerOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E8",
-  },
-  pickerOptionSelected: {
-    backgroundColor: theme.colors.black,
-  },
-  pickerOptionText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-  },
-  pickerOptionTextSelected: {
-    color: theme.colors.white,
-    fontFamily: "PlayfairDisplay-Medium",
-  },
-  genderContainer: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  genderOption: {
-    flex: 1,
-    paddingVertical: 14,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  genderOptionSelected: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  genderOptionText: {
-    fontSize: 15,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray400,
-  },
-  genderOptionTextSelected: {
-    color: theme.colors.white,
-  },
-  selectedCount: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    marginTop: 6,
-  },
-  buttonContainer: {
-    marginTop: 24,
-    gap: 12,
-  },
-  mainButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  mainButtonDisabled: {
-    backgroundColor: "#E8E8E8",
-  },
-  mainButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-  },
-  laterButton: {
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  laterButtonText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray400,
-    textDecorationLine: "underline",
-  },
-  // 品牌选择 Modal 样式
-  brandModalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  brandModalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E8",
-  },
-  brandModalTitle: {
-    fontSize: 17,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-  brandModalCloseButton: {
-    padding: 4,
-  },
-  brandSearchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    gap: 8,
-  },
-  brandSearchInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    paddingVertical: 0,
-  },
-  brandLoadingContainer: {
-    padding: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandLoadingText: {
-    marginTop: 8,
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-  },
-  brandItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  brandItemSelected: {
-    backgroundColor: "#F8F8F8",
-  },
-  brandInfo: {
-    flex: 1,
-  },
-  brandName: {
-    fontSize: 15,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-  },
-  brandNameSelected: {
-    fontFamily: "PlayfairDisplay-Medium",
-  },
-  brandCategory: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    marginTop: 2,
-  },
-  brandCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.gray300,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  brandCheckboxSelected: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  brandEmptyList: {
-    padding: 40,
-    alignItems: "center",
-  },
-  brandEmptyText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-  },
-  brandLoadMoreContainer: {
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  brandConfirmButton: {
-    margin: 20,
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  brandConfirmButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardAvoid: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 40,
+    },
+    header: {
+      alignItems: "center",
+      marginBottom: 24,
+    },
+    title: {
+      fontSize: 28,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+    },
+    hintContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.gray100,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 24,
+      gap: 8,
+    },
+    hintText: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      flex: 1,
+    },
+    inputContainer: {
+      marginBottom: 20,
+    },
+    inputLabel: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    input: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      backgroundColor: t.colors.gray100,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    },
+    bioInput: {
+      minHeight: 100,
+      textAlignVertical: "top",
+      paddingTop: 12,
+    },
+    preferenceInput: {
+      minHeight: 80,
+      textAlignVertical: "top",
+      paddingTop: 12,
+    },
+    charCount: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      textAlign: "right",
+      marginTop: 4,
+    },
+    pickerButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: t.colors.gray100,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    pickerText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      flex: 1,
+    },
+    pickerPlaceholder: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      flex: 1,
+    },
+    pickerOptionsContainer: {
+      marginTop: 8,
+      backgroundColor: t.colors.gray100,
+      borderRadius: 12,
+      overflow: "hidden",
+    },
+    pickerOptions: {
+      maxHeight: 200,
+    },
+    pickerOptionsSmall: {
+      maxHeight: 150,
+    },
+    pickerOption: {
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.divider,
+    },
+    pickerOptionSelected: {
+      backgroundColor: t.colors.text,
+    },
+    pickerOptionText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+    },
+    pickerOptionTextSelected: {
+      color: t.colors.textInverted,
+      fontFamily: "PlayfairDisplay-Medium",
+    },
+    genderContainer: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    genderOption: {
+      flex: 1,
+      paddingVertical: 14,
+      backgroundColor: t.colors.gray100,
+      borderRadius: 12,
+      alignItems: "center",
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    genderOptionSelected: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    genderOptionText: {
+      fontSize: 15,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray400,
+    },
+    genderOptionTextSelected: {
+      color: t.colors.textInverted,
+    },
+    selectedCount: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      marginTop: 6,
+    },
+    buttonContainer: {
+      marginTop: 24,
+      gap: 12,
+    },
+    mainButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+    },
+    mainButtonDisabled: {
+      backgroundColor: t.colors.gray100,
+    },
+    mainButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+    },
+    laterButton: {
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    laterButtonText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray400,
+      textDecorationLine: "underline",
+    },
+    // 品牌选择 Modal 样式
+    brandModalContainer: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    brandModalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    brandModalTitle: {
+      fontSize: 17,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+    brandModalCloseButton: {
+      padding: 4,
+    },
+    brandSearchContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginHorizontal: 16,
+      marginVertical: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: t.colors.gray100,
+      borderRadius: 10,
+      gap: 8,
+    },
+    brandSearchInput: {
+      flex: 1,
+      fontSize: 15,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      paddingVertical: 0,
+    },
+    brandLoadingContainer: {
+      padding: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandLoadingText: {
+      marginTop: 8,
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+    },
+    brandItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.divider,
+    },
+    brandItemSelected: {
+      backgroundColor: t.colors.gray50,
+    },
+    brandInfo: {
+      flex: 1,
+    },
+    brandName: {
+      fontSize: 15,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.text,
+    },
+    brandNameSelected: {
+      fontFamily: "PlayfairDisplay-Medium",
+    },
+    brandCategory: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      marginTop: 2,
+    },
+    brandCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: t.colors.gray300,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    brandCheckboxSelected: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    brandEmptyList: {
+      padding: 40,
+      alignItems: "center",
+    },
+    brandEmptyText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+    },
+    brandLoadMoreContainer: {
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    brandConfirmButton: {
+      margin: 20,
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    brandConfirmButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+    },
+  });
 
 export default ProfileReminderModal;

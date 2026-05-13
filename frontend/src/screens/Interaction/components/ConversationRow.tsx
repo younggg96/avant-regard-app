@@ -9,7 +9,7 @@ import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
 import { CS_USER_ID, CS_DISPLAY_NAME } from "../constants";
 import { formatTime, formatLastMessage } from "../utils";
-import { styles } from "../styles";
+import { useInteractionStyles } from "../styles";
 
 const APP_LOGO = require("../../../../assets/images/logo.jpg");
 
@@ -21,6 +21,7 @@ interface ConversationRowProps {
 
 export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowProps) => {
   const { t } = useTranslation();
+  const styles = useInteractionStyles();
   const other = item.otherUser;
   const hasUnread = item.unreadCount > 0;
   const isCs = other?.userId === CS_USER_ID;

@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import {
@@ -38,6 +38,7 @@ const FollowersScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "Followers">>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
   const [followers, setFollowers] = useState<FollowingUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -284,127 +285,128 @@ const FollowersScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backButton: {
-    padding: theme.spacing.xs,
-  },
-  headerTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-  },
-  headerRight: {
-    width: 40,
-  },
-  content: {
-    flex: 1,
-  },
-  loadingState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  loadingText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.sm,
-  },
-  userList: {
-    paddingVertical: theme.spacing.sm,
-  },
-  userItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  userInfo: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: theme.spacing.md,
-  },
-  avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    ...theme.typography.body,
-    color: theme.colors.white,
-    fontWeight: "600",
-  },
-  userDetails: {
-    flex: 1,
-  },
-  username: {
-    ...theme.typography.body,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginBottom: 4,
-  },
-  bio: {
-    ...theme.typography.caption,
-    color: theme.colors.gray600,
-    marginBottom: 4,
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  location: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginLeft: 2,
-  },
-  followButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 4,
-    backgroundColor: theme.colors.black,
-  },
-  followingButton: {
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray300,
-  },
-  followButtonText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
-    fontWeight: "500",
-  },
-  followingButtonText: {
-    color: theme.colors.gray600,
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: theme.spacing.xl * 2,
-  },
-  emptyText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.md,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.divider,
+    },
+    backButton: {
+      padding: t.spacing.xs,
+    },
+    headerTitle: {
+      ...t.typography.h3,
+      color: t.colors.text,
+    },
+    headerRight: {
+      width: 40,
+    },
+    content: {
+      flex: 1,
+    },
+    loadingState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: t.spacing.xl * 2,
+    },
+    loadingText: {
+      ...t.typography.caption,
+      color: t.colors.gray400,
+      marginTop: t.spacing.sm,
+    },
+    userList: {
+      paddingVertical: t.spacing.sm,
+    },
+    userItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.divider,
+    },
+    userInfo: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    avatar: {
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      marginRight: t.spacing.md,
+    },
+    avatarPlaceholder: {
+      backgroundColor: t.colors.gray500,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    avatarText: {
+      ...t.typography.body,
+      color: t.colors.textInverted,
+      fontWeight: "600",
+    },
+    userDetails: {
+      flex: 1,
+    },
+    username: {
+      ...t.typography.body,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 4,
+    },
+    bio: {
+      ...t.typography.caption,
+      color: t.colors.gray600,
+      marginBottom: 4,
+    },
+    locationContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    location: {
+      ...t.typography.caption,
+      color: t.colors.gray400,
+      marginLeft: 2,
+    },
+    followButton: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.sm,
+      borderRadius: 4,
+      backgroundColor: t.colors.accent,
+    },
+    followingButton: {
+      backgroundColor: t.colors.background,
+      borderWidth: 1,
+      borderColor: t.colors.gray300,
+    },
+    followButtonText: {
+      ...t.typography.caption,
+      color: t.colors.textInverted,
+      fontWeight: "500",
+    },
+    followingButtonText: {
+      color: t.colors.gray600,
+    },
+    emptyState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: t.spacing.xl * 2,
+    },
+    emptyText: {
+      ...t.typography.body,
+      color: t.colors.gray400,
+      marginTop: t.spacing.md,
+    },
+  });
 
 export default FollowersScreen;

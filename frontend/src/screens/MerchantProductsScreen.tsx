@@ -46,7 +46,7 @@ import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import ScreenHeader from "../components/ScreenHeader";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { Alert } from "../utils/Alert";
 import { uploadImageFromUri } from "./admin/adminUtils";
 import {
@@ -113,6 +113,7 @@ const EMPTY_FORM: ProductForm = {
 
 const MerchantProductsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantProducts">>();
   const merchantId = route.params?.merchantId;
@@ -1633,13 +1634,13 @@ function labelOfStatus(s: ProductStatus, t: (k: string) => string): string {
 const FONT_REGULAR = "PlayfairDisplay-Regular";
 const FONT_BOLD = "PlayfairDisplay-Bold";
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   listContent: {
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
     paddingBottom: 24,
   },
   searchInput: {
@@ -1647,7 +1648,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     fontSize: 14,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
   },
   chipRow: {
@@ -1659,24 +1660,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.card,
   },
   chipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
   },
   chipDashed: {
     borderStyle: "dashed",
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
   },
   chipText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: FONT_REGULAR,
   },
   chipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   productCover: {
     width: 96,
@@ -1690,23 +1691,23 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
   },
   cardActionText: {
     fontSize: 11,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
   },
   pagerBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     borderRadius: 4,
   },
   pagerText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: FONT_REGULAR,
   },
   modalScroll: {
@@ -1714,21 +1715,21 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     fontSize: 13,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: FONT_REGULAR,
   },
   linkText: {
     fontSize: 12,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
     textDecorationLine: "underline",
   },
   input: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
   },
   textArea: {
@@ -1740,7 +1741,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   imageThumbImg: {
@@ -1762,9 +1763,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",

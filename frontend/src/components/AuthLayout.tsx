@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 
 interface AuthLayoutProps {
   title: string;
@@ -28,6 +28,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   centerContent = true,
 }) => {
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -63,52 +64,53 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.lg,
-    position: "relative",
-    minHeight: 100,
-    justifyContent: "center",
-  },
-  backButton: {
-    position: "absolute",
-    left: theme.spacing.md,
-    top: theme.spacing.lg,
-    padding: theme.spacing.sm,
-    zIndex: 1,
-  },
-  titleContainer: {
-    alignItems: "center",
-    paddingHorizontal: theme.spacing.xl,
-  },
-  title: {
-    ...theme.typography.h1,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
-    textAlign: "center",
-  },
-  subtitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.md,
-  },
-  contentCentered: {
-    justifyContent: "center",
-    paddingBottom: theme.spacing.xxl,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    header: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.lg,
+      position: "relative",
+      minHeight: 100,
+      justifyContent: "center",
+    },
+    backButton: {
+      position: "absolute",
+      left: t.spacing.md,
+      top: t.spacing.lg,
+      padding: t.spacing.sm,
+      zIndex: 1,
+    },
+    titleContainer: {
+      alignItems: "center",
+      paddingHorizontal: t.spacing.xl,
+    },
+    title: {
+      ...t.typography.h1,
+      color: t.colors.text,
+      marginBottom: t.spacing.sm,
+      textAlign: "center",
+    },
+    subtitle: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray400,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: t.spacing.md,
+    },
+    contentCentered: {
+      justifyContent: "center",
+      paddingBottom: t.spacing.xxl,
+    },
+  });
 
 export default AuthLayout;

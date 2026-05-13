@@ -14,7 +14,7 @@ import {
   HStack,
   Input,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageCropper from "../components/ImageCropper";
 import BatchImageCropper from "../components/BatchImageCropper";
@@ -59,6 +59,7 @@ const PublishReviewScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishReviewRouteParams }, "params">>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
@@ -1046,32 +1047,33 @@ const PublishReviewScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)",
-  } as any,
-  videoThumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  } as any,
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    videoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.2)",
+    } as any,
+    videoThumbOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.3)",
+    } as any,
+  });
 
 export default PublishReviewScreen;

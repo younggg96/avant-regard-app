@@ -13,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
 import { theme } from "../theme";
+// NOTE: This modal is intentionally always dark (full-screen image preview),
+// so static StyleSheet colors below remain hardcoded.
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -81,7 +83,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
         {/* 关闭按钮 */}
         <Pressable style={styles.closeButtonTop} onPress={onClose}>
-          <Ionicons name="close" size={30} color={theme.colors.white} />
+          <Ionicons name="close" size={30} color="#FFFFFF" />
         </Pressable>
 
         {/* 图片计数器 */}

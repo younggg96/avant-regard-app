@@ -16,7 +16,7 @@ import { theme } from "../../../theme";
 import { Gender } from "../../../services/userInfoService";
 import { FormData, BrandOption } from "../types";
 import { PROVINCES, AGE_RANGES } from "../constants";
-import { styles } from "../styles";
+import { useAuthStyles } from "../styles";
 import { Alert } from "../../../utils/Alert";
 
 interface ProfileFormProps {
@@ -58,6 +58,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   onLoadMoreBrands,
 }) => {
   const { t } = useTranslation();
+  const styles = useAuthStyles();
 
   // 切换品牌选择
   const handleToggleBrand = (brandId: number) => {

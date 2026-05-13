@@ -39,7 +39,7 @@ import {
   Text,
   VStack,
 } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { ImageSize } from "../../utils/imageUtils";
@@ -59,6 +59,7 @@ const CHIPS: ImageBriefChip[] = [
 const AIPostImageBriefScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const styles = useThemedStyles(makeStyles);
 
   const [localUris, setLocalUris] = useState<string[]>([]);
   const [chip, setChip] = useState<ImageBriefChip>("RECENT_BUY");
@@ -301,28 +302,29 @@ const AIPostImageBriefScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  removeBtn: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  noteInput: {
-    minHeight: 56,
-    fontSize: 13,
-    color: theme.colors.gray500,
-    textAlignVertical: "top",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    removeBtn: {
+      position: "absolute",
+      top: 4,
+      right: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    noteInput: {
+      minHeight: 56,
+      fontSize: 13,
+      color: t.colors.text,
+      textAlignVertical: "top",
+    },
+  });
 
 export default AIPostImageBriefScreen;

@@ -14,7 +14,7 @@ import { ActivityFilter, FILTER_TABS, EXCLUDED_TYPES } from "./constants";
 import { matchesFilter } from "./utils";
 import { NotificationRow } from "./components/NotificationRow";
 import { FilterChip } from "./components/FilterChip";
-import { styles } from "./styles";
+import { useActivityStyles } from "./styles";
 
 const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
 
@@ -22,6 +22,7 @@ const ActivityScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
+  const styles = useActivityStyles();
   const systemOnly = route.params?.filter === "system";
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [refreshing, setRefreshing] = useState(false);

@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Box, Text, Pressable, HStack } from "./ui";
-import { theme } from "../theme";
+import { useThemedStyles, type AppTheme } from "../theme";
 
 interface TabItem<T extends string> {
   id: T;
@@ -24,6 +24,7 @@ function TabButton<T extends string>({
   isActive: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable style={styles.tabItem} onPress={onPress}>
       <Text
@@ -67,7 +68,7 @@ export function CenteredTabBar<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   tabItem: {
     paddingVertical: 8,
     paddingHorizontal: 20,
@@ -79,18 +80,18 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   tabTextActive: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "600",
   },
   tabTextInactive: {
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
   tabIndicator: {
     position: "absolute",
     bottom: 0,
     width: 24,
     height: 2,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 1,
   },
   badge: {
@@ -100,13 +101,13 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 3,
   },
   badgeText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 10,
     fontWeight: "700",
   },

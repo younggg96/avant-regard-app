@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 
 type BadgeSize = "sm" | "md";
 
@@ -31,6 +31,7 @@ const SIZE_CONFIG: Record<BadgeSize, { minWidth: number; height: number; fontSiz
 };
 
 export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
+  const styles = useThemedStyles(makeStyles);
   const { showBorder = false, style } = props;
 
   if (props.variant === "icon") {
@@ -84,7 +85,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   base: {
     position: "absolute",
     top: -4,
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
   },
   border: {
     borderWidth: 2,
-    borderColor: theme.colors.white,
+    borderColor: t.colors.background,
   },
   iconContainer: {
     width: 18,
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     bottom: -2,
   },
   text: {
-    color: theme.colors.white,
+    color: "#FFFFFF",
     fontWeight: "700",
     textAlign: "center",
     includeFontPadding: false,

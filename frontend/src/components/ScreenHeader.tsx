@@ -7,7 +7,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { Box, Text, Pressable, HStack, VStack } from "./ui";
-import { theme } from "../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 export interface HeaderAction {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -48,6 +48,8 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   boldTitle = false,
 }) => {
   const navigation = useNavigation();
+  const t = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -67,7 +69,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           alignItems="start"
           onPress={handleBackPress}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={t.colors.text} />
         </Pressable>
       );
     }
@@ -81,7 +83,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           alignItems="start"
           onPress={handleBackPress}
         >
-          <Ionicons name="close" size={24} color={theme.colors.black} />
+          <Ionicons name="close" size={24} color={t.colors.text} />
         </Pressable>
       );
     }
@@ -120,8 +122,8 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                   size={20}
                   color={
                     action.style === "primary"
-                      ? theme.colors.white
-                      : theme.colors.gray400
+                      ? t.colors.textInverted
+                      : t.colors.gray400
                   }
                 />
               )}
@@ -158,12 +160,12 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 
   return (
     <Box
-      bg="$white"
+      bg={t.colors.card}
       px="$lg"
       pt={variant === "large" ? "$xl" : variant === "minimal" ? "$md" : "$sm"}
       pb={variant === "large" ? "$lg" : "$sm"}
       borderBottomWidth={borderless ? 0 : 1}
-      borderBottomColor="$gray100"
+      borderBottomColor={t.colors.border}
       sx={containerStyle}
     >
       <HStack alignItems="center" justifyContent="between">
@@ -197,31 +199,33 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  boldTitle: {
-    ...theme.typography.h1,
-    fontWeight: "600",
-  },
-  titleLarge: {
-    ...theme.typography.hero,
-    fontSize: 32,
-    fontWeight: "300",
-    color: theme.colors.black,
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  titleMinimal: {
-    ...theme.typography.body,
-    fontSize: 18,
-    fontWeight: "500",
-    color: theme.colors.black,
-    textAlign: "center",
-  },
-  title: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
-    textAlign: "center",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    boldTitle: {
+      ...t.typography.h1,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
+    titleLarge: {
+      ...t.typography.hero,
+      fontSize: 32,
+      fontWeight: "300",
+      color: t.colors.text,
+      letterSpacing: 1,
+      textAlign: "center",
+    },
+    titleMinimal: {
+      ...t.typography.body,
+      fontSize: 18,
+      fontWeight: "500",
+      color: t.colors.text,
+      textAlign: "center",
+    },
+    title: {
+      ...t.typography.h4,
+      color: t.colors.text,
+      textAlign: "center",
+    },
+  });
 
 export default ScreenHeader;

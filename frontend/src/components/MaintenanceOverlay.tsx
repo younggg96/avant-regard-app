@@ -10,9 +10,11 @@ import {
   DEFAULT_MAINTENANCE_MESSAGE,
   useMaintenanceStore,
 } from "../store/maintenanceStore";
+import { useThemedStyles, type AppTheme } from "../theme";
 
 export default function MaintenanceOverlay() {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const isDown = useMaintenanceStore((s) => s.isDown);
   const message = useMaintenanceStore((s) => s.message);
 
@@ -38,43 +40,44 @@ export default function MaintenanceOverlay() {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 9999,
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 32,
-    paddingHorizontal: 40,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  icon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#222",
-    marginBottom: 8,
-  },
-  message: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  spinner: {
-    marginTop: 16,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    },
+    card: {
+      backgroundColor: t.colors.card,
+      borderRadius: 16,
+      paddingVertical: 32,
+      paddingHorizontal: 40,
+      alignItems: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    icon: {
+      fontSize: 40,
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    message: {
+      fontSize: 14,
+      color: t.colors.gray400,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    spinner: {
+      marginTop: 16,
+    },
+  });

@@ -12,7 +12,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Text, HStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
 import {
@@ -22,6 +22,7 @@ import {
 
 const BlockedUsersScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [users, setUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [unblockingId, setUnblockingId] = useState<number | null>(null);
@@ -131,40 +132,41 @@ const BlockedUsersScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.gray100,
-  },
-  unblockButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    minWidth: 88,
-    alignItems: "center",
-  },
-  unblockButtonDisabled: {
-    opacity: 0.5,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 120,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: t.colors.gray100,
+    },
+    unblockButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      minWidth: 88,
+      alignItems: "center",
+    },
+    unblockButtonDisabled: {
+      opacity: 0.5,
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingTop: 120,
+    },
+  });
 
 export default BlockedUsersScreen;

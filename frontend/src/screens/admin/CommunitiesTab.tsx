@@ -11,7 +11,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   adminService,
   AdminCommunity,
@@ -20,7 +20,7 @@ import {
   UpdateCommunityParams,
 } from "../../services/adminService";
 import { Post } from "../../services/postService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { formatDate, pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
@@ -36,6 +36,8 @@ const getCategoryNames = (t: (key: string) => string): Record<CommunityCategory,
 const CommunitiesTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const CATEGORY_NAMES = getCategoryNames(t);
   const [communities, setCommunities] = useState<AdminCommunity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -636,43 +638,43 @@ const CommunitiesTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   communitiesList: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   addCommunityButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.black,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.sm,
+    backgroundColor: t.colors.text,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.md,
+    gap: t.spacing.sm,
   },
   addCommunityButtonText: {
-    ...theme.typography.button,
-    color: theme.colors.white,
+    ...t.typography.button,
+    color: t.colors.textInverted,
   },
   communitiesHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   communitiesHeaderText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   communityCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
     overflow: "hidden",
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
   },
   communityCoverImage: {
     width: "100%",
     height: 100,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   communityCoverPlaceholder: {
     alignItems: "center",
@@ -680,91 +682,91 @@ const styles = StyleSheet.create({
   },
   communityStatusBadge: {
     position: "absolute",
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
+    top: t.spacing.sm,
+    right: t.spacing.sm,
+    paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
   },
   communityStatusActive: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: t.colors.success,
   },
   communityStatusInactive: {
-    backgroundColor: theme.colors.gray400,
+    backgroundColor: t.colors.gray400,
   },
   communityStatusText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   communityOfficialBadge: {
     position: "absolute",
-    top: theme.spacing.sm,
-    left: theme.spacing.sm,
+    top: t.spacing.sm,
+    left: t.spacing.sm,
     backgroundColor: "#FFD700",
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
   },
   communityOfficialText: {
-    ...theme.typography.caption,
-    color: theme.colors.black,
+    ...t.typography.caption,
+    color: "#000000",
     fontWeight: "600",
   },
   communityInfo: {
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   communityHeader: {
     alignItems: "center",
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   communityIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   communityIconPlaceholder: {
     alignItems: "center",
     justifyContent: "center",
   },
   communityIconText: {
-    ...theme.typography.h4,
-    color: theme.colors.gray400,
+    ...t.typography.h4,
+    color: t.colors.gray400,
   },
   communityTitleContainer: {
     flex: 1,
-    marginLeft: theme.spacing.sm,
+    marginLeft: t.spacing.sm,
   },
   communityTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
   },
   communitySlug: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   communityDescription: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginBottom: theme.spacing.sm,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
+    marginBottom: t.spacing.sm,
   },
   communityMeta: {
     alignItems: "center",
-    gap: theme.spacing.md,
+    gap: t.spacing.md,
   },
   communityMetaItem: {
     alignItems: "center",
     gap: 4,
   },
   communityMetaText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   communityCategory: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
-    backgroundColor: theme.colors.black,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
+    backgroundColor: t.colors.text,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -772,51 +774,51 @@ const styles = StyleSheet.create({
   },
   communityActions: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.border,
   },
   communityActionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: t.spacing.sm,
     gap: 4,
   },
   communityActionText: {
-    ...theme.typography.caption,
-    color: theme.colors.white,
+    ...t.typography.caption,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   communityPostsBtn: {
     backgroundColor: "#3B82F6",
   },
   communityEditBtn: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   communityEnableBtn: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: t.colors.success,
   },
   communityDisableBtn: {
     backgroundColor: "#F59E0B",
   },
   communityDeleteBtn: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
   },
   communityModalContent: {
     height: "85%",
     width: "92%",
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   communityFormImageRow: {
     alignItems: "center",
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    gap: t.spacing.md,
+    marginBottom: t.spacing.md,
   },
   communityFormIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   communityFormIconPlaceholder: {
     alignItems: "center",
@@ -825,9 +827,9 @@ const styles = StyleSheet.create({
   communityFormCover: {
     width: "100%",
     height: 120,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
-    marginBottom: theme.spacing.sm,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
+    marginBottom: t.spacing.sm,
   },
   communityFormCoverPlaceholder: {
     alignItems: "center",
@@ -840,71 +842,71 @@ const styles = StyleSheet.create({
   },
   communityPostsHeader: {
     alignItems: "center",
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.border,
   },
   communityPostsCloseBtn: {
-    padding: theme.spacing.xs,
+    padding: t.spacing.xs,
   },
   communityPostsTitle: {
-    ...theme.typography.h4,
-    color: theme.colors.black,
+    ...t.typography.h4,
+    color: t.colors.text,
     flex: 1,
-    marginLeft: theme.spacing.sm,
+    marginLeft: t.spacing.sm,
   },
   communityPostsCount: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   communityPostsList: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   communityPostCard: {
     alignItems: "center",
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    backgroundColor: t.colors.gray50,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   communityPostInfo: {
     flex: 1,
   },
   communityPostId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginBottom: 2,
   },
   communityPostTitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     fontWeight: "500",
     marginBottom: 4,
   },
   communityPostMeta: {
-    gap: theme.spacing.sm,
+    gap: t.spacing.sm,
   },
   communityPostAuthor: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   communityPostDate: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   communityPostActions: {
-    gap: theme.spacing.xs,
+    gap: t.spacing.xs,
   },
   communityPostViewBtn: {
-    backgroundColor: theme.colors.gray200,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: t.colors.gray200,
+    padding: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
   },
   communityPostDeleteBtn: {
-    backgroundColor: theme.colors.error,
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    backgroundColor: t.colors.error,
+    padding: t.spacing.sm,
+    borderRadius: t.borderRadius.md,
   },
 });
 

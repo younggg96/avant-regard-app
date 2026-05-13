@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import { Box, Text, ActionSheet } from "../components/ui";
 import type { ActionSheetAction } from "../components/ui";
 import ScreenHeader from "../components/ScreenHeader";
@@ -23,6 +23,8 @@ import { isStrangerConversation } from "./Interaction/utils";
 const StrangerMessagesScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const appTheme = useAppTheme();
+  const s = useThemedStyles(makeStyles);
   const {
     conversations,
     loadConversations,
@@ -226,7 +228,7 @@ const StrangerMessagesScreen = () => {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: theme.colors.white }}
+      style={{ flex: 1, backgroundColor: appTheme.colors.background }}
       edges={["top"]}
     >
       <ScreenHeader
@@ -362,7 +364,7 @@ const StrangerMessagesScreen = () => {
   );
 };
 
-const s = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   checkbox: {
     paddingLeft: 16,
     paddingRight: 4,
@@ -377,7 +379,7 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   deleteBtn: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 10,

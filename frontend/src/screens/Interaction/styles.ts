@@ -1,26 +1,32 @@
 import { StyleSheet } from "react-native";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme, lightTheme } from "../../theme";
 
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  swipeContainer: {
-    flex: 1,
-  },
-  row: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
-  },
-  rowUnread: {
-    backgroundColor: `${theme.colors.accent}05`,
-  },
-  csAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-});
+const makeInteractionStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    swipeContainer: {
+      flex: 1,
+    },
+    row: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.border,
+    },
+    rowUnread: {
+      backgroundColor: `${t.colors.accent}05`,
+    },
+    csAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+    },
+  });
+
+export const useInteractionStyles = () => useThemedStyles(makeInteractionStyles);
+
+/** Legacy static export — light only. Migrate to the hook for dark-mode. */
+export const styles = makeInteractionStyles(lightTheme);

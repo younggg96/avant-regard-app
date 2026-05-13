@@ -27,7 +27,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
-import { theme } from "../../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { Alert } from "../../../../utils/Alert";
 import { SCREEN_WIDTH } from "../../constants";
 import { StoreSelector } from "./StoreSelector";
@@ -97,6 +97,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   onOpenProductList,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const {
     stores,
     selectedStoreId,
@@ -429,6 +430,7 @@ const ContentTabBarImpl: React.FC<ContentTabBarProps> = ({
   postsCount,
 }) => {
   const { t } = useTranslation();
+  const tabStyles = useThemedStyles(makeTabStyles);
   return (
     <HStack
       mx={GRID_HORIZONTAL_PADDING}
@@ -465,7 +467,7 @@ const ContentTabBarImpl: React.FC<ContentTabBarProps> = ({
 
 const ContentTabBar = React.memo(ContentTabBarImpl);
 
-const tabStyles = StyleSheet.create({
+const makeTabStyles = (t: AppTheme) => StyleSheet.create({
   tabHit: {
     position: "relative",
     flexDirection: "row",
@@ -475,13 +477,13 @@ const tabStyles = StyleSheet.create({
   label: {
     fontFamily: PLAYFAIR.medium,
     fontSize: 13,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     fontWeight: "500",
     letterSpacing: 1.2,
   },
   labelActive: {
     fontFamily: PLAYFAIR.bold,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "700",
   },
   activeBar: {
@@ -490,7 +492,7 @@ const tabStyles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 3,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
 });
 
@@ -508,6 +510,7 @@ interface PostGridProps {
 
 const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const rows = useMemo(() => {
     const grouped: ApiPost[][] = [];
     for (let i = 0; i < posts.length; i += 2) {
@@ -602,6 +605,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   onFavoriteToggle,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   // 两列等宽，FlatList 在 ScrollView 里嵌套会报警，所以手写 2 列 row。
   const rows = useMemo(() => {
     const grouped: BuyerStoreProduct[][] = [];
@@ -671,11 +675,11 @@ const ProductGrid = React.memo(ProductGridImpl);
 
 export const BuyerTabContent = React.memo(BuyerTabContentImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   root: {
     width: SCREEN_WIDTH,
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   scroll: {
     flex: 1,

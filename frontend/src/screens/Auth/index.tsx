@@ -10,9 +10,10 @@ import {
   AgreementModal,
   ProfileModal,
 } from "./components";
-import { styles } from "./styles";
+import { useAuthStyles } from "./styles";
 
 const AuthScreen = () => {
+  const styles = useAuthStyles();
   const {
     // 状态
     mode,

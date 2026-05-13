@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, ScrollView } from "../../../components/ui";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import {
   showService,
   Show,
@@ -36,6 +36,7 @@ const MyContributionTab: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   const [subTab, setSubTab] = useState<ContributionSubTab>("show");
   const [myShows, setMyShows] = useState<Show[]>([]);
@@ -294,78 +295,79 @@ const MyContributionTab: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  subFilterRow: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 8,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  chipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: theme.colors.gray600,
-  },
-  chipTextActive: {
-    color: theme.colors.white,
-  },
-  chipCount: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-  },
-  chipCountActive: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  scrollContainer: {
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    paddingVertical: 80,
-    alignItems: "center",
-  },
-  cardGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: CARD_PADDING,
-    paddingTop: 4,
-    justifyContent: "space-between",
-  },
-  emptyState: {
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: theme.colors.gray400,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    subFilterRow: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+      gap: 8,
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 12,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: t.colors.card,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    chipActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.gray600,
+    },
+    chipTextActive: {
+      color: t.colors.textInverted,
+    },
+    chipCount: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: t.colors.gray400,
+    },
+    chipCountActive: {
+      color: "rgba(255,255,255,0.7)",
+    },
+    scrollContainer: {
+      paddingBottom: 32,
+    },
+    loadingContainer: {
+      paddingVertical: 80,
+      alignItems: "center",
+    },
+    cardGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: CARD_PADDING,
+      paddingTop: 4,
+      justifyContent: "space-between",
+    },
+    emptyState: {
+      justifyContent: "center",
+      alignItems: "center",
+      paddingVertical: 80,
+      paddingHorizontal: 32,
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginTop: t.spacing.md,
+      marginBottom: t.spacing.sm,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.colors.gray400,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+  });
 
 export default MyContributionTab;

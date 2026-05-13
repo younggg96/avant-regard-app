@@ -10,22 +10,27 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUploadStore, UploadStatus } from "../store/uploadStore";
-import { theme } from "../theme";
+import { theme, useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import { isVideoUrl } from "../services/postService";
 import { VideoThumbnailView } from "./VideoThumbnailView";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 
-const STATUS_CONFIG_KEYS: Record<UploadStatus, { labelKey: string; hintKey: string; color: string }> = {
-  idle: { labelKey: "", hintKey: "", color: "transparent" },
-  uploading: { labelKey: "upload.uploading", hintKey: "upload.uploadingHint", color: theme.colors.black },
-  publishing: { labelKey: "upload.publishing", hintKey: "upload.publishingHint", color: theme.colors.black },
-  success: { labelKey: "upload.success", hintKey: "upload.successHint", color: theme.colors.success },
-  error: { labelKey: "upload.error", hintKey: "upload.errorHint", color: theme.colors.error },
+// Keys only — color values are resolved per-render against the active theme
+// so the banner re-tints when the user switches modes (StyleSheet.create
+// freezes anything captured at module load, hence the deferred lookup).
+const STATUS_CONFIG_KEYS: Record<UploadStatus, { labelKey: string; hintKey: string; colorKey: "transparent" | "text" | "success" | "error" }> = {
+  idle: { labelKey: "", hintKey: "", colorKey: "transparent" },
+  uploading: { labelKey: "upload.uploading", hintKey: "upload.uploadingHint", colorKey: "text" },
+  publishing: { labelKey: "upload.publishing", hintKey: "upload.publishingHint", colorKey: "text" },
+  success: { labelKey: "upload.success", hintKey: "upload.successHint", colorKey: "success" },
+  error: { labelKey: "upload.error", hintKey: "upload.errorHint", colorKey: "error" },
 };
 
 export default function UploadProgressBanner() {
   const { t } = useTranslation();
+  const appTheme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const task = useUploadStore((s) => s.currentTask);
   const dismissTask = useUploadStore((s) => s.dismissTask);
   const retryUpload = useUploadStore((s) => s.retryUpload);
@@ -70,7 +75,10 @@ export default function UploadProgressBanner() {
   const config = {
     label: configKeys.labelKey ? t(configKeys.labelKey) : "",
     hint: configKeys.hintKey ? t(configKeys.hintKey) : "",
-    color: configKeys.color,
+    color:
+      configKeys.colorKey === "transparent"
+        ? "transparent"
+        : appTheme.colors[configKeys.colorKey],
   };
 
   const handlePress = () => {
@@ -177,85 +185,86 @@ export default function UploadProgressBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 9999,
-    elevation: 10,
-  },
-  banner: {
-    backgroundColor: theme.colors.white,
-    marginHorizontal: 12,
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  bannerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  thumbnailContainer: {
-    position: "relative",
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    overflow: "hidden",
-    marginRight: 12,
-  },
-  thumbnail: {
-    width: 48,
-    height: 48,
-  },
-  thumbnailPlaceholder: {
-    backgroundColor: theme.colors.gray100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  progressOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  progressText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: theme.colors.black,
-    marginBottom: 2,
-  },
-  hint: {
-    fontSize: 12,
-    color: theme.colors.gray300,
-  },
-  closeButton: {
-    padding: 6,
-    marginLeft: 4,
-  },
-  retryButton: {
-    padding: 6,
-    marginLeft: 2,
-  },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: theme.colors.gray100,
-  },
-  progressBar: {
-    height: "100%",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      zIndex: 9999,
+      elevation: 10,
+    },
+    banner: {
+      backgroundColor: t.colors.card,
+      marginHorizontal: 12,
+      borderRadius: 12,
+      overflow: "hidden",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
+      elevation: 6,
+    },
+    bannerContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    thumbnailContainer: {
+      position: "relative",
+      width: 48,
+      height: 48,
+      borderRadius: 8,
+      overflow: "hidden",
+      marginRight: 12,
+    },
+    thumbnail: {
+      width: 48,
+      height: 48,
+    },
+    thumbnailPlaceholder: {
+      backgroundColor: t.colors.gray100,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    progressOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    progressText: {
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    contentContainer: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 2,
+    },
+    hint: {
+      fontSize: 12,
+      color: t.colors.gray300,
+    },
+    closeButton: {
+      padding: 6,
+      marginLeft: 4,
+    },
+    retryButton: {
+      padding: 6,
+      marginLeft: 2,
+    },
+    progressBarContainer: {
+      height: 3,
+      backgroundColor: t.colors.gray100,
+    },
+    progressBar: {
+      height: "100%",
+    },
+  });

@@ -22,6 +22,8 @@ export interface UserProfileInfo extends UserInfo {
   userType?: string;
 }
 
+export type ThemePreference = "system" | "light" | "dark";
+
 export interface UpdateUserInfoParams {
   username?: string;
   bio?: string;
@@ -77,5 +79,10 @@ export const userInfoService = {
   updateLanguagePreference: (userId: number, language: string) =>
     apiClient.put<UserInfo>(`/api/user-info/${userId}/language`, {
       language,
+    }),
+
+  updateThemePreference: (userId: number, theme: ThemePreference) =>
+    apiClient.put<UserInfo>(`/api/user-info/${userId}/theme`, {
+      theme,
     }),
 };

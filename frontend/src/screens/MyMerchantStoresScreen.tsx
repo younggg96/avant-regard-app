@@ -21,7 +21,7 @@ import {
     HStack,
     VStack,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import {
@@ -36,6 +36,7 @@ interface MerchantWithStore extends StoreMerchant {
 
 const MyMerchantStoresScreen = () => {
     const { t } = useTranslation();
+    const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
     const { user } = useAuthStore();
 
@@ -418,13 +419,13 @@ const MyMerchantStoresScreen = () => {
 const FONT_REGULAR = "PlayfairDisplay-Regular";
 const FONT_BOLD = "PlayfairDisplay-Bold";
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.background,
     },
     listContent: {
-        padding: theme.spacing.md,
+        padding: t.spacing.md,
         flexGrow: 1,
     },
     textRegular: {

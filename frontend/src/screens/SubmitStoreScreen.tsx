@@ -23,7 +23,7 @@ import {
   ScrollView,
   Input,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageGridSelector from "../components/ImageGridSelector";
 import ImagePreviewModal from "../components/ImagePreviewModal";
@@ -67,6 +67,7 @@ const COUNTRY_OPTIONS = [
 
 const SubmitStoreScreen = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const { user } = useAuthStore();
 
@@ -678,10 +679,10 @@ const SubmitStoreScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   keyboardAvoidingView: {
     flex: 1,

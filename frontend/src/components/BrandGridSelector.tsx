@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -39,6 +39,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
   const displayLabel = label || t("publish.linkBrand");
   const brandWidth = (screenWidth - 48 - 16) / 3;
   const brandHeight = brandWidth * 1.2;
+  const styles = useThemedStyles(makeStyles);
 
   return (
     <Box mx="$md" mb="$md">
@@ -163,32 +164,33 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  brandCard: {
-    width: "100%",
-    borderRadius: 10,
-    overflow: "hidden",
-    position: "relative",
-    backgroundColor: theme.colors.gray100,
-  },
-  brandImage: {
-    width: "100%",
-    height: "70%",
-    backgroundColor: theme.colors.gray100,
-  },
-  brandPlaceholder: {
-    width: "100%",
-    height: "70%",
-    backgroundColor: theme.colors.gray100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandInfo: {
-    padding: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    brandCard: {
+      width: "100%",
+      borderRadius: 10,
+      overflow: "hidden",
+      position: "relative",
+      backgroundColor: t.colors.gray100,
+    },
+    brandImage: {
+      width: "100%",
+      height: "70%",
+      backgroundColor: t.colors.gray100,
+    },
+    brandPlaceholder: {
+      width: "100%",
+      height: "70%",
+      backgroundColor: t.colors.gray100,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandInfo: {
+      padding: 6,
+      alignItems: "center",
+      justifyContent: "center",
+      flex: 1,
+    },
+  });
 
 export default BrandGridSelector;

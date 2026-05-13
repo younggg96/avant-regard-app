@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { ImageSize } from "../utils/imageUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -37,7 +37,7 @@ import {
   EditConfirmDialog,
   WantPopup,
   PostDetailRouteParams,
-  styles,
+  usePostDetailStyles,
   // Hooks
   usePostDetail,
   useComments,
@@ -58,6 +58,9 @@ const PostDetailScreen = () => {
   const params = route.params as PostDetailRouteParams;
   const scrollViewRef = useRef<RNScrollView>(null);
   const { user } = useAuthStore();
+  const styles = usePostDetailStyles();
+  const localStyles = useThemedStyles(makeLocalStyles);
+  const skeletonStyles = useThemedStyles(makeSkeletonStyles);
 
   // 帖子详情 Hook
   const { post, isLoading, error, postStatus, setPost } = usePostDetail({
@@ -597,56 +600,58 @@ const PostDetailScreen = () => {
   );
 };
 
-const localStyles = StyleSheet.create({
-  rootContainer: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
-  contentOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 10,
-  },
-  forumCoverContainer: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    backgroundColor: theme.colors.gray50,
-  },
-  forumCoverImage: {
-    width: "100%",
-    height: "100%",
-  },
-  rejectedBanner: {
-    backgroundColor: "#FEF2F2",
-    borderLeftWidth: 3,
-    borderLeftColor: "#DC2626",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  rejectedBannerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  rejectedBannerTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#B91C1C",
-  },
-  rejectedBannerBody: {
-    fontSize: 12,
-    color: "#7F1D1D",
-    marginTop: 4,
-    lineHeight: 17,
-  },
-});
+const makeLocalStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    rootContainer: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    contentOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: t.colors.overlay,
+      zIndex: 10,
+    },
+    forumCoverContainer: {
+      width: "100%",
+      aspectRatio: 16 / 9,
+      backgroundColor: t.colors.gray50,
+    },
+    forumCoverImage: {
+      width: "100%",
+      height: "100%",
+    },
+    rejectedBanner: {
+      backgroundColor: "#FEF2F2",
+      borderLeftWidth: 3,
+      borderLeftColor: "#DC2626",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    rejectedBannerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    rejectedBannerTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: "#B91C1C",
+    },
+    rejectedBannerBody: {
+      fontSize: 12,
+      color: "#7F1D1D",
+      marginTop: 4,
+      lineHeight: 17,
+    },
+  });
 
-const skeletonStyles = StyleSheet.create({
-  mainImage: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 1.2,
-    backgroundColor: theme.colors.gray200,
-  },
-});
+const makeSkeletonStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    mainImage: {
+      width: SCREEN_WIDTH,
+      height: SCREEN_WIDTH * 1.2,
+      backgroundColor: t.colors.gray200,
+    },
+  });
 
 export default PostDetailScreen;

@@ -9,13 +9,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { Box, Pressable, HStack, VStack, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { moderationService } from "../../../services/moderationService";
 import { Alert } from "../../../utils/Alert";
-import { styles as chatStyles } from "../styles";
+import { useChatStyles } from "../styles";
 
 interface ChatHeaderProps {
   name: string;
@@ -38,6 +38,8 @@ export const ChatHeader = ({
   const [showMenu, setShowMenu] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const chatStyles = useChatStyles();
+  const styles = useThemedStyles(makeStyles);
 
   const handleBlock = async () => {
     if (!otherUserId || blocking) return;
@@ -166,21 +168,21 @@ export const ChatHeader = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   headerName: {
-    ...theme.typography.body,
+    ...t.typography.body,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   confirmOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: t.colors.overlay,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
   },
   confirmDialog: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 16,
     padding: 24,
     width: "100%",
@@ -188,13 +190,13 @@ const styles = StyleSheet.create({
   confirmTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
     textAlign: "center",
     marginBottom: 8,
   },
   confirmMessage: {
     fontSize: 14,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
@@ -208,24 +210,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.border,
     alignItems: "center",
   },
   confirmCancelText: {
     fontSize: 15,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   confirmBlockBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
     alignItems: "center",
   },
   confirmBlockText: {
     fontSize: 15,
     fontWeight: "600",
-    color: theme.colors.white,
+    color: "#FFFFFF",
   },
 });

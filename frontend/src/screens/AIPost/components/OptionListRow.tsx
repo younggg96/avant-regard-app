@@ -30,7 +30,7 @@ import {
   VStack,
 } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
-import { playfairFonts, theme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
 import type { OptionCard } from "../../../services/aiPostService";
 
 export type OptionListThumbVariant = "circle" | "square" | "icon";
@@ -58,11 +58,18 @@ const OptionListRow: React.FC<OptionListRowProps> = ({
   showDivider = true,
 }) => {
   const { i18n } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const isZh = i18n.language?.startsWith("zh");
   const primaryName = isZh && data.name_zh ? data.name_zh : data.name;
   const altName = isZh && data.name_zh ? data.name : data.name_zh || "";
   const tags = (data.tags || []).filter(Boolean);
   const description = data.description || data.subtitle || "";
+
+  const getThumbStyle = (v: OptionListThumbVariant) => {
+    if (v === "circle") return styles.thumbCircle;
+    if (v === "icon") return styles.thumbIcon;
+    return styles.thumbSquare;
+  };
 
   return (
     <Pressable onPress={onPress}>
@@ -155,96 +162,91 @@ const OptionListRow: React.FC<OptionListRowProps> = ({
   );
 };
 
-const getThumbStyle = (variant: OptionListThumbVariant) => {
-  if (variant === "circle") return styles.thumbCircle;
-  if (variant === "icon") return styles.thumbIcon;
-  return styles.thumbSquare;
-};
-
-const styles = StyleSheet.create({
-  thumbCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: PLACEHOLDER_BG,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  thumbSquare: {
-    width: 64,
-    height: 80,
-    borderRadius: 4,
-    backgroundColor: PLACEHOLDER_BG,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  thumbIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.gray100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thumbImageCircle: { width: "100%", height: "100%" },
-  thumbImageSquare: { width: "100%", height: "100%" },
-  thumbInitial: {
-    fontSize: 22,
-    fontWeight: "500",
-    color: theme.colors.gray300,
-    textAlign: "center",
-    fontFamily: playfairFonts.medium,
-    lineHeight: 28,
-  },
-  indexText: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: theme.colors.gray300,
-    lineHeight: 16,
-  },
-  primaryName: {
-    fontFamily: playfairFonts.medium,
-    fontSize: 15,
-    lineHeight: 20,
-    color: theme.colors.black,
-  },
-  altName: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    color: theme.colors.gray300,
-    textTransform: "uppercase",
-  },
-  chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: theme.colors.gray100,
-  },
-  chipText: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 11,
-    lineHeight: 16,
-    color: theme.colors.gray400,
-  },
-  description: {
-    fontFamily: playfairFonts.regular,
-    fontSize: 12,
-    lineHeight: 17,
-    color: theme.colors.gray300,
-  },
-  arrowBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    thumbCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: PLACEHOLDER_BG,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    thumbSquare: {
+      width: 64,
+      height: 80,
+      borderRadius: 4,
+      backgroundColor: PLACEHOLDER_BG,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    thumbIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: t.colors.gray100,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    thumbImageCircle: { width: "100%", height: "100%" },
+    thumbImageSquare: { width: "100%", height: "100%" },
+    thumbInitial: {
+      fontSize: 22,
+      fontWeight: "500",
+      color: t.colors.gray300,
+      textAlign: "center",
+      fontFamily: playfairFonts.medium,
+      lineHeight: 28,
+    },
+    indexText: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 11,
+      letterSpacing: 1,
+      color: t.colors.gray300,
+      lineHeight: 16,
+    },
+    primaryName: {
+      fontFamily: playfairFonts.medium,
+      fontSize: 15,
+      lineHeight: 20,
+      color: t.colors.text,
+    },
+    altName: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 11,
+      letterSpacing: 1.5,
+      color: t.colors.gray300,
+      textTransform: "uppercase",
+    },
+    chip: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+      backgroundColor: t.colors.gray100,
+    },
+    chipText: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 11,
+      lineHeight: 16,
+      color: t.colors.gray400,
+    },
+    description: {
+      fontFamily: playfairFonts.regular,
+      fontSize: 12,
+      lineHeight: 17,
+      color: t.colors.gray300,
+    },
+    arrowBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
 
 export default OptionListRow;

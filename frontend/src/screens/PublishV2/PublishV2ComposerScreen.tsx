@@ -46,7 +46,7 @@ import {
   Input,
   OptimizedImage,
 } from "../../components/ui";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import ImagePickerModal from "../../components/ImagePickerModal";
 import ImageCropper from "../../components/ImageCropper";
@@ -115,6 +115,7 @@ const PublishV2ComposerScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   // ==================== 媒体相关 ====================
   const [media, setMedia] = useState<string[]>([]);
@@ -1080,70 +1081,71 @@ const PublishV2ComposerScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  tile: {
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
-    position: "relative",
-  },
-  addTile: {
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.white,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removeBtn: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  videoBadge: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverBadge: {
-    position: "absolute",
-    bottom: 4,
-    left: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 110,
-  },
-  textAreaInput: {
-    fontSize: 14,
-    color: theme.colors.black,
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    tile: {
+      borderRadius: 8,
+      overflow: "hidden",
+      backgroundColor: t.colors.gray100,
+      position: "relative",
+    },
+    addTile: {
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    removeBtn: {
+      position: "absolute",
+      top: 4,
+      right: 4,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    videoBadge: {
+      position: "absolute",
+      bottom: 4,
+      left: 4,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,0,0,0.55)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    coverBadge: {
+      position: "absolute",
+      bottom: 4,
+      left: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      backgroundColor: "rgba(0,0,0,0.55)",
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      minHeight: 110,
+    },
+    textAreaInput: {
+      fontSize: 14,
+      color: t.colors.text,
+      minHeight: 90,
+      textAlignVertical: "top",
+    },
+  });
 
 export default PublishV2ComposerScreen;

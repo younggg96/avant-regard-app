@@ -42,7 +42,13 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, playfairFonts } from "../theme";
+import {
+  theme,
+  playfairFonts,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { postService, Post as ApiPost, likePost, unlikePost, UserPostStats } from "../services/postService";
@@ -118,6 +124,9 @@ const UserProfileScreen = () => {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuthStore();
+  const appTheme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
+  const contribStyles = useThemedStyles(makeContribStyles);
 
   // 1. 动态计算 Header 总高度 (刘海 + 44px)
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
@@ -1030,8 +1039,12 @@ const UserProfileScreen = () => {
   const profileTitlesShown = titlesShownOnProfile(userTitles);
 
   return (
-    <View style={[styles.container, { backgroundColor: '#FFF' }]}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+      <StatusBar
+        barStyle={appTheme.mode === "dark" ? "light-content" : "dark-content"}
+        translucent
+        backgroundColor="transparent"
+      />
 
       {/* --- 吸顶头部 (Sticky Header - 白色背景) --- */}
       <Animated.View
@@ -1045,11 +1058,11 @@ const UserProfileScreen = () => {
         ]}
         pointerEvents={isCollapsed ? "auto" : "none"}
       >
-        <View style={[styles.collapsedHeaderBg, { backgroundColor: '#FFF' }]} />
+        <View style={[styles.collapsedHeaderBg, { backgroundColor: appTheme.colors.card }]} />
 
         <View style={[styles.collapsedHeaderContent, { height: HEADER_CONTENT_HEIGHT }]}>
           <Pressable style={styles.headerButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
+            <Ionicons name="chevron-back" size={24} color={appTheme.colors.text} />
           </Pressable>
           <View style={styles.collapsedAvatarContainer}>
             {avatarUri ? (
@@ -1082,7 +1095,7 @@ const UserProfileScreen = () => {
                   disabled={followLoading}
                 >
                   {followLoading ? (
-                    <ActivityIndicator color="white" size="small" />
+                    <ActivityIndicator color={appTheme.colors.textInverted} size="small" />
                   ) : (
                     <RNText style={styles.followButtonTextSmall}>
                       {isFollowing ? t("profile.unfollow") : t("profile.followUser")}
@@ -1120,7 +1133,7 @@ const UserProfileScreen = () => {
           ]}
           pointerEvents="box-none"
         >
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF' }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: appTheme.colors.card }}>
             <RNScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -1189,7 +1202,7 @@ const UserProfileScreen = () => {
         </Animated.View>
 
         {/* 用户信息 (移除 fade out 动画，让它自然滚动) */}
-        <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
+        <View style={[styles.profileInfo, { backgroundColor: appTheme.colors.card }]}>
           <View style={styles.avatarRow}>
             <Pressable
               style={styles.avatarWrapper}
@@ -1224,7 +1237,7 @@ const UserProfileScreen = () => {
                     disabled={followLoading}
                   >
                     {followLoading ? (
-                      <ActivityIndicator color={isFollowing ? theme.colors.gray600 : "white"} size="small" />
+                      <ActivityIndicator color={isFollowing ? appTheme.colors.gray600 : appTheme.colors.textInverted} size="small" />
                     ) : (
                       <RNText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
                         {isFollowing ? (isMutual ? t("profile.mutual") : t("profile.unfollow")) : t("profile.followUser")}
@@ -1376,16 +1389,16 @@ const UserProfileScreen = () => {
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 14,
-                    backgroundColor: "#1F2937",
+                    backgroundColor: appTheme.colors.text,
                     borderWidth: 1,
-                    borderColor: "#374151",
+                    borderColor: appTheme.colors.card,
                   }}
                 >
                   <RNText
                     style={{
                       fontSize: 13,
                       fontWeight: "600",
-                      color: "#FFFFFF",
+                      color: appTheme.colors.textInverted,
                       fontFamily: playfairFonts.medium,
                     }}
                   >
@@ -1400,7 +1413,7 @@ const UserProfileScreen = () => {
         {/* --- Inline Tab 栏 (随页面滚动) --- */}
         {privacyReady && (
           <Animated.View
-            style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: '#FFF' }]}
+            style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: appTheme.colors.card }]}
             onLayout={(event) => {
               const layoutY = event.nativeEvent.layout.y;
               if (Math.abs(tabBarAnchorY.value - layoutY) > 1) {
@@ -1427,7 +1440,7 @@ const UserProfileScreen = () => {
         )}
 
         {/* 帖子列表 */}
-        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: '#FFF' }]}>
+        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
           {renderPostsContent()}
         </View>
       </AnimatedScrollView>
@@ -1463,7 +1476,8 @@ const UserProfileScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -1489,7 +1503,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   coverGradient: {
     position: "absolute",
@@ -1515,7 +1529,7 @@ const styles = StyleSheet.create({
   actionButton: {
     width: 36,
     height: 36,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
@@ -1535,7 +1549,7 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#E0E0E0",
+    borderBottomColor: t.colors.border,
   },
   collapsedHeaderBg: {
     ...StyleSheet.absoluteFillObject,
@@ -1563,7 +1577,7 @@ const styles = StyleSheet.create({
   collapsedUsername: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: t.colors.text,
     fontFamily: playfairFonts.medium,
   },
   headerRightButtons: {
@@ -1574,14 +1588,14 @@ const styles = StyleSheet.create({
   followButtonSmall: {
     paddingHorizontal: 14,
     paddingVertical: 5,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.black,
+    borderRadius: t.borderRadius.sm,
+    backgroundColor: t.colors.text,
   },
   followingButtonSmall: {
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
   },
   followButtonTextSmall: {
-    color: "white",
+    color: t.colors.textInverted,
     fontSize: 12,
     fontWeight: "600",
     fontFamily: playfairFonts.medium,
@@ -1592,9 +1606,9 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 99,
     height: TAB_BAR_HEIGHT,
-    backgroundColor: '#FFF',
+    backgroundColor: t.colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: t.colors.border,
   },
   profileInfo: {
     paddingBottom: 16,
@@ -1609,27 +1623,27 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     borderRadius: (AVATAR_SIZE + AVATAR_BORDER * 2) / 2,
     borderWidth: AVATAR_BORDER,
-    borderColor: '#FFF',
+    borderColor: t.colors.card,
   },
   avatar: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.skeleton,
   },
   collapsedAvatar: {
     width: AVATAR_SIZE_SMALL,
     height: AVATAR_SIZE_SMALL,
     borderRadius: AVATAR_SIZE_SMALL / 2,
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.skeleton,
   },
   avatarPlaceholder: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 22,
     fontWeight: "bold",
     fontFamily: playfairFonts.bold,
@@ -1643,22 +1657,22 @@ const styles = StyleSheet.create({
   followButton: {
     paddingHorizontal: 24,
     paddingVertical: 8,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: theme.colors.black,
+    borderRadius: t.borderRadius.sm,
+    backgroundColor: t.colors.text,
     minWidth: 80,
     alignItems: "center",
   },
   followingButton: {
-    backgroundColor: theme.colors.gray200,
+    backgroundColor: t.colors.gray200,
   },
   followButtonText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontSize: 14,
     fontWeight: "600",
     fontFamily: playfairFonts.medium,
   },
   followingButtonText: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontFamily: playfairFonts.medium,
   },
   chatButton: {
@@ -1666,13 +1680,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: theme.borderRadius.sm,
+    borderRadius: t.borderRadius.sm,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     gap: 4,
   },
   chatButtonText: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontSize: 14,
     fontWeight: "500",
     fontFamily: playfairFonts.medium,
@@ -1680,15 +1694,15 @@ const styles = StyleSheet.create({
   editProfileButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: theme.spacing.sm,
+    borderRadius: t.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.gray100,
+    borderColor: t.colors.gray200,
+    backgroundColor: t.colors.gray100,
   },
   editProfileText: {
     fontSize: 14,
     fontWeight: "500",
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: playfairFonts.medium,
   },
   userNameSection: {
@@ -1698,12 +1712,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: "bold",
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: playfairFonts.bold,
   },
   bio: {
     fontSize: 14,
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
     marginTop: 4,
     lineHeight: 20,
     fontFamily: playfairFonts.regular,
@@ -1719,11 +1733,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   tagText: {
     fontSize: 12,
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
     fontFamily: playfairFonts.regular,
   },
   statsContainer: {
@@ -1740,17 +1754,17 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 16,
     fontWeight: "bold",
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: playfairFonts.bold,
   },
   statLabel: {
     fontSize: 12,
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
     fontFamily: playfairFonts.regular,
   },
   followedBrandsSection: {
     paddingBottom: 14,
-    backgroundColor: "#FFF",
+    backgroundColor: t.colors.card,
   },
   followedBrandsHeader: {
     flexDirection: "row",
@@ -1762,13 +1776,13 @@ const styles = StyleSheet.create({
   followedBrandsTitle: {
     fontSize: 13,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: playfairFonts.medium,
   },
   followedBrandsCount: {
     fontSize: 12,
     fontWeight: "600",
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     fontFamily: playfairFonts.medium,
   },
   brandChip: {
@@ -1778,7 +1792,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingRight: 14,
     borderRadius: 20,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: t.colors.gray100,
     gap: 8,
   },
   brandChipImage: {
@@ -1790,26 +1804,26 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   brandChipInitial: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#FFF",
+    color: t.colors.textInverted,
     fontFamily: playfairFonts.bold,
   },
   brandChipName: {
     fontSize: 13,
     fontWeight: "500",
-    color: theme.colors.black,
+    color: t.colors.text,
     maxWidth: 100,
     fontFamily: playfairFonts.medium,
   },
   tabBarContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: t.colors.border,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -1824,12 +1838,12 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 15,
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
     fontWeight: "500",
     fontFamily: playfairFonts.medium,
   },
   tabTextActive: {
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "600",
     fontFamily: playfairFonts.medium,
   },
@@ -1839,14 +1853,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 1,
   },
   postsContainer: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: t.spacing.xl,
   },
   primaryTitleBadge: {
-    backgroundColor: "#1F2937",
+    backgroundColor: t.colors.text,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1854,7 +1868,7 @@ const styles = StyleSheet.create({
   primaryTitleText: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#FFFFFF",
+    color: t.colors.textInverted,
     fontFamily: playfairFonts.medium,
   },
   loadingGif: {
@@ -1863,7 +1877,8 @@ const styles = StyleSheet.create({
   },
 });
 
-const contribStyles = StyleSheet.create({
+const makeContribStyles = (t: AppTheme) =>
+  StyleSheet.create({
   filterChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -1871,27 +1886,27 @@ const contribStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: "#FFF",
+    backgroundColor: t.colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
   },
   filterChipText: {
     fontSize: 13,
     fontWeight: "500",
-    color: theme.colors.gray600,
+    color: t.colors.gray600,
     fontFamily: playfairFonts.medium,
   },
   filterChipTextActive: {
-    color: "#FFF",
+    color: t.colors.textInverted,
   },
   filterChipCount: {
     fontSize: 11,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontFamily: playfairFonts.bold,
   },
   filterChipCountActive: {

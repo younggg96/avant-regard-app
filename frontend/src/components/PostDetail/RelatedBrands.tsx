@@ -9,7 +9,7 @@ import { Text } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { Brand } from "@/services/brandService";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 
 interface RelatedBrandsProps {
   brands: Brand[];
@@ -20,6 +20,7 @@ export const RelatedBrands: React.FC<RelatedBrandsProps> = ({
   brands,
   onBrandPress,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   if (!brands || brands.length === 0) return null;
 
   return (
@@ -77,73 +78,74 @@ export const RelatedBrands: React.FC<RelatedBrandsProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 20,
-  },
-  headerSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  headerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: theme.colors.gray100,
-  },
-  headerTitle: {
-    fontSize: 11,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-    letterSpacing: 3,
-    marginHorizontal: 16,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
-  brandCard: {
-    width: 120,
-    marginRight: 12,
-    backgroundColor: theme.colors.white,
-    borderRadius: 8,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  brandImage: {
-    width: "100%",
-    height: 100,
-    backgroundColor: theme.colors.gray100,
-  },
-  brandPlaceholder: {
-    width: "100%",
-    height: 100,
-    backgroundColor: theme.colors.gray100,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandInitials: {
-    fontSize: 24,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.gray400,
-  },
-  brandInfo: {
-    padding: 10,
-    alignItems: "center",
-  },
-  brandText: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    letterSpacing: 0.3,
-    textAlign: "center",
-  },
-  categoryText: {
-    fontSize: 10,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    marginTop: 2,
-    textAlign: "center",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 20,
+    },
+    headerSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      marginBottom: 16,
+    },
+    headerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: t.colors.gray100,
+    },
+    headerTitle: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+      letterSpacing: 3,
+      marginHorizontal: 16,
+    },
+    scrollContent: {
+      paddingHorizontal: 20,
+    },
+    brandCard: {
+      width: 120,
+      marginRight: 12,
+      backgroundColor: t.colors.card,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    brandImage: {
+      width: "100%",
+      height: 100,
+      backgroundColor: t.colors.gray100,
+    },
+    brandPlaceholder: {
+      width: "100%",
+      height: 100,
+      backgroundColor: t.colors.gray100,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    brandInitials: {
+      fontSize: 24,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.gray400,
+    },
+    brandInfo: {
+      padding: 10,
+      alignItems: "center",
+    },
+    brandText: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      letterSpacing: 0.3,
+      textAlign: "center",
+    },
+    categoryText: {
+      fontSize: 10,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      marginTop: 2,
+      textAlign: "center",
+    },
+  });

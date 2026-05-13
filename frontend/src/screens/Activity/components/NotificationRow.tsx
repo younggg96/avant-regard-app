@@ -6,7 +6,7 @@ import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { Notification } from "../../../services/notificationService";
 import { getNotifIcon, formatTime } from "../utils";
-import { styles } from "../styles";
+import { useActivityStyles } from "../styles";
 
 interface NotificationRowProps {
   item: Notification;
@@ -15,6 +15,7 @@ interface NotificationRowProps {
 
 export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
   const icon = getNotifIcon(item.type);
+  const styles = useActivityStyles();
 
   return (
     <Pressable

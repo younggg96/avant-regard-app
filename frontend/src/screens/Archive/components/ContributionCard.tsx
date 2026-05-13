@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, VStack, HStack, Pressable } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
-import { playfairFonts, theme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { STATUS_STYLES } from "../types";
 
 const CARD_GAP = 12;
@@ -45,6 +45,7 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const ss = STATUS_STYLES[status] || STATUS_STYLES.PENDING;
   const hasValidImage = imageUri && imageUri.trim().length > 0;
   const isRejected = status === "REJECTED";
@@ -146,80 +147,81 @@ const ContributionCard: React.FC<ContributionCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_WIDTH,
-    marginBottom: CARD_GAP,
-    borderRadius: 12,
-    backgroundColor: "#FFF",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  imageContainer: {
-    width: "100%",
-    aspectRatio: 3 / 4,
-    position: "relative",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-  placeholderText: {
-    fontSize: 11,
-    color: theme.colors.gray300,
-    fontWeight: "400",
-    fontFamily: playfairFonts.regular,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    lineHeight: 18,
-    fontFamily: playfairFonts.medium,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 2,
-    fontFamily: playfairFonts.regular,
-  },
-  rejectReasonBox: {
-    backgroundColor: "#FFF5F5",
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    marginTop: 4,
-  },
-  rejectReasonText: {
-    fontSize: 10,
-    color: "#C62828",
-    lineHeight: 14,
-    fontFamily: playfairFonts.regular,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: "600",
-    fontFamily: playfairFonts.medium,
-  },
-  dateText: {
-    fontSize: 10,
-    color: theme.colors.gray300,
-    fontFamily: playfairFonts.regular,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    card: {
+      width: CARD_WIDTH,
+      marginBottom: CARD_GAP,
+      borderRadius: 12,
+      backgroundColor: t.colors.card,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    imageContainer: {
+      width: "100%",
+      aspectRatio: 3 / 4,
+      position: "relative",
+    },
+    image: {
+      width: "100%",
+      height: "100%",
+    },
+    imagePlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.gray100,
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 6,
+    },
+    placeholderText: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      fontWeight: "400",
+      fontFamily: playfairFonts.regular,
+    },
+    title: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.text,
+      lineHeight: 18,
+      fontFamily: playfairFonts.medium,
+    },
+    subtitle: {
+      fontSize: 11,
+      color: t.colors.gray400,
+      marginTop: 2,
+      fontFamily: playfairFonts.regular,
+    },
+    rejectReasonBox: {
+      backgroundColor: "#FFF5F5",
+      borderRadius: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      marginTop: 4,
+    },
+    rejectReasonText: {
+      fontSize: 10,
+      color: "#C62828",
+      lineHeight: 14,
+      fontFamily: playfairFonts.regular,
+    },
+    statusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: "600",
+      fontFamily: playfairFonts.medium,
+    },
+    dateText: {
+      fontSize: 10,
+      color: t.colors.gray300,
+      fontFamily: playfairFonts.regular,
+    },
+  });
 
 export default ContributionCard;

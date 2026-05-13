@@ -11,14 +11,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   showService,
   Show,
   CreateShowParams,
   UpdateShowParams,
 } from "../../services/showService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
@@ -35,12 +35,6 @@ const CATEGORIES = [
   "Co-Ed", "Accessories", "Beauty", "Bridal", "Kids Wear",
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  APPROVED: theme.colors.success,
-  PENDING: "#F59E0B",
-  REJECTED: theme.colors.error,
-};
-
 const EMPTY_FORM: CreateShowParams = {
   brand: "",
   title: "",
@@ -54,6 +48,13 @@ const EMPTY_FORM: CreateShowParams = {
 
 const ShowManagementTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
+  const STATUS_COLORS: Record<string, string> = {
+    APPROVED: theme.colors.success,
+    PENDING: "#F59E0B",
+    REJECTED: theme.colors.error,
+  };
 
   const STATUS_OPTIONS = [
     { key: "", label: t("common.all") },
@@ -705,7 +706,7 @@ const ShowManagementTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     gap: 8,
@@ -716,7 +717,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   searchButton: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 8,
     paddingHorizontal: 16,
     height: 40,
@@ -737,21 +738,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   filterChipText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontWeight: "500",
   },
   filterChipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   createButton: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 20,
     width: 36,
     height: 36,
@@ -761,14 +762,14 @@ const styles = StyleSheet.create({
   totalText: {
     paddingBottom: 8,
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   coverImage: {
     width: "100%",
     height: 160,
     borderRadius: 8,
     marginBottom: 12,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   metaSection: {
     gap: 6,
@@ -780,20 +781,20 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 13,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     width: 52,
   },
   metaValue: {
     fontSize: 13,
-    color: theme.colors.black,
+    color: t.colors.text,
     flex: 1,
   },
   description: {
     fontSize: 13,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     lineHeight: 20,
     marginBottom: 8,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     padding: 10,
     borderRadius: 8,
   },
@@ -815,19 +816,19 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   editModalContent: {
     height: "85%",
     width: "92%",
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   coverPreview: {
     width: "100%",
     height: 160,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-    marginBottom: theme.spacing.sm,
+    backgroundColor: t.colors.gray100,
+    marginBottom: t.spacing.sm,
   },
   coverPlaceholder: {
     alignItems: "center",
@@ -843,12 +844,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    backgroundColor: theme.colors.gray100,
+    borderColor: t.colors.gray200,
+    backgroundColor: t.colors.gray100,
   },
   statusChipText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     fontWeight: "500",
   },
 });

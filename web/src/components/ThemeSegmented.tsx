@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 /*
  * Three-mode Appearance control (Light / System / Dark).
@@ -19,20 +20,27 @@ import { useEffect, useState } from "react";
  */
 
 const MODES = [
-  { key: "light",  label: "Light",  icon: SunIcon },
-  { key: "system", label: "Auto",   icon: SystemIcon },
-  { key: "dark",   label: "Dark",   icon: MoonIcon },
+  { key: "light", labelKey: "settings.themeLight", fallbackLabel: "Light", icon: SunIcon },
+  { key: "system", labelKey: "settings.themeSystem", fallbackLabel: "Auto", icon: SystemIcon },
+  { key: "dark", labelKey: "settings.themeDark", fallbackLabel: "Dark", icon: MoonIcon },
 ] as const;
 
 type ModeKey = (typeof MODES)[number]["key"];
 
-export function ThemeSegmented() {
+export function ThemeSegmented({
+  value,
+  onChange,
+}: {
+  value?: ModeKey;
+  onChange?: (next: ModeKey) => void;
+}) {
   const { theme, setTheme } = useTheme();
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
-  const active: ModeKey | null = mounted ? ((theme as ModeKey | undefined) ?? "system") : null;
+  const active: ModeKey | null = mounted ? (value ?? (theme as ModeKey | undefined) ?? "system") : null;
 
   return (
     <div
@@ -42,15 +50,19 @@ export function ThemeSegmented() {
                  border-black/[0.08] bg-black/[0.02]
                  dark:border-white/[0.10] dark:bg-white/[0.03]"
     >
-      {MODES.map(({ key, label, icon: Icon }) => {
+      {MODES.map(({ key, labelKey, fallbackLabel, icon: Icon }) => {
         const isActive = active === key;
+        const label = t(labelKey, fallbackLabel);
         return (
           <button
             key={key}
             type="button"
             role="radio"
             aria-checked={isActive}
-            onClick={() => setTheme(key)}
+            onClick={() => {
+              setTheme(key);
+              onChange?.(key);
+            }}
             className={[
               "inline-flex h-7 items-center gap-1.5 rounded-[3px] px-2.5",
               "font-label text-[10px] uppercase tracking-[0.15em]",

@@ -1,7 +1,11 @@
 import React from "react";
 import { View, Text as RNText, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
-import { theme, playfairFonts } from "../../../theme";
+import {
+  playfairFonts,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { UserTitle } from "../../../services/userInfoService";
 
 interface UserTitlesSectionProps {
@@ -22,6 +26,7 @@ export function titlesShownOnProfile(titles: UserTitle[]): UserTitle[] {
 
 export const UserTitlesSection = ({ titles }: UserTitlesSectionProps) => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const shown = titlesShownOnProfile(titles);
   if (shown.length === 0) return null;
 
@@ -43,50 +48,51 @@ export const UserTitlesSection = ({ titles }: UserTitlesSectionProps) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 14,
-    backgroundColor: "#FFF",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-    fontFamily: playfairFonts.medium,
-  },
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: theme.colors.gray50,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  chipPrimary: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.white,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: theme.colors.black,
-    fontFamily: playfairFonts.medium,
-  },
-  chipTextPrimary: {
-    fontWeight: "600",
-    color: theme.colors.white,
-    fontFamily: playfairFonts.medium,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingBottom: 14,
+      backgroundColor: t.colors.card,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      marginBottom: 10,
+    },
+    title: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.gray400,
+      fontFamily: playfairFonts.medium,
+    },
+    chipContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: 16,
+      gap: 8,
+    },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 14,
+      backgroundColor: t.colors.gray50,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    chipPrimary: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.card,
+    },
+    chipText: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.text,
+      fontFamily: playfairFonts.medium,
+    },
+    chipTextPrimary: {
+      fontWeight: "600",
+      color: t.colors.textInverted,
+      fontFamily: playfairFonts.medium,
+    },
+  });

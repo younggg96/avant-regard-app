@@ -25,7 +25,7 @@ import {
   Input,
   OptimizedImage,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
@@ -74,6 +74,7 @@ const PublishOutfitScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishOutfitRouteParams }, "params">>();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
 
   // 获取编辑模式参数
   const editMode = route.params?.editMode || false;
@@ -1391,33 +1392,34 @@ const PublishOutfitScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-  thumbnail: {
-    width: "100%",
-    height: "100%",
-  },
-  videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.2)",
-  },
-  videoThumbOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 100,
+    },
+    thumbnail: {
+      width: "100%",
+      height: "100%",
+    },
+    videoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.2)",
+    },
+    videoThumbOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.3)",
+    },
+  });
 
 export default PublishOutfitScreen;

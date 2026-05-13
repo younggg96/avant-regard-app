@@ -14,7 +14,7 @@ import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
-import { theme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import PostCard, { Post } from "../../../components/PostCard";
 import ForumPostCard from "../../../components/ForumPostCard";
 import BannerCarousel from "../../../components/BannerCarousel";
@@ -117,22 +117,25 @@ export interface BuyerTabSlotProps extends TabContentBaseProps {
  */
 type TabContentProps = PostsTabContentProps | BuyerTabSlotProps;
 
-const GifLoading: React.FC = () => (
-  <View style={loadingStyles.container}>
-    <Image
-      source={require("../../../../assets/gif/home-loading.gif")}
-      style={loadingStyles.gif}
-      resizeMode="contain"
-    />
-  </View>
-);
+const GifLoading: React.FC = () => {
+  const loadingStyles = useThemedStyles(makeLoadingStyles);
+  return (
+    <View style={loadingStyles.container}>
+      <Image
+        source={require("../../../../assets/gif/home-loading.gif")}
+        style={loadingStyles.gif}
+        resizeMode="contain"
+      />
+    </View>
+  );
+};
 
-const loadingStyles = StyleSheet.create({
+const makeLoadingStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   gif: {
     width: SCREEN_WIDTH,

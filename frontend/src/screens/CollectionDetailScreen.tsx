@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ImageGallery from "../components/ImageGallery";
 import { ShareToChatModal, ShareableShow } from "../components/ShareToChatModal";
 import { getPostsByShowId, Post } from "../services/postService";
@@ -76,6 +76,7 @@ const CollectionDetailScreen = () => {
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
   const params = route.params as CollectionDetailParams;
   const { collection, brandName, images } = params;
   const id = collection.id;
@@ -411,331 +412,332 @@ const CollectionDetailScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  heroContainer: {
-    position: "relative",
-    width: screenWidth,
-  },
-  heroGradient: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
-  heroTopBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 12,
-  },
-  heroIconButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  heroIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.sm,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoContainer: {
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-    marginBottom: 16,
-  },
-  contributorBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F0FF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-    marginBottom: 16,
-    gap: 6,
-  },
-  contributorText: {
-    fontSize: 12,
-    color: theme.colors.gray500,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-  },
-  metaInfo: {
-    marginBottom: 20,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  metaText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    marginLeft: 8,
-  },
-  descriptionText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  urlButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.gray50,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  urlButtonText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-    marginLeft: 8,
-  },
-  reviewContainer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-  },
-  reviewTitle: {
-    fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 12,
-  },
-  reviewTextContainer: {
-    position: "relative",
-  },
-  reviewTextWrapper: {
-    position: "relative",
-  },
-  reviewText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    lineHeight: 24,
-  },
-  gradientOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 30,
-  },
-  expandButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    marginTop: 8,
-    paddingVertical: 6,
-  },
-  expandButtonText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray700,
-    marginRight: 4,
-  },
-  ratingContainer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-    backgroundColor: theme.colors.gray50,
-  },
-  ratingTitle: {
-    fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 16,
-  },
-  ratingOverview: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  ratingLeft: {
-    alignItems: "center",
-    marginRight: 32,
-    minWidth: 80,
-  },
-  ratingScore: {
-    fontSize: 48,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 8,
-  },
-  starsContainer: {
-    flexDirection: "row",
-    marginBottom: 8,
-    gap: 2,
-  },
-  totalReviews: {
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-  },
-  distributionContainer: {
-    flex: 1,
-  },
-  distributionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  starLabel: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    width: 12,
-    textAlign: "center",
-  },
-  progressBarContainer: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-  progressBarBackground: {
-    height: 8,
-    backgroundColor: theme.colors.gray200,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    borderRadius: 4,
-  },
-  percentageLabel: {
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    width: 40,
-    textAlign: "right",
-  },
-  viewCommentsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: theme.colors.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.gray200,
-  },
-  viewCommentsText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-  },
-  // Related posts styles
-  relatedPostsContainer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-  },
-  relatedPostsTitle: {
-    fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 16,
-  },
-  loadingContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    marginTop: 12,
-  },
-  postsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -6,
-  },
-  postItem: {
-    width: (screenWidth - 40 - 12) / 2,
-    marginHorizontal: 6,
-    marginBottom: 16,
-    backgroundColor: theme.colors.white,
-    borderRadius: 8,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  postImage: {
-    width: "100%",
-    height: 120,
-    backgroundColor: theme.colors.gray100,
-  },
-  postInfo: {
-    padding: 10,
-  },
-  postTitle: {
-    fontSize: 13,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    marginBottom: 6,
-    lineHeight: 18,
-  },
-  postMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  postUsername: {
-    fontSize: 11,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-  },
-  postStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  postStatText: {
-    fontSize: 11,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-  },
-  loadingGif: {
-    width: screenWidth * 0.5,
-    height: screenWidth * 0.5,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 24,
+    },
+    heroContainer: {
+      position: "relative",
+      width: screenWidth,
+    },
+    heroGradient: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 120,
+    },
+    heroTopBar: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 12,
+    },
+    heroIconButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    heroIconCircle: {
+      width: 40,
+      height: 40,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    infoContainer: {
+      padding: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+      marginBottom: 16,
+    },
+    contributorBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#F5F0FF",
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+      alignSelf: "flex-start",
+      marginBottom: 16,
+      gap: 6,
+    },
+    contributorText: {
+      fontSize: 12,
+      color: t.colors.gray500,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+    },
+    metaInfo: {
+      marginBottom: 20,
+    },
+    metaItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    metaText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      marginLeft: 8,
+    },
+    descriptionText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      lineHeight: 22,
+      marginBottom: 16,
+    },
+    urlButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.gray50,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignSelf: "flex-start",
+    },
+    urlButtonText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+      marginLeft: 8,
+    },
+    reviewContainer: {
+      padding: 20,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+    reviewTitle: {
+      fontSize: 18,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 12,
+    },
+    reviewTextContainer: {
+      position: "relative",
+    },
+    reviewTextWrapper: {
+      position: "relative",
+    },
+    reviewText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      lineHeight: 24,
+    },
+    gradientOverlay: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 30,
+    },
+    expandButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      marginTop: 8,
+      paddingVertical: 6,
+    },
+    expandButtonText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray700,
+      marginRight: 4,
+    },
+    ratingContainer: {
+      padding: 20,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+      backgroundColor: t.colors.gray50,
+    },
+    ratingTitle: {
+      fontSize: 18,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 16,
+    },
+    ratingOverview: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    ratingLeft: {
+      alignItems: "center",
+      marginRight: 32,
+      minWidth: 80,
+    },
+    ratingScore: {
+      fontSize: 48,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 8,
+    },
+    starsContainer: {
+      flexDirection: "row",
+      marginBottom: 8,
+      gap: 2,
+    },
+    totalReviews: {
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+    },
+    distributionContainer: {
+      flex: 1,
+    },
+    distributionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+    },
+    starLabel: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      width: 12,
+      textAlign: "center",
+    },
+    progressBarContainer: {
+      flex: 1,
+      marginHorizontal: 12,
+    },
+    progressBarBackground: {
+      height: 8,
+      backgroundColor: t.colors.gray200,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+    progressBarFill: {
+      height: "100%",
+      backgroundColor: t.colors.text,
+      borderRadius: 4,
+    },
+    percentageLabel: {
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      width: 40,
+      textAlign: "right",
+    },
+    viewCommentsButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: t.colors.card,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+    },
+    viewCommentsText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+    },
+    // Related posts styles
+    relatedPostsContainer: {
+      padding: 20,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+    relatedPostsTitle: {
+      fontSize: 18,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 16,
+    },
+    loadingContainer: {
+      paddingVertical: 40,
+      alignItems: "center",
+    },
+    emptyContainer: {
+      paddingVertical: 40,
+      alignItems: "center",
+    },
+    emptyText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      marginTop: 12,
+    },
+    postsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      marginHorizontal: -6,
+    },
+    postItem: {
+      width: (screenWidth - 40 - 12) / 2,
+      marginHorizontal: 6,
+      marginBottom: 16,
+      backgroundColor: t.colors.card,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    postImage: {
+      width: "100%",
+      height: 120,
+      backgroundColor: t.colors.gray100,
+    },
+    postInfo: {
+      padding: 10,
+    },
+    postTitle: {
+      fontSize: 13,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      marginBottom: 6,
+      lineHeight: 18,
+    },
+    postMeta: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    postUsername: {
+      fontSize: 11,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+    },
+    postStats: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+    },
+    postStatText: {
+      fontSize: 11,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+    },
+    loadingGif: {
+      width: screenWidth * 0.5,
+      height: screenWidth * 0.5,
+    },
+  });
 
 export default CollectionDetailScreen;

@@ -8,15 +8,17 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, AdminComment } from "../../services/adminService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { formatDate } from "./adminUtils";
 import { Box, HStack, Text, Button, ButtonText, Pressable, ScrollView } from "../../components/ui";
 
 const CommentsTab = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [comments, setComments] = useState<AdminComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -175,94 +177,94 @@ const CommentsTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   commentsList: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   commentsHeader: {
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   commentsHeaderText: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
   },
   commentCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
   },
   commentHeader: {
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.sm,
+    marginBottom: t.spacing.sm,
   },
   commentMeta: {
     alignItems: "center",
-    gap: theme.spacing.xs,
+    gap: t.spacing.xs,
   },
   commentId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   commentDate: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   commentUserInfo: {
     alignItems: "center",
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
+    gap: t.spacing.xs,
+    marginBottom: t.spacing.sm,
   },
   commentUsername: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.black,
+    ...t.typography.bodySmall,
+    color: t.colors.text,
     fontWeight: "600",
   },
   commentUserId: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   commentPostInfo: {
     alignItems: "center",
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.xs,
+    gap: t.spacing.xs,
+    marginBottom: t.spacing.sm,
+    paddingHorizontal: t.spacing.xs,
     paddingVertical: 4,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.sm,
+    backgroundColor: t.colors.gray50,
+    borderRadius: t.borderRadius.sm,
   },
   commentPostTitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     flex: 1,
   },
   commentContent: {
-    ...theme.typography.body,
-    color: theme.colors.black,
-    marginBottom: theme.spacing.sm,
+    ...t.typography.body,
+    color: t.colors.text,
+    marginBottom: t.spacing.sm,
     lineHeight: 22,
   },
   commentStats: {
     alignItems: "center",
     gap: 4,
-    marginBottom: theme.spacing.md,
+    marginBottom: t.spacing.md,
   },
   commentLikes: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   commentActions: {
-    gap: theme.spacing.sm,
+    gap: t.spacing.sm,
   },
   pagination: {
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: t.spacing.lg,
   },
   paginationText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
+    ...t.typography.body,
+    color: t.colors.gray400,
   },
 });
 

@@ -14,13 +14,13 @@
  *   - 整数元金额用千分位（"¥ 5,890"）；带小数时固定 2 位（"¥ 58.90"）
  *     —— 两种格式切换对消费者信任感更好。
  */
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { BuyerStoreProduct, ProductBadge } from "./types";
 import { PLAYFAIR } from "./playfair";
 
@@ -47,24 +47,6 @@ const formatPriceCents = (cents: number): string => {
   return `¥ ${(cents / 100).toFixed(2)}`;
 };
 
-const BADGE_STYLE: Record<
-  ProductBadge,
-  { container: object; text: object }
-> = {
-  NEW: {
-    container: { backgroundColor: theme.colors.white },
-    text: { color: theme.colors.black },
-  },
-  SALE: {
-    container: { backgroundColor: theme.colors.black },
-    text: { color: theme.colors.white },
-  },
-  EVENT: {
-    container: { backgroundColor: "#D9C9A3" },
-    text: { color: theme.colors.black },
-  },
-};
-
 const ProductCardImpl: React.FC<ProductCardProps> = ({
   product,
   storeName,
@@ -72,6 +54,32 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
   onPress,
   onFavoriteToggle,
 }) => {
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
+  // BADGE_STYLE must be recomputed per render so the badge colors stay
+  // theme-reactive (the legacy module-scope object captured frozen colors at
+  // load time). `theme.colors.white` and `theme.colors.black` auto-invert
+  // between modes so the NEW vs SALE visual contrast holds.
+  const badgeStyle = useMemo<
+    Record<ProductBadge, { container: object; text: object }>
+  >(
+    () => ({
+      NEW: {
+        container: { backgroundColor: theme.colors.white },
+        text: { color: theme.colors.black },
+      },
+      SALE: {
+        container: { backgroundColor: theme.colors.black },
+        text: { color: theme.colors.white },
+      },
+      EVENT: {
+        container: { backgroundColor: "#D9C9A3" },
+        text: { color: theme.colors.black },
+      },
+    }),
+    [theme]
+  );
+
   // 折扣分支：discountPriceCents 作为主价、priceCents 作为 strike-through 原价。
   const hasDiscount =
     product.discountPriceCents != null &&
@@ -94,8 +102,8 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
           lazy
         />
         {product.badge && (
-          <Box style={[styles.badge, BADGE_STYLE[product.badge].container]}>
-            <Text style={[styles.badgeText, BADGE_STYLE[product.badge].text]}>
+          <Box style={[styles.badge, badgeStyle[product.badge].container]}>
+            <Text style={[styles.badgeText, badgeStyle[product.badge].text]}>
               {product.badge}
             </Text>
           </Box>
@@ -146,7 +154,7 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
 
 export const ProductCard = React.memo(ProductCardImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   card: {
     flex: 1,
     paddingBottom: 16,
@@ -156,7 +164,7 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   image: {
@@ -181,30 +189,30 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.medium,
     fontSize: 13,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     lineHeight: 18,
     letterSpacing: -0.1,
   },
   storeName: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 11,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 4,
   },
   price: {
     fontFamily: PLAYFAIR.bold,
     fontSize: 14,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
     letterSpacing: -0.2,
   },
   priceDiscounted: {
-    color: theme.colors.error,
+    color: t.colors.error,
   },
   priceOriginal: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 11,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     textDecorationLine: "line-through",
   },
 });

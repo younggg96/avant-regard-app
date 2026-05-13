@@ -43,7 +43,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   getStoreProducts,
@@ -109,6 +109,7 @@ const titleForMode = (
 
 const StoreProductListScreen: React.FC = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const {
@@ -454,21 +455,24 @@ const CategoryChip: React.FC<{
   label: string;
   active: boolean;
   onPress: () => void;
-}> = React.memo(({ label, active, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    style={[styles.categoryChip, active && styles.categoryChipActive]}
-  >
-    <Text
-      fontSize={12}
-      fontWeight={active ? "$semibold" : "$normal"}
-      color={active ? "$white" : "$gray700"}
-      style={{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }}
+}> = React.memo(({ label, active, onPress }) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.categoryChip, active && styles.categoryChipActive]}
     >
-      {label}
-    </Text>
-  </Pressable>
-));
+      <Text
+        fontSize={12}
+        fontWeight={active ? "$semibold" : "$normal"}
+        color={active ? "$white" : "$gray700"}
+        style={{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
 CategoryChip.displayName = "CategoryChip";
 
 // ============================================================================
@@ -479,6 +483,7 @@ const ProductCardItemImpl: React.FC<{
   product: StoreProduct;
   onPress: (productId: number) => void;
 }> = ({ product, onPress }) => {
+  const styles = useThemedStyles(makeStyles);
   const cover = product.images?.[0];
   const hasDiscount =
     product.discountPriceCents != null &&
@@ -574,10 +579,10 @@ const ProductCardItem = React.memo(ProductCardItemImpl);
 // Styles
 // ============================================================================
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   center: {
     flex: 1,
@@ -586,7 +591,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   searchBar: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -594,7 +599,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: theme.colors.black,
+    color: t.colors.text,
     padding: 0,
   },
   categoryBar: {
@@ -606,11 +611,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     marginRight: 8,
   },
   categoryChipActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   listContent: {
     paddingHorizontal: GRID_HORIZONTAL_PADDING,
@@ -623,16 +628,16 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     overflow: "hidden",
   },
   cardCover: {
     width: CARD_WIDTH,
     height: CARD_WIDTH,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     position: "relative",
   },
   cardImage: {
@@ -644,7 +649,7 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   badge: {
     position: "absolute",
@@ -655,16 +660,16 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   badgeNew: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
   },
   badgeSale: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 0.6,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: playfairFonts.bold,
   },
   footerLoader: {

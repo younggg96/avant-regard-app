@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { Alert } from "../utils/Alert";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -47,6 +47,7 @@ const AllCommentsScreen = () => {
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
   const params = route.params as AllCommentsParams;
   const { collection, brandName } = params;
 
@@ -348,230 +349,231 @@ const AllCommentsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-  },
-  headerRight: {
-    width: 40,
-  },
-  collectionInfo: {
-    flexDirection: "row",
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-    alignItems: "center",
-  },
-  collectionThumbnail: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 16,
-  },
-  collectionTextInfo: {
-    flex: 1,
-  },
-  collectionTitle: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginBottom: 4,
-    lineHeight: 22,
-  },
-  brandName: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-  },
-  writeCommentContainer: {
-    backgroundColor: theme.colors.white,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray100,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  writeCommentButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.gray50,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  writeCommentButtonText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    marginLeft: 8,
-    flex: 1,
-  },
-  writeCommentExpanded: {
-    backgroundColor: theme.colors.gray50,
-    padding: 16,
-    borderRadius: 12,
-    elevation: 3,
-  },
-  ratingSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  ratingLabel: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    marginRight: 12,
-  },
-  writingStars: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  commentInput: {
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    backgroundColor: theme.colors.white,
-    textAlignVertical: "top",
-    minHeight: 100,
-    marginBottom: 16,
-  },
-  commentSubmitActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  cancelSubmitButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray100,
-  },
-  cancelSubmitButtonText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.white,
-  },
-  commentsList: {
-    flex: 1,
-  },
-  commentsListContent: {
-    paddingBottom: 20,
-  },
-  commentCard: {
-    backgroundColor: theme.colors.white,
-    marginHorizontal: 20,
-    marginVertical: 6,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: theme.colors.black,
-    shadowOffset: {
-      width: 0,
-      height: 1,
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  commentHeader: {
-    marginBottom: 12,
-  },
-  userInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  userAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 12,
-  },
-  placeholderAvatar: {
-    backgroundColor: theme.colors.gray200,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  userDetails: {
-    flex: 1,
-  },
-  userNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 15,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  commentStars: {
-    flexDirection: "row",
-    marginRight: 8,
-    gap: 0,
-  },
-  commentDate: {
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-  },
-  commentContent: {
-    fontSize: 15,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.black,
-    lineHeight: 21,
-    marginTop: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-    marginTop: 16,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    marginTop: 8,
-  },
-});
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    backButton: {
+      padding: 8,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+    headerRight: {
+      width: 40,
+    },
+    collectionInfo: {
+      flexDirection: "row",
+      padding: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+      alignItems: "center",
+    },
+    collectionThumbnail: {
+      width: 80,
+      height: 80,
+      borderRadius: 8,
+      marginRight: 16,
+    },
+    collectionTextInfo: {
+      flex: 1,
+    },
+    collectionTitle: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginBottom: 4,
+      lineHeight: 22,
+    },
+    brandName: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+    },
+    writeCommentContainer: {
+      backgroundColor: t.colors.card,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    writeCommentButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.gray50,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    writeCommentButtonText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      marginLeft: 8,
+      flex: 1,
+    },
+    writeCommentExpanded: {
+      backgroundColor: t.colors.gray50,
+      padding: 16,
+      borderRadius: 12,
+      elevation: 3,
+    },
+    ratingSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    ratingLabel: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      marginRight: 12,
+    },
+    writingStars: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    commentInput: {
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      backgroundColor: t.colors.inputBackground,
+      textAlignVertical: "top",
+      minHeight: 100,
+      marginBottom: 16,
+    },
+    commentSubmitActions: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    cancelSubmitButton: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 8,
+      backgroundColor: t.colors.gray100,
+    },
+    cancelSubmitButtonText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+    },
+    submitButton: {
+      backgroundColor: t.colors.text,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    submitButtonText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.textInverted,
+    },
+    commentsList: {
+      flex: 1,
+    },
+    commentsListContent: {
+      paddingBottom: 20,
+    },
+    commentCard: {
+      backgroundColor: t.colors.card,
+      marginHorizontal: 20,
+      marginVertical: 6,
+      padding: 16,
+      borderRadius: 12,
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    commentHeader: {
+      marginBottom: 12,
+    },
+    userInfo: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    userAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginRight: 12,
+    },
+    placeholderAvatar: {
+      backgroundColor: t.colors.gray200,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    userDetails: {
+      flex: 1,
+    },
+    userNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 4,
+    },
+    userName: {
+      fontSize: 15,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    commentStars: {
+      flexDirection: "row",
+      marginRight: 8,
+      gap: 0,
+    },
+    commentDate: {
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+    },
+    commentContent: {
+      fontSize: 15,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.text,
+      lineHeight: 21,
+      marginTop: 8,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+    },
+    emptyText: {
+      fontSize: 18,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+      marginTop: 16,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      marginTop: 8,
+    },
+  });
 
 export default AllCommentsScreen;

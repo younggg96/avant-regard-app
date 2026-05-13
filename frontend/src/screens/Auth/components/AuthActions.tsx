@@ -11,8 +11,13 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthMode, LoginMethod } from "../types";
-import { styles } from "../styles";
-import { theme } from "../../../theme";
+import { useAuthStyles } from "../styles";
+import {
+  theme,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { TermsContent } from "./TermsContent";
 import { PrivacyContent } from "./PrivacyContent";
 import { CommunityGuidelinesContent } from "./CommunityGuidelinesContent";
@@ -74,6 +79,10 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   reportDefaultContact,
 }) => {
   const { t } = useTranslation();
+  const styles = useAuthStyles();
+  const reportStyles = useThemedStyles(makeReportStyles);
+  const checkboxStyles = useThemedStyles(makeCheckboxStyles);
+  const t_ = useAppTheme();
   const showAppleLogin = false;
   const [viewingDocument, setViewingDocument] = useState<DocumentType | null>(
     null
@@ -154,7 +163,11 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
             onPress={onAppleLogin}
             disabled={loading}
           >
-            <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+            <Ionicons
+              name="logo-apple"
+              size={20}
+              color={t_.mode === "dark" ? "#000000" : "#FFFFFF"}
+            />
             <Text style={styles.appleButtonText}>{t('auth.loginByApple')}</Text>
           </TouchableOpacity>
         </>
@@ -265,107 +278,109 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
   );
 };
 
-const reportStyles = StyleSheet.create({
-  container: {
-    marginTop: 16,
-    alignItems: "center",
-    paddingHorizontal: 4,
-  },
-  hint: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray200,
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    gap: 6,
-  },
-  buttonText: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    letterSpacing: 0.3,
-  },
-});
+const makeReportStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      marginTop: 16,
+      alignItems: "center",
+      paddingHorizontal: 4,
+    },
+    hint: {
+      fontSize: 12,
+      lineHeight: 18,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray200,
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    button: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      gap: 6,
+    },
+    buttonText: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      letterSpacing: 0.3,
+    },
+  });
 
-const checkboxStyles = StyleSheet.create({
-  container: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 20,
-    paddingHorizontal: 4,
-  },
-  checkbox: {
-    marginRight: 8,
-    marginTop: 1,
-  },
-  text: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    flex: 1,
-    lineHeight: 20,
-  },
-  link: {
-    color: theme.colors.black,
-    fontFamily: "PlayfairDisplay-Medium",
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E8E8",
-  },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    flex: 1,
-    textAlign: "center",
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  modalBottom: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: "#E8E8E8",
-  },
-  modalConfirmButton: {
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  modalConfirmText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-  },
-});
+const makeCheckboxStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 20,
+      paddingHorizontal: 4,
+    },
+    checkbox: {
+      marginRight: 8,
+      marginTop: 1,
+    },
+    text: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      flex: 1,
+      lineHeight: 20,
+    },
+    link: {
+      color: t.colors.text,
+      fontFamily: "PlayfairDisplay-Medium",
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    modalHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    modalCloseButton: {
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      flex: 1,
+      textAlign: "center",
+    },
+    modalContent: {
+      flex: 1,
+      paddingHorizontal: 16,
+    },
+    modalBottom: {
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      paddingBottom: 24,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+    modalConfirmButton: {
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    modalConfirmText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+    },
+  });

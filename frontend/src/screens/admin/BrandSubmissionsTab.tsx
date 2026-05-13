@@ -12,12 +12,13 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../theme";
 import { adminService, AdminBrandSubmission } from "../../services/adminService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { Box, HStack, VStack, Text, Input, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const BrandSubmissionsTab = () => {
   const { t } = useTranslation();
+  const sharedStyles = useSharedStyles();
   const [submissions, setSubmissions] = useState<AdminBrandSubmission[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

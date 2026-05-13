@@ -7,8 +7,13 @@ import { ImageSize } from "../../../utils/imageUtils";
 import { UserInfo, UserProfileInfo, UserTitle } from "../../../services/userInfoService";
 import { LevelBadge } from "../../../components/level";
 import { useLevelStore } from "../../../store/levelStore";
-import { theme, playfairFonts } from "../../../theme";
-import { styles } from "../styles";
+import {
+  playfairFonts,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
+import { useProfileStyles } from "../styles";
 import { titlesShownOnProfile } from "./UserTitlesSection";
 
 interface ProfileInfoProps {
@@ -63,13 +68,16 @@ export const ProfileInfo = ({
   const levelStatus = useLevelStore((s) => s.status);
   const currentLevel = levelStatus?.currentLevel ?? 0;
   const pendingLevel = levelStatus?.pendingLevel ?? null;
+  const styles = useProfileStyles();
+  const appTheme = useAppTheme();
+  const titleStyles = useThemedStyles(makeTitleStyles);
 
   // 主头衔展示在头像右侧，与底部独立的 UserTitlesSection 共用同一规则
   // (主头衔优先；只有 1 个头衔时直接展示)，确保两处不会出现不一致。
   const primaryTitle = titlesShownOnProfile(userTitles)[0];
 
   return (
-  <View style={[styles.profileInfo, { backgroundColor: '#FFF' }]}>
+  <View style={[styles.profileInfo, { backgroundColor: appTheme.colors.card }]}>
     <View style={styles.avatarRow}>
       <View style={styles.avatarWrapper}>
         <Pressable
@@ -156,22 +164,23 @@ export const ProfileInfo = ({
 // 头像旁的头衔徽章。由于头像 marginTop = -AVATAR_SIZE/2 浮在封面图上，
 // 这里同样要求 alignSelf: flex-end 才能与头像下沿对齐；颜色与底部
 // UserTitlesSection 主头衔一致 (黑底白字)，避免视觉割裂。
-const titleStyles = StyleSheet.create({
-  chipBadge: {
-    maxWidth: 180,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.white,
-    alignSelf: "flex-end",
-    marginBottom: 4,
-  },
-  chipBadgeText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.white,
-    fontFamily: playfairFonts.medium,
-  },
-});
+const makeTitleStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    chipBadge: {
+      maxWidth: 180,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 14,
+      backgroundColor: t.colors.text,
+      borderWidth: 1,
+      borderColor: t.colors.card,
+      alignSelf: "flex-end",
+      marginBottom: 4,
+    },
+    chipBadgeText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+      fontFamily: playfairFonts.medium,
+    },
+  });

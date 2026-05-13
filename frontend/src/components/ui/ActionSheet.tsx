@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 
 export interface ActionSheetAction {
   label: string;
@@ -52,6 +52,7 @@ export const ActionSheet = ({
   ...rest
 }: ActionSheetProps) => {
   const { t } = useTranslation();
+  const s = useThemedStyles(makeStyles);
   const resolvedCancelLabel = cancelLabel ?? t("common.cancel");
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
@@ -146,10 +147,10 @@ export const ActionSheet = ({
   );
 };
 
-const s = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: t.colors.overlay,
   },
   container: {
     position: "absolute",
@@ -159,23 +160,23 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
   },
   sheet: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 8,
     overflow: "hidden",
   },
   title: {
     textAlign: "center",
     fontSize: 13,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.gray100,
+    borderBottomColor: t.colors.divider,
   },
   actionBtn: {
     flexDirection: "row",
     paddingVertical: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.colors.gray100,
+    borderTopColor: t.colors.divider,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -188,15 +189,15 @@ const s = StyleSheet.create({
   },
   actionText: {
     fontSize: 18,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontWeight: "400",
   },
   destructiveText: {
-    color: theme.colors.error,
+    color: t.colors.error,
   },
   cancelBtn: {
     marginTop: 8,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: "center",
@@ -208,7 +209,7 @@ const s = StyleSheet.create({
   },
   cancelBtnHalf: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: "center",
@@ -216,6 +217,6 @@ const s = StyleSheet.create({
   cancelText: {
     fontSize: 18,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
   },
 });

@@ -10,7 +10,7 @@ import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { HStack, Pressable, Text } from "../../../../components/ui";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { PLAYFAIR } from "./playfair";
 
 interface SearchBarProps {
@@ -23,6 +23,8 @@ const SearchBarImpl: React.FC<SearchBarProps> = ({
   placeholder,
 }) => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const displayPlaceholder = placeholder || t("discover.buyerSearchPlaceholder");
 
   return (
@@ -39,7 +41,7 @@ const SearchBarImpl: React.FC<SearchBarProps> = ({
 
 export const SearchBar = React.memo(SearchBarImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     height: 40,
     marginHorizontal: 16,
@@ -47,14 +49,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     justifyContent: "center",
   },
   placeholder: {
     flex: 1,
     fontFamily: PLAYFAIR.regular,
     fontSize: 13,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
   },
 });
 

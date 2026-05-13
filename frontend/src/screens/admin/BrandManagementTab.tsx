@@ -10,15 +10,17 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, AdminBrand, AdminBrandImage, UpdateBrandParams } from "../../services/adminService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const BrandManagementTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -462,7 +464,7 @@ const BrandManagementTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     gap: 8,
@@ -473,7 +475,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   searchButton: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 8,
     paddingHorizontal: 16,
     height: 40,
@@ -483,7 +485,7 @@ const styles = StyleSheet.create({
   totalText: {
     paddingBottom: 8,
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   brandImage: {
     width: "100%",
@@ -504,21 +506,21 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   editModalContent: {
     height: "85%",
     width: "92%",
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   fieldRow: {
     flexDirection: "row",
     gap: 12,
-    marginTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
   },
   imageHint: {
     fontSize: 12,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginBottom: 8,
   },
   brandImagesGrid: {
@@ -558,7 +560,7 @@ const styles = StyleSheet.create({
   brandImageThumb: {
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   checkboxOverlay: {
     position: "absolute",
@@ -575,11 +577,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
 });
 

@@ -21,7 +21,12 @@ import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../components/ui";
-import { theme, playfairFonts } from "../../../theme";
+import {
+  theme,
+  playfairFonts,
+  useThemedStyles,
+  type AppTheme,
+} from "../../../theme";
 import { useLevelStore } from "../../../store/levelStore";
 import { LevelProgressBar, getLevelTitleKey } from "../../../components/level";
 
@@ -29,6 +34,7 @@ export const LevelProgressCard: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const status = useLevelStore((s) => s.status);
+  const styles = useThemedStyles(makeStyles);
 
   if (!status) return null;
 
@@ -125,65 +131,66 @@ export const LevelProgressCard: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.gray400,
-    fontFamily: playfairFonts.medium,
-  },
-  lvChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: theme.colors.black,
-  },
-  lvChipText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: theme.colors.white,
-    fontFamily: playfairFonts.medium,
-    letterSpacing: 0.5,
-  },
-  card: {
-    marginHorizontal: 16,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
-  },
-  cardTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  cardTextCol: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  cardTitle: {
-    fontFamily: playfairFonts.medium,
-    fontSize: 12,
-    lineHeight: 16,
-    color: theme.colors.black,
-    fontWeight: "600",
-  },
-  cardSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginTop: 2,
-  },
-  chevron: {
-    marginTop: 0,
-  },
-  howToHint: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  manualOnly: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray300,
-    fontStyle: "italic",
-    marginTop: 6,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.gray400,
+      fontFamily: playfairFonts.medium,
+    },
+    lvChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      backgroundColor: t.colors.text,
+    },
+    lvChipText: {
+      fontSize: 10,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+      fontFamily: playfairFonts.medium,
+      letterSpacing: 0.5,
+    },
+    card: {
+      marginHorizontal: 16,
+      padding: t.spacing.md,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.card,
+    },
+    cardTopRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    cardTextCol: {
+      flex: 1,
+      paddingRight: 8,
+    },
+    cardTitle: {
+      fontFamily: playfairFonts.medium,
+      fontSize: 12,
+      lineHeight: 16,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    cardSubtitle: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginTop: 2,
+    },
+    chevron: {
+      marginTop: 0,
+    },
+    howToHint: {
+      ...t.typography.caption,
+      color: t.colors.gray400,
+      marginBottom: 4,
+      letterSpacing: 0.5,
+    },
+    manualOnly: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray300,
+      fontStyle: "italic",
+      marginTop: 6,
+    },
+  });

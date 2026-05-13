@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
@@ -36,6 +36,7 @@ const DraftsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -363,197 +364,198 @@ const DraftsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  headerButton: {
-    padding: 8,
-  },
-  selectionBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: theme.colors.gray50,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray100,
-  },
-  selectionText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-  },
-  deleteButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  deleteButtonText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: "#ff4757",
-  },
-  disabledText: {
-    color: theme.colors.gray400,
-  },
-  content: {
-    flex: 1,
-  },
-  draftsList: {
-    padding: 20,
-  },
-  draftItem: {
-    flexDirection: "row",
-    backgroundColor: theme.colors.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.gray100,
-  },
-  selectedItem: {
-    borderColor: theme.colors.black,
-    backgroundColor: theme.colors.gray50,
-  },
-  selectionContainer: {
-    marginRight: 12,
-    justifyContent: "center",
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: theme.colors.gray300,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkedBox: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
-  },
-  itemContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  itemHeader: {
-    flex: 1,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.black,
-    flex: 1,
-    marginRight: 8,
-  },
-  typeTag: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  typeLabel: {
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.gray500,
-    marginBottom: 6,
-  },
-  itemDescription: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    lineHeight: 20,
-  },
-  itemFooter: {
-    marginTop: "auto",
-    paddingTop: 8,
-  },
-  lastModified: {
-    fontSize: 12,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-  },
-  imagePreview: {
-    position: "relative",
-  },
-  previewImage: {
-    width: 60,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: theme.colors.gray200,
-  },
-  imageCount: {
-    position: "absolute",
-    bottom: 4,
-    right: 4,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  imageCountText: {
-    fontSize: 10,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.white,
-  },
-  loadingState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 80,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray400,
-    marginTop: 12,
-  },
-  emptyState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 40,
-    paddingVertical: 80,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  createButton: {
-    backgroundColor: theme.colors.black,
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    fontSize: 16,
-    fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
-    color: theme.colors.white,
-  },
-  loadingGif: {
-    width: 200,
-    height: 200,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    headerButton: {
+      padding: 8,
+    },
+    selectionBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: t.colors.gray50,
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.border,
+    },
+    selectionText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+    },
+    deleteButton: {
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    deleteButtonText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: "#ff4757",
+    },
+    disabledText: {
+      color: t.colors.gray400,
+    },
+    content: {
+      flex: 1,
+    },
+    draftsList: {
+      padding: 20,
+    },
+    draftItem: {
+      flexDirection: "row",
+      backgroundColor: t.colors.card,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    selectedItem: {
+      borderColor: t.colors.text,
+      backgroundColor: t.colors.gray50,
+    },
+    selectionContainer: {
+      marginRight: 12,
+      justifyContent: "center",
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: t.colors.gray300,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkedBox: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    itemContent: {
+      flex: 1,
+      marginRight: 12,
+    },
+    itemHeader: {
+      flex: 1,
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: 4,
+    },
+    itemTitle: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      flex: 1,
+      marginRight: 8,
+    },
+    typeTag: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    typeLabel: {
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.gray500,
+      marginBottom: 6,
+    },
+    itemDescription: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      lineHeight: 20,
+    },
+    itemFooter: {
+      marginTop: "auto",
+      paddingTop: 8,
+    },
+    lastModified: {
+      fontSize: 12,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+    },
+    imagePreview: {
+      position: "relative",
+    },
+    previewImage: {
+      width: 60,
+      height: 80,
+      borderRadius: 8,
+      backgroundColor: t.colors.skeleton,
+    },
+    imageCount: {
+      position: "absolute",
+      bottom: 4,
+      right: 4,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
+      borderRadius: 8,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+    },
+    imageCountText: {
+      fontSize: 10,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: "#FFFFFF",
+    },
+    loadingState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 80,
+    },
+    loadingText: {
+      fontSize: 14,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray400,
+      marginTop: 12,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 40,
+      paddingVertical: 80,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    createButton: {
+      backgroundColor: t.colors.text,
+      paddingHorizontal: 32,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    createButtonText: {
+      fontSize: 16,
+      fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
+      color: t.colors.textInverted,
+    },
+    loadingGif: {
+      width: 200,
+      height: 200,
+    },
+  });
 
 export default DraftsScreen;

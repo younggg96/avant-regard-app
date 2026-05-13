@@ -9,7 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   MaintenanceConfig,
   getMaintenanceConfig,
@@ -39,6 +39,7 @@ const DEFAULT_CONFIG: MaintenanceConfig = {
 
 const MaintenanceTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const [config, setConfig] = useState<MaintenanceConfig>(DEFAULT_CONFIG);
   const [messageInput, setMessageInput] = useState(DEFAULT_MAINTENANCE_MESSAGE);
   const [loading, setLoading] = useState(true);
@@ -226,10 +227,10 @@ const MaintenanceTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   content: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: t.spacing.md,
   },
   centered: {
     flex: 1,
@@ -238,84 +239,84 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   loadingText: {
-    ...theme.typography.body,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.md,
+    ...t.typography.body,
+    color: t.colors.gray400,
+    marginTop: t.spacing.md,
   },
   header: {
     alignItems: "center",
-    marginBottom: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
-    backgroundColor: theme.colors.gray50,
-    borderRadius: theme.borderRadius.lg,
+    marginBottom: t.spacing.xl,
+    paddingVertical: t.spacing.lg,
+    backgroundColor: t.colors.gray50,
+    borderRadius: t.borderRadius.lg,
   },
   headerTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.black,
-    marginTop: theme.spacing.md,
+    ...t.typography.h3,
+    color: t.colors.text,
+    marginTop: t.spacing.md,
   },
   headerSubtitle: {
-    ...theme.typography.bodySmall,
-    color: theme.colors.gray400,
-    marginTop: theme.spacing.xs,
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
+    marginTop: t.spacing.xs,
     textAlign: "center",
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: t.spacing.md,
   },
   section: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    padding: t.spacing.lg,
+    marginBottom: t.spacing.md,
+    ...t.shadows.sm,
   },
   sectionHeader: {
     alignItems: "center",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
+    gap: t.spacing.sm,
+    marginBottom: t.spacing.xs,
   },
   sectionTitle: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
     fontWeight: "700",
   },
   sectionDesc: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
-    marginBottom: theme.spacing.md,
+    ...t.typography.caption,
+    color: t.colors.gray400,
+    marginBottom: t.spacing.md,
   },
   toggleRow: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
   },
   toggleLabel: {
-    ...theme.typography.body,
-    color: theme.colors.black,
+    ...t.typography.body,
+    color: t.colors.text,
     fontWeight: "600",
   },
   toggleDesc: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
     marginTop: 2,
   },
   messageInput: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    ...theme.typography.body,
-    color: theme.colors.black,
-    backgroundColor: theme.colors.gray50,
+    borderColor: t.colors.gray200,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.sm,
+    ...t.typography.body,
+    color: t.colors.text,
+    backgroundColor: t.colors.gray50,
   },
   messageFooter: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: theme.spacing.sm,
+    marginTop: t.spacing.sm,
   },
   counter: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
+    ...t.typography.caption,
+    color: t.colors.gray300,
   },
   resetButton: {
     flexDirection: "row",
@@ -325,38 +326,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   resetText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
   },
   saveButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.black,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
+    backgroundColor: t.colors.text,
+    paddingVertical: t.spacing.md,
+    borderRadius: t.borderRadius.md,
+    gap: t.spacing.sm,
+    marginTop: t.spacing.md,
   },
   saveButtonDisabled: {
-    backgroundColor: theme.colors.gray300,
+    backgroundColor: t.colors.gray300,
   },
   saveButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.white,
+    ...t.typography.body,
+    color: t.colors.textInverted,
     fontWeight: "600",
   },
   tips: {
     alignItems: "flex-start",
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.gray50,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    marginTop: theme.spacing.lg,
+    gap: t.spacing.sm,
+    backgroundColor: t.colors.gray50,
+    padding: t.spacing.md,
+    borderRadius: t.borderRadius.md,
+    marginTop: t.spacing.lg,
   },
   tipsText: {
-    ...theme.typography.caption,
-    color: theme.colors.gray400,
+    ...t.typography.caption,
+    color: t.colors.gray400,
     flex: 1,
     lineHeight: 18,
   },

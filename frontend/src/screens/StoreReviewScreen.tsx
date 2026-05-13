@@ -31,7 +31,7 @@ import {
     VStack,
     ScrollView,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -45,6 +45,7 @@ import { useTranslation } from "react-i18next";
 
 const StoreReviewScreen = () => {
     const { t } = useTranslation();
+    const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
 
     const [submissions, setSubmissions] = useState<UserSubmittedStore[]>([]);
@@ -835,42 +836,42 @@ const StoreReviewScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.background,
     },
     listContent: {
-        padding: theme.spacing.md,
-        paddingBottom: theme.spacing.xl,
+        padding: t.spacing.md,
+        paddingBottom: t.spacing.xl,
     },
     modalContent: {
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.card,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        padding: theme.spacing.lg,
-        paddingTop: theme.spacing.sm,
+        padding: t.spacing.lg,
+        paddingTop: t.spacing.sm,
         paddingBottom: 34,
         maxHeight: SCREEN_HEIGHT * 0.85,
     },
     rejectModalContent: {
-        backgroundColor: theme.colors.white,
+        backgroundColor: t.colors.card,
         borderRadius: 16,
-        padding: theme.spacing.lg,
+        padding: t.spacing.lg,
     },
     rejectInput: {
-        backgroundColor: theme.colors.gray100,
-        borderRadius: theme.borderRadius.md,
-        padding: theme.spacing.md,
+        backgroundColor: t.colors.gray100,
+        borderRadius: t.borderRadius.md,
+        padding: t.spacing.md,
         fontSize: 15,
-        color: theme.colors.black,
+        color: t.colors.text,
         minHeight: 100,
         textAlignVertical: "top",
     },
     imagePreview: {
         width: 80,
         height: 80,
-        borderRadius: theme.borderRadius.md,
+        borderRadius: t.borderRadius.md,
     },
 });
 

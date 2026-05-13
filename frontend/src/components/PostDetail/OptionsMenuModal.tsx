@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
 import { theme } from "../../theme";
-import { styles } from "./styles";
+import { usePostDetailStyles } from "./styles";
 
 interface OptionsMenuModalProps {
   visible: boolean;
@@ -29,6 +29,7 @@ export const OptionsMenuModal: React.FC<OptionsMenuModalProps> = ({
   onShare,
 }) => {
   const { t } = useTranslation();
+  const styles = usePostDetailStyles();
   return (
     <Modal
       visible={visible}

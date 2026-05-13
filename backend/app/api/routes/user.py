@@ -11,6 +11,7 @@ from app.schemas.user import (
     UserPrivacySettings,
     UpdatePrivacySettingsRequest,
     UpdateLanguageRequest,
+    UpdateThemeRequest,
 )
 from app.services.user_service import user_service
 from app.services.file_service import file_service
@@ -232,6 +233,22 @@ async def update_language_preference(
         raise HTTPException(status_code=403, detail="无权修改其他用户设置")
 
     result = user_service.update_language_preference(user_id, request.language)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result.model_dump())
+
+
+@router.put("/{user_id}/theme")
+async def update_theme_preference(
+    user_id: int,
+    request: UpdateThemeRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """更新用户主题偏好"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户设置")
+
+    result = user_service.update_theme_preference(user_id, request.theme.value)
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(result.model_dump())

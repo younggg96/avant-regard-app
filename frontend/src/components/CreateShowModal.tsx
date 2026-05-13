@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { showService, CreateShowParams } from "../services/showService";
 import { sharedStyles } from "../screens/admin/adminStyles";
 import { pickAndUploadImage } from "../screens/admin/adminUtils";
@@ -50,6 +50,7 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
   const [coverImage, setCoverImage] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const styles = useThemedStyles(makeStyles);
 
   const resetForm = () => {
     setTitle("");
@@ -265,29 +266,30 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  modalSize: {
-    height: "85%",
-    width: "92%",
-    padding: theme.spacing.lg,
-  },
-  brandLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.gray300,
-    marginBottom: theme.spacing.sm,
-    marginTop: -theme.spacing.sm,
-  },
-  coverPreview: {
-    width: "100%",
-    height: 160,
-    borderRadius: theme.borderRadius.md,
-    backgroundColor: theme.colors.gray100,
-    marginBottom: theme.spacing.sm,
-  },
-  coverPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    modalSize: {
+      height: "85%",
+      width: "92%",
+      padding: t.spacing.lg,
+    },
+    brandLabel: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginBottom: t.spacing.sm,
+      marginTop: -t.spacing.sm,
+    },
+    coverPreview: {
+      width: "100%",
+      height: 160,
+      borderRadius: t.borderRadius.md,
+      backgroundColor: t.colors.gray100,
+      marginBottom: t.spacing.sm,
+    },
+    coverPlaceholder: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  });
 
 export default CreateShowModal;

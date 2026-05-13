@@ -7,7 +7,7 @@ import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Notification } from "../../../services/notificationService";
 import { formatTime } from "../utils";
 import { NOTIF_ICON_MAP } from "../constants";
-import { styles } from "../styles";
+import { useInteractionStyles } from "../styles";
 
 interface ActivityEntryProps {
   notifications: Notification[];
@@ -16,6 +16,7 @@ interface ActivityEntryProps {
 
 export const ActivityEntry = ({ notifications, onPress }: ActivityEntryProps) => {
   const { t } = useTranslation();
+  const styles = useInteractionStyles();
   const nonSystem = notifications.filter((n) => n.type !== "system" && n.type !== "mention");
   const unreadCount = nonSystem.filter((n) => !n.isRead).length;
   const latest = nonSystem[0];

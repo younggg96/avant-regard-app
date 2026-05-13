@@ -22,7 +22,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   getCommunities,
@@ -39,6 +39,7 @@ const AllCommunitiesScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
+  const styles = useThemedStyles(makeStyles);
   const [allCommunities, setAllCommunities] = useState<Community[]>([]);
   const [followingCommunities, setFollowingCommunities] = useState<Community[]>([]);
   const [filteredCommunities, setFilteredCommunities] = useState<Community[]>([]);
@@ -373,34 +374,35 @@ const AllCommunitiesScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  communityIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: "hidden",
-  },
-  communityImage: {
-    width: "100%",
-    height: "100%",
-  },
-  communityPlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.black,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.colors.black,
-    padding: 0,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    communityIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      overflow: "hidden",
+    },
+    communityImage: {
+      width: "100%",
+      height: "100%",
+    },
+    communityPlaceholder: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.text,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: t.colors.text,
+      padding: 0,
+    },
+  });
 
 export default AllCommunitiesScreen;

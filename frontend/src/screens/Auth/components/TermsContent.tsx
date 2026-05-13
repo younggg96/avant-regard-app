@@ -1,8 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { theme } from "../../../theme";
+import { useThemedStyles, type AppTheme } from "../../../theme";
 
 export const TermsContent: React.FC = () => {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
       <Text style={styles.mainTitle}>Avant Regard 软件许可及服务协议</Text>
@@ -360,94 +361,95 @@ export const TermsContent: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 20,
-  },
-  mainTitle: {
-    fontSize: 20,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  lastUpdated: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  operator: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  intro: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    backgroundColor: theme.colors.gray50,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  boldText: {
-    fontFamily: "PlayfairDisplay-Bold",
-    fontWeight: "bold",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.black,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  subIndex: {
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray600,
-  },
-  content: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  contentHighlight: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray700,
-    lineHeight: 22,
-    marginBottom: 12,
-    backgroundColor: theme.colors.gray50,
-    padding: 12,
-    borderRadius: 6,
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.accent,
-  },
-  subContent: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray600,
-    lineHeight: 20,
-    marginBottom: 12,
-    marginLeft: 16,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: theme.colors.gray200,
-  },
-  footer: {
-    fontSize: 13,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray500,
-    textAlign: "center",
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E8E8E8",
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingVertical: 20,
+    },
+    mainTitle: {
+      fontSize: 20,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    lastUpdated: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginBottom: 4,
+    },
+    operator: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    intro: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      backgroundColor: t.colors.gray50,
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 12,
+    },
+    boldText: {
+      fontFamily: "PlayfairDisplay-Bold",
+      fontWeight: "bold",
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    subIndex: {
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray600,
+    },
+    content: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      marginBottom: 8,
+    },
+    contentHighlight: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray700,
+      lineHeight: 22,
+      marginBottom: 12,
+      backgroundColor: t.colors.gray50,
+      padding: 12,
+      borderRadius: 6,
+      borderLeftWidth: 3,
+      borderLeftColor: t.colors.accent,
+    },
+    subContent: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray600,
+      lineHeight: 20,
+      marginBottom: 12,
+      marginLeft: 16,
+      paddingLeft: 12,
+      borderLeftWidth: 2,
+      borderLeftColor: t.colors.gray200,
+    },
+    footer: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray500,
+      textAlign: "center",
+      marginTop: 24,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
+    },
+  });

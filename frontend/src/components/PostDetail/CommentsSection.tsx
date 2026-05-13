@@ -6,7 +6,7 @@ import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
 import { ImageSize } from "../../utils/imageUtils";
 import { theme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
-import { styles } from "./styles";
+import { usePostDetailStyles } from "./styles";
 
 export interface ReportTarget {
   commentId: string;
@@ -40,6 +40,7 @@ const ReplyItem: React.FC<{
   onReport: () => void;
 }> = ({ reply, isOwner, onLike, onDelete, onUserPress, onReply, onReport }) => {
   const { t } = useTranslation();
+  const styles = usePostDetailStyles();
   return (
   <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} borderLeftColor="$gray200">
     <Pressable
@@ -156,6 +157,7 @@ const CommentItem: React.FC<{
   onReportReply,
 }) => {
   const { t } = useTranslation();
+  const styles = usePostDetailStyles();
   const replies = comment.replies ?? [];
   const [firstReply, ...otherReplies] = replies;
   const hasMoreReplies = otherReplies.length > 0;
@@ -308,6 +310,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   onReportComment,
 }) => {
   const { t } = useTranslation();
+  const styles = usePostDetailStyles();
   const showComments: boolean = postStatus === "PUBLISHED";
 
   if (!showComments) {

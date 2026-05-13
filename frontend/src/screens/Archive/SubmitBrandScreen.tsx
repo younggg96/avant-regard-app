@@ -5,7 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/ScreenHeader";
 import SubmitBrandForm from "../../components/SubmitBrandForm";
-import { theme } from "../../theme";
+import { useThemedStyles, type AppTheme } from "../../theme";
 import { useArchiveBrandListRefreshStore } from "../../store/archiveBrandListRefreshStore";
 
 /**
@@ -14,6 +14,7 @@ import { useArchiveBrandListRefreshStore } from "../../store/archiveBrandListRef
 const SubmitBrandScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const styles = useThemedStyles(makeStyles);
   const bumpRefreshNonce = useArchiveBrandListRefreshStore((s) => s.bumpRefreshNonce);
 
   return (
@@ -32,11 +33,12 @@ const SubmitBrandScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+  });
 
 export default SubmitBrandScreen;

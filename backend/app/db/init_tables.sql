@@ -31,11 +31,15 @@ CREATE TABLE IF NOT EXISTS user_info (
     bio TEXT DEFAULT '',
     location VARCHAR(100) DEFAULT '',
     avatar_url TEXT DEFAULT '',
+    cover_url TEXT DEFAULT '',
     gender VARCHAR(10) DEFAULT 'OTHER',  -- MALE, FEMALE, OTHER
     age INTEGER DEFAULT 0,
     preference TEXT DEFAULT '',
+    preferred_language VARCHAR(10) DEFAULT NULL,
+    preferred_theme VARCHAR(10) DEFAULT 'system',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark'))
 );
 
 -- 注意：短信验证码和令牌由 Supabase Auth 管理，不需要单独的表

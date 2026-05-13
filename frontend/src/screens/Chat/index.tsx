@@ -31,7 +31,7 @@ import {
   ShareContentPickerModal,
   SharePayload,
 } from "./components/ShareContentPickerModal";
-import { styles } from "./styles";
+import { useChatStyles } from "./styles";
 
 type ReportTarget =
   | { type: "MESSAGE"; messageId: number; senderId: number }
@@ -41,6 +41,7 @@ const ChatScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<ChatRouteParams, "Chat">>();
+  const styles = useChatStyles();
   const {
     conversationId,
     otherUserName = t("chat.title"),

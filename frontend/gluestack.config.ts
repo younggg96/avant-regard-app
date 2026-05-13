@@ -24,6 +24,11 @@ export const config = createConfig({
   },
   tokens: {
     colors: {
+      // Inverted-grey scheme: see frontend/src/theme/index.ts for the
+      // canonical palette. Gluestack tokens are referenced via `$white`,
+      // `$gray100`, etc. throughout the app; we keep the same semantic
+      // naming so existing `bg="$white"` snippets become "page surface"
+      // rather than literally white.
       black: '#000000',
       white: '#FFFFFF',
       gray50: '#F9F9F9',
@@ -39,6 +44,10 @@ export const config = createConfig({
       success: '#34C759',
       primary: '#000000',
       secondary: '#666666',
+      background: '#FFFFFF',
+      card: '#FFFFFF',
+      text: '#000000',
+      border: '#F5F5F5',
     },
     space: {
       xs: 4,
@@ -110,6 +119,54 @@ export const config = createConfig({
       lg: 0.5,
       xl: 1,
       '2xl': 1.5,
+    },
+  },
+  themes: {
+    light: {
+      colors: {
+        black: '#000000',
+        white: '#FFFFFF',
+        gray50: '#F9F9F9',
+        gray100: '#F5F5F5',
+        gray200: '#AAAAAA',
+        gray300: '#666666',
+        gray400: '#444444',
+        gray500: '#222222',
+        gray600: '#111111',
+        gray700: '#000000',
+        accent: '#000000',
+        error: '#FF3B30',
+        success: '#34C759',
+        primary: '#000000',
+        secondary: '#666666',
+        background: '#FFFFFF',
+        card: '#FFFFFF',
+        text: '#000000',
+        border: '#F5F5F5',
+      },
+    },
+    dark: {
+      colors: {
+        black: '#FFFFFF',
+        white: '#0A0A0A',
+        gray50: '#121212',
+        gray100: '#1F1F1F',
+        gray200: '#3A3A3A',
+        gray300: '#A0A0A0',
+        gray400: '#CFCFCF',
+        gray500: '#E5E5E5',
+        gray600: '#F2F2F2',
+        gray700: '#FFFFFF',
+        accent: '#FFFFFF',
+        error: '#FF6B6B',
+        success: '#5CD67A',
+        primary: '#FFFFFF',
+        secondary: '#A0A0A0',
+        background: '#0A0A0A',
+        card: '#141414',
+        text: '#FFFFFF',
+        border: '#262626',
+      },
     },
   },
   globalStyle: {

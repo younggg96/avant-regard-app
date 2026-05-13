@@ -28,7 +28,7 @@ import {
   HStack,
   VStack,
 } from "../components/ui";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -181,6 +181,7 @@ const MAX_DESCRIPTION_LENGTH = 300;
 
 const MerchantManageScreen = () => {
   const { t, i18n } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantManage">>();
   const { user } = useAuthStore();
@@ -3260,10 +3261,10 @@ const MerchantManageScreen = () => {
 const FONT_REGULAR = "PlayfairDisplay-Regular";
 const FONT_BOLD = "PlayfairDisplay-Bold";
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -3280,10 +3281,10 @@ const styles = StyleSheet.create({
   bannerPicker: {
     width: "100%",
     aspectRatio: 16 / 9,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     borderStyle: "dashed",
     overflow: "hidden",
     justifyContent: "center",
@@ -3303,7 +3304,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   bannerPickerOverlayText: {
-    color: theme.colors.white,
+    color: "#FFFFFF",
     fontSize: 12,
     fontFamily: FONT_REGULAR,
   },
@@ -3320,15 +3321,15 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   modalContent: {
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
     paddingBottom: 40,
   },
   input: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: theme.colors.black,
+    color: t.colors.text,
     fontFamily: FONT_REGULAR,
   },
   multilineInput: {
@@ -3355,7 +3356,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -3364,7 +3365,7 @@ const styles = StyleSheet.create({
   chipNeutral: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
@@ -3392,12 +3393,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.colors.gray100,
-    backgroundColor: theme.colors.white,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.card,
   },
   presetChipDisabled: {
-    backgroundColor: theme.colors.gray50,
-    borderColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray50,
+    borderColor: t.colors.border,
   },
   // 周一～周日 chip：未选灰底，已选黑底白字 —— 高对比让用户明确"哪几天闭店"。
   dayChip: {
@@ -3405,12 +3406,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     alignItems: "center",
     justifyContent: "center",
   },
   dayChipActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   textRegular: {
     fontFamily: FONT_REGULAR,

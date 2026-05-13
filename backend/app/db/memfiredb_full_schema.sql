@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS user_info (
     gender VARCHAR(10) DEFAULT 'OTHER',
     age INTEGER DEFAULT 0,
     preference TEXT DEFAULT '',
+    preferred_language VARCHAR(10) DEFAULT NULL,
+    preferred_theme VARCHAR(10) DEFAULT 'system',
     -- 隐私设置（016_user_privacy_settings）
     hide_following BOOLEAN DEFAULT FALSE,
     hide_followers BOOLEAN DEFAULT FALSE,
@@ -61,7 +63,8 @@ CREATE TABLE IF NOT EXISTS user_info (
     -- 资料完善标记（017_add_profile_completed）
     profile_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark'))
 );
 
 -- 用户推送 Token 表

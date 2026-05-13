@@ -13,7 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme } from "../theme";
+import { useThemedStyles, type AppTheme } from "../theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -35,6 +35,21 @@ interface VideoSlideProps {
   isActive: boolean;
 }
 
+// Slide/video sizing is purely layout (not theme-dependent) so we keep
+// the static StyleSheet here for the standalone VideoSlide component.
+const slideStyles = StyleSheet.create({
+  slide: {
+    width: SCREEN_WIDTH,
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  video: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.72,
+  },
+});
+
 const VideoSlide: React.FC<VideoSlideProps> = ({ source, isActive }) => {
   const player = useVideoPlayer(source, (p) => {
     p.loop = true;
@@ -51,10 +66,10 @@ const VideoSlide: React.FC<VideoSlideProps> = ({ source, isActive }) => {
   }, [isActive, player]);
 
   return (
-    <View style={styles.slide}>
+    <View style={slideStyles.slide}>
       <VideoView
         player={player}
-        style={styles.video}
+        style={slideStyles.video}
         contentFit="contain"
         nativeControls={false}
         allowsPictureInPicture={false}
@@ -74,6 +89,7 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(makeStyles);
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -166,74 +182,65 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-  },
-  skipText: {
-    fontSize: 14,
-    fontFamily: "PlayfairDisplay-Medium",
-    color: theme.colors.gray300,
-    textDecorationLine: "underline",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  video: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.72,
-  },
-  bottomContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    alignItems: "center",
-    gap: 16,
-  },
-  dotsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-  dot: {
-    borderRadius: 4,
-  },
-  dotActive: {
-    width: 24,
-    height: 8,
-    backgroundColor: theme.colors.black,
-    borderRadius: 4,
-  },
-  dotInactive: {
-    width: 8,
-    height: 8,
-    backgroundColor: theme.colors.gray200,
-    borderRadius: 4,
-  },
-  actionButton: {
-    width: "100%",
-    backgroundColor: theme.colors.black,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontFamily: "PlayfairDisplay-Bold",
-    color: theme.colors.white,
-  },
-  stepCounter: {
-    fontSize: 12,
-    fontFamily: "PlayfairDisplay-Regular",
-    color: theme.colors.gray200,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    skipText: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.gray300,
+      textDecorationLine: "underline",
+    },
+    scrollView: {
+      flex: 1,
+    },
+    bottomContainer: {
+      paddingHorizontal: 24,
+      paddingBottom: 20,
+      alignItems: "center",
+      gap: 16,
+    },
+    dotsContainer: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      gap: 8,
+    },
+    dot: {
+      borderRadius: 4,
+    },
+    dotActive: {
+      width: 24,
+      height: 8,
+      backgroundColor: t.colors.text,
+      borderRadius: 4,
+    },
+    dotInactive: {
+      width: 8,
+      height: 8,
+      backgroundColor: t.colors.gray200,
+      borderRadius: 4,
+    },
+    actionButton: {
+      width: "100%",
+      backgroundColor: t.colors.text,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: "center",
+    },
+    actionButtonText: {
+      fontSize: 16,
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.textInverted,
+    },
+    stepCounter: {
+      fontSize: 12,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray200,
+    },
+  });
 
 export default OnboardingGuideModal;

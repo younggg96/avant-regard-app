@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   BuyerStore,
   BuyerStoreCreateParams,
@@ -24,7 +24,7 @@ import {
   getAllCountries,
   getAllCities,
 } from "../../services/buyerStoreService";
-import { sharedStyles } from "./adminStyles";
+import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import {
   Box,
@@ -61,6 +61,8 @@ const EMPTY_CREATE_FORM: BuyerStoreCreateParams = {
 
 const StoreManagementTab = () => {
   const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [stores, setStores] = useState<BuyerStore[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -1084,7 +1086,7 @@ const StoreManagementTab = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   topRow: {
     marginBottom: 8,
   },
@@ -1093,7 +1095,7 @@ const styles = StyleSheet.create({
     height: 40,
   },
   searchButton: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
     borderRadius: 8,
     paddingHorizontal: 16,
     height: 40,
@@ -1101,7 +1103,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   filterButton: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     borderRadius: 8,
     width: 40,
     height: 40,
@@ -1109,19 +1111,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   filterButtonActive: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   filterBadge: {
     position: "absolute",
     top: 2,
     right: 2,
-    backgroundColor: theme.colors.error,
+    backgroundColor: t.colors.error,
     borderRadius: 8,
     width: 16,
     height: 16,
     textAlign: "center",
     fontSize: 10,
-    color: theme.colors.white,
+    color: t.colors.textInverted,
     fontWeight: "600",
     lineHeight: 16,
     overflow: "hidden",
@@ -1137,7 +1139,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   filterPanel: {
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -1148,7 +1150,7 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     marginBottom: 6,
   },
   filterChips: {
@@ -1158,26 +1160,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
   },
   filterChipActive: {
-    backgroundColor: theme.colors.black,
-    borderColor: theme.colors.black,
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
   },
   filterChipText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   filterChipTextActive: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   totalText: {
     paddingBottom: 8,
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
   statusDot: {
     width: 8,
@@ -1196,8 +1198,8 @@ const styles = StyleSheet.create({
   },
   metaChip: {
     fontSize: 11,
-    color: theme.colors.gray400,
-    backgroundColor: theme.colors.gray100,
+    color: t.colors.gray400,
+    backgroundColor: t.colors.gray100,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1209,17 +1211,17 @@ const styles = StyleSheet.create({
   },
   brandsText: {
     fontSize: 12,
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     marginTop: 4,
     lineHeight: 18,
   },
   storeId: {
     fontSize: 11,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 4,
   },
   editButton: {
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     gap: 4,
   },
   pagination: {
@@ -1227,16 +1229,16 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: 14,
-    color: theme.colors.gray500,
+    color: t.colors.gray500,
   },
   formModalContent: {
     height: "85%",
     width: "92%",
-    padding: theme.spacing.lg,
+    padding: t.spacing.lg,
   },
   switchRow: {
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    marginTop: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   imagesGrid: {
     flexWrap: "wrap",
@@ -1249,12 +1251,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
   },
   imageThumb: {
     width: "100%",
     height: "100%",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   imageDeleteBtn: {
     position: "absolute",
@@ -1268,11 +1270,11 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: theme.colors.gray200,
+    borderColor: t.colors.gray200,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: theme.colors.gray50,
+    backgroundColor: t.colors.gray50,
   },
   listImagesRow: {
     flexDirection: "row",
@@ -1284,20 +1286,20 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 6,
     marginRight: 6,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   listImageMore: {
     width: 60,
     height: 60,
     borderRadius: 6,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   listImageMoreText: {
     fontSize: 13,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
   },
 });
 

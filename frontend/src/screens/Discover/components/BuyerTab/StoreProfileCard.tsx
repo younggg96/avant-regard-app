@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
-import { theme } from "../../../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
 import { BuyerStoreProfileView } from "./types";
 import { PLAYFAIR } from "./playfair";
 
@@ -61,6 +61,8 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   onMorePress,
 }) => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const [bioExpanded, setBioExpanded] = useState(false);
 
   const {
@@ -190,16 +192,19 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   );
 };
 
-const StatColumn: React.FC<{ value: string; label: string }> = ({ value, label }) => (
-  <Box style={styles.statCell}>
-    <Text style={styles.statValue}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </Box>
-);
+const StatColumn: React.FC<{ value: string; label: string }> = ({ value, label }) => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <Box style={styles.statCell}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </Box>
+  );
+};
 
 export const StoreProfileCard = React.memo(StoreProfileCardImpl);
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   topRow: {
     gap: 12,
   },
@@ -211,7 +216,7 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.medium,
     fontSize: 16,
     fontWeight: "600",
-    color: theme.colors.black,
+    color: t.colors.text,
     letterSpacing: -0.2,
     flexShrink: 1,
   },
@@ -219,20 +224,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   typeBadgeText: {
     fontFamily: PLAYFAIR.medium,
     fontSize: 10,
     fontWeight: "600",
-    color: theme.colors.gray400,
+    color: t.colors.gray400,
     letterSpacing: 0.2,
   },
   tagline: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 12,
     lineHeight: 17,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 6,
   },
   tagChip: {
@@ -242,7 +247,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontFamily: PLAYFAIR.medium,
     fontSize: 10,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     fontWeight: "500",
   },
   actions: {
@@ -254,12 +259,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   followButtonIdle: {
-    backgroundColor: theme.colors.black,
+    backgroundColor: t.colors.text,
   },
   followButtonFollowed: {
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
     borderWidth: 1,
-    borderColor: theme.colors.black,
+    borderColor: t.colors.text,
   },
   followButtonText: {
     fontFamily: PLAYFAIR.medium,
@@ -267,27 +272,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   followButtonTextIdle: {
-    color: theme.colors.white,
+    color: t.colors.textInverted,
   },
   followButtonTextFollowed: {
-    color: theme.colors.black,
+    color: t.colors.text,
   },
   moreButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.card,
   },
   heroWrap: {
     width: 108,
     height: 168,
     borderRadius: 6,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     flexShrink: 0,
   },
   coverImage: {
@@ -295,7 +300,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   coverFallback: {
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
   },
   statsRow: {
     marginTop: 10,
@@ -307,7 +312,7 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     alignSelf: "stretch",
     marginVertical: 2,
-    backgroundColor: "#EAEAEA",
+    backgroundColor: t.colors.divider,
   },
   statCell: {
     flex: 1,
@@ -320,32 +325,32 @@ const styles = StyleSheet.create({
     fontFamily: PLAYFAIR.bold,
     fontSize: 14,
     fontWeight: "700",
-    color: theme.colors.black,
+    color: t.colors.text,
     letterSpacing: -0.25,
   },
   statLabel: {
     fontFamily: PLAYFAIR.regular,
     fontSize: 10,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     marginTop: 3,
     fontWeight: "400",
   },
   bio: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.gray100,
+    borderColor: t.colors.border,
     borderRadius: 4,
     paddingHorizontal: 4,
     paddingVertical: 2,
     fontFamily: PLAYFAIR.regular,
     fontSize: 12,
     lineHeight: 22,
-    color: theme.colors.gray300,
+    color: t.colors.gray300,
     alignSelf: "stretch",
   },
   bioMoreText: {
     fontFamily: PLAYFAIR.medium,
     fontSize: 11,
-    color: theme.colors.black,
+    color: t.colors.text,
     textDecorationLine: "underline",
     letterSpacing: 0.1,
   },

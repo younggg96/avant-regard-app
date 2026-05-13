@@ -4,7 +4,7 @@ import { Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
-import { theme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { VideoPlayer } from "./VideoPlayer";
 import { useMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
@@ -61,6 +61,7 @@ const SingleMediaItem: React.FC<{
   coverAspectRatio?: number;
   onOpenFullscreen: (index: number) => void;
 }> = ({ uri, coverAspectRatio, onOpenFullscreen }) => {
+  const gridStyles = useThemedStyles(makeGridStyles);
   const ratio = useMediaAspectRatio(uri, 4 / 5, coverAspectRatio);
   const wrapperStyle = [
     gridStyles.singleImageWrapperBase,
@@ -84,6 +85,7 @@ export const ImageGrid: React.FC<MediaGridProps> = ({
   coverAspectRatio,
   onOpenFullscreen,
 }) => {
+  const gridStyles = useThemedStyles(makeGridStyles);
   const leadRatio = useMediaAspectRatio(
     images[0],
     4 / 5,
@@ -144,51 +146,52 @@ const IMAGE_GAP = 3;
 const GRID_PADDING = 16;
 const GRID_IMAGE_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - IMAGE_GAP * 2) / 3;
 
-const gridStyles = StyleSheet.create({
-  container: {
-    paddingHorizontal: GRID_PADDING,
-    paddingVertical: 12,
-  },
-  // aspectRatio is injected at render time from the media's natural size so
-  // single-media posts no longer cover-crop into a fixed 4:5 frame.
-  singleImageWrapperBase: {
-    width: "100%",
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: theme.colors.gray50,
-  },
-  singleImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
-  twoImageRow: {
-    flexDirection: "row",
-    gap: IMAGE_GAP,
-  },
-  twoImageWrapperBase: {
-    flex: 1,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  twoImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: IMAGE_GAP,
-  },
-  gridImageWrapperBase: {
-    width: GRID_IMAGE_WIDTH,
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  gridImage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: theme.colors.gray100,
-  },
-});
+const makeGridStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      paddingHorizontal: GRID_PADDING,
+      paddingVertical: 12,
+    },
+    // aspectRatio is injected at render time from the media's natural size so
+    // single-media posts no longer cover-crop into a fixed 4:5 frame.
+    singleImageWrapperBase: {
+      width: "100%",
+      borderRadius: 8,
+      overflow: "hidden",
+      backgroundColor: t.colors.gray50,
+    },
+    singleImage: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.gray100,
+    },
+    twoImageRow: {
+      flexDirection: "row",
+      gap: IMAGE_GAP,
+    },
+    twoImageWrapperBase: {
+      flex: 1,
+      borderRadius: 6,
+      overflow: "hidden",
+    },
+    twoImage: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.gray100,
+    },
+    gridContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: IMAGE_GAP,
+    },
+    gridImageWrapperBase: {
+      width: GRID_IMAGE_WIDTH,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+    gridImage: {
+      width: "100%",
+      height: "100%",
+      backgroundColor: t.colors.gray100,
+    },
+  });

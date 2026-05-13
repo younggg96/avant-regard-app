@@ -14,7 +14,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Text, HStack, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { Banner } from "../services/bannerService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -36,6 +36,7 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   banners,
   onBannerPress,
 }) => {
+  const styles = useThemedStyles(makeStyles);
   const scrollViewRef = useRef<Animated.FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const autoScrollTimer = useRef<NodeJS.Timeout | null>(null);
@@ -218,10 +219,10 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (t: AppTheme) => StyleSheet.create({
   container: {
     height: BANNER_HEIGHT + 16, // 额外的空间给阴影
-    backgroundColor: theme.colors.white,
+    backgroundColor: t.colors.background,
     paddingVertical: 8,
   },
   listContent: {
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: theme.colors.gray100,
+    backgroundColor: t.colors.gray100,
     // 阴影效果
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -262,13 +263,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
+    paddingHorizontal: t.spacing.md,
+    paddingBottom: t.spacing.lg,
   },
   bannerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: theme.colors.white,
+    color: "#FFFFFF",
     letterSpacing: 0.5,
     textShadowColor: "rgba(0, 0, 0, 0.5)",
     textShadowOffset: { width: 0, height: 1 },
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     width: 18,
-    backgroundColor: theme.colors.white,
+    backgroundColor: "#FFFFFF",
   },
 });
 
