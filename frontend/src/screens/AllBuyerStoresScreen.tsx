@@ -27,7 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { BuyerStore, getAllBuyerStores } from "../services/buyerStoreService";
 import { SCREEN_WIDTH } from "./Discover/constants";
@@ -44,6 +44,7 @@ type NavigationProp = {
 };
 
 const AllBuyerStoresScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
@@ -174,10 +175,10 @@ const AllBuyerStoresScreen: React.FC = () => {
         <ScreenHeader title={t("store.allStores")} showBack />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
-          <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$sm">
             {t("store.loadFailed")}
           </Text>
-          <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
+          <Text fontSize="$xs" style={{ color: theme.colors.gray300 }} mt="$xs" textAlign="center">
             {error}
           </Text>
           <Pressable
@@ -185,10 +186,10 @@ const AllBuyerStoresScreen: React.FC = () => {
             px="$lg"
             py="$sm"
             mt="$md"
-            bg="$black"
+            style={{ backgroundColor: theme.colors.black }}
             rounded="$md"
           >
-            <Text color="$white" fontWeight="$semibold" fontSize="$sm">
+            <Text style={{ color: theme.colors.white }} fontWeight="$semibold" fontSize="$sm">
               {t("store.tapRetry")}
             </Text>
           </Pressable>
@@ -240,7 +241,7 @@ const AllBuyerStoresScreen: React.FC = () => {
             </View>
           ) : !hasMore && stores.length > 0 ? (
             <View style={styles.footerEnd}>
-              <Text fontSize="$xs" color="$gray300">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                 {t("store.noMoreData")}
               </Text>
             </View>
@@ -250,7 +251,7 @@ const AllBuyerStoresScreen: React.FC = () => {
           !isLoading && stores.length === 0 ? (
             <Box py="$xl" alignItems="center">
               <Ionicons name="storefront-outline" size={32} color={theme.colors.gray300} />
-              <Text fontSize="$sm" color="$gray300" mt="$sm">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$sm">
                 {activeQuery ? t("store.noMatchStores") : t("store.noStores")}
               </Text>
             </Box>
@@ -271,6 +272,7 @@ interface StoreCardProps {
 }
 
 const StoreCardImpl: React.FC<StoreCardProps> = ({ store, onPress }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const cover = store.images?.[0];
@@ -305,18 +307,18 @@ const StoreCardImpl: React.FC<StoreCardProps> = ({ store, onPress }) => {
         <Text
           fontSize={13}
           fontWeight="$bold"
-          color="$black"
+          style={{ color: theme.colors.black }}
           numberOfLines={1}
         >
           {store.name}
         </Text>
         {location && (
-          <Text fontSize={11} color="$gray300" numberOfLines={1}>
+          <Text fontSize={11} style={{ color: theme.colors.gray300 }} numberOfLines={1}>
             {location}
           </Text>
         )}
         {store.brands && store.brands.length > 0 && (
-          <Text fontSize={10} color="$gray400" numberOfLines={1}>
+          <Text fontSize={10} style={{ color: theme.colors.gray400 }} numberOfLines={1}>
             {store.brands.slice(0, 3).join(" / ")}
           </Text>
         )}

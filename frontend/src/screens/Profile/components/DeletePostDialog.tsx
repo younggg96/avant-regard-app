@@ -19,7 +19,8 @@ export const DeletePostDialog = ({
   onConfirm,
 }: DeletePostDialogProps) => {
   const { t } = useTranslation();
-  const appTheme = useAppTheme();
+  const theme = useAppTheme();
+  const appTheme = theme;
 
   return (
     <Modal
@@ -38,29 +39,29 @@ export const DeletePostDialog = ({
           }}
         >
           <TouchableWithoutFeedback>
-            <VStack bg="$white" borderRadius={16} width={SCREEN_WIDTH - 80} overflow="hidden">
+            <VStack style={{ backgroundColor: theme.colors.white }} borderRadius={16} width={SCREEN_WIDTH - 80} overflow="hidden">
               <VStack px="$lg" pt="$lg" pb="$md">
                 <Text
                   fontSize="$lg"
                   fontWeight="$semibold"
-                  color="$black"
+                  style={[{ fontFamily: playfairFonts.bold }, { color: theme.colors.black }]}
                   textAlign="center"
-                  style={{ fontFamily: playfairFonts.bold }}
+
                 >
                   {t("profile.deletePostTitle")}
                 </Text>
                 <Text
                   fontSize="$sm"
-                  color="$gray600"
+                  style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray600 }]}
                   textAlign="center"
                   mt="$sm"
-                  style={{ fontFamily: playfairFonts.regular }}
+
                 >
                   {t("profile.deletePostMessage")}
                 </Text>
               </VStack>
 
-              <Box height={1} bg="$gray100" />
+              <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} />
 
               <HStack>
                 <Pressable
@@ -68,7 +69,7 @@ export const DeletePostDialog = ({
                   py="$md"
                   alignItems="center"
                   borderRightWidth={1}
-                  borderRightColor="$gray100"
+                  style={{ borderRightColor: theme.colors.gray100 }}
                   onPress={onClose}
                   disabled={isDeleting}
                   opacity={isDeleting ? 0.5 : 1}
@@ -76,8 +77,8 @@ export const DeletePostDialog = ({
                   <Text
                     fontSize="$md"
                     fontWeight="$medium"
-                    color="$gray600"
-                    style={{ fontFamily: playfairFonts.medium }}
+                    style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.gray600 }]}
+
                   >
                     {t("common.cancel")}
                   </Text>

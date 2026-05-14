@@ -203,7 +203,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         <Text
           fontSize="$lg"
           fontWeight="$bold"
-          color="$black"
+          style={{ color: theme.colors.black }}
           textAlign="center"
           mb="$md"
         >
@@ -228,14 +228,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <Text
                 fontSize="$sm"
                 fontWeight="$semibold"
-                color="$black"
+                style={{ color: theme.colors.black }}
                 numberOfLines={2}
               >
                 {shareContent.title}
               </Text>
               <Text
                 fontSize="$xs"
-                color="$gray500"
+                style={{ color: theme.colors.gray500 }}
                 numberOfLines={2}
               >
                 {shareContent.description}
@@ -274,7 +274,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 </View>
                 <Text
                   fontSize="$xs"
-                  color="$gray600"
+                  style={{ color: theme.colors.gray600 }}
                   mt="$xs"
                   textAlign="center"
                 >
@@ -292,7 +292,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           disabled={isSharing}
           activeOpacity={0.7}
         >
-          <Text fontSize="$md" fontWeight="$medium" color="$gray600">
+          <Text fontSize="$md" fontWeight="$medium" style={{ color: theme.colors.gray600 }}>
             {t("common.cancel")}
           </Text>
         </TouchableOpacity>

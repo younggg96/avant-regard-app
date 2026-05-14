@@ -46,7 +46,7 @@ import {
   Input,
   OptimizedImage,
 } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import ImagePickerModal from "../../components/ImagePickerModal";
 import ImageCropper from "../../components/ImageCropper";
@@ -87,9 +87,12 @@ const TILE_SIZE =
 const MAX_MEDIA = 9;
 const MAX_BRANDS = 6;
 const MAX_SHOWS = 6;
+const MAX_PRODUCTS = 6;
 const REVIEW_MIN_CHARS = 10;
-const REVIEW_MAX_CHARS = 500;
+const REVIEW_MAX_CHARS = 1000;
 const SHOWS_PAGE_SIZE = 50;
+// 单品测评 productName 在后端只是单个字符串，我们用 \n 分隔多个单品；
+// 渲染端 (PostContentSection / WantPopup) 自行解析。
 
 type V2ComposerType = "lookbook" | "outfit" | "review";
 
@@ -112,6 +115,7 @@ const TYPE_NEEDS_SHOWS: Record<V2ComposerType, boolean> = {
 };
 
 const PublishV2ComposerScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
@@ -134,10 +138,40 @@ const PublishV2ComposerScreen: React.FC = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // 单品测评特有
-  const [productName, setProductName] = useState("");
+  // 单品测评特有：支持多个单品名，最少保留一行
+  const [productNames, setProductNames] = useState<string[]>([""]);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
+
+  const updateProductNameAt = (index: number, value: string) => {
+    setProductNames((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleAddProductName = () => {
+    setProductNames((prev) => {
+      if (prev.length >= MAX_PRODUCTS) {
+        Alert.show(t("publish.maxProductsReached", { count: MAX_PRODUCTS }));
+        return prev;
+      }
+      return [...prev, ""];
+    });
+  };
+
+  const handleRemoveProductName = (index: number) => {
+    setProductNames((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const cleanedProductNames = productNames
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  const joinedProductName = cleanedProductNames.join("\n");
 
   // 品牌（三种类型共用）
   const [selectedBrands, setSelectedBrands] = useState<SelectedBrand[]>([]);
@@ -153,11 +187,18 @@ const PublishV2ComposerScreen: React.FC = () => {
   } = useBrandSearch();
 
   // 秀场（穿搭分享 / 单品测评）
+  // 与 V1 PublishReviewScreen 对齐: 分页加载 + 远端搜索, 而不是把第一页 50 条
+  // 当成全部数据本地过滤; 否则用户搜不到第二页之后的秀场, 也加载不到所有数据。
   const [selectedShows, setSelectedShows] = useState<SelectedShow[]>([]);
   const [showSelectorVisible, setShowSelectorVisible] = useState(false);
   const [allShows, setAllShows] = useState<Show[]>([]);
+  const [searchResults, setSearchResults] = useState<Show[]>([]);
   const [isLoadingShows, setIsLoadingShows] = useState(false);
+  const [isSearchingShows, setIsSearchingShows] = useState(false);
   const [showSearchQuery, setShowSearchQuery] = useState("");
+  const [showsPage, setShowsPage] = useState(1);
+  const [hasMoreShows, setHasMoreShows] = useState(true);
+  const isLoadingMoreShowsRef = useRef(false);
 
   // 商品信息（三种类型共用）
   const [productInfo, setProductInfo] = useState<ProductInfo>({});
@@ -166,7 +207,18 @@ const PublishV2ComposerScreen: React.FC = () => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  // 加载秀场（用户首次切到「需要秀场」类型时按需加载，避免无谓请求）
+  const mapShowFromApi = (s: ShowFromApi): Show => ({
+    brand: s.brand || "",
+    season: s.season,
+    title: s.title || s.brand || "",
+    cover_image: s.coverImage || "",
+    show_url: s.showUrl || "",
+    year: s.year || 0,
+    category: s.category || "",
+    show_id: s.id as number,
+  });
+
+  // 加载秀场首页（用户首次切到「需要秀场」类型时按需加载，避免无谓请求）
   const showsLoadedRef = useRef(false);
   const ensureShowsLoaded = useCallback(async () => {
     if (showsLoadedRef.current) return;
@@ -177,23 +229,85 @@ const PublishV2ComposerScreen: React.FC = () => {
         page: 1,
         pageSize: SHOWS_PAGE_SIZE,
       });
-      const shows: Show[] = response.shows.map((s: ShowFromApi) => ({
-        brand: s.brand || "",
-        season: s.season,
-        title: s.title || s.brand || "",
-        cover_image: s.coverImage || "",
-        show_url: s.showUrl || "",
-        year: s.year || 0,
-        category: s.category || "",
-        show_id: s.id as number,
-      }));
+      const shows = response.shows.map(mapShowFromApi);
       setAllShows(shows);
+      setShowsPage(1);
+      setHasMoreShows(shows.length >= SHOWS_PAGE_SIZE);
     } catch (err) {
       console.warn("V2 composer load shows failed", err);
+      // 失败回退: 允许下次再尝试加载, 避免「按了一次失败后永远空列表」。
+      showsLoadedRef.current = false;
     } finally {
       setIsLoadingShows(false);
     }
   }, []);
+
+  // 搜索状态下不分页加载, 否则会把搜索结果污染成全量列表。
+  const loadMoreShows = useCallback(async () => {
+    if (
+      isLoadingMoreShowsRef.current ||
+      !hasMoreShows ||
+      isLoadingShows ||
+      showSearchQuery.trim()
+    ) {
+      return;
+    }
+    isLoadingMoreShowsRef.current = true;
+    setIsLoadingShows(true);
+    try {
+      const nextPage = showsPage + 1;
+      const response = await showService.getShows({
+        page: nextPage,
+        pageSize: SHOWS_PAGE_SIZE,
+      });
+      const shows = response.shows.map(mapShowFromApi);
+      if (shows.length > 0) {
+        setAllShows((prev) => [...prev, ...shows]);
+        setShowsPage(nextPage);
+        setHasMoreShows(shows.length >= SHOWS_PAGE_SIZE);
+      } else {
+        setHasMoreShows(false);
+      }
+    } catch (err) {
+      console.warn("V2 composer load more shows failed", err);
+    } finally {
+      setIsLoadingShows(false);
+      isLoadingMoreShowsRef.current = false;
+    }
+  }, [showsPage, hasMoreShows, isLoadingShows, showSearchQuery]);
+
+  // 远端搜索秀场: 关键词改变时清空已有搜索结果, 提交时调 API。这样能搜到全量
+  // 秀场, 而不仅仅是已经加载的前 N 条。
+  const searchShowsFromApi = useCallback(async (keyword: string) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setIsSearchingShows(false);
+      return;
+    }
+    setIsSearchingShows(true);
+    try {
+      const results = await showService.searchShows(trimmed, 50);
+      setSearchResults(results.map(mapShowFromApi));
+    } catch (err) {
+      console.warn("V2 composer search shows failed", err);
+      setSearchResults([]);
+    } finally {
+      setIsSearchingShows(false);
+    }
+  }, []);
+
+  const handleShowSearchChange = useCallback((query: string) => {
+    setShowSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearchingShows(false);
+    }
+  }, []);
+
+  const handleShowSearchSubmit = useCallback(() => {
+    void searchShowsFromApi(showSearchQuery);
+  }, [searchShowsFromApi, showSearchQuery]);
 
   useEffect(() => {
     if (TYPE_NEEDS_SHOWS[selectedType]) {
@@ -429,13 +543,8 @@ const PublishV2ComposerScreen: React.FC = () => {
     Alert.show(t("publish.showUnlinked"));
   };
 
-  const filteredShows = showSearchQuery.trim()
-    ? allShows.filter(
-        (s) =>
-          s.brand.toLowerCase().includes(showSearchQuery.toLowerCase()) ||
-          (s.title ?? "").toLowerCase().includes(showSearchQuery.toLowerCase())
-      )
-    : allShows;
+  // 搜索模式下用远端 API 搜索结果, 否则用分页加载的全量列表。
+  const filteredShows = showSearchQuery.trim() ? searchResults : allShows;
 
   // ============== 验证 ==============
   const validate = (): boolean => {
@@ -454,7 +563,7 @@ const PublishV2ComposerScreen: React.FC = () => {
       }
     }
     if (selectedType === "review") {
-      if (!productName.trim()) {
+      if (cleanedProductNames.length === 0) {
         Alert.show(t("publish.completeRequiredFields"));
         return false;
       }
@@ -482,7 +591,7 @@ const PublishV2ComposerScreen: React.FC = () => {
       if (!description.trim()) return false;
     }
     if (selectedType === "review") {
-      if (!productName.trim()) return false;
+      if (cleanedProductNames.length === 0) return false;
       if (rating <= 0) return false;
       const len = reviewText.trim().length;
       if (len < REVIEW_MIN_CHARS || len > REVIEW_MAX_CHARS) return false;
@@ -510,7 +619,7 @@ const PublishV2ComposerScreen: React.FC = () => {
     const reviewExtras =
       selectedType === "review"
         ? {
-            productName: productName.trim(),
+            productName: joinedProductName,
             rating,
           }
         : {};
@@ -665,7 +774,7 @@ const PublishV2ComposerScreen: React.FC = () => {
     setImageDimensions({});
     setTitle("");
     setDescription("");
-    setProductName("");
+    setProductNames([""]);
     setRating(0);
     setReviewText("");
     setSelectedBrands([]);
@@ -737,7 +846,7 @@ const PublishV2ComposerScreen: React.FC = () => {
         ) : null}
         {isCover && !isVideo ? (
           <View style={styles.coverBadge}>
-            <Text fontSize="$2xs" color="$white" fontWeight="$medium">
+            <Text fontSize="$2xs" style={{ color: theme.colors.white }} fontWeight="$medium">
               {t("publish.cover")}
             </Text>
           </View>
@@ -782,9 +891,9 @@ const PublishV2ComposerScreen: React.FC = () => {
         <VStack gap="$lg">
           {/* 标题 */}
           <Box>
-            <Text fontSize="$sm" color="$gray600" mb="$xs">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
               {t("publish.titleLabel")}
-              <Text color="$red500"> *</Text>
+              <Text style={{ color: theme.colors.error }}> *</Text>
             </Text>
             <Input
               value={title}
@@ -796,20 +905,68 @@ const PublishV2ComposerScreen: React.FC = () => {
             />
           </Box>
 
-          {/* 产品名称 */}
+          {/* 产品名称 - 支持多个单品 */}
           <Box>
-            <Text fontSize="$sm" color="$gray600" mb="$xs">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$sm">
               {t("publish.productNameLabel")}
-              <Text color="$red500"> *</Text>
+              <Text style={{ color: theme.colors.error }}> *</Text>
             </Text>
-            <Input
-              value={productName}
-              onChangeText={setProductName}
-              placeholder={t("publish.productNamePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="underlined"
-              size="sm"
-            />
+            <VStack gap="$md">
+              {productNames.map((name, idx) => {
+                const isLast = idx === productNames.length - 1;
+                const canAdd = isLast && productNames.length < MAX_PRODUCTS;
+                const canRemove = productNames.length > 1;
+                return (
+                  <HStack
+                    key={`product-name-${idx}`}
+                    alignItems="center"
+                    gap="$sm"
+                  >
+                    <Box style={{ flex: 1 }}>
+                      <Input
+                        value={name}
+                        onChangeText={(v) => updateProductNameAt(idx, v)}
+                        placeholder={t("publish.productNamePlaceholder")}
+                        placeholderTextColor={theme.colors.gray400}
+                        variant="underlined"
+                        size="sm"
+                      />
+                    </Box>
+                    {canRemove ? (
+                      <TouchableOpacity
+                        onPress={() => handleRemoveProductName(idx)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.productActionBtn}
+                        accessibilityLabel={t("publish.removeProduct")}
+                      >
+                        <Ionicons
+                          name="remove"
+                          size={18}
+                          color={theme.colors.gray500}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                    {canAdd ? (
+                      <TouchableOpacity
+                        onPress={handleAddProductName}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[
+                          styles.productActionBtn,
+                          { borderColor: theme.colors.gray300 },
+                        ]}
+                        accessibilityLabel={t("publish.addProduct")}
+                      >
+                        <Ionicons
+                          name="add"
+                          size={18}
+                          color={theme.colors.gray700}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </HStack>
+                );
+              })}
+            </VStack>
           </Box>
 
           {/* 评分 */}
@@ -818,10 +975,10 @@ const PublishV2ComposerScreen: React.FC = () => {
           {/* 评价正文 */}
           <Box>
             <HStack alignItems="center" mb="$xs">
-              <Text fontSize="$sm" color="$gray600">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
                 {t("publish.reviewContentLabel")}
               </Text>
-              <Text color="$red500"> *</Text>
+              <Text style={{ color: theme.colors.error }}> *</Text>
             </HStack>
             <View style={styles.textArea}>
               <TextInput
@@ -837,13 +994,11 @@ const PublishV2ComposerScreen: React.FC = () => {
             </View>
             <Text
               fontSize="$sm"
-              color={
-                reviewText.trim().length > 0 &&
+              style={{ color: reviewText.trim().length > 0 &&
                 (reviewText.trim().length < REVIEW_MIN_CHARS ||
                   reviewText.trim().length > REVIEW_MAX_CHARS)
-                  ? "$red500"
-                  : "$gray400"
-              }
+                  ? theme.colors.error
+                  : theme.colors.gray400 }}
               textAlign="right"
               mt="$xs"
             >
@@ -862,9 +1017,9 @@ const PublishV2ComposerScreen: React.FC = () => {
     return (
       <VStack gap="$lg">
         <Box>
-          <Text fontSize="$sm" color="$gray600" mb="$xs">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
             {t("publish.titleLabel")}
-            <Text color="$red500"> *</Text>
+            <Text style={{ color: theme.colors.error }}> *</Text>
           </Text>
           <Input
             value={title}
@@ -881,13 +1036,13 @@ const PublishV2ComposerScreen: React.FC = () => {
         </Box>
 
         <Box>
-          <Text fontSize="$sm" color="$gray600" mb="$xs">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
             {t(
               selectedType === "lookbook"
                 ? "publish.descriptionLabel"
                 : "publish.outfitDetailsLabel"
             )}
-            <Text color="$red500"> *</Text>
+            <Text style={{ color: theme.colors.error }}> *</Text>
           </Text>
           <View style={styles.textArea}>
             <TextInput
@@ -929,7 +1084,7 @@ const PublishV2ComposerScreen: React.FC = () => {
         >
           {/* —— 媒体网格 —— */}
           <Box px="$lg" pt="$md">
-            <Text fontSize="$sm" color="$gray500" mb="$sm">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} mb="$sm">
               {media.length > 0
                 ? t("publishV2.composer.mediaCount", {
                     count: media.length,
@@ -945,7 +1100,7 @@ const PublishV2ComposerScreen: React.FC = () => {
 
           {/* —— 类型切换 —— */}
           <Box px="$lg" pt="$md">
-            <Text fontSize="$sm" color="$gray500" mb="$sm">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} mb="$sm">
               {t("publishV2.composer.typeLabel")}
             </Text>
             <ScrollView
@@ -963,22 +1118,22 @@ const PublishV2ComposerScreen: React.FC = () => {
                       px="$md"
                       py="$sm"
                       rounded="$sm"
-                      bg={active ? "$black" : "$gray100"}
+                      style={[{ backgroundColor: active ? theme.colors.black : theme.colors.gray100 }, { borderColor: active ? theme.colors.black : theme.colors.gray200 }]}
                       borderWidth={1}
-                      borderColor={active ? "$black" : "$gray200"}
+
                     >
                       <HStack alignItems="center" gap="$xs">
                         <Text
                           fontSize="$sm"
                           fontWeight="$medium"
-                          color={active ? "$white" : "$black"}
+                          style={{ color: active ? theme.colors.white : theme.colors.black }}
                         >
                           {chip.label}
                         </Text>
                         {chip.id === "lookbook" ? (
                           <Text
                             fontSize="$2xs"
-                            color={active ? "$white" : "$gray500"}
+                            style={{ color: active ? theme.colors.white : theme.colors.gray500 }}
                           >
                             · {t("publishV2.composer.defaultBadge")}
                           </Text>
@@ -1069,13 +1224,13 @@ const PublishV2ComposerScreen: React.FC = () => {
         visible={showSelectorVisible}
         shows={filteredShows}
         searchQuery={showSearchQuery}
-        isLoading={isLoadingShows}
-        onSearchChange={setShowSearchQuery}
-        onSearch={() => {
-          /* V2 内本地过滤即可，不再触发远端搜索；保留 prop 以兼容 modal API */
-        }}
+        isLoading={isLoadingShows || isSearchingShows}
+        hasMore={hasMoreShows && !showSearchQuery.trim()}
+        onSearchChange={handleShowSearchChange}
+        onSearch={handleShowSearchSubmit}
         onSelectShow={handleSelectShow}
         onClose={() => setShowSelectorVisible(false)}
+        onLoadMore={loadMoreShows}
       />
     </SafeAreaView>
   );
@@ -1145,6 +1300,15 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       minHeight: 90,
       textAlignVertical: "top",
+    },
+    productActionBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+      justifyContent: "center",
     },
   });
 

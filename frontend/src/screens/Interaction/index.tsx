@@ -53,57 +53,57 @@ const InteractionScreen = () => {
   const styles = useInteractionStyles();
   const { t } = useTranslation();
   const route = useRoute<any>();
-  const initialTab = route.params?.subTab as SubTab | undefined;
-  const [activeTab, setActiveTab] = useState<SubTab>(initialTab || "messages");
+  const routeSubTab = route.params?.subTab as SubTab | undefined;
+  const initialTab: SubTab =
+    routeSubTab && INDEX_TAB.includes(routeSubTab) ? routeSubTab : "messages";
+  const [activeTab, setActiveTab] = useState<SubTab>(initialTab);
   // 懒挂载标记：一旦用户访问过"地图"子 Tab，就保持挂载（避免来回切时反复重载地图）。
   // 初始化时若用户是从其它页通过 `subTab=map` 参数直达，则直接标记为已挂载。
   const [hasMountedMap, setHasMountedMap] = useState(initialTab === "map");
   const { refreshUnreadCount } = useChatStore();
   const horizontalScrollRef = useRef<RNScrollView>(null);
   const hasAlignedAfterLayoutRef = useRef(false);
+  // route.params.subTab 仅当与上次响应过的值不同时才驱动子 Tab 切换；
+  // 否则会和本地 setActiveTab 形成循环（pager 切到私信后被 useEffect 弹回 map）。
+  const lastHandledRouteSubTabRef = useRef<SubTab | undefined>(routeSubTab);
 
-  const alignToTab = useCallback((tab: SubTab) => {
+  const alignToTab = useCallback((tab: SubTab, animated: boolean) => {
     horizontalScrollRef.current?.scrollTo({
       x: TAB_INDEX[tab] * screenWidth,
-      animated: false,
+      animated,
     });
   }, []);
 
+  // 只响应"外部 navigate 主动带来的新 subTab"。比如用户在 Profile 点私信
+  // 进入互动页时 routeSubTab='messages'，会切到私信。但用户在屏内自己点了
+  // 「买手店地图」之后，route.params 里残留的 'map' 不应再次被消费 —
+  // 不然回到「私信」时这个 effect 会立刻把页面拉回 'map'。
   useEffect(() => {
-    if (initialTab && INDEX_TAB.includes(initialTab)) {
-      setActiveTab(initialTab);
-      if (initialTab === "map") setHasMountedMap(true);
-      alignToTab(initialTab);
-    }
-  }, [alignToTab, initialTab]);
-
-  useEffect(() => {
-    // Reset layout-alignment guard when tab is driven by route params.
-    hasAlignedAfterLayoutRef.current = false;
-  }, [initialTab]);
+    if (!routeSubTab || !INDEX_TAB.includes(routeSubTab)) return;
+    if (routeSubTab === lastHandledRouteSubTabRef.current) return;
+    lastHandledRouteSubTabRef.current = routeSubTab;
+    setActiveTab(routeSubTab);
+    if (routeSubTab === "map") setHasMountedMap(true);
+    alignToTab(routeSubTab, false);
+  }, [alignToTab, routeSubTab]);
 
   useFocusEffect(
     useCallback(() => {
       useMainBottomTabStore.getState().setActiveMainTab("Interaction");
       refreshUnreadCount();
-
-      // Ensure page position always matches activeTab when the screen regains focus.
-      // This avoids a mismatch where tab highlight is updated from route params
-      // but the underlying horizontal ScrollView remains on the old page.
-      requestAnimationFrame(() => {
-        alignToTab(activeTab);
-      });
-    }, [activeTab, alignToTab, refreshUnreadCount])
+    }, [refreshUnreadCount])
   );
 
-  const handleTabChange = useCallback((tab: SubTab) => {
-    setActiveTab(tab);
-    if (tab === "map") setHasMountedMap(true);
-    horizontalScrollRef.current?.scrollTo({
-      x: TAB_INDEX[tab] * screenWidth,
-      animated: true,
-    });
-  }, []);
+  const handleTabChange = useCallback(
+    (tab: SubTab) => {
+      setActiveTab(tab);
+      if (tab === "map") setHasMountedMap(true);
+      // 标记本地切换的目标，避免随后被 routeSubTab effect 当成"外部命令"再次响应。
+      lastHandledRouteSubTabRef.current = tab;
+      alignToTab(tab, true);
+    },
+    [alignToTab]
+  );
 
   const handleScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -113,6 +113,7 @@ const InteractionScreen = () => {
       if (newTab && newTab !== activeTab) {
         setActiveTab(newTab);
         if (newTab === "map") setHasMountedMap(true);
+        lastHandledRouteSubTabRef.current = newTab;
       }
     },
     [activeTab]
@@ -145,10 +146,8 @@ const InteractionScreen = () => {
 
           // One more alignment after first layout to avoid occasional
           // "tab selected but page not moved" race on some devices.
-          const targetTab =
-            initialTab && INDEX_TAB.includes(initialTab) ? initialTab : activeTab;
           requestAnimationFrame(() => {
-            alignToTab(targetTab);
+            alignToTab(activeTab, false);
           });
         }}
         style={styles.swipeContainer}

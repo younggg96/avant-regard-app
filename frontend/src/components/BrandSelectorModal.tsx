@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { Brand } from "../services/brandService";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -42,6 +42,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
   onClose,
   onLoadMore,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const brandWidth = (screenWidth - 48) / 2;
   const styles = useThemedStyles(makeStyles);
@@ -70,11 +71,11 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
               px="$md"
               py="$sm"
               borderBottomWidth={1}
-              borderBottomColor="$gray100"
-              bg="$white"
+              style={[{ borderBottomColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
-                <Text fontSize="$lg" color="$black" fontWeight="$medium">
+                <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium">
                   {t("brandSelector.title")}
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
@@ -101,8 +102,8 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                     }}
                   />
                 </Box>
-                <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
-                  <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                <Pressable onPress={onSearch} px="$lg" h={40} style={{ backgroundColor: theme.colors.black }} rounded="$sm" justifyContent="center">
+                  <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
                     {t("brandSelector.search")}
                   </Text>
                 </Pressable>
@@ -126,8 +127,8 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                   style={[styles.brandItem, { width: brandWidth }]}
                 >
                   <Box
-                    style={[styles.brandImageContainer, { height: brandWidth * 0.8 }]}
-                    bg="$gray100"
+                    style={[styles.brandImageContainer, { height: brandWidth * 0.8 }, { backgroundColor: theme.colors.gray100 }]}
+
                     rounded="$md"
                     alignItems="center"
                     justifyContent="center"
@@ -152,7 +153,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                         <Text
                           fontSize="$xl"
                           fontWeight="$bold"
-                          color="$gray400"
+                          style={{ color: theme.colors.gray400 }}
                           textAlign="center"
                         >
                           {item.name.substring(0, 2).toUpperCase()}
@@ -163,19 +164,19 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                   <VStack mt="$xs" px="$xs">
                     <Text
                       fontSize="$sm"
-                      color="$black"
+                      style={{ color: theme.colors.black }}
                       fontWeight="$medium"
                       numberOfLines={1}
                     >
                       {item.name}
                     </Text>
                     {item.category && (
-                      <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
+                      <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} numberOfLines={1}>
                         {item.category}
                       </Text>
                     )}
                     {item.country && (
-                      <Text fontSize={10} color="$gray400" numberOfLines={1}>
+                      <Text fontSize={10} style={{ color: theme.colors.gray400 }} numberOfLines={1}>
                         {item.country}
                       </Text>
                     )}
@@ -185,7 +186,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
               ListFooterComponent={
                 isLoading && brands.length > 0 ? (
                   <Box py="$md" alignItems="center">
-                    <Text color="$gray400" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray400 }} fontSize="$sm">
                       {t("brandSelector.loading")}
                     </Text>
                   </Box>
@@ -204,7 +205,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
                     size={24}
                     color={theme.colors.gray300}
                   />
-                  <Text color="$gray400" mt="$md">
+                  <Text style={{ color: theme.colors.gray400 }} mt="$md">
                     {isLoading ? t("brandSelector.loading") : t("brandSelector.noResults")}
                   </Text>
                 </Box>

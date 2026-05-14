@@ -14,7 +14,7 @@ import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 import PostCard, { Post } from "../../../components/PostCard";
 import ForumPostCard from "../../../components/ForumPostCard";
 import BannerCarousel from "../../../components/BannerCarousel";
@@ -23,6 +23,11 @@ import { CommunityListResponse } from "../../../services/communityService";
 import { DisplayPost, TabType } from "../types";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 import { PopularCommunities } from "./PopularCommunities";
+import {
+  BannerCarouselSkeleton,
+  PopularCommunitiesSkeleton,
+  ForumTabSkeleton,
+} from "./ForumSkeletons";
 import { BrandSection } from "./BrandSection";
 import { BuyerTabContent } from "./BuyerTab";
 import type { BuyerStoreProduct } from "./BuyerTab/types";
@@ -53,6 +58,13 @@ export interface PostsTabContentProps extends TabContentBaseProps {
   refreshing: boolean;
   tabLoading: boolean;
   tabLoaded: boolean;
+  /**
+   * 论坛 Tab 头部独立 loading：仅 `tab === "forum"` 时才会读到。其它
+   * Tab 也接收这两个字段是为了让上层 `TabContent` 调用点保持单一签名，
+   * 渲染分支自己决定用不用。
+   */
+  bannersLoading?: boolean;
+  communitiesLoading?: boolean;
   onRefresh: () => void;
   onPostPress: (post: Post) => void;
   onAuthorPress: (authorId: string) => void;
@@ -165,11 +177,12 @@ const listFooterStyles = StyleSheet.create({
 });
 
 const LoadMoreFooterInner: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   return (
     <View style={listFooterStyles.wrapper}>
       <ActivityIndicator size="small" color={theme.colors.gray400} />
-      <Text fontSize="$sm" color="$gray400">
+      <Text fontSize="$sm" style={{ color: theme.colors.gray400 }}>
         {t("common.loading")}
       </Text>
     </View>
@@ -314,6 +327,8 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   refreshing,
   tabLoading,
   tabLoaded,
+  bannersLoading = false,
+  communitiesLoading = false,
   onRefresh,
   onScroll,
   onPostPress,
@@ -487,6 +502,17 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   };
 
   if (tabLoading || !tabLoaded) {
+    // 论坛 Tab 在 cache miss 路径走骨架屏：banner / 社区 / 帖子
+    // 占位行同时显示，比起品牌 GIF 更贴近实际目标布局，避免「网络
+    // 慢的时候用户盯着加载动画干等」的体感。其它 Tab（推荐 / 关注）
+    // 仍保留 `home-loading.gif` 的品牌闪屏。
+    if (tab === "forum") {
+      return (
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <ForumTabSkeleton />
+        </View>
+      );
+    }
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <GifLoading />
@@ -503,14 +529,14 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
         >
           <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
             <Ionicons name="cloud-offline-outline" size={48} color={theme.colors.gray400} />
-            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
+            <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
               {t("common.loadFailed")}
             </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
+            <Text style={{ color: theme.colors.gray400 }} textAlign="center" lineHeight="$lg" mb="$md">
               {error}
             </Text>
-            <Pressable onPress={onRefresh} px="$lg" py="$sm" bg="$black" rounded="$md">
-              <Text color="$white" fontWeight="$medium">{t("discover.tapRetry")}</Text>
+            <Pressable onPress={onRefresh} px="$lg" py="$sm" style={{ backgroundColor: theme.colors.black }} rounded="$md">
+              <Text style={{ color: theme.colors.white }} fontWeight="$medium">{t("discover.tapRetry")}</Text>
             </Pressable>
           </VStack>
         </ScrollView>
@@ -532,10 +558,10 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
               size={48}
               color={theme.colors.gray400}
             />
-            <Text fontSize="$lg" color="$black" fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
+            <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium" mb="$sm" mt="$md" textAlign="center">
               {emptyState.title}
             </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg">
+            <Text style={{ color: theme.colors.gray400 }} textAlign="center" lineHeight="$lg">
               {emptyState.subtitle}
             </Text>
           </VStack>
@@ -546,12 +572,24 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
 
   // Forum tab — FlatList (single-column)
   if (tab === "forum") {
+    // Banner / 热门社区在 forum Tab cache-hit 路径下是「帖子先到、
+    // header 异步补」的节奏，所以即使帖子已经渲染、`tabLoaded.forum`
+    // 翻 true 之后，header 仍然可能处于 `loading=true && data 空` 的
+    // 中间态。两段三元条件分别处理：仍在加载 → 显示骨架；加载完毕
+    // 且确实有数据 → 显示真实组件；加载完毕但数据为空 → 不渲染
+    // （沿用原来的兜底，避免空 section 占位）。
     const forumHeader = (
       <>
-        {banners.length > 0 && (
+        {bannersLoading && banners.length === 0 ? (
+          <BannerCarouselSkeleton />
+        ) : banners.length > 0 ? (
           <BannerCarousel banners={banners} onBannerPress={onBannerPress} />
+        ) : null}
+        {communitiesLoading && (!communities || communities.popular.length === 0) ? (
+          <PopularCommunitiesSkeleton />
+        ) : (
+          <PopularCommunities communities={communities} />
         )}
-        <PopularCommunities communities={communities} />
       </>
     );
 
@@ -588,10 +626,10 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
       {tab === "following" && <BrandSection />}
       {tab === "following" && currentPosts.length > 0 && (
         <HStack px="$md" pt={14} pb={10} gap={6} alignItems="center">
-          <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
+          <Text fontSize="$sm" fontWeight="$bold" style={{ color: theme.colors.gray400 }}>
             {t("discover.followingPosts")}
           </Text>
-          <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
+          <Text fontSize="$xs" fontWeight="$semibold" style={{ color: theme.colors.gray400 }}>
             {currentPosts.length}
           </Text>
         </HStack>

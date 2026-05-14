@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -53,6 +53,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
   onClose,
   onLoadMore,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const showWidth = (screenWidth - 48) / 2;
   const styles = useThemedStyles(makeStyles);
@@ -81,11 +82,11 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               px="$md"
               py="$sm"
               borderBottomWidth={1}
-              borderBottomColor="$gray100"
-              bg="$white"
+              style={[{ borderBottomColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
             >
               <HStack alignItems="center" justifyContent="between" mb="$sm">
-                <Text fontSize="$lg" color="$black" fontWeight="$medium">
+                <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium">
                   {t("showSelector.title")}
                 </Text>
                 <Pressable p="$xs" onPress={onClose}>
@@ -112,8 +113,8 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                     }}
                   />
                 </Box>
-                <Pressable onPress={onSearch} px="$lg" h={40} bg="$black" rounded="$sm" justifyContent="center">
-                  <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                <Pressable onPress={onSearch} px="$lg" h={40} style={{ backgroundColor: theme.colors.black }} rounded="$sm" justifyContent="center">
+                  <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
                     {t("showSelector.search")}
                   </Text>
                 </Pressable>
@@ -148,16 +149,16 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                   <VStack mt="$xs" px="$xs">
                     <Text
                       fontSize="$sm"
-                      color="$black"
+                      style={{ color: theme.colors.black }}
                       fontWeight="$medium"
                       numberOfLines={1}
                     >
                       {item.brand}
                     </Text>
-                    <Text fontSize="$xs" color="$gray500" numberOfLines={1}>
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} numberOfLines={1}>
                       {item.season}
                     </Text>
-                    <Text fontSize={10} color="$gray400" numberOfLines={1}>
+                    <Text fontSize={10} style={{ color: theme.colors.gray400 }} numberOfLines={1}>
                       {item.category}
                     </Text>
                   </VStack>
@@ -166,7 +167,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               ListFooterComponent={
                 isLoading && shows.length > 0 ? (
                   <Box py="$md" alignItems="center">
-                    <Text color="$gray400" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray400 }} fontSize="$sm">
                       {t("showSelector.loading")}
                     </Text>
                   </Box>
@@ -185,7 +186,7 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
                     size={24}
                     color={theme.colors.gray300}
                   />
-                  <Text color="$gray400" mt="$md">
+                  <Text style={{ color: theme.colors.gray400 }} mt="$md">
                     {isLoading ? t("showSelector.loading") : t("showSelector.noResults")}
                   </Text>
                 </Box>

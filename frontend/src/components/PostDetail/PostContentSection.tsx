@@ -5,7 +5,7 @@ import { Text, HStack, VStack, Pressable, Box } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import { Post } from "../PostCard";
 import HalfStarRating from "../HalfStarRating";
 import { VideoPlayer } from "./VideoPlayer";
@@ -63,6 +63,7 @@ const ImageBlockRenderer: React.FC<{ uri: string; frameRatio: number }> = ({
   uri,
   frameRatio,
 }) => {
+  const theme = useAppTheme();
   const contentStyles = useThemedStyles(makeContentStyles);
   const mediaSize = { width: SCREEN_WIDTH, height: SCREEN_WIDTH / frameRatio };
   return (
@@ -91,8 +92,8 @@ const ContentBlockRenderer: React.FC<{
       <Text
         fontFamily="PlayfairDisplay-Regular"
         fontSize={15}
-        color="$gray600"
-        style={contentStyles.blockText}
+        style={[contentStyles.blockText, { color: theme.colors.gray600 }]}
+
       >
         {block.content}
       </Text>
@@ -123,6 +124,7 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
   mediaUrisForViewer,
   hideFirstCoverImage = false,
 }) => {
+  const theme = useAppTheme();
   const contentStyles = useThemedStyles(makeContentStyles);
   // 解析内容
   const contentBlocks = useMemo(
@@ -197,8 +199,8 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
       <Text
         fontFamily="PlayfairDisplay-Bold"
         fontSize={22}
-        color="$black"
-        style={contentStyles.title}
+        style={[contentStyles.title, { color: theme.colors.black }]}
+
       >
         {post.content?.title}
       </Text>
@@ -230,8 +232,8 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
           <Text
             fontFamily="PlayfairDisplay-Regular"
             fontSize={15}
-            color="$gray600"
-            style={contentStyles.description}
+            style={[contentStyles.description, { color: theme.colors.gray600 }]}
+
           >
             {post.content.description}
           </Text>
@@ -239,44 +241,56 @@ export const PostContentSection: React.FC<PostContentSectionProps> = ({
       )}
 
       {/* ITEM_REVIEW 类型显示品牌、产品名和评分 */}
-      {post.type === "ITEM_REVIEW" && (
-        <VStack style={contentStyles.reviewMeta}>
-          {/* 品牌和产品名 - 优雅的标签样式 */}
-          {(post.brandName || post.productName) && (
-            <HStack style={contentStyles.tagRow}>
-              {post.brandName && (
-                <View style={contentStyles.brandTag}>
-                  <Text style={contentStyles.brandTagText}>
-                    {post.brandName}
-                  </Text>
-                </View>
-              )}
-              {post.productName && (
-                <View style={contentStyles.productTag}>
-                  <Text style={contentStyles.productTagText}>
-                    {post.productName}
-                  </Text>
-                </View>
-              )}
-            </HStack>
-          )}
-          {/* 评分 - 精致的星级显示 */}
-          {post.rating !== undefined && (
-            <HStack style={contentStyles.ratingRow}>
-              <HalfStarRating
-                rating={post.rating}
-                size={16}
-                color="#D4AF37"
-                inactiveColor={theme.colors.gray200}
-                gap={2}
-              />
-              <Text style={contentStyles.ratingText}>
-                {post.rating % 1 === 0 ? `${post.rating}.0` : post.rating.toFixed(1)}
-              </Text>
-            </HStack>
-          )}
-        </VStack>
-      )}
+      {post.type === "ITEM_REVIEW" && (() => {
+        // productName 历史上是单字符串字段, 但发布端允许用 \n 分隔多个单品
+        // (PublishReviewScreen / PublishV2Composer 都按这个约定写入)。
+        // 这里拆开后每个单品独占一个标签, 避免出现一长串挤在一起的情况。
+        const productNameList = post.productName
+          ? post.productName
+              .split("\n")
+              .map((name) => name.trim())
+              .filter((name) => name.length > 0)
+          : [];
+        return (
+          <VStack style={contentStyles.reviewMeta}>
+            {/* 品牌和产品名 - 优雅的标签样式 */}
+            {(post.brandName || productNameList.length > 0) && (
+              <HStack style={contentStyles.tagRow}>
+                {post.brandName && (
+                  <View style={contentStyles.brandTag}>
+                    <Text style={contentStyles.brandTagText}>
+                      {post.brandName}
+                    </Text>
+                  </View>
+                )}
+                {productNameList.map((name, idx) => (
+                  <View
+                    key={`product-tag-${idx}`}
+                    style={contentStyles.productTag}
+                  >
+                    <Text style={contentStyles.productTagText}>{name}</Text>
+                  </View>
+                ))}
+              </HStack>
+            )}
+            {/* 评分 - 精致的星级显示 */}
+            {post.rating !== undefined && (
+              <HStack style={contentStyles.ratingRow}>
+                <HalfStarRating
+                  rating={post.rating}
+                  size={16}
+                  color="#D4AF37"
+                  inactiveColor={theme.colors.gray200}
+                  gap={2}
+                />
+                <Text style={contentStyles.ratingText}>
+                  {post.rating % 1 === 0 ? `${post.rating}.0` : post.rating.toFixed(1)}
+                </Text>
+              </HStack>
+            )}
+          </VStack>
+        );
+      })()}
     </VStack>
   );
 };
@@ -374,6 +388,7 @@ interface OutfitItemsSectionProps {
 export const OutfitItemsSection: React.FC<OutfitItemsSectionProps> = ({
   items,
 }) => {
+  const theme = useAppTheme();
   const outfitStyles = useThemedStyles(makeOutfitStyles);
   if (!items || items.length === 0) return null;
 

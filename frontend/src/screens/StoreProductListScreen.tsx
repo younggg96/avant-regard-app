@@ -43,7 +43,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   getStoreProducts,
@@ -108,6 +108,7 @@ const titleForMode = (
 };
 
 const StoreProductListScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
@@ -310,10 +311,10 @@ const StoreProductListScreen: React.FC = () => {
             size={40}
             color={theme.colors.gray300}
           />
-          <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$sm">
             {t("store.loadFailed")}
           </Text>
-          <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
+          <Text fontSize="$xs" style={{ color: theme.colors.gray300 }} mt="$xs" textAlign="center">
             {error}
           </Text>
           <Pressable
@@ -321,10 +322,10 @@ const StoreProductListScreen: React.FC = () => {
             px="$lg"
             py="$sm"
             mt="$md"
-            bg="$black"
+            style={{ backgroundColor: theme.colors.black }}
             rounded="$md"
           >
-            <Text color="$white" fontWeight="$semibold" fontSize="$sm">
+            <Text style={{ color: theme.colors.white }} fontWeight="$semibold" fontSize="$sm">
               {t("store.tapRetry")}
             </Text>
           </Pressable>
@@ -422,7 +423,7 @@ const StoreProductListScreen: React.FC = () => {
             </View>
           ) : !hasMore && products.length > 0 ? (
             <View style={styles.footerEnd}>
-              <Text fontSize="$xs" color="$gray300">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                 {t("store.noMoreData")}
               </Text>
             </View>
@@ -436,7 +437,7 @@ const StoreProductListScreen: React.FC = () => {
                 size={32}
                 color={theme.colors.gray300}
               />
-              <Text fontSize="$sm" color="$gray300" mt="$sm">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$sm">
                 {activeQuery ? t("store.noMatchProducts") : t("store.noProducts")}
               </Text>
             </Box>
@@ -465,8 +466,8 @@ const CategoryChip: React.FC<{
       <Text
         fontSize={12}
         fontWeight={active ? "$semibold" : "$normal"}
-        color={active ? "$white" : "$gray700"}
-        style={{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }}
+        style={[{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }, { color: active ? theme.colors.white : theme.colors.gray700 }]}
+
       >
         {label}
       </Text>
@@ -525,18 +526,18 @@ const ProductCardItemImpl: React.FC<{
         <Text
           fontSize={13}
           fontWeight="$semibold"
-          color="$black"
+          style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.black }]}
           numberOfLines={2}
-          style={{ fontFamily: playfairFonts.medium }}
+
         >
           {product.title}
         </Text>
         {!!product.brand && (
           <Text
             fontSize={10}
-            color="$gray400"
+            style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray400 }]}
             numberOfLines={1}
-            style={{ fontFamily: playfairFonts.regular }}
+
           >
             {product.brand}
           </Text>
@@ -545,8 +546,8 @@ const ProductCardItemImpl: React.FC<{
           <Text
             fontSize={13}
             fontWeight="$bold"
-            color={hasDiscount ? "$error" : "$black"}
-            style={{ fontFamily: playfairFonts.bold }}
+            style={[{ fontFamily: playfairFonts.bold }, { color: hasDiscount ? theme.colors.error : theme.colors.black }]}
+
           >
             {formatPrice(
               hasDiscount
@@ -558,11 +559,11 @@ const ProductCardItemImpl: React.FC<{
           {hasDiscount && (
             <Text
               fontSize={11}
-              color="$gray300"
-              style={{
+              style={[{
                 textDecorationLine: "line-through",
                 fontFamily: playfairFonts.regular,
-              }}
+              }, { color: theme.colors.gray300 }]}
+
             >
               {formatPrice(product.priceCents, product.currency)}
             </Text>

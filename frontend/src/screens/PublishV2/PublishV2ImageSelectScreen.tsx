@@ -25,7 +25,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
 import { Box, Text, ScrollView, HStack, OptimizedImage } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import ImagePickerModal from "../../components/ImagePickerModal";
 import ImageCropper from "../../components/ImageCropper";
@@ -42,6 +42,7 @@ const TILE_SIZE = (SCREEN_WIDTH - 32 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COL
 const MAX_MEDIA = 9;
 
 const PublishV2ImageSelectScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
@@ -271,7 +272,7 @@ const PublishV2ImageSelectScreen: React.FC = () => {
         onPress={() => setPickerVisible(true)}
       >
         <Ionicons name="add" size={32} color={theme.colors.gray400} />
-        <Text fontSize="$xs" color="$gray400" mt="$xs" textAlign="center">
+        <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mt="$xs" textAlign="center">
           {t("publishV2.imageSelect.addMedia")}
         </Text>
       </TouchableOpacity>
@@ -317,7 +318,7 @@ const PublishV2ImageSelectScreen: React.FC = () => {
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text fontSize="$sm" color="$gray500" mb="$md">
+        <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} mb="$md">
           {media.length > 0
             ? t("publishV2.imageSelect.selectedCount", {
                 count: media.length,
@@ -337,8 +338,8 @@ const PublishV2ImageSelectScreen: React.FC = () => {
         pt="$md"
         pb="$md"
         borderTopWidth={1}
-        borderTopColor="$gray100"
-        bg="$white"
+        style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
       >
         <TouchableOpacity
           style={[styles.nextBtn, !canGoNext && styles.nextBtnDisabled]}
@@ -346,7 +347,7 @@ const PublishV2ImageSelectScreen: React.FC = () => {
           activeOpacity={0.8}
           disabled={!canGoNext}
         >
-          <Text color="$white" fontSize="$md" fontWeight="$medium">
+          <Text style={{ color: theme.colors.white }} fontSize="$md" fontWeight="$medium">
             {t("publishV2.imageSelect.next")}
           </Text>
         </TouchableOpacity>

@@ -1,6 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
@@ -14,6 +14,7 @@ interface NotificationRowProps {
 }
 
 export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
+  const theme = useAppTheme();
   const icon = getNotifIcon(item.type);
   const styles = useActivityStyles();
 
@@ -49,13 +50,13 @@ export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
         </Box>
 
         <VStack flex={1} mr="$sm">
-          <Text fontSize="$sm" fontWeight="$semibold" color="$black" mb={2}>
+          <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }} mb={2}>
             {item.title}
           </Text>
-          <Text fontSize="$sm" color="$gray300" numberOfLines={1}>
+          <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} numberOfLines={1}>
             {item.message}
           </Text>
-          <Text fontSize="$xs" color="$gray200" mt={2}>
+          <Text fontSize="$xs" style={{ color: theme.colors.gray200 }} mt={2}>
             {formatTime(item.createdAt)}
           </Text>
         </VStack>

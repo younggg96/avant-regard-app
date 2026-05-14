@@ -27,7 +27,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../../theme";
 import { Alert } from "../../../../utils/Alert";
 import { SCREEN_WIDTH } from "../../constants";
 import { StoreSelector } from "./StoreSelector";
@@ -96,6 +96,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   onOpenAllStores,
   onOpenProductList,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const {
@@ -320,14 +321,14 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     return (
       <Box style={styles.centerPadded}>
         <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
-        <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm" style={styles.errorTitle}>
+        <Text fontSize="$md" fontWeight="$semibold" style={[styles.errorTitle, { color: theme.colors.black }]} mt="$sm">
           {t("discover.buyerLoadFailed")}
         </Text>
-        <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center" style={styles.errorDetail}>
+        <Text fontSize="$xs" style={[styles.errorDetail, { color: theme.colors.gray300 }]} mt="$xs" textAlign="center">
           {error}
         </Text>
-        <Pressable onPress={refresh} px="$lg" py="$sm" mt="$md" bg="$black" rounded="$md">
-          <Text color="$white" fontWeight="$semibold" fontSize="$sm" style={styles.errorRetryLabel}>
+        <Pressable onPress={refresh} px="$lg" py="$sm" mt="$md" style={{ backgroundColor: theme.colors.black }} rounded="$md">
+          <Text style={[styles.errorRetryLabel, { color: theme.colors.white }]} fontWeight="$semibold" fontSize="$sm">
             {t("discover.buyerTapRetry")}
           </Text>
         </Pressable>
@@ -429,6 +430,7 @@ const ContentTabBarImpl: React.FC<ContentTabBarProps> = ({
   productsCount,
   postsCount,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const tabStyles = useThemedStyles(makeTabStyles);
   return (
@@ -439,7 +441,7 @@ const ContentTabBarImpl: React.FC<ContentTabBarProps> = ({
       gap="$xl"
       alignItems="flex-end"
       borderBottomWidth={StyleSheet.hairlineWidth}
-      borderBottomColor="$gray100"
+      style={{ borderBottomColor: theme.colors.gray100 }}
     >
       <Pressable
         onPress={() => onChange("products")}
@@ -509,6 +511,7 @@ interface PostGridProps {
 }
 
 const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const rows = useMemo(() => {
@@ -546,15 +549,15 @@ const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }
         my="$lg"
         alignItems="center"
         borderWidth={StyleSheet.hairlineWidth}
-        borderColor="$gray100"
+        style={[styles.emptyPanelContainer, { borderColor: theme.colors.gray100 }]}
         rounded="$lg"
-        style={styles.emptyPanelContainer}
+
       >
         <Ionicons name="albums-outline" size={28} color={theme.colors.gray300} />
-        <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
+        <Text fontSize="$sm" fontWeight="$semibold" style={[styles.emptyPanelTitle, { color: theme.colors.black }]} mt="$sm">
           {t("discover.buyerNoStorePosts")}
         </Text>
-        <Text fontSize="$xs" color="$gray300" mt="$xs" style={styles.emptyPanelHint}>
+        <Text fontSize="$xs" style={[styles.emptyPanelHint, { color: theme.colors.gray300 }]} mt="$xs">
           {t("discover.buyerNoStorePostsHint")}
         </Text>
       </Box>
@@ -604,6 +607,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   onProductPress,
   onFavoriteToggle,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   // 两列等宽，FlatList 在 ScrollView 里嵌套会报警，所以手写 2 列 row。
@@ -637,12 +641,12 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
 
   if (products.length === 0) {
     return (
-      <Box mx="$md" mb="$lg" py="$lg" my="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} borderColor="$gray100" rounded="$lg" style={styles.emptyPanelContainer}>
+      <Box mx="$md" mb="$lg" py="$lg" my="$lg" alignItems="center" borderWidth={StyleSheet.hairlineWidth} style={[styles.emptyPanelContainer, { borderColor: theme.colors.gray100 }]} rounded="$lg">
         <Ionicons name="bag-handle-outline" size={28} color={theme.colors.gray300} />
-        <Text fontSize="$sm" fontWeight="$semibold" color="$black" mt="$sm" style={styles.emptyPanelTitle}>
+        <Text fontSize="$sm" fontWeight="$semibold" style={[styles.emptyPanelTitle, { color: theme.colors.black }]} mt="$sm">
           {t("discover.buyerNoProducts")}
         </Text>
-        <Text fontSize="$xs" color="$gray300" mt="$xs" style={styles.emptyPanelHint}>
+        <Text fontSize="$xs" style={[styles.emptyPanelHint, { color: theme.colors.gray300 }]} mt="$xs">
           {t("discover.buyerStayTuned")}
         </Text>
       </Box>

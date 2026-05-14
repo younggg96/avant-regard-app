@@ -40,7 +40,9 @@ const makeProfileStyles = (t: AppTheme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: t.colors.text,
+      // 没有 cover 图时退化为深色面，避免 dark mode 下 t.colors.text=#FFFFFF
+      // 把整片封面变成大块白；light 模式仍是黑色封面（视觉与原版一致）。
+      backgroundColor: t.colors.gray500,
     },
     coverGradient: {
       position: "absolute",

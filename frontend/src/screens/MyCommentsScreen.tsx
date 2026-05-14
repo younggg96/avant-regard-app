@@ -134,7 +134,7 @@ const MyCommentsScreen = () => {
             <HStack
                 p="$md"
                 borderBottomWidth={1}
-                borderBottomColor="$gray100"
+                style={{ borderBottomColor: theme.colors.gray100 }}
                 alignItems="flex-start"
             >
                 {/* 用户头像 */}
@@ -151,11 +151,11 @@ const MyCommentsScreen = () => {
                         width={40}
                         height={40}
                         borderRadius={20}
-                        bg="$gray200"
+                        style={{ backgroundColor: theme.colors.gray200 }}
                         alignItems="center"
                         justifyContent="center"
                     >
-                        <Text color="$gray400" fontSize="$sm" fontWeight="$medium">
+                        <Text style={{ color: theme.colors.gray400 }} fontSize="$sm" fontWeight="$medium">
                             {item.username?.slice(0, 1).toUpperCase() || "U"}
                         </Text>
                     </Box>
@@ -164,10 +164,10 @@ const MyCommentsScreen = () => {
                 <VStack flex={1} ml="$sm">
                     {/* 用户名和时间 */}
                     <HStack justifyContent="space-between" alignItems="center">
-                        <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                        <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                             {item.username}
                         </Text>
-                        <Text fontSize="$xs" color="$gray300">
+                        <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                             {formatTime(item.createdAt)}
                         </Text>
                     </HStack>
@@ -175,7 +175,7 @@ const MyCommentsScreen = () => {
                     {/* 评论内容 */}
                     <Text
                         fontSize="$sm"
-                        color="$gray600"
+                        style={{ color: theme.colors.gray600 }}
                         mt="$xs"
                         numberOfLines={3}
                     >
@@ -190,7 +190,7 @@ const MyCommentsScreen = () => {
                                 size={14}
                                 color={theme.colors.gray300}
                             />
-                            <Text fontSize="$xs" color="$gray300">
+                            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                 {item.likeCount}
                             </Text>
                         </HStack>
@@ -201,7 +201,7 @@ const MyCommentsScreen = () => {
                                     size={14}
                                     color={theme.colors.gray300}
                                 />
-                                <Text fontSize="$xs" color="$gray300">
+                                <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                     {item.replyCount} {t("post.reply")}
                                 </Text>
                             </HStack>
@@ -216,7 +216,7 @@ const MyCommentsScreen = () => {
                                     size={14}
                                     color={theme.colors.gray300}
                                 />
-                                <Text fontSize="$xs" color="$gray300">
+                                <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                     {t("common.delete")}
                                 </Text>
                             </HStack>
@@ -234,10 +234,10 @@ const MyCommentsScreen = () => {
                 size={48}
                 color={theme.colors.gray200}
             />
-            <Text color="$gray400" mt="$md" fontSize="$md">
+            <Text style={{ color: theme.colors.gray400 }} mt="$md" fontSize="$md">
                 {t("myComments.noComments")}
             </Text>
-            <Text color="$gray300" mt="$xs" fontSize="$sm">
+            <Text style={{ color: theme.colors.gray300 }} mt="$xs" fontSize="$sm">
                 {t("myComments.emptyHint")}
             </Text>
         </VStack>
@@ -290,7 +290,7 @@ const MyCommentsScreen = () => {
                     >
                         <TouchableWithoutFeedback>
                             <VStack
-                                bg="$white"
+                                style={{ backgroundColor: theme.colors.white }}
                                 borderRadius={16}
                                 width={SCREEN_WIDTH - 80}
                                 overflow="hidden"
@@ -300,14 +300,14 @@ const MyCommentsScreen = () => {
                                     <Text
                                         fontSize="$lg"
                                         fontWeight="$semibold"
-                                        color="$black"
+                                        style={{ color: theme.colors.black }}
                                         textAlign="center"
                                     >
                                         {t("comments.confirmDelete")}
                                     </Text>
                                     <Text
                                         fontSize="$sm"
-                                        color="$gray600"
+                                        style={{ color: theme.colors.gray600 }}
                                         textAlign="center"
                                         mt="$sm"
                                     >
@@ -316,7 +316,7 @@ const MyCommentsScreen = () => {
                                 </VStack>
 
                                 {/* 分割线 */}
-                                <Box height={1} bg="$gray100" />
+                                <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} />
 
                                 {/* 按钮区域 */}
                                 <HStack>
@@ -326,7 +326,7 @@ const MyCommentsScreen = () => {
                                         py="$md"
                                         alignItems="center"
                                         borderRightWidth={1}
-                                        borderRightColor="$gray100"
+                                        style={{ borderRightColor: theme.colors.gray100 }}
                                         onPress={() => {
                                             if (isDeleting) return;
                                             setShowDeleteDialog(false);
@@ -338,7 +338,7 @@ const MyCommentsScreen = () => {
                                         <Text
                                             fontSize="$md"
                                             fontWeight="$medium"
-                                            color="$gray600"
+                                            style={{ color: theme.colors.gray600 }}
                                         >
                                             {t("common.cancel")}
                                         </Text>

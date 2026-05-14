@@ -852,7 +852,7 @@ const UserProfileScreen = () => {
         ) : data.length === 0 ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
             <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
-            <Text color="$gray400" mt="$md" style={{ fontFamily: playfairFonts.regular, textAlign: "center" }}>
+            <Text style={[{ fontFamily: playfairFonts.regular, textAlign: "center" }, { color: theme.colors.gray400 }]} mt="$md">
               {emptyTexts[contribSubTab]}
             </Text>
           </VStack>
@@ -1022,7 +1022,7 @@ const UserProfileScreen = () => {
             size={24}
             color={theme.colors.gray300}
           />
-          <Text color="$gray400" mt="$md" style={{ fontFamily: playfairFonts.regular, textAlign: "center" }}>
+          <Text style={[{ fontFamily: playfairFonts.regular, textAlign: "center" }, { color: theme.colors.gray400 }]} mt="$md">
             {activeTab === "posts" && t("profile.noPublishedPosts")}
             {activeTab === "forum" && t("profile.noForumPosts")}
             {activeTab === "saved" && t("profile.noSavedPosts")}
@@ -1861,9 +1861,9 @@ const makeStyles = (t: AppTheme) =>
   },
   primaryTitleBadge: {
     backgroundColor: t.colors.text,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   primaryTitleText: {
     fontSize: 11,

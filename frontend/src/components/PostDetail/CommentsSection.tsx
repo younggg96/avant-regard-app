@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
 import { ImageSize } from "../../utils/imageUtils";
-import { theme } from "../../theme";
+import { theme, useAppTheme } from "../../theme";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { usePostDetailStyles } from "./styles";
 
@@ -42,7 +42,7 @@ const ReplyItem: React.FC<{
   const { t } = useTranslation();
   const styles = usePostDetailStyles();
   return (
-  <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} borderLeftColor="$gray200">
+  <HStack space="sm" mt="$sm" ml="$xl" pl="$md" borderLeftWidth={2} style={{ borderLeftColor: theme.colors.gray200 }}>
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
     >
@@ -60,29 +60,29 @@ const ReplyItem: React.FC<{
           <Pressable
             onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
           >
-            <Text fontSize="$xs" fontWeight="$semibold" color="$gray800">
+            <Text fontSize="$xs" fontWeight="$semibold" style={{ color: theme.colors.text }}>
               {reply.userName}
             </Text>
           </Pressable>
           {reply.userTitle ? (
-            <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
-              <Text fontSize={9} fontWeight="$medium" color="$gray600">{reply.userTitle}</Text>
+            <Box style={{ backgroundColor: theme.colors.gray100 }} px="$xs" py={1} rounded="$xs">
+              <Text fontSize={9} fontWeight="$medium" style={{ color: theme.colors.gray600 }}>{reply.userTitle}</Text>
             </Box>
           ) : null}
           {reply.replyToUsername && (
             <>
               <Ionicons name="arrow-forward" size={10} color={theme.colors.gray400} />
-              <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+              <Text fontSize="$xs" style={{ color: theme.colors.accent }} fontWeight="$medium">
                 @{reply.replyToUsername}
               </Text>
             </>
           )}
         </HStack>
-        <Text fontSize="$xs" color="$gray500">
+        <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
           {reply.timestamp}
         </Text>
       </HStack>
-      <Text fontSize="$sm" color="$gray700" lineHeight="$md">
+      <Text fontSize="$sm" style={{ color: theme.colors.gray700 }} lineHeight="$md">
         {reply.content}
       </Text>
       <HStack space="md" mt="$xs">
@@ -95,20 +95,20 @@ const ReplyItem: React.FC<{
             />
             <Text
               fontSize="$xs"
-              color={reply.isLiked ? "#FF3040" : "$gray500"}
+              style={{ color: reply.isLiked ? "#FF3040" : theme.colors.gray500 }}
             >
               {reply.likes > 0 ? reply.likes : ""}
             </Text>
           </HStack>
         </Pressable>
         <Pressable onPress={onReply}>
-          <Text fontSize="$xs" color="$gray500">
+          <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
             {t("postDetail.reply")}
           </Text>
         </Pressable>
         {isOwner ? (
           <Pressable onPress={onDelete}>
-            <Text fontSize="$xs" color="$error">
+            <Text fontSize="$xs" style={{ color: theme.colors.error }}>
               {t("postDetail.delete")}
             </Text>
           </Pressable>
@@ -116,7 +116,7 @@ const ReplyItem: React.FC<{
           <Pressable onPress={onReport}>
             <HStack space="xs" alignItems="center">
               <Ionicons name="flag-outline" size={12} color={theme.colors.gray400} />
-              <Text fontSize="$xs" color="$gray500">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
                 {t("postDetail.report")}
               </Text>
             </HStack>
@@ -186,20 +186,20 @@ const CommentItem: React.FC<{
                 onUserPress(comment.userId, comment.userName, comment.userAvatar)
               }
             >
-              <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+              <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
                 {comment.userName}
               </Text>
             </Pressable>
             {comment.userTitle ? (
-              <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
-                <Text fontSize={10} fontWeight="$medium" color="$gray600">{comment.userTitle}</Text>
+              <Box style={{ backgroundColor: theme.colors.gray100 }} px="$xs" py={1} rounded="$xs">
+                <Text fontSize={10} fontWeight="$medium" style={{ color: theme.colors.gray600 }}>{comment.userTitle}</Text>
               </Box>
             ) : null}
-            <Text fontSize="$xs" color="$gray600">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
               {comment.timestamp}
             </Text>
           </HStack>
-          <Text fontSize="$sm" color="$gray800" lineHeight="$md">
+          <Text fontSize="$sm" style={{ color: theme.colors.text }} lineHeight="$md">
             {comment.content}
           </Text>
           <HStack space="md" mt="$xs" alignItems="center">
@@ -212,20 +212,20 @@ const CommentItem: React.FC<{
                 />
                 <Text
                   fontSize="$xs"
-                  color={comment.isLiked ? "#FF3040" : "$gray600"}
+                  style={{ color: comment.isLiked ? "#FF3040" : theme.colors.gray600 }}
                 >
                   {comment.likes > 0 ? comment.likes : ""}
                 </Text>
               </HStack>
             </Pressable>
             <Pressable onPress={onReply}>
-              <Text fontSize="$xs" color="$gray600">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
                 {t("postDetail.reply")}
               </Text>
             </Pressable>
             {currentUserId === comment.userId ? (
               <Pressable onPress={onDelete}>
-                <Text fontSize="$xs" color="$error">
+                <Text fontSize="$xs" style={{ color: theme.colors.error }}>
                   {t("postDetail.delete")}
                 </Text>
               </Pressable>
@@ -233,7 +233,7 @@ const CommentItem: React.FC<{
               <Pressable onPress={onReport}>
                 <HStack space="xs" alignItems="center">
                   <Ionicons name="flag-outline" size={13} color={theme.colors.gray400} />
-                  <Text fontSize="$xs" color="$gray600">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
                     {t("postDetail.report")}
                   </Text>
                 </HStack>
@@ -258,7 +258,7 @@ const CommentItem: React.FC<{
           />
           {hasMoreReplies && !repliesExpanded ? (
             <Pressable onPress={onToggleReplies} mt="$xs" ml="$xl" pl="$md">
-              <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+              <Text fontSize="$xs" style={{ color: theme.colors.accent }} fontWeight="$medium">
                 {t("postDetail.viewMoreReplies", { count: otherReplies.length })}
               </Text>
             </Pressable>
@@ -278,7 +278,7 @@ const CommentItem: React.FC<{
             ))}
           {repliesExpanded && hasMoreReplies ? (
             <Pressable onPress={onToggleReplies} mt="$sm" ml="$xl" pl="$md">
-              <Text fontSize="$xs" color="$gray500">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
                 {t("postDetail.collapseReplies")}
               </Text>
             </Pressable>
@@ -286,7 +286,7 @@ const CommentItem: React.FC<{
         </VStack>
       ) : comment.replyCount > 0 ? (
         <Pressable onPress={onToggleReplies} mt="$xs" ml="$xl" pl="$md">
-          <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+          <Text fontSize="$xs" style={{ color: theme.colors.accent }} fontWeight="$medium">
             {t("postDetail.viewReplies", { count: comment.replyCount })}
           </Text>
         </Pressable>
@@ -309,6 +309,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   onToggleReplies,
   onReportComment,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = usePostDetailStyles();
   const showComments: boolean = postStatus === "PUBLISHED";
@@ -327,14 +328,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         mt="$md"
         alignItems="center"
         borderTopWidth={8}
-        borderTopColor="$gray100"
+        style={{ borderTopColor: theme.colors.gray100 }}
       >
         <Ionicons
           name={postStatus === "DRAFT" ? "create-outline" : "time-outline"}
           size={48}
           color={theme.colors.gray300}
         />
-        <Text fontSize="$md" color="$gray600" textAlign="center">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }} textAlign="center">
           {postStatus === "DRAFT"
             ? t("postDetail.draftNoComments")
             : t("postDetail.pendingNoComments")}
@@ -356,9 +357,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       py="$lg"
       mt="$md"
       borderTopWidth={8}
-      borderTopColor="$gray100"
+      style={{ borderTopColor: theme.colors.gray100 }}
     >
-      <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+      <Text fontSize="$lg" fontWeight="$semibold" style={{ color: theme.colors.black }}>
         {t("postDetail.comments", { count: totalComments })}
       </Text>
 
@@ -381,7 +382,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             size={32}
             color={theme.colors.gray300}
           />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm">
             {t("postDetail.noComments")}
           </Text>
         </Box>

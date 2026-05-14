@@ -1,7 +1,7 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Notification } from "../../../services/notificationService";
@@ -14,6 +14,7 @@ interface SystemEntryProps {
 }
 
 export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useInteractionStyles();
   const systemNotifs = notifications.filter(
@@ -31,7 +32,7 @@ export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
           <Box
             w={48} h={48} rounded="$full"
             justifyContent="center" alignItems="center"
-            bg="$error"
+            style={{ backgroundColor: theme.colors.error }}
           >
             <Ionicons name="notifications-outline" size={22} color={theme.colors.white} />
           </Box>
@@ -42,16 +43,16 @@ export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
 
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+            <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {t("interaction.systemNotice")}
             </Text>
             {latest && (
-              <Text fontSize="$xs" color="$gray200">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray200 }}>
                 {formatTime(latest.createdAt)}
               </Text>
             )}
           </HStack>
-          <Text fontSize="$sm" color={unreadCount > 0 ? "$black" : "$gray300"} numberOfLines={1}>
+          <Text fontSize="$sm" style={{ color: unreadCount > 0 ? theme.colors.black : theme.colors.gray300 }} numberOfLines={1}>
             {latest ? `${latest.title} ${latest.message}` : t("interaction.noSystemMessages")}
           </Text>
         </VStack>

@@ -30,7 +30,7 @@ import {
   VStack,
 } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 import type { OptionCard } from "../../../services/aiPostService";
 
 export type OptionListThumbVariant = "circle" | "square" | "icon";
@@ -57,6 +57,7 @@ const OptionListRow: React.FC<OptionListRowProps> = ({
   onPress,
   showDivider = true,
 }) => {
+  const theme = useAppTheme();
   const { i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const isZh = i18n.language?.startsWith("zh");
@@ -79,7 +80,7 @@ const OptionListRow: React.FC<OptionListRowProps> = ({
         py="$md"
         gap="$md"
         borderBottomWidth={showDivider ? 1 : 0}
-        borderBottomColor="$gray100"
+        style={{ borderBottomColor: theme.colors.gray100 }}
       >
         {/* Thumbnail */}
         <Box style={getThumbStyle(variant)}>

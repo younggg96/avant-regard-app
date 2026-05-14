@@ -15,7 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack, ScrollView } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { getQuota, type QuotaInfo } from "../../services/aiPostService";
@@ -30,6 +30,7 @@ interface ModeCard {
 }
 
 const AIPostEntryScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
@@ -92,10 +93,10 @@ const AIPostEntryScreen: React.FC = () => {
       >
         <VStack px="$lg" py="$md" gap="$sm">
           <Box mb="$xs">
-            <Text fontSize="$md" fontWeight="$medium" color="$black" mb="$xs">
+            <Text fontSize="$md" fontWeight="$medium" style={{ color: theme.colors.black }} mb="$xs">
               {t("aiPost.entry.heading")}
             </Text>
-            <Text fontSize="$xs" color="$gray500">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
               {t("aiPost.entry.subheading")}
             </Text>
           </Box>
@@ -107,9 +108,9 @@ const AIPostEntryScreen: React.FC = () => {
                 key={mode.id}
                 onPress={disabled ? undefined : mode.onPress}
                 opacity={disabled ? 0.4 : 1}
-                bg="$white"
+                style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
                 borderWidth={1}
-                borderColor="$gray100"
+
                 rounded="$lg"
                 p="$md"
                 sx={{
@@ -125,7 +126,7 @@ const AIPostEntryScreen: React.FC = () => {
                     w={40}
                     h={40}
                     rounded="$md"
-                    bg="$gray100"
+                    style={{ backgroundColor: theme.colors.gray100 }}
                     alignItems="center"
                     justifyContent="center"
                   >
@@ -133,7 +134,7 @@ const AIPostEntryScreen: React.FC = () => {
                   </Box>
                   <VStack flex={1}>
                     <HStack alignItems="center" gap="$xs" mb={2} flexWrap="wrap">
-                      <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                      <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                         {mode.title}
                       </Text>
                       {mode.comingSoon ? (
@@ -141,17 +142,17 @@ const AIPostEntryScreen: React.FC = () => {
                           px="$xs"
                           py={1}
                           rounded="$sm"
-                          bg="$gray100"
+                          style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: theme.colors.gray200 }]}
                           borderWidth={1}
-                          borderColor="$gray200"
+
                         >
-                          <Text fontSize="$2xs" color="$gray500" fontWeight="$medium">
+                          <Text fontSize="$2xs" style={{ color: theme.colors.gray500 }} fontWeight="$medium">
                             {t("aiPost.entry.comingSoon")}
                           </Text>
                         </Box>
                       ) : null}
                     </HStack>
-                    <Text fontSize="$xs" color="$gray500">
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
                       {mode.description}
                     </Text>
                   </VStack>
@@ -166,8 +167,8 @@ const AIPostEntryScreen: React.FC = () => {
           })}
 
           {exhausted ? (
-            <Box mt="$sm" p="$md" bg="$gray100" rounded="$md">
-              <Text fontSize="$xs" color="$gray400">
+            <Box mt="$sm" p="$md" style={{ backgroundColor: theme.colors.gray100 }} rounded="$md">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {t("aiPost.entry.exhaustedHint")}
               </Text>
             </Box>

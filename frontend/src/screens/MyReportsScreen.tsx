@@ -20,7 +20,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   ReportRecord,
@@ -46,6 +46,7 @@ const STATUS_CONFIG: Record<string, { labelKey: string; color: string; bg: strin
 };
 
 const MyReportsScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const styles = useThemedStyles(makeStyles);
@@ -142,7 +143,7 @@ const MyReportsScreen = () => {
         <VStack
           p="$md"
           borderBottomWidth={1}
-          borderBottomColor="$gray100"
+          style={{ borderBottomColor: theme.colors.gray100 }}
         >
           <HStack justifyContent="space-between" alignItems="center" mb="$sm">
             <HStack alignItems="center" gap="$xs">
@@ -151,7 +152,7 @@ const MyReportsScreen = () => {
                 size={14}
                 color={theme.colors.gray300}
               />
-              <Text fontSize="$xs" color="$gray300">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                 {getTypeLabel(item.targetType)}
               </Text>
             </HStack>
@@ -161,7 +162,7 @@ const MyReportsScreen = () => {
                   {t(status.labelKey)}
                 </Text>
               </View>
-              <Text fontSize="$xs" color="$gray200">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray200 }}>
                 {formatTime(item.createdAt)}
               </Text>
             </HStack>
@@ -183,7 +184,7 @@ const MyReportsScreen = () => {
                 <Text
                   fontSize="$sm"
                   fontWeight="$medium"
-                  color="$black"
+                  style={{ color: theme.colors.black }}
                   numberOfLines={2}
                 >
                   {item.targetInfo.title}
@@ -192,7 +193,7 @@ const MyReportsScreen = () => {
                 <Text
                   fontSize="$sm"
                   fontWeight="$medium"
-                  color="$black"
+                  style={{ color: theme.colors.black }}
                   numberOfLines={1}
                 >
                   @{item.targetInfo.username}
@@ -200,13 +201,13 @@ const MyReportsScreen = () => {
               ) : item.targetInfo?.content ? (
                 <Text
                   fontSize="$sm"
-                  color="$gray600"
+                  style={{ color: theme.colors.gray600 }}
                   numberOfLines={2}
                 >
                   {item.targetInfo.content}
                 </Text>
               ) : (
-                <Text fontSize="$sm" color="$gray300" fontStyle="italic">
+                <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} fontStyle="italic">
                   {t('myReports.contentDeleted')}
                 </Text>
               )}
@@ -217,7 +218,7 @@ const MyReportsScreen = () => {
                   size={13}
                   color={theme.colors.error}
                 />
-                <Text fontSize="$xs" color="$gray400">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                   {REASON_LABEL_KEYS[item.reason] ? t(REASON_LABEL_KEYS[item.reason]) : item.reason}
                 </Text>
               </HStack>
@@ -225,7 +226,7 @@ const MyReportsScreen = () => {
               {item.description ? (
                 <Text
                   fontSize="$xs"
-                  color="$gray300"
+                  style={{ color: theme.colors.gray300 }}
                   mt="$xs"
                   numberOfLines={2}
                 >
@@ -242,10 +243,10 @@ const MyReportsScreen = () => {
   const renderEmptyState = () => (
     <VStack alignItems="center" justifyContent="center" py="$xl" flex={1}>
       <Ionicons name="flag-outline" size={48} color={theme.colors.gray200} />
-      <Text color="$gray400" mt="$md" fontSize="$md">
+      <Text style={{ color: theme.colors.gray400 }} mt="$md" fontSize="$md">
         {t("myReports.noReports")}
       </Text>
-      <Text color="$gray300" mt="$xs" fontSize="$sm">
+      <Text style={{ color: theme.colors.gray300 }} mt="$xs" fontSize="$sm">
         {t("myReports.emptyHint")}
       </Text>
     </VStack>
@@ -255,7 +256,7 @@ const MyReportsScreen = () => {
     if (!loadingMore) return null;
     return (
       <Box py="$md" alignItems="center">
-        <Text fontSize="$xs" color="$gray300">{t('common.loadMore')}</Text>
+        <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>{t('common.loadMore')}</Text>
       </Box>
     );
   };

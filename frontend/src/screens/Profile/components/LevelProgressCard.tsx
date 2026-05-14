@@ -21,16 +21,15 @@ import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../components/ui";
-import {
-  theme,
+import { theme,
   playfairFonts,
   useThemedStyles,
-  type AppTheme,
-} from "../../../theme";
+  type AppTheme, useAppTheme } from "../../../theme";
 import { useLevelStore } from "../../../store/levelStore";
 import { LevelProgressBar, getLevelTitleKey } from "../../../components/level";
 
 export const LevelProgressCard: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const status = useLevelStore((s) => s.status);
@@ -67,7 +66,7 @@ export const LevelProgressCard: React.FC = () => {
   const goDetail = () => navigation.navigate("MyLevel");
 
   return (
-    <Box pb={10} bg="$white">
+    <Box pb={10} style={{ backgroundColor: theme.colors.white }}>
       <HStack px={16} mb={6} justifyContent="between">
         <Text style={styles.sectionTitle}>{t("profile.levelProgress")}</Text>
         {currentLevel > 0 ? (
@@ -85,8 +84,8 @@ export const LevelProgressCard: React.FC = () => {
         px="$md"
         py="$sm"
         borderWidth={1}
-        borderColor="$gray100"
-        bg="$white"
+        style={[{ borderColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
         onPress={goDetail}
       >
         <HStack justifyContent="between" alignItems="center">

@@ -12,9 +12,11 @@ import {
   ScrollView,
   Pressable,
   HStack,
+  VStack,
   Input,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { TouchableOpacity } from "react-native";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageCropper from "../components/ImageCropper";
 import BatchImageCropper from "../components/BatchImageCropper";
@@ -55,6 +57,7 @@ type PublishReviewRouteParams = {
 };
 
 const PublishReviewScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishReviewRouteParams }, "params">>();
@@ -67,7 +70,9 @@ const PublishReviewScreen = () => {
   const aiDraft = route.params?.aiDraft;
 
   const [title, setTitle] = useState("");
-  const [productName, setProductName] = useState("");
+  // 单品测评 productName 后端只是单字符串字段, 多个单品我们用 \n 分隔后透传;
+  // 渲染端 (PostContentSection / WantPopup) 自行解析。
+  const [productNames, setProductNames] = useState<string[]>([""]);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -127,6 +132,39 @@ const PublishReviewScreen = () => {
   const MAX_IMAGES = 6;
   const MAX_SHOWS = 6;
   const MAX_BRANDS = 6;
+  const MAX_PRODUCTS = 6;
+  const REVIEW_MIN_CHARS = 10;
+  const REVIEW_MAX_CHARS = 1000;
+
+  const cleanedProductNames = productNames
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  const joinedProductName = cleanedProductNames.join("\n");
+
+  const updateProductNameAt = (index: number, value: string) => {
+    setProductNames((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleAddProductName = () => {
+    setProductNames((prev) => {
+      if (prev.length >= MAX_PRODUCTS) {
+        Alert.show(t("publish.maxProductsReached", { count: MAX_PRODUCTS }));
+        return prev;
+      }
+      return [...prev, ""];
+    });
+  };
+
+  const handleRemoveProductName = (index: number) => {
+    setProductNames((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
 
   // 加载秀场数据（从 API）
   const loadShows = useCallback(async (reset: boolean = true) => {
@@ -315,9 +353,13 @@ const PublishReviewScreen = () => {
         setImages(draftPost.content.images);
       }
 
-      // 初始化产品名称
+      // 初始化产品名称 (草稿里以 \n 分隔多个单品)
       if (draftPost.productName) {
-        setProductName(draftPost.productName);
+        const parts = draftPost.productName
+          .split("\n")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+        setProductNames(parts.length > 0 ? parts : [""]);
       }
 
       // 初始化评分
@@ -411,11 +453,11 @@ const PublishReviewScreen = () => {
   const canPublish = () => {
     return (
       title.trim().length > 0 &&
-      productName.trim().length > 0 &&
+      cleanedProductNames.length > 0 &&
       rating > 0 &&
       images.length > 0 &&
-      reviewText.trim().length >= 10 &&
-      reviewText.trim().length <= 500
+      reviewText.trim().length >= REVIEW_MIN_CHARS &&
+      reviewText.trim().length <= REVIEW_MAX_CHARS
     );
   };
 
@@ -512,7 +554,7 @@ const PublishReviewScreen = () => {
         contentText: reviewText.trim(),
         imageUrls: [],
         ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
-        productName: productName.trim(),
+        productName: joinedProductName,
         rating,
         showIds,
         brandIds,
@@ -537,7 +579,7 @@ const PublishReviewScreen = () => {
               contentText: reviewText.trim(),
               imageUrls: [],
               ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
-              productName: productName.trim(),
+              productName: joinedProductName,
               rating,
               showIds,
               brandIds,
@@ -570,7 +612,7 @@ const PublishReviewScreen = () => {
 
     if (
       !title &&
-      !productName &&
+      cleanedProductNames.length === 0 &&
       images.length === 0 &&
       selectedShows.length === 0
     ) {
@@ -607,7 +649,7 @@ const PublishReviewScreen = () => {
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
-          productName: productName.trim(),
+          productName: joinedProductName,
           rating: rating,
           showIds: showIds,
           brandIds: brandIds,
@@ -626,7 +668,7 @@ const PublishReviewScreen = () => {
           contentText: reviewText.trim(),
           imageUrls: uploadedUrls,
           ...(coverDims && { coverWidth: coverDims.width, coverHeight: coverDims.height }),
-          productName: productName.trim(),
+          productName: joinedProductName,
           rating: rating,
           showIds: showIds,
           brandIds: brandIds,
@@ -655,7 +697,7 @@ const PublishReviewScreen = () => {
 
   const resetForm = () => {
     setTitle("");
-    setProductName("");
+    setProductNames([""]);
     setRating(0);
     setReviewText("");
     setImages([]);
@@ -821,10 +863,10 @@ const PublishReviewScreen = () => {
           </HStack>
         </Box>
       ) : isEditingPublishedPost ? (
-        <Box bg="$accent" px="$md" py="$sm">
+        <Box style={{ backgroundColor: theme.colors.accent }} px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
-            <Text color="$white" fontSize="$sm" flex={1}>
+            <Text style={{ color: theme.colors.white }} fontSize="$sm" flex={1}>
               {t("publish.reAuditWarning")}
             </Text>
           </HStack>
@@ -844,10 +886,10 @@ const PublishReviewScreen = () => {
         >
           <Box mx="$md" mb="$md" mt="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.titleLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -883,25 +925,73 @@ const PublishReviewScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.productNameLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
-            <Input
-              value={productName}
-              onChangeText={setProductName}
-              placeholder={t("publish.productNamePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="outline"
-              sx={{
-                fontSize: 14,
-                borderWidth: 0,
-                padding: 0,
-              }}
-            />
+            <VStack space="sm">
+              {productNames.map((name, idx) => {
+                const isLast = idx === productNames.length - 1;
+                const canAdd = isLast && productNames.length < MAX_PRODUCTS;
+                const canRemove = productNames.length > 1;
+                return (
+                  <HStack
+                    key={`product-name-${idx}`}
+                    alignItems="center"
+                    space="sm"
+                  >
+                    <Box flex={1}>
+                      <Input
+                        value={name}
+                        onChangeText={(v) => updateProductNameAt(idx, v)}
+                        placeholder={t("publish.productNamePlaceholder")}
+                        placeholderTextColor={theme.colors.gray400}
+                        variant="outline"
+                        sx={{
+                          fontSize: 14,
+                          borderWidth: 0,
+                          padding: 0,
+                        }}
+                      />
+                    </Box>
+                    {canRemove ? (
+                      <TouchableOpacity
+                        onPress={() => handleRemoveProductName(idx)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.productActionBtn}
+                        accessibilityLabel={t("publish.removeProduct")}
+                      >
+                        <Ionicons
+                          name="remove"
+                          size={18}
+                          color={theme.colors.gray500}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                    {canAdd ? (
+                      <TouchableOpacity
+                        onPress={handleAddProductName}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[
+                          styles.productActionBtn,
+                          { borderColor: theme.colors.gray300 },
+                        ]}
+                        accessibilityLabel={t("publish.addProduct")}
+                      >
+                        <Ionicons
+                          name="add"
+                          size={18}
+                          color={theme.colors.gray700}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </HStack>
+                );
+              })}
+            </VStack>
           </Box>
 
           <RatingSelector rating={rating} onRatingChange={setRating} required />
@@ -933,10 +1023,10 @@ const PublishReviewScreen = () => {
           {/* 评价内容 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.reviewContentLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -958,20 +1048,18 @@ const PublishReviewScreen = () => {
               }}
             />
             <Text
-              color={
-                reviewText.trim().length < 10
-                  ? "$red500"
-                  : reviewText.trim().length > 500
-                    ? "$red500"
-                    : "$gray400"
-              }
+              style={{ color: reviewText.trim().length < REVIEW_MIN_CHARS
+                  ? theme.colors.error
+                  : reviewText.trim().length > REVIEW_MAX_CHARS
+                    ? theme.colors.error
+                    : theme.colors.gray400 }}
               fontSize="$sm"
               mt="$xs"
               textAlign="right"
             >
-              {reviewText.trim().length}/500
-              {reviewText.trim().length > 0 && reviewText.trim().length < 10
-                ? ` (${t("publish.minCharsRequired", { count: 10 })})`
+              {reviewText.trim().length}/{REVIEW_MAX_CHARS}
+              {reviewText.trim().length > 0 && reviewText.trim().length < REVIEW_MIN_CHARS
+                ? ` (${t("publish.minCharsRequired", { count: REVIEW_MIN_CHARS })})`
                 : ""}
             </Text>
           </Box>
@@ -1074,6 +1162,15 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       backgroundColor: "rgba(0,0,0,0.3)",
     } as any,
+    productActionBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 export default PublishReviewScreen;

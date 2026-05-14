@@ -78,6 +78,7 @@ const LeaderboardItem: React.FC<{
 };
 
 export const ArchiveLeaderboard: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [leaderboard, setLeaderboard] = useState<ContributionUser[]>([]);
@@ -110,7 +111,7 @@ export const ArchiveLeaderboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Box py="$md" px="$md" bg="$white">
+      <Box py="$md" px="$md" style={{ backgroundColor: theme.colors.white }}>
         <ActivityIndicator size="small" color={theme.colors.accent} />
       </Box>
     );
@@ -121,7 +122,7 @@ export const ArchiveLeaderboard: React.FC = () => {
   }
 
   return (
-    <Box py="$md" bg="$white">
+    <Box py="$md" style={{ backgroundColor: theme.colors.white }}>
       <HStack
         justifyContent="space-between"
         alignItems="center"
@@ -130,7 +131,7 @@ export const ArchiveLeaderboard: React.FC = () => {
       >
         <HStack alignItems="center" space="xs">
           <Ionicons name="trophy-outline" size={18} color={theme.colors.black} />
-          <Text fontSize="$md" fontWeight="$semibold" color="$black">
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
             {t("archive.contributionBoard")}
           </Text>
         </HStack>

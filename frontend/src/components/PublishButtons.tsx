@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Box, Text, HStack, Pressable } from "./ui";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 
 interface PublishButtonsProps {
   onSaveDraft: () => void;
@@ -24,6 +24,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
   publishDisabled = false,
   draftDisabled = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const draftLabel = draftButtonText || t("publishButtons.saveDraft");
@@ -34,12 +35,12 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
       bottom={0}
       left={0}
       right={0}
-      bg="$white"
+      style={[{ paddingBottom: Math.max(insets.bottom, 12) }, { backgroundColor: theme.colors.white }, { borderTopColor: theme.colors.gray200 }]}
       px="$lg"
       pt="$md"
       borderTopWidth={1}
-      borderTopColor="$gray200"
-      style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+
+
     >
       <HStack>
         {showDraftButton && (
@@ -47,7 +48,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
             flex={1}
             py="$md"
             mr="$sm"
-            bg="$gray200"
+            style={{ backgroundColor: theme.colors.gray200 }}
             rounded="$md"
             onPress={draftDisabled ? undefined : onSaveDraft}
             opacity={draftDisabled ? 0.6 : 1}
@@ -59,7 +60,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
                 size={20}
                 color={theme.colors.white}
               />
-              <Text color="$white" ml="$xs" fontWeight="$medium" fontSize="$sm">
+              <Text style={{ color: theme.colors.white }} ml="$xs" fontWeight="$medium" fontSize="$sm">
                 {draftLabel}
               </Text>
             </HStack>
@@ -69,7 +70,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
           flex={showDraftButton ? 2 : 1}
           py="$md"
           ml={showDraftButton ? "$sm" : undefined}
-          bg={publishDisabled ? "$gray200" : "$accent"}
+          style={{ backgroundColor: publishDisabled ? theme.colors.gray200 : theme.colors.accent }}
           rounded="$md"
           onPress={publishDisabled ? undefined : onPublish}
           opacity={publishDisabled ? 0.6 : 1}
@@ -77,7 +78,7 @@ const PublishButtons: React.FC<PublishButtonsProps> = ({
         >
           <HStack justifyContent="center" alignItems="center" gap="$xs">
             <Ionicons name="paper-plane" size={20} color={theme.colors.white} />
-            <Text color="$white" ml="$xs" fontWeight="$medium" fontSize="$sm">
+            <Text style={{ color: theme.colors.white }} ml="$xs" fontWeight="$medium" fontSize="$sm">
               {publishLabel}
             </Text>
           </HStack>

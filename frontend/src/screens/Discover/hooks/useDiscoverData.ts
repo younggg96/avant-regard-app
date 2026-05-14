@@ -15,6 +15,8 @@ import { getCommunities, CommunityListResponse } from "../../../services/communi
 import {
   forumPostsCacheService,
   followingPostsCacheService,
+  bannersCacheService,
+  communitiesCacheService,
 } from "../../../services/feedCacheService";
 import { DisplayPost, TabType, UserInfoCache } from "../types";
 import { mapApiPostToDisplayPost } from "../utils";
@@ -64,6 +66,19 @@ interface UseDiscoverDataReturn {
   // Tab 独立加载状态
   tabLoading: TabLoadingState;
   tabLoaded: TabLoadedState;
+  /**
+   * 论坛 Tab 头部内容（Banner / 热门社区）的加载占位标记。
+   *
+   * - `bannersLoading`：true 表示当前正在拉取激活 banner，UI 应显示
+   *   `BannerCarouselSkeleton` 而不是空白；首次拉取完成后翻 false。
+   * - `communitiesLoading`：同义，对 `getCommunities` 拉取过程占位。
+   *
+   * 单独于 `tabLoading.forum` —— 即使 forum Tab 走 cache hit 路径
+   * 已经把 `tabLoaded.forum` 翻 true、跳过 GIF，banner / 社区仍然是
+   * 后台异步拉取，没有这两个 flag 的话 header 就会闪一下空白。
+   */
+  bannersLoading: boolean;
+  communitiesLoading: boolean;
   // 操作方法
   handleRefresh: (activeTab: TabType) => Promise<void>;
   handleLike: (postId: string) => Promise<void>;
@@ -91,6 +106,11 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
   const [loading, setLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Forum-tab 头部独立 loading flags（详见 UseDiscoverDataReturn 注释）。
+  // 默认 true：在 forum Tab 第一次发起请求之前，UI 渲染骨架而不是空白；
+  // 一旦请求 settle（成功 / 失败均）就翻 false。
+  const [bannersLoading, setBannersLoading] = useState(true);
+  const [communitiesLoading, setCommunitiesLoading] = useState(true);
 
   // 推荐 Tab：接入 Feed v2.1 三段式分页 hook（首屏保鲜 + 黄金推荐 + 长尾兜底）
   const {
@@ -479,14 +499,28 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
   /**
    * 获取 Banner 数据
+   *
+   * 翻 `bannersLoading` 标记的目的：让 forum Tab 的 header 在请求未
+   * 完成前显示骨架（`BannerCarouselSkeleton`）。无论成功 / 失败，
+   * finally 段都会把 flag 翻回 false —— 失败时 banners 保持空数组、
+   * `BannerCarousel` 自身的 `banners.length === 0 → return null` 会
+   * 接管，避免长期挂着骨架。
+   *
+   * Cache 写入：成功后顺带把 `Banner[]` 持久化进
+   * `bannersCacheService`，下次冷启动可由 `hydrateBannersFromCache`
+   * 即时填充，节省一次网络往返的等待。
    */
   const fetchBanners = useCallback(async () => {
+    setBannersLoading(true);
     try {
       const activeBanners = await getActiveBanners();
       setBanners(activeBanners);
+      void bannersCacheService.set(activeBanners);
     } catch (err) {
       console.error("获取 Banner 失败:", err);
       setBanners([]);
+    } finally {
+      setBannersLoading(false);
     }
   }, []);
 
@@ -517,16 +551,28 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
   /**
    * 获取社区列表（带重试机制）
+   *
+   * `communitiesLoading` 与 `bannersLoading` 同步处理。重试期间 flag
+   * 维持 true，第二次以上的失败会进入兜底分支重置成空 popular 列表，
+   * 此时 `PopularCommunities` 自身的 `length === 0 → return null` 兜底
+   * 把整个 section 隐藏，不会再显示骨架。
+   *
+   * Cache 写入：拿到合法 `CommunityListResponse` 后整块持久化。注意
+   * 重试期间不写缓存——仅在「真正成功 / 兜底空对象」分支落盘，避免
+   * 中间态把空 `popular` 写进缓存导致下次冷启动看到永远的空 section。
    */
   const fetchCommunities = useCallback(async (retryCount = 0) => {
+    if (retryCount === 0) setCommunitiesLoading(true);
     try {
       const communityData = await getCommunities();
       if (communityData && communityData.popular) {
         setCommunities(communityData);
+        void communitiesCacheService.set(communityData);
       } else {
         console.warn("社区数据格式异常:", communityData);
         setCommunities({ popular: [], following: [], all: [] });
       }
+      setCommunitiesLoading(false);
     } catch (err) {
       console.error("获取社区列表失败:", err);
       if (retryCount < 2) {
@@ -534,7 +580,38 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
         setTimeout(() => fetchCommunities(retryCount + 1), 1000);
       } else {
         setCommunities({ popular: [], following: [], all: [] });
+        setCommunitiesLoading(false);
       }
+    }
+  }, []);
+
+  /**
+   * 论坛 Tab 头部（banner / 热门社区）的本地缓存 hydrate。
+   *
+   * 与 forum/following 帖子的 stale-while-revalidate 策略一致：拿到有效
+   * 缓存就立即把数据写进 state、把 loading flag 翻 false，让骨架立刻
+   * 让位给真实组件。后续 `fetchBanners` / `fetchCommunities` 的网络结果
+   * 仍会覆盖这些 state；轻量级的 silent revalidate。
+   *
+   * 任一缓存读失败都按 miss 处理（ AsyncStorage 偶发 corruption / 缺
+   * 字段不应阻塞 forum Tab 加载）。
+   */
+  const hydrateForumHeaderFromCache = useCallback(async () => {
+    const [cachedBanners, cachedCommunities] = await Promise.all([
+      bannersCacheService.get().catch(() => null),
+      communitiesCacheService.get().catch(() => null),
+    ]);
+    if (cachedBanners && cachedBanners.length > 0) {
+      setBanners(cachedBanners);
+      setBannersLoading(false);
+    }
+    if (
+      cachedCommunities &&
+      Array.isArray(cachedCommunities.popular) &&
+      cachedCommunities.popular.length > 0
+    ) {
+      setCommunities(cachedCommunities);
+      setCommunitiesLoading(false);
     }
   }, []);
 
@@ -545,6 +622,10 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
    *   - 缓存命中 → 立即翻 tabLoaded 标记跳过 GifLoading，先显示老数据，
    *     `hydrateAndRevalidatePosts` 在后台静默拉新数据 + 智能 prepend。
    *   - 缓存未命中 → 走原始路径，await fetch，全程 GifLoading。
+   *
+   * Forum Tab 还会在两条路径之前先 hydrate banner / 热门社区缓存，让
+   * header 也享受 stale-while-revalidate 的视觉收益（避免 cache miss
+   * 路径的骨架屏被显示完毕后还要等一拍才拿到 banner 数据的体感）。
    *
    * 推荐 Tab 在初始化 `useEffect` 里已经独立完成 hydrate（由
    * `useFeedRecommendation.hydrateFromCache` 负责），这里走"切回 Tab 后
@@ -558,15 +639,21 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
 
       // Forum: try cache first.
       if (tab === "forum") {
-        const hydrated = await hydrateAndRevalidatePosts({
-          cache: forumPostsCacheService,
-          fetcher: getForumPosts,
-          setPosts: setForumPosts,
-        });
+        // 头部缓存 hydrate 与帖子缓存 hydrate 并行；两者读 AsyncStorage
+        // 互不阻塞，缩短首屏可见所有 section 的等待时间。
+        const [hydrated] = await Promise.all([
+          hydrateAndRevalidatePosts({
+            cache: forumPostsCacheService,
+            fetcher: getForumPosts,
+            setPosts: setForumPosts,
+          }),
+          hydrateForumHeaderFromCache(),
+        ]);
         if (hydrated) {
           setTabLoaded((prev) => ({ ...prev, forum: true }));
           // Banners / communities are tiny, fetch in background — they
-          // don't block the visible feed.
+          // don't block the visible feed. 即使前面 cache hit 了仍然
+          // 重新 fetch 一次以做静默 revalidate（cache stale 检测）。
           void Promise.all([fetchBanners(), fetchCommunities()]);
           return;
         }
@@ -630,6 +717,7 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
       fetchBanners,
       fetchCommunities,
       hydrateAndRevalidatePosts,
+      hydrateForumHeaderFromCache,
     ]
   );
 
@@ -884,6 +972,8 @@ export const useDiscoverData = (): UseDiscoverDataReturn => {
     userInfoCache,
     tabLoading,
     tabLoaded,
+    bannersLoading,
+    communitiesLoading,
     handleRefresh,
     handleLike,
     loadTabData,

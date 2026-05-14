@@ -12,7 +12,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Text, HStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
 import {
@@ -21,6 +21,7 @@ import {
 } from "../services/moderationService";
 
 const BlockedUsersScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const [users, setUsers] = useState<BlockedUser[]>([]);
@@ -67,7 +68,7 @@ const BlockedUsersScreen = () => {
       alignItems="center"
       justifyContent="between"
       borderBottomWidth={1}
-      borderBottomColor="$gray100"
+      style={{ borderBottomColor: theme.colors.gray100 }}
     >
       <HStack space="md" alignItems="center" flex={1}>
         <OptimizedImage
@@ -77,7 +78,7 @@ const BlockedUsersScreen = () => {
           contentFit="cover"
           lazy={true}
         />
-        <Text fontSize="$md" fontWeight="$medium" color="$black" numberOfLines={1}>
+        <Text fontSize="$md" fontWeight="$medium" style={{ color: theme.colors.black }} numberOfLines={1}>
           {item.username || `${t("profile.user")}${item.userId}`}
         </Text>
       </HStack>
@@ -93,7 +94,7 @@ const BlockedUsersScreen = () => {
         {unblockingId === item.userId ? (
           <ActivityIndicator size="small" color={theme.colors.white} />
         ) : (
-          <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+          <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
             {t("blockedUsers.unblock")}
           </Text>
         )}
@@ -105,7 +106,7 @@ const BlockedUsersScreen = () => {
     if (loading) return null;
     return (
       <View style={styles.emptyContainer}>
-        <Text fontSize="$md" color="$gray400">
+        <Text fontSize="$md" style={{ color: theme.colors.gray400 }}>
           {t("blockedUsers.noBlocked")}
         </Text>
       </View>

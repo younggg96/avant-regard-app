@@ -175,6 +175,8 @@ const DiscoverScreen: React.FC = () => {
     userInfoCache,
     tabLoading,
     tabLoaded,
+    bannersLoading,
+    communitiesLoading,
     handleRefresh,
     handleLike,
     loadTabData,
@@ -464,6 +466,8 @@ const DiscoverScreen: React.FC = () => {
             refreshing={refreshing}
             tabLoading={tabLoading.forum}
             tabLoaded={tabLoaded.forum}
+            bannersLoading={bannersLoading}
+            communitiesLoading={communitiesLoading}
             isActive={isFocused}
             onRefresh={onRefresh}
             onScroll={handleVerticalScroll}

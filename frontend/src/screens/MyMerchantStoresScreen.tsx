@@ -21,7 +21,7 @@ import {
     HStack,
     VStack,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import {
@@ -35,6 +35,7 @@ interface MerchantWithStore extends StoreMerchant {
 }
 
 const MyMerchantStoresScreen = () => {
+    const theme = useAppTheme();
     const { t } = useTranslation();
     const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
@@ -149,12 +150,12 @@ const MyMerchantStoresScreen = () => {
 
         return (
             <Box
-                bg="$white"
+                style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
                 rounded="$md"
                 p="$md"
                 mb="$md"
                 borderWidth={1}
-                borderColor="$gray100"
+
             >
                 {/* 店铺信息 */}
                 <Pressable onPress={() => goToStoreDetail(item.storeId)}>
@@ -163,17 +164,17 @@ const MyMerchantStoresScreen = () => {
                             <Text
                                 fontSize="$lg"
                                 fontWeight="$bold"
-                                color="$black"
-                                style={styles.textBold}
+                                style={[styles.textBold, { color: theme.colors.black }]}
+
                             >
                                 {item.storeInfo?.name || item.storeId}
                             </Text>
                             {item.storeInfo && (
                                 <Text
                                     fontSize="$sm"
-                                    color="$gray300"
+                                    style={[styles.textRegular, { color: theme.colors.gray300 }]}
                                     mt="$xs"
-                                    style={styles.textRegular}
+
                                 >
                                     {item.storeInfo.city}, {item.storeInfo.country}
                                 </Text>
@@ -207,12 +208,12 @@ const MyMerchantStoresScreen = () => {
                 </Pressable>
 
                 {/* 商家信息 */}
-                <Box bg="$gray50" rounded="$sm" p="$sm" mb="$sm">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$sm" p="$sm" mb="$sm">
                     <HStack gap="$lg">
                         {item.contactName && (
                             <HStack alignItems="center" gap="$xs">
                                 <Ionicons name="person-outline" size={14} color={theme.colors.gray300} />
-                                <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                                <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                                     {item.contactName}
                                 </Text>
                             </HStack>
@@ -220,7 +221,7 @@ const MyMerchantStoresScreen = () => {
                         {item.contactPhone && (
                             <HStack alignItems="center" gap="$xs">
                                 <Ionicons name="call-outline" size={14} color={theme.colors.gray300} />
-                                <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                                <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                                     {item.contactPhone}
                                 </Text>
                             </HStack>
@@ -247,7 +248,7 @@ const MyMerchantStoresScreen = () => {
 
                 {/* 申请时间 */}
                 <HStack justifyContent="between" alignItems="center" mt="$xs">
-                    <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray200 }]}>
                         {t("merchant.applyTime")} {new Date(item.createdAt).toLocaleDateString("zh-CN")}
                     </Text>
 
@@ -256,14 +257,14 @@ const MyMerchantStoresScreen = () => {
                         <Pressable
                             flexDirection="row"
                             alignItems="center"
-                            bg="$black"
+                            style={{ backgroundColor: theme.colors.black }}
                             px="$md"
                             py="$sm"
                             rounded="$sm"
                             onPress={() => goToMerchantManage(item)}
                         >
                             <Ionicons name="settings-outline" size={14} color={theme.colors.white} />
-                            <Text fontSize="$xs" fontWeight="$semibold" color="$white" ml="$xs" style={styles.textBold}>
+                            <Text fontSize="$xs" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]} ml="$xs">
                                 {t("merchant.manage")}
                             </Text>
                         </Pressable>
@@ -272,35 +273,35 @@ const MyMerchantStoresScreen = () => {
 
                 {/* 商家权益（已认证） */}
                 {item.status === "APPROVED" && (
-                    <Box mt="$sm" pt="$sm" borderTopWidth={1} borderTopColor="$gray100">
-                        <Text fontSize="$xs" color="$gray300" mb="$xs" style={styles.textRegular}>
+                    <Box mt="$sm" pt="$sm" borderTopWidth={1} style={{ borderTopColor: theme.colors.gray100 }}>
+                        <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                             {t("merchant.privileges")}
                         </Text>
                         <HStack flexWrap="wrap" gap="$xs">
                             {item.canPostBanner && (
-                                <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
-                                    <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$xs">
+                                    <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                         {t("merchant.bannerPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostAnnouncement && (
-                                <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
-                                    <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$xs">
+                                    <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                         {t("merchant.announcementPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostActivity && (
-                                <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
-                                    <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$xs">
+                                    <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                         {t("merchant.activityPublish")}
                                     </Text>
                                 </Box>
                             )}
                             {item.canPostDiscount && (
-                                <Box bg="$gray100" px="$sm" py="$xs" rounded="$xs">
-                                    <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$xs">
+                                    <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                         {t("merchant.discountPublish")}
                                     </Text>
                                 </Box>
@@ -318,19 +319,19 @@ const MyMerchantStoresScreen = () => {
             <Ionicons name="storefront-outline" size={64} color={theme.colors.gray200} />
             <Text
                 fontSize="$md"
-                color="$gray300"
+                style={[styles.textRegular, { color: theme.colors.gray300 }]}
                 mt="$md"
                 textAlign="center"
-                style={styles.textRegular}
+
             >
                 {t("merchant.noStoresApplied")}
             </Text>
             <Text
                 fontSize="$sm"
-                color="$gray200"
+                style={[styles.textRegular, { color: theme.colors.gray200 }]}
                 mt="$xs"
                 textAlign="center"
-                style={styles.textRegular}
+
             >
                 {t("merchant.applyHint")}
             </Text>
@@ -339,10 +340,10 @@ const MyMerchantStoresScreen = () => {
                 px="$lg"
                 py="$sm"
                 rounded="$sm"
-                bg="$black"
+                style={{ backgroundColor: theme.colors.black }}
                 onPress={() => (navigation as any).navigate("Main", { screen: "Map" })}
             >
-                <Text fontSize="$sm" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                <Text fontSize="$sm" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]}>
                     {t("merchant.browseStores")}
                 </Text>
             </Pressable>
@@ -359,7 +360,7 @@ const MyMerchantStoresScreen = () => {
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator  color={theme.colors.black} />
-                    <Text color="$gray300" mt="$md" style={styles.textRegular}>
+                    <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
                         {t("common.loading")}
                     </Text>
                 </VStack>
@@ -402,10 +403,10 @@ const MyMerchantStoresScreen = () => {
 
             {/* 提示信息 */}
             {merchants.length > 0 && (
-                <Box px="$lg" py="$sm" bg="$gray50">
+                <Box px="$lg" py="$sm" style={{ backgroundColor: theme.colors.gray50 }}>
                     <HStack alignItems="center" gap="$xs">
                         <Ionicons name="information-circle-outline" size={14} color={theme.colors.gray300} />
-                        <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                        <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                             {t("merchant.infoHint")}
                         </Text>
                     </HStack>

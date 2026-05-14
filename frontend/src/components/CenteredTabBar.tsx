@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { Box, Text, Pressable, HStack } from "./ui";
-import { useThemedStyles, type AppTheme } from "../theme";
+import { Text, Pressable, HStack } from "./ui";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 interface TabItem<T extends string> {
   id: T;
@@ -52,8 +52,20 @@ export function CenteredTabBar<T extends string>({
   activeTab,
   onTabChange,
 }: CenteredTabBarProps<T>) {
+  // Bypass Gluestack color tokens here: Gluestack resolves `$white` via a
+  // global mutable colorMode + internal style cache that can race with our
+  // ThemeProvider on switch (rendering dark `$white` inside an otherwise
+  // light page). Reading colors from useAppTheme keeps this strictly tied
+  // to the current React ThemeProvider value.
+  const theme = useAppTheme();
   return (
-    <Box borderBottomWidth={1} borderBottomColor="$gray100" bg="$white">
+    <View
+      style={{
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.gray100,
+        backgroundColor: theme.colors.background,
+      }}
+    >
       <HStack justifyContent="center" alignItems="center" py={2}>
         {tabs.map((tab) => (
           <TabButton
@@ -64,7 +76,7 @@ export function CenteredTabBar<T extends string>({
           />
         ))}
       </HStack>
-    </Box>
+    </View>
   );
 }
 

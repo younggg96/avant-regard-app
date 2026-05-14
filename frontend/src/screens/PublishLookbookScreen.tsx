@@ -21,7 +21,7 @@ import {
   Input,
   HStack,
 } from "../components/ui";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
@@ -78,6 +78,7 @@ type PublishLookbookRouteParams = {
 };
 
 const PublishLookbookScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishLookbookRouteParams }, "params">>();
@@ -865,7 +866,7 @@ const PublishLookbookScreen = () => {
             flex={1}
             rounded="$md"
             overflow="hidden"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={handleAddImage}
@@ -876,10 +877,10 @@ const PublishLookbookScreen = () => {
               color={theme.colors.gray400}
             />
             <Text
-              color="$gray500"
+              style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray500 }]}
               fontSize="$sm"
               mt="$sm"
-              style={{ fontFamily: playfairFonts.regular }}
+
             >
               {t("publish.tapToAddMedia")}
             </Text>
@@ -921,7 +922,7 @@ const PublishLookbookScreen = () => {
                 mr="$sm"
                 overflow="hidden"
                 borderWidth={isSelected ? 3 : isCover ? 2 : 0}
-                borderColor={isSelected ? "$accent" : "$black"}
+                style={{ borderColor: isSelected ? theme.colors.accent : theme.colors.black }}
                 opacity={isSelected ? 0.8 : 1}
                 onPress={() => {
                   if (isReorderMode) {
@@ -975,7 +976,7 @@ const PublishLookbookScreen = () => {
                     py={2}
                     alignItems="center"
                   >
-                    <Text color="$white" fontSize={10} fontWeight="$medium" style={{ fontFamily: playfairFonts.medium }}>
+                    <Text style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.white }]} fontSize={10} fontWeight="$medium">
                       {t("publish.cover")}
                     </Text>
                   </Box>
@@ -990,7 +991,7 @@ const PublishLookbookScreen = () => {
               w={60}
               h={60}
               rounded="$sm"
-              bg="$gray100"
+              style={{ backgroundColor: theme.colors.gray100 }}
               alignItems="center"
               justifyContent="center"
               mr="$sm"
@@ -1010,12 +1011,12 @@ const PublishLookbookScreen = () => {
       {/* 提示文字 */}
       {images.length > 1 && (
         <Text
-          color={isReorderMode ? "$accent" : "$gray400"}
+          style={[{ fontFamily: playfairFonts.regular }, { color: isReorderMode ? theme.colors.accent : theme.colors.gray400 }]}
           fontSize="$xs"
           textAlign="center"
           mt="$xs"
           fontWeight={isReorderMode ? "$medium" : "$normal"}
-          style={{ fontFamily: playfairFonts.regular }}
+
         >
           {isReorderMode
             ? t("publish.reorderModeHint")
@@ -1069,10 +1070,10 @@ const PublishLookbookScreen = () => {
       {/* 买手店发帖模式（migration 055）— 显式提示当前是以买手店身份发布。
           不能误删, 否则商家可能被误以为是自己个人主页发布。 */}
       {storeIdToPublish && (
-        <Box bg="$gray100" px="$md" py="$sm">
+        <Box style={{ backgroundColor: theme.colors.gray100 }} px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="storefront" size={16} color={theme.colors.black} />
-            <Text color="$black" fontSize="$sm" flex={1} numberOfLines={1} style={{ fontFamily: playfairFonts.regular }}>
+            <Text style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.black }]} fontSize="$sm" flex={1} numberOfLines={1}>
               {t("merchant.publishingAsStore", {
                 store: storeNameForHeader || storeIdToPublish,
               })}
@@ -1092,10 +1093,10 @@ const PublishLookbookScreen = () => {
           </HStack>
         </Box>
       ) : isEditingPublishedPost ? (
-        <Box bg="$accent" px="$md" py="$sm">
+        <Box style={{ backgroundColor: theme.colors.accent }} px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
-            <Text color="$white" fontSize="$sm" flex={1} style={{ fontFamily: playfairFonts.regular }}>
+            <Text style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.white }]} fontSize="$sm" flex={1}>
               {t("publish.reAuditWarning")}
             </Text>
           </HStack>
@@ -1118,10 +1119,10 @@ const PublishLookbookScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm" style={{ fontFamily: playfairFonts.medium }}>
+              <Text style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.gray600 }]} fontSize="$sm">
                 {t("publish.titleLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs" style={{ fontFamily: playfairFonts.medium }}>
+              <Text style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.error }]} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -1148,10 +1149,10 @@ const PublishLookbookScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm" style={{ fontFamily: playfairFonts.medium }}>
+              <Text style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.gray600 }]} fontSize="$sm">
                 {t("publish.descriptionLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs" style={{ fontFamily: playfairFonts.medium }}>
+              <Text style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.error }]} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>

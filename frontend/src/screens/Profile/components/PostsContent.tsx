@@ -178,14 +178,14 @@ const ContributionContent = ({
       {contribLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm" style={{ fontFamily: PF.regular }}>
+          <Text fontSize="$sm" style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} mt="$sm">
             {t("common.loading")}
           </Text>
         </VStack>
       ) : data.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+          <Text style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} mt="$md">
             {emptyTexts[contribSubTab]}
           </Text>
         </VStack>
@@ -219,6 +219,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const StoreImageOrPlaceholder = ({ uri }: { uri?: string }) => {
+  const theme = useAppTheme();
   const storeActivityStyles = useStoreActivityStyles();
   if (uri) {
     return <Image source={{ uri }} style={storeActivityStyles.storeImage} resizeMode="cover" />;
@@ -273,6 +274,8 @@ const StoreActivityContent = ({
   const contribStyles = useContribStyles();
   const storeActivityStyles = useStoreActivityStyles();
   const styles = useProfileStyles();
+  const themeForLoader = useAppTheme();
+  const isDark = themeForLoader.colors.background !== "#FFFFFF";
   // 4 个一级 chip：前 3 个店铺级活动 + 第 4 个"商品"展开 3 个 sub-sub-tab
   const productTotal =
     productLikes.total + productSaved.total + productWanted.total;
@@ -399,16 +402,20 @@ const StoreActivityContent = ({
         />
       ) : storeActivityLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <Image
-            source={require("../../../../assets/gif/profile-loading.gif")}
-            style={styles.profileLoadingGif}
-            resizeMode="contain"
-          />
+          {isDark ? (
+            <ActivityIndicator color={themeForLoader.colors.gray400} />
+          ) : (
+            <Image
+              source={require("../../../../assets/gif/profile-loading.gif")}
+              style={styles.profileLoadingGif}
+              resizeMode="contain"
+            />
+          )}
         </VStack>
       ) : getDataLength() === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$sm" style={{ minHeight: 200 }}>
           <Ionicons name={empty.icon as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+          <Text style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} mt="$md">
             {empty.text}
           </Text>
         </VStack>
@@ -498,7 +505,7 @@ const ProductActivityContent = ({
       ) : current.products.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcon as any} size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular }}>
+          <Text style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} mt="$md">
             {emptyText}
           </Text>
         </VStack>
@@ -555,14 +562,14 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
         <Text
           fontSize={13}
           fontWeight="$semibold"
-          color="$black"
+          style={[{ fontFamily: PF.medium }, { color: theme.colors.black }]}
           numberOfLines={2}
-          style={{ fontFamily: PF.medium }}
+
         >
           {product.title}
         </Text>
         {!!product.brand && (
-          <Text fontSize={10} color="$gray400" numberOfLines={1} style={{ fontFamily: PF.regular }}>
+          <Text fontSize={10} style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} numberOfLines={1}>
             {product.brand}
           </Text>
         )}
@@ -570,8 +577,8 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
           <Text
             fontSize={13}
             fontWeight="$bold"
-            color={hasDiscount ? "$error" : "$black"}
-            style={{ fontFamily: PF.bold }}
+            style={[{ fontFamily: PF.bold }, { color: hasDiscount ? theme.colors.error : theme.colors.black }]}
+
           >
             {formatPrice(
               hasDiscount
@@ -583,8 +590,8 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
           {hasDiscount && (
             <Text
               fontSize={11}
-              color="$gray300"
-              style={{ textDecorationLine: "line-through", fontFamily: PF.regular }}
+              style={[{ textDecorationLine: "line-through", fontFamily: PF.regular }, { color: theme.colors.gray300 }]}
+
             >
               {formatPrice(product.priceCents, product.currency)}
             </Text>
@@ -681,6 +688,10 @@ export const PostsContent = ({
 }: PostsContentProps) => {
   const { t } = useTranslation();
   const styles = useProfileStyles();
+  const theme = useAppTheme();
+  // profile-loading.gif 是白底动图，dark mode 下塞在深色页面里就是一大块刺眼
+  // 的白；用纯 ActivityIndicator 占位（在 light 模式继续保持原有 GIF 体验）。
+  const isDark = theme.colors.background !== "#FFFFFF";
   if (activeTab === "storeActivity") {
     return (
       <StoreActivityContent
@@ -723,11 +734,15 @@ export const PostsContent = ({
   if (shouldShowLoading) {
     return (
       <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-        <Image
-          source={require("../../../../assets/gif/profile-loading.gif")}
-          style={styles.profileLoadingGif}
-          resizeMode="contain"
-        />
+        {isDark ? (
+          <ActivityIndicator color={theme.colors.gray400} />
+        ) : (
+          <Image
+            source={require("../../../../assets/gif/profile-loading.gif")}
+            style={styles.profileLoadingGif}
+            resizeMode="contain"
+          />
+        )}
       </VStack>
     );
   }
@@ -798,7 +813,7 @@ export const PostsContent = ({
           size={24}
           color={theme.colors.gray300}
         />
-        <Text color="$gray400" mt="$md" style={{ fontFamily: PF.regular, textAlign: "center" }}>
+        <Text style={[{ fontFamily: PF.regular, textAlign: "center" }, { color: theme.colors.gray400 }]} mt="$md">
           {activeTab === "published" && t("profile.noPublishedPosts")}
           {activeTab === "pending" && t("profile.noPendingPosts")}
           {activeTab === "draft" && t("profile.noDrafts")}

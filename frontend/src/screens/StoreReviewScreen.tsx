@@ -31,7 +31,7 @@ import {
     VStack,
     ScrollView,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -44,6 +44,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 const StoreReviewScreen = () => {
+    const theme = useAppTheme();
     const { t } = useTranslation();
     const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
@@ -310,12 +311,12 @@ const StoreReviewScreen = () => {
 
         return (
             <Pressable
-                bg="$white"
+                style={[{ backgroundColor: theme.colors.white }, { borderColor: isBatchMode && isSelected ? theme.colors.black : theme.colors.gray100 }]}
                 rounded="$lg"
                 p="$md"
                 mb="$md"
                 borderWidth={isBatchMode && isSelected ? 2 : 1}
-                borderColor={isBatchMode && isSelected ? "$black" : "$gray100"}
+
                 onPress={() => openDetailModal(item)}
                 sx={{
                     shadowColor: "#000",
@@ -332,8 +333,8 @@ const StoreReviewScreen = () => {
                             h={22}
                             rounded="$xs"
                             borderWidth={2}
-                            borderColor={isSelected ? "$black" : "$gray200"}
-                            bg={isSelected ? "$black" : "$white"}
+                            style={[{ borderColor: isSelected ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: isSelected ? theme.colors.black : theme.colors.white }]}
+
                             justifyContent="center"
                             alignItems="center"
                             mr="$sm"
@@ -345,10 +346,10 @@ const StoreReviewScreen = () => {
                         </Box>
                     )}
                     <VStack flex={1}>
-                        <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+                        <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
                             {item.name}
                         </Text>
-                        <Text fontSize="$sm" color="$gray300" mt="$xs">
+                        <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs">
                             {item.city}, {item.country}
                         </Text>
                     </VStack>
@@ -361,7 +362,7 @@ const StoreReviewScreen = () => {
 
                 <HStack alignItems="center" mb="$sm">
                     <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
-                    <Text fontSize="$sm" color="$gray300" ml="$xs" flex={1} numberOfLines={1}>
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs" flex={1} numberOfLines={1}>
                         {item.address}
                     </Text>
                 </HStack>
@@ -369,8 +370,8 @@ const StoreReviewScreen = () => {
                 {(item.style?.length ?? 0) > 0 && (
                     <HStack flexWrap="wrap" gap="$xs" mb="$sm">
                         {item.style.slice(0, 3).map((s, idx) => (
-                            <Box key={idx} bg="$gray100" px="$sm" py="$xs" rounded="$sm">
-                                <Text fontSize="$xs" color="$gray300">
+                            <Box key={idx} style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$sm">
+                                <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                     {s}
                                 </Text>
                             </Box>
@@ -378,23 +379,23 @@ const StoreReviewScreen = () => {
                     </HStack>
                 )}
 
-                <HStack justifyContent="between" alignItems="center" mt="$sm" pt="$sm" borderTopWidth={1} borderTopColor="$gray100">
+                <HStack justifyContent="between" alignItems="center" mt="$sm" pt="$sm" borderTopWidth={1} style={{ borderTopColor: theme.colors.gray100 }}>
                     <HStack alignItems="center">
                         <Box
                             w={24}
                             h={24}
                             rounded="$sm"
-                            bg="$gray100"
+                            style={{ backgroundColor: theme.colors.gray100 }}
                             justifyContent="center"
                             alignItems="center"
                             mr="$xs"
                         >
                             <Ionicons name="person" size={12} color={theme.colors.gray300} />
                         </Box>
-                        <Text fontSize="$xs" color="$gray300">
+                        <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                             {item.username}
                         </Text>
-                        <Text fontSize="$xs" color="$gray200" ml="$sm">
+                        <Text fontSize="$xs" style={{ color: theme.colors.gray200 }} ml="$sm">
                             {new Date(item.createdAt).toLocaleDateString("zh-CN")}
                         </Text>
                     </HStack>
@@ -409,10 +410,10 @@ const StoreReviewScreen = () => {
         return (
             <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
                 <Ionicons name="checkmark-circle-outline" size={64} color={theme.colors.gray200} />
-                <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
+                <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mt="$md">
                     {t("store.noPendingStores")}
                 </Text>
-                <Text color="$gray300" mt="$sm">
+                <Text style={{ color: theme.colors.gray300 }} mt="$sm">
                     {t("store.allSubmissionsProcessed")}
                 </Text>
             </VStack>
@@ -433,7 +434,7 @@ const StoreReviewScreen = () => {
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
-                    <Text color="$gray300" mt="$md">
+                    <Text style={{ color: theme.colors.gray300 }} mt="$md">
                         {t("common.loading")}
                     </Text>
                 </VStack>
@@ -463,15 +464,15 @@ const StoreReviewScreen = () => {
 
             {/* 批量操作栏 */}
             {isBatchMode && (
-                <HStack px="$md" py="$sm" bg="$gray50" alignItems="center" justifyContent="between">
+                <HStack px="$md" py="$sm" style={{ backgroundColor: theme.colors.gray50 }} alignItems="center" justifyContent="between">
                     <Pressable onPress={toggleSelectAll} flexDirection="row" alignItems="center">
                         <Box
                             w={20}
                             h={20}
                             rounded="$xs"
                             borderWidth={2}
-                            borderColor={selectedIds.size === submissions.length ? "$black" : "$gray200"}
-                            bg={selectedIds.size === submissions.length ? "$black" : "$white"}
+                            style={[{ borderColor: selectedIds.size === submissions.length ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: selectedIds.size === submissions.length ? theme.colors.black : theme.colors.white }]}
+
                             justifyContent="center"
                             alignItems="center"
                             mr="$xs"
@@ -480,7 +481,7 @@ const StoreReviewScreen = () => {
                                 <Ionicons name="checkmark" size={12} color="#fff" />
                             )}
                         </Box>
-                        <Text fontSize="$sm" color="$gray300">
+                        <Text fontSize="$sm" style={{ color: theme.colors.gray300 }}>
                             {t("store.selectAll")} ({selectedIds.size}/{submissions.length})
                         </Text>
                     </Pressable>
@@ -490,12 +491,12 @@ const StoreReviewScreen = () => {
                             py="$sm"
                             rounded="$sm"
                             borderWidth={1}
-                            borderColor={selectedIds.size > 0 ? "$error" : "$gray200"}
+                            style={{ borderColor: selectedIds.size > 0 ? theme.colors.error : theme.colors.gray200 }}
                             opacity={selectedIds.size > 0 ? 1 : 0.4}
                             onPress={handleBatchReject}
                             disabled={selectedIds.size === 0 || isSubmitting}
                         >
-                            <Text fontSize="$sm" fontWeight="$semibold" color={selectedIds.size > 0 ? "$error" : "$gray200"}>
+                            <Text fontSize="$sm" fontWeight="$semibold" style={{ color: selectedIds.size > 0 ? theme.colors.error : theme.colors.gray200 }}>
                                 {t("store.reject")}
                             </Text>
                         </Pressable>
@@ -503,7 +504,7 @@ const StoreReviewScreen = () => {
                             px="$md"
                             py="$sm"
                             rounded="$sm"
-                            bg={selectedIds.size > 0 ? "$black" : "$gray200"}
+                            style={{ backgroundColor: selectedIds.size > 0 ? theme.colors.black : theme.colors.gray200 }}
                             opacity={selectedIds.size > 0 ? 1 : 0.4}
                             onPress={handleBatchApprove}
                             disabled={selectedIds.size === 0 || isSubmitting}
@@ -511,7 +512,7 @@ const StoreReviewScreen = () => {
                             {isSubmitting ? (
                                 <ActivityIndicator color="#fff" size="small" />
                             ) : (
-                                <Text fontSize="$sm" fontWeight="$semibold" color="$white">
+                                <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                                     {t("store.approve")}
                                 </Text>
                             )}
@@ -572,43 +573,43 @@ const StoreReviewScreen = () => {
                             },
                         ]}
                     >
-                        <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
+                        <Box w={40} h={4} style={{ backgroundColor: theme.colors.gray200 }} rounded="$sm" alignSelf="center" mb="$md" />
                         {selectedSubmission && (
                             <RNScrollView showsVerticalScrollIndicator={false}>
-                                <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
+                                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$xs">
                                     {selectedSubmission.name}
                                 </Text>
-                                <Text fontSize="$sm" color="$gray300" mb="$md">
+                                <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
                                     {selectedSubmission.city}, {selectedSubmission.country}
                                 </Text>
 
-                                <Box bg="$gray50" rounded="$md" p="$md" mb="$md">
+                                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$md">
                                     <HStack alignItems="center">
                                         <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray300} />
-                                        <Text fontSize="$sm" color="$gray300" ml="$sm">
+                                        <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$sm">
                                             {t("store.submitter")}{selectedSubmission.username}
                                         </Text>
-                                        <Text fontSize="$sm" color="$gray200" ml="auto">
+                                        <Text fontSize="$sm" style={{ color: theme.colors.gray200 }} ml="auto">
                                             {new Date(selectedSubmission.createdAt).toLocaleString("zh-CN")}
                                         </Text>
                                     </HStack>
                                 </Box>
 
                                 <VStack mb="$md">
-                                    <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                    <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                         {t("store.detailedAddress")}
                                     </Text>
-                                    <Text fontSize="$md" color="$black">
+                                    <Text fontSize="$md" style={{ color: theme.colors.black }}>
                                         {selectedSubmission.address}
                                     </Text>
                                 </VStack>
 
                                 {selectedSubmission.latitude && selectedSubmission.longitude && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.coordinates")}
                                         </Text>
-                                        <Text fontSize="$md" color="$black">
+                                        <Text fontSize="$md" style={{ color: theme.colors.black }}>
                                             {selectedSubmission.latitude.toFixed(6)}, {selectedSubmission.longitude.toFixed(6)}
                                         </Text>
                                     </VStack>
@@ -616,13 +617,13 @@ const StoreReviewScreen = () => {
 
                                 {(selectedSubmission.style?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.styleTags")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.style.map((s, idx) => (
-                                                <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
-                                                    <Text fontSize="$sm" color="$white">
+                                                <Box key={idx} style={{ backgroundColor: theme.colors.black }} px="$md" py="$sm" rounded="$sm">
+                                                    <Text fontSize="$sm" style={{ color: theme.colors.white }}>
                                                         {s}
                                                     </Text>
                                                 </Box>
@@ -633,13 +634,13 @@ const StoreReviewScreen = () => {
 
                                 {(selectedSubmission.brands?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.salesBrands")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$xs">
                                             {selectedSubmission.brands.map((b, idx) => (
-                                                <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
-                                                    <Text fontSize="$sm" color="$black">
+                                                <Box key={idx} style={{ backgroundColor: theme.colors.gray100 }} px="$md" py="$sm" rounded="$sm">
+                                                    <Text fontSize="$sm" style={{ color: theme.colors.black }}>
                                                         {b}
                                                     </Text>
                                                 </Box>
@@ -650,10 +651,10 @@ const StoreReviewScreen = () => {
 
                                 {(selectedSubmission.phone?.length ?? 0) > 0 && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.phone")}
                                         </Text>
-                                        <Text fontSize="$md" color="$black">
+                                        <Text fontSize="$md" style={{ color: theme.colors.black }}>
                                             {selectedSubmission.phone.join(", ")}
                                         </Text>
                                     </VStack>
@@ -661,10 +662,10 @@ const StoreReviewScreen = () => {
 
                                 {selectedSubmission.hours && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.businessHours")}
                                         </Text>
-                                        <Text fontSize="$md" color="$black">
+                                        <Text fontSize="$md" style={{ color: theme.colors.black }}>
                                             {selectedSubmission.hours}
                                         </Text>
                                     </VStack>
@@ -672,10 +673,10 @@ const StoreReviewScreen = () => {
 
                                 {selectedSubmission.description && (
                                     <VStack mb="$md">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.storeDescription")}
                                         </Text>
-                                        <Text fontSize="$md" color="$black" lineHeight={22}>
+                                        <Text fontSize="$md" style={{ color: theme.colors.black }} lineHeight={22}>
                                             {selectedSubmission.description}
                                         </Text>
                                     </VStack>
@@ -683,7 +684,7 @@ const StoreReviewScreen = () => {
 
                                 {(selectedSubmission.images?.length ?? 0) > 0 && (
                                     <VStack mb="$lg">
-                                        <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                                        <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                                             {t("store.storeImages")}
                                         </Text>
                                         <HStack flexWrap="wrap" gap="$sm">
@@ -708,12 +709,12 @@ const StoreReviewScreen = () => {
                                         py="$md"
                                         rounded="$sm"
                                         borderWidth={1}
-                                        borderColor="$error"
+                                        style={{ borderColor: theme.colors.error }}
                                         alignItems="center"
                                         onPress={() => openRejectModal(selectedSubmission)}
                                         disabled={isSubmitting}
                                     >
-                                        <Text fontSize="$md" fontWeight="$semibold" color="$error">
+                                        <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.error }}>
                                             {t("store.reject")}
                                         </Text>
                                     </Pressable>
@@ -721,7 +722,7 @@ const StoreReviewScreen = () => {
                                         flex={1}
                                         py="$md"
                                         rounded="$sm"
-                                        bg="$black"
+                                        style={{ backgroundColor: theme.colors.black }}
                                         alignItems="center"
                                         onPress={() => handleApprove(selectedSubmission)}
                                         disabled={isSubmitting}
@@ -729,7 +730,7 @@ const StoreReviewScreen = () => {
                                         {isSubmitting ? (
                                             <ActivityIndicator color={theme.colors.white} />
                                         ) : (
-                                            <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                                            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                                                 {t("store.approve")}
                                             </Text>
                                         )}
@@ -778,10 +779,10 @@ const StoreReviewScreen = () => {
                                     },
                                 ]}
                             >
-                                <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
+                                <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$md">
                                     {t("store.rejectReason")}
                                 </Text>
-                                <Text fontSize="$sm" color="$gray300" mb="$md">
+                                <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
                                     {t("store.rejectReasonDescription", { target: rejectModalTitle })}
                                 </Text>
                                 <TextInput
@@ -800,11 +801,11 @@ const StoreReviewScreen = () => {
                                         py="$md"
                                         rounded="$sm"
                                         borderWidth={1}
-                                        borderColor="$gray200"
+                                        style={{ borderColor: theme.colors.gray200 }}
                                         alignItems="center"
                                         onPress={closeRejectModal}
                                     >
-                                        <Text fontSize="$md" fontWeight="$semibold" color="$black">
+                                        <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
                                             {t("common.cancel")}
                                         </Text>
                                     </Pressable>
@@ -812,7 +813,7 @@ const StoreReviewScreen = () => {
                                         flex={1}
                                         py="$md"
                                         rounded="$sm"
-                                        bg={rejectReason.trim() ? "$error" : "$gray200"}
+                                        style={{ backgroundColor: rejectReason.trim() ? theme.colors.error : theme.colors.gray200 }}
                                         alignItems="center"
                                         onPress={handleConfirmReject}
                                         disabled={isSubmitting || !rejectReason.trim()}
@@ -820,7 +821,7 @@ const StoreReviewScreen = () => {
                                         {isSubmitting ? (
                                             <ActivityIndicator color={theme.colors.white} />
                                         ) : (
-                                            <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                                            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                                                 {t("store.confirmReject")}
                                             </Text>
                                         )}

@@ -13,7 +13,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, Text } from "../../../components/ui";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import type { QuotaInfo } from "../../../services/aiPostService";
 
 interface QuotaBadgeProps {
@@ -21,6 +21,7 @@ interface QuotaBadgeProps {
 }
 
 const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   if (!quota) return null;
 
@@ -37,7 +38,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota }) => {
       px="$sm"
       py={4}
       rounded={12}
-      bg={exhausted ? "$gray100" : "rgba(0,0,0,0.06)"}
+      style={{ backgroundColor: exhausted ? theme.colors.gray100 : "rgba(0,0,0,0.06)" }}
     >
       <Ionicons
         name={exhausted ? "alert-circle-outline" : "sparkles-outline"}
@@ -46,7 +47,7 @@ const QuotaBadge: React.FC<QuotaBadgeProps> = ({ quota }) => {
       />
       <Text
         fontSize="$xs"
-        color={exhausted ? "$error" : "$gray400"}
+        style={{ color: exhausted ? theme.colors.error : theme.colors.gray400 }}
         numberOfLines={1}
       >
         {exhausted

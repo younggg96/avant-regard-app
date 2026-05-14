@@ -39,7 +39,7 @@ import {
   Text,
   VStack,
 } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { ImageSize } from "../../utils/imageUtils";
@@ -57,6 +57,7 @@ const CHIPS: ImageBriefChip[] = [
 ];
 
 const AIPostImageBriefScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
@@ -160,7 +161,7 @@ const AIPostImageBriefScreen: React.FC = () => {
         <VStack px="$lg" pt="$sm" pb="$lg" gap="$md">
           {/* 图片九宫格 */}
           <Box>
-            <Text fontSize="$xs" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mb="$xs">
               {t("aiPost.imageBrief.imageTip")}
             </Text>
             <HStack flexWrap="wrap" gap={8}>
@@ -189,16 +190,16 @@ const AIPostImageBriefScreen: React.FC = () => {
                   alignItems="center"
                   justifyContent="center"
                   borderWidth={1}
-                  borderColor="$gray200"
+                  style={[{ borderStyle: "dashed" }, { borderColor: theme.colors.gray200 }]}
                   rounded={6}
-                  style={{ borderStyle: "dashed" }}
+
                 >
                   <Ionicons
                     name="add"
                     size={22}
                     color={theme.colors.gray300}
                   />
-                  <Text fontSize="$2xs" color="$gray400" mt={2}>
+                  <Text fontSize="$2xs" style={{ color: theme.colors.gray400 }} mt={2}>
                     {t("aiPost.imageBrief.addImage")}
                   </Text>
                 </Pressable>
@@ -208,7 +209,7 @@ const AIPostImageBriefScreen: React.FC = () => {
 
           {/* prompt chip */}
           <Box>
-            <Text fontSize="$xs" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mb="$xs">
               {t("aiPost.imageBrief.chipLabel")}
             </Text>
             <HStack flexWrap="wrap" gap="$xs">
@@ -218,16 +219,16 @@ const AIPostImageBriefScreen: React.FC = () => {
                   <Pressable
                     key={c}
                     onPress={() => setChip(c)}
-                    bg={selected ? "$black" : "$white"}
+                    style={[{ backgroundColor: selected ? theme.colors.black : theme.colors.white }, { borderColor: selected ? theme.colors.black : theme.colors.gray100 }]}
                     borderWidth={1}
-                    borderColor={selected ? "$black" : "$gray100"}
+
                     px="$sm"
                     py={6}
                     rounded={16}
                   >
                     <Text
                       fontSize="$xs"
-                      color={selected ? "$white" : "$gray500"}
+                      style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
                     >
                       {t(`aiPost.imageBrief.chip.${c}`)}
                     </Text>
@@ -239,12 +240,12 @@ const AIPostImageBriefScreen: React.FC = () => {
 
           {/* note */}
           <Box>
-            <Text fontSize="$xs" color="$gray400" mb="$xs">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mb="$xs">
               {t("aiPost.imageBrief.noteLabel")}
             </Text>
             <Box
               borderWidth={1}
-              borderColor="$gray100"
+              style={{ borderColor: theme.colors.gray100 }}
               rounded="$md"
               p="$sm"
             >
@@ -258,7 +259,7 @@ const AIPostImageBriefScreen: React.FC = () => {
               />
               <Text
                 fontSize="$2xs"
-                color="$gray300"
+                style={{ color: theme.colors.gray300 }}
                 alignSelf="flex-end"
                 mt="$xs"
               >
@@ -275,24 +276,24 @@ const AIPostImageBriefScreen: React.FC = () => {
         px="$lg"
         py="$md"
         borderTopWidth={1}
-        borderTopColor="$gray100"
-        bg="$white"
+        style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
       >
         <Button
           onPress={handleGenerate}
-          bg="$black"
+          style={{ backgroundColor: theme.colors.black }}
           rounded="$md"
           disabled={uploading || localUris.length === 0}
         >
           {uploading ? (
             <HStack gap="$sm" alignItems="center">
               <ActivityIndicator color="white" />
-              <ButtonText color="$white">
+              <ButtonText style={{ color: theme.colors.white }}>
                 {t("aiPost.imageBrief.uploading")}
               </ButtonText>
             </HStack>
           ) : (
-            <ButtonText color="$white">
+            <ButtonText style={{ color: theme.colors.white }}>
               {t("aiPost.imageBrief.generate")}
             </ButtonText>
           )}

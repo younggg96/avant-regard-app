@@ -28,7 +28,7 @@ import {
 } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, ScrollView, VStack } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import EditorialHeader from "./components/EditorialHeader";
 import EditorialHero from "./components/EditorialHero";
 import OptionListRow, {
@@ -117,6 +117,7 @@ const STEP_CONFIG: Record<StepKey, StepConfig> = {
 const TOTAL_STEPS = 4;
 
 const AIPostQAStepScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
@@ -261,14 +262,14 @@ const AIPostQAStepScreen: React.FC = () => {
             <ActivityIndicator color={theme.colors.black} />
           </Box>
         ) : errorMsg ? (
-          <Box mx="$lg" my="$md" p="$md" bg="$gray100" rounded="$md">
-            <Text fontSize="$xs" color="$gray500">
+          <Box mx="$lg" my="$md" p="$md" style={{ backgroundColor: theme.colors.gray100 }} rounded="$md">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
               {errorMsg}
             </Text>
           </Box>
         ) : data && data.options.length === 0 ? (
-          <Box mx="$lg" my="$md" p="$md" bg="$gray100" rounded="$md">
-            <Text fontSize="$xs" color="$gray500">
+          <Box mx="$lg" my="$md" p="$md" style={{ backgroundColor: theme.colors.gray100 }} rounded="$md">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
               {t("aiPost.qa.noOptions")}
             </Text>
           </Box>

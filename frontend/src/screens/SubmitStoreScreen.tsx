@@ -23,7 +23,7 @@ import {
   ScrollView,
   Input,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageGridSelector from "../components/ImageGridSelector";
 import ImagePreviewModal from "../components/ImagePreviewModal";
@@ -66,6 +66,7 @@ const COUNTRY_OPTIONS = [
 ];
 
 const SubmitStoreScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -295,14 +296,14 @@ const SubmitStoreScreen = () => {
           keyboardDismissMode="interactive"
         >
           {/* 提示信息 */}
-          <Box mx="$md" mt="$md" mb="$lg" p="$md" bg="$gray50" borderRadius="$md">
+          <Box mx="$md" mt="$md" mb="$lg" p="$md" style={{ backgroundColor: theme.colors.gray50 }} borderRadius="$md">
             <HStack alignItems="center" gap="$sm">
               <Ionicons
                 name="information-circle"
                 size={20}
                 color={theme.colors.gray500}
               />
-              <Text color="$gray500" fontSize="$sm" flex={1} lineHeight={20}>
+              <Text style={{ color: theme.colors.gray500 }} fontSize="$sm" flex={1} lineHeight={20}>
                 {t("storeSubmit.description")}
               </Text>
             </HStack>
@@ -310,7 +311,7 @@ const SubmitStoreScreen = () => {
 
           {/* 基本信息 */}
           <Box mx="$md" mb="$md">
-            <Text fontSize="$md" fontWeight="$bold" color="$black">
+            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
               {t("storeSubmit.basicInfo")}
             </Text>
           </Box>
@@ -318,10 +319,10 @@ const SubmitStoreScreen = () => {
           {/* 店铺名称 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.storeName")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -338,10 +339,10 @@ const SubmitStoreScreen = () => {
           {/* 国家选择 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.country")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -352,12 +353,12 @@ const SubmitStoreScreen = () => {
                   px="$md"
                   py="$sm"
                   rounded="$sm"
-                  bg={country === c ? "$black" : "$gray100"}
+                  style={{ backgroundColor: country === c ? theme.colors.black : theme.colors.gray100 }}
                   onPress={() => setCountry(c)}
                 >
                   <Text
                     fontSize="$sm"
-                    color={country === c ? "$white" : "$black"}
+                    style={{ color: country === c ? theme.colors.white : theme.colors.black }}
                     fontWeight={country === c ? "$medium" : "$normal"}
                   >
                     {c}
@@ -370,10 +371,10 @@ const SubmitStoreScreen = () => {
           {/* 城市 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.city")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -390,10 +391,10 @@ const SubmitStoreScreen = () => {
           {/* 详细地址 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.storeAddress")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -415,7 +416,7 @@ const SubmitStoreScreen = () => {
           {/* 位置坐标 */}
           <Box mx="$md" mb="$lg">
             <HStack justifyContent="between" alignItems="center" mb="$xs">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.coordinates")}
               </Text>
               <Pressable
@@ -433,19 +434,19 @@ const SubmitStoreScreen = () => {
                     color={theme.colors.black}
                   />
                 )}
-                <Text fontSize="$sm" color="$black" fontWeight="$medium" ml="$xs">
+                <Text fontSize="$sm" style={{ color: theme.colors.black }} fontWeight="$medium" ml="$xs">
                   {t("storeSubmit.getLocation")}
                 </Text>
               </Pressable>
             </HStack>
             {latitude && longitude ? (
-              <Box bg="$gray100" rounded="$md" p="$sm">
-                <Text fontSize="$sm" color="$gray500">
+              <Box style={{ backgroundColor: theme.colors.gray100 }} rounded="$md" p="$sm">
+                <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
                   {t("storeSubmit.coordinatesDisplay", { lat: latitude.toFixed(6), lng: longitude.toFixed(6) })}
                 </Text>
               </Box>
             ) : (
-              <Text fontSize="$xs" color="$gray400">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {t("storeSubmit.coordinatesHint")}
               </Text>
             )}
@@ -453,7 +454,7 @@ const SubmitStoreScreen = () => {
 
           {/* 详细信息 */}
           <Box mx="$md" mb="$md">
-            <Text fontSize="$md" fontWeight="$bold" color="$black">
+            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
               {t("storeSubmit.detailInfo")}
             </Text>
           </Box>
@@ -461,7 +462,7 @@ const SubmitStoreScreen = () => {
           {/* 风格标签 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.styleLabel")}
               </Text>
             </HStack>
@@ -472,12 +473,12 @@ const SubmitStoreScreen = () => {
                   px="$md"
                   py="$sm"
                   rounded="$sm"
-                  bg={selectedStyles.includes(style) ? "$black" : "$gray100"}
+                  style={{ backgroundColor: selectedStyles.includes(style) ? theme.colors.black : theme.colors.gray100 }}
                   onPress={() => toggleStyle(style)}
                 >
                   <Text
                     fontSize="$sm"
-                    color={selectedStyles.includes(style) ? "$white" : "$black"}
+                    style={{ color: selectedStyles.includes(style) ? theme.colors.white : theme.colors.black }}
                     fontWeight={selectedStyles.includes(style) ? "$medium" : "$normal"}
                   >
                     {style}
@@ -490,17 +491,17 @@ const SubmitStoreScreen = () => {
           {/* 销售品牌 — 下拉触发 + BrandSelectorModal */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.storeBrands")}
               </Text>
-              <Text color="$gray400" fontSize="$xs" ml="$xs">
+              <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" ml="$xs">
                 {selectedBrands.length}/{MAX_BRANDS}
               </Text>
             </HStack>
 
             <Pressable
               onPress={() => setBrandSelectorVisible(true)}
-              bg="$gray50"
+              style={{ backgroundColor: theme.colors.gray50 }}
               rounded="$md"
               px="$md"
               h={48}
@@ -515,7 +516,7 @@ const SubmitStoreScreen = () => {
                   color={theme.colors.gray400}
                 />
                 <Text
-                  color={selectedBrands.length === 0 ? "$gray400" : "$black"}
+                  style={{ color: selectedBrands.length === 0 ? theme.colors.gray400 : theme.colors.black }}
                   fontSize="$sm"
                   flex={1}
                   numberOfLines={1}
@@ -541,14 +542,14 @@ const SubmitStoreScreen = () => {
                   <Pressable
                     key={`brand-chip-${b.id}`}
                     onPress={() => handleRemoveBrand(b.id)}
-                    bg="$black"
+                    style={{ backgroundColor: theme.colors.black }}
                     rounded="$sm"
                     px="$sm"
                     py={4}
                     flexDirection="row"
                     alignItems="center"
                   >
-                    <Text color="$white" fontSize="$xs" mr="$xs">
+                    <Text style={{ color: theme.colors.white }} fontSize="$xs" mr="$xs">
                       {b.name}
                     </Text>
                     <Ionicons
@@ -565,7 +566,7 @@ const SubmitStoreScreen = () => {
           {/* 联系电话 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.storePhone")}
               </Text>
             </HStack>
@@ -582,7 +583,7 @@ const SubmitStoreScreen = () => {
           {/* 营业时间 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.businessHours")}
               </Text>
             </HStack>
@@ -599,7 +600,7 @@ const SubmitStoreScreen = () => {
           {/* 店铺描述 */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("storeSubmit.storeDescription")}
               </Text>
             </HStack>
@@ -638,7 +639,7 @@ const SubmitStoreScreen = () => {
               w="100%"
               py="$md"
               rounded="$sm"
-              bg={isSubmitting ? "$gray200" : "$black"}
+              style={{ backgroundColor: isSubmitting ? theme.colors.gray200 : theme.colors.black }}
               alignItems="center"
               justifyContent="center"
               onPress={handleSubmit}
@@ -647,7 +648,7 @@ const SubmitStoreScreen = () => {
               {isSubmitting ? (
                 <ActivityIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Text fontSize="$md" fontWeight="$bold" color="$white">
+                <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.white }}>
                   {t("storeSubmit.submit")}
                 </Text>
               )}

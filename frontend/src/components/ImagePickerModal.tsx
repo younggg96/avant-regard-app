@@ -3,7 +3,7 @@ import { Modal } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack } from "./ui";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -28,6 +28,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
   showVideoOption = false,
   showMultiSelectOption = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayTitle = title || t("imagePickerModal.title");
   return (
@@ -40,7 +41,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
       <Box flex={1} bg="rgba(0,0,0,0.5)" justifyContent="flex-end">
         <Pressable flex={1} onPress={onClose} />
         <Box
-          bg="$white"
+          style={{ backgroundColor: theme.colors.white }}
           borderTopLeftRadius="$lg"
           borderTopRightRadius="$lg"
           pb={34}
@@ -49,11 +50,11 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             px="$lg"
             py="$md"
             borderBottomWidth={1}
-            borderBottomColor="$gray100"
+            style={{ borderBottomColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="between"
           >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
+            <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium">
               {displayTitle}
             </Text>
             <Pressable p="$xs" onPress={onClose}>
@@ -64,7 +65,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
           <Pressable px="$lg" py="$lg" onPress={onSelectCamera}>
             <HStack alignItems="center">
               <Ionicons name="camera" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
+              <Text style={{ color: theme.colors.black }} fontSize="$md" ml="$md">
                 {t("imagePickerModal.takePhoto")}
               </Text>
             </HStack>
@@ -73,7 +74,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
           <Pressable px="$lg" py="$lg" onPress={onSelectGallery}>
             <HStack alignItems="center">
               <Ionicons name="images" size={24} color={theme.colors.accent} />
-              <Text color="$black" fontSize="$md" ml="$md">
+              <Text style={{ color: theme.colors.black }} fontSize="$md" ml="$md">
                 {t("imagePickerModal.selectFromGallery")}
               </Text>
             </HStack>
@@ -87,7 +88,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
                   size={24}
                   color={theme.colors.accent}
                 />
-                <Text color="$black" fontSize="$md" ml="$md">
+                <Text style={{ color: theme.colors.black }} fontSize="$md" ml="$md">
                   {t("imagePickerModal.selectMultiple")}
                 </Text>
               </HStack>
@@ -98,7 +99,7 @@ const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             <Pressable px="$lg" py="$lg" onPress={onSelectVideo}>
               <HStack alignItems="center">
                 <Ionicons name="videocam" size={24} color={theme.colors.accent} />
-                <Text color="$black" fontSize="$md" ml="$md">
+                <Text style={{ color: theme.colors.black }} fontSize="$md" ml="$md">
                   {t("imagePickerModal.selectVideo")}
                 </Text>
               </HStack>

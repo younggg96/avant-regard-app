@@ -696,7 +696,7 @@ const BrandDetailScreen = () => {
                       activeOpacity={0.8}
                     >
                       <OptimizedImage
-                        uri={show.coverImage}
+                        uri={show.coverImage ?? ""}
                         size={ImageSize.MEDIUM}
                         style={styles.showImage}
                         contentFit="cover"

@@ -327,11 +327,6 @@ function TabNavigator() {
             <TabBarIcon name="interaction" color={color} focused={focused} />
           ),
         }}
-        listeners={({ navigation }) => ({
-          tabPress: () => {
-            navigation.navigate("Interaction", { subTab: "map" });
-          },
-        })}
       />
       <Tab.Screen
         name="Profile"
@@ -1190,6 +1185,9 @@ export default function App() {
 
   return (
     <GluestackUIProvider
+      // Force remount on mode switch so gluestack tokens ($white/$black etc.)
+      // never get stuck on the previous colorMode.
+      key={resolvedThemeMode}
       config={config}
       colorMode={resolvedThemeMode}
     >

@@ -3,7 +3,7 @@ import { StyleSheet, LayoutAnimation, Platform, UIManager } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, Input, ScrollView } from "./ui";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 import { Brand } from "../services/brandService";
 import { useBrandSearch } from "../hooks/useBrandSearch";
 import BrandSelectorModal from "./BrandSelectorModal";
@@ -54,6 +54,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
   value,
   onChange,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [showBrandPicker, setShowBrandPicker] = useState(false);
@@ -121,7 +122,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
               size={18}
               color={theme.colors.gray400}
             />
-            <Text color="$gray500" fontSize="$sm" fontWeight="$medium">
+            <Text style={{ color: theme.colors.gray500 }} fontSize="$sm" fontWeight="$medium">
               {t("productInfo.title")}
             </Text>
             {!expanded && hasAnyValue && (
@@ -129,7 +130,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                 w={6}
                 h={6}
                 rounded="$full"
-                bg="$accent"
+                style={{ backgroundColor: theme.colors.accent }}
               />
             )}
           </HStack>
@@ -145,19 +146,19 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
         <Box mt="$xs">
           {/* 品牌搜索 */}
           <Box mb="$md">
-            <Text color="$gray400" fontSize="$xs" mb="$xs">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" mb="$xs">
               {t("productInfo.brand")}
             </Text>
             {value.itemBrand ? (
               <HStack
                 alignItems="center"
-                bg="$gray100"
+                style={{ backgroundColor: theme.colors.gray100 }}
                 rounded="$md"
                 px="$md"
                 py="$sm"
                 justifyContent="between"
               >
-                <Text color="$black" fontSize="$sm">
+                <Text style={{ color: theme.colors.black }} fontSize="$sm">
                   {value.itemBrand}
                 </Text>
                 <Pressable onPress={handleClearBrand} p="$xs">
@@ -171,7 +172,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
             ) : (
               <Pressable
                 onPress={() => setShowBrandPicker(true)}
-                bg="$gray100"
+                style={{ backgroundColor: theme.colors.gray100 }}
                 rounded="$md"
                 px="$md"
                 py="$sm"
@@ -182,7 +183,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                     size={16}
                     color={theme.colors.gray300}
                   />
-                  <Text color="$gray200" fontSize="$sm">
+                  <Text style={{ color: theme.colors.gray200 }} fontSize="$sm">
                     {t("productInfo.searchBrand")}
                   </Text>
                 </HStack>
@@ -192,7 +193,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
 
           {/* 品类 - 单选 */}
           <Box mb="$md">
-            <Text color="$gray400" fontSize="$xs" mb="$xs">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" mb="$xs">
               {t("productInfo.category")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
@@ -202,13 +203,13 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                   <Pressable
                     key={cat.value}
                     onPress={() => handleCategorySelect(cat.value)}
-                    bg={selected ? "$accent" : "$gray100"}
+                    style={{ backgroundColor: selected ? theme.colors.accent : theme.colors.gray100 }}
                     rounded="$full"
                     px="$md"
                     py="$xs"
                   >
                     <Text
-                      color={selected ? "$white" : "$gray500"}
+                      style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
                       fontSize="$sm"
                     >
                       {t(cat.labelKey)}
@@ -221,7 +222,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
 
           {/* 尺码 - 多选 */}
           <Box mb="$md">
-            <Text color="$gray400" fontSize="$xs" mb="$xs">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" mb="$xs">
               {t("productInfo.size")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm" mb="$xs">
@@ -231,7 +232,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                   <Pressable
                     key={size}
                     onPress={() => handleSizeToggle(size)}
-                    bg={selected ? "$accent" : "$gray100"}
+                    style={{ backgroundColor: selected ? theme.colors.accent : theme.colors.gray100 }}
                     rounded="$full"
                     px="$md"
                     py="$xs"
@@ -239,7 +240,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                     alignItems="center"
                   >
                     <Text
-                      color={selected ? "$white" : "$gray500"}
+                      style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
                       fontSize="$sm"
                     >
                       {size}
@@ -259,7 +260,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                     <Pressable
                       key={size}
                       onPress={() => handleSizeToggle(size)}
-                      bg={selected ? "$accent" : "$gray100"}
+                      style={{ backgroundColor: selected ? theme.colors.accent : theme.colors.gray100 }}
                       rounded="$full"
                       px="$md"
                       py="$xs"
@@ -267,7 +268,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                       alignItems="center"
                     >
                       <Text
-                        color={selected ? "$white" : "$gray500"}
+                        style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
                         fontSize="$sm"
                       >
                         {size}
@@ -281,7 +282,7 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
 
           {/* 颜色 - 多选 */}
           <Box mb="$sm">
-            <Text color="$gray400" fontSize="$xs" mb="$xs">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" mb="$xs">
               {t("productInfo.color")}
             </Text>
             <HStack flexWrap="wrap" gap="$sm">
@@ -291,13 +292,13 @@ const ProductInfoSection: React.FC<ProductInfoSectionProps> = ({
                   <Pressable
                     key={colorVal}
                     onPress={() => handleColorToggle(colorVal)}
-                    bg={selected ? "$accent" : "$gray100"}
+                    style={{ backgroundColor: selected ? theme.colors.accent : theme.colors.gray100 }}
                     rounded="$full"
                     px="$md"
                     py="$xs"
                   >
                     <Text
-                      color={selected ? "$white" : "$gray500"}
+                      style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
                       fontSize="$sm"
                     >
                       {t(labelKey)}

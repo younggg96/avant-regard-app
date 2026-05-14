@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -37,6 +37,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
   label,
   required = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayLabel = label || t("showSelector.linkedShows");
   const showWidth = (screenWidth - 48 - 16) / 3;
@@ -47,18 +48,18 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text
-          color="$gray600"
+          style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray600 }]}
           fontSize="$sm"
-          style={{ fontFamily: playfairFonts.regular }}
+
         >
           {displayLabel}
         </Text>
         {required && (
           <Text
-            color="$red500"
+            style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.error }]}
             fontSize="$sm"
             ml="$xs"
-            style={{ fontFamily: playfairFonts.regular }}
+
           >
             *
           </Text>
@@ -87,9 +88,9 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               <View style={styles.showInfo}>
                 <Text
                   fontSize={11}
-                  color="$white"
+                  style={[{ fontFamily: playfairFonts.bold }, { color: theme.colors.white }]}
                   numberOfLines={1}
-                  style={{ fontFamily: playfairFonts.bold }}
+
                 >
                   {show.brand}
                 </Text>
@@ -129,7 +130,7 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
             w={showWidth}
             h={showHeight}
             rounded="$md"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={onAddShow}
@@ -140,10 +141,10 @@ const ShowGridSelector: React.FC<ShowGridSelectorProps> = ({
               color={theme.colors.gray400}
             />
             <Text
-              color="$gray400"
+              style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray400 }]}
               fontSize="$sm"
               mt="$xs"
-              style={{ fontFamily: playfairFonts.regular }}
+
             >
               {t("showSelector.addShow")}
             </Text>

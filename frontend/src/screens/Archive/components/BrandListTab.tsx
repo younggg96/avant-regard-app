@@ -18,7 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Image, HStack, VStack, ScrollView } from "../../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 import { brandService, Brand } from "../../../services/brandService";
 import { useAuthStore } from "../../../store/authStore";
 import { useArchiveBrandListRefreshStore } from "../../../store/archiveBrandListRefreshStore";
@@ -40,6 +40,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
   onScrollUp,
   onScrollDown,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -251,12 +252,12 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         <HStack space="sm">
           <HStack
             flex={1}
-            bg="$gray50"
+            style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray100 }]}
             rounded="$md"
             px="$md"
             py={12}
             borderWidth={1}
-            borderColor="$gray100"
+
             alignItems="center"
           >
             <Ionicons
@@ -339,7 +340,7 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
       >
         {groupedBrands.map((group) => (
           <Box key={group.letter}>
-            <HStack px="$lg" py="$md" bg="$white" alignItems="center">
+            <HStack px="$lg" py="$md" style={{ backgroundColor: theme.colors.white }} alignItems="center">
               <Box style={styles.letterBadge}>
                 <Text style={styles.letterText}>{group.letter}</Text>
               </Box>

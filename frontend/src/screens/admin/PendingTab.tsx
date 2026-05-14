@@ -294,7 +294,7 @@ const PendingTab = () => {
         {post.postType === "ITEM_REVIEW" && (
           <Box style={styles.reviewInfo}>
             {post.brandName && <Text style={styles.reviewText}>{t("admin.brand")} {post.brandName}</Text>}
-            {post.productName && <Text style={styles.reviewText}>{t("admin.product")} {post.productName}</Text>}
+            {post.productName && <Text style={styles.reviewText}>{t("admin.product")} {post.productName.split("\n").map((s) => s.trim()).filter(Boolean).join(" · ")}</Text>}
             {post.rating !== undefined && (
               <HStack style={styles.ratingContainer}>
                 <Text style={styles.reviewText}>{t("admin.rating")} </Text>

@@ -9,23 +9,30 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import {
   BuyerStore,
   getStoresPaginated,
 } from "../services/buyerStoreService";
 import { useStoreFavorites } from "../hooks/useStoreFavorites";
+import { useMapFocusStore } from "../store/mapFocusStore";
 import { useTranslation } from "react-i18next";
 
 const PAGE_SIZE = 20;
 
 const StoreSearchScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
+  const route = useRoute<any>();
+  // mode === "locate": 由"买手店地图"屏入口打开，点击结果 → 把"待聚焦"信号
+  // 写进 mapFocusStore 并 navigate 回 Interaction 的 map 子 Tab，让地图定位过去。
+  // mode 缺省（如从 AllBuyerStoresScreen 入口）：保留原本行为，点击结果跳 StoreDetail。
+  const mode = route.params?.mode as "locate" | undefined;
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,9 +113,18 @@ const StoreSearchScreen = () => {
 
   const handleStorePress = useCallback(
     (store: BuyerStore) => {
+      if (mode === "locate") {
+        // 走"定位到地图 marker"路径。先把目标 store 写入跨屏信号通道，再 goBack。
+        // BuyerMapScreen 订阅了这个 store，pending 非空时会 animateToRegion +
+        // showCallout。goBack 而非 navigate("Interaction") 是为了保留用户在
+        // Interaction 里原本的子 Tab 状态（即停留在「买手店地图」子 Tab）。
+        useMapFocusStore.getState().requestFocus(store);
+        navigation.goBack();
+        return;
+      }
       (navigation.navigate as any)("StoreDetail", { storeId: store.id });
     },
-    [navigation]
+    [navigation, mode]
   );
 
   const handleCallPress = (phone: string) => {
@@ -130,35 +146,35 @@ const StoreSearchScreen = () => {
       <Pressable
         mx="$md"
         mb="$md"
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         rounded="$lg"
         p="$md"
         borderWidth={1}
-        borderColor="$gray100"
+
         sx={styles.cardShadow}
         onPress={() => handleStorePress(store)}
       >
         <HStack justifyContent="between" alignItems="start" mb="$sm">
           <VStack flex={1} mr="$sm">
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
               {store.name}
             </Text>
-            <Text fontSize="$sm" color="$gray300" mt="$xs" numberOfLines={1}>
+            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs" numberOfLines={1}>
               {store.city}, {store.country}
             </Text>
           </VStack>
           <HStack alignItems="center" gap="$sm">
             {getFavoriteCount(store.id) > 0 && (
-              <Text fontSize={11} color="$gray300">
+              <Text fontSize={11} style={{ color: theme.colors.gray300 }}>
                 {t("store.followersCount", { count: getFavoriteCount(store.id) })}
               </Text>
             )}
             <Pressable
               onPress={() => toggleFavorite(store.id)}
               hitSlop={8}
-              bg={isFavorited(store.id) ? "$black" : "$white"}
+              style={[{ borderColor: theme.colors.black }, { backgroundColor: isFavorited(store.id) ? theme.colors.black : theme.colors.white }]}
               borderWidth={1}
-              borderColor="$black"
+
               rounded="$sm"
               px="$sm"
               py={3}
@@ -166,7 +182,7 @@ const StoreSearchScreen = () => {
               <Text
                 fontSize={11}
                 fontWeight="$bold"
-                color={isFavorited(store.id) ? "$white" : "$black"}
+                style={{ color: isFavorited(store.id) ? theme.colors.white : theme.colors.black }}
               >
                 {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
               </Text>
@@ -176,7 +192,7 @@ const StoreSearchScreen = () => {
 
         <HStack alignItems="center" mb="$sm">
           <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
-          <Text fontSize="$sm" color="$gray300" ml="$xs" flex={1} numberOfLines={1}>
+          <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs" flex={1} numberOfLines={1}>
             {store.address}
           </Text>
         </HStack>
@@ -184,15 +200,15 @@ const StoreSearchScreen = () => {
         {store.style.length > 0 && (
           <HStack mb="$sm" gap="$xs" flexWrap="wrap">
             {store.style.slice(0, 3).map((s, idx) => (
-              <Box key={idx} bg="$black" px="$sm" py="$xs" rounded="$sm">
-                <Text fontSize="$xs" color="$white" fontWeight="$medium">
+              <Box key={idx} style={{ backgroundColor: theme.colors.black }} px="$sm" py="$xs" rounded="$sm">
+                <Text fontSize="$xs" style={{ color: theme.colors.white }} fontWeight="$medium">
                   {s}
                 </Text>
               </Box>
             ))}
             {store.style.length > 3 && (
-              <Box bg="$gray100" px="$sm" py="$xs" rounded="$sm">
-                <Text fontSize="$xs" color="$gray300">
+              <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$sm">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                   +{store.style.length - 3}
                 </Text>
               </Box>
@@ -202,7 +218,7 @@ const StoreSearchScreen = () => {
 
         {store.brands.length > 0 && (
           <Box pb="$sm">
-            <Text fontSize="$xs" color="$gray300" numberOfLines={2} fontStyle="italic">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }} numberOfLines={2} fontStyle="italic">
               {store.brands.join(" / ")}
             </Text>
           </Box>
@@ -217,7 +233,7 @@ const StoreSearchScreen = () => {
     return (
       <Box py="$lg" alignItems="center">
         <ActivityIndicator color={theme.colors.black} />
-        <Text color="$gray300" fontSize="$sm" mt="$sm">
+        <Text style={{ color: theme.colors.gray300 }} fontSize="$sm" mt="$sm">
           {t("common.loadMore")}
         </Text>
       </Box>
@@ -231,10 +247,10 @@ const StoreSearchScreen = () => {
       return (
         <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
           <Ionicons name="search-outline" size={64} color={theme.colors.gray300} />
-          <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+          <Text fontSize="$lg" style={{ color: theme.colors.gray600 }} fontWeight="$medium" mt="$md" textAlign="center">
             {t("store.searchStores")}
           </Text>
-          <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm" textAlign="center" lineHeight="$lg">
             {t("store.searchHint")}
           </Text>
         </VStack>
@@ -244,10 +260,10 @@ const StoreSearchScreen = () => {
     return (
       <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
         <Ionicons name="storefront-outline" size={64} color={theme.colors.gray300} />
-        <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+        <Text fontSize="$lg" style={{ color: theme.colors.gray600 }} fontWeight="$medium" mt="$md" textAlign="center">
           {t("store.noSearchResults")}
         </Text>
-        <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
+        <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm" textAlign="center" lineHeight="$lg">
           {t("store.tryOtherKeywords")}
         </Text>
       </VStack>
@@ -263,7 +279,7 @@ const StoreSearchScreen = () => {
         alignItems="center"
         space="sm"
         borderBottomWidth={1}
-        borderBottomColor="$gray100"
+        style={{ borderBottomColor: theme.colors.gray100 }}
       >
         <Pressable onPress={() => navigation.goBack()} p="$xs">
           <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
@@ -271,7 +287,7 @@ const StoreSearchScreen = () => {
 
         <Box
           flex={1}
-          bg="$gray100"
+          style={{ backgroundColor: theme.colors.gray100 }}
           rounded="$sm"
           px="$md"
           py="$xs"
@@ -301,8 +317,8 @@ const StoreSearchScreen = () => {
           )}
         </Box>
 
-        <Pressable onPress={handleSearch} px="$lg" py="$sm" bg="$black" rounded="$sm">
-          <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+        <Pressable onPress={handleSearch} px="$lg" py="$sm" style={{ backgroundColor: theme.colors.black }} rounded="$sm">
+          <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
             {t("common.search")}
           </Text>
         </Pressable>
@@ -312,14 +328,14 @@ const StoreSearchScreen = () => {
       {isLoading ? (
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator size="small" color={theme.colors.black} />
-          <Text fontSize="$md" color="$gray600" mt="$md">
+          <Text fontSize="$md" style={{ color: theme.colors.gray600 }} mt="$md">
             {t("store.searching")}
           </Text>
         </VStack>
       ) : isSearching && stores.length > 0 ? (
-        <Box flex={1} bg="$gray50">
+        <Box flex={1} style={{ backgroundColor: theme.colors.gray50 }}>
           <HStack px="$md" py="$md" alignItems="center">
-            <Text fontSize="$md" color="$gray600">
+            <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
               {t("store.foundStores", { count: totalStores })}
             </Text>
           </HStack>

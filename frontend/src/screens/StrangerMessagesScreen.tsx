@@ -214,7 +214,7 @@ const StrangerMessagesScreen = () => {
           onPress={editMode ? exitEditMode : () => setEditMode(true)}
           activeOpacity={0.6}
         >
-          <Text fontSize="$sm" fontWeight="$medium" color="$black">
+          <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
             {editMode ? t("common.done") : t("strangerMessages.manage")}
           </Text>
         </TouchableOpacity>
@@ -251,13 +251,13 @@ const StrangerMessagesScreen = () => {
             <Text
               fontSize="$md"
               fontWeight="$semibold"
-              color="$black"
+              style={{ color: theme.colors.black }}
               mt="$md"
               mb="$sm"
             >
               {t("strangerMessages.empty")}
             </Text>
-            <Text fontSize="$sm" color="$gray400" textAlign="center">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} textAlign="center">
               {t("strangerMessages.emptyHint")}
             </Text>
           </Box>
@@ -279,8 +279,8 @@ const StrangerMessagesScreen = () => {
           px="$lg"
           py="$md"
           borderTopWidth={StyleSheet.hairlineWidth}
-          borderTopColor="$gray100"
-          bg="$white"
+          style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
         >
           <TouchableOpacity
             onPress={toggleSelectAll}
@@ -294,7 +294,7 @@ const StrangerMessagesScreen = () => {
             />
             <Text
               fontSize="$sm"
-              color="$black"
+              style={{ color: theme.colors.black }}
               ml={6}
               fontWeight={allSelected ? "$semibold" : "$normal"}
             >
@@ -319,7 +319,7 @@ const StrangerMessagesScreen = () => {
               <Text
                 fontSize="$sm"
                 fontWeight="$semibold"
-                color="$white"
+                style={{ color: theme.colors.white }}
               >
                 {t("common.delete")}{selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
               </Text>
@@ -347,7 +347,7 @@ const StrangerMessagesScreen = () => {
             style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
           >
             <ActivityIndicator size="small" color="#fff" />
-            <Text fontSize="$xs" color="$white" mt={8}>
+            <Text fontSize="$xs" style={{ color: theme.colors.white }} mt={8}>
               {t("strangerMessages.deleting")}
             </Text>
           </Box>

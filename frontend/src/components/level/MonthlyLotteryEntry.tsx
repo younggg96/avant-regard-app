@@ -13,7 +13,7 @@ import { ActivityIndicator, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, VStack, Pressable, Text } from "../ui";
-import { theme, playfairFonts, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, playfairFonts, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import {
   CurrentLotteryPayload,
   levelService,
@@ -32,6 +32,7 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   isOwnProfile,
   currentLevel,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const localStyles = useThemedStyles(makeLocalStyles);
   const [data, setData] = useState<CurrentLotteryPayload | null>(null);
@@ -91,9 +92,9 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
   return (
     <>
       <Pressable
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         borderWidth={1}
-        borderColor="$gray100"
+
         px="$md"
         py="$sm"
         mt="$sm"
@@ -108,7 +109,7 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
             w={32}
             h={32}
             rounded={16}
-            bg="$black"
+            style={{ backgroundColor: theme.colors.black }}
             alignItems="center"
             justifyContent="center"
           >

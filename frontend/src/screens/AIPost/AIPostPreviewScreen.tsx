@@ -45,7 +45,7 @@ import {
   VStack,
   type ActionSheetAction,
 } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import QuotaBadge from "./components/QuotaBadge";
 import { useAuthStore } from "../../store/authStore";
@@ -72,6 +72,7 @@ interface RouteParams {
 }
 
 const AIPostPreviewScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
@@ -287,7 +288,7 @@ const AIPostPreviewScreen: React.FC = () => {
       {generating && !generatedResp && !generateError ? (
         <Box flex={1} alignItems="center" justifyContent="center">
           <ActivityIndicator color={theme.colors.black} size="large" />
-          <Text mt="$md" fontSize="$sm" color="$gray400">
+          <Text mt="$md" fontSize="$sm" style={{ color: theme.colors.gray400 }}>
             {t("aiPost.preview.generating")}
           </Text>
         </Box>
@@ -301,7 +302,7 @@ const AIPostPreviewScreen: React.FC = () => {
             maxWidth={360}
             p="$lg"
             borderWidth={1}
-            borderColor="$gray100"
+            style={{ borderColor: theme.colors.gray100 }}
             rounded="$md"
             alignItems="center"
           >
@@ -309,7 +310,7 @@ const AIPostPreviewScreen: React.FC = () => {
               width={48}
               height={48}
               rounded="$lg"
-              bg="$gray100"
+              style={{ backgroundColor: theme.colors.gray100 }}
               alignItems="center"
               justifyContent="center"
               mb="$md"
@@ -320,12 +321,12 @@ const AIPostPreviewScreen: React.FC = () => {
                 color={theme.colors.gray500}
               />
             </Box>
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$xs">
+            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mb="$xs">
               {t("aiPost.preview.generateFailedTitle")}
             </Text>
             <Text
               fontSize="$sm"
-              color="$gray500"
+              style={{ color: theme.colors.gray500 }}
               textAlign="center"
               mb="$lg"
             >
@@ -352,7 +353,7 @@ const AIPostPreviewScreen: React.FC = () => {
                   <Text
                     fontSize="$sm"
                     fontWeight="$semibold"
-                    color="$white"
+                    style={{ color: theme.colors.white }}
                     ml="$xs"
                   >
                     {t("aiPost.preview.retryGenerate")}
@@ -365,7 +366,7 @@ const AIPostPreviewScreen: React.FC = () => {
               disabled={generating}
               style={[styles.errorBackBtn, generating && styles.btnDisabled]}
             >
-              <Text fontSize="$sm" color="$gray500">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
                 {t("aiPost.preview.back")}
               </Text>
             </Pressable>
@@ -385,9 +386,9 @@ const AIPostPreviewScreen: React.FC = () => {
                   alignItems="center"
                   p="$md"
                   rounded="$md"
-                  bg="$gray100"
+                  style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: theme.colors.gray200 }]}
                   borderWidth={1}
-                  borderColor="$gray200"
+
                   gap="$sm"
                 >
                   <Ionicons
@@ -396,10 +397,10 @@ const AIPostPreviewScreen: React.FC = () => {
                     color={theme.colors.gray500}
                   />
                   <VStack flex={1}>
-                    <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                    <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                       {t("aiPost.preview.regenFailedTitle")}
                     </Text>
-                    <Text fontSize="$xs" color="$gray500" mt={2}>
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} mt={2}>
                       {regenError.message ||
                         (t("aiPost.preview.regenFailedBody") as string)}
                     </Text>
@@ -418,12 +419,12 @@ const AIPostPreviewScreen: React.FC = () => {
               ) : null}
               {/* 标题 */}
               <Box>
-                <Text fontSize="$sm" color="$gray400" mb="$xs">
+                <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mb="$xs">
                   {t("aiPost.preview.titleLabel")}
                 </Text>
                 <Box
                   borderWidth={1}
-                  borderColor="$gray100"
+                  style={{ borderColor: theme.colors.gray100 }}
                   rounded="$md"
                   p="$md"
                 >
@@ -440,12 +441,12 @@ const AIPostPreviewScreen: React.FC = () => {
 
               {/* 正文 */}
               <Box>
-                <Text fontSize="$sm" color="$gray400" mb="$xs">
+                <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mb="$xs">
                   {t("aiPost.preview.contentLabel")}
                 </Text>
                 <Box
                   borderWidth={1}
-                  borderColor="$gray100"
+                  style={{ borderColor: theme.colors.gray100 }}
                   rounded="$md"
                   p="$md"
                   minHeight={200}
@@ -489,15 +490,15 @@ const AIPostPreviewScreen: React.FC = () => {
                   />
                 </Box>
                 <VStack flex={1} ml="$sm">
-                  <Text fontSize="$xs" color="$gray400">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                     {t("aiPost.preview.targetType.label")}
                   </Text>
-                  <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                  <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                     {targetTypeLabel(targetType)}
                   </Text>
                 </VStack>
                 <HStack alignItems="center" gap="$xs">
-                  <Text fontSize="$xs" color="$black">
+                  <Text fontSize="$xs" style={{ color: theme.colors.black }}>
                     {t("aiPost.preview.targetType.change")}
                   </Text>
                   <Ionicons
@@ -517,8 +518,8 @@ const AIPostPreviewScreen: React.FC = () => {
             py="$md"
             gap="$sm"
             borderTopWidth={1}
-            borderTopColor="$gray100"
-            bg="$white"
+            style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
             alignItems="center"
           >
             <Pressable
@@ -534,7 +535,7 @@ const AIPostPreviewScreen: React.FC = () => {
               <Text
                 fontSize="$sm"
                 fontWeight="$medium"
-                color="$gray500"
+                style={{ color: theme.colors.gray500 }}
                 ml="$xs"
               >
                 {t("aiPost.preview.delete")}
@@ -564,7 +565,7 @@ const AIPostPreviewScreen: React.FC = () => {
               <Text
                 fontSize="$sm"
                 fontWeight="$medium"
-                color="$black"
+                style={{ color: theme.colors.black }}
                 ml="$xs"
                 numberOfLines={1}
               >
@@ -592,7 +593,7 @@ const AIPostPreviewScreen: React.FC = () => {
                   <Text
                     fontSize="$sm"
                     fontWeight="$semibold"
-                    color="$white"
+                    style={{ color: theme.colors.white }}
                     ml="$xs"
                     numberOfLines={1}
                   >

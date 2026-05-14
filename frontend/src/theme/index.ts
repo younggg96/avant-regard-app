@@ -81,7 +81,7 @@ const darkColors = {
   error: "#FF6B6B",
   success: "#5CD67A",
   background: "#0A0A0A",
-  card: "#141414",
+  card: "#000000",
   cardElevated: "#1A1A1A",
   text: "#FFFFFF",
   textInverted: "#0A0A0A",

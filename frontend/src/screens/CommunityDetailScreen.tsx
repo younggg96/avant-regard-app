@@ -29,7 +29,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
 import {
@@ -157,6 +157,7 @@ const mapApiPostToDisplayPost = (
 };
 
 const CommunityDetailScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "CommunityDetail">>();
@@ -459,7 +460,7 @@ const CommunityDetailScreen = () => {
       >
         {/* 社区信息头部 */}
         {community && (
-          <Box bg="$white" p="$lg" borderBottomWidth={1} borderBottomColor="$gray100">
+          <Box style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} p="$lg" borderBottomWidth={1}>
             <HStack alignItems="center" gap="$md">
               <View style={styles.communityIcon}>
                 {community.iconUrl ? (
@@ -472,31 +473,31 @@ const CommunityDetailScreen = () => {
                   />
                 ) : (
                   <View style={styles.communityPlaceholder}>
-                    <Text fontSize="$2xl" fontWeight="$bold" color="$white">
+                    <Text fontSize="$2xl" fontWeight="$bold" style={{ color: theme.colors.white }}>
                       {community.name.charAt(0)}
                     </Text>
                   </View>
                 )}
               </View>
               <VStack flex={1}>
-                <Text fontSize="$lg" fontWeight="$bold" color="$black">
+                <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }}>
                   {community.name}
                 </Text>
-                <Text fontSize="$sm" color="$gray500" numberOfLines={2}>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} numberOfLines={2}>
                   {community.description || t("community.noDescription")}
                 </Text>
                 {community.description && community.description.length > 40 && (
                   <Pressable onPress={() => setDescModalVisible(true)}>
-                    <Text fontSize="$xs" color="$black" fontWeight="$medium" mt={2}>
+                    <Text fontSize="$xs" style={{ color: theme.colors.black }} fontWeight="$medium" mt={2}>
                       {t("community.viewAll")}
                     </Text>
                   </Pressable>
                 )}
                 <HStack gap="$md" mt="$xs">
-                  <Text fontSize="$xs" color="$gray400">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                     {community.memberCount} {t("community.members")}
                   </Text>
-                  <Text fontSize="$xs" color="$gray400">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                     {community.postCount} {t("community.posts")}
                   </Text>
                 </HStack>
@@ -506,11 +507,11 @@ const CommunityDetailScreen = () => {
                 px="$md"
                 py="$sm"
                 rounded="$sm"
-                bg={community.isFollowing ? "$gray100" : "$black"}
+                style={{ backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black }}
               >
                 <Text
                   fontSize="$sm"
-                  color={community.isFollowing ? "$black" : "$white"}
+                  style={{ color: community.isFollowing ? theme.colors.black : theme.colors.white }}
                   fontWeight="$medium"
                 >
                   {community.isFollowing ? t("community.joined") : t("community.join")}
@@ -530,7 +531,7 @@ const CommunityDetailScreen = () => {
             />
             <Text
               fontSize="$lg"
-              color="$black"
+              style={{ color: theme.colors.black }}
               fontWeight="$medium"
               mb="$sm"
               mt="$md"
@@ -538,17 +539,17 @@ const CommunityDetailScreen = () => {
             >
               {t("common.loadFailed")}
             </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg" mb="$md">
+            <Text style={{ color: theme.colors.gray400 }} textAlign="center" lineHeight="$lg" mb="$md">
               {error}
             </Text>
             <Pressable
               onPress={handleRefresh}
               px="$lg"
               py="$sm"
-              bg="$black"
+              style={{ backgroundColor: theme.colors.black }}
               rounded="$sm"
             >
-              <Text color="$white" fontWeight="$medium">
+              <Text style={{ color: theme.colors.white }} fontWeight="$medium">
                 {t("community.tapRetry")}
               </Text>
             </Pressable>
@@ -562,7 +563,7 @@ const CommunityDetailScreen = () => {
             />
             <Text
               fontSize="$lg"
-              color="$black"
+              style={{ color: theme.colors.black }}
               fontWeight="$medium"
               mb="$sm"
               mt="$md"
@@ -570,7 +571,7 @@ const CommunityDetailScreen = () => {
             >
               {t("community.noPosts")}
             </Text>
-            <Text color="$gray400" textAlign="center" lineHeight="$lg">
+            <Text style={{ color: theme.colors.gray400 }} textAlign="center" lineHeight="$lg">
               {t("community.beFirstPost")}
             </Text>
           </VStack>
@@ -600,7 +601,7 @@ const CommunityDetailScreen = () => {
         {loading && (
           <HStack justifyContent="center" alignItems="center" py="$lg">
             <ActivityIndicator color={theme.colors.accent} />
-            <Text color="$gray400" fontSize="$sm" ml="$sm">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$sm" ml="$sm">
               {t("common.loadMore")}...
             </Text>
           </HStack>

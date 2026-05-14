@@ -25,7 +25,7 @@ import {
     HStack,
     VStack,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
     BuyerStore,
@@ -38,6 +38,7 @@ const PAGE_SIZE = 20;
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
+    const theme = useAppTheme();
     const { t } = useTranslation();
     const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
@@ -216,36 +217,36 @@ const StoreListScreen = () => {
         <Pressable
             mx="$md"
             mb="$md"
-            bg="$white"
+            style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
             rounded="$lg"
             p="$md"
             borderWidth={1}
-            borderColor="$gray100"
+
             sx={styles.cardShadow}
             onPress={() => handleStorePress(store)}
         >
             {/* 店铺头部 */}
             <HStack justifyContent="between" alignItems="start" mb="$sm">
                 <VStack flex={1} mr="$sm">
-                    <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+                    <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
                         {store.name}
                     </Text>
-                    <Text fontSize="$sm" color="$gray300" mt="$xs" numberOfLines={1}>
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs" numberOfLines={1}>
                         {store.city}, {store.country}
                     </Text>
                 </VStack>
                 <HStack alignItems="center" gap="$sm">
                     {getFavoriteCount(store.id) > 0 && (
-                        <Text fontSize={11} color="$gray300">
+                        <Text fontSize={11} style={{ color: theme.colors.gray300 }}>
                             {t("store.followersCount", { count: getFavoriteCount(store.id) })}
                         </Text>
                     )}
                     <Pressable
                         onPress={() => toggleFavorite(store.id)}
                         hitSlop={8}
-                        bg={isFavorited(store.id) ? "$black" : "$white"}
+                        style={[{ borderColor: theme.colors.black }, { backgroundColor: isFavorited(store.id) ? theme.colors.black : theme.colors.white }]}
                         borderWidth={1}
-                        borderColor="$black"
+
                         rounded="$sm"
                         px="$sm"
                         py={3}
@@ -253,7 +254,7 @@ const StoreListScreen = () => {
                         <Text
                             fontSize={11}
                             fontWeight="$bold"
-                            color={isFavorited(store.id) ? "$white" : "$black"}
+                            style={{ color: isFavorited(store.id) ? theme.colors.white : theme.colors.black }}
                         >
                             {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
                         </Text>
@@ -264,7 +265,7 @@ const StoreListScreen = () => {
             {/* 地址 */}
             <HStack alignItems="center" mb="$sm">
                 <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
-                <Text fontSize="$sm" color="$gray300" ml="$xs" flex={1} numberOfLines={1}>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs" flex={1} numberOfLines={1}>
                     {store.address}
                 </Text>
             </HStack>
@@ -273,15 +274,15 @@ const StoreListScreen = () => {
             {store.style.length > 0 && (
                 <HStack mb="$sm" gap="$xs" flexWrap="wrap">
                     {store.style.slice(0, 3).map((s, idx) => (
-                        <Box key={idx} bg="$black" px="$sm" py="$xs" rounded="$sm">
-                            <Text fontSize="$xs" color="$white" fontWeight="$medium">
+                        <Box key={idx} style={{ backgroundColor: theme.colors.black }} px="$sm" py="$xs" rounded="$sm">
+                            <Text fontSize="$xs" style={{ color: theme.colors.white }} fontWeight="$medium">
                                 {s}
                             </Text>
                         </Box>
                     ))}
                     {store.style.length > 3 && (
-                        <Box bg="$gray100" px="$sm" py="$xs" rounded="$sm">
-                            <Text fontSize="$xs" color="$gray300">
+                        <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$sm">
+                            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                 +{store.style.length - 3}
                             </Text>
                         </Box>
@@ -292,7 +293,7 @@ const StoreListScreen = () => {
             {/* 品牌 */}
             {store.brands.length > 0 && (
                 <Box mb="$sm" pb="$sm">
-                    <Text fontSize="$xs" color="$gray300" numberOfLines={2} fontStyle="italic">
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray300 }} numberOfLines={2} fontStyle="italic">
                         {store.brands.join(" / ")}
                     </Text>
                 </Box>
@@ -305,7 +306,7 @@ const StoreListScreen = () => {
         return (
             <Box py="$lg" alignItems="center">
                 <ActivityIndicator color={theme.colors.black} />
-                <Text color="$gray300" fontSize="$sm" mt="$sm">
+                <Text style={{ color: theme.colors.gray300 }} fontSize="$sm" mt="$sm">
                     {t("common.loadMore")}
                 </Text>
             </Box>
@@ -321,10 +322,10 @@ const StoreListScreen = () => {
                     size={64}
                     color={theme.colors.gray200}
                 />
-                <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
+                <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mt="$md">
                     {searchQuery.trim() ? t("store.noSearchResults") : t("store.noStores")}
                 </Text>
-                <Text color="$gray300" mt="$sm" textAlign="center" px="$lg">
+                <Text style={{ color: theme.colors.gray300 }} mt="$sm" textAlign="center" px="$lg">
                     {searchQuery.trim()
                         ? t("store.noSearchResultsFor", { query: searchQuery.trim() })
                         : t("store.tryLater")}
@@ -334,11 +335,11 @@ const StoreListScreen = () => {
                         mt="$md"
                         px="$lg"
                         py="$sm"
-                        bg="$black"
+                        style={{ backgroundColor: theme.colors.black }}
                         rounded="$sm"
                         onPress={clearSearch}
                     >
-                        <Text color="$white" fontWeight="$medium">
+                        <Text style={{ color: theme.colors.white }} fontWeight="$medium">
                             {t("store.clearSearch")}
                         </Text>
                     </Pressable>
@@ -355,7 +356,7 @@ const StoreListScreen = () => {
                     showBackButton
                     onBackPress={() => navigation.goBack()}
                 />
-                <VStack flex={1} justifyContent="center" alignItems="center" bg="$gray50">
+                <VStack flex={1} justifyContent="center" alignItems="center" style={{ backgroundColor: theme.colors.gray50 }}>
                     <RNImage
                         source={require("../../assets/gif/profile-loading.gif")}
                         style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
@@ -368,12 +369,12 @@ const StoreListScreen = () => {
 
     // 搜索框组件
     const renderSearchBar = () => (
-        <Box px="$md" py="$sm" bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+        <Box px="$md" py="$sm" style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
             <HStack alignItems="center" gap="$sm">
                 <HStack
                     flex={1}
                     alignItems="center"
-                    bg="$gray50"
+                    style={{ backgroundColor: theme.colors.gray50 }}
                     rounded="$lg"
                     px="$md"
                     h={44}
@@ -405,8 +406,8 @@ const StoreListScreen = () => {
                         </Pressable>
                     )}
                 </HStack>
-                <Pressable onPress={handleSearch} px="$lg" py="$sm" bg="$black" rounded="$sm" h={44} justifyContent="center">
-                    <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+                <Pressable onPress={handleSearch} px="$lg" py="$sm" style={{ backgroundColor: theme.colors.black }} rounded="$sm" h={44} justifyContent="center">
+                    <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
                         {t("common.search")}
                     </Text>
                 </Pressable>
@@ -426,7 +427,7 @@ const StoreListScreen = () => {
 
                 {renderSearchBar()}
 
-                <Box flex={1} bg="$gray50">
+                <Box flex={1} style={{ backgroundColor: theme.colors.gray50 }}>
                     <FlatList
                         data={stores}
                         keyExtractor={(item) => item.id}
@@ -463,7 +464,7 @@ const StoreListScreen = () => {
                         <Box flex={1} />
                     </TouchableWithoutFeedback>
                     <Animated.View style={[styles.sheetContainer, detailSheetStyle, { maxHeight: "85%" }]}>
-                        <Box w={40} h={4} bg="$gray100" rounded="$sm" alignSelf="center" mt="$sm" mb="$sm" />
+                        <Box w={40} h={4} style={{ backgroundColor: theme.colors.gray100 }} rounded="$sm" alignSelf="center" mt="$sm" mb="$sm" />
 
                         {selectedStore && (
                             <>
@@ -473,28 +474,28 @@ const StoreListScreen = () => {
                                     px="$lg"
                                     pb="$md"
                                     borderBottomWidth={1}
-                                    borderBottomColor="$gray100"
+                                    style={{ borderBottomColor: theme.colors.gray100 }}
                                 >
                                     <VStack flex={1}>
-                                        <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+                                        <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
                                             {selectedStore.name}
                                         </Text>
-                                        <Text fontSize="$sm" color="$gray300" mt="$xs">
+                                        <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs">
                                             {selectedStore.city} · {selectedStore.country}
                                         </Text>
                                     </VStack>
                                     <HStack alignItems="center" gap="$md">
                                         {getFavoriteCount(selectedStore.id) > 0 && (
-                                            <Text fontSize="$xs" color="$gray300">
+                                            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                                 {t("store.followersCount", { count: getFavoriteCount(selectedStore.id) })}
                                             </Text>
                                         )}
                                         <Pressable
                                             onPress={() => toggleFavorite(selectedStore.id)}
                                             hitSlop={8}
-                                            bg={isFavorited(selectedStore.id) ? "$black" : "$white"}
+                                            style={[{ borderColor: theme.colors.black }, { backgroundColor: isFavorited(selectedStore.id) ? theme.colors.black : theme.colors.white }]}
                                             borderWidth={1}
-                                            borderColor="$black"
+
                                             rounded="$sm"
                                             px="$md"
                                             py="$xs"
@@ -502,7 +503,7 @@ const StoreListScreen = () => {
                                             <Text
                                                 fontSize="$xs"
                                                 fontWeight="$bold"
-                                                color={isFavorited(selectedStore.id) ? "$white" : "$black"}
+                                                style={{ color: isFavorited(selectedStore.id) ? theme.colors.white : theme.colors.black }}
                                             >
                                                 {isFavorited(selectedStore.id) ? t("store.followed") : t("store.follow")}
                                             </Text>
@@ -515,7 +516,7 @@ const StoreListScreen = () => {
 
                                 <RNScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
                                     {/* 营业时间 */}
-                                    <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
+                                    <Box style={{ backgroundColor: theme.colors.gray100 }} rounded="$lg" p="$md" mt="$md">
                                         {selectedStore.hours && (
                                             <HStack alignItems="start">
                                                 <Ionicons
@@ -524,7 +525,7 @@ const StoreListScreen = () => {
                                                     color={theme.colors.gray300}
                                                     style={{ marginTop: 2 }}
                                                 />
-                                                <Text fontSize="$sm" color="$gray300" ml="$sm" flex={1} lineHeight="$lg">
+                                                <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$sm" flex={1} lineHeight="$lg">
                                                     {t("store.businessHours")}：{selectedStore.hours}
                                                 </Text>
                                             </HStack>
@@ -533,7 +534,7 @@ const StoreListScreen = () => {
 
                                     {/* 地址 */}
                                     <Pressable
-                                        bg="$gray100"
+                                        style={{ backgroundColor: theme.colors.gray100 }}
                                         rounded="$lg"
                                         p="$md"
                                         mt="$md"
@@ -541,7 +542,7 @@ const StoreListScreen = () => {
                                     >
                                         <HStack alignItems="center">
                                             <Ionicons name="location-outline" size={18} color={theme.colors.black} />
-                                            <Text fontSize="$md" color="$black" fontWeight="$medium" ml="$sm" flex={1}>
+                                            <Text fontSize="$md" style={{ color: theme.colors.black }} fontWeight="$medium" ml="$sm" flex={1}>
                                                 {selectedStore.address}
                                             </Text>
                                             <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
@@ -550,7 +551,7 @@ const StoreListScreen = () => {
 
                                     {/* 电话 */}
                                     {selectedStore.phone && selectedStore.phone.length > 0 && (
-                                        <Box bg="$gray100" rounded="$lg" p="$md" mt="$md">
+                                        <Box style={{ backgroundColor: theme.colors.gray100 }} rounded="$lg" p="$md" mt="$md">
                                             {selectedStore.phone.map((phone, idx) => (
                                                 <Pressable
                                                     key={idx}
@@ -560,7 +561,7 @@ const StoreListScreen = () => {
                                                     onPress={() => handleCallPress(phone)}
                                                 >
                                                     <Ionicons name="call-outline" size={18} color={theme.colors.black} />
-                                                    <Text fontSize="$md" color="$black" ml="$sm" flex={1}>
+                                                    <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm" flex={1}>
                                                         {phone}
                                                     </Text>
                                                     <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
@@ -576,13 +577,13 @@ const StoreListScreen = () => {
                                     {/* 风格 */}
                                     {selectedStore.style.length > 0 && (
                                         <VStack mt="$lg">
-                                            <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                                            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                                                 {t("store.storeStyle")}
                                             </Text>
                                             <HStack flexWrap="wrap" gap="$xs">
                                                 {selectedStore.style.map((s, idx) => (
-                                                    <Box key={idx} bg="$black" px="$md" py="$sm" rounded="$sm">
-                                                        <Text fontSize="$sm" color="$white" fontWeight="$medium">
+                                                    <Box key={idx} style={{ backgroundColor: theme.colors.black }} px="$md" py="$sm" rounded="$sm">
+                                                        <Text fontSize="$sm" style={{ color: theme.colors.white }} fontWeight="$medium">
                                                             {s}
                                                         </Text>
                                                     </Box>
@@ -594,13 +595,13 @@ const StoreListScreen = () => {
                                     {/* 品牌 */}
                                     {selectedStore.brands.length > 0 && (
                                         <VStack mt="$lg" mb="$2xl">
-                                            <Text fontSize="$md" fontWeight="$bold" color="$black" mb="$sm">
+                                            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                                                 {t("store.mainBrands")}
                                             </Text>
                                             <HStack flexWrap="wrap" gap="$xs">
                                                 {selectedStore.brands.map((brand, idx) => (
-                                                    <Box key={idx} bg="$gray100" px="$md" py="$sm" rounded="$sm">
-                                                        <Text fontSize="$sm" color="$black">
+                                                    <Box key={idx} style={{ backgroundColor: theme.colors.gray100 }} px="$md" py="$sm" rounded="$sm">
+                                                        <Text fontSize="$sm" style={{ color: theme.colors.black }}>
                                                             {brand}
                                                         </Text>
                                                     </Box>
@@ -614,8 +615,8 @@ const StoreListScreen = () => {
                                 <HStack
                                     p="$lg"
                                     borderTopWidth={1}
-                                    borderTopColor="$gray100"
-                                    bg="$white"
+                                    style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
                                     gap="$sm"
                                 >
                                     <Pressable
@@ -624,13 +625,13 @@ const StoreListScreen = () => {
                                         py="$md"
                                         rounded="$sm"
                                         borderWidth={1}
-                                        borderColor="$gray100"
+                                        style={{ borderColor: theme.colors.gray100 }}
                                         alignItems="center"
                                         justifyContent="center"
                                         onPress={() => handleMapPress(selectedStore.address)}
                                     >
                                         <Ionicons name="navigate-outline" size={20} color={theme.colors.black} />
-                                        <Text fontSize="$md" fontWeight="$semibold" color="$black" ml="$sm">
+                                        <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} ml="$sm">
                                             {t("store.navigate")}
                                         </Text>
                                     </Pressable>
@@ -641,13 +642,13 @@ const StoreListScreen = () => {
                                             flexDirection="row"
                                             py="$md"
                                             rounded="$sm"
-                                            bg="$black"
+                                            style={{ backgroundColor: theme.colors.black }}
                                             alignItems="center"
                                             justifyContent="center"
                                             onPress={() => handleCallPress(selectedStore.phone![0])}
                                         >
                                             <Ionicons name="call" size={20} color={theme.colors.white} />
-                                            <Text fontSize="$md" fontWeight="$semibold" color="$white" ml="$sm">
+                                            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }} ml="$sm">
                                                 {t("store.contactMerchant")}
                                             </Text>
                                         </Pressable>
@@ -656,11 +657,11 @@ const StoreListScreen = () => {
                                             flex={1}
                                             py="$md"
                                             rounded="$sm"
-                                            bg="$gray100"
+                                            style={{ backgroundColor: theme.colors.gray100 }}
                                             alignItems="center"
                                             justifyContent="center"
                                         >
-                                            <Text fontSize="$md" fontWeight="$semibold" color="$gray300">
+                                            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.gray300 }}>
                                                 {t("store.noContact")}
                                             </Text>
                                         </Box>

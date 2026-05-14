@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { Box, Text, Pressable, VStack, HStack, ScrollView } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 
 interface ModeCard {
@@ -31,6 +31,7 @@ interface ModeCard {
 }
 
 const PublishV2ForumModeScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
@@ -68,10 +69,10 @@ const PublishV2ForumModeScreen: React.FC = () => {
       >
         <VStack px="$lg" py="$md" gap="$sm">
           <Box mb="$xs">
-            <Text fontSize="$md" fontWeight="$medium" color="$black" mb="$xs">
+            <Text fontSize="$md" fontWeight="$medium" style={{ color: theme.colors.black }} mb="$xs">
               {t("publishV2.forumMode.heading")}
             </Text>
-            <Text fontSize="$xs" color="$gray500">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
               {t("publishV2.forumMode.subtitle")}
             </Text>
           </Box>
@@ -80,9 +81,9 @@ const PublishV2ForumModeScreen: React.FC = () => {
             <Pressable
               key={mode.id}
               onPress={mode.onPress}
-              bg="$white"
+              style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
               borderWidth={1}
-              borderColor="$gray100"
+
               rounded="$lg"
               p="$md"
               sx={{
@@ -98,7 +99,7 @@ const PublishV2ForumModeScreen: React.FC = () => {
                   w={40}
                   h={40}
                   rounded="$md"
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   alignItems="center"
                   justifyContent="center"
                 >
@@ -113,12 +114,12 @@ const PublishV2ForumModeScreen: React.FC = () => {
                   <Text
                     fontSize="$sm"
                     fontWeight="$medium"
-                    color="$black"
+                    style={{ color: theme.colors.black }}
                     mb={2}
                   >
                     {mode.title}
                   </Text>
-                  <Text fontSize="$xs" color="$gray500">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
                     {mode.description}
                   </Text>
                 </VStack>

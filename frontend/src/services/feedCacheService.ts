@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FeedItem, Post } from "./postService";
+import type { Banner } from "./bannerService";
+import type { CommunityListResponse } from "./communityService";
 
 /**
  * On-device tab caches for the Discover screen — backs the
@@ -98,3 +100,71 @@ export const forumPostsCacheService = makeTabCache<Post>("forum");
 
 /** Following tab cache — stores raw `Post[]` from `getFollowingPosts`. */
 export const followingPostsCacheService = makeTabCache<Post>("following");
+
+/**
+ * 单值（非数组）缓存的通用工厂 —— 论坛 Tab 的 banner / 热门社区
+ * 数据是「一个对象 / 一个数组」整块持久化的，不像 feed 是流式分页，
+ * 所以共用 `makeTabCache` 的 `T[] + 截断` 语义会很别扭。
+ *
+ * 与 `makeTabCache` 共享 namespace 命名（`avant-regard-tab-cache:<name>`）
+ * 与 corruption-tolerance 行为（坏 JSON 当 miss 处理）。
+ */
+interface SingleValueCache<T> {
+  get(): Promise<T | null>;
+  set(value: T): Promise<void>;
+  clear(): Promise<void>;
+}
+
+interface SingleValueEntry<T> {
+  value: T;
+  cachedAt: number;
+}
+
+function makeSingleValueCache<T>(name: string): SingleValueCache<T> {
+  const storageKey = `avant-regard-tab-cache:${name}`;
+  return {
+    async get(): Promise<T | null> {
+      try {
+        const raw = await AsyncStorage.getItem(storageKey);
+        if (!raw) return null;
+        const entry: SingleValueEntry<T> = JSON.parse(raw);
+        if (entry.value === undefined || entry.value === null) return null;
+        return entry.value;
+      } catch {
+        return null;
+      }
+    },
+    async set(value: T): Promise<void> {
+      try {
+        const entry: SingleValueEntry<T> = { value, cachedAt: Date.now() };
+        await AsyncStorage.setItem(storageKey, JSON.stringify(entry));
+      } catch {
+        // ignore — cache best-effort
+      }
+    },
+    async clear(): Promise<void> {
+      try {
+        await AsyncStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    },
+  };
+}
+
+/**
+ * 论坛 Tab 头部 banner 缓存。冷启动 / 切回 forum Tab 时先用缓存
+ * hydrate `<BannerCarousel>`，背景再静默拉新数据，避免空白闪烁。
+ *
+ * 列表通常很短（1–5 张），TabCache 的 30 项截断对它无副作用，
+ * 所以直接复用数组形态即可。
+ */
+export const bannersCacheService = makeTabCache<Banner>("banners");
+
+/**
+ * 论坛 Tab 头部「热门社区」缓存。`getCommunities` 返回的是 `{ popular,
+ * following, all }` 三段对象，整块缓存以保证下次冷启动渲染的不仅仅是
+ * popular，未来若 forum header 扩展显示其它分段也无需再迁移缓存。
+ */
+export const communitiesCacheService =
+  makeSingleValueCache<CommunityListResponse>("communities");

@@ -239,10 +239,10 @@ const MyLikesScreen = () => {
                         size={48}
                         color={theme.colors.gray200}
                     />
-                    <Text color="$gray400" mt="$md" fontSize="$md">
+                    <Text style={{ color: theme.colors.gray400 }} mt="$md" fontSize="$md">
                         {t("myLikes.noLikes")}
                     </Text>
-                    <Text color="$gray300" mt="$xs" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray300 }} mt="$xs" fontSize="$sm">
                         {t("myLikes.emptyPostsHint")}
                     </Text>
                 </VStack>
@@ -303,7 +303,7 @@ const MyLikesScreen = () => {
                 <HStack
                     p="$md"
                     borderBottomWidth={1}
-                    borderBottomColor="$gray100"
+                    style={{ borderBottomColor: theme.colors.gray100 }}
                     alignItems="flex-start"
                 >
                     {/* 用户头像 */}
@@ -320,11 +320,11 @@ const MyLikesScreen = () => {
                             width={40}
                             height={40}
                             borderRadius={20}
-                            bg="$gray200"
+                            style={{ backgroundColor: theme.colors.gray200 }}
                             alignItems="center"
                             justifyContent="center"
                         >
-                            <Text color="$gray400" fontSize="$sm" fontWeight="$medium">
+                            <Text style={{ color: theme.colors.gray400 }} fontSize="$sm" fontWeight="$medium">
                                 {comment.username?.slice(0, 1).toUpperCase() || "U"}
                             </Text>
                         </Box>
@@ -334,18 +334,18 @@ const MyLikesScreen = () => {
                         {/* 用户名和时间 */}
                         <HStack justifyContent="space-between" alignItems="center">
                             <HStack alignItems="center" gap="$xs">
-                                <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                                <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                                     {comment.username}
                                 </Text>
                                 {item.source !== "post" && (
-                                    <Box bg="$gray100" px="$xs" py={1} rounded="$sm">
-                                        <Text fontSize={10} color="$gray400">
+                                    <Box style={{ backgroundColor: theme.colors.gray100 }} px="$xs" py={1} rounded="$sm">
+                                        <Text fontSize={10} style={{ color: theme.colors.gray400 }}>
                                             {sourceLabel(item.source)}
                                         </Text>
                                     </Box>
                                 )}
                             </HStack>
-                            <Text fontSize="$xs" color="$gray300">
+                            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                 {formatTime(item.likedAt)}
                             </Text>
                         </HStack>
@@ -353,7 +353,7 @@ const MyLikesScreen = () => {
                         {/* 评论内容 */}
                         <Text
                             fontSize="$sm"
-                            color="$gray600"
+                            style={{ color: theme.colors.gray600 }}
                             mt="$xs"
                             numberOfLines={3}
                         >
@@ -368,7 +368,7 @@ const MyLikesScreen = () => {
                                     size={14}
                                     color="#FF3040"
                                 />
-                                <Text fontSize="$xs" color="$gray300">
+                                <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                     {comment.likeCount}
                                 </Text>
                             </HStack>
@@ -382,7 +382,7 @@ const MyLikesScreen = () => {
                                         size={14}
                                         color={theme.colors.gray300}
                                     />
-                                    <Text fontSize="$xs" color="$gray300">
+                                    <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
                                         {t('myLikes.unlikeAction')}
                                     </Text>
                                 </HStack>
@@ -415,10 +415,10 @@ const MyLikesScreen = () => {
                         size={48}
                         color={theme.colors.gray200}
                     />
-                    <Text color="$gray400" mt="$md" fontSize="$md">
+                    <Text style={{ color: theme.colors.gray400 }} mt="$md" fontSize="$md">
                         {t("myLikes.noLikedComments")}
                     </Text>
-                    <Text color="$gray300" mt="$xs" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray300 }} mt="$xs" fontSize="$sm">
                         {t("myLikes.emptyCommentsHint")}
                     </Text>
                 </VStack>
@@ -472,7 +472,7 @@ const MyLikesScreen = () => {
             {/* 标签栏 */}
             <HStack
                 borderBottomWidth={1}
-                borderBottomColor="$gray100"
+                style={{ borderBottomColor: theme.colors.gray100 }}
                 px="$md"
             >
                 {tabs.map((tab) => (
@@ -484,7 +484,7 @@ const MyLikesScreen = () => {
                         onPress={() => handleTabPress(tab.id)}
                     >
                         <Text
-                            color={activeTab === tab.id ? "$black" : "$gray300"}
+                            style={{ color: activeTab === tab.id ? theme.colors.black : theme.colors.gray300 }}
                             fontWeight={activeTab === tab.id ? "$semibold" : "$medium"}
                         >
                             {tab.label}
@@ -496,7 +496,7 @@ const MyLikesScreen = () => {
                                 left={0}
                                 right={0}
                                 height={2}
-                                bg="$black"
+                                style={{ backgroundColor: theme.colors.black }}
                             />
                         )}
                     </Pressable>

@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Text, HStack } from "./ui";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 import HalfStarRating from "./HalfStarRating";
 
 interface RatingSelectorProps {
@@ -17,21 +17,22 @@ const RatingSelector: React.FC<RatingSelectorProps> = ({
   label,
   required = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayLabel = label || t("ratingSelector.rating");
   return (
-    <Box mx="$md" mb="$md">
+    <Box mb="$md">
       <HStack mb="$sm" alignItems="center">
-        <Text color="$gray600" fontSize="$sm">
+        <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
           {displayLabel}
         </Text>
         {required && (
-          <Text color="$red500" fontSize="$sm" ml="$xs">
+          <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
             *
           </Text>
         )}
       </HStack>
-      <HStack gap="$sm" pl="$md" alignItems="center">
+      <HStack gap="$sm" alignItems="center">
         <HalfStarRating
           rating={rating}
           size={32}
@@ -42,7 +43,7 @@ const RatingSelector: React.FC<RatingSelectorProps> = ({
           gap={8}
         />
         {rating > 0 && (
-          <Text color="$gray400" fontSize="$sm" ml="$sm">
+          <Text style={{ color: theme.colors.gray400 }} fontSize="$sm" ml="$sm">
             {rating % 1 === 0 ? `${rating}.0` : rating.toFixed(1)}
           </Text>
         )}

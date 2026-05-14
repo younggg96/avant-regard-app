@@ -150,7 +150,7 @@ const StoreSelectorImpl: React.FC<StoreSelectorProps> = ({
     return (
       <Box py="$md" alignItems="center">
         <Ionicons name="storefront-outline" size={24} color={theme.colors.gray300} />
-        <Text fontSize="$xs" color="$gray400" mt="$xs" style={styles.emptyHint}>
+        <Text fontSize="$xs" style={[styles.emptyHint, { color: theme.colors.gray400 }]} mt="$xs">
           {t("discover.buyerNoStoreData")}
         </Text>
       </Box>

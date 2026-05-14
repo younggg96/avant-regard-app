@@ -16,7 +16,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
@@ -37,6 +37,7 @@ interface SearchHistory {
 }
 
 const SearchScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -544,7 +545,7 @@ const SearchScreen = () => {
             size={20}
             color={theme.colors.gray400}
           />
-          <Text fontSize="$md" color="$gray800" flex={1} numberOfLines={1}>
+          <Text fontSize="$md" style={{ color: theme.colors.text }} flex={1} numberOfLines={1}>
             {item.keyword}
           </Text>
         </HStack>
@@ -568,7 +569,7 @@ const SearchScreen = () => {
           height={56}
           rounded="$sm"
           overflow="hidden"
-          bg="$gray100"
+          style={{ backgroundColor: theme.colors.gray100 }}
         >
           <OptimizedImage
             uri={
@@ -584,15 +585,15 @@ const SearchScreen = () => {
 
         <VStack flex={1} space="xs">
           <HStack alignItems="center" space="sm">
-            <Text fontSize="$md" fontWeight="$semibold" color="$black">
+            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {item.username}
             </Text>
-            <Text fontSize="$sm" color="$gray400">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray400 }}>
               ID: {item.userId}
             </Text>
           </HStack>
           {item.bio ? (
-            <Text fontSize="$sm" color="$gray600" numberOfLines={1}>
+            <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} numberOfLines={1}>
               {item.bio}
             </Text>
           ) : null}
@@ -603,7 +604,7 @@ const SearchScreen = () => {
                 size={14}
                 color={theme.colors.gray400}
               />
-              <Text fontSize="$xs" color="$gray400">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {item.location}
               </Text>
             </HStack>
@@ -627,7 +628,7 @@ const SearchScreen = () => {
           height={56}
           rounded="$sm"
           overflow="hidden"
-          bg="$gray100"
+          style={{ backgroundColor: theme.colors.gray100 }}
           alignItems="center"
           justifyContent="center"
         >
@@ -640,19 +641,19 @@ const SearchScreen = () => {
               lazy={true}
             />
           ) : (
-            <Text fontSize="$xl" fontWeight="$bold" color="$gray400">
+            <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.gray400 }}>
               {item.name.charAt(0).toUpperCase()}
             </Text>
           )}
         </Box>
 
         <VStack flex={1} space="xs">
-          <Text fontSize="$md" fontWeight="$semibold" color="$black">
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
             {item.name}
           </Text>
           <HStack alignItems="center" space="sm">
             {item.category ? (
-              <Text fontSize="$sm" color="$gray600">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
                 {item.category}
               </Text>
             ) : null}
@@ -663,7 +664,7 @@ const SearchScreen = () => {
                   size={14}
                   color={theme.colors.gray400}
                 />
-                <Text fontSize="$xs" color="$gray400">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                   {item.country}
                 </Text>
               </HStack>
@@ -694,7 +695,7 @@ const SearchScreen = () => {
     if (visibleTabs.length <= 1) return null;
 
     return (
-      <Box borderBottomWidth={1} borderBottomColor="$gray100">
+      <Box borderBottomWidth={1} style={{ borderBottomColor: theme.colors.gray100 }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -712,7 +713,7 @@ const SearchScreen = () => {
               <Text
                 fontSize="$sm"
                 fontWeight="$medium"
-                color={searchType === tab.type ? "$white" : "$gray600"}
+                style={{ color: searchType === tab.type ? theme.colors.white : theme.colors.gray600 }}
               >
                 {tab.label}
               </Text>
@@ -727,7 +728,7 @@ const SearchScreen = () => {
   const renderPostResults = () => (
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
-        <Text fontSize="$md" color="$gray600">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
           {t("search.foundResults", { count: postTotal, type: t("search.posts") })}
         </Text>
       </HStack>
@@ -775,7 +776,7 @@ const SearchScreen = () => {
           />
           <Text
             fontSize="$lg"
-            color="$gray600"
+            style={{ color: theme.colors.gray600 }}
             fontWeight="$medium"
             mt="$md"
             textAlign="center"
@@ -784,7 +785,7 @@ const SearchScreen = () => {
           </Text>
           <Text
             fontSize="$sm"
-            color="$gray400"
+            style={{ color: theme.colors.gray400 }}
             mt="$sm"
             textAlign="center"
             lineHeight="$lg"
@@ -800,7 +801,7 @@ const SearchScreen = () => {
   const renderUserResults = () => (
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
-        <Text fontSize="$md" color="$gray600">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
           {t("search.foundResults", { count: userResults.length, type: t("search.users") })}
         </Text>
       </HStack>
@@ -814,7 +815,7 @@ const SearchScreen = () => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           ItemSeparatorComponent={() => (
-            <Box height={1} bg="$gray100" mx="$md" />
+            <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$md" />
           )}
         />
       ) : (
@@ -826,7 +827,7 @@ const SearchScreen = () => {
           />
           <Text
             fontSize="$lg"
-            color="$gray600"
+            style={{ color: theme.colors.gray600 }}
             fontWeight="$medium"
             mt="$md"
             textAlign="center"
@@ -835,7 +836,7 @@ const SearchScreen = () => {
           </Text>
           <Text
             fontSize="$sm"
-            color="$gray400"
+            style={{ color: theme.colors.gray400 }}
             mt="$sm"
             textAlign="center"
             lineHeight="$lg"
@@ -850,7 +851,7 @@ const SearchScreen = () => {
   const renderBrandResults = () => (
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
-        <Text fontSize="$md" color="$gray600">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
           {t("search.foundResults", { count: brandResults.length, type: t("search.brands") })}
         </Text>
       </HStack>
@@ -864,7 +865,7 @@ const SearchScreen = () => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           ItemSeparatorComponent={() => (
-            <Box height={1} bg="$gray100" mx="$md" />
+            <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$md" />
           )}
         />
       ) : (
@@ -876,7 +877,7 @@ const SearchScreen = () => {
           />
           <Text
             fontSize="$lg"
-            color="$gray600"
+            style={{ color: theme.colors.gray600 }}
             fontWeight="$medium"
             mt="$md"
             textAlign="center"
@@ -885,7 +886,7 @@ const SearchScreen = () => {
           </Text>
           <Text
             fontSize="$sm"
-            color="$gray400"
+            style={{ color: theme.colors.gray400 }}
             mt="$sm"
             textAlign="center"
             lineHeight="$lg"
@@ -904,10 +905,10 @@ const SearchScreen = () => {
         <VStack space="sm">
           <HStack alignItems="center" justifyContent="between">
             <VStack flex={1} mr="$sm">
-              <Text fontSize="$md" fontWeight="$semibold" color="$black" numberOfLines={1}>
+              <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} numberOfLines={1}>
                 {store.name}
               </Text>
-              <Text fontSize="$sm" color="$gray400" mt="$xs" numberOfLines={1}>
+              <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$xs" numberOfLines={1}>
                 {store.city}, {store.country}
               </Text>
             </VStack>
@@ -916,7 +917,7 @@ const SearchScreen = () => {
           {store.address ? (
             <HStack alignItems="center" space="xs">
               <Ionicons name="location-outline" size={14} color={theme.colors.gray400} />
-              <Text fontSize="$xs" color="$gray400" flex={1} numberOfLines={1}>
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} flex={1} numberOfLines={1}>
                 {store.address}
               </Text>
             </HStack>
@@ -924,14 +925,14 @@ const SearchScreen = () => {
           {store.style.length > 0 && (
             <HStack space="xs" flexWrap="wrap">
               {store.style.slice(0, 3).map((s, idx) => (
-                <Box key={idx} bg="$gray100" px="$sm" py={2} rounded="$sm">
-                  <Text fontSize="$xs" color="$gray600">{s}</Text>
+                <Box key={idx} style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py={2} rounded="$sm">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>{s}</Text>
                 </Box>
               ))}
             </HStack>
           )}
           {store.brands.length > 0 && (
-            <Text fontSize="$xs" color="$gray400" numberOfLines={1} fontStyle="italic">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} numberOfLines={1} fontStyle="italic">
               {store.brands.slice(0, 5).join(" / ")}
             </Text>
           )}
@@ -945,7 +946,7 @@ const SearchScreen = () => {
   const renderStoreResults = () => (
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
-        <Text fontSize="$md" color="$gray600">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
           {t("search.foundResults", { count: storeTotal, type: t("search.stores") })}
         </Text>
       </HStack>
@@ -959,7 +960,7 @@ const SearchScreen = () => {
           keyboardDismissMode="on-drag"
           onEndReached={loadMoreStores}
           onEndReachedThreshold={0.3}
-          ItemSeparatorComponent={() => <Box height={1} bg="$gray100" mx="$md" />}
+          ItemSeparatorComponent={() => <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$md" />}
           ListFooterComponent={
             isLoadingMore ? (
               <VStack py="$md" alignItems="center">
@@ -971,10 +972,10 @@ const SearchScreen = () => {
       ) : (
         <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
           <Ionicons name="storefront-outline" size={64} color={theme.colors.gray300} />
-          <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+          <Text fontSize="$lg" style={{ color: theme.colors.gray600 }} fontWeight="$medium" mt="$md" textAlign="center">
             {t("search.noResults")}
           </Text>
-          <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm" textAlign="center" lineHeight="$lg">
             {t("search.tryOtherKeywords")}
           </Text>
         </VStack>
@@ -987,7 +988,7 @@ const SearchScreen = () => {
     ({ item: product }: { item: StoreProduct }) => (
       <Pressable onPress={() => handleProductPress(product)} px="$md" py="$md">
         <HStack alignItems="center" space="md">
-          <Box width={72} height={72} rounded="$sm" overflow="hidden" bg="$gray100">
+          <Box width={72} height={72} rounded="$sm" overflow="hidden" style={{ backgroundColor: theme.colors.gray100 }}>
             {product.images?.[0] ? (
               <OptimizedImage
                 uri={product.images[0]}
@@ -1003,26 +1004,26 @@ const SearchScreen = () => {
             )}
           </Box>
           <VStack flex={1} space="xs">
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" numberOfLines={2}>
+            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} numberOfLines={2}>
               {product.title}
             </Text>
             {product.brand ? (
-              <Text fontSize="$sm" color="$gray600" numberOfLines={1}>
+              <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} numberOfLines={1}>
                 {product.brand}
               </Text>
             ) : null}
             <HStack alignItems="center" space="sm">
               {product.hasDiscount && product.discountPriceCents != null ? (
                 <>
-                  <Text fontSize="$md" fontWeight="$bold" color="$black">
+                  <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
                     {formatPrice(product.discountPriceCents, product.currency)}
                   </Text>
-                  <Text fontSize="$xs" color="$gray400" style={{ textDecorationLine: "line-through" }}>
+                  <Text fontSize="$xs" style={[{ textDecorationLine: "line-through" }, { color: theme.colors.gray400 }]}>
                     {formatPrice(product.priceCents, product.currency)}
                   </Text>
                 </>
               ) : (
-                <Text fontSize="$md" fontWeight="$bold" color="$black">
+                <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
                   {formatPrice(product.priceCents, product.currency)}
                 </Text>
               )}
@@ -1039,7 +1040,7 @@ const SearchScreen = () => {
   const renderProductResults = () => (
     <VStack flex={1}>
       <HStack px="$md" py="$md" alignItems="center">
-        <Text fontSize="$md" color="$gray600">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
           {t("search.foundResults", { count: productTotal, type: t("search.products") })}
         </Text>
       </HStack>
@@ -1053,7 +1054,7 @@ const SearchScreen = () => {
           keyboardDismissMode="on-drag"
           onEndReached={loadMoreProducts}
           onEndReachedThreshold={0.3}
-          ItemSeparatorComponent={() => <Box height={1} bg="$gray100" mx="$md" />}
+          ItemSeparatorComponent={() => <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$md" />}
           ListFooterComponent={
             isLoadingMore ? (
               <VStack py="$md" alignItems="center">
@@ -1065,10 +1066,10 @@ const SearchScreen = () => {
       ) : (
         <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
           <Ionicons name="bag-outline" size={64} color={theme.colors.gray300} />
-          <Text fontSize="$lg" color="$gray600" fontWeight="$medium" mt="$md" textAlign="center">
+          <Text fontSize="$lg" style={{ color: theme.colors.gray600 }} fontWeight="$medium" mt="$md" textAlign="center">
             {t("search.noResults")}
           </Text>
-          <Text fontSize="$sm" color="$gray400" mt="$sm" textAlign="center" lineHeight="$lg">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm" textAlign="center" lineHeight="$lg">
             {t("search.tryOtherKeywords")}
           </Text>
         </VStack>
@@ -1085,7 +1086,7 @@ const SearchScreen = () => {
         alignItems="center"
         space="sm"
         borderBottomWidth={1}
-        borderBottomColor="$gray100"
+        style={{ borderBottomColor: theme.colors.gray100 }}
       >
         {/* Back Button */}
         <Pressable onPress={() => navigation.goBack()} p="$xs">
@@ -1095,7 +1096,7 @@ const SearchScreen = () => {
         {/* Search Input */}
         <Box
           flex={1}
-          bg="$gray100"
+          style={{ backgroundColor: theme.colors.gray100 }}
           rounded="$sm"
           px="$md"
           py="$xs"
@@ -1147,10 +1148,10 @@ const SearchScreen = () => {
           onPress={handleSearch}
           px="$lg"
           py="$sm"
-          bg="$black"
+          style={{ backgroundColor: theme.colors.black }}
           rounded="$sm"
         >
-          <Text color="$white" fontSize="$sm" fontWeight="$semibold">
+          <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
             {t("common.search")}
           </Text>
         </Pressable>
@@ -1171,11 +1172,11 @@ const SearchScreen = () => {
                 justifyContent="between"
                 alignItems="center"
               >
-                <Text fontSize="$md" fontWeight="$semibold" color="$black">
+                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
                   {t("search.recent")}
                 </Text>
                 <Pressable onPress={handleClearAllHistory}>
-                  <Text fontSize="$sm" color="$gray600">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
                     {t("search.clear")}
                   </Text>
                 </Pressable>
@@ -1214,7 +1215,7 @@ const SearchScreen = () => {
               />
               <Text
                 fontSize="$lg"
-                color="$gray600"
+                style={{ color: theme.colors.gray600 }}
                 fontWeight="$medium"
                 mt="$md"
                 textAlign="center"
@@ -1231,7 +1232,7 @@ const SearchScreen = () => {
               </Text>
               <Text
                 fontSize="$sm"
-                color="$gray400"
+                style={{ color: theme.colors.gray400 }}
                 mt="$sm"
                 textAlign="center"
                 lineHeight="$lg"
@@ -1253,7 +1254,7 @@ const SearchScreen = () => {
         // 显示加载状态
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator size="small" color={theme.colors.black} />
-          <Text fontSize="$md" color="$gray600" mt="$md">
+          <Text fontSize="$md" style={{ color: theme.colors.gray600 }} mt="$md">
             {t("common.loading")}
           </Text>
         </VStack>

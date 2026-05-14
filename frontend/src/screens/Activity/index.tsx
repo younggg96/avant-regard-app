@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
-import { theme } from "../../theme";
+import { theme, useAppTheme } from "../../theme";
 import { Notification } from "../../services/notificationService";
 import { useNotificationStore } from "../../store/notificationStore";
 import { ActivityFilter, FILTER_TABS, EXCLUDED_TYPES } from "./constants";
@@ -19,6 +19,7 @@ import { useActivityStyles } from "./styles";
 const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
 
 const ActivityScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -172,10 +173,10 @@ const ActivityScreen = () => {
           ) : (
             <Box py={48} px="$lg" alignItems="center">
               <Ionicons name="notifications-outline" size={44} color={theme.colors.gray200} />
-              <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
+              <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$md" mb="$sm">
                 {t("activity.noActivity")}
               </Text>
-              <Text fontSize="$sm" color="$gray400" textAlign="center">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} textAlign="center">
                 {t("activity.emptyHint")}
               </Text>
             </Box>

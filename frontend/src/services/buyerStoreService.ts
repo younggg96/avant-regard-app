@@ -116,17 +116,27 @@ export interface ViewportStoreParams {
  *   使用 `getStoresPaginated({ page: 1, pageSize: 20 })`，不要用这个函数。
  * - 仅在真正需要"离线全量缓存 / 地图视口外兜底 / 批处理"时才用这个函数。
  *
+ * 终止条件：**只看本页是否返回了一个完整页（PAGE_SIZE 条）**。
+ * 不要再用 `allStores.length >= result.total` 提前退出，因为后端
+ *   - page == 1 时用 `count="planned"`（PostgREST 规划器估算，本身就可能偏差）
+ *   - page >= 2 时完全不带 count，`total` 直接是 0
+ * 之前条件 `allStores.length >= result.total` 在 page 2 时永远成立（400 >= 0），
+ * 导致整张目录被截断到最多 400 家，城市排序靠后的店（如 "纽约 New York"）
+ * 永远拉不到，从而地图上没有对应 marker。
+ *
+ * 加 `MAX_PAGES` 是为了万一后端坏掉返回稳定 PAGE_SIZE 条，不至于死循环把
+ * 客户端流量打爆。
+ *
  * GET /api/buyer-stores
  */
 export const getAllStores = async (
   params: BuyerStoreFilterParams = {}
 ): Promise<BuyerStore[]> => {
   const PAGE_SIZE = 200; // API 最大支持 200
+  const MAX_PAGES = 100; // 安全阀：最多拉 20k 条，足够覆盖业务量
   let allStores: BuyerStore[] = [];
-  let currentPage = 1;
-  let hasMore = true;
 
-  while (hasMore) {
+  for (let currentPage = 1; currentPage <= MAX_PAGES; currentPage++) {
     const result = await getStoresPaginated({
       ...params,
       page: currentPage,
@@ -135,12 +145,7 @@ export const getAllStores = async (
 
     allStores = [...allStores, ...result.stores];
 
-    // 检查是否还有更多数据
-    if (result.stores.length < PAGE_SIZE || allStores.length >= result.total) {
-      hasMore = false;
-    } else {
-      currentPage++;
-    }
+    if (result.stores.length < PAGE_SIZE) break;
   }
 
   return allStores;

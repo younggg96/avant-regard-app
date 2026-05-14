@@ -1,7 +1,7 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
@@ -15,6 +15,7 @@ interface StrangerEntryProps {
 }
 
 export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useInteractionStyles();
   if (conversations.length === 0) return null;
@@ -36,7 +37,7 @@ export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) =>
             rounded="$full"
             justifyContent="center"
             alignItems="center"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
           >
             <Ionicons
               name="person-outline"
@@ -51,18 +52,18 @@ export const StrangerEntry = ({ conversations, onPress }: StrangerEntryProps) =>
 
         <VStack flex={1} mr="$sm">
           <HStack justifyContent="between" alignItems="center" mb={3}>
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+            <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {t("strangerMessages.title")}
             </Text>
             {latest && (
-              <Text fontSize="$xs" color="$gray200">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray200 }}>
                 {formatTime(latest.lastMessageAt)}
               </Text>
             )}
           </HStack>
           <Text
             fontSize="$sm"
-            color={totalUnread > 0 ? "$black" : "$gray300"}
+            style={{ color: totalUnread > 0 ? theme.colors.black : theme.colors.gray300 }}
             numberOfLines={1}
           >
             {latest

@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 // NOTE: This modal is intentionally always dark (full-screen image preview),
 // so static StyleSheet colors below remain hardcoded.
 
@@ -39,6 +39,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   onClose,
   onImagePress,
 }) => {
+  const theme = useAppTheme();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   // Lock horizontal paging while the active image is zoomed so pan
@@ -142,7 +143,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
               >
                 {title && (
                   <Text
-                    color="$white"
+                    style={{ color: theme.colors.white }}
                     fontSize="$lg"
                     fontWeight="$bold"
                     mb="$xs"
@@ -151,7 +152,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                   </Text>
                 )}
                 {subtitle && (
-                  <Text color="$gray300" fontSize="$md">
+                  <Text style={{ color: theme.colors.gray300 }} fontSize="$md">
                     {subtitle}
                   </Text>
                 )}

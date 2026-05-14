@@ -15,13 +15,14 @@ import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, Pressable, Text, VStack } from "../../../components/ui";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 
 interface AIInsightCardProps {
   onPress?: () => void;
 }
 
 const AIInsightCard: React.FC<AIInsightCardProps> = ({ onPress }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   // 没传 onPress 也保持 Pressable 包裹, 行为退化为不可点击 (无 ripple),
@@ -34,9 +35,9 @@ const AIInsightCard: React.FC<AIInsightCardProps> = ({ onPress }) => {
         p="$md"
         gap="$md"
         alignItems="center"
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         borderWidth={1}
-        borderColor="$gray100"
+
         rounded="$lg"
       >
         <Box style={styles.icon}>

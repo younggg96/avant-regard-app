@@ -2,7 +2,7 @@ import React from "react";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
@@ -20,6 +20,7 @@ interface ConversationRowProps {
 }
 
 export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowProps) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useInteractionStyles();
   const other = item.otherUser;
@@ -49,26 +50,26 @@ export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowP
           <HStack justifyContent="between" alignItems="center" mb={3}>
             <HStack alignItems="center" flex={1} mr="$sm">
               <Text
-                fontSize="$sm" fontWeight="$semibold" color="$black"
+                fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}
                 numberOfLines={1} flexShrink={1}
               >
                 {displayName}
               </Text>
               {!isCs && other?.primaryTitle ? (
-                <Box bg="$gray100" px="$xs" py={1} rounded="$xs" ml={4} flexShrink={0}>
-                  <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$xs" py={1} rounded="$xs" ml={4} flexShrink={0}>
+                  <Text style={{ color: theme.colors.gray600 }} fontSize={9} fontWeight="$medium" numberOfLines={1}>
                     {other.primaryTitle}
                   </Text>
                 </Box>
               ) : null}
             </HStack>
-            <Text fontSize="$xs" color="$gray200" flexShrink={0}>
+            <Text fontSize="$xs" style={{ color: theme.colors.gray200 }} flexShrink={0}>
               {formatTime(item.lastMessageAt)}
             </Text>
           </HStack>
           <Text
             fontSize="$sm" numberOfLines={1}
-            color={hasUnread ? "$black" : "$gray300"}
+            style={{ color: hasUnread ? theme.colors.black : theme.colors.gray300 }}
             fontWeight={hasUnread ? "$medium" : "$normal"}
           >
             {formatLastMessage(item.lastMessageText)}

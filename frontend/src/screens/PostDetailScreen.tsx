@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "../components/ui";
 import { useAuthStore } from "../store/authStore";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { ImageSize } from "../utils/imageUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -52,6 +52,7 @@ import { ReportBlockModal } from "../components/ReportBlockModal";
 import type { ReportTarget } from "../components/PostDetail/CommentsSection";
 
 const PostDetailScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
@@ -304,7 +305,7 @@ const PostDetailScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <Box flex={1} justifyContent="center" alignItems="center" px="$lg">
-          <Text color="$gray600" fontSize="$md" textAlign="center">
+          <Text style={{ color: theme.colors.gray600 }} fontSize="$md" textAlign="center">
             {error}
           </Text>
         </Box>
@@ -317,7 +318,7 @@ const PostDetailScreen = () => {
     return (
       <SafeAreaView style={styles.container}>
         <Box flex={1} justifyContent="center" alignItems="center">
-          <Text color="$gray600" fontSize="$md">
+          <Text style={{ color: theme.colors.gray600 }} fontSize="$md">
             {t("post.notFound")}
           </Text>
         </Box>

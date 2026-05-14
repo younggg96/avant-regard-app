@@ -38,7 +38,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Image, Pressable, ScrollView, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { Alert } from "../utils/Alert";
 import {
   checkStoreProductFavorited,
@@ -101,6 +101,7 @@ interface ReplyTarget {
 }
 
 const StoreProductDetailScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
@@ -536,14 +537,14 @@ const StoreProductDetailScreen: React.FC = () => {
         <Header title={t("store.productDetail")} onBack={navigation.goBack} />
         <Box style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
-          <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$sm">
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$sm">
             {t("store.loadFailed")}
           </Text>
-          <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center">
+          <Text fontSize="$xs" style={{ color: theme.colors.gray300 }} mt="$xs" textAlign="center">
             {error ?? t("store.productNotFound")}
           </Text>
-          <Pressable onPress={loadProduct} px="$lg" py="$sm" mt="$md" bg="$black" rounded="$md">
-            <Text color="$white" fontWeight="$semibold" fontSize="$sm">
+          <Pressable onPress={loadProduct} px="$lg" py="$sm" mt="$md" style={{ backgroundColor: theme.colors.black }} rounded="$md">
+            <Text style={{ color: theme.colors.white }} fontWeight="$semibold" fontSize="$sm">
               {t("store.tapRetry")}
             </Text>
           </Pressable>
@@ -618,40 +619,40 @@ const StoreProductDetailScreen: React.FC = () => {
           <VStack px="$md" pt="$md" pb="$sm" space="sm">
             <HStack space="xs" alignItems="center" flexWrap="wrap">
               {product.isNew && (
-                <Box bg="$black" px="$sm" py="$xs" rounded="$sm">
-                  <Text fontSize="$2xs" fontWeight="$bold" color="$white">
+                <Box style={{ backgroundColor: theme.colors.black }} px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$bold" style={{ color: theme.colors.white }}>
                     NEW
                   </Text>
                 </Box>
               )}
               {hasDiscount && (
-                <Box bg="$error" px="$sm" py="$xs" rounded="$sm">
-                  <Text fontSize="$2xs" fontWeight="$bold" color="$white">
+                <Box style={{ backgroundColor: theme.colors.error }} px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$bold" style={{ color: theme.colors.white }}>
                     SALE
                   </Text>
                 </Box>
               )}
               {product.categoryName && (
-                <Box bg="$gray100" px="$sm" py="$xs" rounded="$sm">
-                  <Text fontSize="$2xs" fontWeight="$medium" color="$gray700">
+                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$sm" py="$xs" rounded="$sm">
+                  <Text fontSize="$2xs" fontWeight="$medium" style={{ color: theme.colors.gray700 }}>
                     {product.categoryName}
                   </Text>
                 </Box>
               )}
             </HStack>
 
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" lineHeight="$xl">
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} lineHeight="$xl">
               {product.title}
             </Text>
 
             {/* {!!product.brand && (
-              <Text fontSize="$xs" color="$gray600">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
                 {t("store.brandLabel")}{product.brand}
               </Text>
             )} */}
 
             <HStack alignItems="baseline" space="sm">
-              <Text fontSize="$2xl" fontWeight="$bold" color={hasDiscount ? "$error" : "$black"}>
+              <Text fontSize="$2xl" fontWeight="$bold" style={{ color: hasDiscount ? theme.colors.error : theme.colors.black }}>
                 {formatPrice(
                   hasDiscount
                     ? (product.discountPriceCents as number)
@@ -662,8 +663,8 @@ const StoreProductDetailScreen: React.FC = () => {
               {hasDiscount && (
                 <Text
                   fontSize="$sm"
-                  color="$gray300"
-                  style={{ textDecorationLine: "line-through" }}
+                  style={[{ textDecorationLine: "line-through" }, { color: theme.colors.gray300 }]}
+
                 >
                   {formatPrice(product.priceCents, product.currency)}
                 </Text>
@@ -675,14 +676,14 @@ const StoreProductDetailScreen: React.FC = () => {
                 {product.tags.map((tag) => (
                   <Box
                     key={tag}
-                    bg="$gray50"
+                    style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray100 }]}
                     px="$sm"
                     py="$xs"
                     rounded="$lg"
                     borderWidth={StyleSheet.hairlineWidth}
-                    borderColor="$gray100"
+
                   >
-                    <Text fontSize="$xs" color="$gray700">
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray700 }}>
                       #{tag}
                     </Text>
                   </Box>
@@ -691,7 +692,7 @@ const StoreProductDetailScreen: React.FC = () => {
             )}
 
             {!!product.description && (
-              <Text fontSize="$sm" color="$gray800" lineHeight="$lg" mt="$xs">
+              <Text fontSize="$sm" style={{ color: theme.colors.text }} lineHeight="$lg" mt="$xs">
                 {product.description}
               </Text>
             )}
@@ -704,9 +705,9 @@ const StoreProductDetailScreen: React.FC = () => {
             py="$lg"
             mt="$md"
             borderTopWidth={8}
-            borderTopColor="$gray100"
+            style={{ borderTopColor: theme.colors.gray100 }}
           >
-            <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+            <Text fontSize="$lg" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {t("store.comments", { count: commentsTotal })}
             </Text>
 
@@ -723,7 +724,7 @@ const StoreProductDetailScreen: React.FC = () => {
             {!commentsLoading && comments.length === 0 && (
               <Box style={styles.commentsEmpty}>
                 <Ionicons name="chatbubble-outline" size={32} color={theme.colors.gray300} />
-                <Text fontSize="$sm" color="$gray400" mt="$sm">
+                <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm">
                   {t("store.noComments")}
                 </Text>
               </Box>
@@ -746,7 +747,7 @@ const StoreProductDetailScreen: React.FC = () => {
                 py="$sm"
                 alignItems="center"
               >
-                <Text fontSize="$xs" color="$gray400">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                   {t("store.loadMoreComments")}
                 </Text>
               </Pressable>
@@ -821,18 +822,18 @@ const StoreProductDetailScreen: React.FC = () => {
 
 const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => (
   <HStack
-    bg="$white"
+    style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]}
     alignItems="center"
     justifyContent="between"
     px="$md"
     py="$sm"
     borderBottomWidth={1}
-    borderBottomColor="$gray100"
+
   >
     <Pressable onPress={onBack} p="$xs" hitSlop={8}>
       <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
     </Pressable>
-    <Text fontSize="$md" fontWeight="$semibold" color="$black">
+    <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
       {title}
     </Text>
     <Box w={32} />
@@ -872,7 +873,7 @@ const CommentItemImpl: React.FC<{
       <VStack flex={1} space="xs">
         <HStack justifyContent="between" alignItems="center">
           <HStack space="xs" alignItems="center" flexWrap="wrap" flex={1}>
-            <Text fontSize="$sm" fontWeight="$semibold" color="$black">
+            <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {comment.username || t("store.anonymous")}
             </Text>
             {comment.replyToUsername && (
@@ -882,19 +883,19 @@ const CommentItemImpl: React.FC<{
                   size={10}
                   color={theme.colors.gray400}
                 />
-                <Text fontSize="$xs" color="$accent" fontWeight="$medium">
+                <Text fontSize="$xs" style={{ color: theme.colors.accent }} fontWeight="$medium">
                   @{comment.replyToUsername}
                 </Text>
               </HStack>
             )}
           </HStack>
           {!!timestamp && (
-            <Text fontSize="$xs" color="$gray600">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
               {timestamp}
             </Text>
           )}
         </HStack>
-        <Text fontSize="$sm" color="$gray800" lineHeight="$md">
+        <Text fontSize="$sm" style={{ color: theme.colors.text }} lineHeight="$md">
           {comment.content}
         </Text>
         <HStack space="md" mt="$xs" alignItems="center">
@@ -907,20 +908,20 @@ const CommentItemImpl: React.FC<{
               />
               <Text
                 fontSize="$xs"
-                color={comment.likedByMe ? "#FF3040" : "$gray600"}
+                style={{ color: comment.likedByMe ? "#FF3040" : theme.colors.gray600 }}
               >
                 {comment.likeCount > 0 ? comment.likeCount : ""}
               </Text>
             </HStack>
           </Pressable>
           <Pressable onPress={onReply}>
-            <Text fontSize="$xs" color="$gray600">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray600 }}>
               {t("store.reply")}
             </Text>
           </Pressable>
           {isMine && (
             <Pressable onPress={onDelete}>
-              <Text fontSize="$xs" color="$error">
+              <Text fontSize="$xs" style={{ color: theme.colors.error }}>
                 {t("common.delete")}
               </Text>
             </Pressable>

@@ -13,7 +13,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, Pressable, HStack, VStack } from "../ui";
-import { theme } from "../../theme";
+import { theme, useAppTheme } from "../../theme";
 import { ReplyTarget } from "./types";
 import { usePostDetailStyles } from "./styles";
 
@@ -118,7 +118,7 @@ export const CommentInputBar = forwardRef<
             {replyTarget && (
               <View style={styles.replyHint}>
                 <Text style={styles.replyHintText}>
-                  {t("postDetail.replyingTo")} <Text color="$accent" fontWeight="$medium">@{replyTarget.userName}</Text>
+                  {t("postDetail.replyingTo")} <Text style={{ color: theme.colors.accent }} fontWeight="$medium">@{replyTarget.userName}</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.replyHintClose}
@@ -186,7 +186,7 @@ export const CommentInputBar = forwardRef<
                   />
                   <Text
                     fontSize="$xs"
-                    color={displayIsLiked ? "#FF3040" : "$gray600"}
+                    style={{ color: displayIsLiked ? "#FF3040" : theme.colors.gray600 }}
                     fontWeight="$medium"
                   >
                     {displayLikes}
@@ -207,7 +207,7 @@ export const CommentInputBar = forwardRef<
                   />
                   <Text
                     fontSize="$xs"
-                    color={displayIsSaved ? "$accent" : "$gray600"}
+                    style={{ color: displayIsSaved ? theme.colors.accent : theme.colors.gray600 }}
                     fontWeight="$medium"
                   >
                     {displaySaves}
@@ -222,7 +222,7 @@ export const CommentInputBar = forwardRef<
                     size={20}
                     color={theme.colors.gray600}
                   />
-                  <Text fontSize="$xs" color="$gray600" fontWeight="$medium">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} fontWeight="$medium">
                     {displayComments}
                   </Text>
                 </VStack>
@@ -238,9 +238,9 @@ export const CommentInputBar = forwardRef<
                     />
                     <Text
                       fontSize="$xs"
-                      color={displayIsWanted ? "$accent" : "$gray600"}
+                      style={[displayIsWanted ? { color: "#D4AF37" } : undefined, { color: displayIsWanted ? theme.colors.accent : theme.colors.gray600 }]}
                       fontWeight="$medium"
-                      style={displayIsWanted ? { color: "#D4AF37" } : undefined}
+
                     >
                       {displayWants || 0}
                     </Text>
@@ -257,7 +257,7 @@ export const CommentInputBar = forwardRef<
               style={styles.compactInputWrapper}
               activeOpacity={0.7}
             >
-              <Text fontSize="$sm" color="$gray600">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
                 {placeholderText}
               </Text>
             </TouchableOpacity>

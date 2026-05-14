@@ -57,16 +57,19 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
   );
 };
 
+// 原来 base 用 `t.colors.text`、text 用 `t.colors.textInverted`，dark mode
+// 下变成纯白胶囊+黑字（很扎眼）。改用 gray100 底 + text 字色，两套主题下
+// 都是低调灰胶囊（light 浅灰底黑字 / dark 深灰底白字），保持品牌冷峻调性。
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   base: {
-    backgroundColor: t.colors.text,
+    backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: t.colors.background,
+    borderColor: t.colors.gray200,
   },
   text: {
-    color: t.colors.textInverted,
+    color: t.colors.text,
     fontFamily: t.typography.h4.fontFamily,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -78,8 +81,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: t.colors.textInverted,
+    backgroundColor: t.colors.text,
     borderWidth: 1,
-    borderColor: t.colors.text,
+    borderColor: t.colors.card,
   },
 });

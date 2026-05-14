@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, Pressable } from "../../../components/ui";
 import { styles } from "../styles";
+import { useAppTheme } from "../../../theme";
 
 interface FilterChipProps {
   label: string;
@@ -8,17 +9,20 @@ interface FilterChipProps {
   onPress: () => void;
 }
 
-export const FilterChip = ({ label, isActive, onPress }: FilterChipProps) => (
-  <Pressable
-    onPress={onPress}
-    style={[styles.chip, isActive && styles.chipActive]}
-  >
-    <Text
-      fontSize="$sm"
-      fontWeight={isActive ? "$semibold" : "$normal"}
-      color={isActive ? "$white" : "$gray400"}
+export const FilterChip = ({ label, isActive, onPress }: FilterChipProps) => {
+  const theme = useAppTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, isActive && styles.chipActive]}
     >
-      {label}
-    </Text>
-  </Pressable>
-);
+      <Text
+        fontSize="$sm"
+        fontWeight={isActive ? "$semibold" : "$normal"}
+        style={{ color: isActive ? theme.colors.white : theme.colors.gray400 }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};

@@ -17,7 +17,7 @@ import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, Pressable, Text } from "../../../components/ui";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 
 interface EditorialHeaderProps {
   current: number;
@@ -32,6 +32,7 @@ const EditorialHeader: React.FC<EditorialHeaderProps> = ({
   onBack,
   rightComponent,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
 
@@ -41,7 +42,7 @@ const EditorialHeader: React.FC<EditorialHeaderProps> = ({
       justifyContent="between"
       px="$lg"
       py="$md"
-      bg="$white"
+      style={{ backgroundColor: theme.colors.white }}
     >
       <HStack alignItems="center" gap="$sm">
         {onBack ? (

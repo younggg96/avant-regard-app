@@ -31,8 +31,8 @@ interface ProfileInfoProps {
   likesAndSavesCount: number | undefined;
   userId: number | undefined;
   /**
-   * 用户头衔列表。当存在主头衔（或仅有一个头衔）时，会作为头像旁的徽章展示，
-   * 替代之前位于个人主页底部的独立 UserTitlesSection。
+   * 用户头衔列表。当存在主头衔（或仅有一个头衔）时，在用户名列一行展示，
+   * 紧跟等级徽章右侧（与访客主页一致）。
    */
   userTitles: UserTitle[];
   onEditProfile: () => void;
@@ -72,8 +72,7 @@ export const ProfileInfo = ({
   const appTheme = useAppTheme();
   const titleStyles = useThemedStyles(makeTitleStyles);
 
-  // 主头衔展示在头像右侧，与底部独立的 UserTitlesSection 共用同一规则
-  // (主头衔优先；只有 1 个头衔时直接展示)，确保两处不会出现不一致。
+  // 主头衔与 UserTitlesSection / 访客主页共用 titlesShownOnProfile 规则。
   const primaryTitle = titlesShownOnProfile(userTitles)[0];
 
   return (
@@ -98,13 +97,6 @@ export const ProfileInfo = ({
           <Ionicons name="add" size={14} color="white" />
         </Pressable>
       </View>
-      {primaryTitle ? (
-        <View style={titleStyles.chipBadge}>
-          <RNText style={titleStyles.chipBadgeText} numberOfLines={1}>
-            {primaryTitle.title}
-          </RNText>
-        </View>
-      ) : null}
     </View>
 
     <View style={styles.userNameSection}>
@@ -116,6 +108,13 @@ export const ProfileInfo = ({
             size="sm"
             pendingLevel={pendingLevel}
           />
+        ) : null}
+        {primaryTitle ? (
+          <View style={titleStyles.chipBadge}>
+            <RNText style={titleStyles.chipBadgeText} numberOfLines={1}>
+              {primaryTitle.title}
+            </RNText>
+          </View>
         ) : null}
       </View>
       <RNText style={styles.bio} numberOfLines={2}>
@@ -161,26 +160,23 @@ export const ProfileInfo = ({
   );
 };
 
-// 头像旁的头衔徽章。由于头像 marginTop = -AVATAR_SIZE/2 浮在封面图上，
-// 这里同样要求 alignSelf: flex-end 才能与头像下沿对齐；颜色与底部
-// UserTitlesSection 主头衔一致 (黑底白字)，避免视觉割裂。
+// 头衔徽章：与用户名、等级同一行，紧跟在等级徽章右侧（与 UserProfileScreen 一致）。
+// gray100 底 + text 字色，两套主题下与其他资料 chip 同调。
 const makeTitleStyles = (t: AppTheme) =>
   StyleSheet.create({
     chipBadge: {
-      maxWidth: 180,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 14,
-      backgroundColor: t.colors.text,
+      maxWidth: 148,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 10,
+      backgroundColor: t.colors.gray100,
       borderWidth: 1,
-      borderColor: t.colors.card,
-      alignSelf: "flex-end",
-      marginBottom: 4,
+      borderColor: t.colors.gray200,
     },
     chipBadgeText: {
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: "600",
-      color: t.colors.textInverted,
+      color: t.colors.text,
       fontFamily: playfairFonts.medium,
     },
   });

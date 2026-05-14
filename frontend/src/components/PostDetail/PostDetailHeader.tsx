@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import { Post } from "../PostCard";
 import { PostStatus, formatTimestamp } from "./types";
 
@@ -41,6 +41,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
   onShowOptionsMenu,
   onShowReportMenu,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<NavTo>();
   const h = useThemedStyles(makeHeaderStyles);
@@ -51,7 +52,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
       return (
         <>
           <TouchableOpacity onPress={onContinueEdit} style={h.draftBtn}>
-            <Text fontSize={11} fontWeight="$semibold" color="$white">
+            <Text fontSize={11} fontWeight="$semibold" style={{ color: theme.colors.white }}>
               {t("postDetail.continueEdit")}
             </Text>
           </TouchableOpacity>
@@ -68,7 +69,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
       return (
         <>
           <View style={h.pendingBadge}>
-            <Text fontSize={11} fontWeight="$semibold" color="$white">
+            <Text fontSize={11} fontWeight="$semibold" style={{ color: theme.colors.white }}>
               {t("postDetail.pending")}
             </Text>
           </View>
@@ -89,7 +90,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
         <>
           {isOwnPost && (
             <TouchableOpacity onPress={onContinueEdit} style={h.rejectedBtn}>
-              <Text fontSize={11} fontWeight="$semibold" color="$white">
+              <Text fontSize={11} fontWeight="$semibold" style={{ color: theme.colors.white }}>
                 {t("postDetail.editAndResubmit")}
               </Text>
             </TouchableOpacity>
@@ -124,7 +125,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               <Text
                 fontSize={11}
                 fontWeight="$semibold"
-                color={isFollowing ? "$gray600" : "$white"}
+                style={{ color: isFollowing ? theme.colors.gray600 : theme.colors.white }}
               >
                 {isFollowing ? t("postDetail.followed") : t("postDetail.follow")}
               </Text>
@@ -166,15 +167,15 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
           <Text
             fontSize={13}
             fontWeight="$semibold"
-            color="$black"
+            style={[h.nameText, { color: theme.colors.black }]}
             numberOfLines={1}
-            style={h.nameText}
+
           >
             {displayAuthorName}
           </Text>
           {post.author.title ? (
             <View style={h.titleBadge}>
-              <Text color="$gray600" fontSize={9} fontWeight="$medium" numberOfLines={1}>
+              <Text style={{ color: theme.colors.gray600 }} fontSize={9} fontWeight="$medium" numberOfLines={1}>
                 {post.author.title}
               </Text>
             </View>
@@ -183,12 +184,12 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
 
         {/* Row 2: timestamp + community/store */}
         <View style={h.metaRow}>
-          <Text fontSize={11} color="$gray600" style={h.timestamp}>
+          <Text fontSize={11} style={[h.timestamp, { color: theme.colors.gray600 }]}>
             {post.timestamp ? formatTimestamp(post.timestamp) : ""}
           </Text>
           {post.communityName ? (
             <View style={h.metaBadge}>
-              <Text fontSize={10} color="$gray600" numberOfLines={1}>
+              <Text fontSize={10} style={{ color: theme.colors.gray600 }} numberOfLines={1}>
                 # {post.communityName}
               </Text>
             </View>
@@ -202,7 +203,7 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
               activeOpacity={0.7}
             >
               <Ionicons name="storefront" size={9} color={theme.colors.gray600} />
-              <Text fontSize={10} color="$gray600" numberOfLines={1} style={{ marginLeft: 2 }}>
+              <Text fontSize={10} style={[{ marginLeft: 2 }, { color: theme.colors.gray600 }]} numberOfLines={1}>
                 {post.storeName}
               </Text>
             </TouchableOpacity>

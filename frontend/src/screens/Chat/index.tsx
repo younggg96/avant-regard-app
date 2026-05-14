@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../theme";
+import { theme, useAppTheme } from "../../theme";
 import { Box, Text } from "../../components/ui";
 import { useChatStore } from "../../store/chatStore";
 import { useNotificationStore } from "../../store/notificationStore";
@@ -38,6 +38,7 @@ type ReportTarget =
   | { type: "USER"; userId: number };
 
 const ChatScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<ChatRouteParams, "Chat">>();
@@ -294,7 +295,7 @@ const ChatScreen = () => {
                   w={64}
                   h={64}
                   rounded="$full"
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   justifyContent="center"
                   alignItems="center"
                   mb="$md"

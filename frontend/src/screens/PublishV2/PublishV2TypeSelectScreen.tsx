@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { Box, Text, ScrollView, VStack, HStack, Pressable } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 
 type PublishV2TypeSelectRouteParams = {
@@ -36,6 +36,7 @@ type TypeOption = {
 };
 
 const PublishV2TypeSelectScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route =
@@ -108,10 +109,10 @@ const PublishV2TypeSelectScreen: React.FC = () => {
       >
         <VStack px="$lg" py="$lg" gap="$md">
           <Box mb="$xs">
-            <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
+            <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mb="$xs">
               {t("publishV2.typeSelect.heading")}
             </Text>
-            <Text fontSize="$sm" color="$gray500">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
               {t("publishV2.typeSelect.subtitle")}
             </Text>
           </Box>
@@ -122,9 +123,9 @@ const PublishV2TypeSelectScreen: React.FC = () => {
               <Pressable
                 key={option.id}
                 onPress={() => setSelected(option.id)}
-                bg="$white"
+                style={[{ backgroundColor: theme.colors.white }, { borderColor: isSelected ? theme.colors.black : theme.colors.gray100 }]}
                 borderWidth={1}
-                borderColor={isSelected ? "$black" : "$gray100"}
+
                 rounded="$lg"
                 p="$lg"
               >
@@ -133,7 +134,7 @@ const PublishV2TypeSelectScreen: React.FC = () => {
                     w={48}
                     h={48}
                     rounded="$md"
-                    bg="$gray100"
+                    style={{ backgroundColor: theme.colors.gray100 }}
                     alignItems="center"
                     justifyContent="center"
                   >
@@ -149,7 +150,7 @@ const PublishV2TypeSelectScreen: React.FC = () => {
                       <Text
                         fontSize="$md"
                         fontWeight="$medium"
-                        color="$black"
+                        style={{ color: theme.colors.black }}
                       >
                         {option.title}
                       </Text>
@@ -158,13 +159,13 @@ const PublishV2TypeSelectScreen: React.FC = () => {
                           px="$xs"
                           py={2}
                           rounded="$sm"
-                          bg="$gray100"
+                          style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: theme.colors.gray200 }]}
                           borderWidth={1}
-                          borderColor="$gray200"
+
                         >
                           <Text
                             fontSize="$xs"
-                            color="$gray500"
+                            style={{ color: theme.colors.gray500 }}
                             fontWeight="$medium"
                           >
                             {t("publishV2.typeSelect.defaultBadge")}
@@ -172,7 +173,7 @@ const PublishV2TypeSelectScreen: React.FC = () => {
                         </Box>
                       ) : null}
                     </HStack>
-                    <Text fontSize="$sm" color="$gray500">
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
                       {option.description}
                     </Text>
                   </VStack>
@@ -198,15 +199,15 @@ const PublishV2TypeSelectScreen: React.FC = () => {
         pt="$md"
         pb="$md"
         borderTopWidth={1}
-        borderTopColor="$gray100"
-        bg="$white"
+        style={[{ borderTopColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
+
       >
         <TouchableOpacity
           style={styles.confirmBtn}
           onPress={handleConfirm}
           activeOpacity={0.8}
         >
-          <Text color="$white" fontSize="$md" fontWeight="$medium">
+          <Text style={{ color: theme.colors.white }} fontSize="$md" fontWeight="$medium">
             {t("publishV2.typeSelect.confirm")}
           </Text>
         </TouchableOpacity>

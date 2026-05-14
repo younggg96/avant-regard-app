@@ -28,7 +28,7 @@ import {
   HStack,
   VStack,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -180,6 +180,7 @@ const normalizeHourMinute = (input: string): string => {
 const MAX_DESCRIPTION_LENGTH = 300;
 
 const MerchantManageScreen = () => {
+  const theme = useAppTheme();
   const { t, i18n } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -795,7 +796,7 @@ const MerchantManageScreen = () => {
   // ts" 仍然换行）。改成直接用 RN 原生 Text + `numberOfLines={1}` 保证截断；
   // 同时把 i18n 改成 tab 专用短文案（详见 TABS 注释）。
   const renderTabs = () => (
-    <HStack bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+    <HStack style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
       {TABS.map((tab) => (
         <Pressable
           key={tab.key}
@@ -804,7 +805,7 @@ const MerchantManageScreen = () => {
           px="$xs"
           alignItems="center"
           borderBottomWidth={2}
-          borderBottomColor={activeTab === tab.key ? "$black" : "transparent"}
+          style={{ borderBottomColor: activeTab === tab.key ? theme.colors.black : "transparent" }}
           onPress={() => setActiveTab(tab.key)}
         >
           <Ionicons
@@ -845,7 +846,7 @@ const MerchantManageScreen = () => {
       {banners.length === 0 ? (
         <VStack alignItems="center" py="$xl">
           <Ionicons name="image-outline" size={48} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("merchant.noBanners")}
           </Text>
         </VStack>
@@ -853,13 +854,13 @@ const MerchantManageScreen = () => {
         banners.map((banner) => (
           <Box
             key={banner.id}
-            bg="$white"
+            style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
             rounded="$md"
             overflow="hidden"
             borderWidth={1}
-            borderColor="$gray100"
+
           >
-            <Box style={styles.bannerImage} bg="$gray100">
+            <Box style={[styles.bannerImage, { backgroundColor: theme.colors.gray100 }]}>
               {banner.imageUrl ? (
                 <OptimizedImage
                   uri={banner.imageUrl}
@@ -880,7 +881,7 @@ const MerchantManageScreen = () => {
                     size={32}
                     color={theme.colors.gray200}
                   />
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.noBannerImage")}
                   </Text>
                 </VStack>
@@ -891,9 +892,9 @@ const MerchantManageScreen = () => {
                 <Text
                   fontSize="$md"
                   fontWeight="$semibold"
-                  color="$black"
+                  style={[styles.textBold, { color: theme.colors.black }]}
                   numberOfLines={1}
-                  style={styles.textBold}
+
                 >
                   {banner.title || t("merchant.noTitle")}
                 </Text>
@@ -902,17 +903,17 @@ const MerchantManageScreen = () => {
                     px="$sm"
                     py="$xs"
                     rounded="$xs"
-                    bg={banner.status === "PUBLISHED" ? "#E8F5E9" : "$gray100"}
+                    style={{ backgroundColor: banner.status === "PUBLISHED" ? "#E8F5E9" : theme.colors.gray100 }}
                   >
                     <Text
                       fontSize="$xs"
-                      color={banner.status === "PUBLISHED" ? "#27AE60" : "$gray300"}
-                      style={styles.textRegular}
+                      style={[styles.textRegular, { color: banner.status === "PUBLISHED" ? "#27AE60" : theme.colors.gray300 }]}
+
                     >
                       {banner.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </Text>
                   </Box>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.clickCount", { count: banner.clickCount })}
                   </Text>
                 </HStack>
@@ -944,7 +945,7 @@ const MerchantManageScreen = () => {
       {announcements.length === 0 ? (
         <VStack alignItems="center" py="$xl">
           <Ionicons name="megaphone-outline" size={48} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("merchant.noAnnouncements")}
           </Text>
         </VStack>
@@ -952,11 +953,11 @@ const MerchantManageScreen = () => {
         announcements.map((announcement) => (
           <Box
             key={announcement.id}
-            bg="$white"
+            style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
             rounded="$md"
             p="$md"
             borderWidth={1}
-            borderColor="$gray100"
+
           >
             <HStack justifyContent="between" alignItems="start">
               <VStack flex={1}>
@@ -967,18 +968,18 @@ const MerchantManageScreen = () => {
                   <Text
                     fontSize="$md"
                     fontWeight="$semibold"
-                    color="$black"
-                    style={styles.textBold}
+                    style={[styles.textBold, { color: theme.colors.black }]}
+
                   >
                     {announcement.title}
                   </Text>
                 </HStack>
                 <Text
                   fontSize="$sm"
-                  color="$gray300"
+                  style={[styles.textRegular, { color: theme.colors.gray300 }]}
                   mt="$xs"
                   numberOfLines={2}
-                  style={styles.textRegular}
+
                 >
                   {announcement.content}
                 </Text>
@@ -987,12 +988,12 @@ const MerchantManageScreen = () => {
                     px="$sm"
                     py="$xs"
                     rounded="$xs"
-                    bg={announcement.status === "PUBLISHED" ? "#E8F5E9" : "$gray100"}
+                    style={{ backgroundColor: announcement.status === "PUBLISHED" ? "#E8F5E9" : theme.colors.gray100 }}
                   >
                     <Text
                       fontSize="$xs"
-                      color={announcement.status === "PUBLISHED" ? "#27AE60" : "$gray300"}
-                      style={styles.textRegular}
+                      style={[styles.textRegular, { color: announcement.status === "PUBLISHED" ? "#27AE60" : theme.colors.gray300 }]}
+
                     >
                       {announcement.status === "PUBLISHED" ? t("merchant.published") : t("merchant.draft")}
                     </Text>
@@ -1026,7 +1027,7 @@ const MerchantManageScreen = () => {
       {activities.length === 0 ? (
         <VStack alignItems="center" py="$xl">
           <Ionicons name="calendar-outline" size={48} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("merchant.noActivities")}
           </Text>
         </VStack>
@@ -1034,11 +1035,11 @@ const MerchantManageScreen = () => {
         activities.map((activity) => (
           <Box
             key={activity.id}
-            bg="$white"
+            style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
             rounded="$md"
             overflow="hidden"
             borderWidth={1}
-            borderColor="$gray100"
+
           >
             {activity.coverImage && (
               <OptimizedImage
@@ -1055,14 +1056,14 @@ const MerchantManageScreen = () => {
                   <Text
                     fontSize="$md"
                     fontWeight="$semibold"
-                    color="$black"
-                    style={styles.textBold}
+                    style={[styles.textBold, { color: theme.colors.black }]}
+
                   >
                     {activity.title}
                   </Text>
                   <HStack alignItems="center" gap="$xs" mt="$xs">
                     <Ionicons name="time-outline" size={14} color={theme.colors.gray300} />
-                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                       {new Date(activity.activityStartTime).toLocaleDateString("zh-CN")} -{" "}
                       {new Date(activity.activityEndTime).toLocaleDateString("zh-CN")}
                     </Text>
@@ -1070,14 +1071,14 @@ const MerchantManageScreen = () => {
                   {activity.location && (
                     <HStack alignItems="center" gap="$xs" mt="$xs">
                       <Ionicons name="location-outline" size={14} color={theme.colors.gray300} />
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         {activity.location}
                       </Text>
                     </HStack>
                   )}
                   <HStack gap="$sm" mt="$sm">
-                    <Box px="$sm" py="$xs" rounded="$xs" bg="$gray100">
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Box px="$sm" py="$xs" rounded="$xs" style={{ backgroundColor: theme.colors.gray100 }}>
+                      <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         {ACTIVITY_TYPES.find((t) => t.value === activity.activityType)?.label}
                       </Text>
                     </Box>
@@ -1119,7 +1120,7 @@ const MerchantManageScreen = () => {
       {discounts.length === 0 ? (
         <VStack alignItems="center" py="$xl">
           <Ionicons name="pricetag-outline" size={48} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("merchant.noDiscounts")}
           </Text>
         </VStack>
@@ -1127,11 +1128,11 @@ const MerchantManageScreen = () => {
         discounts.map((discount) => (
           <Box
             key={discount.id}
-            bg="$white"
+            style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
             rounded="$md"
             overflow="hidden"
             borderWidth={1}
-            borderColor="$gray100"
+
           >
             {discount.coverImage && (
               <OptimizedImage
@@ -1148,8 +1149,8 @@ const MerchantManageScreen = () => {
                   <Text
                     fontSize="$md"
                     fontWeight="$semibold"
-                    color="$black"
-                    style={styles.textBold}
+                    style={[styles.textBold, { color: theme.colors.black }]}
+
                   >
                     {discount.title}
                   </Text>
@@ -1157,23 +1158,23 @@ const MerchantManageScreen = () => {
                     <Text
                       fontSize="$lg"
                       fontWeight="$bold"
-                      color="$error"
+                      style={[styles.textBold, { color: theme.colors.error }]}
                       mt="$xs"
-                      style={styles.textBold}
+
                     >
                       {discount.discountValue}
                     </Text>
                   )}
                   <HStack alignItems="center" gap="$xs" mt="$xs">
                     <Ionicons name="time-outline" size={14} color={theme.colors.gray300} />
-                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                       {new Date(discount.discountStartTime).toLocaleDateString("zh-CN")} -{" "}
                       {new Date(discount.discountEndTime).toLocaleDateString("zh-CN")}
                     </Text>
                   </HStack>
                   <HStack gap="$sm" mt="$sm">
-                    <Box px="$sm" py="$xs" rounded="$xs" bg="$gray100">
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Box px="$sm" py="$xs" rounded="$xs" style={{ backgroundColor: theme.colors.gray100 }}>
+                      <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         {DISCOUNT_TYPES.find((t) => t.value === discount.discountType)?.label}
                       </Text>
                     </Box>
@@ -1239,10 +1240,10 @@ const MerchantManageScreen = () => {
       {storePosts.length === 0 ? (
         <VStack alignItems="center" py="$xl">
           <Ionicons name="albums-outline" size={48} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("merchant.noStorePosts")}
           </Text>
-          <Text fontSize="$xs" color="$gray300" mt="$xs" textAlign="center" style={styles.textRegular}>
+          <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$xs" textAlign="center">
             {t("merchant.noStorePostsHint")}
           </Text>
         </VStack>
@@ -1253,11 +1254,11 @@ const MerchantManageScreen = () => {
           return (
             <Box
               key={post.id}
-              bg="$white"
+              style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
               rounded="$md"
               overflow="hidden"
               borderWidth={1}
-              borderColor="$gray100"
+
             >
               <Pressable
                 onPress={() =>
@@ -1270,7 +1271,7 @@ const MerchantManageScreen = () => {
                     h={84}
                     rounded="$sm"
                     overflow="hidden"
-                    bg="$gray100"
+                    style={{ backgroundColor: theme.colors.gray100 }}
                     justifyContent="center"
                     alignItems="center"
                   >
@@ -1294,18 +1295,18 @@ const MerchantManageScreen = () => {
                     <Text
                       fontSize="$md"
                       fontWeight="$semibold"
-                      color="$black"
+                      style={[styles.textBold, { color: theme.colors.black }]}
                       numberOfLines={2}
-                      style={styles.textBold}
+
                     >
                       {post.title || t("merchant.noTitle")}
                     </Text>
                     {!!post.contentText && (
                       <Text
                         fontSize="$xs"
-                        color="$gray400"
+                        style={[styles.textRegular, { color: theme.colors.gray400 }]}
                         numberOfLines={2}
-                        style={styles.textRegular}
+
                       >
                         {post.contentText}
                       </Text>
@@ -1325,7 +1326,7 @@ const MerchantManageScreen = () => {
                           {statusBadge.label}
                         </Text>
                       </Box>
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         {t("merchant.likeCount", { count: post.likeCount || 0 })}
                       </Text>
                     </HStack>
@@ -1374,16 +1375,16 @@ const MerchantManageScreen = () => {
       : null;
     return (
       <VStack gap="$xs">
-        <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+        <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
           {t("merchant.linkedPostLabel")}
         </Text>
         {selected && (
           <Box
-            bg="$gray100"
+            style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: theme.colors.gray200 }]}
             rounded="$sm"
             p="$sm"
             borderWidth={1}
-            borderColor="$gray200"
+
           >
             <HStack alignItems="center" gap="$sm">
               {selected.imageUrls?.[0] ? (
@@ -1401,7 +1402,7 @@ const MerchantManageScreen = () => {
                   w={40}
                   h={40}
                   rounded="$sm"
-                  bg="$gray200"
+                  style={{ backgroundColor: theme.colors.gray200 }}
                   justifyContent="center"
                   alignItems="center"
                 >
@@ -1411,9 +1412,9 @@ const MerchantManageScreen = () => {
               <Text
                 flex={1}
                 fontSize="$sm"
-                color="$black"
+                style={[styles.textRegular, { color: theme.colors.black }]}
                 numberOfLines={1}
-                style={styles.textRegular}
+
               >
                 {selected.title || t("merchant.noTitle")}
               </Text>
@@ -1424,7 +1425,7 @@ const MerchantManageScreen = () => {
           </Box>
         )}
         {storePosts.length === 0 ? (
-          <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+          <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
             {t("merchant.linkedPostEmptyHint")}
           </Text>
         ) : (
@@ -1450,8 +1451,8 @@ const MerchantManageScreen = () => {
                     rounded="$sm"
                     overflow="hidden"
                     borderWidth={2}
-                    borderColor={isSelected ? "$black" : "transparent"}
-                    bg="$gray100"
+                    style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: isSelected ? theme.colors.black : "transparent" }]}
+
                   >
                     {post.imageUrls?.[0] ? (
                       <OptimizedImage
@@ -1473,10 +1474,10 @@ const MerchantManageScreen = () => {
                   </Box>
                   <Text
                     fontSize={11}
-                    color="$black"
+                    style={[styles.textRegular, { color: theme.colors.black }]}
                     mt="$xs"
                     numberOfLines={2}
-                    style={styles.textRegular}
+
                   >
                     {post.title || t("merchant.noTitle")}
                   </Text>
@@ -1505,11 +1506,11 @@ const MerchantManageScreen = () => {
     <VStack>
       <HStack alignItems="center" gap="$xs" mb="$xs">
         <Ionicons name={icon} size={14} color={theme.colors.gray400} />
-        <Text fontSize="$sm" color="$gray500" style={styles.textRegular}>
+        <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray500 }]}>
           {label}
         </Text>
         {hint ? (
-          <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+          <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
             · {hint}
           </Text>
         ) : null}
@@ -1525,13 +1526,13 @@ const MerchantManageScreen = () => {
     return (
       <VStack p="$md" gap="$md">
         {/* 店铺状态卡片 */}
-        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+        <Box style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]} rounded="$lg" p="$md" borderWidth={1}>
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
             <HStack alignItems="center" gap="$sm">
               <Box
                 w={40}
                 h={40}
-                bg="$gray100"
+                style={{ backgroundColor: theme.colors.gray100 }}
                 rounded="$md"
                 justifyContent="center"
                 alignItems="center"
@@ -1539,10 +1540,10 @@ const MerchantManageScreen = () => {
                 <Ionicons name="storefront" size={20} color={theme.colors.black} />
               </Box>
               <VStack>
-                <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                   {t("merchant.storeIdLabel")}
                 </Text>
-                <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                   {merchant.storeId}
                 </Text>
               </VStack>
@@ -1556,16 +1557,16 @@ const MerchantManageScreen = () => {
         </Box>
 
         {/* 联系信息 */}
-        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+        <Box style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]} rounded="$lg" p="$md" borderWidth={1}>
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+            <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
               {t("merchant.contactInfo")}
             </Text>
             {!isEditingInfo && (
               <Pressable onPress={() => setIsEditingInfo(true)}>
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
-                  <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                     {t("common.edit")}
                   </Text>
                 </HStack>
@@ -1576,7 +1577,7 @@ const MerchantManageScreen = () => {
           {isEditingInfo ? (
             <VStack gap="$md">
               <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                   {t("merchant.contactName")}
                 </Text>
                 <TextInput
@@ -1591,7 +1592,7 @@ const MerchantManageScreen = () => {
               </VStack>
 
               <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                   {t("merchant.contactPhone")}
                 </Text>
                 <TextInput
@@ -1607,7 +1608,7 @@ const MerchantManageScreen = () => {
               </VStack>
 
               <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                   {t("merchant.contactEmail")}
                 </Text>
                 <TextInput
@@ -1629,7 +1630,7 @@ const MerchantManageScreen = () => {
                   py="$md"
                   rounded="$sm"
                   borderWidth={1}
-                  borderColor="$gray200"
+                  style={{ borderColor: theme.colors.gray200 }}
                   alignItems="center"
                   onPress={() => {
                     setIsEditingInfo(false);
@@ -1640,7 +1641,7 @@ const MerchantManageScreen = () => {
                     });
                   }}
                 >
-                  <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                  <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                     {t("common.cancel")}
                   </Text>
                 </Pressable>
@@ -1648,7 +1649,7 @@ const MerchantManageScreen = () => {
                   flex={1}
                   py="$md"
                   rounded="$sm"
-                  bg="$black"
+                  style={{ backgroundColor: theme.colors.black }}
                   alignItems="center"
                   onPress={handleSaveInfo}
                   disabled={isSubmitting}
@@ -1656,7 +1657,7 @@ const MerchantManageScreen = () => {
                   {isSubmitting ? (
                     <ActivityIndicator  color={theme.colors.white} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                    <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]}>
                       {t("common.save")}
                     </Text>
                   )}
@@ -1668,10 +1669,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="person-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.contactName")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {merchant.contactName || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -1680,10 +1681,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="call-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.contactPhone")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {merchant.contactPhone || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -1692,10 +1693,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="mail-outline" size={18} color={theme.colors.gray400} />
                 <VStack>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.contactEmail")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {merchant.contactEmail || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -1705,8 +1706,8 @@ const MerchantManageScreen = () => {
         </Box>
 
         {/* 权限信息 */}
-        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
-          <Text fontSize="$md" fontWeight="$semibold" color="$black" mb="$md" style={styles.textBold}>
+        <Box style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]} rounded="$lg" p="$md" borderWidth={1}>
+          <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]} mb="$md">
             {t("merchant.permissions")}
           </Text>
           <HStack flexWrap="wrap" gap="$sm">
@@ -1761,11 +1762,11 @@ const MerchantManageScreen = () => {
             description 是长英文时会撑爆右侧 chevron，把箭头挤出右边界。
             内层 VStack 同样 `flex={1}` 才能让 numberOfLines 真正生效。 */}
         <Pressable
-          bg="$white"
+          style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
           rounded="$lg"
           p="$md"
           borderWidth={1}
-          borderColor="$gray100"
+
           onPress={() => (navigation as any).navigate("MerchantProducts", { merchantId: merchant.id })}
         >
           <HStack alignItems="center" justifyContent="space-between">
@@ -1773,7 +1774,7 @@ const MerchantManageScreen = () => {
               <Box
                 w={40}
                 h={40}
-                bg="$gray100"
+                style={{ backgroundColor: theme.colors.gray100 }}
                 rounded="$md"
                 justifyContent="center"
                 alignItems="center"
@@ -1784,17 +1785,17 @@ const MerchantManageScreen = () => {
                 <Text
                   fontSize="$md"
                   fontWeight="$semibold"
-                  color="$black"
+                  style={[styles.textBold, { color: theme.colors.black }]}
                   numberOfLines={1}
-                  style={styles.textBold}
+
                 >
                   {t("merchant.productsTitle")}
                 </Text>
                 <Text
                   fontSize="$sm"
-                  color="$gray300"
+                  style={[styles.textRegular, { color: theme.colors.gray300 }]}
                   numberOfLines={2}
-                  style={styles.textRegular}
+
                 >
                   {t("merchant.productsDesc")}
                 </Text>
@@ -1805,16 +1806,16 @@ const MerchantManageScreen = () => {
         </Pressable>
 
         {/* 店铺信息 */}
-        <Box bg="$white" rounded="$lg" p="$md" borderWidth={1} borderColor="$gray100">
+        <Box style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]} rounded="$lg" p="$md" borderWidth={1}>
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+            <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
               {t("merchant.storeInfo")}
             </Text>
             {!isEditingStore && (
               <Pressable onPress={() => setIsEditingStore(true)}>
                 <HStack alignItems="center" gap="$xs">
                   <Ionicons name="create-outline" size={16} color={theme.colors.gray400} />
-                  <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                     {t("common.edit")}
                   </Text>
                 </HStack>
@@ -1911,7 +1912,7 @@ const MerchantManageScreen = () => {
                       <HStack flexWrap="wrap" gap="$xs" mt="$sm">
                         {storeFormData.phone.map((p, idx) => (
                           <Box key={`${p}-${idx}`} style={styles.chipNeutral}>
-                            <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+                            <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.black }]}>
                               {p}
                             </Text>
                             <Pressable
@@ -1947,7 +1948,7 @@ const MerchantManageScreen = () => {
                   <>
                     <HStack gap="$sm" alignItems="center">
                       <VStack flex={1}>
-                        <Text fontSize={11} color="$gray300" mb={2} style={styles.textRegular}>
+                        <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]} mb={2}>
                           {t("merchant.openTime")}
                         </Text>
                         <TextInput
@@ -1965,11 +1966,11 @@ const MerchantManageScreen = () => {
                           maxLength={5}
                         />
                       </VStack>
-                      <Text mt={14} color="$gray300" style={styles.textRegular}>
+                      <Text mt={14} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         —
                       </Text>
                       <VStack flex={1}>
-                        <Text fontSize={11} color="$gray300" mb={2} style={styles.textRegular}>
+                        <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]} mb={2}>
                           {t("merchant.closeTime")}
                         </Text>
                         <TextInput
@@ -2001,7 +2002,7 @@ const MerchantManageScreen = () => {
                             commitHours(parsed.open, parsed.close);
                           }}
                         >
-                          <Text fontSize={12} color="$gray500" style={styles.textRegular}>
+                          <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray500 }]}>
                             {preset}
                           </Text>
                         </Pressable>
@@ -2035,8 +2036,8 @@ const MerchantManageScreen = () => {
                           >
                             <Text
                               fontSize={13}
-                              color={active ? "$white" : "$black"}
-                              style={styles.textRegular}
+                              style={[styles.textRegular, { color: active ? theme.colors.white : theme.colors.black }]}
+
                             >
                               {day.label}
                             </Text>
@@ -2045,7 +2046,7 @@ const MerchantManageScreen = () => {
                       })}
                     </HStack>
                     {!storeFormData.rest && (
-                      <Text fontSize={12} color="$gray300" mt="$xs" style={styles.textRegular}>
+                      <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$xs">
                         {t("merchant.neverClose")}
                       </Text>
                     )}
@@ -2077,10 +2078,10 @@ const MerchantManageScreen = () => {
                     />
                     <Text
                       fontSize={11}
-                      color="$gray300"
+                      style={[styles.textRegular, { color: theme.colors.gray300 }]}
                       mt="$xs"
                       textAlign="right"
-                      style={styles.textRegular}
+
                     >
                       {t("merchant.descCounter", {
                         current: storeFormData.description.length,
@@ -2104,7 +2105,7 @@ const MerchantManageScreen = () => {
                         flex={1}
                         py="$sm"
                         rounded="$sm"
-                        bg="$black"
+                        style={{ backgroundColor: theme.colors.black }}
                         alignItems="center"
                         onPress={() => setShowBrandSelector(true)}
                       >
@@ -2116,8 +2117,8 @@ const MerchantManageScreen = () => {
                           />
                           <Text
                             fontSize="$sm"
-                            color="$white"
-                            style={styles.textBold}
+                            style={[styles.textBold, { color: theme.colors.white }]}
+
                           >
                             {t("merchant.pickFromBrandList")}
                           </Text>
@@ -2128,11 +2129,11 @@ const MerchantManageScreen = () => {
                         px="$md"
                         rounded="$sm"
                         borderWidth={1}
-                        borderColor="$gray200"
+                        style={{ borderColor: theme.colors.gray200 }}
                         alignItems="center"
                         onPress={() => setShowCustomBrandInput((v) => !v)}
                       >
-                        <Text fontSize="$sm" color="$gray500" style={styles.textRegular}>
+                        <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray500 }]}>
                           {t("merchant.addCustomBrand")}
                         </Text>
                       </Pressable>
@@ -2218,9 +2219,9 @@ const MerchantManageScreen = () => {
                   <>
                     <Text
                       fontSize={11}
-                      color="$gray300"
+                      style={[styles.textRegular, { color: theme.colors.gray300 }]}
                       mb="$xs"
-                      style={styles.textRegular}
+
                     >
                       {t("merchant.stylePresets")}
                     </Text>
@@ -2244,8 +2245,8 @@ const MerchantManageScreen = () => {
                           >
                             <Text
                               fontSize={12}
-                              color={added ? "$gray300" : "$gray500"}
-                              style={styles.textRegular}
+                              style={[styles.textRegular, { color: added ? theme.colors.gray300 : theme.colors.gray500 }]}
+
                             >
                               {added ? `✓ ${preset}` : `+ ${preset}`}
                             </Text>
@@ -2329,7 +2330,7 @@ const MerchantManageScreen = () => {
                   py="$md"
                   rounded="$sm"
                   borderWidth={1}
-                  borderColor="$gray200"
+                  style={{ borderColor: theme.colors.gray200 }}
                   alignItems="center"
                   onPress={() => {
                     setIsEditingStore(false);
@@ -2354,7 +2355,7 @@ const MerchantManageScreen = () => {
                     setShowCustomBrandInput(false);
                   }}
                 >
-                  <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                  <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                     {t("common.cancel")}
                   </Text>
                 </Pressable>
@@ -2362,7 +2363,7 @@ const MerchantManageScreen = () => {
                   flex={1}
                   py="$md"
                   rounded="$sm"
-                  bg="$black"
+                  style={{ backgroundColor: theme.colors.black }}
                   alignItems="center"
                   onPress={handleSaveStore}
                   disabled={isSubmitting}
@@ -2370,7 +2371,7 @@ const MerchantManageScreen = () => {
                   {isSubmitting ? (
                     <ActivityIndicator  color={theme.colors.white} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                    <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]}>
                       {t("common.save")}
                     </Text>
                   )}
@@ -2383,10 +2384,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="storefront-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.storeName")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {buyerStore?.name || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -2396,10 +2397,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="flex-start" gap="$sm">
                 <Ionicons name="location-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                 <VStack flex={1}>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("store.address")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {buyerStore?.address || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -2409,17 +2410,17 @@ const MerchantManageScreen = () => {
               <HStack alignItems="flex-start" gap="$sm">
                 <Ionicons name="call-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                 <VStack flex={1}>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.contactPhone")}
                   </Text>
                   {buyerStore?.phone && buyerStore.phone.length > 0 ? (
                     buyerStore.phone.map((p, idx) => (
-                      <Text key={idx} fontSize="$md" color="$black" style={styles.textRegular}>
+                      <Text key={idx} fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                         {p}
                       </Text>
                     ))
                   ) : (
-                    <Text fontSize="$md" color="$gray200" style={styles.textRegular}>
+                    <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.gray200 }]}>
                       {t("merchant.notSet")}
                     </Text>
                   )}
@@ -2430,10 +2431,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="time-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.businessHours")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {buyerStore?.hours || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -2443,10 +2444,10 @@ const MerchantManageScreen = () => {
               <HStack alignItems="center" gap="$sm">
                 <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
                 <VStack flex={1}>
-                  <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("merchant.restDay")}
                   </Text>
-                  <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                     {buyerStore?.rest || t("merchant.notSet")}
                   </Text>
                 </VStack>
@@ -2457,10 +2458,10 @@ const MerchantManageScreen = () => {
                 <HStack alignItems="flex-start" gap="$sm">
                   <Ionicons name="document-text-outline" size={18} color={theme.colors.gray400} style={{ marginTop: 2 }} />
                   <VStack flex={1}>
-                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                       {t("merchant.storeDescription")}
                     </Text>
-                    <Text fontSize="$md" color="$black" style={styles.textRegular}>
+                    <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.black }]}>
                       {buyerStore.description}
                     </Text>
                   </VStack>
@@ -2472,7 +2473,7 @@ const MerchantManageScreen = () => {
                 <VStack gap="$xs">
                   <HStack alignItems="center" gap="$sm">
                     <Ionicons name="pricetags-outline" size={18} color={theme.colors.gray400} />
-                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                       {t("merchant.salesBrands")}
                     </Text>
                   </HStack>
@@ -2493,7 +2494,7 @@ const MerchantManageScreen = () => {
                 <VStack gap="$xs">
                   <HStack alignItems="center" gap="$sm">
                     <Ionicons name="color-palette-outline" size={18} color={theme.colors.gray400} />
-                    <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                    <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                       {t("merchant.styleTags")}
                     </Text>
                   </HStack>
@@ -2541,10 +2542,10 @@ const MerchantManageScreen = () => {
           <VStack gap="$md">
             <VStack gap="$xs">
               <HStack alignItems="center" justifyContent="space-between">
-                <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                   {t("merchant.bannerImageLabel")}
                 </Text>
-                <Text fontSize={11} color="$gray200" style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray200 }]}>
                   {t("merchant.bannerImageHint")}
                 </Text>
               </HStack>
@@ -2563,7 +2564,7 @@ const MerchantManageScreen = () => {
                 {uploadingField === "imageUrl" ? (
                   <VStack flex={1} justifyContent="center" alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                       {t("merchant.uploading")}
                     </Text>
                   </VStack>
@@ -2618,7 +2619,7 @@ const MerchantManageScreen = () => {
                       w={48}
                       h={48}
                       rounded="$full"
-                      bg="$gray100"
+                      style={{ backgroundColor: theme.colors.gray100 }}
                       justifyContent="center"
                       alignItems="center"
                     >
@@ -2628,10 +2629,10 @@ const MerchantManageScreen = () => {
                         color={theme.colors.gray400}
                       />
                     </Box>
-                    <Text fontSize="$sm" color="$gray400" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                       {t("merchant.tapSelectImage")}
                     </Text>
-                    <Text fontSize={11} color="$gray200" style={styles.textRegular}>
+                    <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray200 }]}>
                       {t("merchant.bannerImageHint")}
                     </Text>
                   </VStack>
@@ -2640,7 +2641,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.titleLabel")}
               </Text>
               <TextInput
@@ -2653,7 +2654,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.linkUrl")}
               </Text>
               <TextInput
@@ -2675,7 +2676,7 @@ const MerchantManageScreen = () => {
         return (
           <VStack gap="$md">
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.announcementTitleLabel")}
               </Text>
               <TextInput
@@ -2688,7 +2689,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.announcementContentLabel")}
               </Text>
               <TextInput
@@ -2714,8 +2715,8 @@ const MerchantManageScreen = () => {
                 h={20}
                 rounded="$sm"
                 borderWidth={1}
-                borderColor={formData.isPinned ? "$black" : "$gray200"}
-                bg={formData.isPinned ? "$black" : "$white"}
+                style={[{ borderColor: formData.isPinned ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: formData.isPinned ? theme.colors.black : theme.colors.white }]}
+
                 justifyContent="center"
                 alignItems="center"
               >
@@ -2723,7 +2724,7 @@ const MerchantManageScreen = () => {
                   <Ionicons name="checkmark" size={14} color={theme.colors.white} />
                 )}
               </Box>
-              <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.black }]}>
                 {t("merchant.pinAnnouncement")}
               </Text>
             </Pressable>
@@ -2738,12 +2739,12 @@ const MerchantManageScreen = () => {
         return (
           <VStack gap="$md">
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.coverImage")}
               </Text>
               <Pressable
                 h={120}
-                bg="$gray50"
+                style={{ backgroundColor: theme.colors.gray50 }}
                 rounded="$md"
                 justifyContent="center"
                 alignItems="center"
@@ -2754,7 +2755,7 @@ const MerchantManageScreen = () => {
                 {uploadingField === "coverImage" ? (
                   <VStack alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                       {t("merchant.uploading")}
                     </Text>
                   </VStack>
@@ -2769,7 +2770,7 @@ const MerchantManageScreen = () => {
                 ) : (
                   <VStack alignItems="center">
                     <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                       {t("merchant.tapSelectCover")}
                     </Text>
                   </VStack>
@@ -2778,7 +2779,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.activityTitleLabel")}
               </Text>
               <TextInput
@@ -2791,7 +2792,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.activityDescLabel")}
               </Text>
               <TextInput
@@ -2807,7 +2808,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.activityLocationLabel")}
               </Text>
               <TextInput
@@ -2820,7 +2821,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.activityTypeLabel")}
               </Text>
               <HStack flexWrap="wrap" gap="$sm">
@@ -2830,13 +2831,13 @@ const MerchantManageScreen = () => {
                     px="$md"
                     py="$sm"
                     rounded="$sm"
-                    bg={formData.activityType === type.value ? "$black" : "$gray100"}
+                    style={{ backgroundColor: formData.activityType === type.value ? theme.colors.black : theme.colors.gray100 }}
                     onPress={() => setFormData({ ...formData, activityType: type.value })}
                   >
                     <Text
                       fontSize="$sm"
-                      color={formData.activityType === type.value ? "$white" : "$black"}
-                      style={styles.textRegular}
+                      style={[styles.textRegular, { color: formData.activityType === type.value ? theme.colors.white : theme.colors.black }]}
+
                     >
                       {type.label}
                     </Text>
@@ -2858,8 +2859,8 @@ const MerchantManageScreen = () => {
                 h={20}
                 rounded="$sm"
                 borderWidth={1}
-                borderColor={formData.needRegistration ? "$black" : "$gray200"}
-                bg={formData.needRegistration ? "$black" : "$white"}
+                style={[{ borderColor: formData.needRegistration ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: formData.needRegistration ? theme.colors.black : theme.colors.white }]}
+
                 justifyContent="center"
                 alignItems="center"
               >
@@ -2867,14 +2868,14 @@ const MerchantManageScreen = () => {
                   <Ionicons name="checkmark" size={14} color={theme.colors.white} />
                 )}
               </Box>
-              <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.black }]}>
                 {t("merchant.needRegistration")}
               </Text>
             </Pressable>
 
             {formData.needRegistration && (
               <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.registrationLimit")}
               </Text>
                 <TextInput
@@ -2903,12 +2904,12 @@ const MerchantManageScreen = () => {
         return (
           <VStack gap="$md">
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.coverImage")}
               </Text>
               <Pressable
                 h={120}
-                bg="$gray50"
+                style={{ backgroundColor: theme.colors.gray50 }}
                 rounded="$md"
                 justifyContent="center"
                 alignItems="center"
@@ -2919,7 +2920,7 @@ const MerchantManageScreen = () => {
                 {uploadingField === "coverImage" ? (
                   <VStack alignItems="center">
                     <ActivityIndicator color={theme.colors.black} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                       {t("merchant.uploading")}
                     </Text>
                   </VStack>
@@ -2934,7 +2935,7 @@ const MerchantManageScreen = () => {
                 ) : (
                   <VStack alignItems="center">
                     <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-                    <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                       {t("merchant.tapSelectCover")}
                     </Text>
                   </VStack>
@@ -2943,7 +2944,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.discountTitleLabel")}
               </Text>
               <TextInput
@@ -2956,7 +2957,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.discountTypeLabel")}
               </Text>
               <HStack flexWrap="wrap" gap="$sm">
@@ -2966,13 +2967,13 @@ const MerchantManageScreen = () => {
                     px="$md"
                     py="$sm"
                     rounded="$sm"
-                    bg={formData.discountType === type.value ? "$black" : "$gray100"}
+                    style={{ backgroundColor: formData.discountType === type.value ? theme.colors.black : theme.colors.gray100 }}
                     onPress={() => setFormData({ ...formData, discountType: type.value })}
                   >
                     <Text
                       fontSize="$sm"
-                      color={formData.discountType === type.value ? "$white" : "$black"}
-                      style={styles.textRegular}
+                      style={[styles.textRegular, { color: formData.discountType === type.value ? theme.colors.white : theme.colors.black }]}
+
                     >
                       {type.label}
                     </Text>
@@ -2982,7 +2983,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.discountDetailLabel")}
               </Text>
               <TextInput
@@ -2995,7 +2996,7 @@ const MerchantManageScreen = () => {
             </VStack>
 
             <VStack>
-              <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                 {t("merchant.discountDescLabel")}
               </Text>
               <TextInput
@@ -3021,8 +3022,8 @@ const MerchantManageScreen = () => {
                 h={20}
                 rounded="$sm"
                 borderWidth={1}
-                borderColor={formData.needCode ? "$black" : "$gray200"}
-                bg={formData.needCode ? "$black" : "$white"}
+                style={[{ borderColor: formData.needCode ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: formData.needCode ? theme.colors.black : theme.colors.white }]}
+
                 justifyContent="center"
                 alignItems="center"
               >
@@ -3030,14 +3031,14 @@ const MerchantManageScreen = () => {
                   <Ionicons name="checkmark" size={14} color={theme.colors.white} />
                 )}
               </Box>
-              <Text fontSize="$sm" color="$black" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.black }]}>
                 {t("merchant.needCode")}
               </Text>
             </Pressable>
 
             {formData.needCode && (
               <VStack>
-                <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                   {t("merchant.discountCodeLabel")}
                 </Text>
                 <TextInput
@@ -3091,7 +3092,7 @@ const MerchantManageScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator  color={theme.colors.black} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("common.loading")}
           </Text>
         </VStack>
@@ -3110,19 +3111,19 @@ const MerchantManageScreen = () => {
         <VStack flex={1} justifyContent="center" alignItems="center" px="$lg">
           <Ionicons name="storefront-outline" size={64} color={theme.colors.gray200} />
           <Text
-            color="$gray300"
+            style={[styles.textRegular, { color: theme.colors.gray300 }]}
             mt="$md"
             textAlign="center"
-            style={styles.textRegular}
+
           >
             {t("merchant.notVerified")}
           </Text>
           <Text
             fontSize="$sm"
-            color="$gray200"
+            style={[styles.textRegular, { color: theme.colors.gray200 }]}
             mt="$sm"
             textAlign="center"
-            style={styles.textRegular}
+
           >
             {t("merchant.applyFirst")}
           </Text>
@@ -3158,11 +3159,11 @@ const MerchantManageScreen = () => {
 
       {/* 添加按钮 - 店铺信息 Tab 不显示 */}
       {activeTab !== "info" && (
-        <Box px="$lg" py="$md" bg="$white" borderTopWidth={1} borderTopColor="$gray100">
+        <Box px="$lg" py="$md" style={[{ backgroundColor: theme.colors.white }, { borderTopColor: theme.colors.gray100 }]} borderTopWidth={1}>
           <Pressable
             py="$md"
             rounded="$sm"
-            bg="$black"
+            style={{ backgroundColor: theme.colors.black }}
             alignItems="center"
             onPress={() => openEditModal(activeTab)}
           >
@@ -3171,8 +3172,8 @@ const MerchantManageScreen = () => {
               <Text
                 fontSize="$md"
                 fontWeight="$semibold"
-                color="$white"
-                style={styles.textBold}
+                style={[styles.textBold, { color: theme.colors.white }]}
+
               >
                 {t("merchant.add")}{TABS.find((tab) => tab.key === activeTab)?.label}
               </Text>
@@ -3197,7 +3198,7 @@ const MerchantManageScreen = () => {
               <Box flex={1} />
             </TouchableWithoutFeedback>
             <Box
-              bg="$white"
+              style={{ backgroundColor: theme.colors.white }}
               borderTopLeftRadius={24}
               borderTopRightRadius={24}
               maxHeight="90%"
@@ -3209,21 +3210,21 @@ const MerchantManageScreen = () => {
                 justifyContent="between"
                 alignItems="center"
                 borderBottomWidth={1}
-                borderBottomColor="$gray100"
+                style={{ borderBottomColor: theme.colors.gray100 }}
               >
                 <Pressable onPress={closeEditModal}>
-                  <Text fontSize="$md" color="$gray300" style={styles.textRegular}>
+                  <Text fontSize="$md" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {t("common.cancel")}
                   </Text>
                 </Pressable>
-                <Text fontSize="$lg" fontWeight="$bold" color="$black" style={styles.textBold}>
+                <Text fontSize="$lg" fontWeight="$bold" style={[styles.textBold, { color: theme.colors.black }]}>
                   {getEditModalTitle()}
                 </Text>
                 <Pressable onPress={handleSave} disabled={isSubmitting}>
                   {isSubmitting ? (
                     <ActivityIndicator  color={theme.colors.black} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$semibold" color="$black" style={styles.textBold}>
+                    <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                       {t("common.save")}
                     </Text>
                   )}

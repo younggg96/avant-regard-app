@@ -25,7 +25,7 @@ import {
   Input,
   OptimizedImage,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageEditMenu from "../components/ImageEditMenu";
 import ImageCropper from "../components/ImageCropper";
@@ -70,6 +70,7 @@ type PublishOutfitRouteParams = {
 };
 
 const PublishOutfitScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishOutfitRouteParams }, "params">>();
@@ -971,7 +972,7 @@ const PublishOutfitScreen = () => {
             flex={1}
             rounded="$md"
             overflow="hidden"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={handleAddImage}
@@ -981,7 +982,7 @@ const PublishOutfitScreen = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text color="$gray500" fontSize="$sm" mt="$sm">
+            <Text style={{ color: theme.colors.gray500 }} fontSize="$sm" mt="$sm">
               {t("publish.tapToAddMedia")}
             </Text>
           </Pressable>
@@ -1060,11 +1061,9 @@ const PublishOutfitScreen = () => {
                 w={currentImageIndex === index ? 20 : 6}
                 h={6}
                 rounded="$sm"
-                bg={
-                  currentImageIndex === index
-                    ? "$white"
-                    : "rgba(255,255,255,0.5)"
-                }
+                style={{ backgroundColor: currentImageIndex === index
+                    ? theme.colors.white
+                    : "rgba(255,255,255,0.5)" }}
               />
             ))}
           </Box>
@@ -1087,7 +1086,7 @@ const PublishOutfitScreen = () => {
               mr="$sm"
               overflow="hidden"
               borderWidth={coverImage === image ? 2 : 0}
-              borderColor="$black"
+              style={{ borderColor: theme.colors.black }}
               opacity={draggedIndex === index ? 0.5 : 1}
               onPress={() => handleImagePress(index)}
               onLongPress={() => handleDragStart(index)}
@@ -1123,7 +1122,7 @@ const PublishOutfitScreen = () => {
                   py={2}
                   alignItems="center"
                 >
-                  <Text color="$white" fontSize={10} fontWeight="$medium">
+                  <Text style={{ color: theme.colors.white }} fontSize={10} fontWeight="$medium">
                     {t("publish.cover")}
                   </Text>
                 </Box>
@@ -1136,7 +1135,7 @@ const PublishOutfitScreen = () => {
             w={60}
             h={60}
             rounded="$sm"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             mr="$sm"
@@ -1147,7 +1146,7 @@ const PublishOutfitScreen = () => {
         )}
       </ScrollView>
       {images.length > 1 && (
-        <Text color="$gray400" fontSize="$xs" textAlign="center" mt="$xs">
+        <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" textAlign="center" mt="$xs">
           {t("publish.thumbnailHint")}
         </Text>
       )}
@@ -1198,10 +1197,10 @@ const PublishOutfitScreen = () => {
           </HStack>
         </Box>
       ) : isEditingPublishedPost ? (
-        <Box bg="$accent" px="$md" py="$sm">
+        <Box style={{ backgroundColor: theme.colors.accent }} px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
-            <Text color="$white" fontSize="$sm" flex={1}>
+            <Text style={{ color: theme.colors.white }} fontSize="$sm" flex={1}>
               {t("publish.reAuditWarning")}
             </Text>
           </HStack>
@@ -1224,10 +1223,10 @@ const PublishOutfitScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.titleLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -1252,10 +1251,10 @@ const PublishOutfitScreen = () => {
 
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.outfitDetailsLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>

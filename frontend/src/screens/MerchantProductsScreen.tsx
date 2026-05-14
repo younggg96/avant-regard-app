@@ -46,7 +46,7 @@ import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import ScreenHeader from "../components/ScreenHeader";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { Alert } from "../utils/Alert";
 import { uploadImageFromUri } from "./admin/adminUtils";
 import {
@@ -112,6 +112,7 @@ const EMPTY_FORM: ProductForm = {
 };
 
 const MerchantProductsScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -538,10 +539,10 @@ const MerchantProductsScreen: React.FC = () => {
             color={theme.colors.gray200}
           />
           <Text
-            color="$gray300"
+            style={[styles.textRegular, { color: theme.colors.gray300 }]}
             mt="$md"
             textAlign="center"
-            style={styles.textRegular}
+
           >
             {t("merchant.onlyApprovedCanManage")}
           </Text>
@@ -552,10 +553,10 @@ const MerchantProductsScreen: React.FC = () => {
 
   // ── 主体 ───────────────────────────────────────────────────────────────
   const renderHeader = () => (
-    <VStack px="$md" pt="$md" pb="$sm" gap="$sm" bg="$white">
+    <VStack px="$md" pt="$md" pb="$sm" gap="$sm" style={{ backgroundColor: theme.colors.white }}>
       {/* 搜索框 */}
       <Box
-        bg="$gray50"
+        style={{ backgroundColor: theme.colors.gray50 }}
         rounded="$sm"
         flexDirection="row"
         alignItems="center"
@@ -695,11 +696,11 @@ const MerchantProductsScreen: React.FC = () => {
       item.status === "PUBLISHED" || item.status === "HIDDEN";
     return (
       <Box
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         rounded="$md"
         mb="$md"
         borderWidth={1}
-        borderColor="$gray100"
+
         overflow="hidden"
       >
         <HStack alignItems="stretch">
@@ -713,8 +714,8 @@ const MerchantProductsScreen: React.FC = () => {
             />
           ) : (
             <Box
-              style={styles.productCover}
-              bg="$gray100"
+              style={[styles.productCover, { backgroundColor: theme.colors.gray100 }]}
+
               justifyContent="center"
               alignItems="center"
             >
@@ -731,8 +732,8 @@ const MerchantProductsScreen: React.FC = () => {
                 <Text
                   fontSize="$md"
                   fontWeight="$semibold"
-                  color="$black"
-                  style={[styles.textBold, { flex: 1 }]}
+                  style={[styles.textBold, { flex: 1 }, { color: theme.colors.black }]}
+
                   numberOfLines={1}
                 >
                   {item.title}
@@ -741,20 +742,16 @@ const MerchantProductsScreen: React.FC = () => {
                   px="$xs"
                   py={2}
                   rounded="$xs"
-                  bg={
-                    item.status === "PUBLISHED"
+                  style={{ backgroundColor: item.status === "PUBLISHED"
                       ? "#E8F5E9"
-                      : "$gray100"
-                  }
+                      : theme.colors.gray100 }}
                 >
                   <Text
                     fontSize={10}
-                    color={
-                      item.status === "PUBLISHED"
+                    style={[styles.textRegular, { color: item.status === "PUBLISHED"
                         ? "#27AE60"
-                        : "$gray400"
-                    }
-                    style={styles.textRegular}
+                        : theme.colors.gray400 }]}
+
                   >
                     {labelOfStatus(item.status, t)}
                   </Text>
@@ -762,8 +759,8 @@ const MerchantProductsScreen: React.FC = () => {
               </HStack>
               <Text
                 fontSize="$xs"
-                color="$gray300"
-                style={styles.textRegular}
+                style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                 numberOfLines={1}
               >
                 {(item.brand || "—") +
@@ -776,8 +773,8 @@ const MerchantProductsScreen: React.FC = () => {
                     <Text
                       fontSize="$md"
                       fontWeight="$bold"
-                      color="$black"
-                      style={styles.textBold}
+                      style={[styles.textBold, { color: theme.colors.black }]}
+
                     >
                       {formatPrice(
                         item.discountPriceCents,
@@ -786,11 +783,9 @@ const MerchantProductsScreen: React.FC = () => {
                     </Text>
                     <Text
                       fontSize="$xs"
-                      color="$gray300"
-                      style={[
-                        styles.textRegular,
-                        { textDecorationLine: "line-through" },
-                      ]}
+                      style={[styles.textRegular,
+                        { textDecorationLine: "line-through" },, { color: theme.colors.gray300 }]}
+
                     >
                       {formatPrice(item.priceCents, item.currency)}
                     </Text>
@@ -799,18 +794,18 @@ const MerchantProductsScreen: React.FC = () => {
                   <Text
                     fontSize="$md"
                     fontWeight="$bold"
-                    color="$black"
-                    style={styles.textBold}
+                    style={[styles.textBold, { color: theme.colors.black }]}
+
                   >
                     {formatPrice(item.priceCents, item.currency)}
                   </Text>
                 )}
                 {item.isNew && (
-                  <Box bg="$black" px="$xs" rounded="$xs">
+                  <Box style={{ backgroundColor: theme.colors.black }} px="$xs" rounded="$xs">
                     <Text
                       fontSize={9}
-                      color="$white"
-                      style={styles.textBold}
+                      style={[styles.textBold, { color: theme.colors.white }]}
+
                     >
                       NEW
                     </Text>
@@ -824,7 +819,7 @@ const MerchantProductsScreen: React.FC = () => {
                     size={12}
                     color={theme.colors.gray300}
                   />
-                  <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+                  <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {item.likeCount}
                   </Text>
                 </HStack>
@@ -834,7 +829,7 @@ const MerchantProductsScreen: React.FC = () => {
                     size={12}
                     color={theme.colors.gray300}
                   />
-                  <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+                  <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {item.commentCount}
                   </Text>
                 </HStack>
@@ -844,7 +839,7 @@ const MerchantProductsScreen: React.FC = () => {
                     size={12}
                     color={theme.colors.gray300}
                   />
-                  <Text fontSize={11} color="$gray300" style={styles.textRegular}>
+                  <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                     {item.viewCount}
                   </Text>
                 </HStack>
@@ -957,7 +952,7 @@ const MerchantProductsScreen: React.FC = () => {
                 size={48}
                 color={theme.colors.gray200}
               />
-              <Text color="$gray300" mt="$md" style={styles.textRegular}>
+              <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
                 {keyword.trim()
                   ? t("merchant.noProductsSearch")
                   : t("merchant.noProductsEmpty")}
@@ -966,11 +961,11 @@ const MerchantProductsScreen: React.FC = () => {
                 mt="$md"
                 px="$lg"
                 py="$sm"
-                bg="$black"
+                style={{ backgroundColor: theme.colors.black }}
                 rounded="$sm"
                 onPress={openCreate}
               >
-                <Text color="$white" style={styles.textBold}>
+                <Text style={[styles.textBold, { color: theme.colors.white }]}>
                   {t("merchant.newProduct")}
                 </Text>
               </Pressable>
@@ -997,7 +992,7 @@ const MerchantProductsScreen: React.FC = () => {
                   {t("common.previousPage")}
                 </Text>
               </Pressable>
-              <Text style={styles.textRegular} color="$gray300">
+              <Text style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                 {page} / {pageCount}
               </Text>
               <Pressable
@@ -1031,7 +1026,7 @@ const MerchantProductsScreen: React.FC = () => {
               <Box flex={1} />
             </TouchableWithoutFeedback>
             <Box
-              bg="$white"
+              style={{ backgroundColor: theme.colors.white }}
               borderTopLeftRadius={24}
               borderTopRightRadius={24}
               maxHeight="92%"
@@ -1042,13 +1037,13 @@ const MerchantProductsScreen: React.FC = () => {
                 justifyContent="between"
                 alignItems="center"
                 borderBottomWidth={1}
-                borderBottomColor="$gray100"
+                style={{ borderBottomColor: theme.colors.gray100 }}
               >
                 <Pressable onPress={closeForm}>
                   <Text
                     fontSize="$md"
-                    color="$gray300"
-                    style={styles.textRegular}
+                    style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                   >
                     {t("common.cancel")}
                   </Text>
@@ -1056,8 +1051,8 @@ const MerchantProductsScreen: React.FC = () => {
                 <Text
                   fontSize="$lg"
                   fontWeight="$bold"
-                  color="$black"
-                  style={styles.textBold}
+                  style={[styles.textBold, { color: theme.colors.black }]}
+
                 >
                   {editing
                     ? t("merchant.editProduct")
@@ -1073,8 +1068,8 @@ const MerchantProductsScreen: React.FC = () => {
                     <Text
                       fontSize="$md"
                       fontWeight="$semibold"
-                      color="$black"
-                      style={styles.textBold}
+                      style={[styles.textBold, { color: theme.colors.black }]}
+
                     >
                       {editing
                         ? t("common.save")
@@ -1134,8 +1129,8 @@ const MerchantProductsScreen: React.FC = () => {
                               />
                               <Text
                                 fontSize={11}
-                                color="$gray300"
-                                style={styles.textRegular}
+                                style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                               >
                                 {form.images.length}/{MAX_PRODUCT_IMAGES}
                               </Text>
@@ -1278,10 +1273,8 @@ const MerchantProductsScreen: React.FC = () => {
                       h={20}
                       rounded="$sm"
                       borderWidth={1}
-                      borderColor={
-                        form.hasDiscount ? "$black" : "$gray200"
-                      }
-                      bg={form.hasDiscount ? "$black" : "$white"}
+                      style={[{ borderColor: form.hasDiscount ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: form.hasDiscount ? theme.colors.black : theme.colors.white }]}
+
                       justifyContent="center"
                       alignItems="center"
                     >
@@ -1351,7 +1344,7 @@ const MerchantProductsScreen: React.FC = () => {
                       />
                       <Pressable
                         onPress={addTag}
-                        bg="$black"
+                        style={{ backgroundColor: theme.colors.black }}
                         px="$md"
                         rounded="$sm"
                         justifyContent="center"
@@ -1368,7 +1361,7 @@ const MerchantProductsScreen: React.FC = () => {
                         {form.tags.map((tag, idx) => (
                           <Box
                             key={`${tag}-${idx}`}
-                            bg="$gray100"
+                            style={{ backgroundColor: theme.colors.gray100 }}
                             px="$sm"
                             py="$xs"
                             rounded="$xs"
@@ -1377,8 +1370,8 @@ const MerchantProductsScreen: React.FC = () => {
                           >
                             <Text
                               fontSize="$xs"
-                              color="$black"
-                              style={styles.textRegular}
+                              style={[styles.textRegular, { color: theme.colors.black }]}
+
                             >
                               {tag}
                             </Text>
@@ -1410,8 +1403,8 @@ const MerchantProductsScreen: React.FC = () => {
                       h={20}
                       rounded="$sm"
                       borderWidth={1}
-                      borderColor={form.isNew ? "$black" : "$gray200"}
-                      bg={form.isNew ? "$black" : "$white"}
+                      style={[{ borderColor: form.isNew ? theme.colors.black : theme.colors.gray200 }, { backgroundColor: form.isNew ? theme.colors.black : theme.colors.white }]}
+
                       justifyContent="center"
                       alignItems="center"
                     >
@@ -1485,7 +1478,7 @@ const MerchantProductsScreen: React.FC = () => {
               <Box flex={1} />
             </TouchableWithoutFeedback>
             <Box
-              bg="$white"
+              style={{ backgroundColor: theme.colors.white }}
               borderTopLeftRadius={24}
               borderTopRightRadius={24}
               maxHeight="80%"
@@ -1496,13 +1489,13 @@ const MerchantProductsScreen: React.FC = () => {
                 justifyContent="between"
                 alignItems="center"
                 borderBottomWidth={1}
-                borderBottomColor="$gray100"
+                style={{ borderBottomColor: theme.colors.gray100 }}
               >
                 <Pressable onPress={() => setCategoryModalVisible(false)}>
                   <Text
                     fontSize="$md"
-                    color="$gray300"
-                    style={styles.textRegular}
+                    style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                   >
                     {t("common.close")}
                   </Text>
@@ -1510,8 +1503,8 @@ const MerchantProductsScreen: React.FC = () => {
                 <Text
                   fontSize="$lg"
                   fontWeight="$bold"
-                  color="$black"
-                  style={styles.textBold}
+                  style={[styles.textBold, { color: theme.colors.black }]}
+
                 >
                   {t("merchant.manageCategoriesTitle")}
                 </Text>
@@ -1535,7 +1528,7 @@ const MerchantProductsScreen: React.FC = () => {
                     />
                     <Pressable
                       onPress={handleAddCategory}
-                      bg="$black"
+                      style={{ backgroundColor: theme.colors.black }}
                       px="$lg"
                       rounded="$sm"
                       justifyContent="center"
@@ -1544,7 +1537,7 @@ const MerchantProductsScreen: React.FC = () => {
                       {savingCategory ? (
                         <ActivityIndicator color={theme.colors.white} />
                       ) : (
-                        <Text color="$white" style={styles.textBold}>
+                        <Text style={[styles.textBold, { color: theme.colors.white }]}>
                           {t("merchant.add")}
                         </Text>
                       )}
@@ -1554,8 +1547,8 @@ const MerchantProductsScreen: React.FC = () => {
                   <VStack gap="$sm">
                     {categories.length === 0 ? (
                       <Text
-                        color="$gray300"
-                        style={styles.textRegular}
+                        style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                         textAlign="center"
                       >
                         {t("merchant.noCategories")}
@@ -1566,7 +1559,7 @@ const MerchantProductsScreen: React.FC = () => {
                           key={c.id}
                           alignItems="center"
                           justifyContent="space-between"
-                          bg="$gray50"
+                          style={{ backgroundColor: theme.colors.gray50 }}
                           rounded="$sm"
                           px="$md"
                           py="$sm"
@@ -1574,16 +1567,16 @@ const MerchantProductsScreen: React.FC = () => {
                           <VStack flex={1}>
                             <Text
                               fontSize="$md"
-                              color="$black"
-                              style={styles.textBold}
+                              style={[styles.textBold, { color: theme.colors.black }]}
+
                             >
                               {c.name}
                             </Text>
                             {c.productCount != null && (
                               <Text
                                 fontSize="$xs"
-                                color="$gray300"
-                                style={styles.textRegular}
+                                style={[styles.textRegular, { color: theme.colors.gray300 }]}
+
                               >
                                 {t("merchant.productCount", {
                                   count: c.productCount,

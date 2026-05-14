@@ -49,6 +49,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
 }) => {
   const navigation = useNavigation();
   const t = useAppTheme();
+  const theme = t;
   const styles = useThemedStyles(makeStyles);
 
   const handleBackPress = () => {
@@ -111,7 +112,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
             px="$sm"
             py="$xs"
             rounded="$sm"
-            bg={action.style === "primary" ? "$black" : action.style === "ghost" ? "transparent" : "$gray100"}
+            style={{ backgroundColor: action.style === "primary" ? theme.colors.black : action.style === "ghost" ? "transparent" : theme.colors.gray100 }}
             ml="$xs"
             onPress={action.onPress}
           >
@@ -129,7 +130,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               )}
               {action.text && (
                 <Text
-                  color={action.style === "primary" ? "$white" : "$gray600"}
+                  style={{ color: action.style === "primary" ? theme.colors.white : theme.colors.gray600 }}
                   fontWeight="$semibold"
                   fontSize="$sm"
                 >
@@ -180,7 +181,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
           </Text>
           {subtitle && (
             <Text
-              color="$gray400"
+              style={{ color: theme.colors.gray400 }}
               fontSize="$xs"
               lineHeight="$xs"
               textAlign="center"

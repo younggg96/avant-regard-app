@@ -10,6 +10,7 @@ interface CountBadgeProps {
   count: number;
   maxCount?: number;
   size?: BadgeSize;
+  /** @deprecated 不再绘制描边，保留仅为兼容旧调用 */
   showBorder?: boolean;
   style?: ViewStyle;
 }
@@ -19,6 +20,7 @@ interface IconBadgeProps {
   icon: keyof typeof Ionicons.glyphMap;
   iconSize?: number;
   color: string;
+  /** @deprecated 不再绘制描边，保留仅为兼容旧调用 */
   showBorder?: boolean;
   style?: ViewStyle;
 }
@@ -32,7 +34,7 @@ const SIZE_CONFIG: Record<BadgeSize, { minWidth: number; height: number; fontSiz
 
 export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
   const styles = useThemedStyles(makeStyles);
-  const { showBorder = false, style } = props;
+  const { style } = props;
 
   if (props.variant === "icon") {
     const { icon, iconSize = 10, color } = props;
@@ -42,7 +44,6 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
           styles.base,
           styles.iconContainer,
           { backgroundColor: color },
-          showBorder && styles.border,
           style,
         ]}
       >
@@ -68,14 +69,13 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
           paddingHorizontal: config.paddingH,
           backgroundColor: theme.colors.error,
         },
-        showBorder && styles.border,
         style,
       ]}
     >
       <Text
         style={[
           styles.text,
-          { fontSize: config.fontSize, lineHeight: config.height - (showBorder ? 4 : 0) },
+          { fontSize: config.fontSize, lineHeight: config.height },
         ]}
         allowFontScaling={false}
       >
@@ -85,17 +85,13 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
   );
 };
 
-const makeStyles = (t: AppTheme) => StyleSheet.create({
+const makeStyles = (_t: AppTheme) => StyleSheet.create({
   base: {
     position: "absolute",
     top: -4,
     right: -4,
     justifyContent: "center",
     alignItems: "center",
-  },
-  border: {
-    borderWidth: 2,
-    borderColor: t.colors.background,
   },
   iconContainer: {
     width: 18,
@@ -104,6 +100,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     top: undefined,
     right: -2,
     bottom: -2,
+    borderWidth: 0,
   },
   text: {
     color: "#FFFFFF",

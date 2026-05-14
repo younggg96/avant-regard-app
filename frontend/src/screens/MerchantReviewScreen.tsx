@@ -33,7 +33,7 @@ import {
   VStack,
   ScrollView,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -50,6 +50,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 type TabType = "pending" | "approved" | "all";
 
 const MerchantReviewScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
@@ -333,12 +334,12 @@ const MerchantReviewScreen = () => {
 
     return (
       <Pressable
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         rounded="$lg"
         p="$md"
         mb="$md"
         borderWidth={1}
-        borderColor="$gray100"
+
         onPress={() => isPending ? openDetailModal(item) : openManageModal(item)}
         sx={{
           shadowColor: "#000",
@@ -350,11 +351,11 @@ const MerchantReviewScreen = () => {
       >
         <HStack justifyContent="between" alignItems="start" mb="$sm">
           <VStack flex={1}>
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" numberOfLines={1}>
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
               {item.storeName || item.storeId}
             </Text>
             {item.storeCity && (
-              <Text fontSize="$sm" color="$gray300" mt="$xs">
+              <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs">
                 {item.storeCity}
               </Text>
             )}
@@ -370,7 +371,7 @@ const MerchantReviewScreen = () => {
         {item.contactName && (
           <HStack alignItems="center" mb="$xs">
             <Ionicons name="person-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" color="$gray300" ml="$xs">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactName}
             </Text>
           </HStack>
@@ -379,7 +380,7 @@ const MerchantReviewScreen = () => {
         {item.contactPhone && (
           <HStack alignItems="center" mb="$xs">
             <Ionicons name="call-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" color="$gray300" ml="$xs">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactPhone}
             </Text>
           </HStack>
@@ -388,7 +389,7 @@ const MerchantReviewScreen = () => {
         {item.contactEmail && (
           <HStack alignItems="center" mb="$sm">
             <Ionicons name="mail-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" color="$gray300" ml="$xs">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactEmail}
             </Text>
           </HStack>
@@ -400,24 +401,24 @@ const MerchantReviewScreen = () => {
           mt="$sm"
           pt="$sm"
           borderTopWidth={1}
-          borderTopColor="$gray100"
+          style={{ borderTopColor: theme.colors.gray100 }}
         >
           <HStack alignItems="center">
             <Box
               w={24}
               h={24}
               rounded="$sm"
-              bg="$gray100"
+              style={{ backgroundColor: theme.colors.gray100 }}
               justifyContent="center"
               alignItems="center"
               mr="$xs"
             >
               <Ionicons name="person" size={12} color={theme.colors.gray300} />
             </Box>
-            <Text fontSize="$xs" color="$gray300">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
               {item.username || `${t("merchant.user")} ${item.userId}`}
             </Text>
-            <Text fontSize="$xs" color="$gray200" ml="$sm">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray200 }} ml="$sm">
               {formatDate(item.createdAt)}
             </Text>
           </HStack>
@@ -445,10 +446,10 @@ const MerchantReviewScreen = () => {
           size={64}
           color={theme.colors.gray200}
         />
-        <Text fontSize="$lg" fontWeight="$medium" color="$black" mt="$md">
+        <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mt="$md">
           {msg.title}
         </Text>
-        <Text color="$gray300" mt="$sm">
+        <Text style={{ color: theme.colors.gray300 }} mt="$sm">
           {msg.subtitle}
         </Text>
       </VStack>
@@ -474,7 +475,7 @@ const MerchantReviewScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator  color={theme.colors.black} />
-          <Text color="$gray300" mt="$md">
+          <Text style={{ color: theme.colors.gray300 }} mt="$md">
             {t("common.loading")}
           </Text>
         </VStack>
@@ -565,27 +566,27 @@ const MerchantReviewScreen = () => {
             {selectedMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
+                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$xs">
                   {selectedMerchant.storeName || selectedMerchant.storeId}
                 </Text>
                 {selectedMerchant.storeAddress && (
-                  <Text fontSize="$sm" color="$gray300" mb="$md">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
                     {selectedMerchant.storeAddress}
                   </Text>
                 )}
 
                 {/* 申请者信息 */}
-                <Box bg="$gray50" rounded="$md" p="$md" mb="$md">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$md">
                   <HStack alignItems="center">
                     <Ionicons
                       name="person-circle-outline"
                       size={20}
                       color={theme.colors.gray300}
                     />
-                    <Text fontSize="$sm" color="$gray300" ml="$sm">
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$sm">
                       {t("merchant.applicant")}{selectedMerchant.username || `${t("merchant.user")} ${selectedMerchant.userId}`}
                     </Text>
-                    <Text fontSize="$sm" color="$gray200" ml="auto">
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray200 }} ml="auto">
                       {formatDate(selectedMerchant.createdAt)}
                     </Text>
                   </HStack>
@@ -593,14 +594,14 @@ const MerchantReviewScreen = () => {
 
                 {/* 联系信息 */}
                 <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
                     {t("merchant.contactInfo")}
                   </Text>
 
                   {selectedMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
                       <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                         {selectedMerchant.contactName}
                       </Text>
                     </HStack>
@@ -614,7 +615,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" color="$black" ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                           {selectedMerchant.contactPhone}
                         </Text>
                         <Ionicons
@@ -635,7 +636,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" color="$black" ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                           {selectedMerchant.contactEmail}
                         </Text>
                         <Ionicons
@@ -652,7 +653,7 @@ const MerchantReviewScreen = () => {
                 {/* 营业执照/证明材料 */}
                 {selectedMerchant.businessLicense && (
                   <VStack mb="$lg">
-                    <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                    <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
                       {t("merchant.proofMaterial")}
                     </Text>
                     <OptimizedImage
@@ -667,12 +668,12 @@ const MerchantReviewScreen = () => {
 
                 {/* 商家等级 */}
                 {/* <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$xs">
+                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                     商家等级
                   </Text>
                   <HStack gap="$sm">
-                    <Box bg="$gray100" px="$md" py="$sm" rounded="$sm">
-                      <Text fontSize="$sm" color="$black">
+                    <Box style={{ backgroundColor: theme.colors.gray100 }} px="$md" py="$sm" rounded="$sm">
+                      <Text fontSize="$sm" style={{ color: theme.colors.black }}>
                         {selectedMerchant.merchantLevel === "BASIC"
                           ? "基础商家"
                           : selectedMerchant.merchantLevel === "PREMIUM"
@@ -685,7 +686,7 @@ const MerchantReviewScreen = () => {
 
                 {/* 权限信息 */}
                 <VStack mb="$lg">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
                     {t("merchant.permissions")}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
@@ -727,12 +728,12 @@ const MerchantReviewScreen = () => {
                     py="$md"
                     rounded="$sm"
                     borderWidth={1}
-                    borderColor="$error"
+                    style={{ borderColor: theme.colors.error }}
                     alignItems="center"
                     onPress={() => openRejectModal(selectedMerchant)}
                     disabled={isSubmitting}
                   >
-                    <Text fontSize="$md" fontWeight="$semibold" color="$error">
+                    <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.error }}>
                       {t("merchant.rejected")}
                     </Text>
                   </Pressable>
@@ -740,7 +741,7 @@ const MerchantReviewScreen = () => {
                     flex={1}
                     py="$md"
                     rounded="$sm"
-                    bg="$black"
+                    style={{ backgroundColor: theme.colors.black }}
                     alignItems="center"
                     onPress={() => handleApprove(selectedMerchant)}
                     disabled={isSubmitting}
@@ -748,7 +749,7 @@ const MerchantReviewScreen = () => {
                     {isSubmitting ? (
                       <ActivityIndicator  color={theme.colors.white} />
                     ) : (
-                      <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                      <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                         {t("merchant.approved")}
                       </Text>
                     )}
@@ -788,10 +789,10 @@ const MerchantReviewScreen = () => {
               },
             ]}
           >
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" mb="$md">
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$md">
               {t("merchant.rejectReason")}
             </Text>
-            <Text fontSize="$sm" color="$gray300" mb="$md">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
               {t("merchant.rejectReasonPrompt", { store: selectedMerchant?.storeName || selectedMerchant?.storeId })}
             </Text>
             <TextInput
@@ -809,11 +810,11 @@ const MerchantReviewScreen = () => {
                 py="$md"
                 rounded="$sm"
                 borderWidth={1}
-                borderColor="$gray200"
+                style={{ borderColor: theme.colors.gray200 }}
                 alignItems="center"
                 onPress={closeRejectModal}
               >
-                <Text fontSize="$md" fontWeight="$semibold" color="$black">
+                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
                   {t("common.cancel")}
                 </Text>
               </Pressable>
@@ -821,7 +822,7 @@ const MerchantReviewScreen = () => {
                 flex={1}
                 py="$md"
                 rounded="$sm"
-                bg="$error"
+                style={{ backgroundColor: theme.colors.error }}
                 alignItems="center"
                 onPress={handleConfirmReject}
                 disabled={isSubmitting}
@@ -829,7 +830,7 @@ const MerchantReviewScreen = () => {
                 {isSubmitting ? (
                   <ActivityIndicator  color={theme.colors.white} />
                 ) : (
-                  <Text fontSize="$md" fontWeight="$semibold" color="$white">
+                  <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                     {t("merchant.confirmReject")}
                   </Text>
                 )}
@@ -857,17 +858,17 @@ const MerchantReviewScreen = () => {
             {manageMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" color="$black" mb="$xs">
+                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$xs">
                   {manageMerchant.storeName || manageMerchant.storeId}
                 </Text>
                 {manageMerchant.storeAddress && (
-                  <Text fontSize="$sm" color="$gray300" mb="$md">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
                     {manageMerchant.storeAddress}
                   </Text>
                 )}
 
                 {/* 状态 */}
-                <Box bg="$gray50" rounded="$md" p="$md" mb="$md">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$md">
                   <HStack alignItems="center" justifyContent="space-between">
                     <HStack alignItems="center">
                       <Ionicons
@@ -875,7 +876,7 @@ const MerchantReviewScreen = () => {
                         size={20}
                         color={theme.colors.gray400}
                       />
-                      <Text fontSize="$sm" color="$gray400" ml="$sm">
+                      <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} ml="$sm">
                         {t("merchant.merchantStatus")}
                       </Text>
                     </HStack>
@@ -889,14 +890,14 @@ const MerchantReviewScreen = () => {
 
                 {/* 联系信息 */}
                 <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
                     {t("merchant.contactInfo")}
                   </Text>
 
                   {manageMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
                       <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                         {manageMerchant.contactName}
                       </Text>
                     </HStack>
@@ -910,7 +911,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" color="$black" ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                           {manageMerchant.contactPhone}
                         </Text>
                       </HStack>
@@ -925,7 +926,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" color="$black" ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
                           {manageMerchant.contactEmail}
                         </Text>
                       </HStack>
@@ -935,14 +936,14 @@ const MerchantReviewScreen = () => {
 
                 {/* 权限管理 */}
                 <VStack mb="$lg">
-                  <Text fontSize="$sm" fontWeight="$semibold" color="$gray300" mb="$sm">
+                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
                     {t("merchant.permissionManage")}
                   </Text>
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.bannerPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.bannerPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostBanner}
@@ -956,7 +957,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="megaphone-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.announcementPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.announcementPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostAnnouncement}
@@ -970,7 +971,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.activityPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.activityPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostActivity}
@@ -984,7 +985,7 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" color="$black" ml="$sm">{t("merchant.discountPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.discountPublish")}</Text>
                     </HStack>
                     <Switch
                       value={manageMerchant.canPostDiscount}

@@ -5,7 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "../../../components/ui";
 import { ImageSize } from "../../../utils/imageUtils";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { useAuthStore } from "../../../store/authStore";
 import {
   unfollowBrand,
@@ -17,6 +17,7 @@ const CARD_WIDTH = 180;
 const IMAGE_SIZE = 40;
 
 export const BrandSection: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -84,9 +85,9 @@ export const BrandSection: React.FC = () => {
 
   if (brands.length === 0) {
     return (
-      <Box pt={14} pb={10} bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+      <Box pt={14} pb={10} style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
         <HStack px="$md" mb={10}>
-          <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
+          <Text fontSize="$sm" fontWeight="$bold" style={{ color: theme.colors.gray400 }}>
             {t("discover.followedBrands")}
           </Text>
         </HStack>
@@ -98,14 +99,14 @@ export const BrandSection: React.FC = () => {
           mx="$md"
           py={14}
           rounded="$lg"
-          bg="$gray50"
+          style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray100 }]}
           borderWidth={1}
-          borderColor="$gray100"
+
           sx={{ borderStyle: "dashed" }}
           gap={8}
         >
           <Ionicons name="add-circle-outline" size={24} color={theme.colors.gray400} />
-          <Text fontSize={13} fontWeight="$medium" color="$gray400">
+          <Text fontSize={13} fontWeight="$medium" style={{ color: theme.colors.gray400 }}>
             {t("discover.goDiscoverBrands")}
           </Text>
         </Pressable>
@@ -116,12 +117,12 @@ export const BrandSection: React.FC = () => {
   const dataWithViewAll = [...brands, null];
 
   return (
-    <Box pt={14} pb={10} bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+    <Box pt={14} pb={10} style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
       <HStack px="$md" mb={10} gap={6}>
-        <Text fontSize="$sm" fontWeight="$bold" color="$gray400">
+        <Text fontSize="$sm" fontWeight="$bold" style={{ color: theme.colors.gray400 }}>
           {t("discover.followedBrands")}
         </Text>
-        <Text fontSize="$xs" fontWeight="$semibold" color="$gray400">
+        <Text fontSize="$xs" fontWeight="$semibold" style={{ color: theme.colors.gray400 }}>
           {brands.length}
         </Text>
       </HStack>
@@ -141,9 +142,9 @@ export const BrandSection: React.FC = () => {
                 onPress={handleViewAll}
                 w={100}
                 rounded="$md"
-                bg="$gray50"
+                style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray100 }]}
                 borderWidth={1}
-                borderColor="$gray100"
+
                 sx={{ borderStyle: "dashed" }}
                 px={10}
                 py={10}
@@ -155,13 +156,13 @@ export const BrandSection: React.FC = () => {
                   w={IMAGE_SIZE}
                   h={IMAGE_SIZE}
                   rounded={IMAGE_SIZE / 2}
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   justifyContent="center"
                   alignItems="center"
                 >
                   <Ionicons name="grid-outline" size={18} color={theme.colors.black} />
                 </Box>
-                <Text fontSize={13} fontWeight="$semibold" color="$black">
+                <Text fontSize={13} fontWeight="$semibold" style={{ color: theme.colors.black }}>
                   {t("discover.all")}
                 </Text>
               </Pressable>
@@ -173,9 +174,9 @@ export const BrandSection: React.FC = () => {
               onPress={() => handleBrandPress(item.name)}
               w={CARD_WIDTH}
               rounded="$lg"
-              bg="$gray50"
+              style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray100 }]}
               borderWidth={1}
-              borderColor="$gray100"
+
               px={10}
               py={10}
             >
@@ -193,21 +194,21 @@ export const BrandSection: React.FC = () => {
                     w={IMAGE_SIZE}
                     h={IMAGE_SIZE}
                     rounded={IMAGE_SIZE / 2}
-                    bg="$black"
+                    style={{ backgroundColor: theme.colors.black }}
                     justifyContent="center"
                     alignItems="center"
                   >
-                    <Text fontSize="$md" fontWeight="$bold" color="$white">
+                    <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.white }}>
                       {item.name?.charAt(0)?.toUpperCase() || "B"}
                     </Text>
                   </Box>
                 )}
 
                 <Box flex={1}>
-                  <Text fontSize={13} fontWeight="$semibold" color="$black" numberOfLines={1}>
+                  <Text fontSize={13} fontWeight="$semibold" style={{ color: theme.colors.black }} numberOfLines={1}>
                     {item.name}
                   </Text>
-                  <Text fontSize={11} color="$gray400" mt={2}>
+                  <Text fontSize={11} style={{ color: theme.colors.gray400 }} mt={2}>
                     {formatFollowerCount(item.followersCount)} {t("discover.followersLabel")}
                   </Text>
                 </Box>
@@ -218,10 +219,10 @@ export const BrandSection: React.FC = () => {
                 mt={8}
                 py={5}
                 rounded={6}
-                bg="$gray100"
+                style={{ backgroundColor: theme.colors.gray100 }}
                 alignItems="center"
               >
-                <Text fontSize={11} fontWeight="$semibold" color="$gray600">
+                <Text fontSize={11} fontWeight="$semibold" style={{ color: theme.colors.gray600 }}>
                   {t("discover.following")}
                 </Text>
               </Pressable>

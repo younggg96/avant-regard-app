@@ -3,7 +3,7 @@ import { Modal, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, VStack, HStack } from "./ui";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 
 export interface ImageEditMenuProps {
   visible: boolean;
@@ -24,6 +24,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
   onSetCover,
   onDelete,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   return (
     <Modal
@@ -38,7 +39,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
 
         {/* 菜单内容 */}
         <Box
-          bg="$white"
+          style={{ backgroundColor: theme.colors.white }}
           borderTopLeftRadius="$lg"
           borderTopRightRadius="$lg"
           pb={34}
@@ -48,11 +49,11 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
             px="$lg"
             py="$md"
             borderBottomWidth={1}
-            borderBottomColor="$gray100"
+            style={{ borderBottomColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="between"
           >
-            <Text fontSize="$lg" color="$black" fontWeight="$medium">
+            <Text fontSize="$lg" style={{ color: theme.colors.black }} fontWeight="$medium">
               {t("imageEditMenu.title")}
             </Text>
             <Pressable p="$xs" onPress={onClose}>
@@ -68,7 +69,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                 <Box
                   w={40}
                   h={40}
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   rounded="$sm"
                   alignItems="center"
                   justifyContent="center"
@@ -76,10 +77,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   <Ionicons name="crop" size={20} color={theme.colors.black} />
                 </Box>
                 <VStack flex={1}>
-                  <Text color="$black" fontSize="$md" fontWeight="$medium">
+                  <Text style={{ color: theme.colors.black }} fontSize="$md" fontWeight="$medium">
                     {t("imageEditMenu.editAndCrop")}
                   </Text>
-                  <Text color="$gray500" fontSize="$sm">
+                  <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">
                     {t("imageEditMenu.adjustSize")}
                   </Text>
                 </VStack>
@@ -98,7 +99,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   <Box
                     w={40}
                     h={40}
-                    bg="$gray100"
+                    style={{ backgroundColor: theme.colors.gray100 }}
                     rounded="$sm"
                     alignItems="center"
                     justifyContent="center"
@@ -110,10 +111,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                     />
                   </Box>
                   <VStack flex={1}>
-                    <Text color="$black" fontSize="$md" fontWeight="$medium">
+                    <Text style={{ color: theme.colors.black }} fontSize="$md" fontWeight="$medium">
                       {t("imageEditMenu.setAsCover")}
                     </Text>
-                    <Text color="$gray500" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">
                       {t("imageEditMenu.setAsCoverDesc")}
                     </Text>
                   </VStack>
@@ -133,7 +134,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   <Box
                     w={40}
                     h={40}
-                    bg="$accent"
+                    style={{ backgroundColor: theme.colors.accent }}
                     rounded="$sm"
                     alignItems="center"
                     justifyContent="center"
@@ -145,10 +146,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                     />
                   </Box>
                   <VStack flex={1}>
-                    <Text color="$black" fontSize="$md" fontWeight="$medium">
+                    <Text style={{ color: theme.colors.black }} fontSize="$md" fontWeight="$medium">
                       {t("imageEditMenu.currentCover")}
                     </Text>
-                    <Text color="$gray500" fontSize="$sm">
+                    <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">
                       {t("imageEditMenu.currentCoverDesc")}
                     </Text>
                   </VStack>
@@ -162,7 +163,7 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
             )}
 
             {/* 分隔线 */}
-            <Box h={1} bg="$gray100" mx="$lg" />
+            <Box h={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$lg" />
 
             {/* 删除 */}
             <Pressable px="$lg" py="$lg" onPress={onDelete}>
@@ -178,10 +179,10 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
                   <Ionicons name="trash" size={20} color={theme.colors.error} />
                 </Box>
                 <VStack flex={1}>
-                  <Text color="$error" fontSize="$md" fontWeight="$medium">
+                  <Text style={{ color: theme.colors.error }} fontSize="$md" fontWeight="$medium">
                     {t("imageEditMenu.deleteImage")}
                   </Text>
-                  <Text color="$gray500" fontSize="$sm">
+                  <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">
                     {t("imageEditMenu.deleteImageDesc")}
                   </Text>
                 </VStack>
@@ -194,12 +195,12 @@ export const ImageEditMenu: React.FC<ImageEditMenuProps> = ({
             <Pressable
               w="100%"
               py="$md"
-              bg="$gray100"
+              style={{ backgroundColor: theme.colors.gray100 }}
               rounded="$md"
               alignItems="center"
               onPress={onClose}
             >
-              <Text color="$gray600" fontSize="$md" fontWeight="$medium">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$md" fontWeight="$medium">
                 {t("common.cancel")}
               </Text>
             </Pressable>

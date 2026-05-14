@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable, OptimizedImage } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -35,6 +35,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
   label,
   required = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayLabel = label || t("publish.linkBrand");
   const brandWidth = (screenWidth - 48 - 16) / 3;
@@ -45,18 +46,18 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
         <Text
-          color="$gray600"
+          style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray600 }]}
           fontSize="$sm"
-          style={{ fontFamily: playfairFonts.regular }}
+
         >
           {displayLabel}
         </Text>
         {required && (
           <Text
-            color="$red500"
+            style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.error }]}
             fontSize="$sm"
             ml="$xs"
-            style={{ fontFamily: playfairFonts.regular }}
+
           >
             *
           </Text>
@@ -83,9 +84,9 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
                 <View style={styles.brandPlaceholder}>
                   <Text
                     fontSize={16}
-                    color="$gray400"
+                    style={[{ fontFamily: playfairFonts.bold }, { color: theme.colors.gray400 }]}
                     textAlign="center"
-                    style={{ fontFamily: playfairFonts.bold }}
+
                   >
                     {brand.name.substring(0, 2).toUpperCase()}
                   </Text>
@@ -94,9 +95,9 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               <View style={styles.brandInfo}>
                 <Text
                   fontSize={11}
-                  color="$black"
+                  style={[{ textAlign: "center", fontFamily: playfairFonts.bold }, { color: theme.colors.black }]}
                   numberOfLines={1}
-                  style={{ textAlign: "center", fontFamily: playfairFonts.bold }}
+
                 >
                   {brand.name}
                 </Text>
@@ -139,7 +140,7 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
             w={brandWidth}
             h={brandHeight}
             rounded="$md"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={onAddBrand}
@@ -150,10 +151,10 @@ const BrandGridSelector: React.FC<BrandGridSelectorProps> = ({
               color={theme.colors.gray400}
             />
             <Text
-              color="$gray400"
+              style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray400 }]}
               fontSize="$sm"
               mt="$xs"
-              style={{ fontFamily: playfairFonts.regular }}
+
             >
               {t("brandSelector.addBrand")}
             </Text>

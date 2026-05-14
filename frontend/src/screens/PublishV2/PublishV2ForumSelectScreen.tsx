@@ -28,12 +28,13 @@ import {
   HStack,
   OptimizedImage,
 } from "../../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import ScreenHeader from "../../components/ScreenHeader";
 import { getCommunities, Community } from "../../services/communityService";
 import { ImageSize } from "../../utils/imageUtils";
 
 const PublishV2ForumSelectScreen: React.FC = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
@@ -111,9 +112,9 @@ const PublishV2ForumSelectScreen: React.FC = () => {
       <Pressable
         key={community.id}
         onPress={() => handleSelectCommunity(community)}
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
         borderWidth={1}
-        borderColor="$gray100"
+
         rounded="$lg"
         p="$md"
         mb="$sm"
@@ -130,7 +131,7 @@ const PublishV2ForumSelectScreen: React.FC = () => {
               />
             ) : (
               <View style={styles.iconPlaceholder}>
-                <Text fontSize="$lg" fontWeight="$bold" color="$white">
+                <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.white }}>
                   {community.name.charAt(0)}
                 </Text>
               </View>
@@ -138,7 +139,7 @@ const PublishV2ForumSelectScreen: React.FC = () => {
           </View>
           <VStack flex={1}>
             <HStack alignItems="center" gap="$xs">
-              <Text fontSize="$md" fontWeight="$medium" color="$black">
+              <Text fontSize="$md" fontWeight="$medium" style={{ color: theme.colors.black }}>
                 {community.name}
               </Text>
               {isFollowing ? (
@@ -146,13 +147,13 @@ const PublishV2ForumSelectScreen: React.FC = () => {
                   px="$xs"
                   py={2}
                   rounded="$sm"
-                  bg="$gray100"
+                  style={[{ backgroundColor: theme.colors.gray100 }, { borderColor: theme.colors.gray200 }]}
                   borderWidth={1}
-                  borderColor="$gray200"
+
                 >
                   <Text
                     fontSize="$xs"
-                    color="$gray500"
+                    style={{ color: theme.colors.gray500 }}
                     fontWeight="$medium"
                   >
                     {t("publishV2.forumSelect.followingBadge")}
@@ -160,14 +161,14 @@ const PublishV2ForumSelectScreen: React.FC = () => {
                 </Box>
               ) : null}
             </HStack>
-            <Text fontSize="$xs" color="$gray500" numberOfLines={2} mt={2}>
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} numberOfLines={2} mt={2}>
               {community.description || t("community.noDescription")}
             </Text>
             <HStack gap="$md" mt={4}>
-              <Text fontSize="$xs" color="$gray400">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {community.memberCount} {t("community.members")}
               </Text>
-              <Text fontSize="$xs" color="$gray400">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {community.postCount} {t("community.posts")}
               </Text>
             </HStack>
@@ -190,7 +191,7 @@ const PublishV2ForumSelectScreen: React.FC = () => {
         onBackPress={() => navigation.goBack()}
       />
 
-      <Box px="$md" py="$sm" bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+      <Box px="$md" py="$sm" style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
         <HStack
           alignItems="center"
           style={styles.searchContainer}
@@ -245,7 +246,7 @@ const PublishV2ForumSelectScreen: React.FC = () => {
               size={48}
               color={theme.colors.gray400}
             />
-            <Text mt="$md" color="$gray400">
+            <Text mt="$md" style={{ color: theme.colors.gray400 }}>
               {t("publishV2.forumSelect.noResults")}
             </Text>
           </VStack>

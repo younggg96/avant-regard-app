@@ -29,7 +29,7 @@ import {
   Input,
   Pressable,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
@@ -119,6 +119,7 @@ const MediaBlockPreview: React.FC<{ uri: string }> = ({ uri }) => {
 };
 
 const PublishForumPostScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: PublishForumPostRouteParams }, "params">>();
@@ -685,10 +686,10 @@ const PublishForumPostScreen = () => {
       <Box key={block.id} mx="$md" mb="$sm">
         <Box
           borderWidth={1}
-          borderColor="$gray200"
+          style={[{ borderColor: theme.colors.gray200 }, { backgroundColor: theme.colors.white }]}
           borderRadius="$md"
           overflow="hidden"
-          bg="$white"
+
         >
           <TextInput
             value={block.content}
@@ -703,7 +704,7 @@ const PublishForumPostScreen = () => {
           {/* 文本块底部操作栏 */}
           <HStack
             borderTopWidth={1}
-            borderTopColor="$gray100"
+            style={{ borderTopColor: theme.colors.gray100 }}
             px="$sm"
             py="$xs"
             alignItems="center"
@@ -747,7 +748,7 @@ const PublishForumPostScreen = () => {
               },
             ]}
           >
-            <HStack gap="$md" p="$sm" bg="$gray50" w="100%" borderRadius="$md">
+            <HStack gap="$md" p="$sm" style={{ backgroundColor: theme.colors.gray50 }} w="100%" borderRadius="$md">
               <TouchableOpacity
                 onPress={() => handleAddTextBlock(block.id)}
                 style={styles.addMenuItem}
@@ -756,15 +757,15 @@ const PublishForumPostScreen = () => {
                   w={44}
                   h={44}
                   borderRadius="$full"
-                  bg="$white"
+                  style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray200 }]}
                   alignItems="center"
                   justifyContent="center"
                   borderWidth={1}
-                  borderColor="$gray200"
+
                 >
                   <Ionicons name="text" size={20} color={theme.colors.accent} />
                 </Box>
-                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} mt="$xs">
                   {t("publish.blockText")}
                 </Text>
               </TouchableOpacity>
@@ -777,15 +778,15 @@ const PublishForumPostScreen = () => {
                   w={44}
                   h={44}
                   borderRadius="$full"
-                  bg="$white"
+                  style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray200 }]}
                   alignItems="center"
                   justifyContent="center"
                   borderWidth={1}
-                  borderColor="$gray200"
+
                 >
                   <Ionicons name="image" size={20} color={theme.colors.accent} />
                 </Box>
-                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} mt="$xs">
                   {t("publish.blockImage")}
                 </Text>
               </TouchableOpacity>
@@ -799,7 +800,7 @@ const PublishForumPostScreen = () => {
   const renderImageBlock = (block: ContentBlock, index: number) => {
     return (
       <Box key={block.id} mx="$md" mb="$sm">
-        <Box borderRadius="$md" overflow="hidden" bg="$gray100">
+        <Box borderRadius="$md" overflow="hidden" style={{ backgroundColor: theme.colors.gray100 }}>
           <MediaBlockPreview uri={block.content} />
 
           {/* 图片块操作栏 */}
@@ -825,7 +826,7 @@ const PublishForumPostScreen = () => {
             style={styles.addBetweenButton}
           >
             <Ionicons name="add" size={16} color={theme.colors.gray500} />
-            <Text fontSize="$xs" color="$gray500" ml="$xs">
+            <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} ml="$xs">
               {t("publish.addContent")}
             </Text>
           </TouchableOpacity>
@@ -849,7 +850,7 @@ const PublishForumPostScreen = () => {
               },
             ]}
           >
-            <HStack gap="$md" p="$sm" bg="$gray50" borderRadius="$md" justifyContent="center">
+            <HStack gap="$md" p="$sm" style={{ backgroundColor: theme.colors.gray50 }} borderRadius="$md" justifyContent="center">
               <TouchableOpacity
                 onPress={() => handleAddTextBlock(block.id)}
                 style={styles.addMenuItem}
@@ -858,15 +859,15 @@ const PublishForumPostScreen = () => {
                   w={44}
                   h={44}
                   borderRadius="$full"
-                  bg="$white"
+                  style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray200 }]}
                   alignItems="center"
                   justifyContent="center"
                   borderWidth={1}
-                  borderColor="$gray200"
+
                 >
                   <Ionicons name="text" size={20} color={theme.colors.accent} />
                 </Box>
-                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} mt="$xs">
                   {t("publish.blockText")}
                 </Text>
               </TouchableOpacity>
@@ -879,15 +880,15 @@ const PublishForumPostScreen = () => {
                   w={44}
                   h={44}
                   borderRadius="$full"
-                  bg="$white"
+                  style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray200 }]}
                   alignItems="center"
                   justifyContent="center"
                   borderWidth={1}
-                  borderColor="$gray200"
+
                 >
                   <Ionicons name="image" size={20} color={theme.colors.accent} />
                 </Box>
-                <Text fontSize="$xs" color="$gray600" mt="$xs">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} mt="$xs">
                   {t("publish.blockImage")}
                 </Text>
               </TouchableOpacity>
@@ -921,9 +922,9 @@ const PublishForumPostScreen = () => {
             alignItems="center"
             p="$md"
             borderBottomWidth={1}
-            borderBottomColor="$gray100"
+            style={{ borderBottomColor: theme.colors.gray100 }}
           >
-            <Text fontSize="$lg" fontWeight="$semibold" color="$black">
+            <Text fontSize="$lg" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {t("publish.selectCommunity")}
             </Text>
             <Pressable onPress={() => setShowCommunityPicker(false)}>
@@ -933,11 +934,11 @@ const PublishForumPostScreen = () => {
           <RNScrollView style={styles.communityList}>
             {isLoadingCommunities ? (
               <Box py="$xl" alignItems="center" justifyContent="center">
-                <Text color="$gray500" fontSize="$sm">{t("publish.loading")}</Text>
+                <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">{t("publish.loading")}</Text>
               </Box>
             ) : communities.length === 0 ? (
               <Box py="$xl" alignItems="center" justifyContent="center">
-                <Text color="$gray500" fontSize="$sm">{t("publish.noCommunities")}</Text>
+                <Text style={{ color: theme.colors.gray500 }} fontSize="$sm">{t("publish.noCommunities")}</Text>
               </Box>
             ) : (
               communities.map((community) => (
@@ -965,17 +966,17 @@ const PublishForumPostScreen = () => {
                         />
                       ) : (
                         <View style={styles.communityIconPlaceholder}>
-                          <Text fontSize="$sm" fontWeight="$bold" color="$white">
+                          <Text fontSize="$sm" fontWeight="$bold" style={{ color: theme.colors.white }}>
                             {community.name.charAt(0)}
                           </Text>
                         </View>
                       )}
                     </View>
                     <VStack flex={1}>
-                      <Text fontSize="$sm" fontWeight="$medium" color="$black">
+                      <Text fontSize="$sm" fontWeight="$medium" style={{ color: theme.colors.black }}>
                         {community.name}
                       </Text>
-                      <Text fontSize="$xs" color="$gray500">
+                      <Text fontSize="$xs" style={{ color: theme.colors.gray500 }}>
                         {community.memberCount} {t("publish.members")}
                       </Text>
                     </VStack>
@@ -1019,10 +1020,10 @@ const PublishForumPostScreen = () => {
           </HStack>
         </Box>
       ) : isEditingPublishedPost ? (
-        <Box bg="$accent" px="$md" py="$sm">
+        <Box style={{ backgroundColor: theme.colors.accent }} px="$md" py="$sm">
           <HStack alignItems="center" gap="$sm">
             <Ionicons name="information-circle" size={20} color={theme.colors.white} />
-            <Text color="$white" fontSize="$sm" flex={1}>
+            <Text style={{ color: theme.colors.white }} fontSize="$sm" flex={1}>
               {t("publish.reAuditWarning")}
             </Text>
           </HStack>
@@ -1049,7 +1050,7 @@ const PublishForumPostScreen = () => {
           >
             <Box
               borderWidth={1}
-              borderColor="$gray200"
+              style={{ borderColor: theme.colors.gray200 }}
               borderRadius="$md"
               p="$sm"
             >
@@ -1067,13 +1068,13 @@ const PublishForumPostScreen = () => {
                         />
                       ) : (
                         <View style={styles.communityIconPlaceholder}>
-                          <Text fontSize="$sm" fontWeight="$bold" color="$white">
+                          <Text fontSize="$sm" fontWeight="$bold" style={{ color: theme.colors.white }}>
                             {selectedCommunity.name.charAt(0)}
                           </Text>
                         </View>
                       )}
                     </View>
-                    <Text fontSize="$sm" color="$black" flex={1}>
+                    <Text fontSize="$sm" style={{ color: theme.colors.black }} flex={1}>
                       {selectedCommunity.name}
                     </Text>
                   </>
@@ -1084,7 +1085,7 @@ const PublishForumPostScreen = () => {
                       size={24}
                       color={theme.colors.gray400}
                     />
-                    <Text fontSize="$sm" color="$gray400" flex={1}>
+                    <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} flex={1}>
                       {t("publish.selectCommunityPlaceholder")}
                     </Text>
                   </>
@@ -1113,10 +1114,10 @@ const PublishForumPostScreen = () => {
           {/* Title Input */}
           <Box mx="$md" mb="$md">
             <HStack mb="$sm" alignItems="center">
-              <Text color="$gray600" fontSize="$sm">
+              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
                 {t("publish.titleLabel")}
               </Text>
-              <Text color="$red500" fontSize="$sm" ml="$xs">
+              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
                 *
               </Text>
             </HStack>
@@ -1144,10 +1145,10 @@ const PublishForumPostScreen = () => {
 
 
           {/* 提示信息 */}
-          <Box mx="$md" mb="$lg" p="$md" bg="$gray50" borderRadius="$md">
+          <Box mx="$md" mb="$lg" p="$md" style={{ backgroundColor: theme.colors.gray50 }} borderRadius="$md">
             <HStack alignItems="center" gap="$sm">
               <Ionicons name="bulb-outline" size={18} color={theme.colors.gray500} />
-              <Text color="$gray500" fontSize="$xs" flex={1}>
+              <Text style={{ color: theme.colors.gray500 }} fontSize="$xs" flex={1}>
                 {t("publish.forumAddHint")}
               </Text>
             </HStack>

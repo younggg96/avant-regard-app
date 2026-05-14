@@ -9,7 +9,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, HStack } from "../ui";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 
 interface WantPopupProps {
   visible: boolean;
@@ -32,6 +32,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
   onWant,
   onDismiss,
 }) => {
+  const theme = useAppTheme();
   const popupStyles = useThemedStyles(makePopupStyles);
   const translateY = useRef(new Animated.Value(120)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,7 +96,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
             {brandName && (
               <Text
                 fontSize="$xs"
-                color="$gray300"
+                style={{ color: theme.colors.gray300 }}
                 numberOfLines={1}
               >
                 {brandName}
@@ -107,7 +108,8 @@ export const WantPopup: React.FC<WantPopupProps> = ({
                 fontWeight="$medium"
                 numberOfLines={1}
               >
-                {productName}
+                {/* productName 可能含 \n (多单品), 单行展示时折叠成 · */}
+                {productName.split("\n").map((s) => s.trim()).filter(Boolean).join(" · ")}
               </Text>
             )}
             {!brandName && !productName && (

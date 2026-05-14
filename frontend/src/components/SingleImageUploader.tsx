@@ -6,7 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Box, Text, Pressable } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 import ImagePickerModal from "./ImagePickerModal";
 import ImageCropper, { AspectRatio } from "./ImageCropper";
 import { Alert } from "../utils/Alert";
@@ -36,6 +36,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   enableCropper = false,
   defaultCropAspect = "free",
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayPlaceholder = placeholder || t("imageUploader.addImage");
   const displaySubtitle = subtitle || t("imageUploader.recommendedSize");
@@ -152,7 +153,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
             h={height}
             rounded="$md"
             overflow="hidden"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={handleAddImage}
@@ -162,10 +163,10 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
               size={40}
               color={theme.colors.gray400}
             />
-            <Text color="$gray500" mt="$sm" fontSize="$sm">
+            <Text style={{ color: theme.colors.gray500 }} mt="$sm" fontSize="$sm">
               {displayPlaceholder}
             </Text>
-            <Text color="$gray400" fontSize="$xs" mt="$xs">
+            <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" mt="$xs">
               {displaySubtitle}
             </Text>
           </Pressable>
@@ -224,7 +225,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           justifyContent="center"
           onPress={handleEditWithCropper}
         >
-          <Text color="$white" fontSize="$xs" fontWeight="$medium">
+          <Text style={{ color: theme.colors.white }} fontSize="$xs" fontWeight="$medium">
             {enableCropper ? t("imageUploader.crop") : t("imageUploader.replace")}
           </Text>
         </Pressable>
@@ -243,7 +244,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
             justifyContent="center"
             onPress={handleAddImage}
           >
-            <Text color="$white" fontSize="$xs" fontWeight="$medium">
+            <Text style={{ color: theme.colors.white }} fontSize="$xs" fontWeight="$medium">
               {t("imageUploader.replace")}
             </Text>
           </Pressable>

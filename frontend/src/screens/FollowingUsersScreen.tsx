@@ -21,7 +21,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import {
@@ -44,6 +44,7 @@ type RouteParams = {
 type SubTab = "users" | "mutual" | "brands";
 
 const FollowingUsersScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "FollowingUsers">>();
@@ -215,7 +216,7 @@ const FollowingUsersScreen = () => {
             )}
             <VStack flex={1}>
               <HStack alignItems="center" gap="$xs">
-                <Text fontWeight="$semibold" color="$black" numberOfLines={1}>
+                <Text fontWeight="$semibold" style={{ color: theme.colors.black }} numberOfLines={1}>
                   {item.username}
                 </Text>
                 {isMutual && (
@@ -225,14 +226,14 @@ const FollowingUsersScreen = () => {
                 )}
               </HStack>
               {item.bio ? (
-                <Text fontSize="$sm" color="$gray600" numberOfLines={1} mt={2}>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} numberOfLines={1} mt={2}>
                   {item.bio}
                 </Text>
               ) : null}
               {item.location ? (
                 <HStack alignItems="center" mt={2}>
                   <Ionicons name="location-outline" size={12} color={theme.colors.gray400} />
-                  <Text fontSize="$xs" color="$gray400" ml="$xs">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} ml="$xs">
                     {item.location}
                   </Text>
                 </HStack>
@@ -270,16 +271,16 @@ const FollowingUsersScreen = () => {
             </View>
           )}
           <VStack flex={1}>
-            <Text fontWeight="$semibold" color="$black" numberOfLines={1}>
+            <Text fontWeight="$semibold" style={{ color: theme.colors.black }} numberOfLines={1}>
               {item.name}
             </Text>
             <HStack alignItems="center" mt={2}>
               {item.category ? (
-                <Text fontSize="$xs" color="$gray400" mr="$sm">
+                <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mr="$sm">
                   {item.category}
                 </Text>
               ) : null}
-              <Text fontSize="$xs" color="$gray400">
+              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
                 {t("discover.followersCount", { count: formatFollowerCount(item.followersCount) })}
               </Text>
             </HStack>
@@ -298,7 +299,7 @@ const FollowingUsersScreen = () => {
   const renderEmptyList = (icon: string, message: string) => (
     <VStack alignItems="center" justifyContent="center" py="$xl" style={{ paddingTop: 60 }}>
       <Ionicons name={icon as any} size={24} color={theme.colors.gray300} />
-      <Text color="$gray400" mt="$md">
+      <Text style={{ color: theme.colors.gray400 }} mt="$md">
         {normalizedQuery ? t("search.noResults") : message}
       </Text>
     </VStack>
@@ -380,14 +381,14 @@ const FollowingUsersScreen = () => {
       {loading ? (
         <VStack flex={1} alignItems="center" justifyContent="center">
           <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" color="$gray400" mt="$sm">
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm">
             {t("common.loading")}
           </Text>
         </VStack>
       ) : isPrivate ? (
         <VStack flex={1} alignItems="center" justifyContent="center">
           <Ionicons name="lock-closed-outline" size={24} color={theme.colors.gray300} />
-          <Text color="$gray400" mt="$md">
+          <Text style={{ color: theme.colors.gray400 }} mt="$md">
             {t("followingUsers.privateList")}
           </Text>
         </VStack>

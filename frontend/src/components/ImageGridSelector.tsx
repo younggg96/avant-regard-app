@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, HStack, Pressable } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
-import { theme } from "../theme";
+import { theme, useAppTheme } from "../theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -28,6 +28,7 @@ const ImageGridSelector: React.FC<ImageGridSelectorProps> = ({
   label,
   required = false,
 }) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const displayLabel = label || t("publish.blockImage");
   const itemWidth = (screenWidth - 48 - 16) / 3;
@@ -35,11 +36,11 @@ const ImageGridSelector: React.FC<ImageGridSelectorProps> = ({
   return (
     <Box mx="$md" mb="$md">
       <HStack mb="$sm" alignItems="center">
-        <Text color="$gray600" fontSize="$sm">
+        <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
           {displayLabel}
         </Text>
         {required && (
-          <Text color="$red500" fontSize="$sm" ml="$xs">
+          <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
             *
           </Text>
         )}
@@ -86,7 +87,7 @@ const ImageGridSelector: React.FC<ImageGridSelectorProps> = ({
             w={itemWidth}
             h={itemWidth}
             rounded="$sm"
-            bg="$gray100"
+            style={{ backgroundColor: theme.colors.gray100 }}
             alignItems="center"
             justifyContent="center"
             onPress={onAddImage}

@@ -22,7 +22,7 @@ import {
   OptimizedImage,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   getCommunities,
@@ -36,6 +36,7 @@ import { useAuthStore } from "../store/authStore";
 type TabType = "following" | "all";
 
 const AllCommunitiesScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user } = useAuthStore();
@@ -165,10 +166,10 @@ const AllCommunitiesScreen = () => {
     <Pressable
       key={community.id}
       onPress={() => handleCommunityPress(community)}
-      bg="$white"
+      style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]}
       p="$md"
       borderBottomWidth={1}
-      borderBottomColor="$gray100"
+
     >
       <HStack alignItems="center" gap="$md">
         <View style={styles.communityIcon}>
@@ -182,7 +183,7 @@ const AllCommunitiesScreen = () => {
             />
           ) : (
             <View style={styles.communityPlaceholder}>
-              <Text fontSize="$lg" fontWeight="$bold" color="$white">
+              <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.white }}>
                 {community.name.charAt(0)}
               </Text>
             </View>
@@ -190,7 +191,7 @@ const AllCommunitiesScreen = () => {
         </View>
         <VStack flex={1}>
           <HStack alignItems="center" gap="$xs">
-            <Text fontSize="$md" fontWeight="$semibold" color="$black">
+            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
               {community.name}
             </Text>
             {community.isOfficial && (
@@ -201,10 +202,10 @@ const AllCommunitiesScreen = () => {
               />
             )}
           </HStack>
-          <Text fontSize="$sm" color="$gray500" numberOfLines={1}>
+          <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} numberOfLines={1}>
             {community.description || t("community.noDescription")}
           </Text>
-          <Text fontSize="$xs" color="$gray400" mt="$xs">
+          <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mt="$xs">
             {community.memberCount} {t("community.members")} · {community.postCount} {t("community.posts")}
           </Text>
         </VStack>
@@ -216,11 +217,11 @@ const AllCommunitiesScreen = () => {
           px="$md"
           py="$sm"
           rounded="$sm"
-          bg={community.isFollowing ? "$gray100" : "$black"}
+          style={{ backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black }}
         >
           <Text
             fontSize="$sm"
-            color={community.isFollowing ? "$black" : "$white"}
+            style={{ color: community.isFollowing ? theme.colors.black : theme.colors.white }}
             fontWeight="$medium"
           >
             {community.isFollowing ? t("community.joined") : t("community.join")}
@@ -239,7 +240,7 @@ const AllCommunitiesScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <Text color="$gray400">{t("common.loading")}</Text>
+          <Text style={{ color: theme.colors.gray400 }}>{t("common.loading")}</Text>
         </VStack>
       </SafeAreaView>
     );
@@ -254,9 +255,9 @@ const AllCommunitiesScreen = () => {
       />
 
       {/* 搜索框 */}
-      <Box px="$md" py="$sm" bg="$white" borderBottomWidth={1} borderBottomColor="$gray100">
+      <Box px="$md" py="$sm" style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} borderBottomWidth={1}>
         <HStack
-          bg="$gray100"
+          style={{ backgroundColor: theme.colors.gray100 }}
           rounded="$md"
           px="$md"
           py="$sm"
@@ -280,18 +281,18 @@ const AllCommunitiesScreen = () => {
       </Box>
 
       {/* Tab 切换 */}
-      <HStack bg="$white" px="$md" py="$sm" gap="$md" borderBottomWidth={1} borderBottomColor="$gray100">
+      <HStack style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} px="$md" py="$sm" gap="$md" borderBottomWidth={1}>
         <Pressable
           onPress={() => setActiveTab("following")}
           py="$xs"
           px="$md"
           borderBottomWidth={2}
-          borderBottomColor={activeTab === "following" ? "$black" : "transparent"}
+          style={{ borderBottomColor: activeTab === "following" ? theme.colors.black : "transparent" }}
         >
           <Text
             fontSize="$sm"
             fontWeight={activeTab === "following" ? "$semibold" : "$regular"}
-            color={activeTab === "following" ? "$black" : "$gray400"}
+            style={{ color: activeTab === "following" ? theme.colors.black : theme.colors.gray400 }}
           >
             {t("community.joinedCommunities")}
           </Text>
@@ -301,12 +302,12 @@ const AllCommunitiesScreen = () => {
           py="$xs"
           px="$md"
           borderBottomWidth={2}
-          borderBottomColor={activeTab === "all" ? "$black" : "transparent"}
+          style={{ borderBottomColor: activeTab === "all" ? theme.colors.black : "transparent" }}
         >
           <Text
             fontSize="$sm"
             fontWeight={activeTab === "all" ? "$semibold" : "$regular"}
-            color={activeTab === "all" ? "$black" : "$gray400"}
+            style={{ color: activeTab === "all" ? theme.colors.black : theme.colors.gray400 }}
           >
             {t("community.allCommunities")}
           </Text>
@@ -336,7 +337,7 @@ const AllCommunitiesScreen = () => {
             />
             <Text
               fontSize="$lg"
-              color="$black"
+              style={{ color: theme.colors.black }}
               fontWeight="$medium"
               mb="$sm"
               mt="$md"
@@ -344,7 +345,7 @@ const AllCommunitiesScreen = () => {
             >
               {activeTab === "following" && !searchQuery ? t("community.noJoined") : t("community.notFound")}
             </Text>
-            <Text color="$gray400" textAlign="center">
+            <Text style={{ color: theme.colors.gray400 }} textAlign="center">
               {searchQuery
                 ? t("community.tryOtherKeywords")
                 : activeTab === "following"
@@ -356,11 +357,11 @@ const AllCommunitiesScreen = () => {
                 mt="$md"
                 px="$lg"
                 py="$sm"
-                bg="$black"
+                style={{ backgroundColor: theme.colors.black }}
                 rounded="$sm"
                 onPress={() => setActiveTab("all")}
               >
-                <Text color="$white" fontWeight="$medium">
+                <Text style={{ color: theme.colors.white }} fontWeight="$medium">
                   {t("community.browseAll")}
                 </Text>
               </Pressable>

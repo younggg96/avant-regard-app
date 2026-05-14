@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme, useThemedStyles, type AppTheme } from "../../../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 import { Box, Pressable, HStack, VStack, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
@@ -34,6 +34,7 @@ export const ChatHeader = ({
   onProfile,
   onBlocked,
 }: ChatHeaderProps) => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
@@ -73,7 +74,7 @@ export const ChatHeader = ({
 
   return (
     <>
-      <Box bg="$white" px="$md" py="$sm" borderBottomWidth={1} borderBottomColor="$gray100">
+      <Box style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} px="$md" py="$sm" borderBottomWidth={1}>
         <HStack alignItems="center" space="sm">
           <Pressable
             w={40}

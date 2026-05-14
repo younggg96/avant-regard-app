@@ -3,7 +3,7 @@ import { FlatList, RefreshControl, Alert, ActivityIndicator, Image as RNImage, S
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "../../../theme";
+import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { useChatStore } from "../../../store/chatStore";
@@ -17,6 +17,7 @@ import { RecentAvatars } from "./RecentAvatars";
 import { isStrangerConversation } from "../utils";
 
 export const MessagesContent = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const {
@@ -187,10 +188,10 @@ export const MessagesContent = () => {
         ListEmptyComponent={
           <Box py={48} px="$lg" alignItems="center">
             <Ionicons name="chatbubbles-outline" size={44} color={theme.colors.gray200} />
-            <Text fontSize="$md" fontWeight="$semibold" color="$black" mt="$md" mb="$sm">
+            <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$md" mb="$sm">
               {t("interaction.noMessages")}
             </Text>
-            <Text fontSize="$sm" color="$gray400" textAlign="center">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} textAlign="center">
               {t("interaction.startChatHint")}
             </Text>
           </Box>

@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
 import { isVideoUrl } from "../services/postService";
-import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
+import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { Post } from "./PostCard";
 import { getPostTextPreview } from "../utils/postContentPreview";
 
@@ -25,6 +25,7 @@ const ForumPostCardInner = ({
   onAuthorPress,
   onLike,
 }: ForumPostCardProps) => {
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   // 安全检查
   if (!post || !post.id || !post.author) {
@@ -91,10 +92,10 @@ const ForumPostCardInner = ({
                 alignItems="center"
               >
                 <Text
-                  color="$white"
+                  style={[{ fontFamily: playfairFonts.bold }, { color: theme.colors.white }]}
                   fontSize="$sm"
                   fontWeight="$semibold"
-                  style={{ fontFamily: playfairFonts.bold }}
+
                 >
                   +{remainingCount}
                 </Text>
@@ -135,22 +136,22 @@ const ForumPostCardInner = ({
           >
             <HStack alignItems="center" gap="$xs">
               <Text
-                color="$black"
+                style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.black }]}
                 fontWeight="$semibold"
                 fontSize="$sm"
                 numberOfLines={1}
-                style={{ fontFamily: playfairFonts.medium }}
+
               >
                 {post.author.name}
               </Text>
               {post.author.title ? (
-                <Box bg="$gray100" px="$xs" py={1} rounded="$xs">
+                <Box style={{ backgroundColor: theme.colors.gray100 }} px="$xs" py={1} rounded="$xs">
                   <Text
-                    color="$gray600"
+                    style={[{ fontFamily: playfairFonts.medium }, { color: theme.colors.gray600 }]}
                     fontSize={10}
                     fontWeight="$medium"
                     numberOfLines={1}
-                    style={{ fontFamily: playfairFonts.medium }}
+
                   >
                     {post.author.title}
                   </Text>
@@ -162,13 +163,13 @@ const ForumPostCardInner = ({
 
         {/* 帖子标题 */}
         <Text
-          color="$black"
+          style={[{ fontFamily: playfairFonts.bold }, { color: theme.colors.black }]}
           fontWeight="$bold"
           fontSize="$md"
           lineHeight="$md"
           numberOfLines={2}
           mt="$sm"
-          style={{ fontFamily: playfairFonts.bold }}
+
         >
           {displayTitle}
         </Text>
@@ -176,12 +177,12 @@ const ForumPostCardInner = ({
         {/* 帖子内容摘要 */}
         {displayDescription && (
           <Text
-            color="$gray600"
+            style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray600 }]}
             fontSize="$sm"
             lineHeight="$sm"
             numberOfLines={2}
             mt="$xs"
-            style={{ fontFamily: playfairFonts.regular }}
+
           >
             {displayDescription}
           </Text>
@@ -197,15 +198,15 @@ const ForumPostCardInner = ({
             {post.communityName && (
               <HStack alignItems="center" gap="$xs">
                 <Box
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   px="$sm"
                   py="$xs"
                   rounded="$sm"
                 >
                   <Text
-                    color="$gray600"
+                    style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray600 }]}
                     fontSize="$xs"
-                    style={{ fontFamily: playfairFonts.regular }}
+
                   >
                     {post.communityName}
                   </Text>
@@ -216,9 +217,9 @@ const ForumPostCardInner = ({
             {/* 时间 */}
             {post.timestamp && (
               <Text
-                color="$gray400"
+                style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray400 }]}
                 fontSize="$xs"
-                style={{ fontFamily: playfairFonts.regular }}
+
               >
                 {post.timestamp}
               </Text>
@@ -235,9 +236,9 @@ const ForumPostCardInner = ({
                 color={theme.colors.gray400}
               />
               <Text
-                color="$gray400"
+                style={[{ fontFamily: playfairFonts.regular }, { color: theme.colors.gray400 }]}
                 fontSize="$xs"
-                style={{ fontFamily: playfairFonts.regular }}
+
               >
                 {displayComments}
               </Text>
@@ -255,9 +256,9 @@ const ForumPostCardInner = ({
                   color={displayIsLiked ? "#FF3040" : theme.colors.gray400}
                 />
                 <Text
-                  color={displayIsLiked ? "#FF3040" : "$gray400"}
+                  style={[{ fontFamily: playfairFonts.regular }, { color: displayIsLiked ? "#FF3040" : theme.colors.gray400 }]}
                   fontSize="$xs"
-                  style={{ fontFamily: playfairFonts.regular }}
+
                 >
                   {displayLikes}
                 </Text>

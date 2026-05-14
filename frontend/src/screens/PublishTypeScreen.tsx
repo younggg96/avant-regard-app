@@ -5,7 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable, VStack, HStack } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 
 interface PublishType {
@@ -18,6 +18,7 @@ interface PublishType {
 }
 
 const PublishTypeScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const styles = useThemedStyles(makeStyles);
@@ -95,10 +96,10 @@ const PublishTypeScreen = () => {
       >
         <VStack px="$lg" py="$lg" gap="$md">
           <Box mb="$md">
-            <Text fontSize="$lg" fontWeight="$medium" color="$black" mb="$xs">
+            <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mb="$xs">
               {t("publish.createContent")}
             </Text>
-            <Text fontSize="$sm" color="$gray500">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
               {t("publish.selectTypeHint")}
             </Text>
           </Box>
@@ -107,9 +108,9 @@ const PublishTypeScreen = () => {
             <Pressable
               key={type.id}
               onPress={() => handleSelectType(type)}
-              bg="$white"
+              style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
               borderWidth={1}
-              borderColor="$gray100"
+
               rounded="$lg"
               p="$lg"
               sx={{
@@ -125,7 +126,7 @@ const PublishTypeScreen = () => {
                   w={56}
                   h={56}
                   rounded="$md"
-                  bg="$gray100"
+                  style={{ backgroundColor: theme.colors.gray100 }}
                   alignItems="center"
                   justifyContent="center"
                 >
@@ -140,12 +141,12 @@ const PublishTypeScreen = () => {
                   <Text
                     fontSize="$lg"
                     fontWeight="$medium"
-                    color="$black"
+                    style={{ color: theme.colors.black }}
                     mb="$xs"
                   >
                     {type.title}
                   </Text>
-                  <Text fontSize="$sm" color="$gray500">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
                     {type.description}
                   </Text>
                 </VStack>

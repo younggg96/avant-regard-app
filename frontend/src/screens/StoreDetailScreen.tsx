@@ -34,7 +34,7 @@ import {
   HStack,
   VStack,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -104,6 +104,7 @@ const PRODUCT_PREVIEW_LIMIT = 12;
 // 评论提示建议 - loaded from i18n in component
 
 const StoreDetailScreen = () => {
+  const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<StoreDetailNavigation>();
@@ -729,7 +730,7 @@ const StoreDetailScreen = () => {
 
   // 渲染评论项
   const renderCommentItem = ({ item }: { item: StoreComment }) => (
-    <VStack mt="$md" mx="$md" pb="$md" borderBottomWidth={StyleSheet.hairlineWidth} borderBottomColor="$gray100">
+    <VStack mt="$md" mx="$md" pb="$md" borderBottomWidth={StyleSheet.hairlineWidth} style={{ borderBottomColor: theme.colors.gray100 }}>
       <HStack space="sm" alignItems="flex-start">
         {/* 头像 */}
         <Box style={styles.commentAvatar}>
@@ -750,16 +751,16 @@ const StoreDetailScreen = () => {
         <VStack flex={1} space="xs">
           {/* 用户名 + 时间 */}
           <HStack justifyContent="between" alignItems="center">
-            <Text fontSize={13} fontWeight="$semibold" color="$black" style={styles.textBold}>
+            <Text fontSize={13} fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
               {item.username}
             </Text>
-            <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+            <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
               {formatTimestamp(item.createdAt)}
             </Text>
           </HStack>
 
           {/* 评论正文 */}
-          <Text fontSize={13} color="$gray800" lineHeight={20} style={styles.textRegular}>
+          <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.text }]} lineHeight={20}>
             {item.content}
           </Text>
 
@@ -770,7 +771,7 @@ const StoreDetailScreen = () => {
               style={styles.commentAction}
             >
               <Ionicons name="chatbubble-outline" size={13} color={theme.colors.gray400} />
-              <Text fontSize={12} color="$gray400" ml={4} style={styles.textRegular}>
+              <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]} ml={4}>
                 {t("store.reply")}
                 {item.replyCount > 0 ? ` · ${item.replyCount}` : ""}
               </Text>
@@ -783,7 +784,7 @@ const StoreDetailScreen = () => {
                 color={item.likedByMe ? "#FF3040" : theme.colors.gray400}
               />
               {item.likeCount > 0 && (
-                <Text fontSize={12} color={item.likedByMe ? "#FF3040" : "$gray400"} ml={4} style={styles.textRegular}>
+                <Text fontSize={12} style={[styles.textRegular, { color: item.likedByMe ? "#FF3040" : theme.colors.gray400 }]} ml={4}>
                   {item.likeCount}
                 </Text>
               )}
@@ -791,7 +792,7 @@ const StoreDetailScreen = () => {
 
             {user && item.userId === Number(user.id) && (
               <Pressable onPress={() => handleDeleteComment(item.id)}>
-                <Text fontSize={12} color="$error" style={styles.textRegular}>
+                <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.error }]}>
                   {t("common.delete")}
                 </Text>
               </Pressable>
@@ -806,26 +807,26 @@ const StoreDetailScreen = () => {
           {item.replies.map((reply) => (
             <VStack key={reply.id}>
               <HStack alignItems="center" gap={4} mb={2}>
-                <Text fontSize={12} fontWeight="$semibold" color="$black" style={styles.textBold}>
+                <Text fontSize={12} fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                   {reply.username}
                 </Text>
                 {reply.replyToUsername && (
                   <>
                     <Ionicons name="arrow-forward" size={10} color={theme.colors.gray300} />
-                    <Text fontSize={12} color="$gray400" style={styles.textRegular}>
+                    <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                       {reply.replyToUsername}
                     </Text>
                   </>
                 )}
               </HStack>
-              <Text fontSize={13} color="$gray700" lineHeight={19} style={styles.textRegular}>
+              <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.gray700 }]} lineHeight={19}>
                 {reply.content}
               </Text>
             </VStack>
           ))}
           {item.replyCount > item.replies.length && (
             <Pressable>
-              <Text fontSize={12} color="$gray400" style={styles.textRegular}>
+              <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                 {t("store.viewAllReplies", { count: item.replyCount })}
               </Text>
             </Pressable>
@@ -864,7 +865,7 @@ const StoreDetailScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <Ionicons name="storefront-outline" size={64} color={theme.colors.gray200} />
-          <Text color="$gray300" mt="$md" style={styles.textRegular}>
+          <Text style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md">
             {t("store.storeNotExist")}
           </Text>
         </VStack>
@@ -908,12 +909,12 @@ const StoreDetailScreen = () => {
             <VStack px="$md" pt="$md" pb="$sm">
               {/* 名称行 */}
               <HStack justifyContent="between" alignItems="flex-start">
-                <Text fontSize={20} fontWeight="$bold" color="$black" flex={1} mr="$md" style={[styles.textBold, styles.textHero]}>
+                <Text fontSize={20} fontWeight="$bold" style={[styles.textBold, styles.textHero, { color: theme.colors.black }]} flex={1} mr="$md">
                   {store.name}
                 </Text>
                 <HStack alignItems="center" gap={10}>
                   <Pressable onPress={handleToggleFavorite} style={styles.followBtn}>
-                    <Text fontSize={12} color={"$black"} style={[styles.textRegular]}>
+                    <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.black }]}>
                       {store.isFavorited ? t("store.followed") : t("store.follow")}
                     </Text>
                   </Pressable>
@@ -921,7 +922,7 @@ const StoreDetailScreen = () => {
               </HStack>
 
               {/* 城市 */}
-              <Text fontSize={13} color="$gray400" mt={4} style={styles.textRegular}>
+              <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={4}>
                 {store.city}, {store.country}
               </Text>
 
@@ -929,7 +930,7 @@ const StoreDetailScreen = () => {
               {store.contributorName && (
                 <HStack alignItems="center" mt={10} gap={5} bg="#F5F0FF" px={10} py={6} rounded="$xs" alignSelf="flex-start">
                   <Ionicons name="person-outline" size={12} color={theme.colors.gray500} />
-                  <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+                  <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                     {t("store.contributedBy", { name: store.contributorName })}
                   </Text>
                 </HStack>
@@ -940,7 +941,7 @@ const StoreDetailScreen = () => {
             <HStack
               borderTopWidth={StyleSheet.hairlineWidth}
               borderBottomWidth={StyleSheet.hairlineWidth}
-              borderColor="$gray100"
+              style={{ borderColor: theme.colors.gray100 }}
               py={14}
               mx="$md"
               my="$sm"
@@ -954,40 +955,40 @@ const StoreDetailScreen = () => {
                     color="#FFB800"
                     inactiveColor={theme.colors.gray200}
                   />
-                  <Text fontSize={13} color="$black" fontWeight="$semibold" style={styles.textBold}>
+                  <Text fontSize={13} style={[styles.textBold, { color: theme.colors.black }]} fontWeight="$semibold">
                     {store.averageRating?.toFixed(1) || "0.0"}
                   </Text>
                 </HStack>
-                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={3}>
                   {t("store.ratingCount", { count: store.ratingCount })}
                 </Text>
               </Pressable>
 
-              <Box w={StyleSheet.hairlineWidth} bg="$gray200" />
+              <Box w={StyleSheet.hairlineWidth} style={{ backgroundColor: theme.colors.gray200 }} />
 
               <Pressable alignItems="center" onPress={() => openCommentInput()}>
                 <Ionicons name="chatbubble-outline" size={18} color={theme.colors.black} />
-                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={3}>
                   {t("store.commentCount", { count: store.commentCount })}
                 </Text>
               </Pressable>
 
-              <Box w={StyleSheet.hairlineWidth} bg="$gray200" />
+              <Box w={StyleSheet.hairlineWidth} style={{ backgroundColor: theme.colors.gray200 }} />
 
               <Pressable alignItems="center" onPress={handleToggleFavorite}>
                 <Ionicons name="people-outline" size={18} color={theme.colors.black} />
-                <Text fontSize={11} color="$gray400" mt={3} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={3}>
                   {t("store.followCount", { count: store.favoriteCount })}
                 </Text>
               </Pressable>
             </HStack>
 
             {/* ── 信息行：地址 / 时间 / 电话 ── */}
-            <VStack mx="$md" borderTopWidth={StyleSheet.hairlineWidth} borderColor="$gray100">
+            <VStack mx="$md" borderTopWidth={StyleSheet.hairlineWidth} style={{ borderColor: theme.colors.gray100 }}>
               {/* 地址 */}
               <Pressable onPress={handleNavigate} style={styles.infoRow}>
                 <Ionicons name="location-outline" size={16} color={theme.colors.gray400} />
-                <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                <Text fontSize={14} style={[styles.textRegular, { color: theme.colors.black }]} flex={1} ml={10}>
                   {store.address}
                 </Text>
                 <Ionicons name="navigate-outline" size={15} color={theme.colors.gray300} />
@@ -997,7 +998,7 @@ const StoreDetailScreen = () => {
               {!!store.hours && (
                 <Box style={styles.infoRow} flexDirection="row" alignItems="center">
                   <Ionicons name="time-outline" size={16} color={theme.colors.gray400} />
-                  <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                  <Text fontSize={14} style={[styles.textRegular, { color: theme.colors.black }]} flex={1} ml={10}>
                     {store.hours}
                   </Text>
                 </Box>
@@ -1007,7 +1008,7 @@ const StoreDetailScreen = () => {
               {store.phone && store.phone.length > 0 && store.phone.map((phone, idx) => (
                 <Pressable key={idx} style={styles.infoRow} onPress={() => handleCall(phone)}>
                   <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                  <Text fontSize={14} color="$black" flex={1} ml={10} style={styles.textRegular}>
+                  <Text fontSize={14} style={[styles.textRegular, { color: theme.colors.black }]} flex={1} ml={10}>
                     {phone}
                   </Text>
                   <Text fontSize={12} color="#27AE60" style={styles.textRegular}>
@@ -1020,13 +1021,13 @@ const StoreDetailScreen = () => {
             {/* ── 风格标签 ── */}
             {store.style.length > 0 && (
               <VStack px="$md" mt="$md">
-                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} letterSpacing={0.5}>
                   {t("store.storeStyle").toUpperCase()}
                 </Text>
                 <HStack flexWrap="wrap" gap={6}>
                   {store.style.map((s, idx) => (
                     <Box key={idx} style={styles.styleChip}>
-                      <Text fontSize={12} color="$black" style={styles.textRegular}>{s}</Text>
+                      <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.black }]}>{s}</Text>
                     </Box>
                   ))}
                 </HStack>
@@ -1036,13 +1037,13 @@ const StoreDetailScreen = () => {
             {/* ── 品牌 ── */}
             {store.brands.length > 0 && (
               <VStack px="$md" mt="$md">
-                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} letterSpacing={0.5}>
                   {t("store.mainBrands").toUpperCase()}
                 </Text>
                 <HStack flexWrap="wrap" gap={6}>
                   {store.brands.map((brand, idx) => (
                     <Box key={idx} style={styles.brandChip}>
-                      <Text fontSize={12} color="$gray600" style={styles.textRegular}>{brand}</Text>
+                      <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray600 }]}>{brand}</Text>
                     </Box>
                   ))}
                 </HStack>
@@ -1052,10 +1053,10 @@ const StoreDetailScreen = () => {
             {/* ── 店铺介绍 ── */}
             {!!store.description && (
               <VStack px="$md" mt="$md">
-                <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} letterSpacing={0.5}>
                   {t("store.storeIntro").toUpperCase()}
                 </Text>
-                <Text fontSize={14} color="$black" lineHeight={22} style={styles.textRegular}>
+                <Text fontSize={14} style={[styles.textRegular, { color: theme.colors.black }]} lineHeight={22}>
                   {store.description}
                 </Text>
               </VStack>
@@ -1064,7 +1065,7 @@ const StoreDetailScreen = () => {
             {/* ── 店铺图片 ── */}
             {(store.images?.length ?? 0) > 0 && (
               <VStack mt="$md">
-                <Text fontSize={11} color="$gray400" mb={8} px="$md" letterSpacing={0.5} style={styles.textRegular}>
+                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} px="$md" letterSpacing={0.5}>
                   {t("store.storeImages").toUpperCase()}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
@@ -1086,7 +1087,7 @@ const StoreDetailScreen = () => {
             {!merchantContent?.isMerchant && (
               <Pressable style={styles.merchantRow} onPress={openMerchantApplyModal}>
                 <Ionicons name="storefront-outline" size={15} color={theme.colors.gray400} />
-                <Text fontSize={13} color="$gray400" flex={1} ml={8} style={styles.textRegular}>
+                <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.gray400 }]} flex={1} ml={8}>
                   {t("store.iAmMerchant")}
                 </Text>
                 <Ionicons name="chevron-forward" size={15} color={theme.colors.gray300} />
@@ -1131,7 +1132,7 @@ const StoreDetailScreen = () => {
                               bg="rgba(0,0,0,0.5)"
                               p="$sm"
                             >
-                              <Text fontSize="$sm" color="$white" style={styles.textRegular}>
+                              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.white }]}>
                                 {banner.title}
                               </Text>
                             </Box>
@@ -1148,7 +1149,7 @@ const StoreDetailScreen = () => {
                             w={index === currentBannerIndex ? 16 : 6}
                             h={6}
                             rounded="$sm"
-                            bg={index === currentBannerIndex ? "$black" : "$gray200"}
+                            style={{ backgroundColor: index === currentBannerIndex ? theme.colors.black : theme.colors.gray200 }}
                           />
                         ))}
                       </HStack>
@@ -1159,7 +1160,7 @@ const StoreDetailScreen = () => {
                 {/* ── 公告 ── */}
                 {merchantContent.announcements.length > 0 && (
                   <VStack px="$md" mt="$lg">
-                    <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                    <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} letterSpacing={0.5}>
                       {t("store.storeAnnouncement").toUpperCase()}
                     </Text>
                     <VStack gap={10}>
@@ -1173,8 +1174,8 @@ const StoreDetailScreen = () => {
                         >
                           <HStack alignItems="center" gap={6} mb={2}>
                             {announcement.isPinned && (
-                              <Box bg="$gray100" px={6} py={1} rounded="$xs">
-                                <Text fontSize={10} color="$gray600" style={styles.textRegular}>
+                              <Box style={{ backgroundColor: theme.colors.gray100 }} px={6} py={1} rounded="$xs">
+                                <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray600 }]}>
                                   {t("store.pinned")}
                                 </Text>
                               </Box>
@@ -1182,10 +1183,10 @@ const StoreDetailScreen = () => {
                             <Text
                               fontSize={14}
                               fontWeight="$semibold"
-                              color="$black"
+                              style={[styles.textBold, { color: theme.colors.black }]}
                               flex={1}
                               numberOfLines={1}
-                              style={styles.textBold}
+
                             >
                               {announcement.title}
                             </Text>
@@ -1197,7 +1198,7 @@ const StoreDetailScreen = () => {
                               />
                             )}
                           </HStack>
-                          <Text fontSize={13} color="$gray600" lineHeight={20} numberOfLines={3} style={styles.textRegular}>
+                          <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.gray600 }]} lineHeight={20} numberOfLines={3}>
                             {announcement.content}
                           </Text>
                         </Pressable>
@@ -1209,7 +1210,7 @@ const StoreDetailScreen = () => {
                 {/* ── 近期活动 ── */}
                 {merchantContent.activities.length > 0 && (
                   <VStack mt="$lg">
-                    <Text fontSize={11} color="$gray400" mb={8} px="$md" letterSpacing={0.5} style={styles.textRegular}>
+                    <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} px="$md" letterSpacing={0.5}>
                       {t("store.recentActivities").toUpperCase()}
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
@@ -1233,20 +1234,20 @@ const StoreDetailScreen = () => {
                             <Text
                               fontSize={13}
                               fontWeight="$semibold"
-                              color="$black"
+                              style={[styles.textBold, { color: theme.colors.black }]}
                               numberOfLines={1}
-                              style={styles.textBold}
+
                             >
                               {activity.title}
                             </Text>
                             <HStack alignItems="center" gap={4} mt={4}>
                               <Ionicons name="time-outline" size={11} color={theme.colors.gray400} />
-                              <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+                              <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                 {formatDate(activity.activityStartTime)} – {formatDate(activity.activityEndTime)}
                               </Text>
                             </HStack>
                             {activity.needRegistration && (
-                              <Text fontSize={10} color="$gray400" mt={4} style={styles.textRegular}>
+                              <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={4}>
                                 {t("store.needRegistration")}
                                 {activity.registrationLimit ? ` · ${activity.registrationCount}/${activity.registrationLimit}` : ""}
                               </Text>
@@ -1261,7 +1262,7 @@ const StoreDetailScreen = () => {
                 {/* ── 近期折扣 ── */}
                 {merchantContent.discounts.length > 0 && (
                   <VStack px="$md" mt="$lg">
-                    <Text fontSize={11} color="$gray400" mb={8} letterSpacing={0.5} style={styles.textRegular}>
+                    <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} letterSpacing={0.5}>
                       {t("store.promotions").toUpperCase()}
                     </Text>
                     <VStack gap={10}>
@@ -1274,7 +1275,7 @@ const StoreDetailScreen = () => {
                         >
                           <HStack justifyContent="between" alignItems="flex-start" gap={10}>
                             <VStack flex={1}>
-                              <Text fontSize={14} fontWeight="$semibold" color="$black" style={styles.textBold}>
+                              <Text fontSize={14} fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.black }]}>
                                 {discount.title}
                               </Text>
                               {discount.discountValue && (
@@ -1283,13 +1284,13 @@ const StoreDetailScreen = () => {
                                 </Text>
                               )}
                               {discount.description && (
-                                <Text fontSize={12} color="$gray600" mt={4} numberOfLines={2} style={styles.textRegular}>
+                                <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray600 }]} mt={4} numberOfLines={2}>
                                   {discount.description}
                                 </Text>
                               )}
                               <HStack alignItems="center" gap={4} mt={6}>
                                 <Ionicons name="time-outline" size={11} color={theme.colors.gray400} />
-                                <Text fontSize={11} color="$gray400" style={styles.textRegular}>
+                                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                   {formatDate(discount.discountStartTime)} – {formatDate(discount.discountEndTime)}
                                 </Text>
                               </HStack>
@@ -1329,11 +1330,9 @@ const StoreDetailScreen = () => {
                     <Text
                       fontSize={12}
                       fontWeight={storeTab === "products" ? "$semibold" : "$normal"}
-                      color={storeTab === "products" ? "$black" : "$gray400"}
+                      style={[storeTab === "products" ? styles.textBold : styles.textRegular, { color: storeTab === "products" ? theme.colors.black : theme.colors.gray400 }]}
                       letterSpacing={0.5}
-                      style={
-                        storeTab === "products" ? styles.textBold : styles.textRegular
-                      }
+
                     >
                       {t("store.products").toUpperCase()}
                       {productsTotal > 0 ? ` · ${productsTotal}` : ""}
@@ -1347,11 +1346,9 @@ const StoreDetailScreen = () => {
                     <Text
                       fontSize={12}
                       fontWeight={storeTab === "posts" ? "$semibold" : "$normal"}
-                      color={storeTab === "posts" ? "$black" : "$gray400"}
+                      style={[storeTab === "posts" ? styles.textBold : styles.textRegular, { color: storeTab === "posts" ? theme.colors.black : theme.colors.gray400 }]}
                       letterSpacing={0.5}
-                      style={
-                        storeTab === "posts" ? styles.textBold : styles.textRegular
-                      }
+
                     >
                       {t("store.storePosts").toUpperCase()}
                       {storePosts.length > 0 ? ` · ${storePosts.length}` : ""}
@@ -1364,7 +1361,7 @@ const StoreDetailScreen = () => {
                       flexDirection="row"
                       alignItems="center"
                     >
-                      <Text fontSize={12} color="$gray400" mr={2} style={styles.textRegular}>
+                      <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]} mr={2}>
                         {t("common.viewAll")}
                       </Text>
                       <Ionicons
@@ -1386,7 +1383,7 @@ const StoreDetailScreen = () => {
                 {storePosts.length === 0 ? (
                   <VStack alignItems="center" py="$lg" px="$md">
                     <Ionicons name="albums-outline" size={28} color={theme.colors.gray200} />
-                    <Text fontSize={12} color="$gray300" mt={6} textAlign="center" style={styles.textRegular}>
+                    <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray300 }]} mt={6} textAlign="center">
                       {t("store.noStorePosts")}
                     </Text>
                   </VStack>
@@ -1425,20 +1422,20 @@ const StoreDetailScreen = () => {
                             <Text
                               fontSize={12}
                               fontWeight="$semibold"
-                              color="$black"
+                              style={[styles.textBold, { color: theme.colors.black }]}
                               numberOfLines={2}
-                              style={styles.textBold}
+
                             >
                               {p.title}
                             </Text>
                             {!!p.username && (
-                              <Text fontSize={10} color="$gray400" numberOfLines={1} style={styles.textRegular}>
+                              <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]} numberOfLines={1}>
                                 @{p.username}
                               </Text>
                             )}
                             <HStack alignItems="center" gap={4} mt={2}>
                               <Ionicons name="heart-outline" size={11} color={theme.colors.gray400} />
-                              <Text fontSize={10} color="$gray400" style={styles.textRegular}>
+                              <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                                 {p.likeCount || 0}
                               </Text>
                             </HStack>
@@ -1490,14 +1487,14 @@ const StoreDetailScreen = () => {
                           )}
                           {product.isNew && !hasDiscount && (
                             <Box style={[styles.productBadge, styles.productBadgeNew]}>
-                              <Text fontSize={9} fontWeight="$bold" color="$black" style={styles.textBold}>
+                              <Text fontSize={9} fontWeight="$bold" style={[styles.textBold, { color: theme.colors.black }]}>
                                 NEW
                               </Text>
                             </Box>
                           )}
                           {hasDiscount && (
                             <Box style={[styles.productBadge, styles.productBadgeSale]}>
-                              <Text fontSize={9} fontWeight="$bold" color="$white" style={styles.textBold}>
+                              <Text fontSize={9} fontWeight="$bold" style={[styles.textBold, { color: theme.colors.white }]}>
                                 SALE
                               </Text>
                             </Box>
@@ -1507,14 +1504,14 @@ const StoreDetailScreen = () => {
                           <Text
                             fontSize={12}
                             fontWeight="$semibold"
-                            color="$black"
+                            style={[styles.textBold, { color: theme.colors.black }]}
                             numberOfLines={2}
-                            style={styles.textBold}
+
                           >
                             {product.title}
                           </Text>
                           {!!product.brand && (
-                            <Text fontSize={10} color="$gray400" numberOfLines={1} style={styles.textRegular}>
+                            <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]} numberOfLines={1}>
                               {product.brand}
                             </Text>
                           )}
@@ -1522,8 +1519,8 @@ const StoreDetailScreen = () => {
                             <Text
                               fontSize={12}
                               fontWeight="$bold"
-                              color={hasDiscount ? "#E65100" : "$black"}
-                              style={styles.textBold}
+                              style={[styles.textBold, { color: hasDiscount ? "#E65100" : theme.colors.black }]}
+
                             >
                               {formatPrice(
                                 hasDiscount
@@ -1535,8 +1532,8 @@ const StoreDetailScreen = () => {
                             {hasDiscount && (
                               <Text
                                 fontSize={10}
-                                color="$gray300"
-                                style={[styles.textRegular, styles.priceStrike]}
+                                style={[styles.textRegular, styles.priceStrike, { color: theme.colors.gray300 }]}
+
                               >
                                 {formatPrice(product.priceCents, product.currency)}
                               </Text>
@@ -1556,11 +1553,11 @@ const StoreDetailScreen = () => {
                     <Box style={styles.productMoreIconWrap}>
                       <Ionicons name="arrow-forward" size={20} color={theme.colors.black} />
                     </Box>
-                    <Text fontSize={12} color="$black" fontWeight="$semibold" mt={8} style={styles.textBold}>
+                    <Text fontSize={12} style={[styles.textBold, { color: theme.colors.black }]} fontWeight="$semibold" mt={8}>
                       {t("common.viewAll")}
                     </Text>
                     {productsTotal > 0 && (
-                      <Text fontSize={10} color="$gray400" mt={2} style={styles.textRegular}>
+                      <Text fontSize={10} style={[styles.textRegular, { color: theme.colors.gray400 }]} mt={2}>
                         {productsTotal}
                       </Text>
                     )}
@@ -1578,14 +1575,14 @@ const StoreDetailScreen = () => {
               pb="$sm"
               mt="$md"
               borderTopWidth={StyleSheet.hairlineWidth}
-              borderTopColor="$gray100"
+              style={{ borderTopColor: theme.colors.gray100 }}
             >
-              <Text fontSize={12} color="$gray400" letterSpacing={0.5} style={styles.textRegular}>
+              <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]} letterSpacing={0.5}>
                 {t("store.userReviews").toUpperCase()} ({commentsTotal})
               </Text>
               <Pressable flexDirection="row" alignItems="center" onPress={() => openCommentInput()}>
                 <Ionicons name="create-outline" size={15} color={theme.colors.gray400} />
-                <Text fontSize={12} color="$gray400" ml={4} style={styles.textRegular}>
+                <Text fontSize={12} style={[styles.textRegular, { color: theme.colors.gray400 }]} ml={4}>
                   {t("store.writeReview")}
                 </Text>
               </Pressable>
@@ -1595,7 +1592,7 @@ const StoreDetailScreen = () => {
         ListEmptyComponent={
           <VStack alignItems="center" py="$xl" px="$md">
             <Ionicons name="chatbubble-outline" size={32} color={theme.colors.gray200} />
-            <Text fontSize={13} color="$gray300" mt="$md" textAlign="center" style={styles.textRegular}>
+            <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$md" textAlign="center">
               {t("store.noReviewsYet")}
             </Text>
           </VStack>
@@ -1641,11 +1638,11 @@ const StoreDetailScreen = () => {
               },
             ]}
           >
-            <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$lg" />
-            <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$md" style={styles.textBold}>
+            <Box w={40} h={4} style={{ backgroundColor: theme.colors.gray200 }} rounded="$sm" alignSelf="center" mb="$lg" />
+            <Text fontSize="$lg" fontWeight="$bold" style={[styles.textBold, { color: theme.colors.black }]} textAlign="center" mb="$md">
               {t("store.rateThisStore")}
             </Text>
-            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
+            <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} textAlign="center" mb="$lg">
               {store.name}
             </Text>
 
@@ -1662,7 +1659,7 @@ const StoreDetailScreen = () => {
               />
             </HStack>
 
-            <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$xl" style={styles.textRegular}>
+            <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} textAlign="center" mb="$xl">
               {selectedRating === 0
                 ? t("store.tapToRate")
                 : selectedRating >= 4.5
@@ -1681,7 +1678,7 @@ const StoreDetailScreen = () => {
               w="100%"
               py="$md"
               rounded="$sm"
-              bg={selectedRating > 0 ? "$black" : "$gray200"}
+              style={{ backgroundColor: selectedRating > 0 ? theme.colors.black : theme.colors.gray200 }}
               alignItems="center"
               onPress={handleSubmitRating}
               disabled={selectedRating === 0 || isSubmittingRating}
@@ -1689,7 +1686,7 @@ const StoreDetailScreen = () => {
               {isSubmittingRating ? (
                 <ActivityIndicator color={theme.colors.white} />
               ) : (
-                <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
+                <Text fontSize="$md" fontWeight="$bold" style={[styles.textBold, { color: theme.colors.white }]}>
                   {t("store.submitRating")}
                 </Text>
               )}
@@ -1728,12 +1725,12 @@ const StoreDetailScreen = () => {
                 },
               ]}
             >
-              <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
+              <Box w={40} h={4} style={{ backgroundColor: theme.colors.gray200 }} rounded="$sm" alignSelf="center" mb="$md" />
 
               {/* 回复提示 */}
               {replyTo && (
                 <HStack
-                  bg="$gray50"
+                  style={{ backgroundColor: theme.colors.gray50 }}
                   rounded="$md"
                   px="$md"
                   py="$sm"
@@ -1741,8 +1738,8 @@ const StoreDetailScreen = () => {
                   alignItems="center"
                   justifyContent="between"
                 >
-                  <Text fontSize="$sm" color="$gray300" style={styles.textRegular}>
-                    {t("store.reply")} <Text fontWeight="$medium" color="$black" style={styles.textRegular}>{replyTo.username}</Text>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
+                    {t("store.reply")} <Text fontWeight="$medium" style={[styles.textRegular, { color: theme.colors.black }]}>{replyTo.username}</Text>
                   </Text>
                   <Pressable onPress={() => setReplyTo(null)}>
                     <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
@@ -1751,7 +1748,7 @@ const StoreDetailScreen = () => {
               )}
 
               {/* 评论建议 */}
-              <Text fontSize="$sm" color="$gray300" mb="$sm" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$sm">
                 {t("store.commentSuggestions")}
               </Text>
               <ScrollView
@@ -1762,14 +1759,14 @@ const StoreDetailScreen = () => {
                 {suggestions.map((suggestion, index) => (
                   <Pressable
                     key={index}
-                    bg="$gray100"
+                    style={{ backgroundColor: theme.colors.gray100 }}
                     rounded="$sm"
                     px="$md"
                     py="$sm"
                     mr="$sm"
                     onPress={() => useSuggestion(suggestion)}
                   >
-                    <Text fontSize="$sm" color="$gray300" numberOfLines={1} style={styles.textRegular}>
+                    <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} numberOfLines={1}>
                       {suggestion.length > 20 ? suggestion.slice(0, 20) + "..." : suggestion}
                     </Text>
                   </Pressable>
@@ -1778,7 +1775,7 @@ const StoreDetailScreen = () => {
 
               {/* 输入框 */}
               <Box
-                bg="$gray50"
+                style={{ backgroundColor: theme.colors.gray50 }}
                 rounded="$lg"
                 p="$md"
                 mb="$md"
@@ -1799,21 +1796,21 @@ const StoreDetailScreen = () => {
 
               {/* 字数统计和发送按钮 */}
               <HStack justifyContent="between" alignItems="center">
-                <Text fontSize="$xs" color="$gray200" style={styles.textRegular}>
+                <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray200 }]}>
                   {commentText.length}/500
                 </Text>
                 <Pressable
                   px="$xl"
                   py="$sm"
                   rounded="$sm"
-                  bg={commentText.trim() ? "$black" : "$gray200"}
+                  style={{ backgroundColor: commentText.trim() ? theme.colors.black : theme.colors.gray200 }}
                   onPress={handleSubmitComment}
                   disabled={!commentText.trim() || isSubmittingComment}
                 >
                   {isSubmittingComment ? (
                     <ActivityIndicator color={theme.colors.white} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$semibold" color="$white" style={styles.textBold}>
+                    <Text fontSize="$md" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]}>
                       {t("store.publish")}
                     </Text>
                   )}
@@ -1828,14 +1825,14 @@ const StoreDetailScreen = () => {
       <HStack
         px="$xl"
         py="$lg"
-        bg="$white"
+        style={[{ backgroundColor: theme.colors.white }, { borderTopColor: theme.colors.gray100 }]}
         borderTopWidth={StyleSheet.hairlineWidth}
-        borderTopColor="$gray100"
+
         gap="$sm"
       >
         <Pressable style={styles.bottomBtnOutline} onPress={openRatingModal} flex={1}>
           <Ionicons name="star-outline" size={15} color={theme.colors.black} />
-          <Text fontSize={13} color="$black" ml={6} style={styles.textRegular}>
+          <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.black }]} ml={6}>
             {store.userRating
               ? t("store.rated", { rating: store.userRating % 1 === 0 ? store.userRating : store.userRating.toFixed(1) })
               : t("store.rateStore")}
@@ -1844,7 +1841,7 @@ const StoreDetailScreen = () => {
 
         <Pressable style={styles.bottomBtnFill} onPress={() => openCommentInput()} flex={1}>
           <Ionicons name="chatbubble-outline" size={15} color={theme.colors.white} />
-          <Text fontSize={13} color="$white" ml={6} style={styles.textRegular}>
+          <Text fontSize={13} style={[styles.textRegular, { color: theme.colors.white }]} ml={6}>
             {t("store.writeReview")}
           </Text>
         </Pressable>
@@ -1879,19 +1876,19 @@ const StoreDetailScreen = () => {
                 },
               ]}
             >
-              <Box w={40} h={4} bg="$gray200" rounded="$sm" alignSelf="center" mb="$md" />
+              <Box w={40} h={4} style={{ backgroundColor: theme.colors.gray200 }} rounded="$sm" alignSelf="center" mb="$md" />
 
-              <Text fontSize="$lg" fontWeight="$bold" color="$black" textAlign="center" mb="$xs" style={styles.textBold}>
+              <Text fontSize="$lg" fontWeight="$bold" style={[styles.textBold, { color: theme.colors.black }]} textAlign="center" mb="$xs">
                 {t("store.merchantApplyTitle")}
               </Text>
-              <Text fontSize="$sm" color="$gray300" textAlign="center" mb="$lg" style={styles.textRegular}>
+              <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} textAlign="center" mb="$lg">
                 {t("store.applyToBeMerchant", { name: store.name })}
               </Text>
 
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
                 {/* 联系人姓名 */}
                 <VStack mb="$md">
-                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                     {t("store.contactNameLabel")}
                   </Text>
                   <TextInput
@@ -1907,7 +1904,7 @@ const StoreDetailScreen = () => {
 
                 {/* 联系电话 */}
                 <VStack mb="$md">
-                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                     {t("store.contactPhoneLabel")}
                   </Text>
                   <TextInput
@@ -1924,7 +1921,7 @@ const StoreDetailScreen = () => {
 
                 {/* 联系邮箱 */}
                 <VStack mb="$md">
-                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                     {t("store.contactEmailLabel")}
                   </Text>
                   <TextInput
@@ -1942,18 +1939,18 @@ const StoreDetailScreen = () => {
 
                 {/* 营业执照 */}
                 <VStack mb="$lg">
-                  <Text fontSize="$sm" color="$gray300" mb="$xs" style={styles.textRegular}>
+                  <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mb="$xs">
                     {t("store.businessLicenseLabel")}
                   </Text>
                   <Pressable
                     h={120}
-                    bg="$gray50"
+                    style={[{ backgroundColor: theme.colors.gray50 }, { borderColor: theme.colors.gray200 }]}
                     rounded="$md"
                     justifyContent="center"
                     alignItems="center"
                     overflow="hidden"
                     borderWidth={1}
-                    borderColor="$gray200"
+
                     borderStyle="dashed"
                     onPress={pickBusinessLicense}
                   >
@@ -1968,10 +1965,10 @@ const StoreDetailScreen = () => {
                     ) : (
                       <VStack alignItems="center">
                         <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.gray300} />
-                        <Text fontSize="$sm" color="$gray300" mt="$sm" style={styles.textRegular}>
+                        <Text fontSize="$sm" style={[styles.textRegular, { color: theme.colors.gray300 }]} mt="$sm">
                           {t("store.uploadProof")}
                         </Text>
-                        <Text fontSize="$xs" color="$gray200" mt="$xs" style={styles.textRegular}>
+                        <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray200 }]} mt="$xs">
                           {t("store.supportedDocs")}
                         </Text>
                       </VStack>
@@ -1980,11 +1977,11 @@ const StoreDetailScreen = () => {
                 </VStack>
 
                 {/* 提示信息 */}
-                <Box bg="$gray50" rounded="$md" p="$md" mb="$lg">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$lg">
                   <HStack alignItems="start" gap="$sm">
                     <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray300} />
                     <VStack flex={1}>
-                      <Text fontSize="$xs" color="$gray300" style={styles.textRegular}>
+                      <Text fontSize="$xs" style={[styles.textRegular, { color: theme.colors.gray300 }]}>
                         {t("store.applyNote")}
                       </Text>
                     </VStack>
@@ -1995,7 +1992,7 @@ const StoreDetailScreen = () => {
                 <Pressable
                   py="$md"
                   rounded="$sm"
-                  bg="$black"
+                  style={{ backgroundColor: theme.colors.black }}
                   alignItems="center"
                   onPress={handleSubmitMerchantApply}
                   disabled={isSubmittingApply}
@@ -2004,7 +2001,7 @@ const StoreDetailScreen = () => {
                   {isSubmittingApply ? (
                     <ActivityIndicator color={theme.colors.white} />
                   ) : (
-                    <Text fontSize="$md" fontWeight="$bold" color="$white" style={styles.textBold}>
+                    <Text fontSize="$md" fontWeight="$bold" style={[styles.textBold, { color: theme.colors.white }]}>
                       {t("store.submitApply")}
                     </Text>
                   )}
