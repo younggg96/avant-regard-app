@@ -32,6 +32,8 @@ interface AuthState {
   isLoading: boolean;
   isRefreshing: boolean; // 是否正在刷新 token
   lastProfileReminderTime: number | null; // 上次提醒填写资料的时间戳
+  /** 本地主题偏好写入世代；用于丢弃「发起请求之后才改过主题」的过时 getUserInfo 响应。不参与持久化。 */
+  themePreferenceRevision: number;
 }
 
 interface AuthActions {
@@ -109,10 +111,13 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       isRefreshing: false,
       lastProfileReminderTime: null,
+      themePreferenceRevision: 0,
 
       // Actions
       loginWithResponse: (response: LoginResponse) => {
         const currentUser = get().user;
+        const sameUser =
+          currentUser?.userId === response.userId;
         const user: AuthUser = {
           id: String(response.userId),
           userId: response.userId,
@@ -121,8 +126,9 @@ export const useAuthStore = create<AuthStore>()(
           is_admin: response.is_admin,
           userType: response.userType,
           avatar: currentUser?.avatar || "https://via.placeholder.com/100x100",
-          // 如果是同一用户重新登录，保留之前的 profileCompleted 状态
-          profileCompleted: currentUser?.userId === response.userId ? currentUser.profileCompleted : undefined,
+          // 如果是同一用户重新登录，保留之前的 profileCompleted / 主题等本地状态
+          profileCompleted: sameUser ? currentUser?.profileCompleted : undefined,
+          preferredTheme: sameUser ? currentUser?.preferredTheme : undefined,
         };
 
         // 从 token 中解析过期时间
@@ -170,16 +176,22 @@ export const useAuthStore = create<AuthStore>()(
           tokens: null,
           isLoading: false,
           isRefreshing: false,
+          themePreferenceRevision: 0,
         });
       },
 
       updateUser: (userData: Partial<AuthUser>) => {
         const currentUser = get().user;
-        if (currentUser) {
-          set({
-            user: { ...currentUser, ...userData },
-          });
-        }
+        if (!currentUser) return;
+        const nextPreferred = userData.preferredTheme;
+        const themeTouched =
+          nextPreferred !== undefined &&
+          nextPreferred !== currentUser.preferredTheme;
+        const prevRev = get().themePreferenceRevision;
+        set({
+          user: { ...currentUser, ...userData },
+          themePreferenceRevision: themeTouched ? prevRev + 1 : prevRev,
+        });
       },
 
       updateProfile: (profileData: Partial<AuthUser>) => {
@@ -228,16 +240,18 @@ export const useAuthStore = create<AuthStore>()(
           });
 
           const currentUser = get().user;
+          if (!currentUser) {
+            set({ isRefreshing: false });
+            return false;
+          }
           const user: AuthUser = {
+            ...currentUser,
             id: String(response.userId),
             userId: response.userId,
             phone: response.phone,
             username: response.username,
             is_admin: response.is_admin,
             userType: response.userType,
-            avatar: currentUser?.avatar || "https://via.placeholder.com/100x100",
-            // 刷新 token 时保留 profileCompleted 状态
-            profileCompleted: currentUser?.profileCompleted,
           };
 
           const expiresAt =

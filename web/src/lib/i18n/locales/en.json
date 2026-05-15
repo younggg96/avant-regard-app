@@ -45,6 +45,7 @@
     "forum": "Forum",
     "archive": "Archive",
     "stores": "Stores",
+    "atlas": "Atlas",
     "about": "About"
   },
   "auth": {
@@ -1035,7 +1036,8 @@
     "statLikesAndFavs": "Likes & Saves",
     "verified": "Verified",
     "tabPosts": "Posts",
-    "noStorePosts": "No store posts yet"
+    "noStorePosts": "No store posts yet",
+    "exploreAtlas": "Fashion World"
   },
   "product": {
     "noImage": "No image",
@@ -1456,7 +1458,11 @@
     "aboutBody": "Avant Regard believes fashion is a form of expression. We've built a community for those who dress boldly — bringing together brand archives, outfit inspiration, show records and boutique maps, all with the goal of dressing well.",
     "enterDiscover": "Enter Discover →",
     "heroMockupTagline": "Avant-garde fashion,\nalways at hand.",
-    "heroMockupSearch": "Search brands, outfits…"
+    "heroMockupSearch": "Search brands, outfits…",
+    "atlasChip": "Avant-Garde Fashion Atlas",
+    "atlasHeading": "Explore the Avant-Garde\nFashion World.",
+    "atlasBody": "An interactive globe of the cities, boutiques and designers that anchor avant-garde fashion. Drag to rotate, scroll to zoom, click a city to enter.",
+    "atlasCta": "Open Fashion World"
   },
   "discoverPage": {
     "heading": "Avant-garde outfits\nhappening now.",
@@ -1637,5 +1643,23 @@
       "cta": "Go to Forum",
       "later": "Later"
     }
+  },
+  "atlas": {
+    "metaTitle": "Avant-Garde Fashion World",
+    "metaDescription": "An interactive globe of the cities and boutiques that anchor avant-garde fashion.",
+    "eyebrow": "Interactive Atlas · Vol. I",
+    "statsLabel": "Brands & Stores Mapped",
+    "statsLine": "Across {{cities}} cities · {{countries}} countries",
+    "hintDrag": "Drag to rotate the globe",
+    "hintScroll": "Scroll to zoom",
+    "hintMarker": "Click a marker to enter",
+    "capitalsTitle": "Avant-Garde Fashion Capitals",
+    "allCities": "All cities {{count}}",
+    "viewing": "Viewing",
+    "autoRotate": "Auto-Rotate",
+    "pause": "Pause",
+    "resetView": "Reset View",
+    "viewStoresInCity": "View {{city}} Stores ↗",
+    "fallbackNotice": "Loading live data…"
   }
 }

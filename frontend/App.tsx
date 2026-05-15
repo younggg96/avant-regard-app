@@ -1046,10 +1046,14 @@ export default function App() {
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    const revAtStart = useAuthStore.getState().themePreferenceRevision;
     userInfoService
       .getUserInfo(userId)
       .then((info) => {
         if (cancelled) return;
+        if (useAuthStore.getState().themePreferenceRevision !== revAtStart) {
+          return;
+        }
         if (
           info.preferredTheme === "system" ||
           info.preferredTheme === "light" ||
@@ -1185,9 +1189,6 @@ export default function App() {
 
   return (
     <GluestackUIProvider
-      // Force remount on mode switch so gluestack tokens ($white/$black etc.)
-      // never get stuck on the previous colorMode.
-      key={resolvedThemeMode}
       config={config}
       colorMode={resolvedThemeMode}
     >

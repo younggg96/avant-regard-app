@@ -105,12 +105,14 @@ const SettingsScreen = () => {
 
   const syncLanguageFromServer = useCallback(async () => {
     if (!user?.userId) return;
+    const revAtStart = useAuthStore.getState().themePreferenceRevision;
     try {
       const info = await userInfoService.getUserInfo(user.userId);
       if (info.preferredLanguage && info.preferredLanguage !== currentLang) {
         await setStoredLanguage(info.preferredLanguage as SupportedLanguage);
       }
       if (
+        useAuthStore.getState().themePreferenceRevision === revAtStart &&
         info.preferredTheme &&
         (info.preferredTheme === "system" ||
           info.preferredTheme === "light" ||

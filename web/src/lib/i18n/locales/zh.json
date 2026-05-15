@@ -45,6 +45,7 @@
     "forum": "论坛",
     "archive": "档案",
     "stores": "买手店",
+    "atlas": "时装地图",
     "about": "关于"
   },
   "auth": {
@@ -1035,7 +1036,8 @@
     "statLikesAndFavs": "获赞与收藏",
     "verified": "已认证",
     "tabPosts": "帖子",
-    "noStorePosts": "暂无店铺帖子"
+    "noStorePosts": "暂无店铺帖子",
+    "exploreAtlas": "时装世界"
   },
   "product": {
     "noImage": "暂无图片",
@@ -1456,7 +1458,11 @@
     "aboutBody": "Avant Regard 相信时装是一种表达方式。我们为穿着先锋的你搭建一个社区，汇聚品牌档案、穿搭灵感、秀场记录与买手店地图，一切以「穿得好」为目标。",
     "enterDiscover": "进入 Discover →",
     "heroMockupTagline": "先锋时装，\n随身可及。",
-    "heroMockupSearch": "搜索品牌、穿搭…"
+    "heroMockupSearch": "搜索品牌、穿搭…",
+    "atlasChip": "Avant-Garde 时装地图",
+    "atlasHeading": "走进先锋\n时装世界。",
+    "atlasBody": "一张可交互的全球地球，标注先锋时装的城市、买手店与设计师。拖动旋转，滚轮缩放，点击城市深入探索。",
+    "atlasCta": "进入时装世界"
   },
   "discoverPage": {
     "heading": "先锋穿搭\n正在发生。",
@@ -1637,5 +1643,23 @@
       "cta": "去论坛看看",
       "later": "稍后"
     }
+  },
+  "atlas": {
+    "metaTitle": "Avant-Garde 时装世界",
+    "metaDescription": "一张可交互的全球地球，标注承载先锋时装的城市与买手店。",
+    "eyebrow": "Interactive Atlas · Vol. I",
+    "statsLabel": "已映射品牌与买手店",
+    "statsLine": "覆盖 {{cities}} 座城市 · {{countries}} 个国家",
+    "hintDrag": "拖动旋转地球",
+    "hintScroll": "滚轮缩放",
+    "hintMarker": "点击标记进入城市",
+    "capitalsTitle": "Avant-Garde 时装重镇",
+    "allCities": "全部城市 {{count}}",
+    "viewing": "当前视角",
+    "autoRotate": "自动旋转",
+    "pause": "暂停旋转",
+    "resetView": "重置视角",
+    "viewStoresInCity": "查看 {{city}} 的买手店 ↗",
+    "fallbackNotice": "正在加载实时数据…"
   }
 }

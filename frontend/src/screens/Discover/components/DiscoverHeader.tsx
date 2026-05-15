@@ -8,13 +8,16 @@ import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 
-const headerLogoSource = require("../../../../assets/gif/header-logo.gif");
+const headerLogoDark = require("../../../../assets/gif/header-logo-dark.gif");
+const headerLogoLight = require("../../../../assets/gif/header-logo.gif");
 
 const DiscoverLogo: React.FC = () => {
+    const theme = useAppTheme();
     const styles = useThemedStyles(makeStyles);
+    const source = theme.mode === "dark" ? headerLogoDark : headerLogoLight;
     return (
         <ExpoImage
-            source={headerLogoSource}
+            source={source}
             style={styles.logoImage}
             contentFit="contain"
         />

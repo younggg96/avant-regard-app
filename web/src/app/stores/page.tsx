@@ -561,6 +561,12 @@ function StoresPageInner() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
+            href="/atlas"
+            className="rounded border border-[var(--border)] px-3 py-2 font-label text-[12px] text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
+          >
+            {t("store.exploreAtlas")} <span aria-hidden="true">↗</span>
+          </Link>
+          <Link
             href="/stores/submit"
             className="rounded border border-[var(--border)] px-3 py-2 font-label text-[12px] text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
           >

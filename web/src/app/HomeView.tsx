@@ -7,6 +7,7 @@ import { PostCard } from "@/components/PostCard";
 import { Marquee } from "@/components/Marquee";
 import { AnimateIn } from "@/components/AnimateIn";
 import { RotatingHeadline } from "@/components/RotatingHeadline";
+import { SignatureWordmark } from "@/components/SignatureWordmark";
 import { isRenderableImage } from "@/lib/isRenderableImage";
 import type { Post } from "@/lib/types";
 
@@ -24,27 +25,47 @@ export function HomeView({ posts }: { posts: Post[] }) {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-black/[0.06] dark:border-white/[0.08]">
-        <div className="mx-auto grid max-w-content gap-16 px-6 py-20 md:grid-cols-[1.35fr,1fr] md:py-32">
-          <div className="flex flex-col justify-center">
-            <div className="animate-fade-in">
-              <span className="chip w-fit">{t("homepage.chip")}</span>
-            </div>
+        {/* Signature wordmark — cinematic shatter / assembly */}
+        <div className="mx-auto max-w-content px-6 pt-16 md:pt-24">
+          <SignatureWordmark
+            text="AVANT REGARD"
+            className="text-[clamp(1.25rem,11vw,9.5rem)]"
+          />
+          <div
+            aria-hidden
+            className="mx-auto mt-6 h-px w-12 origin-center bg-black/30 dark:bg-white/30"
+            style={{
+              animation:
+                "signature-divider 900ms 1700ms cubic-bezier(0.2,0.8,0.25,1) both",
+            }}
+          />
+          <p
+            className="mx-auto mt-4 max-w-md text-center font-label text-[10px] uppercase tracking-[0.32em] text-black/40 dark:text-white/35"
+            style={{
+              animation: "fadeIn 700ms 2000ms ease-out both",
+            }}
+          >
+            {t("homepage.chip")} — FW26
+          </p>
+        </div>
 
+        <div className="mx-auto grid max-w-content gap-16 px-6 py-16 md:grid-cols-[1.35fr,1fr] md:py-24">
+          <div className="flex flex-col justify-center">
             <RotatingHeadline
-              className="mt-6 animate-slide-up font-serif text-hero font-semibold text-black dark:text-white"
-              style={{ animationDelay: "120ms" }}
+              className="animate-slide-up font-serif text-hero font-semibold text-black dark:text-white"
+              style={{ animationDelay: "800ms" }}
             />
 
             <p
               className="mt-6 max-w-xl animate-slide-up font-serif text-base leading-relaxed text-black/55 dark:text-white/50 md:text-lg"
-              style={{ animationDelay: "240ms" }}
+              style={{ animationDelay: "950ms" }}
             >
               {t("homepage.heroBody")}
             </p>
 
             <div
               className="mt-10 flex animate-slide-up flex-wrap items-center gap-3"
-              style={{ animationDelay: "360ms" }}
+              style={{ animationDelay: "1100ms" }}
             >
               <Link href="/discover" className="btn-primary px-5 py-3 text-sm">
                 {t("homepage.ctaDiscover")}
@@ -58,7 +79,7 @@ export function HomeView({ posts }: { posts: Post[] }) {
           {/* Phone mockup */}
           <div
             className="relative mx-auto flex w-full max-w-[268px] animate-scale-in items-center justify-center"
-            style={{ animationDelay: "180ms" }}
+            style={{ animationDelay: "1300ms" }}
           >
             <div
               aria-hidden
@@ -146,6 +167,33 @@ export function HomeView({ posts }: { posts: Post[] }) {
           </div>
         </section>
       )}
+
+      {/* Avant-Garde Fashion World — atlas teaser */}
+      <section className="relative overflow-hidden border-y border-black/[0.06] dark:border-white/[0.08]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(0,0,0,1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,1)_1px,transparent_1px)] [background-size:84px_84px] dark:opacity-[0.06] dark:[background-image:linear-gradient(rgba(255,255,255,1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,1)_1px,transparent_1px)]"
+        />
+        <div className="relative mx-auto grid max-w-content gap-10 px-6 py-20 md:grid-cols-[1fr,auto] md:items-end md:py-24">
+          <AnimateIn>
+            <div>
+              <span className="chip">{t("homepage.atlasChip")}</span>
+              <h2 className="mt-5 font-serif text-display text-black dark:text-white whitespace-pre-line">
+                {t("homepage.atlasHeading")}
+              </h2>
+              <p className="mt-5 max-w-xl font-serif text-sm leading-relaxed text-black/55 dark:text-white/45 md:text-base">
+                {t("homepage.atlasBody")}
+              </p>
+            </div>
+          </AnimateIn>
+          <Link
+            href="/atlas"
+            className="btn-secondary self-start whitespace-nowrap md:self-end"
+          >
+            {t("homepage.atlasCta")} <span aria-hidden="true">↗</span>
+          </Link>
+        </div>
+      </section>
 
       {/* CTA */}
       <section id="about" className="relative overflow-hidden bg-black dark:bg-[#111]">
