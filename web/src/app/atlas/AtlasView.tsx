@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useTranslation } from "react-i18next";
@@ -57,8 +58,31 @@ export function AtlasView() {
 
   const initialCity = useMemo(() => pickInitialAtlasCity(cities), [cities]);
   const capitals = useMemo(() => cities.slice(0, CAPITALS_LIMIT), [cities]);
+  const hasMoreCities = cities.length > CAPITALS_LIMIT;
 
   const globeRef = useRef<AtlasGlobeHandle | null>(null);
+  const [allCitiesOpen, setAllCitiesOpen] = useState(false);
+  const modalCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!allCitiesOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modalCloseRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [allCitiesOpen]);
+
+  useEffect(() => {
+    if (!allCitiesOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAllCitiesOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [allCitiesOpen]);
+
   const [selected, setSelected] = useState<AtlasCity>(initialCity);
   const [coords, setCoords] = useState<Coordinates>({
     lat: initialCity.lat,
@@ -69,6 +93,14 @@ export function AtlasView() {
   const handleSelectCity = useCallback((city: AtlasCity) => {
     globeRef.current?.selectCity(city);
   }, []);
+
+  const handlePickCityFromModal = useCallback(
+    (city: AtlasCity) => {
+      handleSelectCity(city);
+      setAllCitiesOpen(false);
+    },
+    [handleSelectCity],
+  );
   const handleResetView = useCallback(() => {
     globeRef.current?.resetView();
   }, []);
@@ -189,17 +221,26 @@ export function AtlasView() {
                 );
               })}
             </div>
-            <p className="mt-3 font-label text-[10px] uppercase tracking-[0.28em] text-black/35 dark:text-white/35">
-              {t("atlas.allCities", { count: cities.length })}
-              {isFallback && (
-                <>
-                  {" · "}
-                  <span className="text-black/30 dark:text-white/30">
-                    {t("atlas.fallbackNotice")}
-                  </span>
-                </>
+            {(hasMoreCities || isFallback) && (
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-2">
+              {hasMoreCities && (
+                <button
+                  type="button"
+                  onClick={() => setAllCitiesOpen(true)}
+                  aria-haspopup="dialog"
+                  className="font-label text-[10px] uppercase tracking-[0.28em] text-black/35 underline-offset-4 transition-colors hover:text-black hover:underline dark:text-white/35 dark:hover:text-white"
+                >
+                  {t("atlas.allCities", { count: cities.length })}
+                </button>
               )}
-            </p>
+              {isFallback && (
+                <span className="font-label text-[10px] uppercase tracking-[0.28em] text-black/30 dark:text-white/30">
+                  {hasMoreCities ? "· " : ""}
+                  {t("atlas.fallbackNotice")}
+                </span>
+              )}
+            </div>
+            )}
           </div>
 
           {/* Viewing — LAT / LON */}
@@ -238,6 +279,82 @@ export function AtlasView() {
           </div>
         </footer>
       </section>
+
+      {/* All cities — portaled to <body> so the dimmer sits above SiteHeader (z-40); main uses isolation: isolate */}
+      {allCitiesOpen &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="atlas-all-cities-title"
+            className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-8"
+          >
+            <div
+              role="presentation"
+              className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+              onClick={() => setAllCitiesOpen(false)}
+            />
+            <div
+              className="relative flex w-full max-w-md flex-col overflow-hidden rounded-lg border border-black/[0.08] bg-white shadow-2xl dark:border-white/[0.08] dark:bg-[#111]"
+              style={{ maxHeight: "min(85vh, 640px)" }}
+            >
+              <div className="shrink-0 flex items-start justify-between gap-4 border-b border-black/[0.06] px-5 py-4 dark:border-white/[0.08]">
+                <div>
+                  <h2
+                    id="atlas-all-cities-title"
+                    className="font-serif text-lg font-medium text-black dark:text-white"
+                  >
+                    {t("atlas.allCitiesModalTitle")}
+                  </h2>
+                  <p className="mt-1 font-label text-[10px] uppercase tracking-[0.28em] text-black/40 dark:text-white/40">
+                    {t("atlas.allCitiesModalSubtitle", { count: cities.length })}
+                  </p>
+                </div>
+                <button
+                  ref={modalCloseRef}
+                  type="button"
+                  onClick={() => setAllCitiesOpen(false)}
+                  className="shrink-0 rounded border border-black/[0.12] px-3 py-1.5 font-label text-[10px] uppercase tracking-[0.2em] text-black/70 transition hover:border-black hover:bg-black hover:text-white dark:border-white/[0.16] dark:text-white/70 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+                >
+                  {t("atlas.modalClose")}
+                </button>
+              </div>
+              <ul className="max-h-[min(60vh,500px)] overflow-y-auto overscroll-contain px-2 pb-3">
+                {cities.map((city) => {
+                  const active = city.id === selected.id;
+                  return (
+                    <li key={city.id}>
+                      <button
+                        type="button"
+                        onClick={() => handlePickCityFromModal(city)}
+                        className={`flex w-full items-baseline justify-between gap-3 border-b border-black/[0.05] px-3 py-3 text-left font-label text-[11px] uppercase tracking-[0.16em] transition last:border-b-0 hover:bg-black/[0.04] dark:border-white/[0.06] dark:hover:bg-white/[0.04] ${
+                          active
+                            ? "text-black dark:text-white"
+                            : "text-black/60 dark:text-white/60"
+                        }`}
+                      >
+                        <span className="min-w-0 truncate">{city.name}</span>
+                        <span className="shrink-0 text-[10px] normal-case tracking-normal text-black/40 dark:text-white/35">
+                          {city.country}
+                        </span>
+                        <span
+                          className={`shrink-0 tabular-nums ${
+                            active
+                              ? "text-black/75 dark:text-white/75"
+                              : "text-black/35 dark:text-white/35"
+                          }`}
+                        >
+                          {city.count}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>,
+          document.body,
+        )}
     </main>
   );
 }

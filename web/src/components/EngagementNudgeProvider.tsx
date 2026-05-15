@@ -8,9 +8,11 @@
  *   - 累计「行为路由」访问次数 ≥ 3 次
  *
  * 阶段（每弹一次都会推进，无论用户点 CTA 或稍后）：
- *   1. aiPost      → AI 发帖目前只在 iOS App，CTA 跳到 `/app` 落地页
- *   2. forumFollow → CTA 跳到 `/communities`（论坛索引）
- *   3. done        → 不再弹
+ *   1. forumFollow → CTA 跳到 `/communities`（论坛索引）
+ *   2. done        → 不再弹
+ *
+ * Web 端不展示「AI 发帖助手」引导（该能力仅在 App）；旧版存了 stage=aiPost 的
+ * localStorage 会在加载时归一为 forumFollow。
  *
  * 持久化：
  *   - 状态写入 localStorage（按 userId 分桶），刷新/重开浏览器保持。
@@ -22,7 +24,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/lib/auth/store";
 
-type Stage = "aiPost" | "forumFollow" | "done";
+type Stage = "forumFollow" | "done";
 
 interface NudgeState {
   stage: Stage;
@@ -36,7 +38,7 @@ const TICK_MS = 15_000;
 const KEY_PREFIX = "engagement_nudge_state_";
 
 const DEFAULT_STATE: NudgeState = {
-  stage: "aiPost",
+  stage: "forumFollow",
   accumulatedMs: 0,
   behaviorCount: 0,
 };
@@ -53,17 +55,25 @@ const isBehaviorPath = (pathname: string | null): boolean => {
 };
 
 const isValidStage = (s: unknown): s is Stage =>
-  s === "aiPost" || s === "forumFollow" || s === "done";
+  s === "forumFollow" || s === "done";
+
+/** Normalize persisted state from older builds that still used `aiPost`. */
+function normalizeStage(raw: unknown): Stage | null {
+  if (raw === "aiPost") return "forumFollow";
+  if (isValidStage(raw)) return raw;
+  return null;
+}
 
 function loadFromStorage(userId: number): NudgeState {
   if (typeof window === "undefined") return DEFAULT_STATE;
   try {
     const raw = window.localStorage.getItem(KEY_PREFIX + userId);
     if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as Partial<NudgeState>;
-    if (!isValidStage(parsed.stage)) return DEFAULT_STATE;
+    const parsed = JSON.parse(raw) as Partial<NudgeState> & { stage?: unknown };
+    const stage = normalizeStage(parsed.stage);
+    if (!stage) return DEFAULT_STATE;
     return {
-      stage: parsed.stage,
+      stage,
       accumulatedMs: Number(parsed.accumulatedMs) || 0,
       behaviorCount: Number(parsed.behaviorCount) || 0,
     };
@@ -170,7 +180,7 @@ export function EngagementNudgeProvider() {
   const closeAndAdvance = useCallback(() => {
     setActive(null);
     updateState((prev) => ({
-      stage: prev.stage === "aiPost" ? "forumFollow" : "done",
+      stage: "done",
       accumulatedMs: 0,
       behaviorCount: 0,
     }));
@@ -179,9 +189,7 @@ export function EngagementNudgeProvider() {
   const handleCta = useCallback(() => {
     const stage = activeRef.current;
     closeAndAdvance();
-    if (stage === "aiPost") {
-      router.push("/app");
-    } else if (stage === "forumFollow") {
+    if (stage === "forumFollow") {
       router.push("/communities");
     }
   }, [router, closeAndAdvance]);
@@ -198,19 +206,10 @@ export function EngagementNudgeProvider() {
 
   if (!active) return null;
 
-  const isAi = active === "aiPost";
-  const title = isAi
-    ? t("engagementNudge.aiPost.title")
-    : t("engagementNudge.forumFollow.title");
-  const message = isAi
-    ? t("engagementNudge.aiPost.message")
-    : t("engagementNudge.forumFollow.message");
-  const ctaLabel = isAi
-    ? t("engagementNudge.aiPost.cta")
-    : t("engagementNudge.forumFollow.cta");
-  const laterLabel = isAi
-    ? t("engagementNudge.aiPost.later")
-    : t("engagementNudge.forumFollow.later");
+  const title = t("engagementNudge.forumFollow.title");
+  const message = t("engagementNudge.forumFollow.message");
+  const ctaLabel = t("engagementNudge.forumFollow.cta");
+  const laterLabel = t("engagementNudge.forumFollow.later");
 
   return (
     <div

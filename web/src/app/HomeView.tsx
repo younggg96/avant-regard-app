@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { PostCard } from "@/components/PostCard";
@@ -8,7 +7,7 @@ import { Marquee } from "@/components/Marquee";
 import { AnimateIn } from "@/components/AnimateIn";
 import { RotatingHeadline } from "@/components/RotatingHeadline";
 import { SignatureWordmark } from "@/components/SignatureWordmark";
-import { isRenderableImage } from "@/lib/isRenderableImage";
+import { HeroShowcase } from "@/components/HeroShowcase";
 import type { Post } from "@/lib/types";
 
 export function HomeView({ posts }: { posts: Post[] }) {
@@ -49,15 +48,16 @@ export function HomeView({ posts }: { posts: Post[] }) {
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-content gap-16 px-6 py-16 md:grid-cols-[1.35fr,1fr] md:py-24">
-          <div className="flex flex-col justify-center">
+        <div className="mx-auto grid max-w-content items-center gap-12 px-6 py-14 md:grid-cols-[1.1fr,1fr] md:gap-16 md:py-20 lg:gap-20">
+          {/* ─── LEFT: copy, CTAs, stats ─────────────────────────────────── */}
+          <div className="flex flex-col">
             <RotatingHeadline
-              className="animate-slide-up font-serif text-hero font-semibold text-black dark:text-white"
+              className="animate-slide-up font-serif text-[clamp(2.5rem,7vw,5.5rem)] font-semibold tracking-[-0.02em] text-black dark:text-white"
               style={{ animationDelay: "800ms" }}
             />
 
             <p
-              className="mt-6 max-w-xl animate-slide-up font-serif text-base leading-relaxed text-black/55 dark:text-white/50 md:text-lg"
+              className="mt-7 max-w-[34rem] animate-slide-up font-serif text-base leading-relaxed text-black/55 dark:text-white/50 md:text-[17px]"
               style={{ animationDelay: "950ms" }}
             >
               {t("homepage.heroBody")}
@@ -67,30 +67,78 @@ export function HomeView({ posts }: { posts: Post[] }) {
               className="mt-10 flex animate-slide-up flex-wrap items-center gap-3"
               style={{ animationDelay: "1100ms" }}
             >
-              <Link href="/discover" className="btn-primary px-5 py-3 text-sm">
+              <Link
+                href="/discover"
+                className="btn-primary group px-6 py-3.5 text-[13px] tracking-[0.05em]"
+              >
                 {t("homepage.ctaDiscover")}
+                <svg
+                  width="14"
+                  height="10"
+                  viewBox="0 0 14 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  className="ml-1 transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  <path d="M0 5 H 12.5" />
+                  <path d="M8.5 1 L 12.5 5 L 8.5 9" />
+                </svg>
               </Link>
-              <Link href="/#features" className="btn-secondary px-5 py-3 text-sm">
+              <Link
+                href="/#features"
+                className="btn-secondary group px-6 py-3.5 text-[13px] tracking-[0.05em]"
+              >
                 {t("homepage.ctaFeatures")}
+                <svg
+                  width="14"
+                  height="10"
+                  viewBox="0 0 14 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  className="ml-1 transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  <path d="M0 5 H 12.5" />
+                  <path d="M8.5 1 L 12.5 5 L 8.5 9" />
+                </svg>
               </Link>
+            </div>
+
+            {/* Stats — Global community */}
+            <div
+              className="mt-14 animate-slide-up md:mt-16"
+              style={{ animationDelay: "1300ms" }}
+            >
+              <div className="font-label text-[10px] tracking-[0.32em] text-black/40 dark:text-white/40">
+                {t("homepage.heroStatsLabel")}
+              </div>
+              <div className="mt-4 grid max-w-md grid-cols-3 divide-x divide-black/[0.08] dark:divide-white/[0.08]">
+                <Stat
+                  value={t("homepage.heroStatUsersValue")}
+                  label={t("homepage.heroStatUsersLabel")}
+                  className="pr-4"
+                />
+                <Stat
+                  value={t("homepage.heroStatOutfitsValue")}
+                  label={t("homepage.heroStatOutfitsLabel")}
+                  className="px-4"
+                />
+                <Stat
+                  value={t("homepage.heroStatBrandsValue")}
+                  label={t("homepage.heroStatBrandsLabel")}
+                  className="pl-4"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Phone mockup */}
+          {/* ─── RIGHT: phone + floating cards ──────────────────────────── */}
           <div
-            className="relative mx-auto flex w-full max-w-[268px] animate-scale-in items-center justify-center"
+            className="animate-scale-in"
             style={{ animationDelay: "1300ms" }}
           >
-            <div
-              aria-hidden
-              className="absolute inset-0 -z-10 translate-y-6 scale-95 rounded-[48px] bg-black/5 blur-md dark:bg-white/5"
-            />
-            <div className="relative aspect-[9/19] w-full overflow-hidden rounded-[32px] border shadow-elevated
-                            border-black/[0.08] bg-black dark:border-white/[0.08]">
-              <div className="absolute inset-[2px] overflow-hidden rounded-[31px] bg-white dark:bg-[#111]">
-                <HeroMockup posts={posts.slice(0, 3)} />
-              </div>
-            </div>
+            <HeroShowcase posts={posts} />
           </div>
         </div>
       </section>
@@ -223,61 +271,23 @@ export function HomeView({ posts }: { posts: Post[] }) {
   );
 }
 
-function HeroMockup({ posts }: { posts: Post[] }) {
-  const { t } = useTranslation();
-
-  if (posts.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center">
-        <div className="font-label text-[10px] uppercase tracking-[0.25em] text-black/30 dark:text-white/30">
-          Avant Regard
-        </div>
-        <div className="font-serif text-2xl leading-snug text-black dark:text-white whitespace-pre-line">
-          {t("homepage.heroMockupTagline")}
-        </div>
-      </div>
-    );
-  }
-
+function Stat({
+  value,
+  label,
+  className = "",
+}: {
+  value: string;
+  label: string;
+  className?: string;
+}) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-5 py-3 font-label text-[10px] uppercase tracking-[0.2em]
-                      border-black/[0.06] text-black/40 dark:border-white/[0.08] dark:text-white/35">
-        <span>Discover</span>
-        <span>FW26</span>
-      </div>
-      <div className="mx-4 my-3 flex h-9 items-center gap-2 rounded-sm px-3
-                      bg-[#f5f5f5] dark:bg-[#1a1a1a]">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-black/30 dark:text-white/25">
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-        </svg>
-        <span className="font-serif text-[12px] text-black/30 dark:text-white/25">{t("homepage.heroMockupSearch")}</span>
-      </div>
-      <div className="flex-1 space-y-2.5 overflow-hidden px-3 pb-3">
-        {posts.map((post) => (
-          <div key={post.id} className="flex gap-3 rounded p-2.5 shadow-soft
-                                        bg-white dark:bg-[#1c1c1c] dark:shadow-none dark:ring-1 dark:ring-white/[0.06]">
-            <div className="relative h-[68px] w-[68px] flex-shrink-0 overflow-hidden rounded-sm bg-[#f0f0f0] dark:bg-[#2a2a2a]">
-              {isRenderableImage(post.imageUrls?.[0]) && (
-                <Image
-                  src={post.imageUrls[0]}
-                  alt={post.title}
-                  fill
-                  sizes="68px"
-                  quality={75}
-                  className="object-cover"
-                />
-              )}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-              <div className="line-clamp-2 font-serif text-[11px] leading-snug text-black dark:text-white">
-                {post.title || post.contentText?.slice(0, 40) || "—"}
-              </div>
-              <div className="font-label text-[9px] text-black/35 dark:text-white/30">@{post.username}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className={`flex flex-col gap-1 ${className}`}>
+      <span className="font-serif text-[clamp(1.5rem,3vw,2.25rem)] font-semibold leading-none tracking-[-0.01em] text-black dark:text-white">
+        {value}
+      </span>
+      <span className="font-label text-[10.5px] tracking-[0.14em] text-black/40 dark:text-white/40">
+        {label}
+      </span>
     </div>
   );
 }

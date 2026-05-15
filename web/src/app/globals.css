@@ -227,3 +227,32 @@ body {
   transform: translate3d(var(--hover-x, 0), var(--hover-y, 0), 0)
     rotate(var(--hover-r, 0));
 }
+
+/* --------------------------------------------------------------------------
+ *  HeroShowcase — low-amplitude floating motion for the phone & cards.
+ *  Each layer uses a slightly different waveform so the motion doesn't
+ *  look mechanically synchronized. The transform is applied on the outer
+ *  wrapper while the static rotate is on an inner div (see FloatLayer in
+ *  HeroShowcase.tsx) — this avoids transform property collisions.
+ * -------------------------------------------------------------------------- */
+
+@keyframes hero-float-a {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -7px, 0); }
+}
+@keyframes hero-float-b {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, 5px, 0); }
+}
+@keyframes hero-float-c {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -5px, 0); }
+}
+@keyframes hero-float-d {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, 6px, 0); }
+}
+@keyframes hero-float-phone {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -8px, 0); }
+}

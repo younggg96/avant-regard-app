@@ -58,9 +58,8 @@ export function RotatingHeadline({ className = "", style }: RotatingHeadlineProp
       aria-label={phrases[0].join("")}
     >
       <span aria-hidden className="invisible block">
-        {phrases[0][0]}
-        <br />
-        {phrases[0][1]}
+        <span className="block whitespace-nowrap">{phrases[0][0]}</span>
+        <span className="block whitespace-nowrap">{phrases[0][1]}</span>
       </span>
 
       {phrases.map(([top, bottom], i) => {
@@ -76,8 +75,8 @@ export function RotatingHeadline({ className = "", style }: RotatingHeadlineProp
               transform: active ? "translateY(0)" : "translateY(14px)",
             }}
           >
-            <span className="block">{top}</span>
-            <span className="block">{bottom}</span>
+            <span className="block whitespace-nowrap">{top}</span>
+            <span className="block whitespace-nowrap">{bottom}</span>
           </span>
         );
       })}
