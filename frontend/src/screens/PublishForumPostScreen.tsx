@@ -26,7 +26,6 @@ import {
   ScrollView,
   HStack,
   VStack,
-  Input,
   Pressable,
 } from "../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -1121,21 +1120,27 @@ const PublishForumPostScreen = () => {
                 *
               </Text>
             </HStack>
-            <Input
+            {/* 见 PublishLookbookScreen 同处注释: gluestack `Input` 的 sx + variant
+                叠加在 RN 端 light/dark token 不会跟随 GluestackUIProvider colorMode,
+                直接用 RN TextInput + useAppTheme 颜色更稳。 */}
+            <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder={t("publish.forumTitlePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
+              placeholderTextColor={theme.colors.placeholder}
               multiline
-              variant="filled"
-              sx={{
+              textAlignVertical="top"
+              style={{
                 fontSize: 14,
                 fontWeight: "600",
+                color: theme.colors.text,
+                backgroundColor: theme.colors.inputBackground,
+                borderWidth: 1,
+                borderColor: theme.colors.inputBorder,
                 minHeight: 50,
-                textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
-                padding: 0,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
               }}
             />
           </Box>

@@ -474,14 +474,14 @@ const BrandDetailScreen = () => {
               {followLoading ? (
                 <ActivityIndicator
                   size="small"
-                  color={isFollowing ? theme.colors.gray500 : theme.colors.white}
+                  color={isFollowing ? theme.colors.gray400 : theme.colors.textInverted}
                 />
               ) : (
                 <>
                   <Ionicons
                     name={isFollowing ? "checkmark" : "add"}
                     size={16}
-                    color={isFollowing ? theme.colors.gray500 : theme.colors.white}
+                    color={isFollowing ? theme.colors.gray400 : theme.colors.textInverted}
                   />
                   <Text
                     style={[
@@ -967,7 +967,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     minWidth: 90,
   },
   followButtonFollowing: {
-    backgroundColor: "#F0F0F0",
+    // 之前硬编码 "#F0F0F0" 在 dark mode 下还是浅灰，叠上同样浅的文字会几乎不可见。
+    // 用 gray100 跟随主题：light=#F5F5F5、dark=#1F1F1F，两边都是"muted card"质感。
+    backgroundColor: t.colors.gray100,
   },
   followButtonText: {
     fontFamily: "PlayfairDisplay-Medium",
@@ -975,7 +977,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     color: t.colors.textInverted,
   },
   followButtonTextFollowing: {
-    color: t.colors.gray500,
+    // gray500 在 dark mode 下被反转为 #E5E5E5（接近白），落在浅 bg 上完全看不见。
+    // 改成 gray400：light=#444（深灰）、dark=#CFCFCF（浅灰），两边都跟 gray100 底有
+    // 足够对比。
+    color: t.colors.gray400,
   },
   sectionLabel: {
     fontFamily: "PlayfairDisplay-Regular",

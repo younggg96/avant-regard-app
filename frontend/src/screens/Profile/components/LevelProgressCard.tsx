@@ -7,7 +7,7 @@
  *
  * 视觉:
  *   - 与 FollowedBrands / UserTitlesSection 对齐: 行级 padding 16, 紧凑 section 头
- *   - 卡片体: 1px gray100 边框 + 内 padding, 整张可点击跳转「我的等级」
+ *   - 卡片体: 1px border + theme.borderRadius.lg 圆角 + 内 padding, 整张可点击跳转「我的等级」
  *
  * 状态分支:
  *   - 顶级 (Lv5)              -> 仅展示 "已达顶级 · {title}", 无进度条
@@ -21,10 +21,12 @@ import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../components/ui";
-import { theme,
+import {
   playfairFonts,
   useThemedStyles,
-  type AppTheme, useAppTheme } from "../../../theme";
+  type AppTheme,
+  useAppTheme,
+} from "../../../theme";
 import { useLevelStore } from "../../../store/levelStore";
 import { LevelProgressBar, getLevelTitleKey } from "../../../components/level";
 
@@ -84,8 +86,10 @@ export const LevelProgressCard: React.FC = () => {
         px="$md"
         py="$sm"
         borderWidth={1}
-        style={[{ borderColor: theme.colors.gray100 }, { backgroundColor: theme.colors.white }]}
-
+        style={[
+          styles.cardPressable,
+          { borderColor: theme.colors.border, backgroundColor: theme.colors.white },
+        ]}
         onPress={goDetail}
       >
         <HStack justifyContent="between" alignItems="center">
@@ -132,6 +136,10 @@ export const LevelProgressCard: React.FC = () => {
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
+    cardPressable: {
+      borderRadius: t.borderRadius.lg,
+      overflow: "hidden",
+    },
     sectionTitle: {
       fontSize: 13,
       fontWeight: "600",
@@ -141,6 +149,7 @@ const makeStyles = (t: AppTheme) =>
     lvChip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
+      borderRadius: t.borderRadius.md,
       backgroundColor: t.colors.text,
     },
     lvChipText: {

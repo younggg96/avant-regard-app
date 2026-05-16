@@ -1234,7 +1234,6 @@ const PublishOutfitScreen = () => {
               value={title}
               onChangeText={setTitle}
               placeholder={t("publish.outfitTitlePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
               multiline
               variant="outline"
               sx={{
@@ -1242,8 +1241,6 @@ const PublishOutfitScreen = () => {
                 fontWeight: "500",
                 minHeight: 50,
                 textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
                 padding: 0,
               }}
             />
@@ -1262,16 +1259,12 @@ const PublishOutfitScreen = () => {
               value={description}
               onChangeText={setDescription}
               placeholder={t("publish.outfitDescPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
               multiline
               variant="outline"
               sx={{
                 fontSize: 14,
-                color: theme.colors.gray600,
                 minHeight: 80,
                 textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
                 padding: 0,
               }}
             />

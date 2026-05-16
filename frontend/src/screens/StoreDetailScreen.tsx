@@ -35,6 +35,7 @@ import {
   VStack,
 } from "../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ScreenHeader from "../components/ScreenHeader";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -107,6 +108,7 @@ const StoreDetailScreen = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const navigation = useNavigation<StoreDetailNavigation>();
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
@@ -846,7 +848,7 @@ const StoreDetailScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <RNImage
-            source={require("../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
             resizeMode="contain"
           />
@@ -928,7 +930,7 @@ const StoreDetailScreen = () => {
 
               {/* 贡献者 */}
               {store.contributorName && (
-                <HStack alignItems="center" mt={10} gap={5} bg="#F5F0FF" px={10} py={6} rounded="$xs" alignSelf="flex-start">
+                <HStack alignItems="center" mt={10} gap={5} px={10} py={6} rounded="$xs" alignSelf="flex-start" style={{ backgroundColor: theme.colors.gray100 }}>
                   <Ionicons name="person-outline" size={12} color={theme.colors.gray500} />
                   <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]}>
                     {t("store.contributedBy", { name: store.contributorName })}

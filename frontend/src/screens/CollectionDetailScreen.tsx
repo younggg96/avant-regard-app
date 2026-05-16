@@ -15,6 +15,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ImageGallery from "../components/ImageGallery";
 import { ShareToChatModal, ShareableShow } from "../components/ShareToChatModal";
 import { getPostsByShowId, Post } from "../services/postService";
@@ -77,6 +78,7 @@ const CollectionDetailScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const params = route.params as CollectionDetailParams;
   const { collection, brandName, images } = params;
   const id = collection.id;
@@ -251,14 +253,20 @@ const CollectionDetailScreen = () => {
       )}
 
       {collection.showUrl && (
-        <TouchableOpacity style={styles.urlButton} onPress={handleOpenShowWebsite}>
-          <Ionicons
-            name="globe-outline"
-            size={20}
-            color={theme.colors.gray600}
-          />
-          <Text style={styles.urlButtonText}>{t("collection.viewWebsite")}</Text>
-        </TouchableOpacity>
+        <View style={styles.showUrlBlock}>
+          <TouchableOpacity style={styles.urlButton} onPress={handleOpenShowWebsite}>
+            <Ionicons
+              name="globe-outline"
+              size={20}
+              color={theme.colors.gray600}
+              style={styles.urlButtonIcon}
+            />
+            <Text style={styles.urlButtonText}>{t("collection.viewWebsite")}</Text>
+          </TouchableOpacity>
+          <Text style={styles.urlCopyrightNotice}>
+            {t("collection.showImagesCopyrightNotice")}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -335,7 +343,7 @@ const CollectionDetailScreen = () => {
         {postsLoading ? (
           <View style={styles.loadingContainer}>
             <Image
-              source={require("../../assets/gif/profile-loading.gif")}
+              source={profileLoadingGif}
               style={styles.loadingGif}
               resizeMode="contain"
             />
@@ -509,20 +517,35 @@ const makeStyles = (t: AppTheme) =>
       lineHeight: 22,
       marginBottom: 16,
     },
+    showUrlBlock: {
+      alignSelf: "stretch",
+      marginTop: 4,
+    },
     urlButton: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       backgroundColor: t.colors.gray50,
       paddingHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 8,
-      alignSelf: "flex-start",
+      alignSelf: "stretch",
+    },
+    urlButtonIcon: {
+      marginTop: 2,
     },
     urlButtonText: {
+      flex: 1,
       fontSize: 14,
       fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Medium",
       color: t.colors.gray600,
       marginLeft: 8,
+      lineHeight: 20,
+    },
+    urlCopyrightNotice: {
+      marginTop: 8,
+      fontSize: 11,
+      lineHeight: 16,
+      color: t.colors.gray400,
     },
     reviewContainer: {
       padding: 20,

@@ -18,6 +18,7 @@ import { FormData, BrandOption } from "../types";
 import { PROVINCES, AGE_RANGES } from "../constants";
 import { useAuthStyles } from "../styles";
 import { Alert } from "../../../utils/Alert";
+import { useProfileLoadingGif } from "../../../utils/loadingGifs";
 
 interface ProfileFormProps {
   formData: FormData;
@@ -59,6 +60,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const styles = useAuthStyles();
+  const profileLoadingGif = useProfileLoadingGif();
 
   // 切换品牌选择
   const handleToggleBrand = (brandId: number) => {
@@ -341,7 +343,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           {loadingBrands ? (
             <View style={styles.brandLoadingContainer}>
               <Image
-                source={require("../../../../assets/gif/profile-loading.gif")}
+                source={profileLoadingGif}
                 style={styles.loadingGif}
                 resizeMode="contain"
               />

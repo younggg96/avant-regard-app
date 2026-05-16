@@ -99,7 +99,10 @@ const OptimizedImageInner = ({
   showPlaceholder = true,
   priority,
   lazy = false,
-  placeholderColor = theme.colors.black,
+  // 之前默认是 `theme.colors.black`,但走 proxy 时:
+  // light → #000000 (黑色) / dark → #FFFFFF (白色),会在两边都呈现高对比"硬"色块。
+  // 改成 `skeleton` 给一个跟正文区一致的低对比加载底色,深浅模式下都不刺眼。
+  placeholderColor = theme.colors.skeleton,
   errorColor = theme.colors.gray200,
   contentFit = 'cover',
   hideLoadingLabel = false,

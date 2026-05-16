@@ -25,6 +25,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  ScrollView as RNScrollView,
   StyleSheet,
   TextInput,
   TouchableOpacity,
@@ -1103,10 +1104,19 @@ const PublishV2ComposerScreen: React.FC = () => {
             <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} mb="$sm">
               {t("publishV2.composer.typeLabel")}
             </Text>
-            <ScrollView
+            {/*
+              必须用 RN 原生 ScrollView：@/components/ui 的 ScrollView 默认带 flex:1，
+              嵌在纵向 ScrollView 里时横向子项高度常被压成 0，类型芯片整行消失。
+            */}
+            <RNScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 16 }}
+              nestedScrollEnabled
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{
+                paddingRight: 16,
+                alignItems: "center",
+              }}
             >
               <HStack gap="$sm">
                 {TYPE_CHIPS.map((chip) => {
@@ -1143,7 +1153,7 @@ const PublishV2ComposerScreen: React.FC = () => {
                   );
                 })}
               </HStack>
-            </ScrollView>
+            </RNScrollView>
           </Box>
 
           {/* —— 类型对应表单 —— */}

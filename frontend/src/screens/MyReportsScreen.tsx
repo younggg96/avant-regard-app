@@ -21,6 +21,7 @@ import {
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ScreenHeader from "../components/ScreenHeader";
 import {
   ReportRecord,
@@ -50,6 +51,7 @@ const MyReportsScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const [reports, setReports] = useState<ReportRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -268,7 +270,7 @@ const MyReportsScreen = () => {
       {isLoading ? (
         <VStack alignItems="center" justifyContent="center" flex={1}>
           <RNImage
-            source={require("../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={styles.loadingGif}
             resizeMode="contain"
           />

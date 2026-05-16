@@ -27,6 +27,7 @@ import {
   ScrollView,
 } from "../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useMapLoadingGif } from "../utils/loadingGifs";
 import {
   BuyerStore,
   getAllStores,
@@ -292,6 +293,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const mapLoadingGif = useMapLoadingGif();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
@@ -1083,13 +1085,14 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       {/* 地图视图 */}
       <Box flex={1}>
         {isLoading ? (
-          <VStack flex={1} justifyContent="center" alignItems="center">
-            <Image
-              source={require("../../assets/gif/map-loading.gif")}
-              style={styles.loadingGif}
-              resizeMode="contain"
-            />
-          </VStack>
+          // 全屏 loading：直接让 GIF 撑满 `flex:1` 容器，避免 540x960 的
+          // 竖版 dark GIF 被居中收成小方块，浪费屏幕空间又露出 GIF 外的黑底
+          // 让品牌字 "AVANT REGARD" 看起来像是被切掉一半的截图。
+          <Image
+            source={mapLoadingGif}
+            style={styles.loadingGif}
+            resizeMode="contain"
+          />
         ) : loadError ? (
           // 首屏加载失败占位：明确的错误文案 + 重试按钮，取代原先的"空白地图"体感。
           // 上游瞬时 502 会被后端映射成 502 并由 http.ts 自动重试 2 次；若仍失败，
@@ -2083,8 +2086,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flex: 1,
   },
   loadingGif: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").width,
+    flex: 1,
+    width: "100%",
+    backgroundColor: t.colors.background,
   },
   markerOuter: {
     borderRadius: 9999,

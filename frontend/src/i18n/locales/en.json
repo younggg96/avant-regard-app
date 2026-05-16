@@ -2020,7 +2020,8 @@
     "detail": "Collection Detail",
     "contributedBy": "Contributed by {{name}}",
     "imageCount": "{{count}} images",
-    "viewWebsite": "View Show Website",
+    "viewWebsite": "Open Firstview to view this show",
+    "showImagesCopyrightNotice": "Show images are © First View. This app is for information only and does not hold copyright.",
     "relatedPosts": "Related Posts",
     "noPosts": "No related posts",
     "loadPostsFailed": "Failed to load related posts"

@@ -5,6 +5,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -18,7 +19,6 @@ import {
   ScrollView,
   Pressable,
   OptimizedImage,
-  Input,
   HStack,
 } from "../components/ui";
 import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -1126,23 +1126,30 @@ const PublishLookbookScreen = () => {
                 *
               </Text>
             </HStack>
-            <Input
+            {/* 不能用 gluestack 的 `variant="filled"` + `sx.backgroundColor: transparent`
+                这种叠加: gluestack-style v1 在 RN 上对 sx 与 variant 的覆盖优先级不稳定,
+                导致 light mode 下输入框仍按 dark token 渲染成黑底,placeholder 看不见.
+                这里改成 plain TextInput,把背景/文字色直接绑到 `useAppTheme()`,
+                light/dark 切换都能正确反色。 */}
+            <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder={t("publish.lookbookTitlePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
+              placeholderTextColor={theme.colors.placeholder}
               multiline
-              variant="filled"
-              sx={{
+              textAlignVertical="top"
+              style={{
                 fontSize: 14,
                 fontWeight: "500",
                 fontFamily: playfairFonts.medium,
-                color: theme.colors.black,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.inputBackground,
+                borderWidth: 1,
+                borderColor: theme.colors.inputBorder,
                 minHeight: 50,
-                textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
-                padding: 0,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
               }}
             />
           </Box>
@@ -1156,22 +1163,24 @@ const PublishLookbookScreen = () => {
                 *
               </Text>
             </HStack>
-            <Input
+            <TextInput
               value={description}
               onChangeText={setDescription}
               placeholder={t("publish.lookbookDescPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
+              placeholderTextColor={theme.colors.placeholder}
               multiline
-              variant="filled"
-              sx={{
+              textAlignVertical="top"
+              style={{
                 fontFamily: playfairFonts.regular,
-                color: theme.colors.gray600,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.inputBackground,
+                borderWidth: 1,
+                borderColor: theme.colors.inputBorder,
                 fontSize: 14,
                 minHeight: 80,
-                textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
-                padding: 0,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
               }}
             />
           </Box>

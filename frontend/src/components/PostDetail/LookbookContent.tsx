@@ -6,7 +6,7 @@ import { OptimizedImage } from "../ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { Post } from "../PostCard";
-import { styles, SCREEN_WIDTH } from "./styles";
+import { usePostDetailStyles, SCREEN_WIDTH } from "./styles";
 import { VideoPlayer } from "./VideoPlayer";
 import { useMediaAspectRatio } from "../../utils/useMediaAspectRatio";
 
@@ -26,6 +26,7 @@ export const LookbookContent: React.FC<LookbookContentProps> = ({
   onOpenFullscreen,
 }) => {
   const { t } = useTranslation();
+  const styles = usePostDetailStyles();
   // Viewport aspect ratio follows the first slide exactly (no clamp) so
   // `contentFit="contain"` on the lead image never letterboxes. Later slides
   // reuse the same frame and may show gutters if their ratio differs.

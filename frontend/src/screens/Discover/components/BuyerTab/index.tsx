@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../../../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../../theme";
+import { useProfileLoadingGif } from "../../../../utils/loadingGifs";
 import { Alert } from "../../../../utils/Alert";
 import { SCREEN_WIDTH } from "../../constants";
 import { StoreSelector } from "./StoreSelector";
@@ -99,6 +100,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const {
     stores,
     selectedStoreId,
@@ -309,7 +311,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     return (
       <Box style={styles.center}>
         <RNImage
-          source={require("../../../../../assets/gif/profile-loading.gif")}
+          source={profileLoadingGif}
           style={styles.loadingGif}
           resizeMode="contain"
         />
@@ -514,6 +516,7 @@ const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const rows = useMemo(() => {
     const grouped: ApiPost[][] = [];
     for (let i = 0; i < posts.length; i += 2) {
@@ -532,7 +535,7 @@ const PostGridImpl: React.FC<PostGridProps> = ({ posts, isLoading, onPostPress }
         justifyContent="center"
       >
         <RNImage
-          source={require("../../../../../assets/gif/profile-loading.gif")}
+          source={profileLoadingGif}
           style={styles.gridLoadingGif}
           resizeMode="contain"
         />
@@ -610,6 +613,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   // 两列等宽，FlatList 在 ScrollView 里嵌套会报警，所以手写 2 列 row。
   const rows = useMemo(() => {
     const grouped: BuyerStoreProduct[][] = [];
@@ -631,7 +635,7 @@ const ProductGridImpl: React.FC<ProductGridProps> = ({
         justifyContent="center"
       >
         <RNImage
-          source={require("../../../../../assets/gif/profile-loading.gif")}
+          source={profileLoadingGif}
           style={styles.gridLoadingGif}
           resizeMode="contain"
         />

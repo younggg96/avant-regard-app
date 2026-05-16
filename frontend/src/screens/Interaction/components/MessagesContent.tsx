@@ -4,6 +4,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme, useAppTheme } from "../../../theme";
+import { useProfileLoadingGif } from "../../../utils/loadingGifs";
 import { Box, Text, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { useChatStore } from "../../../store/chatStore";
@@ -20,6 +21,7 @@ export const MessagesContent = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const profileLoadingGif = useProfileLoadingGif();
   const {
     conversations,
     loadConversations,
@@ -123,7 +125,7 @@ export const MessagesContent = () => {
     return (
       <Box flex={1} justifyContent="center" alignItems="center">
         <RNImage
-          source={require("../../../../assets/gif/profile-loading.gif")}
+          source={profileLoadingGif}
           style={msgStyles.loadingGif}
           resizeMode="contain"
         />

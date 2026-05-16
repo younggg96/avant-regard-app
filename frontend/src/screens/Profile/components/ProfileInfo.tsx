@@ -160,8 +160,8 @@ export const ProfileInfo = ({
   );
 };
 
-// 头衔徽章：与用户名、等级同一行，紧跟在等级徽章右侧（与 UserProfileScreen 一致）。
-// gray100 底 + text 字色，两套主题下与其他资料 chip 同调。
+// 头衔徽章：与用户主页 LevelProgress lvChip / UserProfileScreen primaryTitle 同逻辑，
+// text 底 + textInverted 字（暗色主题白底黑字，亮色主题黑底白字）。
 const makeTitleStyles = (t: AppTheme) =>
   StyleSheet.create({
     chipBadge: {
@@ -169,14 +169,12 @@ const makeTitleStyles = (t: AppTheme) =>
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 10,
-      backgroundColor: t.colors.gray100,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.text,
     },
     chipBadgeText: {
       fontSize: 11,
       fontWeight: "600",
-      color: t.colors.text,
+      color: t.colors.textInverted,
       fontFamily: playfairFonts.medium,
     },
   });

@@ -80,7 +80,7 @@ const darkColors = {
   accent: "#FFFFFF",
   error: "#FF6B6B",
   success: "#5CD67A",
-  background: "#0A0A0A",
+  background: "#000000",
   card: "#000000",
   cardElevated: "#1A1A1A",
   text: "#FFFFFF",

@@ -32,12 +32,19 @@ const StorePostCardImpl: React.FC<StorePostCardProps> = ({ post, onPress }) => {
     <Pressable onPress={() => onPress(post.id)} style={styles.card}>
       <Box style={styles.imageWrapper}>
         {cover ? (
+          // allowDownscaling={false}: 同 PostCoverMedia 的 quality note (路径 2).
+          // 2 列网格 + Pressable 内部布局会让 cell 在挂载/重排瞬间出现小于
+          // 稳态宽度的 frame, expo-image 的 processImage 会在那一刻把 bitmap
+          // 永久缩到那个尺寸写进 SDImageCache 内存缓存, 下次回到这条 uri 命中
+          // cache 就只能拿到糊版本. 关掉 downscaling 让 GPU 走 trilinear 即时
+          // 缩放, 不留低分辨率残影.
           <OptimizedImage
             uri={cover}
             size={ImageSize.MEDIUM}
             style={styles.image}
             contentFit="cover"
             lazy
+            allowDownscaling={false}
           />
         ) : (
           <Box style={styles.imageEmpty}>

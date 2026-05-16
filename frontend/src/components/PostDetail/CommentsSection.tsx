@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
 import { ImageSize } from "../../utils/imageUtils";
 import { theme, useAppTheme } from "../../theme";
+import { useProfileLoadingGif } from "../../utils/loadingGifs";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
 import { usePostDetailStyles } from "./styles";
 
@@ -312,6 +313,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = usePostDetailStyles();
+  const profileLoadingGif = useProfileLoadingGif();
   const showComments: boolean = postStatus === "PUBLISHED";
 
   if (!showComments) {
@@ -367,7 +369,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       {isLoading && (
         <Box py="$lg" alignItems="center">
           <RNImage
-            source={require("../../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={styles.loadingGif}
             resizeMode="contain"
           />

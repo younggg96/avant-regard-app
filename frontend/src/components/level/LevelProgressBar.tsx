@@ -91,11 +91,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     height: 3,
     backgroundColor: t.colors.gray100,
     overflow: "hidden",
+    borderRadius: t.borderRadius.full,
   },
   trackCompact: {
     height: 2,
     backgroundColor: t.colors.gray100,
     overflow: "hidden",
+    borderRadius: t.borderRadius.full,
   },
   fill: {
     height: "100%",

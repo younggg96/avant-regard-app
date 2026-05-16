@@ -30,6 +30,7 @@ import {
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ScreenHeader from "../components/ScreenHeader";
 import PostCard, { Post } from "../components/PostCard";
 import {
@@ -160,6 +161,7 @@ const CommunityDetailScreen = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const profileLoadingGif = useProfileLoadingGif();
   const route = useRoute<RouteProp<RouteParams, "CommunityDetail">>();
   const { communityId } = route.params;
   const { user } = useAuthStore();
@@ -427,7 +429,7 @@ const CommunityDetailScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <RNImage
-            source={require("../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={styles.loadingGif}
             resizeMode="contain"
           />

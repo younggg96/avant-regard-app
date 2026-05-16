@@ -26,6 +26,7 @@ import {
     VStack,
 } from "../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ScreenHeader from "../components/ScreenHeader";
 import {
     BuyerStore,
@@ -39,6 +40,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const StoreListScreen = () => {
     const theme = useAppTheme();
+    const profileLoadingGif = useProfileLoadingGif();
     const { t } = useTranslation();
     const styles = useThemedStyles(makeStyles);
     const navigation = useNavigation();
@@ -358,7 +360,7 @@ const StoreListScreen = () => {
                 />
                 <VStack flex={1} justifyContent="center" alignItems="center" style={{ backgroundColor: theme.colors.gray50 }}>
                     <RNImage
-                        source={require("../../assets/gif/profile-loading.gif")}
+                        source={profileLoadingGif}
                         style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH }}
                         resizeMode="contain"
                     />

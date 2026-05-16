@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { View, Text as RNText, ActivityIndicator, StyleSheet } from "react-native";
+import {
+  View,
+  Text as RNText,
+  ActivityIndicator,
+  StyleSheet,
+  Image as RNImage,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -47,6 +53,7 @@ import {
   useProfileStyles,
   PF,
 } from "../styles";
+import { useProfileLoadingGif } from "../../../utils/loadingGifs";
 
 interface PostsContentProps {
   activeTab: TabType;
@@ -274,8 +281,7 @@ const StoreActivityContent = ({
   const contribStyles = useContribStyles();
   const storeActivityStyles = useStoreActivityStyles();
   const styles = useProfileStyles();
-  const themeForLoader = useAppTheme();
-  const isDark = themeForLoader.colors.background !== "#FFFFFF";
+  const profileLoadingGif = useProfileLoadingGif();
   // 4 个一级 chip：前 3 个店铺级活动 + 第 4 个"商品"展开 3 个 sub-sub-tab
   const productTotal =
     productLikes.total + productSaved.total + productWanted.total;
@@ -401,17 +407,13 @@ const StoreActivityContent = ({
           onProductPress={onProductPress}
         />
       ) : storeActivityLoading ? (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          {isDark ? (
-            <ActivityIndicator color={themeForLoader.colors.gray400} />
-          ) : (
-            <Image
-              source={require("../../../../assets/gif/profile-loading.gif")}
-              style={styles.profileLoadingGif}
-              resizeMode="contain"
-            />
-          )}
-        </VStack>
+        // 用 RNImage（绕过 gluestack Image 默认 width:100%/height:auto），
+        // 让 GIF 用 styles.profileLoadingGif 撑满整个 tab 内容区。
+        <RNImage
+          source={profileLoadingGif}
+          style={styles.profileLoadingGif}
+          resizeMode="cover"
+        />
       ) : getDataLength() === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$sm" style={{ minHeight: 200 }}>
           <Ionicons name={empty.icon as any} size={24} color={theme.colors.gray300} />
@@ -689,9 +691,10 @@ export const PostsContent = ({
   const { t } = useTranslation();
   const styles = useProfileStyles();
   const theme = useAppTheme();
-  // profile-loading.gif 是白底动图，dark mode 下塞在深色页面里就是一大块刺眼
-  // 的白；用纯 ActivityIndicator 占位（在 light 模式继续保持原有 GIF 体验）。
-  const isDark = theme.colors.background !== "#FFFFFF";
+  // 之前 dark mode 下用 ActivityIndicator 兜底,因为浅色 GIF 砸在暗色页面里
+  // 是一大块刺眼白底; 现在用 useProfileLoadingGif 自动按主题切深/浅版本,
+  // 两端都保留品牌动画体验。
+  const profileLoadingGif = useProfileLoadingGif();
   if (activeTab === "storeActivity") {
     return (
       <StoreActivityContent
@@ -732,18 +735,14 @@ export const PostsContent = ({
   const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
   if (shouldShowLoading) {
+    // 用 RNImage（绕过 gluestack Image 默认 width:100%/height:auto），
+    // 让 GIF 用 styles.profileLoadingGif 撑满整个 tab 内容区。
     return (
-      <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-        {isDark ? (
-          <ActivityIndicator color={theme.colors.gray400} />
-        ) : (
-          <Image
-            source={require("../../../../assets/gif/profile-loading.gif")}
-            style={styles.profileLoadingGif}
-            resizeMode="contain"
-          />
-        )}
-      </VStack>
+      <RNImage
+        source={profileLoadingGif}
+        style={styles.profileLoadingGif}
+        resizeMode="cover"
+      />
     );
   }
 

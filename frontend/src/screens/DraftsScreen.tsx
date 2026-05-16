@@ -15,6 +15,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import ScreenHeader from "../components/ScreenHeader";
 import { useAuthStore } from "../store/authStore";
 import { postService, Post as ApiPost } from "../services/postService";
@@ -37,6 +38,7 @@ const DraftsScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -349,7 +351,7 @@ const DraftsScreen = () => {
         {loading ? (
           <View style={styles.loadingState}>
             <RNImage
-              source={require("../../assets/gif/profile-loading.gif")}
+              source={profileLoadingGif}
               style={styles.loadingGif}
               resizeMode="contain"
             />

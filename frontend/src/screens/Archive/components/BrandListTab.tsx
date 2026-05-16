@@ -13,6 +13,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -24,6 +25,7 @@ import { useAuthStore } from "../../../store/authStore";
 import { useArchiveBrandListRefreshStore } from "../../../store/archiveBrandListRefreshStore";
 import SubmitBrandModal from "../../../components/SubmitBrandModal";
 import CategoryFilterModal from "./CategoryFilterModal";
+import BrandListSkeleton from "./BrandListSkeleton";
 import { PAGE_SIZE } from "../types";
 
 interface CategoryFilter {
@@ -215,6 +217,11 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
     : null;
 
   if (isLoading) {
+    // archive-loading.gif 是浅色品牌动图，dark mode 下整屏白底刺眼且没有
+    // 深色版 GIF；用通用 skeleton 占位，light mode 继续保持原 GIF 体验。
+    if (theme.mode === "dark") {
+      return <BrandListSkeleton />;
+    }
     return (
       <Box style={styles.loadingContainer}>
         <Image
@@ -415,11 +422,15 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
         )}
         {isLoadingMore && (
           <HStack justifyContent="center" py="$lg">
-            <Image
-              source={require("../../../../assets/gif/archive-loading.gif")}
-              style={styles.footerGif}
-              resizeMode="contain"
-            />
+            {theme.mode === "dark" ? (
+              <ActivityIndicator color={theme.colors.gray400} />
+            ) : (
+              <Image
+                source={require("../../../../assets/gif/archive-loading.gif")}
+                style={styles.footerGif}
+                resizeMode="contain"
+              />
+            )}
           </HStack>
         )}
       </ScrollView>

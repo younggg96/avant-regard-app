@@ -56,22 +56,42 @@ interface PostCoverMediaProps {
  *   primitives (uri / size / contentFit / priority / transition / showPlaceholder)
  *   so shallow-compare handles them correctly.
  *
- * Quality note (covers bypass the proxy):
- *   Post covers default to `ImageSize.ORIGINAL`, which short-circuits
- *   `getOptimizedImageUrl` and pulls the raw Storage URL directly. We
- *   tried every shade of "transform-with-cache" first — FEED_CARD/MEDIUM
- *   over a backend Pillow proxy — and every variant eventually started
- *   serving 8x8-macroblock bitmaps to a fraction of users that survived
- *   app restart and only cleared on uninstall, i.e. baked into the
- *   on-device `SDImageCache` disk. Going straight to the original
- *   uploaded asset removes the entire mutation surface (proxy resize +
- *   re-encode + disk-cached transformed bytes) and lets us trust the
- *   uploader's quality. `expo-image`'s default `allowDownscaling=true`
- *   does the only "shrink" step left, at GPU decode time, where the
- *   sampling math is lossless and disposable per-frame — it never
- *   leaves a low-res copy behind for SDWebImage to re-serve later.
- *   Cost: ~50KB → 1–5MB per cover download (Wi-Fi imperceptible, 4G
- *   noticeable on first feed paint, free on cache hit).
+ * Quality notes — covers have TWO independent failure paths to "pixelation
+ * after using the app for a while", and we have to close BOTH:
+ *
+ *   1) Backend proxy resize + on-device disk cache (`SDImageCache`).
+ *      We tried every shade of "transform-with-cache" first — FEED_CARD/MEDIUM
+ *      over a backend Pillow proxy — and every variant eventually started
+ *      serving 8x8-macroblock bitmaps to a fraction of users that survived
+ *      app restart and only cleared on uninstall, i.e. baked into the
+ *      on-device `SDImageCache` disk. Mitigation: default `size` to
+ *      `ImageSize.ORIGINAL`, which short-circuits `getOptimizedImageUrl`
+ *      and pulls the raw Storage URL directly. Cost: ~50KB → 1–5MB per
+ *      cover download (Wi-Fi imperceptible, 4G noticeable on first feed
+ *      paint, free on cache hit).
+ *
+ *   2) `expo-image`'s `allowDownscaling=true` + `SDImageCache` *memory* cache.
+ *      `expo-image` runs `processImage` (iOS `ImageView.swift`) every time
+ *      a load completes and uses `frame.size` *at that instant* as the
+ *      resize target. Inside `MasonryFlashList` a recycled cell often
+ *      completes its load while its bounds are still in a transient
+ *      (smaller) state during recycling, which permanently bakes a
+ *      low-resolution bitmap into `SDImageCache`'s memory cache. Once
+ *      iOS evicts that entry and re-decodes from disk, the small version
+ *      is still what gets reinserted (the processed-image cache key
+ *      includes the post-resize size). Visually this is the "feed covers
+ *      gradually pixelate the longer the app session runs" bug.
+ *      Mitigation: pass `allowDownscaling={false}` to `OptimizedImage`
+ *      so the original bitmap is what's cached; the GPU does fit-to-cell
+ *      minification with trilinear sampling on every paint (set in
+ *      `ImageView.commonInit`), which never leaves a low-res copy behind.
+ *      Memory cost is bounded because the original asset is already in
+ *      a reasonable resolution from the uploader.
+ *
+ * Removing EITHER guard reproduces pixelation — they cover different
+ * failure modes. (1) is about the *bytes* on disk being wrong; (2) is
+ * about a correctly-decoded bitmap getting re-resized and the small
+ * version winning eviction races. Both have historically been hit.
  */
 const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
   uri,
@@ -102,6 +122,7 @@ const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
       showPlaceholder={showPlaceholder}
       transition={transition}
       priority={priority}
+      allowDownscaling={false}
     />
   );
 };

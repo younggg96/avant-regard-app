@@ -897,13 +897,11 @@ const PublishReviewScreen = () => {
               value={title}
               onChangeText={setTitle}
               placeholder={t("publish.reviewTitlePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
               variant="outline"
               sx={{
                 fontSize: 14,
                 fontWeight: "500",
                 minHeight: 50,
-                borderWidth: 0,
                 padding: 0,
               }}
             />
@@ -948,11 +946,9 @@ const PublishReviewScreen = () => {
                         value={name}
                         onChangeText={(v) => updateProductNameAt(idx, v)}
                         placeholder={t("publish.productNamePlaceholder")}
-                        placeholderTextColor={theme.colors.gray400}
                         variant="outline"
                         sx={{
                           fontSize: 14,
-                          borderWidth: 0,
                           padding: 0,
                         }}
                       />
@@ -1034,16 +1030,12 @@ const PublishReviewScreen = () => {
               value={reviewText}
               onChangeText={setReviewText}
               placeholder={t("publish.reviewContentPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
               multiline
               variant="outline"
               sx={{
                 fontSize: 14,
-                color: theme.colors.gray600,
                 minHeight: 120,
                 textAlignVertical: "top",
-                borderWidth: 0,
-                backgroundColor: "transparent",
                 padding: 0,
               }}
             />

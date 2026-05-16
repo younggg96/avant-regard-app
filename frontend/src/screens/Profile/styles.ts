@@ -5,6 +5,7 @@ import {
   AVATAR_SIZE,
   AVATAR_SIZE_SMALL,
   AVATAR_BORDER,
+  HEADER_CONTENT_HEIGHT,
   TAB_BAR_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
@@ -335,9 +336,16 @@ const makeProfileStyles = (t: AppTheme) =>
     postsContainer: {
       paddingBottom: t.spacing.xl,
     },
+    // 让 loading GIF 占满整个 tab 内容区域。
+    // 父 View 用的是 `minHeight: contentMinHeight`（在 ScrollView 里），
+    // 这种情况下子节点 `flex: 1` 不一定能撑起来（父没有 max height），所以
+    // 直接用一个明确的 `height` —— 取 SCREEN_HEIGHT 减掉头部/底部估算，
+    // 在保留品牌动画完整居中的同时铺满可见区。
     profileLoadingGif: {
-      width: SCREEN_WIDTH,
-      height: SCREEN_HEIGHT / 2,
+      width: "100%",
+      height: "50%",
+      // height: "100%",
+      backgroundColor: t.colors.background,
     },
   });
 

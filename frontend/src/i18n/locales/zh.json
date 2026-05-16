@@ -2020,7 +2020,8 @@
     "detail": "合集详情",
     "contributedBy": "由 {{name}} 用户贡献的秀场",
     "imageCount": "{{count}} 张图片",
-    "viewWebsite": "查看秀场网站",
+    "viewWebsite": "前往Firstview网页查看秀场",
+    "showImagesCopyrightNotice": "秀场图片版权归First View，本App仅作资讯导读，不持有版权",
     "relatedPosts": "相关帖子",
     "noPosts": "暂无相关帖子",
     "loadPostsFailed": "加载相关帖子失败"

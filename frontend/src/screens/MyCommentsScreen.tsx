@@ -24,6 +24,7 @@ import {
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
@@ -39,6 +40,7 @@ const MyCommentsScreen = () => {
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const appTheme = useAppTheme();
+    const profileLoadingGif = useProfileLoadingGif();
     const [comments, setComments] = useState<PostComment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -253,7 +255,7 @@ const MyCommentsScreen = () => {
             {isLoading ? (
                 <VStack alignItems="center" justifyContent="center" flex={1}>
                     <RNImage
-                        source={require("../../assets/gif/profile-loading.gif")}
+                        source={profileLoadingGif}
                         style={styles.loadingGif}
                         resizeMode="contain"
                     />

@@ -49,6 +49,7 @@ import {
   useThemedStyles,
   type AppTheme,
 } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import { postService, Post as ApiPost, likePost, unlikePost, UserPostStats } from "../services/postService";
@@ -127,6 +128,7 @@ const UserProfileScreen = () => {
   const appTheme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const contribStyles = useThemedStyles(makeContribStyles);
+  const profileLoadingGif = useProfileLoadingGif();
 
   // 1. 动态计算 Header 总高度 (刘海 + 44px)
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
@@ -844,7 +846,7 @@ const UserProfileScreen = () => {
         {contribLoading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
             <RNImage
-              source={require("../../assets/gif/profile-loading.gif")}
+              source={profileLoadingGif}
               style={styles.loadingGif}
               resizeMode="contain"
             />
@@ -957,7 +959,7 @@ const UserProfileScreen = () => {
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <RNImage
-            source={require("../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={styles.loadingGif}
             resizeMode="contain"
           />
@@ -1095,9 +1097,17 @@ const UserProfileScreen = () => {
                   disabled={followLoading}
                 >
                   {followLoading ? (
-                    <ActivityIndicator color={appTheme.colors.textInverted} size="small" />
+                    <ActivityIndicator
+                      color={isFollowing ? appTheme.colors.gray400 : appTheme.colors.textInverted}
+                      size="small"
+                    />
                   ) : (
-                    <RNText style={styles.followButtonTextSmall}>
+                    <RNText
+                      style={[
+                        styles.followButtonTextSmall,
+                        isFollowing && styles.followingButtonTextSmall,
+                      ]}
+                    >
                       {isFollowing ? t("profile.unfollow") : t("profile.followUser")}
                     </RNText>
                   )}
@@ -1592,13 +1602,16 @@ const makeStyles = (t: AppTheme) =>
     backgroundColor: t.colors.text,
   },
   followingButtonSmall: {
-    backgroundColor: t.colors.gray200,
+    backgroundColor: t.colors.gray100,
   },
   followButtonTextSmall: {
     color: t.colors.textInverted,
     fontSize: 12,
     fontWeight: "600",
     fontFamily: playfairFonts.medium,
+  },
+  followingButtonTextSmall: {
+    color: t.colors.gray400,
   },
   stickyTabBar: {
     position: "absolute",
@@ -1663,7 +1676,9 @@ const makeStyles = (t: AppTheme) =>
     alignItems: "center",
   },
   followingButton: {
-    backgroundColor: t.colors.gray200,
+    // gray200 在 dark mode 是 #3A3A3A,叠 textInverted (#0A0A0A 接近黑) 文字几乎看不见。
+    // 用 gray100 做"已关注"的 muted 底,文字走 gray400 保证两端都有对比。
+    backgroundColor: t.colors.gray100,
   },
   followButtonText: {
     color: t.colors.textInverted,
@@ -1672,7 +1687,7 @@ const makeStyles = (t: AppTheme) =>
     fontFamily: playfairFonts.medium,
   },
   followingButtonText: {
-    color: t.colors.textInverted,
+    color: t.colors.gray400,
     fontFamily: playfairFonts.medium,
   },
   chatButton: {

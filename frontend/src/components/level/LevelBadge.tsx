@@ -3,7 +3,7 @@
  *
  * - 不做等级 0 的渲染 (未达到 Lv1 的用户, 主页不挂徽章)
  * - 支持 size: "sm" (头像旁挂件) / "md" (我的等级页) / "lg" (升级动画)
- * - 仅使用黑白灰; 禁止引入彩色
+ * - 仅使用主题的 text / textInverted 反差（暗主题：白底黑字；亮主题：黑底白字）
  */
 
 import React from "react";
@@ -57,19 +57,16 @@ export const LevelBadge: React.FC<LevelBadgeProps> = ({
   );
 };
 
-// 原来 base 用 `t.colors.text`、text 用 `t.colors.textInverted`，dark mode
-// 下变成纯白胶囊+黑字（很扎眼）。改用 gray100 底 + text 字色，两套主题下
-// 都是低调灰胶囊（light 浅灰底黑字 / dark 深灰底白字），保持品牌冷峻调性。
+// 与「等级进度」行内 lvChip 一致：深底上用 text 作底、textInverted 作字，
+// dark 模式下即白底黑字 / light 模式下黑底白字。
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   base: {
-    backgroundColor: t.colors.gray100,
+    backgroundColor: t.colors.text,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
   },
   text: {
-    color: t.colors.text,
+    color: t.colors.textInverted,
     fontFamily: t.typography.h4.fontFamily,
     fontWeight: "700",
     letterSpacing: 0.5,
@@ -81,7 +78,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: t.colors.text,
+    backgroundColor: t.colors.textInverted,
     borderWidth: 1,
     borderColor: t.colors.card,
   },

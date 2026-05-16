@@ -24,6 +24,7 @@ import {
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { useAuthStore } from "../store/authStore";
 import { Alert } from "../utils/Alert";
 import ScreenHeader from "../components/ScreenHeader";
@@ -37,6 +38,7 @@ import {
     Post,
 } from "../services/postService";
 import { unlikeStoreComment } from "../services/buyerStoreService";
+import { unlikeStoreProductComment } from "../services/storeProductService";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 
@@ -56,6 +58,7 @@ const MyLikesScreen = () => {
     const navigation = useNavigation();
     const { user } = useAuthStore();
     const appTheme = useAppTheme();
+    const profileLoadingGif = useProfileLoadingGif();
     const [activeTab, setActiveTab] = useState<TabType>("posts");
     const contentScrollViewRef = useRef<RNScrollView>(null);
 
@@ -172,7 +175,6 @@ const MyLikesScreen = () => {
             if (item.source === "store") {
                 await unlikeStoreComment(comment.id, user.userId);
             } else if (item.source === "product") {
-                const { unlikeStoreProductComment } = await import("../services/storeProductService");
                 await unlikeStoreProductComment(comment.id);
             } else {
                 await commentService.unlikeComment(comment.id, user.userId);
@@ -223,7 +225,7 @@ const MyLikesScreen = () => {
             return (
                 <VStack alignItems="center" justifyContent="center" flex={1} py="$xxl">
                     <RNImage
-                        source={require("../../assets/gif/profile-loading.gif")}
+                        source={profileLoadingGif}
                         style={styles.loadingGif}
                         resizeMode="contain"
                     />
@@ -399,7 +401,7 @@ const MyLikesScreen = () => {
             return (
                 <VStack alignItems="center" justifyContent="center" flex={1} py="$xxl">
                     <RNImage
-                        source={require("../../assets/gif/profile-loading.gif")}
+                        source={profileLoadingGif}
                         style={styles.loadingGif}
                         resizeMode="contain"
                     />

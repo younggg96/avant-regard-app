@@ -39,6 +39,7 @@ import { Box, HStack, Image, Pressable, ScrollView, Text, VStack } from "../comp
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { Alert } from "../utils/Alert";
 import {
   checkStoreProductFavorited,
@@ -104,6 +105,7 @@ const StoreProductDetailScreen: React.FC = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  const profileLoadingGif = useProfileLoadingGif();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { productId } = route.params ?? ({} as RouteParams);
@@ -522,7 +524,7 @@ const StoreProductDetailScreen: React.FC = () => {
         <Header title={t("store.productDetail")} onBack={navigation.goBack} />
         <Box style={styles.center}>
           <Image
-            source={require("../../assets/gif/profile-loading.gif")}
+            source={profileLoadingGif}
             style={styles.loadingGif}
             resizeMode="contain"
           />
@@ -714,7 +716,7 @@ const StoreProductDetailScreen: React.FC = () => {
             {commentsLoading && comments.length === 0 && (
               <Box style={styles.commentsLoading}>
                 <Image
-                  source={require("../../assets/gif/profile-loading.gif")}
+                  source={profileLoadingGif}
                   style={styles.commentsLoadingGif}
                   resizeMode="contain"
                 />
