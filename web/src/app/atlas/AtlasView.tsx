@@ -135,7 +135,7 @@ export function AtlasView() {
       />
 
       {/* min-h subtracts the sticky SiteHeader (h-14 = 3.5rem) so the page
-          fills the viewport without forcing the SiteFooter above the fold. */}
+          fills the viewport. Footer is not shown on /atlas. */}
       <section className="relative flex min-h-[calc(100vh-3.5rem)] w-full flex-col px-5 py-5 md:px-8 md:py-7 xl:px-12 xl:py-9">
         {/* ===== Top row: eyebrow / title / stats ===== */}
         <header className="relative z-20 grid grid-cols-1 items-start gap-4 md:grid-cols-3">
@@ -259,20 +259,20 @@ export function AtlasView() {
             <button
               type="button"
               onClick={handleToggleAutoRotate}
-              className="border border-black/20 px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-black/85 transition hover:border-black hover:bg-black hover:text-white dark:border-white/20 dark:text-white/85 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+              className="rounded border border-black/20 px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-black/85 transition hover:border-black hover:bg-black hover:text-white dark:border-white/20 dark:text-white/85 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
             >
               {autoRotate ? t("atlas.pause") : t("atlas.autoRotate")}
             </button>
             <button
               type="button"
               onClick={handleResetView}
-              className="border border-black/20 px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-black/85 transition hover:border-black hover:bg-black hover:text-white dark:border-white/20 dark:text-white/85 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
+              className="rounded border border-black/20 px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-black/85 transition hover:border-black hover:bg-black hover:text-white dark:border-white/20 dark:text-white/85 dark:hover:border-white dark:hover:bg-white dark:hover:text-black"
             >
               {t("atlas.resetView")}
             </button>
             <Link
               href={exploreHref}
-              className="border border-black bg-black px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-white transition hover:bg-black/85 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/85"
+              className="rounded border border-black bg-black px-4 py-2 font-label text-[10px] uppercase tracking-[0.28em] text-white transition hover:bg-black/85 dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/85"
             >
               {t("atlas.viewStoresInCity", { city: selected.name })}
             </Link>
@@ -327,7 +327,7 @@ export function AtlasView() {
                       <button
                         type="button"
                         onClick={() => handlePickCityFromModal(city)}
-                        className={`flex w-full items-baseline justify-between gap-3 border-b border-black/[0.05] px-3 py-3 text-left font-label text-[11px] uppercase tracking-[0.16em] transition last:border-b-0 hover:bg-black/[0.04] dark:border-white/[0.06] dark:hover:bg-white/[0.04] ${
+                        className={`flex w-full items-baseline justify-between gap-3 rounded border-b border-black/[0.05] px-3 py-3 text-left font-label text-[11px] uppercase tracking-[0.16em] transition last:border-b-0 hover:bg-black/[0.04] dark:border-white/[0.06] dark:hover:bg-white/[0.04] ${
                           active
                             ? "text-black dark:text-white"
                             : "text-black/60 dark:text-white/60"

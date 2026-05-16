@@ -15,9 +15,15 @@
  *   导致用户在 App 内连续操作触达升级阈值后, 必须手动打开"我的等级"才会
  *   弹全屏动画 —— 与 PRD"任意页面都能看到升级庆祝"的预期不符.
  *
- *   选择周期: 30s 与 notificationStore.refreshUnreadCount 同一节奏,
- *   /levels/me 是只读查询, 单次 IO 极轻; 升级是低频事件, 30s 对体感"立刻就弹"
- *   已经足够. 仅在 AppState === 'active' 时跑定时器, 切后台立即停, 不浪费请求.
+ *   周期选择: 升级是个低频事件 (一个用户一辈子也就 4~5 次), 早期把周期定成
+ *   30s 是抄了 notificationStore.refreshUnreadCount 的节奏, 但通知未读数
+ *   是高频变化, 等级根本不需要那么紧. 30s 会在控制台刷出连续的
+ *   /api/levels/me 日志, 也对后端造成无谓的 QPS. 这里拉长到 5 分钟:
+ *     - 体感"操作完几分钟内会自动弹"依然成立;
+ *     - 用户主动进入 MyLevel / Profile 时各自 useFocusEffect 立即 refresh,
+ *       配合 levelStore 的节流去重, 该刷新的时机一个都不少, 该省的请求
+ *       全部省掉.
+ *   仅在 AppState === 'active' 时跑定时器, 切后台立即停, 不浪费请求.
  */
 
 import { useEffect, useRef } from "react";
@@ -25,7 +31,7 @@ import { AppState, AppStateStatus } from "react-native";
 import { useAuthStore } from "../../store/authStore";
 import { useLevelStore } from "../../store/levelStore";
 
-const LEVEL_FOREGROUND_POLL_MS = 30_000;
+const LEVEL_FOREGROUND_POLL_MS = 5 * 60 * 1000;
 
 export function useLevelWatcher() {
   const userId = useAuthStore((s) => s.user?.userId);

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { AnimateIn } from "@/components/AnimateIn";
 import { config } from "@/lib/config";
@@ -42,7 +43,7 @@ function AppStoreButton({ variant = "default", className = "" }: AppStoreButtonP
 }
 
 const FEATURES_KEYS = ["01", "02", "03", "04"] as const;
-const AUDIENCE_KEYS = ["1", "2", "3", "4", "5"] as const;
+const AUDIENCE_KEYS = ["1", "2", "3", "4", "5", "6"] as const;
 const WHATS_NEW_KEYS = ["1", "2", "3", "4", "5"] as const;
 
 const APP_INFO_KEYS = [
@@ -128,20 +129,22 @@ export default function AppLandingView() {
               className="absolute inset-0 -z-10 translate-y-6 scale-95 rounded-[56px] bg-black/5 blur-md dark:bg-white/5"
             />
             <div
-              className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[56px] border shadow-elevated
-                         border-black/[0.08] bg-black dark:border-white/[0.08]"
+              className="relative aspect-square w-full overflow-hidden rounded-[56px] border shadow-elevated
+                         border-black/[0.08] bg-white
+                         dark:border-white/[0.12] dark:bg-white"
             >
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="font-serif text-[1.6rem] leading-none tracking-[0.04em] text-white">
-                  Avant
-                </div>
-                <div className="mt-1 font-serif italic text-[1.6rem] leading-none tracking-[0.02em] text-white">
-                  Regard
-                </div>
-                <div className="mt-4 font-label text-[9px] uppercase tracking-[0.3em] text-white/40">
-                  Archive
-                </div>
-              </div>
+              {/*
+                Same asset as frontend/assets/images/logo.jpg. The JPEG has a light matte;
+                keep the tile white in both themes so dark mode does not show a dark “frame”.
+              */}
+              <Image
+                src="/logo.jpg"
+                alt="Avant Regard"
+                fill
+                sizes="(max-width: 768px) 72vw, 268px"
+                className="object-contain p-[10%]"
+                priority
+              />
             </div>
           </div>
         </div>

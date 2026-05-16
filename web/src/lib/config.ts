@@ -12,8 +12,7 @@ export const config = {
     "https://avantregard.com",
   /**
    * App Store listing for the iOS app.
-   * Only referenced by the dedicated `/app` landing page — the rest of the
-   * web experience stays app-agnostic by design.
+   * Used by `/app` and `/download` landing pages.
    */
   appStoreUrl:
     process.env.NEXT_PUBLIC_APP_STORE_URL ||

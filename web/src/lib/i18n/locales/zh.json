@@ -45,8 +45,9 @@
     "forum": "论坛",
     "archive": "档案",
     "stores": "买手店",
-    "atlas": "时装地图",
-    "about": "关于"
+    "atlas": "Avant-Garde 世界",
+    "about": "关于",
+    "download": "App"
   },
   "auth": {
     "login": "登录",
@@ -183,6 +184,7 @@
     "tagline": "为先锋时装而生的社区。发现设计师品牌、浏览秀场、分享穿搭与单品测评。",
     "product": "产品",
     "features": "功能",
+    "downloadApp": "下载 App",
     "aboutTitle": "关于",
     "brandStory": "品牌故事",
     "about": "关于我们",
@@ -1479,10 +1481,14 @@
     "heroStatOutfitsLabel": "穿搭灵感",
     "heroStatBrandsValue": "1000+",
     "heroStatBrandsLabel": "品牌档案",
-    "atlasChip": "Avant-Garde 时装地图",
+    "atlasChip": "Avant-Garde 世界",
     "atlasHeading": "走进先锋\n时装世界。",
     "atlasBody": "一张可交互的全球地球，标注先锋时装的城市、买手店与设计师。拖动旋转，滚轮缩放，点击城市深入探索。",
-    "atlasCta": "进入时装世界"
+    "atlasCta": "进入时装世界",
+    "appChip": "iOS App",
+    "appHeading": "把社区与档案\n装进口袋。",
+    "appBody": "官方客户端：Discover、论坛、买手店地图与秀场档案随身查看。免费下载，与网页版账号互通。",
+    "appCta": "下载 App"
   },
   "discoverPage": {
     "heading": "先锋穿搭\n正在发生。",
@@ -1512,6 +1518,7 @@
     "audience3": "Vintage & Archive 藏家、玩家",
     "audience4": "想建立高级审美与穿搭体系的人",
     "audience5": "旅行中寻找专业买手店的人",
+    "audience6": "爱分享穿搭、记录灵感，并想在论坛里与同好认真讨论的人",
     "audienceFooter": "加入 Avantregard Archive，成为一名真正的 Archivist，拥有属于你的时装史入口。",
     "whatsNewHeading": "对话系统上线，\n体验全面升级。",
     "whatsNew1Title": "全新对话 & 社交功能",
@@ -1537,6 +1544,12 @@
     "ctaHeading": "拥有属于你的\n时装史入口。",
     "ctaBody": "免费下载，iOS 13.4 及以上可用。成为一名真正的 Archivist，开始收藏时代。",
     "backToHome": "返回首页 →"
+  },
+  "downloadPage": {
+    "metaTitle": "下载 App · Avant Regard",
+    "metaDescription": "免费下载 Avant Regard iOS 客户端：Discover、论坛、全球买手店地图与秀场档案。",
+    "ogTitle": "下载 Avant Regard · iOS",
+    "metaOgDescription": "免费下载 iOS App——先锋时装社区与 Archive 入口。"
   },
   "archiveBrands": {
     "metaTitle": "品牌 · Archive",

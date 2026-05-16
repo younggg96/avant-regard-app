@@ -46,7 +46,8 @@
     "archive": "Archive",
     "stores": "Stores",
     "atlas": "Atlas",
-    "about": "About"
+    "about": "About",
+    "download": "App"
   },
   "auth": {
     "login": "Log In",
@@ -183,6 +184,7 @@
     "tagline": "A community built for avant-garde fashion. Discover designer brands, browse collections, share outfits and reviews.",
     "product": "Product",
     "features": "Features",
+    "downloadApp": "Download App",
     "aboutTitle": "About",
     "brandStory": "Brand Story",
     "about": "About Us",
@@ -1482,7 +1484,11 @@
     "atlasChip": "Avant-Garde Fashion Atlas",
     "atlasHeading": "Explore the Avant-Garde\nFashion World.",
     "atlasBody": "An interactive globe of the cities, boutiques and designers that anchor avant-garde fashion. Drag to rotate, scroll to zoom, click a city to enter.",
-    "atlasCta": "Open Fashion World"
+    "atlasCta": "Open Fashion World",
+    "appChip": "iOS App",
+    "appHeading": "Carry the community\nand archive with you.",
+    "appBody": "The official app: Discover, forums, boutique map, and runway archives on the go. Free on the App Store — same account as the website.",
+    "appCta": "Download"
   },
   "discoverPage": {
     "heading": "Avant-garde outfits\nhappening now.",
@@ -1567,6 +1573,7 @@
     "audience3": "Vintage & Archive collectors, players",
     "audience4": "Those building refined aesthetics and style systems",
     "audience5": "Travelers seeking professional boutiques",
+    "audience6": "Outfit sharers who journal inspiration and want real conversation in the forums",
     "audienceFooter": "Join Avantregard Archive, become a true Archivist, and own your gateway to fashion history.",
     "whatsNewHeading": "Chat system live,\nexperience fully upgraded.",
     "whatsNew1Title": "New Chat & Social Features",
@@ -1592,6 +1599,12 @@
     "ctaHeading": "Own your gateway\nto fashion history.",
     "ctaBody": "Free download, available on iOS 13.4+. Become a true Archivist and start collecting eras.",
     "backToHome": "Back to Home →"
+  },
+  "downloadPage": {
+    "metaTitle": "Download App · Avant Regard",
+    "metaDescription": "Download the free Avant Regard app for iOS: Discover, forums, global boutique map, and show archives.",
+    "ogTitle": "Download Avant Regard · iOS",
+    "metaOgDescription": "Free on the App Store — your mobile portal to avant-garde fashion."
   },
   "archiveBrands": {
     "metaTitle": "Brands · Archive",

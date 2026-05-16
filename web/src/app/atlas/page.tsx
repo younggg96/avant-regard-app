@@ -18,10 +18,10 @@ export function generateMetadata(): Metadata {
 /**
  * /atlas — Avant-Garde Fashion World.
  *
- * Independent immersive page: shares the SiteHeader / SiteFooter from the
- * root layout but uses a dedicated dark editorial canvas for the globe so
- * the marker glow and grid lines read clearly. Light mode users still get
- * the unified header / footer chrome.
+ * Independent immersive page: shares the SiteHeader from the root layout;
+ * the footer is omitted so the globe fills the viewport. Uses a dedicated
+ * dark editorial canvas in dark mode so marker glow and grid lines read
+ * clearly; light mode keeps the plain site canvas.
  */
 export default function AtlasPage() {
   return <AtlasView />;

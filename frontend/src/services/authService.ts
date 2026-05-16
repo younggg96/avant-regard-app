@@ -31,6 +31,26 @@ export interface ApiError {
   status?: number;
 }
 
+/**
+ * Error thrown by {@link request} when an HTTP request fails or the backend
+ * envelope `{code, message, data}` reports a non-zero code.
+ *
+ * Carries `status` (HTTP status, 0 = network/timeout) so callers can tell
+ * apart "真的认证拒绝" (401/403) from "瞬时网络/服务端抖动" (0, 5xx). This is
+ * critical for refresh-token flow: we MUST NOT log the user out on transient
+ * errors.
+ */
+export class AuthRequestError extends Error {
+  status: number;
+  isTransient: boolean;
+  constructor(message: string, status: number, isTransient: boolean) {
+    super(message);
+    this.name = "AuthRequestError";
+    this.status = status;
+    this.isTransient = isTransient;
+  }
+}
+
 // 请求参数类型定义
 export interface LoginParams {
   phone: string;
@@ -104,7 +124,10 @@ export interface RefreshTokenParams {
   refreshToken: string;
 }
 
-// 通用请求方法
+/** 后端/网关 transient 故障状态码。命中即可重试。 */
+const TRANSIENT_HTTP_STATUSES = new Set([502, 503, 504]);
+
+/** 通用请求方法 */
 async function request<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -120,62 +143,115 @@ async function request<T>(
     },
   };
 
+  let response: Response;
   try {
-    const response = await fetch(url, config);
+    response = await fetch(url, config);
+  } catch (error) {
+    // 网络错误 / DNS 失败 / 超时。视为可重试的瞬时错误，status=0。
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "网络请求失败，请检查网络连接";
+    throw new AuthRequestError(message, 0, true);
+  }
 
-    // 处理非 JSON 响应
-    const contentType = response.headers.get("content-type");
+  const contentType = response.headers.get("content-type");
 
-    if (!response.ok) {
-      let errorMessage = "请求失败";
-
-      if (contentType?.includes("application/json")) {
+  if (!response.ok) {
+    let errorMessage = "请求失败";
+    if (contentType?.includes("application/json")) {
+      try {
         const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } else {
+        errorMessage =
+          errorData.message ||
+          errorData.error ||
+          // FastAPI HTTPException(detail="...") 的标准形态
+          (typeof errorData.detail === "string"
+            ? errorData.detail
+            : errorMessage);
+      } catch {
+        // body 不是 JSON 时退回到状态码描述
+      }
+    } else {
+      try {
         const text = await response.text();
         errorMessage = text || `HTTP ${response.status}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}`;
       }
-
-      throw new Error(errorMessage);
     }
-
-    // 处理成功响应
-    if (contentType?.includes("application/json")) {
-      const jsonResponse = await response.json();
-
-      // 处理包装的 API 响应格式 { code, message, data }
-      if (
-        jsonResponse &&
-        typeof jsonResponse === "object" &&
-        "code" in jsonResponse
-      ) {
-        const apiResponse = jsonResponse as ApiResponse<T>;
-
-        // 检查业务错误码
-        if (apiResponse.code !== 0) {
-          throw new Error(apiResponse.message || "请求失败");
-        }
-
-        // 返回 data 字段（如果存在）
-        if ("data" in apiResponse) {
-          return apiResponse.data;
-        }
-      }
-
-      // 如果不是包装格式，直接返回
-      return jsonResponse as T;
-    }
-
-    // 对于纯文本响应（如 "Code sent"）
-    const text = await response.text();
-    return text as unknown as T;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error("网络请求失败，请检查网络连接");
+    const isTransient = TRANSIENT_HTTP_STATUSES.has(response.status);
+    throw new AuthRequestError(errorMessage, response.status, isTransient);
   }
+
+  if (contentType?.includes("application/json")) {
+    const jsonResponse = await response.json();
+
+    // 处理包装的 API 响应格式 { code, message, data }
+    if (
+      jsonResponse &&
+      typeof jsonResponse === "object" &&
+      "code" in jsonResponse
+    ) {
+      const apiResponse = jsonResponse as ApiResponse<T>;
+      if (apiResponse.code !== 0) {
+        const transient =
+          apiResponse.code === 502 ||
+          apiResponse.code === 503 ||
+          apiResponse.code === 504;
+        throw new AuthRequestError(
+          apiResponse.message || "请求失败",
+          response.status,
+          transient
+        );
+      }
+      if ("data" in apiResponse) {
+        return apiResponse.data;
+      }
+    }
+
+    return jsonResponse as T;
+  }
+
+  // 对于纯文本响应（如 "Code sent"）
+  const text = await response.text();
+  return text as unknown as T;
+}
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * `request` 的带重试封装，仅对**瞬时错误**（网络层 / 5xx）退避重试。
+ *
+ * 关键用途是 token refresh：用户隔几天打开 app 时，无线唤醒/后端冷启动很容
+ * 易让一次刷新失败。没有重试就会直接 logout 用户。注意我们**不**在 401/403
+ * 上重试——那意味着 refresh token 真的失效了，重试也救不回来。
+ */
+async function requestWithRetry<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retries = 3,
+  baseDelayMs = 500
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await request<T>(endpoint, options);
+    } catch (err) {
+      lastError = err;
+      const isTransient =
+        err instanceof AuthRequestError && err.isTransient;
+      if (!isTransient || attempt === retries) {
+        throw err;
+      }
+      // 指数退避：500ms -> 1s -> 2s -> 4s
+      await sleep(baseDelayMs * Math.pow(2, attempt));
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new AuthRequestError("请求失败", 0, true);
 }
 
 /**
@@ -333,14 +409,23 @@ export async function changePassword(
  * 刷新 Token
  * POST /api/auth/refresh
  * 使用 Supabase refresh token
+ *
+ * 使用 retry 版本：对瞬时网络/5xx 故障最多退避重试 3 次（总耗时 ~7.5s）。
+ * 用户隔几天再开 app 时这层韧性非常关键，否则一次网络抖动就会把用户登出。
+ * 注意：refresh token 真正失效（401/403）不会被重试。
  */
 export async function refreshToken(
   params: RefreshTokenParams
 ): Promise<LoginResponse> {
-  return request<LoginResponse>("/api/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify(params),
-  });
+  return requestWithRetry<LoginResponse>(
+    "/api/auth/refresh",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    },
+    3,
+    500
+  );
 }
 
 /**

@@ -15,6 +15,7 @@ export function SiteHeader() {
     { href: "/archive/brands", label: t("nav.archive") },
     { href: "/stores", label: t("nav.stores") },
     { href: "/atlas", label: t("nav.atlas") },
+    { href: "/download", label: t("nav.download") },
   ];
   return (
     <header className="sticky top-0 z-40 border-b bg-white/92 backdrop-blur-md transition-shadow

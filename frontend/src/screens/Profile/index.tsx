@@ -181,7 +181,8 @@ const ProfileScreen = () => {
       loadFollowedBrands(),
       loadUserTitles(),
       loadPostStats(),
-      refreshLevel(),
+      // 下拉刷新越过 levelStore 节流窗口, 让用户拿到真正最新的等级 / 任务进度.
+      refreshLevel({ force: true }),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());

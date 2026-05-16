@@ -83,7 +83,9 @@ const MyLevelScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refresh(), loadRules()]);
+    // pull-to-refresh 是用户明确要求"现在就要最新数据", 必须越过 levelStore
+    // 的 15s 节流窗口, 否则下拉后看到的还是缓存值, 体感是"刷新没生效".
+    await Promise.all([refresh({ force: true }), loadRules()]);
     setRefreshing(false);
   }, [refresh, loadRules]);
 

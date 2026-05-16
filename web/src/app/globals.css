@@ -37,8 +37,9 @@ html,
 body {
   background-color: var(--canvas);
   color: var(--ink);
-  /* Smooth transition between themes */
-  transition: background-color 0.2s ease, color 0.2s ease;
+  /* No root color/background transition: animating the whole document on
+     theme class flip reads as flicker next-themes + Tailwind `dark:` repaints.
+     Per-component `transition-colors` still applies to hovers etc. */
 }
 
 body {

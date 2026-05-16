@@ -388,6 +388,41 @@ function AppNavigator({
     return () => disconnectWebSocket();
   }, [isAuthenticated]);
 
+  // 回到前台时主动校验 / 刷新 access token。
+  // 这一段是「为什么隔几天打开 app 不再被强制登出」的关键：
+  // 1) setTimeout 在 app 被系统挂起 / 杀掉时不会跑，所以定时刷新只覆盖
+  //    "app 一直开着"的场景；
+  // 2) 用户回到前台 / 冷启动后，如果不主动校验，就只能等下一次 API 调用因
+  //    401 才触发刷新——而那次刷新一旦碰上 4G 唤醒慢就会失败；
+  // 3) 这里给一个"前台首事件"的提前刷新机会，并且交给 refreshTokens 自己
+  //    判断是否真的需要刷（已经新鲜的 token 不会被白白消耗）。
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const checkSession = () => {
+      const store = useAuthStore.getState();
+      if (!store.tokens?.refreshToken) return;
+      if (store.isTokenExpiringSoon()) {
+        store.refreshTokens();
+      } else {
+        store.startAutoRefresh();
+      }
+    };
+
+    // 挂载时（含冷启动）先校验一次
+    if (AppState.currentState === "active") {
+      checkSession();
+    }
+
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") {
+        checkSession();
+      }
+    });
+
+    return () => sub.remove();
+  }, [isAuthenticated]);
+
   // Check if onboarding guide needs to be shown
   useEffect(() => {
     if (!isAuthenticated || !user?.userId) {

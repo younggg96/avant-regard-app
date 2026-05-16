@@ -27,6 +27,7 @@ export function SiteFooter() {
             </h3>
             <ul className="mt-5 space-y-3 font-serif text-sm">
               <li><Link href="/discover" className="link-muted">{t("nav.discover")}</Link></li>
+              <li><Link href="/download" className="link-muted">{t("footer.downloadApp")}</Link></li>
               <li><Link href="/#features" className="link-muted">{t("footer.features")}</Link></li>
             </ul>
           </nav>

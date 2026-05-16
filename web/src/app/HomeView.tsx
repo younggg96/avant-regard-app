@@ -148,6 +148,32 @@ export function HomeView({ posts }: { posts: Post[] }) {
         <Marquee />
       </div>
 
+      {/* iOS App — download entry */}
+      <section className="border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div className="mx-auto grid max-w-content gap-10 px-6 py-16 md:grid-cols-[1fr,auto] md:items-center md:py-20">
+          <AnimateIn>
+            <div>
+              <span className="chip">{t("homepage.appChip")}</span>
+              <h2 className="mt-5 font-serif text-display text-black dark:text-white whitespace-pre-line">
+                {t("homepage.appHeading")}
+              </h2>
+              <p className="mt-5 max-w-xl font-serif text-sm leading-relaxed text-black/55 dark:text-white/45 md:text-base">
+                {t("homepage.appBody")}
+              </p>
+            </div>
+          </AnimateIn>
+          <Link
+            href="/download"
+            className="btn-primary self-start whitespace-nowrap md:self-center"
+          >
+            {t("homepage.appCta")}
+            <span aria-hidden className="ml-1.5">
+              ↗
+            </span>
+          </Link>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="mx-auto max-w-content px-6 py-24 md:py-32">
         <AnimateIn>

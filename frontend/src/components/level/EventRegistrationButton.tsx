@@ -81,7 +81,9 @@ export const EventRegistrationButton: React.FC<Props> = ({
         objectId: eventId,
       });
       Alert.show(t("level.registerSuccess", { remaining: res.remaining }));
-      await refresh();
+      // 核销后服务端的 benefit remaining/used 已经变了, 必须强制拉一次
+      // 把节流窗口顶掉, 否则按钮上 "剩余 N 张" 与后端不一致.
+      await refresh({ force: true });
       onRedeemed?.(res.remaining);
     } catch (e: any) {
       Alert.show(e?.message ?? t("level.redeemFailed"));

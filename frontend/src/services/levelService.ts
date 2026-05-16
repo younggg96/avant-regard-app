@@ -140,8 +140,15 @@ export const levelService = {
   /** 获取静态规则表, 渲染「我的等级」页面的总览 */
   getRules: () => request<LevelSpec[]>("/api/levels/rules"),
 
-  /** 获取当前登录用户的完整等级状态 (含任务进度 & 权益) */
-  getMyLevel: () => request<UserLevelStatus>("/api/levels/me"),
+  /**
+   * 获取当前登录用户的完整等级状态 (含任务进度 & 权益).
+   *
+   * 走 silent: true: 这个接口由 useLevelWatcher 周期性轮询 + 多个页面
+   * 的 useFocusEffect 触发, 每次都打 "request ..." 日志会把控制台刷满,
+   * 干扰其它业务日志的可读性. 真正的去重/节流在 levelStore.refresh 里做.
+   */
+  getMyLevel: () =>
+    request<UserLevelStatus>("/api/levels/me", { silent: true }),
 
   /** 公开接口: 他人主页徽章用 */
   getUserLevel: (userId: number) =>

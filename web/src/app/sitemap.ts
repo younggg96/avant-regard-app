@@ -8,5 +8,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/`, lastModified: now, priority: 1.0 },
     { url: `${base}/discover`, lastModified: now, priority: 0.9 },
     { url: `${base}/app`, lastModified: now, priority: 0.6 },
+    { url: `${base}/download`, lastModified: now, priority: 0.65 },
   ];
 }

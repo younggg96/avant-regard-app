@@ -99,7 +99,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
     logoImage: {
-        width: 140,
+        width: 100,
         height: 36,
     },
     avatar: {

@@ -3,7 +3,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
+import { ConditionalSiteFooter } from "@/components/ConditionalSiteFooter";
 import { EngagementNudgeProvider } from "@/components/EngagementNudgeProvider";
 import { ThemePreferenceSync } from "@/components/ThemePreferenceSync";
 import { config } from "@/lib/config";
@@ -81,10 +81,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="flex min-h-screen flex-col antialiased">
         <I18nProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <SiteHeader />
             <main className="flex-1">{children}</main>
-            <SiteFooter />
+            <ConditionalSiteFooter />
             <ThemePreferenceSync />
             <EngagementNudgeProvider />
           </ThemeProvider>
