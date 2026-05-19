@@ -65,7 +65,12 @@ class MaintenanceService:
             else:
                 config = self._default_config()
         except Exception as exc:  # noqa: BLE001 — fallback is intentional
-            logger.warning("Failed to load maintenance config: %s", exc)
+            # postgrest-py treats PostgREST 204 (no row for .maybe_single()) as APIError.
+            code = getattr(exc, "code", None)
+            if code is None and exc.args and isinstance(exc.args[0], dict):
+                code = exc.args[0].get("code")
+            if str(code) != "204":
+                logger.warning("Failed to load maintenance config: %s", exc)
             config = self._default_config()
 
         self._cached_config = config

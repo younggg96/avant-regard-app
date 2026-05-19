@@ -72,7 +72,11 @@ class FeatureFlagsService:
             else:
                 config = self._default_config()
         except Exception as exc:  # noqa: BLE001 — fallback is intentional
-            logger.warning("Failed to load feature flags config: %s", exc)
+            code = getattr(exc, "code", None)
+            if code is None and exc.args and isinstance(exc.args[0], dict):
+                code = exc.args[0].get("code")
+            if str(code) != "204":
+                logger.warning("Failed to load feature flags config: %s", exc)
             config = self._default_config()
 
         self._cached_config = config
