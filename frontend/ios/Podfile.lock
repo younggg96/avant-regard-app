@@ -1716,7 +1716,6 @@ DEPENDENCIES:
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
-  - WechatOpenSDK-XCFramework (from `./Vendor/WechatOpenSDK`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -1729,6 +1728,7 @@ SPEC REPOS:
     - SDWebImageSVGCoder
     - SDWebImageWebPCoder
     - SocketRocket
+    - WechatOpenSDK-XCFramework
 
 EXTERNAL SOURCES:
   boost:
@@ -1918,8 +1918,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSVG:
     :path: "../node_modules/react-native-svg"
-  WechatOpenSDK-XCFramework:
-    :path: "./Vendor/WechatOpenSDK"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2025,9 +2023,9 @@ SPEC CHECKSUMS:
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
-  WechatOpenSDK-XCFramework: ef2bd2c47ef5bbe29b7b9dd8d3e75dacca813ec0
+  WechatOpenSDK-XCFramework: ff342ae616bb86df3d236aca38059dfd4bc4a949
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
 
-PODFILE CHECKSUM: b3980b1a81c4af59bcf30fc308a04a452d66c950
+PODFILE CHECKSUM: 4b50048625d99a3d2ee04dedd7f6bfaeb0f0d67b
 
 COCOAPODS: 1.16.2

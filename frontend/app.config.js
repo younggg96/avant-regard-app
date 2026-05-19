@@ -1,65 +1,117 @@
-/* eslint-disable */
-/**
- * Expo 动态配置
- * 基于 app.json 的静态配置，额外注入依赖 .env 的动态字段：
- *   - 微信 AppID（作为 iOS URL Scheme）
- *   - 微信 Universal Link
- *   - expo-native-wechat 插件
- *
- * 用法：只需在 .env 中填写：
- *   EXPO_PUBLIC_WECHAT_APP_ID=wxXXXXXXXXXXXXXX
- *   EXPO_PUBLIC_WECHAT_UNIVERSAL_LINK=https://app.avantregard.com/wechat/
- *
- * Expo CLI 会在读取本文件前自动加载 .env。
- */
+const IS_NA = process.env.APP_VARIANT === "na";
 
-const toApplink = (url) => {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    const hostAndPath = `${parsed.host}${parsed.pathname.replace(/\/$/, "")}`;
-    return `applinks:${hostAndPath}`;
-  } catch {
-    return null;
-  }
-};
-
-module.exports = ({ config }) => {
-  const base = config; // 来自 app.json
-
-  const wechatAppId = process.env.EXPO_PUBLIC_WECHAT_APP_ID || "";
-  const wechatUniversalLink = process.env.EXPO_PUBLIC_WECHAT_UNIVERSAL_LINK || "";
-
-  const baseScheme = base.scheme;
-  const schemesFromBase = Array.isArray(baseScheme)
-    ? baseScheme
-    : baseScheme
-    ? [baseScheme]
-    : [];
-  const allSchemes = [...schemesFromBase];
-  if (wechatAppId && !allSchemes.includes(wechatAppId)) {
-    allSchemes.push(wechatAppId);
-  }
-
-  const basePlugins = Array.isArray(base.plugins) ? base.plugins : [];
-  const plugins = basePlugins.includes("expo-native-wechat")
-    ? basePlugins
-    : [...basePlugins, "expo-native-wechat"];
-
-  const baseAssociatedDomains = base.ios?.associatedDomains || [];
-  const applink = toApplink(wechatUniversalLink);
-  const associatedDomains = [...baseAssociatedDomains];
-  if (applink && !associatedDomains.includes(applink)) {
-    associatedDomains.push(applink);
-  }
-
-  return {
-    ...base,
-    scheme: allSchemes.length > 1 ? allSchemes : base.scheme,
-    plugins,
-    ios: {
-      ...base.ios,
-      associatedDomains,
+const config = {
+  name: IS_NA ? "Avant Regard NA" : "Avant Regard",
+  slug: "avant-regard",
+  version: "1.3.3",
+  orientation: "portrait",
+  icon: "./assets/images/logo.jpg",
+  userInterfaceStyle: "automatic",
+  scheme: IS_NA ? "avantregardna" : "avantregard",
+  splash: {
+    image: "./assets/splash.png",
+    resizeMode: "contain",
+    backgroundColor: "#000000",
+  },
+  assetBundlePatterns: ["**/*"],
+  ios: {
+    supportsTablet: true,
+    usesAppleSignIn: true,
+    infoPlist: {
+      NSPhotoLibraryUsageDescription:
+        "Avant Regard needs access to your photo library so you can select photos or videos to publish outfit shares, product reviews, or update your profile picture and cover image.",
+      NSCameraUsageDescription:
+        "Avant Regard needs to use your camera so you can take outfit photos for publishing posts, such as capturing your outfit of the day to share with the community.",
+      NSPhotoLibraryAddUsageDescription:
+        "Avant Regard needs to save your edited images or shared content posters to your photo library.",
+      NSLocationWhenInUseUsageDescription:
+        "Avant Regard needs your location to show nearby buyer stores on the map, such as finding designer brand concept stores near you.",
+      ITSAppUsesNonExemptEncryption: false,
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: true,
+        NSAllowsLocalNetworking: true,
+      },
+      ...(IS_NA
+        ? {}
+        : {
+            LSApplicationQueriesSchemes: [
+              "weixin",
+              "weixinULAPI",
+              "sinaweibo",
+              "sinaweibohd",
+            ],
+          }),
     },
-  };
+    bundleIdentifier: IS_NA
+      ? "com.yanggg96.avant-regard.na"
+      : "com.yanggg96.avant-regard",
+    buildNumber: "23",
+    associatedDomains: ["applinks:app.avantregard.com"],
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: "./assets/images/logo.jpg",
+      backgroundColor: "#000000",
+    },
+    permissions: [
+      "CAMERA",
+      "READ_EXTERNAL_STORAGE",
+      "WRITE_EXTERNAL_STORAGE",
+      "ACCESS_FINE_LOCATION",
+      "ACCESS_COARSE_LOCATION",
+    ],
+    package: IS_NA ? "com.yanggg96.avantregard.na" : "com.yanggg96.avantregard",
+    versionCode: 1,
+    intentFilters: [
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "https",
+            host: "app.avantregard.com",
+            pathPrefix: "/post",
+          },
+          {
+            scheme: "https",
+            host: "app.avantregard.com",
+            pathPrefix: "/share",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+    ],
+  },
+  web: {
+    favicon: "./assets/images/logo.jpg",
+  },
+  plugins: [
+    "expo-apple-authentication",
+    "expo-font",
+    [
+      "expo-splash-screen",
+      {
+        backgroundColor: "#000000",
+        image: "./assets/splash.png",
+        resizeMode: "contain",
+      },
+    ],
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/icon.png",
+        color: "#000000",
+        sounds: [],
+        defaultChannel: "default",
+      },
+    ],
+    "expo-video",
+  ],
+  extra: {
+    eas: {
+      projectId: "3e890188-f159-4285-81fb-790e46fce869",
+    },
+  },
 };
+
+export default { expo: config };

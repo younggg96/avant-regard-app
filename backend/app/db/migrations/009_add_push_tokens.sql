@@ -17,5 +17,6 @@ CREATE INDEX IF NOT EXISTS idx_user_push_tokens_user_id ON user_push_tokens(user
 CREATE INDEX IF NOT EXISTS idx_user_push_tokens_token ON user_push_tokens(push_token);
 
 -- 更新 updated_at 触发器
+DROP TRIGGER IF EXISTS update_user_push_tokens_updated_at ON user_push_tokens;
 CREATE TRIGGER update_user_push_tokens_updated_at BEFORE UPDATE ON user_push_tokens
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

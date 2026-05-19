@@ -131,14 +131,17 @@ CREATE INDEX IF NOT EXISTS idx_buyer_store_favorites_user_id ON buyer_store_favo
 -- 8. 触发器：自动更新 updated_at
 -- =====================================================
 
+DROP TRIGGER IF EXISTS update_user_submitted_stores_updated_at ON user_submitted_stores;
 CREATE TRIGGER update_user_submitted_stores_updated_at 
     BEFORE UPDATE ON user_submitted_stores
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_buyer_store_comments_updated_at ON buyer_store_comments;
 CREATE TRIGGER update_buyer_store_comments_updated_at 
     BEFORE UPDATE ON buyer_store_comments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_buyer_store_ratings_updated_at ON buyer_store_ratings;
 CREATE TRIGGER update_buyer_store_ratings_updated_at 
     BEFORE UPDATE ON buyer_store_ratings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

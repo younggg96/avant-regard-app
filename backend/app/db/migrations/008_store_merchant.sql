@@ -206,26 +206,32 @@ CREATE INDEX IF NOT EXISTS idx_store_activity_registrations_user_id ON store_act
 -- 8. 触发器：自动更新 updated_at
 -- =====================================================
 
+DROP TRIGGER IF EXISTS update_store_merchants_updated_at ON store_merchants;
 CREATE TRIGGER update_store_merchants_updated_at 
     BEFORE UPDATE ON store_merchants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_store_announcements_updated_at ON store_announcements;
 CREATE TRIGGER update_store_announcements_updated_at 
     BEFORE UPDATE ON store_announcements
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_store_banners_updated_at ON store_banners;
 CREATE TRIGGER update_store_banners_updated_at 
     BEFORE UPDATE ON store_banners
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_store_activities_updated_at ON store_activities;
 CREATE TRIGGER update_store_activities_updated_at 
     BEFORE UPDATE ON store_activities
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_store_discounts_updated_at ON store_discounts;
 CREATE TRIGGER update_store_discounts_updated_at 
     BEFORE UPDATE ON store_discounts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_store_activity_registrations_updated_at ON store_activity_registrations;
 CREATE TRIGGER update_store_activity_registrations_updated_at 
     BEFORE UPDATE ON store_activity_registrations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -252,6 +258,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_activity_registration_count ON store_activity_registrations;
 CREATE TRIGGER trigger_update_activity_registration_count
     AFTER INSERT OR DELETE ON store_activity_registrations
     FOR EACH ROW EXECUTE FUNCTION update_activity_registration_count();

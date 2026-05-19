@@ -23,7 +23,21 @@ CREATE INDEX IF NOT EXISTS idx_posts_feed_longtail
 --   * 2.0 if posted within 24h
 --   * 10.0 if brand_ids contains p_boost_brand_id
 --   Time window: created_at >= NOW() - p_window  (default 30 days)
+--
+-- Note: 033 created a 5-arg version of this function. We add a 6th parameter
+-- (p_window) here, which Postgres treats as a NEW overload rather than a
+-- replacement. The two overloads would then coexist, breaking unqualified
+-- `COMMENT ON FUNCTION` (error 42725) and making PostgREST RPC dispatch
+-- ambiguous. Explicitly drop the old signature first so this migration is
+-- safe to re-run on any database state.
 -- -----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_feed_scored(
+  BIGINT, BIGINT[], INTEGER, BIGINT[], INTEGER
+);
+DROP FUNCTION IF EXISTS get_feed_scored(
+  BIGINT, BIGINT[], INTEGER, BIGINT[], INTEGER, INTERVAL
+);
+
 CREATE OR REPLACE FUNCTION get_feed_scored(
   p_user_id        BIGINT    DEFAULT NULL,
   p_exclude_ids    BIGINT[]  DEFAULT '{}',
@@ -114,7 +128,9 @@ AS $$
   LIMIT p_limit;
 $$;
 
-COMMENT ON FUNCTION get_feed_scored IS
+COMMENT ON FUNCTION get_feed_scored(
+  BIGINT, BIGINT[], INTEGER, BIGINT[], INTEGER, INTERVAL
+) IS
   'Feed v2.1 stage-2 scored RPC: HN decay exponent 1.2, 24h + brand boosts, 30-day time-boxed recall.';
 
 -- -----------------------------------------------------------------------------
@@ -124,6 +140,8 @@ COMMENT ON FUNCTION get_feed_scored IS
 --   Time window is widened (default 90 days) so users can still dig back further
 --   than stage 2 but we never scan the entire posts table.
 -- -----------------------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_feed_longtail(BIGINT[], BIGINT[], INTEGER, INTERVAL);
+
 CREATE OR REPLACE FUNCTION get_feed_longtail(
   p_exclude_ids BIGINT[]  DEFAULT '{}',
   p_blocked_ids BIGINT[]  DEFAULT '{}',
@@ -183,5 +201,7 @@ AS $$
   LIMIT p_limit;
 $$;
 
-COMMENT ON FUNCTION get_feed_longtail IS
+COMMENT ON FUNCTION get_feed_longtail(
+  BIGINT[], BIGINT[], INTEGER, INTERVAL
+) IS
   'Feed v2.1 stage-3 long-tail RPC: chronological cursor pagination, 90-day time-boxed, no boosts.';

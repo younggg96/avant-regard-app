@@ -26,6 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_banners_sort_order ON banners(sort_order);
 CREATE INDEX IF NOT EXISTS idx_banners_time_range ON banners(start_time, end_time);
 
 -- 触发器：自动更新 updated_at
+DROP TRIGGER IF EXISTS update_banners_updated_at ON banners;
 CREATE TRIGGER update_banners_updated_at BEFORE UPDATE ON banners
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

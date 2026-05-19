@@ -34,12 +34,9 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'AvantRegard' do
+target 'AvantRegardNA' do
   use_expo_modules!
   config = use_native_modules!
-
-  # 微信 OpenSDK 走仓库内 vendored xcframework，不联腾讯 CDN（EAS 境外构建机连不上 dldir1.qq.com）。
-  pod 'WechatOpenSDK-XCFramework', :path => './Vendor/WechatOpenSDK'
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']

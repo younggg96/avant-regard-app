@@ -105,5 +105,5 @@ AS $$
   LIMIT p_limit;
 $$;
 
-COMMENT ON FUNCTION get_feed_scored IS
+COMMENT ON FUNCTION get_feed_scored(BIGINT, BIGINT[], INTEGER, BIGINT[], INTEGER) IS
   'Feed v2 RPC: HN time-decay scoring, 24h boost, brand boost, dedup via exclude_ids, blocked filtering at SQL level.';

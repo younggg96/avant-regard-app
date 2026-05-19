@@ -19,14 +19,26 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2"
+      }
+    },
+    "production-na": {
+      "extends": "production",
+      "env": {
+        "APP_VARIANT": "na",
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.avantregards.com"
       }
     }
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "avantregard6@gmail.com",
+        "companyName": "Shanghai Nanteke Industrial Co., Ltd."
+      }
+    },
+    "production-na": {
       "ios": {
         "appleId": "avantregard6@gmail.com",
         "companyName": "Shanghai Nanteke Industrial Co., Ltd."

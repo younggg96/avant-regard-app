@@ -3,6 +3,8 @@
 --   key = 'recommend_config'   -> recommendation algorithm configuration (admin tunable)
 --   key = 'cs_auto_reply'      -> customer-service auto-reply template
 --   key = 'curated_feed_ids'   -> curated post IDs for editorial feed
+--   key = 'maintenance_mode'   -> global maintenance switch + message (MaintenanceService)
+--   key = 'feature_flags'      -> global feature toggles, e.g. lotteryEnabled (FeatureFlagsService)
 --
 -- Value is a free-form JSONB blob; each consumer owns its own schema and
 -- tolerates missing fields by falling back to service-side defaults.
@@ -40,5 +42,26 @@ INSERT INTO app_config (key, value) VALUES (
         "discovery_pool": {"enabled": true},
         "random_pool": {"grades": ["A", "B"]},
         "cold_start": {"days": 7, "grades": ["A", "B"]}
+    }'::jsonb
+) ON CONFLICT (key) DO NOTHING;
+
+-- Seed maintenance + feature_flags rows so the corresponding services'
+-- `.maybe_single()` lookups always hit a row. Without these, PostgREST
+-- returns 204 No Content, which postgrest-py surfaces as an APIError and
+-- spams a WARN on every request (the service still falls back to safe
+-- defaults, but the log noise is real). Defaults below MUST stay in sync
+-- with MaintenanceService._default_config / FeatureFlagsService._default_config.
+INSERT INTO app_config (key, value) VALUES (
+    'maintenance_mode',
+    '{
+        "enabled": false,
+        "message": "服务暂时不可用，正在恢复中\n请稍后再试"
+    }'::jsonb
+) ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO app_config (key, value) VALUES (
+    'feature_flags',
+    '{
+        "lotteryEnabled": false
     }'::jsonb
 ) ON CONFLICT (key) DO NOTHING;

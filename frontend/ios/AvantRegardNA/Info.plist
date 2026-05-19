@@ -9,7 +9,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Avant Regard</string>
+    <string>Avant Regard NA</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -29,8 +29,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>avantregard</string>
-          <string>com.yanggg96.avant-regard</string>
+          <string>avantregardna</string>
+          <string>com.yanggg96.avant-regard.na</string>
         </array>
       </dict>
       <dict>
@@ -41,16 +41,9 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>22</string>
+    <string>23</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-      <string>weixin</string>
-      <string>weixinULAPI</string>
-      <string>sinaweibo</string>
-      <string>sinaweibohd</string>
-    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -61,19 +54,19 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Avant Regard 需要使用您的相机，以便您拍摄穿搭照片用于发布帖子内容，例如拍摄今日穿搭并分享到社区。</string>
+    <string>Avant Regard needs to use your camera so you can take outfit photos for publishing posts, such as capturing your outfit of the day to share with the community.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Avant Regard 需要获取您的位置信息，以便在地图上为您展示附近的买手店，例如查找您周边的设计师品牌集合店。</string>
+    <string>Avant Regard needs your location to show nearby buyer stores on the map, such as finding designer brand concept stores near you.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Avant Regard 需要将您编辑后的图片或分享的内容海报保存到您的相册中。</string>
+    <string>Avant Regard needs to save your edited images or shared content posters to your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Avant Regard 需要访问您的相册，以便您选择照片或视频用于发布穿搭分享、单品测评等帖子内容，或更换个人头像和封面图片。</string>
+    <string>Avant Regard needs access to your photo library so you can select photos or videos to publish outfit shares, product reviews, or update your profile picture and cover image.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
