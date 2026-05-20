@@ -32,10 +32,14 @@ class AuthService:
     def _get_or_create_app_user(
         self, supabase_user_id: str, phone: str, username: str = None
     ) -> dict:
-        """获取或创建应用用户记录"""
-        # 先查找是否已有用户记录
+        """获取或创建应用用户记录。
+
+        users / user_info 表受 RLS 保护, anon key 写入会被拒(42501).
+        统一用 db_admin (service_role) 做写入, 读取也用 admin 避免行可见性差异.
+        """
+        admin = self.db_admin
         result = (
-            self.db.table("users")
+            admin.table("users")
             .select("*")
             .eq("supabase_uid", supabase_user_id)
             .execute()
@@ -44,17 +48,14 @@ class AuthService:
         if result.data:
             return result.data[0]
 
-        # 也检查手机号是否已存在
         clean_phone = phone.replace("+86", "").replace("+1", "").lstrip("+")
-        result = self.db.table("users").select("*").eq("phone", phone).execute()
+        result = admin.table("users").select("*").eq("phone", phone).execute()
         if result.data:
-            # 更新 supabase_uid
-            self.db.table("users").update({"supabase_uid": supabase_user_id}).eq(
+            admin.table("users").update({"supabase_uid": supabase_user_id}).eq(
                 "id", result.data[0]["id"]
             ).execute()
             return result.data[0]
 
-        # 创建新用户记录
         user_data = {
             "supabase_uid": supabase_user_id,
             "phone": phone,
@@ -64,12 +65,11 @@ class AuthService:
             "status": "ACTIVE",
         }
 
-        result = self.db.table("users").insert(user_data).execute()
+        result = admin.table("users").insert(user_data).execute()
 
         if result.data:
             user = result.data[0]
-            # 创建用户信息记录
-            self.db.table("user_info").insert(
+            admin.table("user_info").insert(
                 {"user_id": user["id"], "bio": "", "location": "", "avatar_url": ""}
             ).execute()
             return user
@@ -225,7 +225,7 @@ class AuthService:
 
             # 更新用户名
             if app_user and username:
-                self.db.table("users").update({"username": username}).eq(
+                self.db_admin.table("users").update({"username": username}).eq(
                     "id", app_user["id"]
                 ).execute()
                 app_user["username"] = username
@@ -255,9 +255,13 @@ class AuthService:
     def _get_or_create_email_user(
         self, supabase_user_id: str, email: str, username: str = None
     ) -> dict:
-        """Get or create an app user record for email-based auth."""
+        """Get or create an app user record for email-based auth.
+
+        users / user_info 表受 RLS 保护, 使用 service_role 客户端避免 42501.
+        """
+        admin = self.db_admin
         result = (
-            self.db.table("users")
+            admin.table("users")
             .select("*")
             .eq("supabase_uid", supabase_user_id)
             .execute()
@@ -265,9 +269,9 @@ class AuthService:
         if result.data:
             return result.data[0]
 
-        result = self.db.table("users").select("*").eq("email", email).execute()
+        result = admin.table("users").select("*").eq("email", email).execute()
         if result.data:
-            self.db.table("users").update(
+            admin.table("users").update(
                 {"supabase_uid": supabase_user_id}
             ).eq("id", result.data[0]["id"]).execute()
             return result.data[0]
@@ -280,10 +284,10 @@ class AuthService:
             "user_type": "USER",
             "status": "ACTIVE",
         }
-        result = self.db.table("users").insert(user_data).execute()
+        result = admin.table("users").insert(user_data).execute()
         if result.data:
             user = result.data[0]
-            self.db.table("user_info").insert(
+            admin.table("user_info").insert(
                 {"user_id": user["id"], "bio": "", "location": "", "avatar_url": ""}
             ).execute()
             return user
@@ -499,7 +503,7 @@ class AuthService:
                 username=username,
             )
             if app_user and username:
-                self.db.table("users").update({"username": username}).eq(
+                self.db_admin.table("users").update({"username": username}).eq(
                     "id", app_user["id"]
                 ).execute()
                 app_user["username"] = username
@@ -590,9 +594,13 @@ class AuthService:
     def _get_or_create_apple_user(
         self, supabase_user_id: str, email: str = None, username: str = None
     ) -> dict:
-        """Get or create an app user record for Apple Sign-In (no phone required)."""
+        """Get or create an app user record for Apple Sign-In (no phone required).
+
+        users / user_info 表受 RLS 保护, 使用 service_role 客户端避免 42501.
+        """
+        admin = self.db_admin
         result = (
-            self.db.table("users")
+            admin.table("users")
             .select("*")
             .eq("supabase_uid", supabase_user_id)
             .execute()
@@ -601,16 +609,16 @@ class AuthService:
         if result.data:
             user = result.data[0]
             if username and user.get("username", "").startswith("Apple用户"):
-                self.db.table("users").update({"username": username}).eq(
+                admin.table("users").update({"username": username}).eq(
                     "id", user["id"]
                 ).execute()
                 user["username"] = username
             return user
 
         if email:
-            result = self.db.table("users").select("*").eq("email", email).execute()
+            result = admin.table("users").select("*").eq("email", email).execute()
             if result.data:
-                self.db.table("users").update(
+                admin.table("users").update(
                     {"supabase_uid": supabase_user_id}
                 ).eq("id", result.data[0]["id"]).execute()
                 return result.data[0]
@@ -624,11 +632,11 @@ class AuthService:
             "status": "ACTIVE",
         }
 
-        result = self.db.table("users").insert(user_data).execute()
+        result = admin.table("users").insert(user_data).execute()
 
         if result.data:
             user = result.data[0]
-            self.db.table("user_info").insert(
+            admin.table("user_info").insert(
                 {"user_id": user["id"], "bio": "", "location": "", "avatar_url": ""}
             ).execute()
             return user
