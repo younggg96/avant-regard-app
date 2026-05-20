@@ -4,6 +4,7 @@ Avant Regard API - FastAPI 应用入口
 import sys
 print(f"[BOOT] Python {sys.version}, loading app...", flush=True)
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -180,6 +181,50 @@ async def httpx_error_handler(request: Request, exc: httpx.HTTPError):
     return JSONResponse(
         status_code=502,
         content=error(code=502, message=_UPSTREAM_UNAVAILABLE_MESSAGE),
+    )
+
+
+_SENSITIVE_FIELDS = {"password", "newPassword", "oldPassword", "identityToken"}
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """把 Pydantic 422 校验失败信息打到服务端日志，并以字段级消息返回。
+
+    避免把 password 等敏感字段写入日志。
+    """
+    errors = exc.errors()
+    summary = []
+    for e in errors:
+        loc = e.get("loc", ())
+        field = loc[-1] if loc else "field"
+        summary.append(f"{field}={e.get('msg')!r}({e.get('type')})")
+
+    safe_body = {}
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            for k, v in body.items():
+                if k in _SENSITIVE_FIELDS:
+                    safe_body[k] = f"<{len(v)} chars>" if isinstance(v, str) else "<hidden>"
+                elif isinstance(v, str):
+                    safe_body[k] = f"{v!r} (len={len(v)})"
+                else:
+                    safe_body[k] = v
+    except Exception:
+        safe_body = {"_unparsed": True}
+
+    print(
+        f"[422] path={request.url.path} body={safe_body} errors=[{'; '.join(summary)}]",
+        flush=True,
+    )
+
+    detail_msg = "; ".join(
+        f"{(e.get('loc') or ['field'])[-1]}: {e.get('msg')}" for e in errors
+    )
+    return JSONResponse(
+        status_code=422,
+        content=error(code=422, message=detail_msg or "请求参数不合法"),
     )
 
 

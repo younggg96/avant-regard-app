@@ -165,10 +165,21 @@ async function request<T>(
         errorMessage =
           errorData.message ||
           errorData.error ||
-          // FastAPI HTTPException(detail="...") 的标准形态
           (typeof errorData.detail === "string"
             ? errorData.detail
-            : errorMessage);
+            : Array.isArray(errorData.detail)
+              ? // FastAPI 422 Pydantic 校验失败:
+                // detail = [{ loc: ["body","code"], msg: "...", type: "..." }, ...]
+                errorData.detail
+                  .map((d: { loc?: unknown[]; msg?: string }) => {
+                    const field =
+                      Array.isArray(d.loc) && d.loc.length > 1
+                        ? String(d.loc[d.loc.length - 1])
+                        : "field";
+                    return `${field}: ${d.msg || "invalid"}`;
+                  })
+                  .join("; ")
+              : errorMessage);
       } catch {
         // body 不是 JSON 时退回到状态码描述
       }

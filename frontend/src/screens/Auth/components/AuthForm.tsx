@@ -277,7 +277,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 setFormData({ ...formData, verificationCode: text })
               }
               keyboardType="number-pad"
-              maxLength={6}
               returnKeyType={mode === "verification" ? "done" : "next"}
               blurOnSubmit={mode === "verification"}
               onSubmitEditing={handleVerificationCodeSubmit}
