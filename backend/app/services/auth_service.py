@@ -332,35 +332,58 @@ class AuthService:
         self, email: str, code: str, username: str = None
     ) -> Tuple[Optional[dict], Optional[str]]:
         """Verify email OTP and login/register the user."""
-        try:
-            response = self.db.auth.verify_otp(
-                {"email": email, "token": code, "type": "email"}
-            )
-            if not response.user:
-                return None, "验证码错误或已过期"
+        norm_email = (email or "").strip().lower()
+        norm_code = (code or "").strip()
+        logger.info(
+            f"verify_email_otp: email={norm_email!r} code_len={len(norm_code)}"
+        )
 
+        response = None
+        last_err: Optional[Exception] = None
+        for otp_type in ("email", "signup"):
+            try:
+                response = self.db.auth.verify_otp(
+                    {"email": norm_email, "token": norm_code, "type": otp_type}
+                )
+                if response and response.user:
+                    break
+            except (AuthApiError, Exception) as e:
+                last_err = e
+                logger.warning(
+                    f"verify_email_otp: type={otp_type} failed: {e!s}"
+                )
+                continue
+
+        if response is None or not getattr(response, "user", None):
+            if last_err is not None:
+                msg = str(last_err).lower()
+                if "expired" in msg or "invalid" in msg:
+                    return None, "验证码错误或已过期"
+            return None, "验证码错误或已过期"
+
+        try:
             app_user = self._get_or_create_email_user(
                 supabase_user_id=response.user.id,
-                email=email,
+                email=norm_email,
                 username=username,
             )
-            if not app_user:
-                return None, "创建用户失败"
-
-            return {
-                "userId": app_user["id"],
-                "username": app_user["username"],
-                "phone": app_user.get("phone", ""),
-                "is_admin": app_user.get("is_admin", False),
-                "userType": app_user.get("user_type", "USER"),
-                "accessToken": response.session.access_token,
-                "refreshToken": response.session.refresh_token,
-                "expiresAt": response.session.expires_at,
-            }, None
-        except AuthApiError as e:
-            return None, f"验证失败: {str(e)}"
         except Exception as e:
-            return None, f"验证失败: {str(e)}"
+            logger.exception(f"verify_email_otp: upsert failed: {e!s}")
+            return None, f"创建用户失败: {str(e)}"
+
+        if not app_user:
+            return None, "创建用户失败"
+
+        return {
+            "userId": app_user["id"],
+            "username": app_user["username"],
+            "phone": app_user.get("phone", ""),
+            "is_admin": app_user.get("is_admin", False),
+            "userType": app_user.get("user_type", "USER"),
+            "accessToken": response.session.access_token,
+            "refreshToken": response.session.refresh_token,
+            "expiresAt": response.session.expires_at,
+        }, None
 
     def login_with_email_password(
         self, email: str, password: str
@@ -403,49 +426,100 @@ class AuthService:
         self, email: str, username: str, password: str, code: str
     ) -> Tuple[Optional[dict], Optional[str]]:
         """Register with email, OTP verification, and password."""
-        try:
-            response = self.db.auth.verify_otp(
-                {"email": email, "token": code, "type": "email"}
-            )
-            if not response.user:
-                return None, "验证码错误或已过期"
+        norm_email = (email or "").strip().lower()
+        norm_code = (code or "").strip()
+        logger.info(
+            f"register_with_email: email={norm_email!r} username={username!r} "
+            f"code_len={len(norm_code)}"
+        )
 
+        response = None
+        last_err: Optional[Exception] = None
+        # Supabase 的 verify_otp 对邮箱有两种 type：
+        #   - 'signup': 新用户首次确认
+        #   - 'email':  通用邮箱 OTP（已存在用户重新认证）
+        # 用户是先 send_email_otp 再 register-email, 服务端 send 默认会
+        # should_create_user=true, 但是否生成 signup token 取决于用户是否已存在.
+        # 这里两种都尝试, 提高兼容性.
+        for otp_type in ("email", "signup"):
             try:
-                self.db.auth.update_user({"password": password})
-            except AuthApiError as pwd_err:
-                error_msg = str(pwd_err)
-                if "same" not in error_msg.lower() and "different" not in error_msg.lower():
-                    return None, f"设置密码失败: {error_msg}"
+                response = self.db.auth.verify_otp(
+                    {"email": norm_email, "token": norm_code, "type": otp_type}
+                )
+                if response and response.user:
+                    logger.info(
+                        f"register_with_email: verify_otp ok type={otp_type} "
+                        f"user_id={response.user.id}"
+                    )
+                    break
+            except AuthApiError as e:
+                last_err = e
+                logger.warning(
+                    f"register_with_email: verify_otp type={otp_type} failed: {e!s}"
+                )
+                continue
+            except Exception as e:
+                last_err = e
+                logger.warning(
+                    f"register_with_email: verify_otp type={otp_type} crashed: {e!s}"
+                )
+                continue
 
+        if response is None or not getattr(response, "user", None):
+            if last_err is not None:
+                msg = str(last_err).lower()
+                if "expired" in msg or "invalid" in msg or "token has expired" in msg:
+                    return None, "验证码错误或已过期，请重新发送"
+                if "rate limit" in msg or "too many" in msg:
+                    return None, "请求过于频繁，请稍后重试"
+            return None, "验证码错误或已过期"
+
+        try:
+            self.db.auth.update_user({"password": password})
+        except AuthApiError as pwd_err:
+            error_msg = str(pwd_err)
+            logger.warning(
+                f"register_with_email: update_user(password) failed: {error_msg}"
+            )
+            # "same as existing password" 与 "different from old password" 可忽略;
+            # 其余例如 session missing 等说明 verify_otp 没拿到 session.
+            lower = error_msg.lower()
+            if "same" not in lower and "different" not in lower:
+                if "session" in lower or "not authenticated" in lower:
+                    return None, "验证码已通过但会话丢失，请重新发送验证码后重试"
+                return None, f"设置密码失败: {error_msg}"
+        except Exception as e:
+            logger.exception(f"register_with_email: update_user crashed: {e!s}")
+            return None, f"设置密码失败: {str(e)}"
+
+        try:
             app_user = self._get_or_create_email_user(
-                supabase_user_id=response.user.id, email=email, username=username
+                supabase_user_id=response.user.id,
+                email=norm_email,
+                username=username,
             )
             if app_user and username:
                 self.db.table("users").update({"username": username}).eq(
                     "id", app_user["id"]
                 ).execute()
                 app_user["username"] = username
-
-            if not app_user:
-                return None, "创建用户失败"
-
-            return {
-                "userId": app_user["id"],
-                "username": app_user["username"],
-                "phone": app_user.get("phone", ""),
-                "is_admin": app_user.get("is_admin", False),
-                "userType": app_user.get("user_type", "USER"),
-                "accessToken": response.session.access_token,
-                "refreshToken": response.session.refresh_token,
-                "expiresAt": response.session.expires_at,
-            }, None
-        except AuthApiError as e:
-            error_msg = str(e)
-            if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
-                return None, "验证码已过期，请重新发送"
-            return None, f"注册失败: {error_msg}"
         except Exception as e:
-            return None, f"注册失败: {str(e)}"
+            logger.exception(f"register_with_email: upsert app user failed: {e!s}")
+            return None, f"创建用户失败: {str(e)}"
+
+        if not app_user:
+            return None, "创建用户失败"
+
+        return {
+            "userId": app_user["id"],
+            "username": app_user["username"],
+            "phone": app_user.get("phone", ""),
+            "is_admin": app_user.get("is_admin", False),
+            "userType": app_user.get("user_type", "USER"),
+            "accessToken": response.session.access_token,
+            "refreshToken": response.session.refresh_token,
+            "expiresAt": response.session.expires_at,
+        }, None
 
     def reset_email_password(
         self, email: str, new_password: str, code: str
