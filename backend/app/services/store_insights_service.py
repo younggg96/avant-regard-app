@@ -75,7 +75,7 @@ def _parse_iso_dt(value: Optional[str]) -> Optional[datetime]:
 
 class StoreInsightsService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # ==================== Overview ====================
 

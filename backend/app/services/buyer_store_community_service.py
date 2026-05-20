@@ -36,8 +36,10 @@ class BuyerStoreCommunityService:
     """买手店社区服务"""
 
     def __init__(self):
-        self.supabase = get_supabase()
+        # 所有 buyer_store_* 表都受 RLS 保护. JWT 鉴权由 API 层完成,
+        # 这里统一走 service_role 客户端避免 anon 读被 RLS 隐藏.
         self.supabase_admin = get_supabase_admin()
+        self.supabase = self.supabase_admin
 
     # ==================== 用户提交买手店 ====================
 

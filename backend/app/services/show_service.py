@@ -4,7 +4,7 @@
 
 import time
 from typing import Optional, List, Tuple
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.show import Show, CreateShowRequest, UpdateShowRequest
 
 
@@ -12,7 +12,7 @@ class ShowService:
     """秀场服务类"""
 
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _sanitize_search_keyword(self, keyword: str) -> str:
         """清理搜索关键词，转义可能导致查询失败的特殊字符"""

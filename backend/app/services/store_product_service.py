@@ -45,7 +45,7 @@ class StoreProductService:
     """商品 + 商品评论 + 商品点赞 服务"""
 
     def __init__(self) -> None:
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     # ========================================================================

@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException
 
 from app.core.config import settings
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.ai_post import (
     AIPostMode,
     GenerateRequest,
@@ -125,7 +125,7 @@ def _match_communities(
 
 class AIPostService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # -----------------------------------------------------------------
     # Q&A 选项 (PR-2 完整实现;PR-1 先给空骨架确保路由层可挂)

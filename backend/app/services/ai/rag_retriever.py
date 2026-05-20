@@ -17,13 +17,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.services.ai.i18n_utils import pick_locale
 
 
 class RAGRetriever:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # -----------------------------------------------------------------
     # 文字问答模式: 把 5 步答案展开成档案上下文

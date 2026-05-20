@@ -21,7 +21,7 @@ class BuyerStoreService:
     """买手店服务类"""
 
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     def _sanitize_search_keyword(self, keyword: str) -> str:

@@ -17,7 +17,7 @@ class DuplicateReportError(Exception):
 
 class ModerationService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     VALID_TARGET_TYPES = {"POST", "COMMENT", "MESSAGE", "USER"}

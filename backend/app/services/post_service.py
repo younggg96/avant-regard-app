@@ -6,7 +6,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Union
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.post import Post, PostType, PostStatus, AuditStatus, GRADE_REWARD_MAP, PostGrade
 from app.services.notification_service import notification_service
 
@@ -23,7 +23,7 @@ DEFAULT_RECOMMEND_CONFIG = {
 
 class PostService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _validate_show_ids(self, show_ids: List[Union[int, str]]) -> List[str]:
         """

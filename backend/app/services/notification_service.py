@@ -7,7 +7,7 @@ import os
 import json
 import httpx
 from typing import Optional, List, Dict, Any
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.notification import (
     Notification,
     NotificationActionData,
@@ -17,7 +17,7 @@ from app.schemas.notification import (
 
 class NotificationService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         # Expo Push Notification API
         self.expo_push_url = "https://exp.host/--/api/v2/push/send"
 

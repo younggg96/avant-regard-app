@@ -27,7 +27,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.level import (
     LevelAction,
     LevelSpec,
@@ -144,7 +144,7 @@ def _lock_for(user_id: int) -> threading.Lock:
 
 class LevelService:
     def __init__(self) -> None:
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # ---- 3.1 公共查询 --------------------------------------------------
 

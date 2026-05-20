@@ -3,13 +3,13 @@ Banner 服务
 """
 from typing import List, Optional
 from datetime import datetime
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.banner import BannerCreate, BannerUpdate, BannerResponse
 
 
 class BannerService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _format_banner(self, banner_data: dict) -> BannerResponse:
         """格式化 Banner 数据为前端格式"""

@@ -13,7 +13,7 @@ from app.services.post_service import post_service
 
 class AdminService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     # ==================== 帖子管理 ====================

@@ -3,13 +3,13 @@
 """
 
 from typing import Optional, List
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.community import Community, CommunityCategory, CommunityListResponse, CommunityStats
 
 
 class CommunityService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _format_community(
         self, data: dict, current_user_id: Optional[int] = None,

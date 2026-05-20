@@ -34,7 +34,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Set, Tuple
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.post import PostGrade, GRADE_REWARD_MAP
 from app.services.cache_service import cache_service
 
@@ -66,7 +66,7 @@ STAGE1_UNGRADED_HORIZON = timedelta(hours=1)
 
 class FeedService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         # In-process TTL cache: user_id -> (is_new_user, cached_at_epoch)
         # Small dict; fine at single-process scale. Process restart is OK —
         # worst case one extra DB round-trip per user.
@@ -462,6 +462,11 @@ class FeedService:
 
     def _load_curated_post_ids(self) -> List[int]:
         try:
+            # postgrest-py 的 maybe_single() 在没匹配到行时, 不同版本会:
+            #   - 返回 APIResponse(data=None)
+            #   - 直接返回 None
+            # 历史日志: 'NoneType' object has no attribute 'data'
+            # 这里把两种情况都吞掉, 表里没配置就当成空 curated 列表.
             result = (
                 self.db.table("app_config")
                 .select("value")
@@ -469,8 +474,11 @@ class FeedService:
                 .maybe_single()
                 .execute()
             )
-            if result.data and result.data.get("value"):
-                val = result.data["value"]
+            if result is None:
+                return []
+            data = getattr(result, "data", None)
+            if data and data.get("value"):
+                val = data["value"]
                 if isinstance(val, list):
                     return [int(x) for x in val]
                 if isinstance(val, dict) and "ids" in val:

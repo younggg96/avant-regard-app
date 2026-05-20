@@ -22,7 +22,7 @@ from datetime import date
 from typing import Optional
 
 from app.core.config import settings
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.ai_post import QuotaInfo
 
 
@@ -35,7 +35,7 @@ class QuotaCheckResult:
 
 class QuotaService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # -----------------------------------------------------------------
     # 读

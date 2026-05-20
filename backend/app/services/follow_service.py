@@ -3,14 +3,14 @@
 """
 
 from typing import List
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.follow import FollowingUser, FollowingBrand
 from app.services.notification_service import notification_service
 
 
 class FollowService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # ==================== 用户关注 ====================
 

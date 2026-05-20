@@ -36,7 +36,7 @@ class StoreMerchantService:
     """商家入驻服务类"""
 
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     # ==================== 商家认证相关 ====================

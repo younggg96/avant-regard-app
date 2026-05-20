@@ -19,7 +19,7 @@ import logging
 import time
 from typing import Optional
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class FeatureFlagsService:
     """全站功能开关读写, 单例使用."""
 
     def __init__(self) -> None:
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self._cached_config: dict | None = None
         self._cache_expires_at: float = 0.0
 

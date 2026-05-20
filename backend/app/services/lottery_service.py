@@ -14,7 +14,7 @@ import random
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.level import (
     AdminDrawWinnerRequest,
     LotteryEntryInfo,
@@ -33,7 +33,7 @@ def _current_month() -> str:
 
 class LotteryService:
     def __init__(self) -> None:
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     # ---- 期数 ----------------------------------------------------------
 

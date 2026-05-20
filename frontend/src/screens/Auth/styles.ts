@@ -287,6 +287,11 @@ const makeAuthStyles = (t: AppTheme) =>
       color: t.colors.textInverted,
       letterSpacing: 0.5,
     },
+    mainButtonTextDisabled: {
+      // light mode 下按钮背景为 gray100, textInverted 是白色会看不见
+      // 这里强制使用 gray300, 在 light/dark 下都有足够对比度
+      color: t.colors.gray300,
+    },
     dividerContainer: {
       flexDirection: "row",
       alignItems: "center",

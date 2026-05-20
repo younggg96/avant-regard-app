@@ -40,8 +40,11 @@ def _sanitize_remote_url(value) -> Optional[str]:
 
 class UserService:
     def __init__(self):
-        self.db = get_supabase()
+        # users / user_info / user_titles / brand_follows 等表都启用了 RLS,
+        # 应用层(API)在 deps.get_current_user_id 里已用 JWT 完成鉴权;
+        # 业务层用 service_role 客户端旁路 RLS, 避免 SELECT/UPDATE 返回空导致 404/500.
         self.db_admin = get_supabase_admin()
+        self.db = self.db_admin
 
     def _get_primary_title(self, user_id: int) -> Optional[str]:
         """获取用户的主头衔"""

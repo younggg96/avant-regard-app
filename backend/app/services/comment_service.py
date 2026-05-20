@@ -2,14 +2,14 @@
 评论服务
 """
 from typing import Optional, List, Dict
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.schemas.comment import PostComment, CommentReply, ImageReview
 from app.services.notification_service import notification_service
 
 
 class CommentService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _get_user_info(self, user_id: int) -> Dict:
         """获取用户信息（用户名和头像）"""

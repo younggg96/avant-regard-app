@@ -726,6 +726,17 @@ export const useAuthForm = () => {
     }
   }, [mode]);
 
+  // 协议勾选守卫: 用户没勾协议时, 不论是点击主按钮还是按键盘 "完成"
+  // 触发的 submit 都应该被拦下来, 行为保持一致.
+  const ensureAgreedOrAlert = useCallback((): boolean => {
+    if (mode === "forgotPassword" || mode === "completeProfile") return true;
+    if (!agreedToTerms) {
+      Alert.show(i18n.t("auth.pleaseAgreeTerms"));
+      return false;
+    }
+    return true;
+  }, [mode, agreedToTerms]);
+
   // 处理验证码输入完成后的跳转
   const handleVerificationCodeSubmit = useCallback(() => {
     if (mode === "register") {
@@ -733,9 +744,10 @@ export const useAuthForm = () => {
     } else if (mode === "forgotPassword") {
       passwordInputRef.current?.focus();
     } else if (mode === "verification") {
+      if (!ensureAgreedOrAlert()) return;
       handleOtpLogin();
     }
-  }, [mode, handleOtpLogin]);
+  }, [mode, handleOtpLogin, ensureAgreedOrAlert]);
 
   // 处理用户名输入完成后的跳转
   const handleUsernameSubmit = useCallback(() => {
@@ -745,11 +757,12 @@ export const useAuthForm = () => {
   // 处理密码输入完成后的跳转
   const handlePasswordSubmit = useCallback(() => {
     if (mode === "login") {
+      if (!ensureAgreedOrAlert()) return;
       handleLogin();
     } else if (mode === "register" || mode === "forgotPassword") {
       confirmPasswordInputRef.current?.focus();
     }
-  }, [mode, handleLogin]);
+  }, [mode, handleLogin, ensureAgreedOrAlert]);
 
   // 处理确认密码输入完成后的操作
   const handleConfirmPasswordSubmit = useCallback(() => {

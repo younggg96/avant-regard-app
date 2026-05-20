@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.services.moderation_service import moderation_service
 from app.schemas.chat import (
     MessageResponse,
@@ -68,7 +68,7 @@ def _extract_card_title(content: str) -> Optional[str]:
 
 class ChatService:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def _get_user_brief(self, user_id: int) -> Dict[str, Any]:
         """Fetch username, avatar, and primary title for a user."""

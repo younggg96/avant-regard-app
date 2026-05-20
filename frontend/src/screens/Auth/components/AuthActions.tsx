@@ -146,7 +146,12 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
         onPress={handleMainAction}
         disabled={loading || needsAgreement}
       >
-        <Text style={styles.mainButtonText}>
+        <Text
+          style={[
+            styles.mainButtonText,
+            (loading || needsAgreement) && styles.mainButtonTextDisabled,
+          ]}
+        >
           {loading ? t('auth.processing') : t(BUTTON_TEXT_KEYS[mode] || 'common.confirm')}
         </Text>
       </TouchableOpacity>
@@ -212,11 +217,8 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
         )}
       </View>
 
-      {/* 问题反馈入口 */}
+      {/* 问题反馈入口 (提示文字已并入弹窗内部) */}
       <View style={reportStyles.container}>
-        <Text style={reportStyles.hint}>
-          {t('auth.reportHint')}
-        </Text>
         <TouchableOpacity
           style={reportStyles.button}
           onPress={() => setShowReportSheet(true)}
@@ -284,14 +286,6 @@ const makeReportStyles = (t: AppTheme) =>
       marginTop: 16,
       alignItems: "center",
       paddingHorizontal: 4,
-    },
-    hint: {
-      fontSize: 12,
-      lineHeight: 18,
-      fontFamily: "PlayfairDisplay-Regular",
-      color: t.colors.gray200,
-      textAlign: "center",
-      marginBottom: 10,
     },
     button: {
       flexDirection: "row",

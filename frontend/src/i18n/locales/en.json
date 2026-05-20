@@ -305,7 +305,15 @@
     "feedbackFailed": "Submission failed, please try again later",
     "feedbackFailedMsg": "Submission failed: {{message}}",
     "fillEmail": "Please enter your email so we can contact you",
-    "fillPhone": "Please enter your phone number so we can contact you"
+    "fillPhone": "Please enter your phone number so we can contact you",
+    "clearCacheLabel": "Clear local cache",
+    "clearCacheHelp": "If the app feels stuck or behaves oddly, clearing the local cache can help. Your language preference will be kept.",
+    "clearCacheConfirmTitle": "Clear local cache?",
+    "clearCacheConfirmMessage": "Drafts, cached feed, and history stored on this device will be removed. This cannot be undone.",
+    "clearCacheCancel": "Cancel",
+    "clearCacheConfirm": "Clear",
+    "clearCacheSuccess": "Cleared {{count}} cached item(s)",
+    "clearCacheFailed": "Failed to clear cache: {{message}}"
   },
   "settings": {
     "title": "Settings",

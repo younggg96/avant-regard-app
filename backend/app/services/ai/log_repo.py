@@ -10,12 +10,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 
 
 class AIPostLogRepo:
     def __init__(self):
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
 
     def insert(
         self,

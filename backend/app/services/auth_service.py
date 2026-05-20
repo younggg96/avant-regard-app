@@ -655,9 +655,9 @@ class AuthService:
             if not response.session:
                 return None, "刷新令牌无效或已过期"
 
-            # 获取应用用户
+            # 获取应用用户 (users 表受 RLS 保护, anon 读不到, 必须用 service_role)
             result = (
-                self.db.table("users")
+                self.db_admin.table("users")
                 .select("*")
                 .eq("supabase_uid", response.user.id)
                 .execute()
@@ -717,7 +717,7 @@ class AuthService:
         """Change password for an authenticated user by verifying old password first."""
         try:
             result = (
-                self.db.table("users")
+                self.db_admin.table("users")
                 .select("*")
                 .eq("id", user_id)
                 .execute()
@@ -765,16 +765,21 @@ class AuthService:
             return False
 
     def get_user_by_id(self, user_id: int) -> Optional[dict]:
-        """根据应用用户ID获取用户"""
-        result = self.db.table("users").select("*").eq("id", user_id).execute()
+        """根据应用用户ID获取用户 (users 表 RLS-protected, 走 service_role)."""
+        result = self.db_admin.table("users").select("*").eq("id", user_id).execute()
         if result.data:
             return result.data[0]
         return None
 
     def get_user_by_supabase_uid(self, supabase_uid: str) -> Optional[dict]:
-        """根据 Supabase UID 获取用户"""
+        """根据 Supabase UID 获取用户.
+
+        users 表受 RLS 保护, anon key 读会返回空行 → 在 deps.get_current_user_id
+        里会被判定为 "用户不存在" → 401, 所有需要鉴权的接口都会挂. 这里改用
+        service_role 客户端读取(JWT 已在上游校验过, 业务层旁路 RLS 是安全的).
+        """
         result = (
-            self.db.table("users")
+            self.db_admin.table("users")
             .select("*")
             .eq("supabase_uid", supabase_uid)
             .execute()

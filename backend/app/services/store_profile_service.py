@@ -31,7 +31,7 @@ class StoreProfileService:
     """店铺主页/入口卡片/分类 CRUD 服务"""
 
     def __init__(self) -> None:
-        self.db = get_supabase()
+        self.db = get_supabase_admin()
         self.db_admin = get_supabase_admin()
 
     # ========================================================================
