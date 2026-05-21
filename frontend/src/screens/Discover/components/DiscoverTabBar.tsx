@@ -18,6 +18,7 @@ export const DiscoverTabBar: React.FC<DiscoverTabBarProps> = ({
     () => [
       { id: "forum", label: t("discover.forum") },
       { id: "recommend", label: t("discover.recommend") },
+      { id: "trading", label: t("discover.trading") },
       { id: "buyer", label: t("discover.buyer") },
       { id: "following", label: t("discover.follow") },
     ],

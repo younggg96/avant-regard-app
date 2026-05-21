@@ -36,8 +36,13 @@ import { pickAndUploadImage } from "./admin/adminUtils";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { PostCoverMedia } from "../components/PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
+import {
+  searchMarketplace,
+  formatPrice,
+  type StoreProduct,
+} from "../services/storeProductService";
 
-type TabType = "shows" | "posts";
+type TabType = "shows" | "posts" | "onsale";
 
 const { width: screenWidth } = Dimensions.get("window");
 const SHOWS_PADDING = 20;
@@ -66,6 +71,8 @@ const BrandDetailScreen = () => {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [brandShows, setBrandShows] = useState<Show[]>([]);
   const [brandPosts, setBrandPosts] = useState<Post[]>([]);
+  const [brandListings, setBrandListings] = useState<StoreProduct[]>([]);
+  const [isLoadingListings, setIsLoadingListings] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +86,28 @@ const BrandDetailScreen = () => {
   const [followersCount, setFollowersCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
   const [showShareToChat, setShowShareToChat] = useState(false);
+
+  // 加载该品牌当前在售单品（PRD 模块二，与 Marketplace 接口一致）
+  const loadBrandListings = useCallback(async (brandName: string) => {
+    if (!brandName) {
+      setBrandListings([]);
+      return;
+    }
+    setIsLoadingListings(true);
+    try {
+      const res = await searchMarketplace({
+        brand: brandName,
+        sort: "newest",
+        page: 1,
+        pageSize: 40,
+      });
+      setBrandListings(res.products || []);
+    } catch (e) {
+      setBrandListings([]);
+    } finally {
+      setIsLoadingListings(false);
+    }
+  }, []);
 
   // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
   const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
@@ -141,6 +170,8 @@ const BrandDetailScreen = () => {
 
       // 获取该品牌关联的帖子（通过品牌 ID）
       loadBrandPosts(loadedBrand.id);
+      // PRD 模块二：拉取该品牌当前在售单品
+      loadBrandListings(loadedBrand.name);
     } catch (err) {
       console.error("Failed to load brand data:", err);
       setError(t("common.networkError"));
@@ -592,6 +623,20 @@ const BrandDetailScreen = () => {
             </Text>
             <Text style={styles.tabCount}>{brandShows.length}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "onsale" && styles.tabActive]}
+            onPress={() => setActiveTab("onsale")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "onsale" && styles.tabTextActive,
+              ]}
+            >
+              在售
+            </Text>
+            <Text style={styles.tabCount}>{brandListings.length}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Posts Section */}
@@ -741,6 +786,70 @@ const BrandDetailScreen = () => {
               </View>
             )}
           </>
+        )}
+
+        {/* PRD 模块二 · 该品牌当前在售单品 */}
+        {activeTab === "onsale" && (
+          <View style={styles.postsSection}>
+            {isLoadingListings ? (
+              <View style={styles.loadingPosts}>
+                <ActivityIndicator size="small" color={theme.colors.black} />
+              </View>
+            ) : brandListings.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons
+                  name="pricetag-outline"
+                  size={48}
+                  color={theme.colors.gray200}
+                />
+                <Text style={styles.emptyText}>暂无该品牌的在售单品</Text>
+              </View>
+            ) : (
+              <View style={styles.postsGrid}>
+                {brandListings.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.postCard}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      (navigation as any).navigate("StoreProductDetail", {
+                        productId: p.id,
+                      })
+                    }
+                  >
+                    {p.images?.[0] ? (
+                      <OptimizedImage
+                        uri={p.images[0]}
+                        style={styles.postImage}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.postImage,
+                          { backgroundColor: theme.colors.gray100 },
+                        ]}
+                      />
+                    )}
+                    <View style={styles.postContent}>
+                      <Text style={styles.postTitle} numberOfLines={2}>
+                        {p.title}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "700",
+                          color: theme.colors.text,
+                          marginTop: 4,
+                        }}
+                      >
+                        {formatPrice(p.priceCents, p.currency)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
 

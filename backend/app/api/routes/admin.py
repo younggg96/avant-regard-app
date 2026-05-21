@@ -901,6 +901,10 @@ class FeatureFlagsRequest(BaseModel):
         None,
         description="是否对所有 App / Web 用户开启月度抽奖入口与相关内容",
     )
+    listingAutoApprove: Optional[bool] = Field(
+        None,
+        description="是否对新提交的交易单品自动通过审核（dev / 内测）",
+    )
 
 
 @router.get("/feature-flags")
@@ -919,6 +923,7 @@ async def update_feature_flags(
     """更新全站功能开关 (管理员)."""
     config = feature_flags_service.set_config(
         lottery_enabled=request.lotteryEnabled,
+        listing_auto_approve=request.listingAutoApprove,
     )
     return success(config)
 

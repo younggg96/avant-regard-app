@@ -42,6 +42,7 @@ import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
 import { LevelProgressCard } from "./components/LevelProgressCard";
+import { ArchiveEntryCard } from "./components/ArchiveEntryCard";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
@@ -506,6 +507,9 @@ const ProfileScreen = () => {
           brands={followedBrands}
           onBrandPress={(name) => (navigation as any).navigate("BrandDetail", { name })}
         />
+
+        {/* PDF p.11 + p.19 · MY ARCHIVE 入口卡片（仅增加不减少） */}
+        <ArchiveEntryCard isOwnProfile />
 
         <LevelProgressCard />
 

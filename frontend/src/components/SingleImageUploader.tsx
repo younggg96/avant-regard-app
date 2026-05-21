@@ -129,7 +129,7 @@ const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
   const cropperModal = enableCropper ? (
     <Modal
       visible={showCropper && !!rawImageUri}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="fullScreen"
       statusBarTranslucent
     >

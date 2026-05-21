@@ -168,12 +168,45 @@ export const getStoreProductCategories = async (
 // 商品
 // ============================================================================
 
-export type ProductStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "SOLD_OUT";
+/**
+ * 商品 / 单品状态。
+ * Phase 1 起 PRD 把状态机改成 draft → reviewing → active → frozen → sold（含 rejected/offline）。
+ * 旧大写值（PUBLISHED 等）保留 union 以兼容尚未升级的调用方；后端 trigger 会把它们映射到新值。
+ */
+export type ProductStatus =
+  | "draft"
+  | "reviewing"
+  | "active"
+  | "frozen"
+  | "sold"
+  | "rejected"
+  | "offline"
+  | "DRAFT"
+  | "PUBLISHED"
+  | "HIDDEN"
+  | "SOLD_OUT";
+
+/** PRD 模块一：5 档成色枚举。 */
+export type ProductCondition = "BNWT" | "NEW_99" | "NEW_95" | "USED_8" | "FLAW";
+
+export type SellerKind = "merchant" | "individual";
+
+/** PRD 1.3 规范化 5 视角图。 */
+export interface PhotoAngles {
+  front?: string | null;
+  back?: string | null;
+  wash_label?: string | null;
+  brand_label?: string | null;
+  flaw?: string | null;
+  extras?: string[];
+}
 
 export interface StoreProduct {
   id: number;
-  storeId: string;
+  storeId?: string | null;
   merchantId?: number | null;
+  sellerKind?: SellerKind;
+  sellerUserId?: number | null;
   categoryId?: number | null;
   categoryName?: string | null;
   title: string;
@@ -192,6 +225,19 @@ export interface StoreProduct {
   wantCount: number;
   favoriteCount: number;
   status: ProductStatus;
+  // PRD 单品扩展
+  size?: string | null;
+  color?: string | null;
+  condition?: ProductCondition | null;
+  conditionNote?: string | null;
+  originalShowId?: number | null;
+  originalAcquiredAt?: string | null;
+  acceptOffer?: boolean;
+  photoAngles?: PhotoAngles | null;
+  frozenUntil?: string | null;
+  currentBuyerId?: number | null;
+  soldAt?: string | null;
+  rejectedReason?: string | null;
   likedByMe?: boolean | null;
   favoritedByMe?: boolean | null;
   wantedByMe?: boolean | null;
@@ -619,4 +665,301 @@ export const unlikeStoreProductComment = async (
     `/api/store-merchants/product-comments/${commentId}/like`,
     { method: "DELETE" }
   );
+};
+
+// ============================================================================
+// PRD Phase 1: 单品发布 / 卖家管理 / 审核（统一 /api/listings 入口）
+// ============================================================================
+//
+// 与上面 store-merchants 入口的区别：
+//   - 接受 sellerKind=individual，C2C 个人卖家也能调；
+//   - 采用 PRD 状态机：draft → reviewing → active → frozen → sold；
+//   - 提交审核 / 状态切换走 dedicated 端点，避免 patch status 绕过校验。
+
+export interface ListingPatchBody {
+  categoryId?: number | null;
+  title?: string;
+  description?: string;
+  brand?: string;
+  images?: string[];
+  priceCents?: number;
+  currency?: string;
+  discountPriceCents?: number | null;
+  isNew?: boolean;
+  tags?: string[];
+  size?: string;
+  color?: string;
+  condition?: ProductCondition;
+  conditionNote?: string;
+  originalShowId?: number | null;
+  originalAcquiredAt?: string | null;
+  acceptOffer?: boolean;
+  photoAngles?: PhotoAngles;
+}
+
+export interface ListingCreateBody extends ListingPatchBody {
+  title: string;
+  priceCents: number;
+  sellerKind: SellerKind;
+}
+
+/** POST /api/listings — 创建草稿。 */
+export const createListing = async (
+  data: ListingCreateBody
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/listings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+/** PATCH /api/listings/{id} — 分步保存。 */
+export const patchListing = async (
+  productId: number,
+  data: ListingPatchBody
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/listings/${productId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+};
+
+/** POST /api/listings/{id}/submit — 提交审核。 */
+export const submitListingForReview = async (
+  productId: number
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/listings/${productId}/submit`, {
+    method: "POST",
+  });
+};
+
+/** POST /api/listings/{id}/transition — 状态切换（active↔offline 等）。 */
+export const transitionListing = async (
+  productId: number,
+  target: ProductStatus,
+  reason?: string
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/listings/${productId}/transition`, {
+    method: "POST",
+    body: JSON.stringify({ target, reason }),
+  });
+};
+
+/** POST /api/listings/batch/offline — 批量下架。 */
+export const batchOfflineListings = async (
+  productIds: number[]
+): Promise<{ updated: number }> => {
+  return request<{ updated: number }>(`/api/listings/batch/offline`, {
+    method: "POST",
+    body: JSON.stringify({ productIds }),
+  });
+};
+
+/** POST /api/listings/batch/delete — 批量删除草稿/已拒。 */
+export const batchDeleteListings = async (
+  productIds: number[]
+): Promise<{ deleted: number }> => {
+  return request<{ deleted: number }>(`/api/listings/batch/delete`, {
+    method: "POST",
+    body: JSON.stringify({ productIds }),
+  });
+};
+
+// ============================================================================
+// PRD Phase 2: Marketplace 交易大厅（公开查询，含富过滤器）
+// ============================================================================
+
+export interface MarketplaceFilter {
+  q?: string;
+  brand?: string;
+  categoryId?: number | null;
+  size?: string;
+  color?: string;
+  condition?: ProductCondition;
+  sellerKind?: SellerKind;
+  priceMinCents?: number;
+  priceMaxCents?: number;
+  sort?: "newest" | "price_asc" | "price_desc" | "featured";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PopularBrand {
+  name: string;
+  brandId: number | null;
+  imageUrl: string | null;
+  listingCount: number;
+}
+
+/**
+ * GET /api/marketplace/popular-brands?limit=N
+ *
+ * 交易大厅顶部「热门品牌」横滑列表。按当前在售单品数量降序，仅返回
+ * 真实有在售商品的品牌。
+ */
+export const getPopularBrands = async (
+  limit: number = 6
+): Promise<PopularBrand[]> => {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await request<{ brands: PopularBrand[] }>(
+    `/api/marketplace/popular-brands?${qs.toString()}`,
+    { method: "GET" }
+  );
+  return res?.brands ?? [];
+};
+
+export const searchMarketplace = async (
+  filter: MarketplaceFilter
+): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  if (filter.q) qs.append("q", filter.q);
+  if (filter.brand) qs.append("brand", filter.brand);
+  if (filter.categoryId != null)
+    qs.append("categoryId", String(filter.categoryId));
+  if (filter.size) qs.append("size", filter.size);
+  if (filter.color) qs.append("color", filter.color);
+  if (filter.condition) qs.append("condition", filter.condition);
+  if (filter.sellerKind) qs.append("sellerKind", filter.sellerKind);
+  if (filter.priceMinCents != null)
+    qs.append("priceMinCents", String(filter.priceMinCents));
+  if (filter.priceMaxCents != null)
+    qs.append("priceMaxCents", String(filter.priceMaxCents));
+  if (filter.sort) qs.append("sort", filter.sort);
+  qs.append("page", String(filter.page ?? 1));
+  qs.append("pageSize", String(filter.pageSize ?? 20));
+  return request<StoreProductListResponse>(
+    `/api/marketplace/listings?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
+
+/** GET /api/sellers/me/listings — 当前用户的卖家库存。 */
+export const listMyListings = async (params: {
+  status?: ProductStatus | "";
+  sellerKind?: SellerKind | "";
+  page?: number;
+  pageSize?: number;
+}): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.append("status", params.status);
+  if (params.sellerKind) qs.append("sellerKind", params.sellerKind);
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 20));
+  return request<StoreProductListResponse>(
+    `/api/sellers/me/listings?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
+
+// ============================================================================
+// 卖家档案（PRD 3.2 信用浮层数据源）
+// ============================================================================
+
+export interface SellerProfile {
+  userId: number;
+  displayName?: string | null;
+  bio?: string | null;
+  idVerified: boolean;
+  idVerifiedAt?: string | null;
+  creditScore: number;
+  responseAvgMinutes?: number | null;
+  totalSales: number;
+  totalGmvCents: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export const getMySellerProfile = async (): Promise<SellerProfile | null> => {
+  return request<SellerProfile | null>(`/api/sellers/me/profile`, { method: "GET" });
+};
+
+export const upsertMySellerProfile = async (data: {
+  displayName?: string;
+  bio?: string;
+}): Promise<SellerProfile> => {
+  return request<SellerProfile>(`/api/sellers/me/profile`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const getSellerProfilePublic = async (
+  userId: number
+): Promise<SellerProfile | null> => {
+  return request<SellerProfile | null>(`/api/sellers/${userId}/profile`, {
+    method: "GET",
+  });
+};
+
+// ============================================================================
+// 管理员审核
+// ============================================================================
+
+export const adminListReviewingListings = async (
+  page: number = 1,
+  pageSize: number = 50
+): Promise<StoreProductListResponse> => {
+  return request<StoreProductListResponse>(
+    `/api/admin/listings/reviewing?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+export const adminReviewListing = async (
+  productId: number,
+  decision: "approved" | "rejected",
+  reason?: string
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/admin/listings/${productId}/review`, {
+    method: "POST",
+    body: JSON.stringify({ decision, reason }),
+  });
+};
+
+// ============================================================================
+// PRD 1.4 智能定价工具：参考价区间 + 抽佣计算
+// ============================================================================
+//
+// Phase 1 占位实现：仅根据 condition 给出 ±20%/-40% 的参考区间。
+// Phase 3 将用真实 6 个月历史成交价 (product_price_history) 替代。
+
+export interface PriceSuggestion {
+  low: number; // cents
+  high: number; // cents
+}
+
+export const suggestPriceRange = (
+  brand: string | null | undefined,
+  condition: ProductCondition | null | undefined,
+  basePriceCents: number
+): PriceSuggestion => {
+  if (!basePriceCents || basePriceCents <= 0) return { low: 0, high: 0 };
+  const conditionFactor: Record<ProductCondition, number> = {
+    BNWT: 1.0,
+    NEW_99: 0.85,
+    NEW_95: 0.72,
+    USED_8: 0.55,
+    FLAW: 0.35,
+  };
+  const factor = condition ? conditionFactor[condition] : 0.7;
+  const center = Math.round(basePriceCents * factor);
+  return {
+    low: Math.round(center * 0.8),
+    high: Math.round(center * 1.2),
+  };
+};
+
+/**
+ * 计算扣除抽佣后的预计到手价。
+ * - Plus 用户：6%
+ * - 普通用户：8%
+ * Phase 8 之前 isPlus 由调用方判断；目前没有订阅系统，默认 false。
+ */
+export const calculateExpectedPayout = (
+  priceCents: number,
+  isPlus: boolean = false
+): number => {
+  if (!priceCents) return 0;
+  const rate = isPlus ? 0.06 : 0.08;
+  return Math.round(priceCents * (1 - rate));
 };

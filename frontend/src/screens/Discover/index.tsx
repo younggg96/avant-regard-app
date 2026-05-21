@@ -32,8 +32,14 @@ import { TabContent } from "./components/TabContent";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 
-/** 横向页顺序必须与 `TAB_INDEX_MAP` 一致（论坛 / 推荐 / 买手店 / 关注）。 */
-const TAB_PAGES = ["forum", "recommend", "buyer", "following"] as const satisfies readonly TabType[];
+/** 横向页顺序必须与 `TAB_INDEX_MAP` 一致（论坛 / 推荐 / 交易 / 买手店 / 关注）。 */
+const TAB_PAGES = [
+  "forum",
+  "recommend",
+  "trading",
+  "buyer",
+  "following",
+] as const satisfies readonly TabType[];
 
 const RECOMMEND_TAB_DOUBLE_TAP_MS = 700;
 
@@ -54,7 +60,7 @@ const SkeletonTabBar: React.FC<{
 }> = ({ opacity, surfaceColor, borderColor, blockColor }) => (
   <Box style={{ backgroundColor: surfaceColor, borderBottomWidth: 1, borderBottomColor: borderColor }}>
     <HStack justifyContent="center" alignItems="center" py="$xs">
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1, 2, 3, 4].map((i) => (
         <Animated.View
           key={i}
           style={{
@@ -498,6 +504,14 @@ const DiscoverScreen: React.FC = () => {
             onEndReached={loadMoreRecommend}
             loadingMore={recommendLoadingMore}
             scrollToTopSignal={recommendScrollToTopSignal}
+          />
+        );
+      case "trading":
+        return (
+          <TabContent
+            tab="trading"
+            isActive={isFocused}
+            onScroll={handleVerticalScroll}
           />
         );
       case "buyer":

@@ -31,6 +31,7 @@ import {
 import { BrandSection } from "./BrandSection";
 import { BuyerTabContent } from "./BuyerTab";
 import type { BuyerStoreProduct } from "./BuyerTab/types";
+import TradingTabContent from "./TradingTabContent";
 import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
 import { ImageSize } from "../../../utils/imageUtils";
 
@@ -98,6 +99,14 @@ export interface PostsTabContentProps extends TabContentBaseProps {
  * `BuyerTabContentProps`（那是子组件自己的 props 类型、不含 `tab` 判别
  * 字段）撞名。
  */
+/**
+ * 「交易」 Tab —— PRD 模块二 Marketplace 嵌入版。仅需 `isActive` + `onScroll`，
+ * 数据自取，不依赖 Discover 的 posts/banner 数据流。
+ */
+export interface TradingTabSlotProps extends TabContentBaseProps {
+  tab: "trading";
+}
+
 export interface BuyerTabSlotProps extends TabContentBaseProps {
   tab: "buyer";
   onSearchPress: () => void;
@@ -127,7 +136,10 @@ export interface BuyerTabSlotProps extends TabContentBaseProps {
  * 强制检查：tab="buyer" 时必须传买手店回调、Posts 系字段不接受；反之亦然。
  * 两种 Tab 共用同一个 `<TabContent />` 调用点，但内部实现完全解耦。
  */
-type TabContentProps = PostsTabContentProps | BuyerTabSlotProps;
+type TabContentProps =
+  | PostsTabContentProps
+  | BuyerTabSlotProps
+  | TradingTabSlotProps;
 
 const GifLoading: React.FC = () => {
   const loadingStyles = useThemedStyles(makeLoadingStyles);
@@ -724,6 +736,14 @@ const TabContentInner: React.FC<TabContentProps> = (props) => {
         onPostPress={props.onPostPress}
         onOpenAllStores={props.onOpenAllStores}
         onOpenProductList={props.onOpenProductList}
+      />
+    );
+  }
+  if (props.tab === "trading") {
+    return (
+      <TradingTabContent
+        isActive={props.isActive ?? false}
+        onScroll={props.onScroll}
       />
     );
   }

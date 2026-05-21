@@ -17,6 +17,11 @@ class MessageType(str, Enum):
     BRAND_CARD = "brand_card"
     SHOW_CARD = "show_card"
     USER_CARD = "user_card"
+    # PRD 模块 7 · 富媒体卡片
+    PRODUCT_LISTING = "product_listing"
+    OFFER = "offer"
+    ORDER_STATUS = "order_status"
+    DISPUTE = "dispute"
 
 
 class SendMessageRequest(BaseModel):

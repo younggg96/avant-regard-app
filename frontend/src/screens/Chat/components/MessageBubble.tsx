@@ -20,6 +20,16 @@ import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
 import { useChatStyles } from "../styles";
 import HalfStarRating from "../../../components/HalfStarRating";
+import {
+  tryParseProductListingCard,
+  tryParseOfferCard,
+  tryParseOrderStatusCard,
+  tryParseDisputeCard,
+  ProductListingCardView,
+  OfferCardView,
+  OrderStatusCardView,
+  DisputeCardView,
+} from "./TradingCards";
 
 interface MessageBubbleProps {
   message: Message;
@@ -107,6 +117,21 @@ export const MessageBubble = ({
   const isUserCard = message.messageType === "user_card";
   const userCard = isUserCard ? tryParseUserCard(message.content) : null;
 
+  const productListingCard =
+    message.messageType === "product_listing"
+      ? tryParseProductListingCard(message.content)
+      : null;
+  const offerCard =
+    message.messageType === "offer" ? tryParseOfferCard(message.content) : null;
+  const orderStatusCard =
+    message.messageType === "order_status"
+      ? tryParseOrderStatusCard(message.content)
+      : null;
+  const disputeCard =
+    message.messageType === "dispute"
+      ? tryParseDisputeCard(message.content)
+      : null;
+
   const menuActions = useMemo<ActionSheetAction[]>(() => {
     const list: ActionSheetAction[] = [];
     if (onReportMessage) {
@@ -166,6 +191,54 @@ export const MessageBubble = ({
   };
 
   const renderContent = () => {
+    if (productListingCard) {
+      return (
+        <ProductListingCardView
+          data={productListingCard}
+          isMine={isMine}
+          onPress={() =>
+            (navigation.navigate as any)("StoreProductDetail", {
+              productId: productListingCard.productId,
+            })
+          }
+        />
+      );
+    }
+    if (offerCard) {
+      return (
+        <OfferCardView
+          data={offerCard}
+          isMine={isMine}
+          onPress={() => (navigation.navigate as any)("MyOffers")}
+        />
+      );
+    }
+    if (orderStatusCard) {
+      return (
+        <OrderStatusCardView
+          data={orderStatusCard}
+          isMine={isMine}
+          onPress={() =>
+            (navigation.navigate as any)("OrderDetail", {
+              orderId: orderStatusCard.orderId,
+            })
+          }
+        />
+      );
+    }
+    if (disputeCard) {
+      return (
+        <DisputeCardView
+          data={disputeCard}
+          isMine={isMine}
+          onPress={() =>
+            (navigation.navigate as any)("OrderDetail", {
+              orderId: disputeCard.orderId,
+            })
+          }
+        />
+      );
+    }
     if (userCard) {
       const metaParts = [userCard.primaryTitle, userCard.location].filter(Boolean) as string[];
       return (

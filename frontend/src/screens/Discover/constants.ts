@@ -3,12 +3,14 @@ import { Dimensions } from "react-native";
 export const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // Tab 索引映射
-// buyer 位于 recommend 与 following 之间，顺序与 DiscoverTabBar 视觉顺序保持一致。
+// 顺序与 DiscoverTabBar 视觉顺序保持一致：论坛 / 推荐 / 交易 / 买手店 / 关注。
+// 交易 (trading) Tab 显示 PRD 模块二 Marketplace（C2C + 买手店合并瀑布流）。
 export const TAB_INDEX_MAP = {
   forum: 0,
   recommend: 1,
-  buyer: 2,
-  following: 3,
+  trading: 2,
+  buyer: 3,
+  following: 4,
 } as const;
 
 // Header 动画配置

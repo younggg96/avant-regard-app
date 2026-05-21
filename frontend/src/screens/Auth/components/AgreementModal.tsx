@@ -39,7 +39,7 @@ export const AgreementModal: React.FC<AgreementModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >

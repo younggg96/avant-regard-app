@@ -69,6 +69,9 @@ import {
   FullscreenImageViewer,
   WantPopup,
 } from "../components/PostDetail";
+import TradingActionBar from "../components/TradingActionBar";
+import OfferModal from "./Trading/OfferModal";
+import ProvenanceStrip from "../components/ProvenanceStrip";
 import {
   clampAspectRatio,
   useMediaAspectRatio,
@@ -150,6 +153,10 @@ const StoreProductDetailScreen: React.FC = () => {
   // ---------------------- 图片全屏浏览 -------------------------------------
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
+
+  // ---------------------- Trading (PRD Phase 4 + PDF p.4-6) ----------------
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const [tradingBusy, setTradingBusy] = useState(false);
 
   // unmount 防御
   const mountedRef = useRef(true);
@@ -698,6 +705,9 @@ const StoreProductDetailScreen: React.FC = () => {
                 {product.description}
               </Text>
             )}
+
+            {/* PRD 模块三 · Provenance Strip —— 单品履历水平时间轴（PDF p.6） */}
+            <ProvenanceStrip productId={product.id} />
           </VStack>
 
           {/* 评论区 —— 与 PostDetail 的 CommentsSection 保持一致：8px 灰色分隔条 + $lg 标题 */}
@@ -772,6 +782,56 @@ const StoreProductDetailScreen: React.FC = () => {
           onWant={handleToggleWant}
           onDismiss={() => setShowWantPopup(false)}
         />
+
+        {/* PRD P4 + PDF p.4-6 · 交易动作条（Offer-first），在评论输入栏上方常驻 */}
+        {product ? (
+          <TradingActionBar
+            product={product}
+            isOwner={
+              !!currentUser &&
+              (currentUser.id === product.sellerUserId ||
+                currentUser.id === (product as any).merchantOwnerUserId)
+            }
+            isBusy={tradingBusy}
+            onOffer={() => setOfferModalVisible(true)}
+            onBuyNow={() =>
+              navigation.navigate("Checkout", {
+                productId: product.id,
+                title: product.title,
+                priceCents: product.priceCents,
+                coverImage: productImages[0],
+              })
+            }
+            onEdit={() => navigation.navigate("PublishListingStep1")}
+            onTakeOffline={async () => {
+              try {
+                setTradingBusy(true);
+                const { transitionListing } = await import(
+                  "../services/storeProductService"
+                );
+                await transitionListing(product.id, "offline");
+                await loadProduct();
+              } catch (e) {
+                console.warn("[StoreProductDetail] take offline failed", e);
+              } finally {
+                setTradingBusy(false);
+              }
+            }}
+          />
+        ) : null}
+
+        {product ? (
+          <OfferModal
+            visible={offerModalVisible}
+            productId={product.id}
+            listingPriceCents={product.priceCents}
+            onClose={() => setOfferModalVisible(false)}
+            onSuccess={() => {
+              setOfferModalVisible(false);
+              navigation.navigate("MyOffers");
+            }}
+          />
+        ) : null}
 
         {/* 底部操作栏 —— 复用 PostDetail 的 CommentInputBar；isItemReview=true 才会渲染「想要」按钮 */}
         <CommentInputBar

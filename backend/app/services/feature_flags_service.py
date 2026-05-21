@@ -43,6 +43,9 @@ class FeatureFlagsService:
         # 抽奖功能"自动可见", 防御性更强.
         return {
             "lotteryEnabled": False,
+            # 交易系统 Phase 1: 卖家提交审核后是否自动通过. dev / 内测环境打开可以
+            # 跳过人工审核, 加速 listing 全链路自测; 生产应保持 False.
+            "listingAutoApprove": False,
         }
 
     def _invalidate_cache(self) -> None:
@@ -90,7 +93,19 @@ class FeatureFlagsService:
         except Exception:
             return False
 
-    def set_config(self, *, lottery_enabled: Optional[bool] = None) -> dict:
+    def is_listing_auto_approve(self) -> bool:
+        """便捷接口: 单品提交审核后是否自动通过."""
+        try:
+            return bool(self.get_config().get("listingAutoApprove", False))
+        except Exception:
+            return False
+
+    def set_config(
+        self,
+        *,
+        lottery_enabled: Optional[bool] = None,
+        listing_auto_approve: Optional[bool] = None,
+    ) -> dict:
         """更新功能开关. 仅传入需要修改的字段, None 字段保留原值.
 
         写入成功后立刻刷新缓存, 管理员当次请求就能看到最新值.
@@ -99,6 +114,8 @@ class FeatureFlagsService:
         payload = dict(current)
         if lottery_enabled is not None:
             payload["lotteryEnabled"] = bool(lottery_enabled)
+        if listing_auto_approve is not None:
+            payload["listingAutoApprove"] = bool(listing_auto_approve)
 
         self.db.table("app_config").upsert(
             {"key": CONFIG_KEY, "value": payload},

@@ -29,6 +29,37 @@ from app.api.routes.shows import router as shows_router
 from app.api.routes.buyer_store import router as buyer_store_router
 from app.api.routes.store_merchant import router as store_merchant_router
 from app.api.routes.store_product import router as store_product_router
+from app.api.routes.listing import (
+    router as listing_router,
+    sellers_router as listing_sellers_router,
+    admin_router as listing_admin_router,
+    marketplace_router as listing_marketplace_router,
+)
+from app.api.routes.provenance import (
+    router as provenance_router,
+    collections_router as collections_router,
+    price_router as price_history_router,
+)
+from app.api.routes.orders import (
+    orders_router as orders_router,
+    offers_router as offers_router,
+    admin_orders_router as admin_orders_router,
+)
+from app.api.routes.aftersales import (
+    disputes_router as disputes_router,
+    authentication_router as authentication_router,
+    reviews_router as trade_reviews_router,
+    admin_disputes_router as admin_disputes_router,
+    admin_auth_router as admin_auth_router,
+)
+from app.api.routes.archive_plus import (
+    archive_router as archive_router,
+    plus_router as plus_router,
+)
+from app.api.routes.trading_support import (
+    support_router as trading_support_router,
+    admin_support_router as admin_trading_support_router,
+)
 from app.api.routes.notification import router as notification_router
 from app.api.routes.banner import router as banner_router
 from app.api.routes.community import router as community_router
@@ -255,6 +286,25 @@ app.include_router(shows_router, prefix="/api")
 app.include_router(buyer_store_router, prefix="/api")
 app.include_router(store_merchant_router, prefix="/api")
 app.include_router(store_product_router, prefix="/api")
+app.include_router(listing_router, prefix="/api")
+app.include_router(listing_sellers_router, prefix="/api")
+app.include_router(listing_admin_router, prefix="/api")
+app.include_router(listing_marketplace_router, prefix="/api")
+app.include_router(provenance_router, prefix="/api")
+app.include_router(collections_router, prefix="/api")
+app.include_router(price_history_router, prefix="/api")
+app.include_router(orders_router, prefix="/api")
+app.include_router(offers_router, prefix="/api")
+app.include_router(admin_orders_router, prefix="/api")
+app.include_router(disputes_router, prefix="/api")
+app.include_router(authentication_router, prefix="/api")
+app.include_router(trade_reviews_router, prefix="/api")
+app.include_router(admin_disputes_router, prefix="/api")
+app.include_router(admin_auth_router, prefix="/api")
+app.include_router(archive_router, prefix="/api")
+app.include_router(plus_router, prefix="/api")
+app.include_router(trading_support_router, prefix="/api")
+app.include_router(admin_trading_support_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")
 app.include_router(banner_router, prefix="/api")
 app.include_router(community_router, prefix="/api")

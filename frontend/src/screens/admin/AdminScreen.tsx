@@ -29,6 +29,8 @@ import RecommendConfigTab from "./RecommendConfigTab";
 import MaintenanceTab from "./MaintenanceTab";
 import LevelReviewTab from "./LevelReviewTab";
 import LotteryAdminTab from "./LotteryAdminTab";
+import ProductReviewTab from "./ProductReviewTab";
+import DisputeQueueTab from "./DisputeQueueTab";
 
 type TabType =
   | "pending"
@@ -39,6 +41,8 @@ type TabType =
   | "stores"
   | "merchants"
   | "storeManagement"
+  | "productReview"
+  | "disputeQueue"
   | "banners"
   | "communities"
   | "broadcast"
@@ -73,6 +77,8 @@ const AdminScreen = () => {
     { key: "stores", label: t("admin.storeReview"), navigateTo: "StoreReview" },
     { key: "merchants", label: t("admin.merchantEntry"), navigateTo: "MerchantReview" },
     { key: "storeManagement", label: t("admin.storeManagement") },
+    { key: "productReview", label: "单品审核" },
+    { key: "disputeQueue", label: "售后仲裁" },
     { key: "banners", label: "Banner" },
     { key: "communities", label: t("admin.communityManagement") },
     { key: "broadcast", label: t("admin.broadcast") },
@@ -125,6 +131,10 @@ const AdminScreen = () => {
         return <BrandImageReviewTab />;
       case "storeManagement":
         return <StoreManagementTab />;
+      case "productReview":
+        return <ProductReviewTab />;
+      case "disputeQueue":
+        return <DisputeQueueTab />;
       case "recommendConfig":
         return <RecommendConfigTab />;
       case "levelReview":

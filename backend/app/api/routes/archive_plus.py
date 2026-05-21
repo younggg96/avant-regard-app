@@ -1,0 +1,179 @@
+"""
+PRD 模块 6 & 8 · My Archive / Plus 订阅 路由。
+"""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional
+
+from app.core.response import success
+from app.api.deps import get_current_user
+from app.services.archive_service import archive_service
+from app.services.plus_service import plus_service
+from app.services.store_product_service import store_product_service
+from app.schemas.archive_plus import (
+    PlusSubscribeRequest,
+    PlusPlan,
+    ArchiveItemManualCreate,
+    ArchiveHoldingCreate,
+)
+from app.schemas.store_product import StoreProductCreate, SellerKind, ProductStatus, PhotoAngles
+
+
+archive_router = APIRouter(prefix="/archive", tags=["交易系统 / My Archive"])
+plus_router = APIRouter(prefix="/plus", tags=["交易系统 / Plus 订阅"])
+
+
+# ==========================================================================
+# Archive
+# ==========================================================================
+
+
+@archive_router.get("/items")
+async def list_archive(
+    page: int = 1, pageSize: int = 30, user=Depends(get_current_user)
+):
+    items, total = archive_service.list_for_user(
+        user["id"], page=page, page_size=pageSize
+    )
+    return success({"items": [i.dict() for i in items], "total": total})
+
+
+@archive_router.get("/analytics")
+async def archive_analytics(user=Depends(get_current_user)):
+    """PRD 模块 8 数据画像面板。Plus 用户独占。"""
+    if not plus_service.is_user_plus(user["id"]):
+        raise HTTPException(status_code=403, detail="数据画像面板需要 Plus 订阅")
+    return success(archive_service.analytics(user["id"]).dict())
+
+
+@archive_router.get("/analytics-preview")
+async def archive_analytics_preview(user=Depends(get_current_user)):
+    """非 Plus 用户的预览，仅返回 totalItems / brandBreakdown 关键字段。"""
+    a = archive_service.analytics(user["id"])
+    return success(
+        {
+            "totalItems": a.totalItems,
+            "brandBreakdown": dict(list(a.brandBreakdown.items())[:5]),
+            "locked": not plus_service.is_user_plus(user["id"]),
+        }
+    )
+
+
+# ----- PDF p.21 · 独立上传 -----
+@archive_router.post("/items")
+async def create_archive_item(
+    body: ArchiveItemManualCreate, user=Depends(get_current_user)
+):
+    item = archive_service.manual_create(user["id"], body)
+    return success(item.dict())
+
+
+# ----- PDF p.22 · 持有记录 -----
+@archive_router.get("/items/{archive_id}/holdings")
+async def list_holdings(archive_id: int, user=Depends(get_current_user)):
+    items = archive_service.list_holdings(archive_id, user["id"])
+    return success([i.dict() for i in items])
+
+
+@archive_router.post("/items/{archive_id}/holdings")
+async def create_holding(
+    archive_id: int,
+    body: ArchiveHoldingCreate,
+    user=Depends(get_current_user),
+):
+    try:
+        res = archive_service.add_holding(archive_id, user["id"], body)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return success(res.dict())
+
+
+@archive_router.post("/items/{archive_id}/resell")
+async def resell_archive(
+    archive_id: int,
+    body: dict | None = None,
+    user=Depends(get_current_user),
+):
+    """一键转卖：用 archive 数据 prefill 一条新的 draft listing。
+
+    Body 可选 priceCents / condition / description / acceptOffer 等覆盖项；
+    其余字段由 archive snapshot 提供。
+    """
+    item = archive_service.get(archive_id)
+    if not item or item.userId != user["id"]:
+        raise HTTPException(status_code=404, detail="未找到该藏品")
+
+    body = body or {}
+    create_payload = StoreProductCreate(
+        title=item.title or "转卖单品",
+        brand=item.brandName,
+        size=item.size,
+        color=item.color,
+        condition=item.condition,
+        conditionNote=body.get("conditionNote"),
+        originalShowId=item.originalShowId,
+        originalAcquiredAt=item.acquiredAt,
+        acceptOffer=body.get("acceptOffer", True),
+        priceCents=body.get("priceCents", item.acquiredPriceCents or 0),
+        currency=item.currency,
+        sellerKind=SellerKind.INDIVIDUAL,
+        status=ProductStatus.DRAFT,
+        images=item.photos,
+        photoAngles=PhotoAngles(**body["photoAngles"])
+        if isinstance(body.get("photoAngles"), dict)
+        else None,
+        description=body.get("description"),
+    )
+    new_listing = store_product_service.create_individual_listing(
+        user["id"], create_payload
+    )
+    archive_service.mark_relisted(archive_id, new_listing.id)
+    return success(new_listing.dict())
+
+
+# ==========================================================================
+# Plus
+# ==========================================================================
+
+
+@plus_router.get("/status")
+async def plus_status(user=Depends(get_current_user)):
+    return success(plus_service.status_for(user["id"]).dict())
+
+
+@plus_router.post("/subscribe")
+async def plus_subscribe(body: PlusSubscribeRequest, user=Depends(get_current_user)):
+    try:
+        sub = plus_service.subscribe(user["id"], body.plan)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(sub.dict())
+
+
+@plus_router.post("/subscriptions/{sub_id}/confirm-mock")
+async def plus_confirm_mock(sub_id: int, user=Depends(get_current_user)):
+    """开发用：直接置 active。上线后由真实支付通道 webhook 调。"""
+    try:
+        sub = plus_service.confirm(sub_id, user["id"])
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(sub.dict())
+
+
+@plus_router.post("/subscriptions/{sub_id}/cancel")
+async def plus_cancel(sub_id: int, user=Depends(get_current_user)):
+    try:
+        sub = plus_service.cancel(sub_id, user["id"])
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(sub.dict())
+
+
+@plus_router.get("/subscriptions")
+async def plus_list(user=Depends(get_current_user)):
+    return success([s.dict() for s in plus_service.list_for_user(user["id"])])

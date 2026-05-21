@@ -44,7 +44,12 @@ export interface DisplayPost {
   storeName?: string;
 }
 
-export type TabType = "forum" | "recommend" | "buyer" | "following";
+export type TabType =
+  | "forum"
+  | "recommend"
+  | "trading"
+  | "buyer"
+  | "following";
 
 // 用户信息缓存类型
 export type UserInfoCache = Map<number, UserInfo>;

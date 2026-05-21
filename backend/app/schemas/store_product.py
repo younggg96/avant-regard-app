@@ -12,20 +12,43 @@
   成两位小数，避免浮点精度问题传染到后端存储。
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Optional, List, Dict, Any
 from enum import Enum
+from datetime import date
 
 
 # ==================== 枚举类型 ====================
 
 
 class ProductStatus(str, Enum):
-    """商品状态"""
-    DRAFT = "DRAFT"
-    PUBLISHED = "PUBLISHED"
-    HIDDEN = "HIDDEN"
-    SOLD_OUT = "SOLD_OUT"
+    """单品交易态。
+
+    Phase 1 起改为小写字符串，对齐 PRD 状态机 draft → reviewing → active → frozen → sold。
+    `rejected` / `offline` 是辅助态：审核拒绝 / 卖家主动下架。
+    """
+    DRAFT = "draft"
+    REVIEWING = "reviewing"
+    ACTIVE = "active"
+    FROZEN = "frozen"
+    SOLD = "sold"
+    REJECTED = "rejected"
+    OFFLINE = "offline"
+
+
+# PRD 5 档成色：全新未拆 / 99新 / 95新 / 8成新 / 有瑕疵
+class ProductCondition(str, Enum):
+    BNWT = "BNWT"        # Brand New With Tag 全新未拆
+    NEW_99 = "NEW_99"    # 99新（轻试）
+    NEW_95 = "NEW_95"    # 95新
+    USED_8 = "USED_8"    # 8 成新
+    FLAW = "FLAW"        # 有瑕疵
+
+
+# 卖家身份多态键。merchant 复用 store_merchants；individual 复用 seller_profiles。
+class SellerKind(str, Enum):
+    MERCHANT = "merchant"
+    INDIVIDUAL = "individual"
 
 
 class EntryCardType(str, Enum):
@@ -160,8 +183,33 @@ class StoreProductCategory(BaseModel):
 # ==================== StoreProduct ====================
 
 
+class PhotoAngles(BaseModel):
+    """PRD 1.3 规范化 5 视角图 + 最多 4 张额外图。
+
+    `front / back / wash_label / brand_label / flaw` 提交审核前必填；
+    `extras` 可空、最多 4 张。`flaw` 即使无瑕疵也必填一张证明照（PRD 1.3）。
+    """
+    front: Optional[str] = Field(None, description="正面")
+    back: Optional[str] = Field(None, description="背面")
+    wash_label: Optional[str] = Field(None, description="洗标")
+    brand_label: Optional[str] = Field(None, description="领标 / 品牌标")
+    flaw: Optional[str] = Field(None, description="瑕疵细节图；无瑕疵也需提供一张兜底证明")
+    extras: List[str] = Field(default_factory=list, max_length=4)
+
+    REQUIRED_SLOTS: tuple = ("front", "back", "wash_label", "brand_label", "flaw")
+
+    def required_complete(self) -> bool:
+        return all(getattr(self, k) for k in self.REQUIRED_SLOTS)
+
+
 class StoreProductCreate(BaseModel):
-    """创建商品"""
+    """创建商品 / 单品。
+
+    Phase 1 之后这是「单品 listing」的统一入口：
+      - 买手店发布：sellerKind='merchant' + merchantId（由路由解析）
+      - 个人发布   ：sellerKind='individual'，seller_user_id = 当前登录用户
+    默认 status='draft'，提交审核走单独接口 transition。
+    """
     categoryId: Optional[int] = Field(None, description="商品分类 ID")
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
@@ -174,7 +222,17 @@ class StoreProductCreate(BaseModel):
     )
     isNew: bool = Field(default=False, description="是否为新品")
     tags: List[str] = Field(default_factory=list)
-    status: ProductStatus = Field(default=ProductStatus.PUBLISHED)
+    status: ProductStatus = Field(default=ProductStatus.DRAFT)
+    # PRD 单品新字段
+    sellerKind: SellerKind = Field(default=SellerKind.MERCHANT)
+    size: Optional[str] = Field(None, max_length=32)
+    color: Optional[str] = Field(None, max_length=32)
+    condition: Optional[ProductCondition] = None
+    conditionNote: Optional[str] = Field(None, description="无瑕疵也需填写说明（PRD 1.3）")
+    originalShowId: Optional[int] = Field(None, description="关联秀场（可选）")
+    originalAcquiredAt: Optional[date] = None
+    acceptOffer: bool = Field(default=True)
+    photoAngles: Optional[PhotoAngles] = None
 
     @field_validator("discountPriceCents")
     @classmethod
@@ -188,7 +246,11 @@ class StoreProductCreate(BaseModel):
 
 
 class StoreProductUpdate(BaseModel):
-    """更新商品；未传字段不改动。显式传 `discountPriceCents=None` 表示取消折扣。"""
+    """更新商品 / 单品分步保存；未传字段不改动。
+
+    显式传 `discountPriceCents=None` 表示取消折扣。状态字段只允许从此处 patch
+    到「卖家可自行触发」的状态：draft / offline；其他状态切换必须走 transition 接口。
+    """
     categoryId: Optional[int] = None
     title: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
@@ -200,15 +262,52 @@ class StoreProductUpdate(BaseModel):
     isNew: Optional[bool] = None
     tags: Optional[List[str]] = None
     status: Optional[ProductStatus] = None
+    # PRD 单品字段（分步保存）
+    size: Optional[str] = Field(None, max_length=32)
+    color: Optional[str] = Field(None, max_length=32)
+    condition: Optional[ProductCondition] = None
+    conditionNote: Optional[str] = None
+    originalShowId: Optional[int] = None
+    originalAcquiredAt: Optional[date] = None
+    acceptOffer: Optional[bool] = None
+    photoAngles: Optional[PhotoAngles] = None
+
+
+# ==================== 状态机 transition ====================
+
+
+class ProductTransition(BaseModel):
+    """状态机迁移请求。
+
+    target 必须是合法目标态；reason 仅在 reject/offline 时建议填写。
+    """
+    target: ProductStatus
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class ProductReviewDecision(BaseModel):
+    """管理员审核决策。"""
+    decision: str = Field(..., pattern="^(approved|rejected)$")
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+# ==================== 批量操作 ====================
+
+
+class BatchListingAction(BaseModel):
+    """批量下架 / 删除（PRD 1.6 卖家管理后台）。"""
+    productIds: List[int] = Field(..., min_length=1, max_length=100)
 
 
 class StoreProduct(BaseModel):
-    """商品"""
+    """商品 / 单品"""
     id: int
-    storeId: str
+    storeId: Optional[str] = None              # 个人卖家时为 null
     merchantId: Optional[int] = None
+    sellerKind: str = "merchant"
+    sellerUserId: Optional[int] = None
     categoryId: Optional[int] = None
-    categoryName: Optional[str] = None  # 服务端 join 回填
+    categoryName: Optional[str] = None
     title: str
     description: Optional[str] = None
     brand: Optional[str] = None
@@ -224,14 +323,54 @@ class StoreProduct(BaseModel):
     viewCount: int = 0
     wantCount: int = 0
     favoriteCount: int = 0
-    status: str = "PUBLISHED"
-    # 当前登录用户是否已点喜欢 / 已收藏 / 已加愿望单；需要 userId 时才回填
+    status: str = "draft"
+    # PRD 单品扩展
+    size: Optional[str] = None
+    color: Optional[str] = None
+    condition: Optional[str] = None
+    conditionNote: Optional[str] = None
+    originalShowId: Optional[int] = None
+    originalAcquiredAt: Optional[str] = None
+    acceptOffer: bool = True
+    photoAngles: Optional[Dict[str, Any]] = None
+    frozenUntil: Optional[str] = None
+    currentBuyerId: Optional[int] = None
+    soldAt: Optional[str] = None
+    rejectedReason: Optional[str] = None
     likedByMe: Optional[bool] = None
     favoritedByMe: Optional[bool] = None
     wantedByMe: Optional[bool] = None
     publishedAt: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+
+
+# ==================== Seller Profile ====================
+
+
+class SellerProfile(BaseModel):
+    """C2C 个人卖家档案（与 users 1:1）。
+
+    PRD 3.2 卖家信用浮层数据源。Phase 1 只读基础字段；信用分 / 响应速度 在
+    P4 / P5 才会通过订单与 IM 自动写入。
+    """
+    userId: int
+    displayName: Optional[str] = None
+    bio: Optional[str] = None
+    idVerified: bool = False
+    idVerifiedAt: Optional[str] = None
+    creditScore: int = 100
+    responseAvgMinutes: Optional[int] = None
+    totalSales: int = 0
+    totalGmvCents: int = 0
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
+class SellerProfileUpsert(BaseModel):
+    """卖家自助维护档案（昵称 / 简介）。"""
+    displayName: Optional[str] = Field(None, max_length=64)
+    bio: Optional[str] = Field(None, max_length=500)
 
 
 # ==================== 商品评论 ====================

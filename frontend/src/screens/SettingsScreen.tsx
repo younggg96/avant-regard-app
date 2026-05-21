@@ -368,11 +368,87 @@ const SettingsScreen = () => {
           rightText: t("settings.merchantEntry"),
           rightColor: "#F57C00",
         },
+        {
+          // PRD 模块一：个人卖家 / 买手店通用的"我的在售"入口
+          id: "sellerListings",
+          label: "我的在售",
+          icon: "pricetag-outline",
+          onPress: () => (navigation as any).navigate("SellerListings"),
+        },
+        {
+          // PRD 模块二：交易大厅
+          id: "marketplace",
+          label: "Marketplace",
+          icon: "cart-outline",
+          onPress: () => (navigation as any).navigate("Marketplace"),
+        },
+        {
+          // PRD 模块四：买家订单
+          id: "myOrders",
+          label: "我的订单",
+          icon: "receipt-outline",
+          onPress: () => (navigation as any).navigate("MyOrders"),
+        },
+        {
+          // PRD 模块四：卖家销售
+          id: "mySales",
+          label: "我的销售",
+          icon: "cash-outline",
+          onPress: () => (navigation as any).navigate("MySales"),
+        },
+        {
+          // PRD 模块四：出价
+          id: "myOffers",
+          label: "出价",
+          icon: "swap-horizontal-outline",
+          onPress: () => (navigation as any).navigate("MyOffers"),
+        },
+        {
+          // PRD 模块五：鉴定
+          id: "authentication",
+          label: "正品鉴定",
+          icon: "shield-checkmark-outline",
+          onPress: () => (navigation as any).navigate("Authentication"),
+        },
+        {
+          // PRD 模块六：My Archive
+          id: "myArchive",
+          label: "我的藏品",
+          icon: "albums-outline",
+          onPress: () => (navigation as any).navigate("MyArchive"),
+        },
+        {
+          // PRD 模块八：Plus 订阅
+          id: "plusSubscribe",
+          label: "AVANT REGARD Plus",
+          icon: "star-outline",
+          onPress: () => (navigation as any).navigate("PlusSubscribe"),
+        },
       ],
     },
     {
       title: t("settings.support"),
       items: [
+        {
+          // PDF p.10 设计要点：售后/退款统一走「联系客服」IM
+          id: "contactSupport",
+          label: t("trading.support.contactSupport"),
+          icon: "headset-outline",
+          onPress: async () => {
+            try {
+              const { contactSupportGeneral } = await import(
+                "../services/aftersalesService"
+              );
+              const res = await contactSupportGeneral();
+              (navigation as any).navigate("Chat", {
+                conversationId: res.conversationId,
+                otherUserId: res.csUserId,
+              });
+            } catch (e) {
+              console.warn("[settings] contact support failed", e);
+            }
+          },
+        },
         {
           id: "terms",
           label: t("settings.termsOfService"),

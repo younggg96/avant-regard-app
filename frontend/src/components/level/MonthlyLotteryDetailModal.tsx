@@ -134,7 +134,7 @@ export const MonthlyLotteryDetailModal: React.FC<Props> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >

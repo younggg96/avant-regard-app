@@ -243,7 +243,7 @@ export const AuthActions: React.FC<AuthActionsProps> = ({
       {/* 协议内容查看 Modal */}
       <Modal
         visible={viewingDocument !== null}
-        animationType="slide"
+        animationType="fade"
         presentationStyle="pageSheet"
         onRequestClose={() => setViewingDocument(null)}
       >

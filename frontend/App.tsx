@@ -86,6 +86,28 @@ import PublishForumPostScreen from "./src/screens/PublishForumPostScreen";
 import PublishV2ComposerScreen from "./src/screens/PublishV2/PublishV2ComposerScreen";
 import PublishV2ForumModeScreen from "./src/screens/PublishV2/PublishV2ForumModeScreen";
 import PublishV2ForumSelectScreen from "./src/screens/PublishV2/PublishV2ForumSelectScreen";
+// Listing / Trading System (PRD Phase 1) Screens
+import PublishListingStep1Screen from "./src/screens/PublishListing/PublishListingStep1Screen";
+import PublishListingStep2Screen from "./src/screens/PublishListing/PublishListingStep2Screen";
+import PublishListingStep3Screen from "./src/screens/PublishListing/PublishListingStep3Screen";
+import PublishFromPostPickerScreen from "./src/screens/PublishListing/PublishFromPostPickerScreen";
+import SellerListingsScreen from "./src/screens/SellerListingsScreen";
+import MarketplaceScreen from "./src/screens/Marketplace/MarketplaceScreen";
+// Trading System (PRD Phase 4) Screens
+import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
+import MyOrdersScreen from "./src/screens/Trading/MyOrdersScreen";
+import MySalesScreen from "./src/screens/Trading/MySalesScreen";
+import OrderDetailScreen from "./src/screens/Trading/OrderDetailScreen";
+import MyOffersScreen from "./src/screens/Trading/MyOffersScreen";
+// Aftersales (PRD Phase 5) Screens
+import DisputeOpenScreen from "./src/screens/Trading/DisputeOpenScreen";
+import AuthenticationScreen from "./src/screens/Trading/AuthenticationScreen";
+import TradeReviewScreen from "./src/screens/Trading/TradeReviewScreen";
+// My Archive & Plus (PRD Phase 6) Screens
+import MyArchiveScreen from "./src/screens/Trading/MyArchiveScreen";
+import ArchiveDetailScreen from "./src/screens/Trading/ArchiveDetailScreen";
+import UploadArchiveItemScreen from "./src/screens/Trading/UploadArchiveItemScreen";
+import PlusSubscribeScreen from "./src/screens/Trading/PlusSubscribeScreen";
 // AI Post Assistant Screens
 import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
 import AIPostQAStepScreen from "./src/screens/AIPost/AIPostQAStepScreen";
@@ -862,6 +884,100 @@ function AppNavigator({
         <Stack.Screen
           name="PublishV2ForumSelect"
           component={PublishV2ForumSelectScreen}
+          options={{ headerShown: false }}
+        />
+        {/* PRD 模块一 · 单品发布 wizard + 卖家管理 */}
+        <Stack.Screen
+          name="PublishFromPostPicker"
+          component={PublishFromPostPickerScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishListingStep1"
+          component={PublishListingStep1Screen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishListingStep2"
+          component={PublishListingStep2Screen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishListingStep3"
+          component={PublishListingStep3Screen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SellerListings"
+          component={SellerListingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Marketplace"
+          component={MarketplaceScreen}
+          options={{ headerShown: false }}
+        />
+        {/* PRD Phase 4 · 交易引擎 */}
+        <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyOrders"
+          component={MyOrdersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MySales"
+          component={MySalesScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="OrderDetail"
+          component={OrderDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyOffers"
+          component={MyOffersScreen}
+          options={{ headerShown: false }}
+        />
+        {/* PRD Phase 5 · 售后 / 鉴定 / 双盲互评 */}
+        <Stack.Screen
+          name="DisputeOpen"
+          component={DisputeOpenScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Authentication"
+          component={AuthenticationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="TradeReview"
+          component={TradeReviewScreen}
+          options={{ headerShown: false }}
+        />
+        {/* PRD Phase 6 · My Archive & Plus */}
+        <Stack.Screen
+          name="MyArchive"
+          component={MyArchiveScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ArchiveDetail"
+          component={ArchiveDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UploadArchiveItem"
+          component={UploadArchiveItemScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PlusSubscribe"
+          component={PlusSubscribeScreen}
           options={{ headerShown: false }}
         />
         {/* AI 发帖助手 (V3 #25) */}
