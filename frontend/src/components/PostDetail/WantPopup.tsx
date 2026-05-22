@@ -128,11 +128,11 @@ export const WantPopup: React.FC<WantPopupProps> = ({
           onPress={handleWantPress}
           activeOpacity={0.7}
         >
-          <Ionicons name={iconName as any} size={18} color={accentColor} />
+          <Ionicons name={iconName as any} size={16} color={accentColor} />
           <Text
-            fontSize="$sm"
+            fontSize="$xs"
             fontWeight="$semibold"
-            style={{ color: accentColor, marginLeft: 4 }}
+            style={{ color: accentColor, marginLeft: 2 }}
           >
             {label}
           </Text>
@@ -164,7 +164,7 @@ const makePopupStyles = (t: AppTheme) =>
       alignItems: "center",
       backgroundColor: t.colors.card,
       borderRadius: 14,
-      paddingVertical: 10,
+      paddingVertical: 8,
       paddingHorizontal: 14,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
@@ -182,8 +182,8 @@ const makePopupStyles = (t: AppTheme) =>
     wantButton: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
       borderRadius: 4,
       borderWidth: 1,
       borderColor: t.colors.gray200,

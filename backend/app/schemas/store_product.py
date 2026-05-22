@@ -229,7 +229,7 @@ class StoreProductCreate(BaseModel):
     color: Optional[str] = Field(None, max_length=32)
     condition: Optional[ProductCondition] = None
     conditionNote: Optional[str] = Field(None, description="无瑕疵也需填写说明（PRD 1.3）")
-    originalShowId: Optional[int] = Field(None, description="关联秀场（可选）")
+    originalShowId: Optional[str] = Field(None, description="关联秀场（可选）")
     originalAcquiredAt: Optional[date] = None
     acceptOffer: bool = Field(default=True)
     photoAngles: Optional[PhotoAngles] = None
@@ -267,7 +267,7 @@ class StoreProductUpdate(BaseModel):
     color: Optional[str] = Field(None, max_length=32)
     condition: Optional[ProductCondition] = None
     conditionNote: Optional[str] = None
-    originalShowId: Optional[int] = None
+    originalShowId: Optional[str] = None
     originalAcquiredAt: Optional[date] = None
     acceptOffer: Optional[bool] = None
     photoAngles: Optional[PhotoAngles] = None
@@ -329,7 +329,7 @@ class StoreProduct(BaseModel):
     color: Optional[str] = None
     condition: Optional[str] = None
     conditionNote: Optional[str] = None
-    originalShowId: Optional[int] = None
+    originalShowId: Optional[str] = None
     originalAcquiredAt: Optional[str] = None
     acceptOffer: bool = True
     photoAngles: Optional[Dict[str, Any]] = None

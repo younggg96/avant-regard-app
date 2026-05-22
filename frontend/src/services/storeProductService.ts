@@ -230,7 +230,7 @@ export interface StoreProduct {
   color?: string | null;
   condition?: ProductCondition | null;
   conditionNote?: string | null;
-  originalShowId?: number | null;
+  originalShowId?: string | null;
   originalAcquiredAt?: string | null;
   acceptOffer?: boolean;
   photoAngles?: PhotoAngles | null;
@@ -308,6 +308,83 @@ export const getStoreProductDetail = async (
   return request<StoreProduct>(`/api/store-merchants/products/${productId}`, {
     method: "GET",
   });
+};
+
+// ============================================================================
+// 商品详情页 —— 富数据聚合接口
+// ============================================================================
+
+/** 卖家卡片：详情页顶部一块（avatar + name + level + 好评率 + 关注按钮）。 */
+export interface ProductDetailSeller {
+  userId: number;
+  username: string;
+  avatarUrl?: string | null;
+  level: number;
+  /** 好评率（0~1），可空表示无评价。 */
+  positiveRate?: number | null;
+  totalSales: number;
+  joinedAt?: string | null;
+  /** 当前在售件数（active 状态）。 */
+  listingCount: number;
+}
+
+/** 关联的秀场（来自 store_products.original_show_id）。 */
+export interface ProductDetailShow {
+  id: string;
+  brandName?: string | null;
+  season?: string | null;
+  year?: number | null;
+  category?: string | null;
+  title?: string | null;
+  coverImage?: string | null;
+}
+
+/** 同卖家的「关联品牌」chip。 */
+export interface ProductDetailRelatedBrand {
+  name: string;
+  listingCount: number;
+  imageUrl?: string | null;
+}
+
+/** 双盲评价 + reviewer 信息（已 join 头像 / 用户名 / 等级）。 */
+export interface ProductDetailReviewItem {
+  id: number;
+  rating: number;
+  comment?: string | null;
+  submittedAt?: string | null;
+  reviewerUserId?: number | null;
+  reviewerUsername?: string | null;
+  reviewerAvatar?: string | null;
+  reviewerLevel?: number;
+}
+
+export interface ProductDetailReviews {
+  items: ProductDetailReviewItem[];
+  total: number;
+}
+
+export interface StoreProductRichDetail {
+  product: StoreProduct;
+  seller: ProductDetailSeller | null;
+  show: ProductDetailShow | null;
+  relatedBrands: ProductDetailRelatedBrand[];
+  relatedProducts: StoreProduct[];
+  reviews: ProductDetailReviews;
+}
+
+/**
+ * GET /api/store-merchants/products/{productId}/rich-detail
+ *
+ * 一次性返回商品 + 卖家卡 + 关联秀场 + 同卖家关联品牌 + 相关推荐 + 评价。
+ * 避免详情页 N+1。任何子查询失败都不会阻塞主体，对应字段会回退到空 / null。
+ */
+export const getStoreProductRichDetail = async (
+  productId: number
+): Promise<StoreProductRichDetail> => {
+  return request<StoreProductRichDetail>(
+    `/api/store-merchants/products/${productId}/rich-detail`,
+    { method: "GET" }
+  );
 };
 
 // ============================================================================
@@ -691,7 +768,7 @@ export interface ListingPatchBody {
   color?: string;
   condition?: ProductCondition;
   conditionNote?: string;
-  originalShowId?: number | null;
+  originalShowId?: string | null;
   originalAcquiredAt?: string | null;
   acceptOffer?: boolean;
   photoAngles?: PhotoAngles;

@@ -295,6 +295,21 @@ async def get_product_detail(
     return success(product.model_dump())
 
 
+@router.get("/products/{product_id}/rich-detail")
+async def get_product_rich_detail(
+    product_id: int,
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """商品详情页一次性返回所有附加数据（卖家卡 / 关联秀场 / 相关品牌 / 相关推荐 / 评价）。
+    避免详情页 N+1。前端用 getStoreProductRichDetail() 调用。"""
+    detail = store_product_service.get_product_rich_detail(
+        product_id, user_id=current_user_id
+    )
+    if not detail:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    return success(detail)
+
+
 @router.get("/store/{store_id}/products")
 async def list_store_products(
     store_id: str,

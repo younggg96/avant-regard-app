@@ -632,6 +632,393 @@ class StoreProductService:
             wanted_by_me=wanted,
         )
 
+    # ========================================================================
+    # 商品详情页 —— 富数据聚合接口（卖家 / 关联秀场 / 同卖家相关品牌 / 相关推荐 / 评论）
+    # ========================================================================
+
+    def get_product_rich_detail(
+        self, product_id: int, *, user_id: Optional[int] = None
+    ) -> Optional[dict]:
+        """商品详情页一次性返回所有附加数据，避免前端 N+1。
+
+        返回结构：
+          {
+            "product": StoreProduct.dict(),
+            "seller":  {userId, username, avatarUrl, level, positiveRate, totalSales,
+                        joinedAt, listingCount, soldCount}            | None,
+            "show":    {id, brandName, season, year, category, title} | None,
+            "relatedBrands":   [{name, listingCount, imageUrl}],
+            "relatedProducts": [StoreProduct.dict()],          # 同品牌其他商品
+            "reviews":         {items: [{rating, comment, reviewerUsername,
+                                          reviewerAvatar, submittedAt}], total},
+          }
+        所有子查询都做了 fail-safe：单点失败不影响主体 product 返回。
+        """
+        product = self.get_product(product_id, user_id=user_id)
+        if not product:
+            return None
+
+        seller = self._fetch_seller_card(product)
+        show = self._fetch_related_show(product.originalShowId)
+        related_brands = self._fetch_seller_related_brands(product)
+        related_products = self._fetch_related_products(product, exclude_id=product_id)
+        reviews = self._fetch_seller_reviews(product.sellerUserId, limit=5)
+
+        return {
+            "product": product.model_dump(),
+            "seller": seller,
+            "show": show,
+            "relatedBrands": related_brands,
+            "relatedProducts": [p.model_dump() for p in related_products],
+            "reviews": reviews,
+        }
+
+    # ---- 内部聚合 helpers --------------------------------------------------
+
+    def _fetch_seller_card(self, product: StoreProduct) -> Optional[dict]:
+        """根据卖家身份组合 seller_profiles + users + user_info + user_levels + 评价聚合。
+
+        - merchant 路径：通过 store_merchants.id → user_id 再走下面同样链路
+        - individual 路径：直接用 seller_user_id
+        所有子查询失败都视为 None / 默认值，UI 侧走兜底。
+        """
+        user_id: Optional[int] = None
+        if product.sellerKind == "individual":
+            user_id = product.sellerUserId
+        elif product.sellerKind == "merchant" and product.merchantId is not None:
+            try:
+                merchant_row = (
+                    self.db.table("store_merchants")
+                    .select("user_id")
+                    .eq("id", product.merchantId)
+                    .limit(1)
+                    .execute()
+                    .data
+                )
+                if merchant_row:
+                    user_id = merchant_row[0].get("user_id")
+            except Exception:
+                pass
+
+        if not user_id:
+            return None
+
+        username: Optional[str] = None
+        avatar_url: Optional[str] = None
+        joined_at: Optional[str] = None
+        try:
+            res = (
+                self.db.table("users")
+                .select("id, username, created_at, user_info(avatar_url)")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if res.data:
+                row = res.data[0]
+                username = row.get("username")
+                joined_at = row.get("created_at")
+                ui = row.get("user_info")
+                if isinstance(ui, list) and ui:
+                    avatar_url = (ui[0] or {}).get("avatar_url")
+                elif isinstance(ui, dict):
+                    avatar_url = ui.get("avatar_url")
+        except Exception:
+            pass
+
+        # seller_profiles：可能不存在（merchant 卖家通常没有）
+        total_sales = 0
+        display_name = None
+        try:
+            sp = (
+                self.db.table("seller_profiles")
+                .select("display_name, total_sales")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if sp:
+                display_name = sp[0].get("display_name")
+                total_sales = sp[0].get("total_sales") or 0
+        except Exception:
+            pass
+
+        # user_levels
+        level = 0
+        try:
+            lv = (
+                self.db.table("user_levels")
+                .select("current_level")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if lv:
+                level = lv[0].get("current_level") or 0
+        except Exception:
+            pass
+
+        # 好评率：rating >= 4 的占比；trade_reviews + visible=TRUE
+        positive_rate: Optional[float] = None
+        try:
+            rv = (
+                self.db.table("trade_reviews")
+                .select("rating")
+                .eq("target_user_id", user_id)
+                .eq("visible", True)
+                .execute()
+                .data
+                or []
+            )
+            if rv:
+                positives = sum(1 for r in rv if (r.get("rating") or 0) >= 4)
+                positive_rate = positives / len(rv)
+        except Exception:
+            pass
+
+        # 在售件数（仅 active 状态）
+        listing_count = 0
+        try:
+            lc = (
+                self.db.table("store_products")
+                .select("id", count="exact")
+                .eq("seller_user_id", user_id)
+                .eq("status", "active")
+                .limit(1)
+                .execute()
+            )
+            listing_count = lc.count or 0
+        except Exception:
+            pass
+
+        return {
+            "userId": user_id,
+            "username": display_name or username or "—",
+            "avatarUrl": avatar_url,
+            "level": level,
+            "positiveRate": positive_rate,
+            "totalSales": total_sales,
+            "joinedAt": joined_at,
+            "listingCount": listing_count,
+        }
+
+    def _fetch_related_show(self, show_id: Optional[str]) -> Optional[dict]:
+        """商品关联的秀场。show_id 为空或秀场不存在时返回 None。"""
+        if not show_id:
+            return None
+        try:
+            res = (
+                self.db.table("shows")
+                .select("id, brand_name, season, year, category, title, cover_image")
+                .eq("id", show_id)
+                .limit(1)
+                .execute()
+                .data
+            )
+            if not res:
+                return None
+            row = res[0]
+            return {
+                "id": row.get("id"),
+                "brandName": row.get("brand_name"),
+                "season": row.get("season"),
+                "year": row.get("year"),
+                "category": row.get("category"),
+                "title": row.get("title"),
+                "coverImage": row.get("cover_image"),
+            }
+        except Exception:
+            return None
+
+    def _fetch_seller_related_brands(self, product: StoreProduct) -> List[dict]:
+        """同卖家挂出的其他品牌（按当前 active 数量降序，最多 5 个）。
+
+        若当前商品没有 sellerUserId（merchant 暂未在 seller_user_id 里）则返回空列表。
+        """
+        user_id = product.sellerUserId
+        if not user_id:
+            return []
+        try:
+            rows = (
+                self.db.table("store_products")
+                .select("brand")
+                .eq("seller_user_id", user_id)
+                .eq("status", "active")
+                .execute()
+                .data
+                or []
+            )
+        except Exception:
+            return []
+        counts: dict = {}
+        for r in rows:
+            b = (r.get("brand") or "").strip()
+            if not b:
+                continue
+            counts[b] = counts.get(b, 0) + 1
+        if not counts:
+            return []
+        top = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        # 取品牌封面图
+        names = [n for n, _ in top]
+        cover_by_brand: dict = {}
+        try:
+            br = (
+                self.db.table("brands")
+                .select("id, name, brand_images(image_url, is_selected, status)")
+                .in_("name", names)
+                .execute()
+                .data
+                or []
+            )
+            for row in br:
+                imgs = row.get("brand_images") or []
+                if isinstance(imgs, dict):
+                    imgs = [imgs]
+                # 优先 APPROVED + is_selected
+                pick = next(
+                    (
+                        i
+                        for i in imgs
+                        if i and i.get("is_selected") and i.get("status") in ("APPROVED", None)
+                    ),
+                    imgs[0] if imgs else None,
+                )
+                if pick:
+                    cover_by_brand[row.get("name")] = pick.get("image_url")
+        except Exception:
+            pass
+        return [
+            {"name": name, "listingCount": cnt, "imageUrl": cover_by_brand.get(name)}
+            for name, cnt in top
+        ]
+
+    def _fetch_related_products(
+        self, product: StoreProduct, *, exclude_id: int, limit: int = 4
+    ) -> List[StoreProduct]:
+        """相关推荐：优先同品牌的其他 active 商品；不足再补同分类。"""
+        out: List[StoreProduct] = []
+        seen_ids: set = {exclude_id}
+        try:
+            if product.brand:
+                q = (
+                    self.db.table("store_products")
+                    .select(_PRODUCT_SELECT)
+                    .eq("status", "active")
+                    .ilike("brand", product.brand)
+                    .neq("id", exclude_id)
+                    .order("favorite_count", desc=True)
+                    .limit(limit)
+                    .execute()
+                    .data
+                    or []
+                )
+                for r in q:
+                    if r["id"] in seen_ids:
+                        continue
+                    seen_ids.add(r["id"])
+                    out.append(self._format_product(r))
+        except Exception:
+            pass
+        # 补足
+        if len(out) < limit and product.categoryId:
+            try:
+                q = (
+                    self.db.table("store_products")
+                    .select(_PRODUCT_SELECT)
+                    .eq("status", "active")
+                    .eq("category_id", product.categoryId)
+                    .neq("id", exclude_id)
+                    .order("favorite_count", desc=True)
+                    .limit(limit - len(out))
+                    .execute()
+                    .data
+                    or []
+                )
+                for r in q:
+                    if r["id"] in seen_ids:
+                        continue
+                    seen_ids.add(r["id"])
+                    out.append(self._format_product(r))
+            except Exception:
+                pass
+        return out[:limit]
+
+    def _fetch_seller_reviews(
+        self, seller_user_id: Optional[int], *, limit: int = 5
+    ) -> dict:
+        """返回某卖家最近的可见双盲评价（含评价者头像 / 用户名 / 等级）。"""
+        if not seller_user_id:
+            return {"items": [], "total": 0}
+        try:
+            res = (
+                self.db.table("trade_reviews")
+                .select("id, rating, comment, submitted_at, reviewer_user_id", count="exact")
+                .eq("target_user_id", seller_user_id)
+                .eq("visible", True)
+                .order("submitted_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            rows = res.data or []
+            total = res.count or 0
+        except Exception:
+            return {"items": [], "total": 0}
+
+        reviewer_ids = [r.get("reviewer_user_id") for r in rows if r.get("reviewer_user_id")]
+        username_by_id: dict = {}
+        avatar_by_id: dict = {}
+        level_by_id: dict = {}
+        if reviewer_ids:
+            try:
+                ur = (
+                    self.db.table("users")
+                    .select("id, username, user_info(avatar_url)")
+                    .in_("id", reviewer_ids)
+                    .execute()
+                    .data
+                    or []
+                )
+                for u in ur:
+                    username_by_id[u["id"]] = u.get("username")
+                    ui = u.get("user_info")
+                    if isinstance(ui, list) and ui:
+                        avatar_by_id[u["id"]] = (ui[0] or {}).get("avatar_url")
+                    elif isinstance(ui, dict):
+                        avatar_by_id[u["id"]] = ui.get("avatar_url")
+            except Exception:
+                pass
+            try:
+                lv = (
+                    self.db.table("user_levels")
+                    .select("user_id, current_level")
+                    .in_("user_id", reviewer_ids)
+                    .execute()
+                    .data
+                    or []
+                )
+                for l in lv:
+                    level_by_id[l["user_id"]] = l.get("current_level") or 0
+            except Exception:
+                pass
+
+        items = []
+        for r in rows:
+            rid = r.get("reviewer_user_id")
+            items.append({
+                "id": r["id"],
+                "rating": r.get("rating") or 0,
+                "comment": r.get("comment"),
+                "submittedAt": r.get("submitted_at"),
+                "reviewerUserId": rid,
+                "reviewerUsername": username_by_id.get(rid),
+                "reviewerAvatar": avatar_by_id.get(rid),
+                "reviewerLevel": level_by_id.get(rid, 0),
+            })
+        return {"items": items, "total": total}
+
     def _get_product_raw(self, product_id: int) -> Optional[dict]:
         result = (
             self.db.table("store_products")

@@ -44,7 +44,6 @@ import {
   type AppTheme,
 } from "../../../theme";
 import {
-  formatPrice,
   getPopularBrands,
   searchMarketplace,
   type MarketplaceFilter,
@@ -52,16 +51,27 @@ import {
   type StoreProduct,
 } from "../../../services/storeProductService";
 import MarketplaceFilterSheet from "../../Marketplace/MarketplaceFilterSheet";
+import MarketplaceChipSheet, {
+  type ChipFilterKey,
+} from "../../Marketplace/MarketplaceChipSheet";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 
 // ====== 卡片尺寸 ======
-const SECTION_GUTTER = 12;
+// 设计稿（PDF p.4）参考点：
+//   - 最新上架横滑卡片：4 张一屏，正方形主图，与品牌头像下面的间距 12pt
+//   - 热门品牌头像：6 个一屏，圆形 ~48pt
+//   - 精选推荐：2 列瀑布流，主图比例 4:5
+const SECTION_GUTTER = 10;
+const PAGE_PADDING = 16;
 const FEATURED_GUTTER = 12;
-const FEATURED_CARD_W = (SCREEN_WIDTH - FEATURED_GUTTER * 3) / 2;
+const FEATURED_CARD_W = (SCREEN_WIDTH - PAGE_PADDING * 2 - FEATURED_GUTTER) / 2;
 const FEATURED_CARD_IMG_H = (FEATURED_CARD_W * 5) / 4;
-const LATEST_CARD_W = 110;
-const LATEST_CARD_IMG_H = LATEST_CARD_W * 1.25;
-const BRAND_AVATAR_SIZE = 56;
+// 4 卡 1 屏：(屏宽 - 左右各 PAGE_PADDING - 3 个间隔) / 4
+const LATEST_CARD_W =
+  (SCREEN_WIDTH - PAGE_PADDING * 2 - SECTION_GUTTER * 3) / 4;
+const LATEST_CARD_IMG_H = LATEST_CARD_W;
+const BRAND_AVATAR_SIZE = 48;
+const BRAND_AVATAR_RADIUS = BRAND_AVATAR_SIZE / 2;
 
 // ====== Chip 配置 ======
 interface QuickChip {
@@ -84,6 +94,8 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   // ====== State ======
   const [filter, setFilter] = useState<MarketplaceFilter>({ sort: "featured" });
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  // 单字段快捷弹窗（点击分类 / 尺码 / 价格 / 成色 chip 时弹出，只编辑该字段）
+  const [chipSheetKey, setChipSheetKey] = useState<ChipFilterKey | null>(null);
 
   const [popularBrands, setPopularBrands] = useState<PopularBrand[]>([]);
   const [latestItems, setLatestItems] = useState<StoreProduct[]>([]);
@@ -202,82 +214,111 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     }
   };
 
+  // 把 chip id 映射到 MarketplaceChipSheet 支持的 key；返回 null 表示
+  // 该 chip 不属于「快捷单项」（即「全部」或「筛选」）。
+  const chipIdToChipKey = (
+    chipId: QuickChip["id"],
+  ): ChipFilterKey | null => {
+    switch (chipId) {
+      case "categoryId":
+        return "category";
+      case "size":
+        return "size";
+      case "priceMinCents":
+        return "price";
+      case "condition":
+        return "condition";
+      default:
+        return null;
+    }
+  };
+
   const handleChipPress = (chipId: QuickChip["id"]) => {
     if (chipId === "all") {
       reload({ sort: "featured" });
       return;
     }
-    setFilterSheetVisible(true);
+    if (chipId === "filter") {
+      setFilterSheetVisible(true);
+      return;
+    }
+    const key = chipIdToChipKey(chipId);
+    if (key) {
+      setChipSheetKey(key);
+    } else {
+      // 兜底：未知 chip 走完整 sheet
+      setFilterSheetVisible(true);
+    }
   };
 
-  const handleBrandPress = (brand: PopularBrand | null) => {
-    // null = "全部"
+  const handleBrandPress = (brand: PopularBrand) => {
     reload({
       sort: "featured",
-      brand: brand?.name,
+      brand: brand.name,
     });
   };
 
   const handleProductPress = (product: StoreProduct) =>
     navigation.navigate("StoreProductDetail", { productId: product.id });
 
+  const handleBrandMorePress = () => {
+    navigation.navigate("Main", { screen: "Archive" });
+  };
+
   // ====== 渲染：filter chips ======
   const renderChipBar = () => (
-    <FlatList
-      horizontal
-      data={chips}
-      keyExtractor={(c) => c.id}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipScroll}
-      style={styles.chipBar}
-      renderItem={({ item }) => {
+    <HStack style={styles.chipBar} alignItems="center">
+      {chips.map((item) => {
         const isAll = item.id === "all";
         const isFilter = item.id === "filter";
         const isActiveChip = isAll
           ? !hasActiveFilter
-          : (filter as any)[item.id] != null;
+          : item.id === "priceMinCents"
+            ? filter.priceMinCents != null || filter.priceMaxCents != null
+            : (filter as any)[item.id] != null;
         return (
           <TouchableOpacity
+            key={item.id}
             style={styles.chip}
             onPress={() => handleChipPress(item.id)}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.chipText,
-                isActiveChip && styles.chipTextActive,
-              ]}
-            >
-              {item.label}
-            </Text>
-            {item.caret ? (
-              <Ionicons
-                name="chevron-down"
-                size={12}
-                color={
-                  isActiveChip ? theme.colors.text : theme.colors.gray300
-                }
-                style={{ marginLeft: 2 }}
-              />
-            ) : null}
-            {isFilter ? (
-              <Ionicons
-                name="options-outline"
-                size={14}
-                color={theme.colors.text}
-                style={{ marginLeft: 4 }}
-              />
-            ) : null}
-            {isFilter && activeFilterCount > 0 ? (
-              <Box style={styles.chipBadge}>
-                <Text style={styles.chipBadgeText}>{activeFilterCount}</Text>
-              </Box>
-            ) : null}
-            {isActiveChip ? <View style={styles.chipUnderline} /> : null}
+            <View style={styles.chipContent}>
+              <Text
+                style={[
+                  styles.chipText,
+                  isActiveChip && styles.chipTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+              {item.caret ? (
+                <Ionicons
+                  name="chevron-down"
+                  size={8}
+                  color={
+                    isActiveChip ? theme.colors.text : theme.colors.gray300
+                  }
+                  style={{ marginLeft: 1 }}
+                />
+              ) : null}
+              {isFilter ? (
+                <Ionicons
+                  name="options-outline"
+                  size={10}
+                  color={
+                    isActiveChip ? theme.colors.text : theme.colors.gray300
+                  }
+                  style={{ marginLeft: 1 }}
+                />
+              ) : null}
+              {isActiveChip ? <View style={styles.chipUnderline} /> : null}
+            </View>
           </TouchableOpacity>
         );
-      }}
-    />
+      })}
+    </HStack>
   );
 
   // ====== 渲染：热门品牌 ======
@@ -292,31 +333,26 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.brandsRow}
-        data={[null, ...popularBrands] as Array<PopularBrand | null>}
-        keyExtractor={(b, i) => (b ? `brand_${b.name}_${i}` : "brand_all")}
+        data={popularBrands}
+        keyExtractor={(b, i) => `brand_${b.name}_${i}`}
         renderItem={({ item }) => {
-          const isAll = item === null;
-          const isActiveBrand = isAll
-            ? !filter.brand
-            : filter.brand === item.name;
+          const isActiveBrand = filter.brand === item.name;
           return (
             <Pressable
               style={styles.brandItem}
-              onPress={() => handleBrandPress(isAll ? null : item)}
+              onPress={() => handleBrandPress(item)}
             >
               <View
                 style={[
                   styles.brandAvatarWrap,
                   isActiveBrand && styles.brandAvatarActive,
-                  isAll && styles.brandAvatarAll,
                 ]}
               >
-                {isAll ? (
-                  <View style={styles.brandAvatarAllInner} />
-                ) : item.imageUrl ? (
+                {item.imageUrl ? (
                   <OptimizedImage
                     uri={item.imageUrl}
                     style={styles.brandAvatar}
+                    contentFit="cover"
                   />
                 ) : (
                   <Text style={styles.brandAvatarFallback}>
@@ -324,8 +360,14 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
                   </Text>
                 )}
               </View>
-              <Text style={styles.brandName} numberOfLines={1}>
-                {isAll ? t("trading.marketplace.brandAll") : item.name}
+              <Text
+                style={[
+                  styles.brandName,
+                  isActiveBrand && styles.brandNameActive,
+                ]}
+                numberOfLines={1}
+              >
+                {item.name}
               </Text>
             </Pressable>
           );
@@ -333,7 +375,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
         ListFooterComponent={
           <Pressable
             style={styles.brandItem}
-            onPress={() => setFilterSheetVisible(true)}
+            onPress={handleBrandMorePress}
           >
             <View style={[styles.brandAvatarWrap, styles.brandAvatarMore]}>
               <Ionicons
@@ -392,15 +434,12 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
             <Text style={styles.latestTitle} numberOfLines={1}>
               {item.title}
             </Text>
-            <HStack alignItems="center">
-              <Text style={styles.latestPrice}>
-                {formatPrice(item.priceCents, item.currency)}
-              </Text>
-              <View style={{ flex: 1 }} />
-              <Text style={styles.latestTime}>
-                {formatRelativeTime(item.publishedAt ?? item.createdAt, t)}
-              </Text>
-            </HStack>
+            <Text style={styles.latestPrice} numberOfLines={1}>
+              {formatMarketplacePrice(item.priceCents, item.currency)}
+            </Text>
+            <Text style={styles.latestTime} numberOfLines={1}>
+              {formatRelativeTime(item.publishedAt ?? item.createdAt, t)}
+            </Text>
           </Pressable>
         )}
       />
@@ -450,16 +489,14 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           <Text style={styles.featuredTitle} numberOfLines={1}>
             {item.title}
           </Text>
+          {/* 卖家行：暂时用 sellerKind 图标 + brand 首字母作为伪头像，
+              真实头像/用户名需后端 JOIN 后再补（PRD 模块二 v2）。 */}
           <HStack alignItems="center" space="xs">
-            <Ionicons
-              name={
-                item.sellerKind === "merchant"
-                  ? "storefront-outline"
-                  : "person-circle-outline"
-              }
-              size={14}
-              color={theme.colors.gray300}
-            />
+            <View style={styles.sellerDot}>
+              <Text style={styles.sellerDotText}>
+                {(item.brand?.[0] ?? "?").toUpperCase()}
+              </Text>
+            </View>
             <Text style={styles.featuredSeller} numberOfLines={1}>
               {item.sellerKind === "merchant"
                 ? t("trading.marketplace.sellerMerchant")
@@ -468,7 +505,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           </HStack>
           <HStack alignItems="center">
             <Text style={styles.featuredPrice}>
-              {formatPrice(item.priceCents, item.currency)}
+              {formatMarketplacePrice(item.priceCents, item.currency)}
             </Text>
             <View style={{ flex: 1 }} />
             {item.favoriteCount > 0 ? (
@@ -564,6 +601,17 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           reload(next);
         }}
       />
+
+      <MarketplaceChipSheet
+        visible={chipSheetKey !== null}
+        chipKey={chipSheetKey}
+        initial={filter}
+        onClose={() => setChipSheetKey(null)}
+        onApply={(patch) => {
+          // 合并增量字段后整体 reload，保持 sort/brand 等其余筛选项不变
+          reload({ ...filter, ...patch });
+        }}
+      />
     </View>
   );
 };
@@ -572,7 +620,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
 // 辅助：相对时间格式化
 // ---------------------------------------------------------------------------
 function formatRelativeTime(
-  iso: string | undefined,
+  iso: string | null | undefined,
   t: (key: string, opts?: any) => string,
 ): string {
   if (!iso) return "";
@@ -588,146 +636,181 @@ function formatRelativeTime(
   return t("trading.marketplace.timeAgoDay", { count: day });
 }
 
+// ---------------------------------------------------------------------------
+// 辅助：marketplace 用的紧凑价格格式（设计稿样式 "¥ 9,800"）
+// ---------------------------------------------------------------------------
+//   - 整数时不显示 .00；小数时保留 2 位
+//   - 带千分位
+//   - 与全局 formatPrice 区别：那个会一直追加 ".00"，对单品橱窗显示过于冗长
+function formatMarketplacePrice(
+  cents: number | null | undefined,
+  currency: string = "CNY",
+): string {
+  if (cents == null || Number.isNaN(cents)) return "";
+  const amount = cents / 100;
+  const isWhole = Math.abs(amount - Math.round(amount)) < 1e-9;
+  const formatted = isWhole
+    ? amount.toLocaleString("zh-CN")
+    : amount.toLocaleString("zh-CN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+  switch (currency) {
+    case "USD":
+      return `$ ${formatted}`;
+    case "JPY":
+      return `¥ ${Math.round(amount).toLocaleString()}`;
+    default:
+      return `¥ ${formatted}`;
+  }
+}
+
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     // ====== Chip bar ======
     chipBar: {
       flexGrow: 0,
+      width: SCREEN_WIDTH,
+      paddingVertical: 4,
       backgroundColor: t.colors.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    chipScroll: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      alignItems: "center",
-      gap: 16,
-    },
     chip: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 2,
+    },
+    chipContent: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 4,
+      justifyContent: "center",
+      position: "relative",
+      paddingBottom: 4,
     },
-    chipText: { fontSize: 13, color: t.colors.gray300 },
-    chipTextActive: { color: t.colors.text, fontWeight: "600" },
+    chipText: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      letterSpacing: 0.1,
+      flexShrink: 1,
+    },
+    chipTextActive: { color: t.colors.text, fontWeight: "700" },
     chipUnderline: {
       position: "absolute",
-      bottom: -10,
+      bottom: 0,
       left: 0,
       right: 0,
-      height: 2,
+      height: 1.5,
+      borderRadius: 1,
       backgroundColor: t.colors.accent,
     },
-    chipBadge: {
-      marginLeft: 6,
-      minWidth: 16,
-      height: 16,
-      paddingHorizontal: 4,
-      borderRadius: 8,
-      backgroundColor: t.colors.error,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    chipBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "600" },
-
     // ====== Sections shared ======
-    section: { paddingTop: 16 },
+    section: { paddingTop: 8 },
     sectionHeaderRow: {
-      paddingHorizontal: 16,
-      marginBottom: 8,
+      paddingHorizontal: 0,
+      marginBottom: 4,
     },
     sectionTitle: {
-      fontSize: 15,
-      fontWeight: "600",
+      fontSize: 12,
+      fontWeight: "700",
       color: t.colors.text,
+      letterSpacing: 0.2,
     },
     viewAll: { fontSize: 12, color: t.colors.textSecondary },
     featuredHeader: {
       marginTop: 4,
-      marginBottom: 8,
+      marginBottom: 12,
     },
 
     // ====== 热门品牌 ======
-    brandsRow: { paddingHorizontal: 16, gap: 16 },
-    brandItem: { alignItems: "center", width: BRAND_AVATAR_SIZE + 8 },
+    brandsRow: { paddingRight: PAGE_PADDING, gap: 8 },
+    brandItem: {
+      alignItems: "center",
+      width: BRAND_AVATAR_SIZE + 8,
+      flexShrink: 0,
+    },
     brandAvatarWrap: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
-      borderRadius: BRAND_AVATAR_SIZE / 2,
+      borderRadius: BRAND_AVATAR_RADIUS,
       backgroundColor: t.colors.surface,
       borderWidth: 1,
       borderColor: "transparent",
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
+      flexShrink: 0,
     },
     brandAvatarActive: {
       borderColor: t.colors.accent,
     },
-    brandAvatarAll: {
-      backgroundColor: t.colors.text,
+    brandAvatar: {
+      width: BRAND_AVATAR_SIZE,
+      height: BRAND_AVATAR_SIZE,
+      borderRadius: BRAND_AVATAR_RADIUS,
+      overflow: "hidden",
     },
-    brandAvatarAllInner: {
-      width: BRAND_AVATAR_SIZE - 12,
-      height: BRAND_AVATAR_SIZE - 12,
-      borderRadius: (BRAND_AVATAR_SIZE - 12) / 2,
-      backgroundColor: t.colors.text,
-    },
-    brandAvatar: { width: "100%", height: "100%" },
     brandAvatarFallback: {
-      fontSize: 20,
-      fontWeight: "700",
+      // 品牌无封面图时的兜底：首字母（PlayfairDisplay-Bold 显得精致）
+      fontFamily: "PlayfairDisplay-Bold",
+      fontSize: 22,
       color: t.colors.text,
     },
     brandAvatarMore: {
       backgroundColor: t.colors.surface,
     },
     brandName: {
-      marginTop: 6,
-      fontSize: 11,
+      marginTop: 8,
+      fontSize: 10,
       color: t.colors.textSecondary,
       maxWidth: BRAND_AVATAR_SIZE + 8,
       textAlign: "center",
     },
-
+    brandNameActive: {
+      color: t.colors.text,
+      fontWeight: "600",
+    },
     // ====== 最新上架 ======
-    latestRow: { paddingHorizontal: 16, gap: SECTION_GUTTER },
+    latestRow: { paddingRight: PAGE_PADDING, gap: SECTION_GUTTER },
     latestCard: { width: LATEST_CARD_W },
     latestImageWrap: {
       width: LATEST_CARD_W,
       height: LATEST_CARD_IMG_H,
-      borderRadius: 8,
+      borderRadius: 6,
       overflow: "hidden",
       backgroundColor: t.colors.skeleton,
-      marginBottom: 6,
+      marginBottom: 8,
     },
     latestImage: { width: "100%", height: "100%" },
     imgEmpty: { backgroundColor: t.colors.skeleton },
+    // 品牌名走 Playfair 体现"精品"质感（与设计稿一致）
     latestBrand: {
-      fontSize: 12,
-      fontWeight: "700",
+      fontFamily: "PlayfairDisplay-Bold",
+      fontSize: 13,
       color: t.colors.text,
     },
     latestTitle: {
+      fontFamily: "PlayfairDisplay-Regular",
       fontSize: 11,
       color: t.colors.textSecondary,
       marginTop: 2,
     },
     latestPrice: {
-      fontSize: 12,
-      fontWeight: "600",
+      fontSize: 13,
+      fontWeight: "700",
       color: t.colors.text,
       marginTop: 4,
     },
     latestTime: {
       fontSize: 10,
       color: t.colors.gray300,
-      marginTop: 4,
+      marginTop: 2,
     },
 
     // ====== 精选推荐 ======
     listContent: {
-      paddingHorizontal: FEATURED_GUTTER,
+      paddingHorizontal: PAGE_PADDING,
       paddingBottom: 32,
     },
     column: {
@@ -750,19 +833,46 @@ const makeStyles = (t: AppTheme) =>
       position: "absolute",
       top: 8,
       right: 8,
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
       backgroundColor: t.colors.cardElevated,
       alignItems: "center",
       justifyContent: "center",
+      // 轻微阴影让 heart 浮起，与暗色封面区分开
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 2,
     },
     featuredMeta: { padding: 10 },
-    featuredBrand: { fontSize: 13, fontWeight: "700", color: t.colors.text },
-    featuredTitle: { fontSize: 12, color: t.colors.textSecondary },
+    featuredBrand: {
+      fontFamily: "PlayfairDisplay-Bold",
+      fontSize: 14,
+      color: t.colors.text,
+    },
+    featuredTitle: {
+      fontFamily: "PlayfairDisplay-Regular",
+      fontSize: 12,
+      color: t.colors.textSecondary,
+    },
+    sellerDot: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: t.colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sellerDotText: {
+      fontSize: 9,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
     featuredSeller: { fontSize: 11, color: t.colors.gray300 },
     featuredPrice: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: "700",
       color: t.colors.text,
     },
