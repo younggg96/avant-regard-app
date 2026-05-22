@@ -472,15 +472,6 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           ) : (
             <Box style={[styles.featuredImg, styles.imgEmpty]} />
           )}
-          <TouchableOpacity style={styles.heartBadge}>
-            <Ionicons
-              name={item.favoritedByMe ? "heart" : "heart-outline"}
-              size={18}
-              color={
-                item.favoritedByMe ? theme.colors.error : theme.colors.text
-              }
-            />
-          </TouchableOpacity>
         </View>
         <VStack style={styles.featuredMeta} space="xs">
           <Text style={styles.featuredBrand} numberOfLines={1}>
@@ -489,20 +480,6 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           <Text style={styles.featuredTitle} numberOfLines={1}>
             {item.title}
           </Text>
-          {/* 卖家行：暂时用 sellerKind 图标 + brand 首字母作为伪头像，
-              真实头像/用户名需后端 JOIN 后再补（PRD 模块二 v2）。 */}
-          <HStack alignItems="center" space="xs">
-            <View style={styles.sellerDot}>
-              <Text style={styles.sellerDotText}>
-                {(item.brand?.[0] ?? "?").toUpperCase()}
-              </Text>
-            </View>
-            <Text style={styles.featuredSeller} numberOfLines={1}>
-              {item.sellerKind === "merchant"
-                ? t("trading.marketplace.sellerMerchant")
-                : t("trading.marketplace.sellerIndividual")}
-            </Text>
-          </HStack>
           <HStack alignItems="center">
             <Text style={styles.featuredPrice}>
               {formatMarketplacePrice(item.priceCents, item.currency)}
@@ -829,23 +806,6 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.skeleton,
     },
     featuredImg: { width: "100%", height: "100%" },
-    heartBadge: {
-      position: "absolute",
-      top: 8,
-      right: 8,
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: t.colors.cardElevated,
-      alignItems: "center",
-      justifyContent: "center",
-      // 轻微阴影让 heart 浮起，与暗色封面区分开
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 2,
-      elevation: 2,
-    },
     featuredMeta: { padding: 10 },
     featuredBrand: {
       fontFamily: "PlayfairDisplay-Bold",
@@ -857,20 +817,6 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       color: t.colors.textSecondary,
     },
-    sellerDot: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: t.colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    sellerDotText: {
-      fontSize: 9,
-      fontWeight: "600",
-      color: t.colors.text,
-    },
-    featuredSeller: { fontSize: 11, color: t.colors.gray300 },
     featuredPrice: {
       fontSize: 15,
       fontWeight: "700",

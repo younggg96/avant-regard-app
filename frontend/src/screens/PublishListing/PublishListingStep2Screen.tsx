@@ -7,19 +7,22 @@
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 
-import { Box, HStack, Pressable, Text, VStack } from "../../components/ui";
+import { Box, HStack, Pressable, Text } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import ScreenHeader from "../../components/ScreenHeader";
-import { useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import { uploadImageFromUri } from "../admin/adminUtils";
 import { usePublishListingStore } from "../../store/publishListingStore";
@@ -40,9 +43,17 @@ const ANGLE_LABELS: Record<AngleKey, { title: string; tip: string }> = {
 
 const ORDER: AngleKey[] = ["front", "back", "wash_label", "brand_label", "flaw"];
 
+const { width: SCREEN_W } = Dimensions.get("window");
+const ANGLE_PAGE_PADDING = 16;
+const ANGLE_TILE_GAP = 12;
+// 3 列 grid —— 5 张图最后一行剩 1 个空位，比 2×3 视觉更紧凑
+const ANGLE_TILE_W =
+  (SCREEN_W - ANGLE_PAGE_PADDING * 2 - ANGLE_TILE_GAP * 2) / 3;
+
 const PublishListingStep2Screen: React.FC = () => {
   const navigation = useNavigation();
   const styles = useThemedStyles(makeStyles);
+  const theme = useAppTheme();
 
   const photoAngles = usePublishListingStore((s) => s.photoAngles);
   const patch = usePublishListingStore((s) => s.patch);
@@ -130,38 +141,55 @@ const PublishListingStep2Screen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.sectionTitle}>2 / 3 · 图片（必填 5 张 + 可选 4 张）</Text>
 
-        <VStack space="md">
+        <View style={styles.angleGrid}>
           {ORDER.map((k) => {
             const url = photoAngles[k];
             const isUploading = uploadingKey === k;
             return (
               <Pressable
                 key={k}
-                style={styles.angleCard}
+                style={styles.angleTile}
                 onPress={() => handlePickAngle(k)}
                 disabled={isUploading}
               >
-                <Box style={styles.angleImageBox}>
+                <Box style={styles.angleThumb}>
                   {url ? (
-                    <OptimizedImage uri={url} style={styles.angleImage} />
+                    <>
+                      <OptimizedImage uri={url} style={styles.angleImage} />
+                      <View style={styles.angleEditOverlay}>
+                        <Ionicons
+                          name="camera-outline"
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    </>
                   ) : (
                     <Box style={styles.angleEmpty}>
                       {isUploading ? (
                         <ActivityIndicator />
                       ) : (
-                        <Text style={styles.angleEmptyText}>+</Text>
+                        <>
+                          <Ionicons
+                            name="add"
+                            size={28}
+                            color={theme.colors.textSecondary}
+                          />
+                          <Text style={styles.angleEmptyTip} numberOfLines={2}>
+                            {ANGLE_LABELS[k].tip}
+                          </Text>
+                        </>
                       )}
                     </Box>
                   )}
                 </Box>
-                <VStack style={styles.angleMeta} space="xs">
-                  <Text style={styles.angleTitle}>{ANGLE_LABELS[k].title}</Text>
-                  <Text style={styles.angleTip}>{ANGLE_LABELS[k].tip}</Text>
-                </VStack>
+                <Text style={styles.angleTitle} numberOfLines={1}>
+                  {ANGLE_LABELS[k].title}
+                </Text>
               </Pressable>
             );
           })}
-        </VStack>
+        </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
           额外图（可选，最多 4 张）
@@ -213,26 +241,57 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 12,
       letterSpacing: 1,
     },
-    angleCard: {
+    angleGrid: {
       flexDirection: "row",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      borderRadius: 8,
+      flexWrap: "wrap",
+      marginHorizontal: -ANGLE_TILE_GAP / 2,
+    },
+    angleTile: {
+      width: ANGLE_TILE_W,
+      marginHorizontal: ANGLE_TILE_GAP / 2,
+      marginBottom: ANGLE_TILE_GAP + 4,
+    },
+    angleThumb: {
+      width: "100%",
+      aspectRatio: 4 / 5,
+      borderRadius: 10,
       overflow: "hidden",
       backgroundColor: t.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
-    angleImageBox: { width: 96, height: 120, backgroundColor: t.colors.border },
     angleImage: { width: "100%", height: "100%" },
+    angleEditOverlay: {
+      position: "absolute",
+      right: 6,
+      bottom: 6,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     angleEmpty: {
       width: "100%",
       height: "100%",
       justifyContent: "center",
       alignItems: "center",
+      paddingHorizontal: 8,
+      gap: 4,
     },
-    angleEmptyText: { fontSize: 24, color: t.colors.textSecondary },
-    angleMeta: { padding: 12, flex: 1, justifyContent: "center" },
-    angleTitle: { fontSize: 15, fontWeight: "600", color: t.colors.text },
-    angleTip: { fontSize: 12, color: t.colors.textSecondary },
+    angleEmptyTip: {
+      fontSize: 11,
+      color: t.colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 14,
+    },
+    angleTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginTop: 8,
+    },
     extraTile: { width: 80, height: 80, borderRadius: 6, overflow: "hidden" },
     extraImage: { width: "100%", height: "100%" },
     extraAdd: {

@@ -34,9 +34,11 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  ScrollView as RNScrollView,
   StyleSheet,
   Dimensions,
   View,
@@ -72,6 +74,7 @@ import {
   unlikeStoreProductComment,
   unwantStoreProduct,
   wantStoreProduct,
+  transitionListing,
 } from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { formatTimestamp } from "../components/PostDetail/types";
@@ -110,7 +113,8 @@ type NavigationProp = {
 type RouteProps = RouteProp<Record<string, RouteParams>, string>;
 
 const COMMENT_PAGE_SIZE = 20;
-const DESCRIPTION_COLLAPSED_LINES = 2;
+const DEFAULT_AVATAR_URI =
+  "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=200";
 
 interface ReplyTarget {
   commentId: number;
@@ -168,9 +172,38 @@ const StoreProductDetailScreen: React.FC = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
 
-  // ---------------------- 描述展开 ----------------------------------------
-  const [descExpanded, setDescExpanded] = useState(false);
-  const [descNeedsToggle, setDescNeedsToggle] = useState(false);
+  // ---------------------- 章节锚点导航（sticky tab bar） -------------------
+  // tab bar 上的每个 tab 对应页面下方的一个 section：
+  //   关联品牌 / 关联秀场 / 商品信息 / 商品描述 / 细节描述 / 卖家信息 / 评论 / 相关推荐
+  // 点击 tab 平滑滚到 section；页面滚动时根据 contentOffset 自动高亮当前 section。
+  type SectionKey =
+    | "brands"
+    | "show"
+    | "info"
+    | "description"
+    | "photos"
+    | "seller"
+    | "reviews"
+    | "related";
+  const [activeSection, setActiveSection] = useState<SectionKey>("info");
+
+  // 主 ScrollView ref —— 用于 scrollTo(y) 平滑滚到目标 section
+  const scrollViewRef = useRef<RNScrollView | null>(null);
+  // tab bar 水平 ScrollView ref —— 用于把激活 tab 自动滚进可视区
+  const tabBarScrollRef = useRef<RNScrollView | null>(null);
+  // 每个 section 的 Y 坐标（相对于主 ScrollView 内容）
+  const sectionYRef = useRef<Partial<Record<SectionKey, number>>>({});
+  // 每个 tab 在 tab bar 内的 X / width
+  const tabItemLayoutRef = useRef<
+    Partial<Record<SectionKey, { x: number; w: number }>>
+  >({});
+  // 程序化滚动期间临时关掉「滚动 → 激活 tab」自动联动，避免动画过程中频繁闪烁
+  const programmaticScrollLockRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // sticky tab bar 高度（fontSize 14 + paddingVertical 8*2 + underline 2 + paddingTop 12 ≈ 48）
+  // 用于把目标 section 滚到 tab bar 正下方而不是被 tab bar 遮住
+  const STICKY_TAB_BAR_HEIGHT = 48;
 
   // ---------------------- Trading -----------------------------------------
   const [offerModalVisible, setOfferModalVisible] = useState(false);
@@ -516,11 +549,156 @@ const StoreProductDetailScreen: React.FC = () => {
     setFullscreenVisible(false);
   }, []);
 
+  /**
+   * Tab bar 吸顶用的 child index。
+   *
+   * tab bar 之上的固定 section（按 ScrollView 直接子节点顺序）：
+   *   0  hero
+   *   1  titleSection
+   *   2  badgesRow
+   *   3? sellerCardOuter        — 仅当 seller 存在（浮卡式 pill）
+   *   →  tabBar
+   *
+   * 注意：必须放在所有 early-return 之前（Rules of Hooks）。
+   */
+  const stickyTabBarIndex = useMemo(() => {
+    let idx = 3; // hero + titleSection + badgesRow 永远有
+    if (richDetail?.seller) idx++;
+    return idx;
+  }, [richDetail?.seller]);
+
+  /**
+   * 当前可见的 section 列表 —— 仅渲染数据存在的 section 对应的 tab。
+   * 顺序与 JSX 中渲染顺序一致：brands → show → info → description → photos → seller → reviews → related
+   */
+  const sections = useMemo<Array<{ key: SectionKey; label: string }>>(() => {
+    const list: Array<{ key: SectionKey; label: string }> = [];
+    if ((richDetail?.relatedBrands?.length ?? 0) > 0) {
+      list.push({ key: "brands", label: t("store.productDetailV2.tabBrands") });
+    }
+    if (richDetail?.show) {
+      list.push({ key: "show", label: t("store.productDetailV2.tabShow") });
+    }
+    // 商品信息 / 评论 永远有
+    list.push({ key: "info", label: t("store.productDetailV2.tabInfo") });
+    if (richDetail?.product?.description) {
+      list.push({
+        key: "description",
+        label: t("store.productDetailV2.tabDescription"),
+      });
+    }
+    if ((richDetail?.product?.photoAngles?.extras?.length ?? 0) > 0) {
+      list.push({ key: "photos", label: t("store.productDetailV2.tabPhotos") });
+    }
+    if (richDetail?.seller) {
+      list.push({ key: "seller", label: t("store.productDetailV2.tabSeller") });
+    }
+    list.push({
+      key: "reviews",
+      label: t("store.productDetailV2.tabReviews", {
+        count: richDetail?.reviews?.total ?? 0,
+      }),
+    });
+    if ((richDetail?.relatedProducts?.length ?? 0) > 0) {
+      list.push({
+        key: "related",
+        label: t("store.productDetailV2.tabRelated"),
+      });
+    }
+    return list;
+  }, [richDetail, t]);
+
+  /** section 容器的 onLayout —— 记录每个 section 在主 ScrollView 内的 Y 坐标 */
+  const handleSectionLayout = useCallback(
+    (key: SectionKey) => (e: LayoutChangeEvent) => {
+      sectionYRef.current[key] = e.nativeEvent.layout.y;
+    },
+    []
+  );
+
+  /** tab 项的 onLayout —— 用于点击或滚动激活后把对应 tab 自动滚进可视区 */
+  const handleTabItemLayout = useCallback(
+    (key: SectionKey) => (e: LayoutChangeEvent) => {
+      tabItemLayoutRef.current[key] = {
+        x: e.nativeEvent.layout.x,
+        w: e.nativeEvent.layout.width,
+      };
+    },
+    []
+  );
+
+  /** 点击 tab → 平滑滚到对应 section（顶部对齐到 sticky tab bar 下方） */
+  const scrollToSection = useCallback((key: SectionKey) => {
+    const y = sectionYRef.current[key];
+    if (y == null) return;
+    setActiveSection(key);
+    programmaticScrollLockRef.current = true;
+    if (programmaticScrollTimerRef.current) {
+      clearTimeout(programmaticScrollTimerRef.current);
+    }
+    programmaticScrollTimerRef.current = setTimeout(() => {
+      programmaticScrollLockRef.current = false;
+    }, 500);
+    // -1 让 sticky 状态稳定切到目标 section 顶部
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(0, y - STICKY_TAB_BAR_HEIGHT - 1),
+      animated: true,
+    });
+  }, []);
+
+  /** 用户手动开始拖动 → 立刻解锁自动联动（防止动画中途用户接管时反应慢） */
+  const handleScrollBeginDrag = useCallback(() => {
+    programmaticScrollLockRef.current = false;
+    if (programmaticScrollTimerRef.current) {
+      clearTimeout(programmaticScrollTimerRef.current);
+      programmaticScrollTimerRef.current = null;
+    }
+  }, []);
+
+  /** 滚动监听 → 找出 contentOffset 当前命中的 section，更新激活 tab */
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (programmaticScrollLockRef.current) return;
+      if (sections.length === 0) return;
+      const y = e.nativeEvent.contentOffset.y + STICKY_TAB_BAR_HEIGHT + 8;
+      let current: SectionKey = sections[0].key;
+      for (const s of sections) {
+        const sy = sectionYRef.current[s.key];
+        if (sy == null) continue;
+        if (sy <= y) current = s.key;
+        else break;
+      }
+      setActiveSection((prev) => (prev === current ? prev : current));
+    },
+    [sections]
+  );
+
+  /** 激活 section 变化 → 把 tab bar 自动横向滚到这个 tab 居中可见 */
+  useEffect(() => {
+    const pos = tabItemLayoutRef.current[activeSection];
+    const bar = tabBarScrollRef.current;
+    if (!pos || !bar) return;
+    const target = Math.max(
+      0,
+      pos.x - SCREEN_WIDTH / 2 + pos.w / 2 + PAGE_PADDING
+    );
+    bar.scrollTo({ x: target, animated: true });
+  }, [activeSection]);
+
+  /** 首次拿到 sections 后，把激活 tab 校准到列表首项（默认 "info" 可能不存在） */
+  useEffect(() => {
+    if (sections.length === 0) return;
+    if (!sections.some((s) => s.key === activeSection)) {
+      setActiveSection(sections[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections]);
+
   // ---------------------- 分支渲染 ----------------------------------------
   if (isLoading && !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header title={t("store.productDetail")} onBack={navigation.goBack} />
+        <Header onBack={navigation.goBack} />
         <Box style={styles.center}>
           <Image
             source={profileLoadingGif}
@@ -535,7 +713,7 @@ const StoreProductDetailScreen: React.FC = () => {
   if (error || !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header title={t("store.productDetail")} onBack={navigation.goBack} />
+        <Header onBack={navigation.goBack} />
         <Box style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
           <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }} mt="$sm">
@@ -568,18 +746,23 @@ const StoreProductDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
-      <Header title={t("store.productDetail")} onBack={navigation.goBack} />
+      <Header onBack={navigation.goBack} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-        <ScrollView
+        <RNScrollView
+          ref={scrollViewRef}
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
+          stickyHeaderIndices={[stickyTabBarIndex]}
+          onScroll={handleScroll}
+          onScrollBeginDrag={handleScrollBeginDrag}
+          scrollEventThrottle={16}
         >
           {/* ============ 1. 图片轮播 + N/M 计数 =============== */}
           <Box style={styles.heroSection}>
@@ -626,7 +809,7 @@ const StoreProductDetailScreen: React.FC = () => {
           </Box>
 
           {/* ============ 2. 标题 / 价格 / 快速信息行 =============== */}
-          <VStack px={PAGE_PADDING} pt={PAGE_PADDING} space="sm" style={styles.section}>
+          <View style={styles.titleSection}>
             <HStack alignItems="flex-start" justifyContent="space-between" space="sm">
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={3}>
@@ -647,7 +830,7 @@ const StoreProductDetailScreen: React.FC = () => {
               </Pressable>
             </HStack>
 
-            <HStack alignItems="baseline" space="sm">
+            <HStack alignItems="baseline" space="sm" style={{ marginTop: 8 }}>
               <Text style={[styles.price, hasDiscount && { color: theme.colors.error }]}>
                 {formatPrice(
                   hasDiscount
@@ -663,20 +846,20 @@ const StoreProductDetailScreen: React.FC = () => {
               )}
             </HStack>
 
-            {/* 快速信息行 —— 用细分隔符 "|" 串成一行，对齐设计图 image 4 顶部 */}
+            {/* 快速信息行 —— `全新 95新 | 尺码 48 | Black` 形式 */}
             {quickInfoParts.length > 0 && (
-              <HStack alignItems="center" flexWrap="wrap">
+              <HStack alignItems="center" flexWrap="wrap" style={{ marginTop: 12 }}>
                 {quickInfoParts.map((part, idx) => (
                   <React.Fragment key={`qi-${idx}`}>
                     <Text style={styles.quickInfoText}>{part}</Text>
                     {idx < quickInfoParts.length - 1 && (
-                      <Text style={styles.quickInfoSep}> | </Text>
+                      <Text style={styles.quickInfoSep}>  |  </Text>
                     )}
                   </React.Fragment>
                 ))}
               </HStack>
             )}
-          </VStack>
+          </View>
 
           {/* ============ 3. 服务徽章 =============== */}
           <View style={[styles.badgesRow, { paddingHorizontal: PAGE_PADDING }]}>
@@ -697,48 +880,91 @@ const StoreProductDetailScreen: React.FC = () => {
             />
           </View>
 
-          {/* ============ 4. 卖家卡片 =============== */}
+          {/* ============ 4. 卖家卡片 —— 圆角浮卡（设计图样式） =============== */}
           {seller && (
-            <View style={styles.sellerCard}>
-              <OptimizedImage
-                uri={seller.avatarUrl || undefined}
-                size={ImageSize.THUMBNAIL}
-                style={styles.sellerAvatar}
-                contentFit="cover"
-                placeholderColor={theme.colors.skeleton}
-              />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <HStack alignItems="center" space="xs">
-                  <Text style={styles.sellerName} numberOfLines={1}>
-                    {seller.username}
-                  </Text>
-                  {seller.level > 0 && (
-                    <View style={styles.levelBadge}>
-                      <Text style={styles.levelBadgeText}>
-                        {t("store.productDetailV2.level", { level: seller.level })}
+            <View style={styles.sellerCardOuter}>
+              <View style={styles.sellerCard}>
+                <OptimizedImage
+                  uri={seller.avatarUrl ?? DEFAULT_AVATAR_URI}
+                  size={ImageSize.THUMBNAIL}
+                  style={styles.sellerAvatar}
+                  contentFit="cover"
+                  placeholderColor={theme.colors.skeleton}
+                />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <HStack alignItems="center" space="xs">
+                    <Text style={styles.sellerName} numberOfLines={1}>
+                      {seller.username}
+                    </Text>
+                    {seller.level > 0 && (
+                      <View style={styles.levelBadge}>
+                        <Text style={styles.levelBadgeText}>
+                          {t("store.productDetailV2.level", { level: seller.level })}
+                        </Text>
+                      </View>
+                    )}
+                    {seller.positiveRate != null && (
+                      <Text style={styles.sellerInlineRate}>
+                        {t("store.productDetailV2.positiveRate", {
+                          rate: Math.round(seller.positiveRate * 100),
+                        })}
                       </Text>
-                    </View>
-                  )}
-                </HStack>
-                <Text style={styles.sellerMeta}>
-                  {seller.positiveRate != null
-                    ? t("store.productDetailV2.positiveRate", {
-                        rate: Math.round(seller.positiveRate * 100),
-                      })
-                    : t("store.productDetailV2.noReviewsYet")}
-                </Text>
+                    )}
+                  </HStack>
+                </View>
+                <Pressable style={styles.followBtn} onPress={() => {}}>
+                  <Text style={styles.followBtnText}>
+                    {t("store.productDetailV2.follow")}
+                  </Text>
+                </Pressable>
               </View>
-              <Pressable style={styles.followBtn} onPress={() => {}}>
-                <Text style={styles.followBtnText}>
-                  {t("store.productDetailV2.follow")}
-                </Text>
-              </Pressable>
             </View>
           )}
 
-          {/* ============ 5. 关联的品牌 =============== */}
+          {/* ============ Sticky tab bar —— 章节锚点导航 =============== */}
+          {/* tab 横向可滚动，点击平滑滚到下方对应 section；滚动时根据 contentOffset 自动高亮 */}
+          <View style={styles.tabBar}>
+            <RNScrollView
+              ref={tabBarScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabBarInner}
+            >
+              {sections.map((tab) => {
+                const isActive = tab.key === activeSection;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => scrollToSection(tab.key)}
+                    onLayout={handleTabItemLayout(tab.key)}
+                    activeOpacity={0.7}
+                    style={styles.tabItem}
+                  >
+                    <Text
+                      style={[styles.tabText, isActive && styles.tabTextActive]}
+                    >
+                      {tab.label}
+                    </Text>
+                    <View
+                      style={[
+                        styles.tabUnderline,
+                        isActive
+                          ? styles.tabUnderlineActive
+                          : styles.tabUnderlineHidden,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </RNScrollView>
+          </View>
+
+          {/* ============ S1. 关联品牌 =============== */}
           {relatedBrands.length > 0 && (
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("brands")}
+            >
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.relatedBrandsTitle")}
               </Text>
@@ -798,9 +1024,12 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ 6. 关联的秀场 =============== */}
+          {/* ============ S2. 关联秀场 =============== */}
           {show && (
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("show")}
+            >
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.relatedShowTitle")}
               </Text>
@@ -810,20 +1039,29 @@ const StoreProductDetailScreen: React.FC = () => {
                   // ShowDetail 路由暂未实现；保留 onPress 以便后续接入。
                 }}
               >
-                <OptimizedImage
-                  uri={show.coverImage || undefined}
-                  size={ImageSize.MEDIUM}
-                  style={styles.showCover}
-                  contentFit="cover"
-                  placeholderColor={theme.colors.skeleton}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
+                {show.coverImage ? (
+                  <OptimizedImage
+                    uri={show.coverImage}
+                    size={ImageSize.MEDIUM}
+                    style={styles.showCover}
+                    contentFit="cover"
+                    placeholderColor={theme.colors.skeleton}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.showCover,
+                      { backgroundColor: theme.colors.skeleton },
+                    ]}
+                  />
+                )}
+                <View style={{ flex: 1, marginLeft: 14 }}>
                   <Text style={styles.showBrand} numberOfLines={1}>
                     {show.brandName ?? "—"}
                   </Text>
                   <Text style={styles.showSeason} numberOfLines={1}>
-                    {show.year ? `${show.year} ` : ""}
-                    {show.season ?? ""}
+                    {[show.year, show.season].filter(Boolean).join(" ")}
+                    {show.season ? t("store.productDetailV2.showSeasonSuffix") : ""}
                   </Text>
                   {show.title && (
                     <Text style={styles.showLook} numberOfLines={1}>
@@ -833,59 +1071,17 @@ const StoreProductDetailScreen: React.FC = () => {
                 </View>
                 <Ionicons
                   name="chevron-forward"
-                  size={20}
+                  size={18}
                   color={theme.colors.textSecondary}
                 />
               </Pressable>
             </View>
           )}
 
-          {/* ============ 7. 商品描述 =============== */}
-          {!!product.description && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                {t("store.productDetailV2.description")}
-              </Text>
-              <Text
-                style={styles.descriptionText}
-                numberOfLines={descExpanded ? undefined : DESCRIPTION_COLLAPSED_LINES}
-                onTextLayout={(e) => {
-                  if (
-                    !descNeedsToggle &&
-                    e.nativeEvent.lines.length > DESCRIPTION_COLLAPSED_LINES
-                  ) {
-                    setDescNeedsToggle(true);
-                  }
-                }}
-              >
-                {product.description}
-              </Text>
-              {descNeedsToggle && (
-                <Pressable
-                  onPress={() => setDescExpanded((v) => !v)}
-                  style={{ alignSelf: "flex-end", marginTop: 4 }}
-                >
-                  <HStack alignItems="center" space="xs">
-                    <Text style={styles.expandText}>
-                      {descExpanded
-                        ? t("store.productDetailV2.collapse")
-                        : t("store.productDetailV2.expand")}
-                    </Text>
-                    <Ionicons
-                      name={descExpanded ? "chevron-up" : "chevron-down"}
-                      size={14}
-                      color={theme.colors.textSecondary}
-                    />
-                  </HStack>
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          {/* ============ 8. 商品详情表 =============== */}
-          <View style={styles.section}>
+          {/* ============ S3. 商品信息（detailRows 表格） =============== */}
+          <View style={styles.section} onLayout={handleSectionLayout("info")}>
             <Text style={styles.sectionTitle}>
-              {t("store.productDetailV2.detailsTable")}
+              {t("store.productDetailV2.fieldsHeader")}
             </Text>
             <View style={styles.detailsTable}>
               {detailRows.map((row, idx) => (
@@ -899,9 +1095,25 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* ============ 9. 细节展示 =============== */}
+          {/* ============ S4. 商品描述 =============== */}
+          {!!product.description && (
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("description")}
+            >
+              <Text style={styles.sectionTitle}>
+                {t("store.productDetailV2.description")}
+              </Text>
+              <Text style={styles.descriptionText}>{product.description}</Text>
+            </View>
+          )}
+
+          {/* ============ S5. 细节描述（photoAngles.extras 网格） =============== */}
           {detailImages.length > 0 && (
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("photos")}
+            >
               <HStack
                 alignItems="center"
                 justifyContent="space-between"
@@ -933,7 +1145,7 @@ const StoreProductDetailScreen: React.FC = () => {
                   >
                     <OptimizedImage
                       uri={img}
-                      size={ImageSize.SMALL}
+                      size={ImageSize.THUMBNAIL}
                       style={{ width: "100%", height: "100%" }}
                       contentFit="cover"
                     />
@@ -943,16 +1155,19 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ 10. 卖家信息 stats =============== */}
+          {/* ============ S6. 卖家信息 + stats =============== */}
           {seller && (
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("seller")}
+            >
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.sellerInfo")}
               </Text>
               <View style={styles.sellerStatsCard}>
                 <HStack alignItems="center">
                   <OptimizedImage
-                    uri={seller.avatarUrl || undefined}
+                    uri={seller.avatarUrl ?? DEFAULT_AVATAR_URI}
                     size={ImageSize.THUMBNAIL}
                     style={styles.sellerStatsAvatar}
                     contentFit="cover"
@@ -1007,44 +1222,70 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ 11. 评价预览（trade_reviews） =============== */}
-          <View style={styles.section}>
-            <HStack alignItems="center" justifyContent="space-between" style={{ marginBottom: 12 }}>
-              <Text style={styles.sectionTitle}>
-                {t("store.productDetailV2.reviewsTitle")} ({reviews.total})
-              </Text>
-              {reviews.total > 0 && (
-                <Pressable onPress={() => {}}>
-                  <HStack alignItems="center" space="xs">
-                    <Text style={styles.sectionLink}>
-                      {t("store.productDetailV2.reviewsViewAll")}
-                    </Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={14}
-                      color={theme.colors.textSecondary}
-                    />
-                  </HStack>
-                </Pressable>
-              )}
-            </HStack>
-            {reviews.items.length === 0 ? (
+          {/* ============ S7. 评论（trade_reviews 全部 + 老 product comments） =============== */}
+          <View
+            style={styles.section}
+            onLayout={handleSectionLayout("reviews")}
+          >
+            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
+              {t("store.productDetailV2.reviewsTitle")} ({reviews.total})
+            </Text>
+            {reviews.items.length === 0 && comments.length === 0 ? (
               <Box style={styles.emptyBlock}>
-                <Ionicons name="star-outline" size={28} color={theme.colors.gray300} />
+                <Ionicons
+                  name="star-outline"
+                  size={28}
+                  color={theme.colors.gray300}
+                />
                 <Text style={styles.emptyText}>
                   {t("store.productDetailV2.noReviewsYet")}
                 </Text>
               </Box>
             ) : (
-              reviews.items.slice(0, 3).map((r) => (
-                <ReviewRow key={`rv-${r.id}`} review={r} theme={theme} t={t} />
-              ))
+              <>
+                {reviews.items.map((r) => (
+                  <ReviewRow
+                    key={`rv-${r.id}`}
+                    review={r}
+                    theme={theme}
+                    t={t}
+                  />
+                ))}
+                {comments.length > 0 && (
+                  <View style={{ marginTop: 8 }}>
+                    {comments.map((c) => (
+                      <CommentItem
+                        key={c.id}
+                        comment={c}
+                        currentUserId={currentUser?.userId}
+                        onReply={() => handleStartReply(c)}
+                        onDelete={() => handleDeleteComment(c.id)}
+                        onLike={() => handleToggleCommentLike(c)}
+                      />
+                    ))}
+                    {commentsHasMore && (
+                      <Pressable
+                        onPress={handleEndReached}
+                        py="$sm"
+                        alignItems="center"
+                      >
+                        <Text style={styles.expandText}>
+                          {t("store.loadMoreComments")}
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
+              </>
             )}
           </View>
 
-          {/* ============ 12. 相关推荐 =============== */}
+          {/* ============ S8. 相关推荐 =============== */}
           {relatedProducts.length > 0 && (
-            <View style={[styles.section, { paddingBottom: 24 }]}>
+            <View
+              style={[styles.section, { paddingBottom: 24 }]}
+              onLayout={handleSectionLayout("related")}
+            >
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.relatedProductsTitle")}
               </Text>
@@ -1064,33 +1305,7 @@ const StoreProductDetailScreen: React.FC = () => {
               </HStack>
             </View>
           )}
-
-          {/* 老的商品评论区放在最底（保留功能；评价区已用 trade_reviews）。 */}
-          {comments.length > 0 && (
-            <View style={[styles.section, { paddingBottom: 24 }]}>
-              <Text style={styles.sectionTitle}>
-                {t("store.comments", { count: commentsTotal })}
-              </Text>
-              {comments.map((c) => (
-                <CommentItem
-                  key={c.id}
-                  comment={c}
-                  currentUserId={currentUser?.userId}
-                  onReply={() => handleStartReply(c)}
-                  onDelete={() => handleDeleteComment(c.id)}
-                  onLike={() => handleToggleCommentLike(c)}
-                />
-              ))}
-              {commentsHasMore && (
-                <Pressable onPress={handleEndReached} py="$sm" alignItems="center">
-                  <Text style={styles.expandText}>
-                    {t("store.loadMoreComments")}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-        </ScrollView>
+        </RNScrollView>
 
         {isCommentFocused && (
           <Pressable onPress={handleOverlayPress} style={styles.contentOverlay} />
@@ -1111,8 +1326,8 @@ const StoreProductDetailScreen: React.FC = () => {
             product={product}
             isOwner={
               !!currentUser &&
-              (currentUser.id === product.sellerUserId ||
-                currentUser.id === (product as any).merchantOwnerUserId)
+              (currentUser.userId === product.sellerUserId ||
+                currentUser.userId === (product as any).merchantOwnerUserId)
             }
             isBusy={tradingBusy}
             onOffer={() => setOfferModalVisible(true)}
@@ -1128,9 +1343,6 @@ const StoreProductDetailScreen: React.FC = () => {
             onTakeOffline={async () => {
               try {
                 setTradingBusy(true);
-                const { transitionListing } = await import(
-                  "../services/storeProductService"
-                );
                 await transitionListing(product.id, "offline");
                 await loadProduct();
               } catch (e) {
@@ -1200,27 +1412,37 @@ const StoreProductDetailScreen: React.FC = () => {
 };
 
 // ============================================================================
-// Header
+// Header —— 设计图样式：仅左侧返回 + 右侧 share / more，无中间标题。
+// 用半透明白底悬浮在轮播图上方，避免遮挡商品图。
 // ============================================================================
 
-const Header: React.FC<{ title: string; onBack: () => void }> = ({ title, onBack }) => {
+const Header: React.FC<{
+  onBack: () => void;
+  onShare?: () => void;
+  onMore?: () => void;
+  floating?: boolean;
+}> = ({ onBack, onShare, onMore, floating = false }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <HStack
-      style={styles.header}
+      style={[styles.header, floating && styles.headerFloating]}
       alignItems="center"
       justifyContent="space-between"
       px="$md"
       py="$sm"
     >
-      <Pressable onPress={onBack} p="$xs" hitSlop={8}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+      <Pressable onPress={onBack} hitSlop={8} style={styles.headerIconBtn}>
+        <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
       </Pressable>
-      <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }}>
-        {title}
-      </Text>
-      <Box w={32} />
+      <HStack space="md" alignItems="center">
+        <Pressable onPress={onShare} hitSlop={8} style={styles.headerIconBtn}>
+          <Ionicons name="share-outline" size={22} color={theme.colors.text} />
+        </Pressable>
+        <Pressable onPress={onMore} hitSlop={8} style={styles.headerIconBtn}>
+          <Ionicons name="ellipsis-horizontal" size={22} color={theme.colors.text} />
+        </Pressable>
+      </HStack>
     </HStack>
   );
 };
@@ -1281,7 +1503,7 @@ const ReviewRow: React.FC<{
   return (
     <HStack space="sm" style={styles.reviewRow}>
       <OptimizedImage
-        uri={review.reviewerAvatar || undefined}
+        uri={review.reviewerAvatar ?? DEFAULT_AVATAR_URI}
         size={ImageSize.THUMBNAIL}
         style={styles.reviewAvatar}
         contentFit="cover"
@@ -1347,12 +1569,14 @@ const RelatedProductCard: React.FC<{
       activeOpacity={0.85}
     >
       <View style={[styles.relatedImageWrap, { backgroundColor: theme.colors.skeleton }]}>
-        <OptimizedImage
-          uri={product.images?.[0]}
-          size={ImageSize.SMALL}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-        />
+        {product.images?.[0] ? (
+          <OptimizedImage
+            uri={product.images[0]}
+            size={ImageSize.THUMBNAIL}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+          />
+        ) : null}
         <View style={styles.relatedHeart}>
           <Ionicons name="heart-outline" size={14} color="#FFFFFF" />
         </View>
@@ -1489,19 +1713,33 @@ function conditionToLabelKey(c: ProductCondition): string {
   }
 }
 
+/**
+ * 顶部快速信息行，对齐设计图：`全新 95新 | 尺码 48 | Black`
+ *
+ * 注意分组：`全新 95新` 是一个 chunk（isNew + condition 用空格连接），
+ * `尺码 48` 是一个 chunk（label + value），`Black` 是一个 chunk。
+ * Chunk 之间用 `|` 分隔；chunk 内部不分隔。
+ */
 function buildQuickInfo(
   product: StoreProduct,
   t: (k: string, opts?: any) => string
 ): string[] {
   const out: string[] = [];
+  // chunk 1：[全新?] + 成色（如 "95新"）。
+  const condParts: string[] = [];
+  if (product.isNew) {
+    condParts.push(t("store.productDetailV2.conditionBnwt"));
+  }
   if (product.condition) {
-    out.push(t(`store.productDetailV2.${conditionToLabelKey(product.condition)}`));
+    condParts.push(t(`store.productDetailV2.${conditionToLabelKey(product.condition)}`));
   }
-  if (product.size) out.push(product.size);
+  if (condParts.length > 0) out.push(condParts.join(" "));
+  // chunk 2：尺码（带 label 前缀）。
+  if (product.size) {
+    out.push(`${t("store.productDetailV2.fieldSize")} ${product.size}`);
+  }
+  // chunk 3：颜色（直接显示值）。
   if (product.color) out.push(product.color);
-  if (product.originalAcquiredAt) {
-    out.push(product.originalAcquiredAt.slice(0, 4));
-  }
   return out;
 }
 
@@ -1565,8 +1803,20 @@ const makeStyles = (t: AppTheme) =>
     },
     header: {
       backgroundColor: t.colors.background,
-      borderBottomColor: t.colors.divider,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    headerFloating: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 5,
+      backgroundColor: "transparent",
+    },
+    headerIconBtn: {
+      width: 32,
+      height: 32,
+      alignItems: "center",
+      justifyContent: "center",
     },
     scroll: { flex: 1 },
     scrollContent: { paddingBottom: 24 },
@@ -1615,18 +1865,25 @@ const makeStyles = (t: AppTheme) =>
       borderBottomWidth: SECTION_GAP,
       borderBottomColor: t.colors.surface,
     },
+    titleSection: {
+      paddingHorizontal: PAGE_PADDING,
+      paddingTop: 14,
+      paddingBottom: 12,
+      backgroundColor: t.colors.background,
+    },
 
     title: {
-      fontSize: 18,
-      fontWeight: "600",
+      fontFamily: "PlayfairDisplay-Regular",
+      fontSize: 20,
+      fontWeight: "500",
       color: t.colors.text,
-      lineHeight: 24,
+      lineHeight: 28,
     },
     heartBtn: {
       padding: 4,
     },
     price: {
-      fontSize: 22,
+      fontSize: 24,
       fontWeight: "700",
       color: t.colors.text,
     },
@@ -1647,26 +1904,29 @@ const makeStyles = (t: AppTheme) =>
     badgesRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingTop: 12,
-      paddingBottom: 16,
+      paddingTop: 10,
+      paddingBottom: 6,
       backgroundColor: t.colors.background,
-      borderBottomWidth: SECTION_GAP,
-      borderBottomColor: t.colors.surface,
     },
 
+    sellerCardOuter: {
+      paddingHorizontal: PAGE_PADDING,
+      paddingTop: 12,
+      paddingBottom: 8,
+      backgroundColor: t.colors.background,
+    },
     sellerCard: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: PAGE_PADDING,
-      paddingVertical: 14,
-      backgroundColor: t.colors.cardElevated,
-      borderBottomWidth: SECTION_GAP,
-      borderBottomColor: t.colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: t.colors.surface,
+      borderRadius: 12,
     },
     sellerAvatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       backgroundColor: t.colors.skeleton,
     },
     sellerName: {
@@ -1678,6 +1938,11 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       color: t.colors.textSecondary,
       marginTop: 2,
+    },
+    sellerInlineRate: {
+      fontSize: 12,
+      color: t.colors.textSecondary,
+      marginLeft: 2,
     },
     levelBadge: {
       backgroundColor: t.colors.text,
@@ -1692,14 +1957,63 @@ const makeStyles = (t: AppTheme) =>
     },
     followBtn: {
       backgroundColor: t.colors.text,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingHorizontal: 18,
+      paddingVertical: 7,
       borderRadius: 16,
     },
     followBtnText: {
       color: t.colors.background,
       fontSize: 12,
       fontWeight: "600",
+    },
+
+    /* ---- Tab bar（吸顶用 stickyHeaderIndices） ---- */
+    tabBar: {
+      backgroundColor: t.colors.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.divider,
+      // 吸顶时让 tab bar 与下方滚动内容拉开层次：iOS 阴影 + Android 真阴影
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 4,
+        },
+        android: { elevation: 2 },
+      }),
+    },
+    tabBarInner: {
+      paddingHorizontal: PAGE_PADDING,
+      paddingTop: 12,
+      alignItems: "flex-end",
+      gap: 24,
+    },
+    tabItem: {
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    tabText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: t.colors.textSecondary,
+      fontWeight: "400",
+      paddingVertical: 8,
+    },
+    tabTextActive: {
+      color: t.colors.text,
+      fontWeight: "700",
+    },
+    tabUnderline: {
+      height: 2,
+      width: "70%",
+      borderRadius: 1,
+    },
+    tabUnderlineActive: {
+      backgroundColor: t.colors.text,
+    },
+    tabUnderlineHidden: {
+      backgroundColor: "transparent",
     },
 
     sectionTitle: {
@@ -1761,14 +2075,12 @@ const makeStyles = (t: AppTheme) =>
     showCard: {
       flexDirection: "row",
       alignItems: "center",
-      padding: 12,
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 8,
+      paddingVertical: 4,
     },
     showCover: {
-      width: 72,
-      height: 72,
-      borderRadius: 6,
+      width: 60,
+      height: 80,
+      borderRadius: 4,
       backgroundColor: t.colors.skeleton,
     },
     showBrand: {
@@ -1779,7 +2091,7 @@ const makeStyles = (t: AppTheme) =>
     showSeason: {
       fontSize: 12,
       color: t.colors.textSecondary,
-      marginTop: 2,
+      marginTop: 4,
     },
     showLook: {
       fontSize: 12,
