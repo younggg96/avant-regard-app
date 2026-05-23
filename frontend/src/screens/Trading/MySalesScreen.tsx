@@ -17,7 +17,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -32,8 +32,12 @@ import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type TabKey = "all" | OrderStatus;
 
+type MySalesRouteParams = { initialStatus?: TabKey };
+
 export default function MySalesScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<Record<string, MySalesRouteParams>, string>>();
+  const initialStatus = route.params?.initialStatus;
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -50,7 +54,7 @@ export default function MySalesScreen() {
     [t],
   );
 
-  const [tab, setTab] = useState<TabKey>("all");
+  const [tab, setTab] = useState<TabKey>(initialStatus ?? "all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

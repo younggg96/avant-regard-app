@@ -43,6 +43,7 @@ import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
 import { LevelProgressCard } from "./components/LevelProgressCard";
 import { ArchiveEntryCard } from "./components/ArchiveEntryCard";
+import { ShoppingEntryCard } from "./components/ShoppingEntryCard";
 import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
@@ -523,6 +524,9 @@ const ProfileScreen = () => {
 
         {/* PDF p.11 + p.19 · MY ARCHIVE 入口卡片（仅增加不减少） */}
         <ArchiveEntryCard isOwnProfile />
+
+        {/* 购物 / 卖家两个 hub 入口；从「设置 → 商家中心」抽出来的快捷入口。 */}
+        <ShoppingEntryCard isOwnProfile />
 
         <LevelProgressCard />
 

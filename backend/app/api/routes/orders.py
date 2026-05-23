@@ -307,6 +307,38 @@ async def list_my_orders(
     return success({"items": [o.dict() for o in orders], "total": total, "page": page, "pageSize": pageSize})
 
 
+@orders_router.get("/me/summary")
+async def my_orders_summary(user_id: int = Depends(get_current_user)):
+    """买家「我的购物」首页顶部状态卡片用。
+
+    返回当前用户作为买家在每个 ``OrderStatus`` 下的订单数量，
+    前端用聚合后的 pending_payment / paid / shipped / delivered 等
+    驱动 4 张状态卡片的角标，点击跳到 MyOrders 对应 tab。
+    """
+    counts = order_service.status_summary(buyer_user_id=user_id)
+    total = sum(counts.values())
+    return success({"counts": counts, "total": total})
+
+
+@orders_router.get("/me/sales/summary")
+async def my_sales_summary(user_id: int = Depends(get_current_user)):
+    """卖家中心首页顶部状态卡片用。
+
+    把「个人卖家身份 + 关联买手店身份」两边的订单数量合并返回，
+    避免前端拉两次再相加，与 /me/sales 列表口径保持一致。
+    """
+    user_counts = order_service.status_summary(seller_user_id=user_id)
+    merchant = store_merchant_service.get_merchant_by_user(user_id)
+    merch_counts = (
+        order_service.status_summary(seller_merchant_id=merchant.id)
+        if merchant
+        else {}
+    )
+    counts = {k: user_counts.get(k, 0) + merch_counts.get(k, 0) for k in user_counts}
+    total = sum(counts.values())
+    return success({"counts": counts, "total": total})
+
+
 @orders_router.get("/me/sales")
 async def list_my_sales(
     status: Optional[str] = None,

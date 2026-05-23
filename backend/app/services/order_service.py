@@ -777,6 +777,44 @@ class OrderService:
             return None
         return self._format_order(res.data[0])
 
+    def status_summary(
+        self,
+        *,
+        buyer_user_id: Optional[int] = None,
+        seller_user_id: Optional[int] = None,
+        seller_merchant_id: Optional[int] = None,
+    ) -> Dict[str, int]:
+        """聚合当前用户在各订单状态下的数量。
+
+        买家「我的购物」/ 卖家「卖家中心」首页用来渲染顶部状态卡片
+        （pending_payment / paid / shipped / delivered 等）。
+
+        实现选 status 列做客户端聚合而不是写多次 ``count="exact"`` 查询，
+        因为单个用户的订单总量上限是 PRD 设计里的 几十 ~ 几百 量级，
+        多次 count 查询的网络往返 + 数据库执行成本高于一次拉 status 列再
+        在内存里 group by。
+        """
+        counts: Dict[str, int] = {s.value: 0 for s in OrderStatus}
+        if (
+            buyer_user_id is None
+            and seller_user_id is None
+            and seller_merchant_id is None
+        ):
+            return counts
+        q = self.db.table("orders").select("status")
+        if buyer_user_id is not None:
+            q = q.eq("buyer_user_id", buyer_user_id)
+        if seller_user_id is not None:
+            q = q.eq("seller_user_id", seller_user_id)
+        if seller_merchant_id is not None:
+            q = q.eq("seller_merchant_id", seller_merchant_id)
+        res = execute_with_retry(lambda: q.execute(), label="orders.status_summary")
+        for row in res.data or []:
+            status = (row or {}).get("status")
+            if status in counts:
+                counts[status] += 1
+        return counts
+
     def add_shipment(
         self,
         order_id: int,
