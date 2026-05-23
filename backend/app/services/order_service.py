@@ -14,9 +14,16 @@ import secrets
 from typing import Optional, Tuple, List, Dict, Any
 from datetime import datetime, timedelta
 
+import json
+
 from app.db.supabase import get_supabase_admin, execute_with_retry
 from app.schemas.orders import Order, Offer, StockHold, OrderStatus
-from app.services.payment import get_payment_provider
+from app.services.payment import (
+    get_payment_provider,
+    get_payment_provider_by_name,
+    resolve_provider,
+    list_provider_options,
+)
 
 
 _ORDER_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
@@ -70,6 +77,122 @@ PLUS_COMMISSION_BPS = 600      # 6%
 class OrderService:
     def __init__(self) -> None:
         self.db = get_supabase_admin()
+        self._chat = None  # 懒加载，避免循环依赖
+
+    # ------------------------------------------------------------------
+    # IM 卡片 (order_status) 推送
+    # ------------------------------------------------------------------
+
+    def _get_chat(self):
+        if self._chat is None:
+            from app.services.chat_service import ChatService
+            self._chat = ChatService()
+        return self._chat
+
+    def _product_brief(self, product_id: int) -> dict:
+        try:
+            res = (
+                self.db.table("store_products")
+                .select("id, title, brand, price_cents, images, currency")
+                .eq("id", product_id)
+                .limit(1)
+                .execute()
+            )
+            if not res.data:
+                return {}
+            row = res.data[0]
+            images = row.get("images") or []
+            return {
+                "productId": row["id"],
+                "title": row.get("title"),
+                "brand": row.get("brand"),
+                "priceCents": row.get("price_cents"),
+                "currency": row.get("currency", "CNY"),
+                "coverImage": images[0] if images else None,
+            }
+        except Exception:
+            return {}
+
+    def _send_order_status_card(
+        self,
+        order: Order,
+        *,
+        sender_user_id: int,
+        recipient_user_id: int,
+        note: Optional[str] = None,
+    ) -> None:
+        """开会话 + 推送一张 order_status 富媒体卡片。失败静默。"""
+        if not recipient_user_id or sender_user_id == recipient_user_id:
+            return
+        try:
+            chat = self._get_chat()
+            conv_id = chat.create_conversation(sender_user_id, recipient_user_id)
+            payload: Dict[str, Any] = {
+                "orderId": order.id,
+                "orderNo": order.orderNo,
+                "status": order.status,
+                "paidPriceCents": order.paidPriceCents,
+                "currency": order.currency,
+                "product": self._product_brief(order.productId) or None,
+            }
+            if order.shippingDueAt:
+                payload["shippingDueAt"] = order.shippingDueAt
+            if order.autoConfirmDueAt:
+                payload["autoConfirmDueAt"] = order.autoConfirmDueAt
+            if note:
+                payload["note"] = note
+            chat.send_message(
+                conversation_id=conv_id,
+                sender_id=sender_user_id,
+                content=json.dumps(payload, ensure_ascii=False),
+                message_type="order_status",
+            )
+        except Exception as e:
+            print(f"[orders] send order_status card failed: {e}")
+
+    def _resolve_seller_user_id(self, order_row: dict) -> Optional[int]:
+        """处理买手店卖家 → 取 merchant.user_id。"""
+        if order_row.get("seller_user_id"):
+            return order_row["seller_user_id"]
+        merchant_id = order_row.get("seller_merchant_id")
+        if not merchant_id:
+            return None
+        try:
+            from app.services.store_merchant_service import store_merchant_service
+            merchant = store_merchant_service.get_merchant_by_id(merchant_id)
+            if merchant:
+                return getattr(merchant, "userId", None)
+        except Exception:
+            return None
+        return None
+
+    def _notify_both_parties(
+        self,
+        order: Order,
+        order_row: dict,
+        *,
+        actor_user_id: Optional[int] = None,
+    ) -> None:
+        """订单状态变化时给买家 + 卖家各发一张卡片。
+
+        actor_user_id 决定卡片的 sender_id 倾向：买家自己触发的 paid，
+        把买家作为 sender、卖家作为 recipient；反之亦然。
+        """
+        buyer_id = order.buyerUserId
+        seller_id = self._resolve_seller_user_id(order_row)
+        if not seller_id:
+            return
+
+        if actor_user_id == seller_id:
+            # 卖家发起（如发货） — 发给买家
+            self._send_order_status_card(
+                order, sender_user_id=seller_id, recipient_user_id=buyer_id
+            )
+        else:
+            # 默认买家或系统发起 — 发给卖家
+            self._send_order_status_card(
+                order, sender_user_id=buyer_id, recipient_user_id=seller_id
+            )
 
     # ------------------------------------------------------------------
     # Stock holds
@@ -258,6 +381,7 @@ class OrderService:
         shipping_address: Optional[Dict[str, Any]] = None,
         offer_id: Optional[int] = None,
         override_price_cents: Optional[int] = None,
+        notify_chat: bool = True,
     ) -> Tuple[Order, StockHold]:
         """创建订单 + 库存锁 + 支付意图（pending_payment）。"""
         hold = self.acquire_hold(product_id, buyer_user_id)
@@ -324,7 +448,106 @@ class OrderService:
         ).eq("id", order["id"]).execute()
         # 重新读取 row 以拿到 payment fields
         full = self.db.table("orders").select("*").eq("id", order["id"]).limit(1).execute()
-        return self._format_order(full.data[0] if full.data else order), hold
+        order_obj = self._format_order(full.data[0] if full.data else order)
+
+        if notify_chat:
+            self._notify_both_parties(
+                order_obj,
+                full.data[0] if full.data else order,
+                actor_user_id=buyer_user_id,
+            )
+
+        return order_obj, hold
+
+    def list_payment_options(self, order: Order) -> List[str]:
+        """根据订单币种返回可用 provider 列表（前端展示用）。"""
+        # 默认按 currency 判定区域（CNY → 中国，其它 → US/Stripe）
+        return list_provider_options(currency=order.currency)
+
+    def start_payment(
+        self,
+        *,
+        order_id: int,
+        user_id: int,
+        provider_name: Optional[str] = None,
+    ) -> Order:
+        """用户在 PaymentScreen 选了一个 provider 后调用：
+          - 校验权限 / 订单仍处于 pending_payment
+          - 用对应 provider 重新 create_intent，覆盖 orders.payment_*
+          - 返回更新后的 Order（包含 client_secret、order_string、prepay_id 等）
+        """
+        res = (
+            self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        )
+        if not res.data:
+            raise ValueError("订单不存在")
+        order_row = res.data[0]
+        if order_row["buyer_user_id"] != user_id:
+            raise PermissionError("仅买家可发起支付")
+        if order_row["status"] != "pending_payment":
+            raise ValueError("订单不在待支付状态")
+
+        provider = resolve_provider(
+            preferred=provider_name,
+            currency=order_row.get("currency", "CNY"),
+        )
+        intent = provider.create_intent(
+            order_id=order_row["id"],
+            amount_cents=order_row["paid_price_cents"],
+            currency=order_row.get("currency", "CNY"),
+            metadata={
+                "orderNo": order_row["order_no"],
+                "productId": order_row["product_id"],
+            },
+        )
+
+        meta_payload: Dict[str, Any] = {**(intent.metadata or {})}
+        if intent.client_secret:
+            meta_payload["clientSecret"] = intent.client_secret
+
+        self.db.table("orders").update(
+            {
+                "payment_provider": intent.provider,
+                "payment_intent_id": intent.intent_id,
+                "payment_metadata": meta_payload,
+            }
+        ).eq("id", order_id).execute()
+
+        full = self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        return self._format_order(full.data[0] if full.data else order_row)
+
+    def confirm_payment(self, *, order_id: int, user_id: int) -> Order:
+        """支付完成后客户端 / webhook 调用：调用 provider.confirm，
+        成功则推动状态机到 PAID（含商品 sold / hold 消费 / IM 卡片）。
+
+        生产环境应当：
+          - Stripe webhook：直接读取事件，调用本方法 (admin/系统身份)
+          - 支付宝 / 微信 notify：同上
+          - 前端 SDK 成功回执：可调用本方法做客户端确认，最终仍以 webhook 为准
+        """
+        res = (
+            self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        )
+        if not res.data:
+            raise ValueError("订单不存在")
+        order_row = res.data[0]
+        if order_row["buyer_user_id"] != user_id:
+            raise PermissionError("仅买家可确认支付")
+        if order_row["status"] == "paid":
+            return self._format_order(order_row)
+        if order_row["status"] != "pending_payment":
+            raise ValueError("订单不在待支付状态")
+
+        provider_name = order_row.get("payment_provider") or "mock"
+        intent_id = order_row.get("payment_intent_id") or ""
+        provider = get_payment_provider_by_name(provider_name)
+        result = provider.confirm(intent_id)
+        if result.status != "succeeded":
+            raise ValueError(f"支付未成功：{result.status}")
+
+        return self.transition_status(
+            order_id, OrderStatus.PAID, actor_user_id=user_id
+        )
 
     def transition_status(
         self,
@@ -426,6 +649,20 @@ class OrderService:
                 self._credit_seller(updated)
             except Exception as e:
                 print(f"[orders] settle failed: {e}")
+
+        # 关键状态变更自动推送 order_status 富媒体卡片
+        if target in {
+            OrderStatus.PAID,
+            OrderStatus.SHIPPED,
+            OrderStatus.DELIVERED,
+            OrderStatus.COMPLETED,
+            OrderStatus.REFUNDED,
+            OrderStatus.REFUNDED_AUTO,
+        }:
+            try:
+                self._notify_both_parties(updated, {**order, **update}, actor_user_id=actor_user_id)
+            except Exception as e:
+                print(f"[orders] notify chat after transition failed: {e}")
 
         return updated
 

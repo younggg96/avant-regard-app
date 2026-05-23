@@ -97,6 +97,7 @@ import MyCollectionsScreen from "./src/screens/MyCollectionsScreen";
 import UserCollectionDetailScreen from "./src/screens/UserCollectionDetailScreen";
 // Trading System (PRD Phase 4) Screens
 import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
+import PaymentScreen from "./src/screens/Trading/PaymentScreen";
 import MyOrdersScreen from "./src/screens/Trading/MyOrdersScreen";
 import MySalesScreen from "./src/screens/Trading/MySalesScreen";
 import OrderDetailScreen from "./src/screens/Trading/OrderDetailScreen";
@@ -934,6 +935,11 @@ function AppNavigator({
         <Stack.Screen
           name="Checkout"
           component={CheckoutScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Payment"
+          component={PaymentScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

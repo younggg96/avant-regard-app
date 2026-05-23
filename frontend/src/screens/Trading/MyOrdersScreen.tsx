@@ -39,6 +39,7 @@ export default function MyOrdersScreen() {
   const TABS = useMemo(
     (): { key: TabKey; label: string }[] => [
       { key: "all", label: t("trading.orders.tabAll") },
+      { key: "pending_payment", label: t("trading.orders.tabPendingPayment") },
       { key: "paid", label: t("trading.orders.tabPaid") },
       { key: "shipped", label: t("trading.orders.tabShipped") },
       { key: "delivered", label: t("trading.orders.tabDelivered") },
@@ -127,6 +128,12 @@ export default function MyOrdersScreen() {
               onPress={() =>
                 navigation.navigate("OrderDetail", { orderId: item.id })
               }
+              onPay={
+                item.status === "pending_payment"
+                  ? () =>
+                      navigation.navigate("Payment", { orderId: item.id })
+                  : undefined
+              }
             />
           )}
           refreshControl={
@@ -144,18 +151,25 @@ export default function MyOrdersScreen() {
 function OrderListCard({
   order,
   onPress,
+  onPay,
 }: {
   order: Order;
   onPress: () => void;
+  onPay?: () => void;
 }) {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const pending = order.status === "pending_payment";
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.cardHeader}>
         <Text style={styles.orderNo}>#{order.orderNo}</Text>
-        <Text style={styles.statusText}>{formatOrderStatus(order.status)}</Text>
+        <Text
+          style={[styles.statusText, pending && { color: theme.colors.plusGold }]}
+        >
+          {formatOrderStatus(order.status)}
+        </Text>
       </View>
       <View style={styles.cardBody}>
         <View style={styles.coverPlaceholder}>
@@ -171,6 +185,19 @@ function OrderListCard({
           <Text style={styles.meta}>{order.createdAt?.slice(0, 16)}</Text>
         </View>
       </View>
+      {onPay ? (
+        <View style={styles.cardActions}>
+          <Pressable
+            style={styles.payBtn}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onPay();
+            }}
+          >
+            <Text style={styles.payBtnText}>{t("trading.payment.payNow")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -235,5 +262,21 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 4,
     },
     meta: { fontSize: 11, color: t.colors.gray300 },
+    cardActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginTop: 8,
+    },
+    payBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 4,
+      backgroundColor: t.colors.accent,
+    },
+    payBtnText: {
+      color: t.colors.textInverted,
+      fontWeight: "600",
+      fontSize: 12,
+    },
     empty: { textAlign: "center", color: t.colors.gray300, marginTop: 32 },
   });

@@ -63,6 +63,17 @@ export interface OrderStatusCard {
   orderNo: string;
   status: OrderStatus;
   paidPriceCents: number;
+  currency?: string;
+  shippingDueAt?: string;
+  autoConfirmDueAt?: string;
+  note?: string;
+  product?: {
+    productId: number;
+    title?: string | null;
+    brand?: string | null;
+    priceCents?: number | null;
+    coverImage?: string | null;
+  } | null;
 }
 
 export interface DisputeCard {
@@ -234,18 +245,22 @@ export function OrderStatusCardView({
   data,
   isMine,
   onPress,
+  onPay,
 }: {
   data: OrderStatusCard;
   isMine: boolean;
   onPress: () => void;
+  onPay?: () => void;
 }) {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const pending = data.status === "pending_payment";
   return (
     <TouchableOpacity
       style={[
         styles.card,
         isMine ? styles.cardMine : styles.cardOther,
+        pending && styles.cardPending,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -259,8 +274,44 @@ export function OrderStatusCardView({
         <Text style={styles.headerLabel}>订单 #{data.orderNo}</Text>
         <Text style={styles.statusPill}>{formatOrderStatus(data.status)}</Text>
       </View>
-      <Text style={styles.bigPrice}>{formatPrice(data.paidPriceCents)}</Text>
-      <Text style={styles.muted}>点击查看订单详情</Text>
+      {data.product ? (
+        <View style={styles.productLine}>
+          {data.product.coverImage ? (
+            <Image
+              source={{ uri: data.product.coverImage }}
+              style={styles.miniThumb}
+            />
+          ) : (
+            <View style={[styles.miniThumb, styles.thumbPlaceholder]}>
+              <Ionicons
+                name="image-outline"
+                size={14}
+                color={theme.colors.gray300}
+              />
+            </View>
+          )}
+          <Text style={styles.miniTitle} numberOfLines={1}>
+            {data.product.title ?? `#${data.product.productId}`}
+          </Text>
+        </View>
+      ) : null}
+      <Text style={styles.bigPrice}>
+        {formatPrice(data.paidPriceCents, data.currency)}
+      </Text>
+      {pending && onPay ? (
+        <TouchableOpacity
+          style={styles.payInlineBtn}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onPay();
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.payInlineBtnText}>去支付</Text>
+        </TouchableOpacity>
+      ) : (
+        <Text style={styles.muted}>点击查看订单详情</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -368,4 +419,20 @@ const makeStyles = (t: AppTheme) =>
     },
     miniThumb: { width: 24, height: 24, borderRadius: 4 },
     miniTitle: { flex: 1, fontSize: 12, color: t.colors.gray400 },
+    cardPending: {
+      borderColor: t.colors.plusGold,
+      backgroundColor: t.mode === "dark" ? "#1F1A0A" : "#FFFBEE",
+    },
+    payInlineBtn: {
+      marginTop: 8,
+      paddingVertical: 8,
+      borderRadius: 4,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+    },
+    payInlineBtnText: {
+      color: t.colors.textInverted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
   });

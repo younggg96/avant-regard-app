@@ -223,6 +223,14 @@ export const MessageBubble = ({
               orderId: orderStatusCard.orderId,
             })
           }
+          onPay={
+            orderStatusCard.status === "pending_payment"
+              ? () =>
+                  (navigation.navigate as any)("Payment", {
+                    orderId: orderStatusCard.orderId,
+                  })
+              : undefined
+          }
         />
       );
     }

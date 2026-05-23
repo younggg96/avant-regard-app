@@ -3025,6 +3025,7 @@
     "orders": {
       "headerTitle": "My Orders",
       "tabAll": "All",
+      "tabPendingPayment": "Awaiting payment",
       "tabPaid": "Awaiting shipment",
       "tabShipped": "Shipped",
       "tabDelivered": "Awaiting confirmation",
@@ -3033,6 +3034,36 @@
       "empty": "No orders yet",
       "productLabel": "Item #{{id}}",
       "imagePlaceholder": "Img"
+    },
+    "payment": {
+      "headerTitle": "Choose Payment Method",
+      "amountLabel": "Amount due",
+      "orderNoLabel": "Order # {{no}}",
+      "choosePaymentMethod": "Select a payment method",
+      "noOptions": "No payment method is available for this order. Contact support.",
+      "escrowNotice": "Funds are held in escrow and released to the seller only after delivery is confirmed.",
+      "payNow": "Pay now",
+      "payNowLabel": "Total",
+      "alreadyPaid": "Already paid",
+      "successTitle": "Payment successful",
+      "successMessage": "Your order is placed. The seller has 72h to ship.",
+      "failedTitle": "Payment failed",
+      "failedMessage": "Please retry or pick another method.",
+      "loadFailedTitle": "Failed to load",
+      "orderMissing": "Order not found",
+      "viewOrder": "View order",
+      "providers": {
+        "alipay": "Alipay",
+        "wechat": "WeChat Pay",
+        "stripe": "Card (Stripe)",
+        "mock": "Mock (dev only)"
+      },
+      "providerDesc": {
+        "alipay": "Alipay balance / Huabei",
+        "wechat": "WeChat wallet",
+        "stripe": "Visa / Mastercard / Apple Pay",
+        "mock": "Development only"
+      }
     },
     "sales": {
       "headerTitle": "My Sales",
@@ -3065,6 +3096,7 @@
       "expiresAt": "Expires {{date}}",
       "acceptedTitle": "Accepted",
       "acceptedMessage": "An order has been created for the buyer",
+      "acceptedGoPayMessage": "Seller accepted. Tap to complete payment.",
       "viewOrder": "View order",
       "failedTitle": "Failed",
       "filter": {

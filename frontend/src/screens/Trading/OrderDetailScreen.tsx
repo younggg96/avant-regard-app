@@ -186,6 +186,18 @@ export default function OrderDetailScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        {isBuyer && order.status === "pending_payment" ? (
+          <Pressable
+            style={styles.primaryBtn}
+            onPress={() =>
+              navigation.navigate("Payment", { orderId: order.id })
+            }
+          >
+            <Text style={styles.primaryBtnText}>
+              {t("trading.payment.payNow")}
+            </Text>
+          </Pressable>
+        ) : null}
         {isSeller && order.status === "paid" ? (
           <Pressable
             style={styles.primaryBtn}

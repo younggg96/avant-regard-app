@@ -129,6 +129,44 @@ export async function payOrderMock(orderId: number): Promise<Order> {
   return request<Order>(`/api/orders/${orderId}/pay-mock`, { method: "POST" });
 }
 
+// ---------------- Payment (Stripe / Alipay / WeChat) ----------------
+
+export type PaymentProviderId =
+  | "alipay"
+  | "wechat"
+  | "stripe"
+  | "mock";
+
+export interface PaymentOption {
+  provider: PaymentProviderId;
+  name: string;
+  iconKey: string;
+}
+
+export async function listPaymentOptions(
+  orderId: number,
+): Promise<{ items: PaymentOption[]; currency: string; amountCents: number }> {
+  return request<{ items: PaymentOption[]; currency: string; amountCents: number }>(
+    `/api/orders/${orderId}/payment-options`,
+  );
+}
+
+export async function startPayment(
+  orderId: number,
+  provider?: PaymentProviderId,
+): Promise<Order> {
+  return request<Order>(`/api/orders/${orderId}/pay`, {
+    method: "POST",
+    body: JSON.stringify({ provider: provider ?? null }),
+  });
+}
+
+export async function confirmPayment(orderId: number): Promise<Order> {
+  return request<Order>(`/api/orders/${orderId}/pay/confirm`, {
+    method: "POST",
+  });
+}
+
 export async function shipOrder(
   orderId: number,
   body: { carrier: string; trackingNo: string; images: string[] },

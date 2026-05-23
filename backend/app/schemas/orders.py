@@ -37,6 +37,19 @@ class BuyNowRequest(BaseModel):
     shippingAddress: Optional[Dict[str, Any]] = None
 
 
+class PaymentStartRequest(BaseModel):
+    provider: Optional[str] = Field(
+        None,
+        description="alipay / wechat / stripe / mock；空时按订单 currency 自动选首选",
+    )
+
+
+class PaymentOption(BaseModel):
+    provider: str
+    name: str
+    iconKey: str  # 前端图标 key（i18n 兼容）
+
+
 class OfferCreate(BaseModel):
     productId: int
     priceCents: int = Field(..., gt=0)

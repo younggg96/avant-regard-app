@@ -10,12 +10,26 @@ PRD 模块四 · 支付通道适配层。
 """
 from .base import PaymentProvider, PaymentIntent, PaymentResult
 from .mock import MockPaymentProvider
-from .factory import get_payment_provider
+from .stripe_provider import StripeProvider
+from .alipay_provider import AlipayProvider
+from .wechat_provider import WechatProvider
+from .factory import (
+    get_payment_provider,
+    get_payment_provider_by_name,
+    list_provider_options,
+    resolve_provider,
+)
 
 __all__ = [
     "PaymentProvider",
     "PaymentIntent",
     "PaymentResult",
     "MockPaymentProvider",
+    "StripeProvider",
+    "AlipayProvider",
+    "WechatProvider",
     "get_payment_provider",
+    "get_payment_provider_by_name",
+    "list_provider_options",
+    "resolve_provider",
 ]

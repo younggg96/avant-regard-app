@@ -1,13 +1,10 @@
 /**
- * CheckoutScreen —— PRD 模块四「立即购买」流程。
+ * CheckoutScreen —— PRD 模块四「立即购买」结算页（填地址 + 复核）。
  *
- * 进入路径：详情页 → 立即购买 → 这里。
+ * 进入路径：详情页 → 立即购买 → 这里 → 提交订单 → PaymentScreen 选支付方式。
  * 后端发生：
- *   1. POST /api/orders/buy-now 创建库存锁（30 分钟）+ 订单（pending_payment）+ 支付意图（mock）
- *   2. 我方调 /pay-mock 模拟支付成功 → 状态切到 paid
- *
- * 上线接入真实支付通道时，仅需把 payOrderMock 换成 provider SDK 调用（Stripe / Alipay / WeChat），
- * 其余 UI 不动。
+ *   1. POST /api/orders/buy-now 创建库存锁（30 分钟）+ 订单（pending_payment）+ 默认 payment intent
+ *   2. 自动 navigate.replace("Payment", { orderId }) 让用户选 微信 / 支付宝 / Stripe
  */
 import React, { useState } from "react";
 import {
@@ -23,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { buyNow, payOrderMock } from "../../services/orderService";
+import { buyNow } from "../../services/orderService";
 import { formatPrice } from "../../services/storeProductService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
@@ -46,9 +43,8 @@ export default function CheckoutScreen() {
   const [receiverName, setReceiverName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [step, setStep] = useState<"form" | "paying" | "done">("form");
+  const [step, setStep] = useState<"form" | "submitting">("form");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<number | null>(null);
 
   const submit = async () => {
     if (!receiverName.trim() || !phone.trim() || !address.trim()) {
@@ -56,19 +52,17 @@ export default function CheckoutScreen() {
       return;
     }
     setErrorMsg(null);
-    setStep("paying");
+    setStep("submitting");
     try {
       const { order } = await buyNow(productId, {
         receiverName: receiverName.trim(),
         phone: phone.trim(),
         address: address.trim(),
       });
-      setOrderId(order.id);
-      // mock 通道：立即 confirm 支付
-      await payOrderMock(order.id);
-      setStep("done");
+      // 创建好订单 + payment intent 后跳到 PaymentScreen 选支付方式
+      navigation.replace("Payment", { orderId: order.id });
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "支付失败");
+      setErrorMsg(e?.message ?? "提交订单失败");
       setStep("form");
     }
   };
@@ -140,45 +134,25 @@ export default function CheckoutScreen() {
         </View>
 
         {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
-
-        {step === "done" && orderId ? (
-          <View style={styles.successBox}>
-            <Ionicons
-              name="checkmark-circle"
-              size={56}
-              color={theme.colors.success}
-            />
-            <Text style={styles.successTitle}>支付成功</Text>
-            <Text style={styles.successHint}>卖家需在 72 小时内发货。</Text>
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={() => navigation.replace("OrderDetail", { orderId })}
-            >
-              <Text style={styles.primaryBtnText}>查看订单</Text>
-            </Pressable>
-          </View>
-        ) : null}
       </ScrollView>
 
-      {step !== "done" ? (
-        <View style={styles.footer}>
-          <View>
-            <Text style={styles.footerLabel}>实付</Text>
-            <Text style={styles.footerPrice}>{formatPrice(priceCents)}</Text>
-          </View>
-          <Pressable
-            style={[styles.primaryBtn, step === "paying" && { opacity: 0.5 }]}
-            onPress={submit}
-            disabled={step === "paying"}
-          >
-            {step === "paying" ? (
-              <ActivityIndicator color={theme.colors.textInverted} />
-            ) : (
-              <Text style={styles.primaryBtnText}>提交订单</Text>
-            )}
-          </Pressable>
+      <View style={styles.footer}>
+        <View>
+          <Text style={styles.footerLabel}>实付</Text>
+          <Text style={styles.footerPrice}>{formatPrice(priceCents)}</Text>
         </View>
-      ) : null}
+        <Pressable
+          style={[styles.primaryBtn, step === "submitting" && { opacity: 0.5 }]}
+          onPress={submit}
+          disabled={step === "submitting"}
+        >
+          {step === "submitting" ? (
+            <ActivityIndicator color={theme.colors.textInverted} />
+          ) : (
+            <Text style={styles.primaryBtnText}>提交订单</Text>
+          )}
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }

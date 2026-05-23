@@ -32,6 +32,7 @@ from app.schemas.orders import (
     BuyNowRequest,
     OfferCreate,
     OfferCounter,
+    PaymentStartRequest,
     ShipmentCreate,
     InspectionSubmit,
     OrderStatus,
@@ -75,6 +76,74 @@ async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(updated.dict())
+
+
+# --------------- Payment (Stripe / Alipay / WeChat) ---------------
+
+
+_PROVIDER_DISPLAY = {
+    "alipay": {"name": "支付宝", "iconKey": "alipay"},
+    "wechat": {"name": "微信支付", "iconKey": "wechat"},
+    "stripe": {"name": "Stripe", "iconKey": "stripe"},
+    "mock":   {"name": "Mock (dev)", "iconKey": "mock"},
+}
+
+
+@orders_router.get("/{order_id}/payment-options")
+async def list_payment_options(
+    order_id: int, user_id: int = Depends(get_current_user)
+):
+    """返回当前订单可用的支付方式，PaymentScreen 展示用。"""
+    order = order_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    if order.buyerUserId != user_id:
+        raise HTTPException(status_code=403, detail="无权操作")
+    options = order_service.list_payment_options(order)
+    return success({
+        "items": [
+            {
+                "provider": p,
+                "name": _PROVIDER_DISPLAY.get(p, {}).get("name", p),
+                "iconKey": _PROVIDER_DISPLAY.get(p, {}).get("iconKey", p),
+            }
+            for p in options
+        ],
+        "currency": order.currency,
+        "amountCents": order.paidPriceCents,
+    })
+
+
+@orders_router.post("/{order_id}/pay")
+async def start_payment(
+    order_id: int,
+    body: PaymentStartRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """选择 provider，生成 / 重新生成 payment intent。前端再用返回的
+    paymentMetadata 拉起对应通道 SDK。"""
+    try:
+        order = order_service.start_payment(
+            order_id=order_id, user_id=user_id, provider_name=body.provider
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(order.dict())
+
+
+@orders_router.post("/{order_id}/pay/confirm")
+async def confirm_payment(order_id: int, user_id: int = Depends(get_current_user)):
+    """前端 SDK 收到 success 回执后调用：触发后端走 provider.confirm，
+    成功则将订单推到 paid。生产环境也应让 webhook 调同样的 service 方法。"""
+    try:
+        order = order_service.confirm_payment(order_id=order_id, user_id=user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(order.dict())
 
 
 @orders_router.post("/{order_id}/ship")

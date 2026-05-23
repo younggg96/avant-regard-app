@@ -3025,6 +3025,7 @@
     "orders": {
       "headerTitle": "我的订单",
       "tabAll": "全部",
+      "tabPendingPayment": "待支付",
       "tabPaid": "待发货",
       "tabShipped": "已发货",
       "tabDelivered": "待确认",
@@ -3033,6 +3034,36 @@
       "empty": "暂无订单",
       "productLabel": "单品 #{{id}}",
       "imagePlaceholder": "图"
+    },
+    "payment": {
+      "headerTitle": "选择支付方式",
+      "amountLabel": "应付金额",
+      "orderNoLabel": "订单号 {{no}}",
+      "choosePaymentMethod": "请选择支付方式",
+      "noOptions": "当前订单暂无可用支付方式，请联系客服",
+      "escrowNotice": "支付成功后款项进入平台担保账户，确认收货后再结算给卖家。",
+      "payNow": "去支付",
+      "payNowLabel": "实付",
+      "alreadyPaid": "订单已支付",
+      "successTitle": "支付成功",
+      "successMessage": "已为你下单，请等待卖家发货。",
+      "failedTitle": "支付失败",
+      "failedMessage": "请稍后再试或更换支付方式",
+      "loadFailedTitle": "加载失败",
+      "orderMissing": "订单不存在",
+      "viewOrder": "查看订单",
+      "providers": {
+        "alipay": "支付宝",
+        "wechat": "微信支付",
+        "stripe": "信用卡 / 借记卡（Stripe）",
+        "mock": "Mock（开发联调）"
+      },
+      "providerDesc": {
+        "alipay": "推荐：余额 / 余额宝 / 花呗",
+        "wechat": "推荐：微信钱包",
+        "stripe": "Visa / Mastercard / Apple Pay",
+        "mock": "仅开发环境可用"
+      }
     },
     "sales": {
       "headerTitle": "我的销售",
@@ -3065,6 +3096,7 @@
       "expiresAt": "到期 {{date}}",
       "acceptedTitle": "已接受",
       "acceptedMessage": "已为买家生成订单",
+      "acceptedGoPayMessage": "卖家已接受，现在去完成支付吧",
       "viewOrder": "查看订单",
       "failedTitle": "失败",
       "filter": {

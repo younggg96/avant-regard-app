@@ -107,16 +107,24 @@ export default function MyOffersScreen() {
     try {
       if (action === "accept") {
         const res = await acceptOffer(offerId);
+        // 买家身份 accept 自己被 counter 的 offer → 直接进支付页
+        // 卖家身份 accept 买家 offer → 通知买家去支付
+        const target = mode === "outgoing" ? "Payment" : "OrderDetail";
         Alert.alert(
           t("trading.offers.acceptedTitle"),
-          t("trading.offers.acceptedMessage"),
+          mode === "outgoing"
+            ? t("trading.offers.acceptedGoPayMessage")
+            : t("trading.offers.acceptedMessage"),
           [
             {
-              text: t("trading.offers.viewOrder"),
+              text:
+                mode === "outgoing"
+                  ? t("trading.payment.payNow")
+                  : t("trading.offers.viewOrder"),
               onPress: () =>
-                navigation.navigate("OrderDetail", { orderId: res.order.id }),
+                navigation.navigate(target, { orderId: res.order.id }),
             },
-            { text: t("common.confirm") },
+            { text: t("common.cancel"), style: "cancel" },
           ],
         );
       } else if (action === "reject") {

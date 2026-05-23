@@ -1,30 +1,102 @@
 """
-支付通道工厂：从环境变量 PAYMENT_PROVIDER 选择具体 provider。
+支付通道工厂。
 
-支持的值：
-  - mock   (默认；开发与内测)
-  - stripe / alipay / wechat（未来扩展）
-
-未实现的 provider 暂时回退到 MockPaymentProvider，并打 warning 日志。
+设计：
+  - 默认 provider 由 PAYMENT_PROVIDER 决定（开发用 mock）。
+  - 业务侧可以根据 region/currency 调 `resolve_provider(region/currency/preferred)` 拿到真实通道。
+  - 区域路由：中国（CN / currency=CNY）→ 微信 + 支付宝；其它（默认 US）→ Stripe。
+  - 单例缓存避免重复初始化 SDK。
 """
+from __future__ import annotations
+
 import os
+from typing import Dict, List, Optional
+
 from .base import PaymentProvider
 from .mock import MockPaymentProvider
+from .stripe_provider import StripeProvider
+from .alipay_provider import AlipayProvider
+from .wechat_provider import WechatProvider
 
 
-_provider_singleton: PaymentProvider | None = None
+_PROVIDER_CACHE: Dict[str, PaymentProvider] = {}
+
+
+def _instantiate(name: str) -> PaymentProvider:
+    name = (name or "mock").lower()
+    if name == "stripe":
+        return StripeProvider()
+    if name == "alipay":
+        return AlipayProvider()
+    if name in ("wechat", "wechatpay", "wxpay"):
+        return WechatProvider()
+    if name == "mock":
+        return MockPaymentProvider()
+    print(f"[payment] unknown provider '{name}', falling back to mock")
+    return MockPaymentProvider()
+
+
+def get_payment_provider_by_name(name: str) -> PaymentProvider:
+    """按 provider 名拿一个单例。未知 → mock。"""
+    key = (name or "mock").lower()
+    if key not in _PROVIDER_CACHE:
+        _PROVIDER_CACHE[key] = _instantiate(key)
+    return _PROVIDER_CACHE[key]
 
 
 def get_payment_provider() -> PaymentProvider:
-    global _provider_singleton
-    if _provider_singleton is not None:
-        return _provider_singleton
+    """默认 provider —— 由 PAYMENT_PROVIDER 环境变量决定，未配置则 mock。"""
+    return get_payment_provider_by_name(os.getenv("PAYMENT_PROVIDER") or "mock")
 
-    name = (os.getenv("PAYMENT_PROVIDER") or "mock").lower()
-    if name == "mock":
-        _provider_singleton = MockPaymentProvider()
+
+# ----------------------------------------------------------------- region
+
+
+def list_provider_options(
+    region: Optional[str] = None,
+    currency: Optional[str] = None,
+) -> List[str]:
+    """根据 region/currency 决定向前端展示的支付选项。
+
+    规则：
+      - currency=CNY 或 region=CN → 微信 + 支付宝（其它通道隐藏）
+      - 其它 → Stripe（覆盖 US/EU 等）
+      - 开发环境 PAYMENT_PROVIDER=mock 时额外追加 mock 选项，方便联调
+    """
+    region = (region or "").upper()
+    currency = (currency or "").upper()
+    options: List[str] = []
+
+    if region == "CN" or currency == "CNY":
+        options = ["alipay", "wechat"]
     else:
-        # TODO: 实现 Stripe / Alipay / Wechat provider
-        print(f"[payment] provider '{name}' not implemented yet, falling back to mock")
-        _provider_singleton = MockPaymentProvider()
-    return _provider_singleton
+        options = ["stripe"]
+
+    if (os.getenv("PAYMENT_PROVIDER") or "").lower() == "mock":
+        options = options + ["mock"]
+    elif os.getenv("PAYMENT_ENABLE_MOCK") == "1":
+        options = options + ["mock"]
+
+    # 去重保持顺序
+    seen = set()
+    deduped: List[str] = []
+    for o in options:
+        if o not in seen:
+            seen.add(o)
+            deduped.append(o)
+    return deduped
+
+
+def resolve_provider(
+    *,
+    preferred: Optional[str] = None,
+    region: Optional[str] = None,
+    currency: Optional[str] = None,
+) -> PaymentProvider:
+    """业务调用入口：优先 preferred，再按区域规则。"""
+    options = list_provider_options(region=region, currency=currency)
+    if preferred and preferred.lower() in options:
+        return get_payment_provider_by_name(preferred)
+    if options:
+        return get_payment_provider_by_name(options[0])
+    return get_payment_provider()
