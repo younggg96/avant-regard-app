@@ -182,7 +182,7 @@ const CollectionDetailScreen = () => {
             hitSlop={8}
           >
             <View style={styles.heroIconCircle}>
-              <Ionicons name="arrow-back" size={22} color={theme.colors.white} />
+              <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -191,7 +191,7 @@ const CollectionDetailScreen = () => {
             hitSlop={8}
           >
             <View style={styles.heroIconCircle}>
-              <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+              <Ionicons name="share-outline" size={20} color={theme.colors.text} />
             </View>
           </TouchableOpacity>
         </SafeAreaView>

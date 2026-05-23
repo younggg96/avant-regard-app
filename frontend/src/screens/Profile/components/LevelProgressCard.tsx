@@ -29,12 +29,14 @@ import {
 } from "../../../theme";
 import { useLevelStore } from "../../../store/levelStore";
 import { LevelProgressBar, getLevelTitleKey } from "../../../components/level";
+import { useProfileStyles } from "../styles";
 
 export const LevelProgressCard: React.FC = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const status = useLevelStore((s) => s.status);
+  const profileStyles = useProfileStyles();
   const styles = useThemedStyles(makeStyles);
 
   if (!status) return null;
@@ -68,8 +70,8 @@ export const LevelProgressCard: React.FC = () => {
   const goDetail = () => navigation.navigate("MyLevel");
 
   return (
-    <Box pb={10} style={{ backgroundColor: theme.colors.white }}>
-      <HStack px={16} mb={6} justifyContent="between">
+    <Box style={styles.section}>
+      <HStack style={styles.sectionHeader} justifyContent="between">
         <Text style={styles.sectionTitle}>{t("profile.levelProgress")}</Text>
         {currentLevel > 0 ? (
           <Box style={styles.lvChip}>
@@ -82,39 +84,39 @@ export const LevelProgressCard: React.FC = () => {
       </HStack>
 
       <Pressable
-        mx={16}
-        px="$md"
-        py="$sm"
-        borderWidth={1}
-        style={[
-          styles.cardPressable,
-          { borderColor: theme.colors.border, backgroundColor: theme.colors.white },
-        ]}
+        style={[profileStyles.profileInsetCard, styles.cardPressable]}
         onPress={goDetail}
       >
         <HStack justifyContent="between" alignItems="center">
-          <VStack flex={1} pr={8}>
-            <Text style={styles.cardTitle} numberOfLines={2}>
-              {headlineText}
-            </Text>
-            {benefitText ? (
-              <Text style={styles.cardSubtitle} numberOfLines={2}>
-                {benefitText}
+          <HStack flex={1} alignItems="flex-start" space="xs" style={styles.cardHeadlineRow}>
+            <Ionicons
+              name="trophy-outline"
+              size={13}
+              color={theme.colors.text}
+              style={styles.cardIcon}
+            />
+            <VStack flex={1} style={styles.cardHeadlineCol}>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {headlineText}
               </Text>
-            ) : null}
-          </VStack>
+              {benefitText ? (
+                <Text style={styles.cardSubtitle} numberOfLines={2}>
+                  {benefitText}
+                </Text>
+              ) : null}
+            </VStack>
+          </HStack>
           <Ionicons
             name="chevron-forward"
-            size={16}
+            size={12}
             color={theme.colors.gray300}
-            style={styles.chevron}
           />
         </HStack>
 
         {!topReached && !isPendingAudit && tasks.length > 0 ? (
-          <VStack mt="$sm">
+          <VStack style={styles.tasksBlock}>
             <Text style={styles.howToHint}>{t("level.howToLevelUp")}</Text>
-            <Box>
+            <VStack style={styles.tasksList}>
               {tasks.map((task) => (
                 <LevelProgressBar
                   key={task.action}
@@ -122,7 +124,7 @@ export const LevelProgressCard: React.FC = () => {
                   compact
                 />
               ))}
-            </Box>
+            </VStack>
           </VStack>
         ) : null}
 
@@ -136,28 +138,37 @@ export const LevelProgressCard: React.FC = () => {
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
+    section: {
+      paddingTop: t.spacing.xs,
+      paddingBottom: t.spacing.sm,
+      backgroundColor: t.colors.card,
+    },
+    sectionHeader: {
+      paddingHorizontal: t.spacing.md,
+      marginBottom: t.spacing.xs,
+      alignItems: "center",
+    },
     cardPressable: {
-      borderRadius: t.borderRadius.lg,
       overflow: "hidden",
     },
     sectionTitle: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "600",
       color: t.colors.gray400,
       fontFamily: playfairFonts.medium,
     },
     lvChip: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: t.borderRadius.md,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.text,
     },
     lvChipText: {
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: "600",
       color: t.colors.textInverted,
       fontFamily: playfairFonts.medium,
-      letterSpacing: 0.5,
+      letterSpacing: 0.4,
     },
     card: {
       marginHorizontal: 16,
@@ -174,31 +185,49 @@ const makeStyles = (t: AppTheme) =>
       flex: 1,
       paddingRight: 8,
     },
+    cardHeadlineRow: {
+      paddingRight: t.spacing.xs,
+    },
+    cardIcon: {
+      marginTop: 1,
+    },
+    cardHeadlineCol: {
+      gap: 2,
+    },
     cardTitle: {
       fontFamily: playfairFonts.medium,
-      fontSize: 12,
-      lineHeight: 16,
+      fontSize: 11,
+      lineHeight: 15,
       color: t.colors.text,
       fontWeight: "600",
+      letterSpacing: 0.3,
     },
     cardSubtitle: {
-      ...t.typography.caption,
+      fontSize: 10,
+      lineHeight: 14,
       color: t.colors.gray300,
-      marginTop: 2,
     },
-    chevron: {
-      marginTop: 0,
+    tasksBlock: {
+      marginTop: t.spacing.sm,
+      paddingTop: t.spacing.xs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    tasksList: {
+      gap: 6,
     },
     howToHint: {
-      ...t.typography.caption,
+      fontSize: 10,
+      lineHeight: 14,
       color: t.colors.gray400,
-      marginBottom: 4,
-      letterSpacing: 0.5,
+      marginBottom: t.spacing.xs,
+      letterSpacing: 0.4,
     },
     manualOnly: {
-      ...t.typography.bodySmall,
+      fontSize: 10,
+      lineHeight: 14,
       color: t.colors.gray300,
       fontStyle: "italic",
-      marginTop: 6,
+      marginTop: t.spacing.xs,
     },
   });

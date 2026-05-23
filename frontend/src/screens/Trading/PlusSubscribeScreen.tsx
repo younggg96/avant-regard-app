@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import {
   getPlusStatus,
@@ -46,6 +47,7 @@ export default function PlusSubscribeScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
   const [status, setStatus] = useState<PlusStatus | null>(null);
   const [plan, setPlan] = useState<PlusPlan>("annual");
   const [busy, setBusy] = useState(false);
@@ -95,13 +97,13 @@ export default function PlusSubscribeScreen() {
         <Pressable onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>AVANT REGARD Plus</Text>
+        <Text style={styles.headerTitle}>{t("trading.plus.headerTitle")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>AVANT REGARD Plus</Text>
+          <Text style={styles.heroTitle}>{t("trading.plus.heroTitle")}</Text>
           <Text style={styles.heroSub}>
             为认真对待档案的藏家而设
           </Text>
@@ -112,7 +114,7 @@ export default function PlusSubscribeScreen() {
           ) : null}
         </View>
 
-        <Text style={styles.sectionTitle}>权益</Text>
+        <Text style={styles.sectionTitle}>{t("trading.plus.benefits")}</Text>
         {BENEFITS.map((b) => (
           <View key={b.title} style={styles.benefitRow}>
             <Ionicons name={b.icon} size={22} color={theme.colors.text} />
@@ -125,7 +127,7 @@ export default function PlusSubscribeScreen() {
 
         {!status?.isActive ? (
           <>
-            <Text style={styles.sectionTitle}>选择套餐</Text>
+            <Text style={styles.sectionTitle}>{t("trading.plus.selectPlan")}</Text>
             <View style={styles.planRow}>
               <Pressable
                 style={[
@@ -134,7 +136,7 @@ export default function PlusSubscribeScreen() {
                 ]}
                 onPress={() => setPlan("monthly")}
               >
-                <Text style={styles.planName}>月度</Text>
+                <Text style={styles.planName}>{t("trading.plus.planMonthly")}</Text>
                 <Text style={styles.planPrice}>{formatPrice(2900)}</Text>
                 <Text style={styles.planMeta}>¥29 / 月</Text>
               </Pressable>
@@ -145,8 +147,8 @@ export default function PlusSubscribeScreen() {
                 ]}
                 onPress={() => setPlan("annual")}
               >
-                <Text style={styles.planTag}>推荐</Text>
-                <Text style={styles.planName}>年度</Text>
+                <Text style={styles.planTag}>{t("trading.plus.recommended")}</Text>
+                <Text style={styles.planName}>{t("trading.plus.planYearly")}</Text>
                 <Text style={styles.planPrice}>{formatPrice(29800)}</Text>
                 <Text style={styles.planMeta}>¥24.8 / 月</Text>
               </Pressable>
@@ -162,7 +164,9 @@ export default function PlusSubscribeScreen() {
             onPress={cancel}
             disabled={busy}
           >
-            <Text style={styles.ghostBtnText}>取消自动续费</Text>
+            <Text style={styles.ghostBtnText}>
+              {t("trading.plus.cancelAutoRenew")}
+            </Text>
           </Pressable>
         ) : (
           <Pressable

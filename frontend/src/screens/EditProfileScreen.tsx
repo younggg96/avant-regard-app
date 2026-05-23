@@ -552,16 +552,21 @@ const EditProfileScreen = () => {
               onPress={handlePickImage}
               disabled={uploadingAvatar}
             >
-              <OptimizedImage
-                uri={
-                  avatar ||
-                  "https://api.dicebear.com/7.x/avataaars/png?seed=default"
-                }
-                size={ImageSize.THUMBNAIL}
-                style={styles.avatar}
-                contentFit="cover"
-                lazy={false}
-              />
+              {avatar ? (
+                <OptimizedImage
+                  uri={avatar}
+                  size={ImageSize.THUMBNAIL}
+                  style={styles.avatar}
+                  contentFit="cover"
+                  lazy={false}
+                />
+              ) : (
+                <View style={[styles.avatar, styles.avatarEmpty]}>
+                  <Text style={styles.avatarEmptyText}>
+                    {username?.slice(0, 2).toUpperCase() || "AG"}
+                  </Text>
+                </View>
+              )}
               {uploadingAvatar ? (
                 <View style={styles.avatarLoadingOverlay}>
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1077,6 +1082,16 @@ const makeStyles = (t: AppTheme) =>
     height: 100,
     borderRadius: 50,
     backgroundColor: t.colors.skeleton,
+  },
+  avatarEmpty: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: t.colors.gray100,
+  },
+  avatarEmptyText: {
+    fontSize: 28,
+    fontWeight: "600",
+    color: t.colors.gray400,
   },
   avatarEditIcon: {
     position: "absolute",

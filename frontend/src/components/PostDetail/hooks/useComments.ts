@@ -6,6 +6,7 @@ import { commentService } from "../../../services/commentService";
 import { userInfoService } from "../../../services/userInfoService";
 import { Alert } from "../../../utils/Alert";
 import { CommentInputBarRef } from "../CommentInputBar";
+import { resolveAvatarUrlOrEmpty } from "../../../utils/avatarUtils";
 
 interface UseCommentsOptions {
   postId: string | undefined;
@@ -107,10 +108,10 @@ export const useComments = ({
               parentId: String(apiReply.parentId),
               userId: apiReply.userId,
               userName: replyUserInfo?.username || apiReply.username || t("comments.user"),
-              userAvatar:
-                replyUserInfo?.avatarUrl ||
-                apiReply.userAvatar ||
-                `https://api.dicebear.com/7.x/avataaars/png?seed=${apiReply.userId}`,
+              userAvatar: resolveAvatarUrlOrEmpty(
+                replyUserInfo?.avatarUrl,
+                apiReply.userAvatar,
+              ),
               userTitle: replyUserInfo?.primaryTitle || undefined,
               replyToUserId: apiReply.replyToUserId,
               replyToUsername: apiReply.replyToUsername,
@@ -126,10 +127,10 @@ export const useComments = ({
           id: String(apiComment.id),
           userId: apiComment.userId,
           userName: userInfo?.username || apiComment.username || t("comments.user"),
-          userAvatar:
-            userInfo?.avatarUrl ||
-            apiComment.userAvatar ||
-            `https://api.dicebear.com/7.x/avataaars/png?seed=${apiComment.userId}`,
+          userAvatar: resolveAvatarUrlOrEmpty(
+            userInfo?.avatarUrl,
+            apiComment.userAvatar,
+          ),
           userTitle: userInfo?.primaryTitle || undefined,
           content: apiComment.content,
           timestamp: formatTimestamp(apiComment.createdAt),
@@ -430,12 +431,10 @@ export const useComments = ({
         commentParams
       );
 
-      let userAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`;
+      let userAvatar = "";
       try {
         const userInfo = await userInfoService.getUserInfo(userId);
-        if (userInfo?.avatarUrl) {
-          userAvatar = userInfo.avatarUrl;
-        }
+        userAvatar = resolveAvatarUrlOrEmpty(userInfo?.avatarUrl);
       } catch {
         // 忽略获取用户信息失败
       }

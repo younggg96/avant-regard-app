@@ -43,6 +43,7 @@ import {
   initialProductListState,
 } from "../types";
 import { Alert } from "../../../utils/Alert";
+import { resolveAvatarUrlOrEmpty } from "../../../utils/avatarUtils";
 
 function convertToDisplayPost(
   apiPost: ApiPost,
@@ -57,7 +58,7 @@ function convertToDisplayPost(
     author: {
       id: String(apiPost.userId),
       name: authorInfo.name,
-      avatar: authorInfo.avatar,
+      avatar: resolveAvatarUrlOrEmpty(authorInfo.avatar),
     },
     content: {
       title: apiPost.title || i18n.t("community.noTitle"),
@@ -333,10 +334,10 @@ export function useProfileData() {
 
       try {
         const authorName = userInfo?.username || user?.username || i18n.t("profile.user");
-        const authorAvatar =
-          userInfo?.avatarUrl ||
-          user?.avatar ||
-          `https://api.dicebear.com/7.x/avataaars/png?seed=${user.userId}`;
+        const authorAvatar = resolveAvatarUrlOrEmpty(
+          userInfo?.avatarUrl,
+          user?.avatar,
+        );
 
         let newPosts: DisplayPost[] = [];
 
@@ -374,7 +375,7 @@ export function useProfileData() {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || i18n.t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         } else if (targetTab === "liked") {
@@ -382,7 +383,7 @@ export function useProfileData() {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || i18n.t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         } else if (targetTab === "draft") {
@@ -400,7 +401,7 @@ export function useProfileData() {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || i18n.t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         }

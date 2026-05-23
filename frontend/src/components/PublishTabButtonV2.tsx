@@ -18,6 +18,19 @@ import { useMainBottomTabStore } from "../store/mainBottomTabStore";
 import { useAuthStore } from "../store/authStore";
 import { usePublishListingStore } from "../store/publishListingStore";
 
+/** 从底部 Tab 的「+」按钮跳到根 Stack 上的发布相关页面 */
+function navigateFromPublishButton(
+  navigation: ReturnType<typeof useNavigation>,
+  screen: string,
+  params?: Record<string, unknown>,
+) {
+  const rootNav = navigation.getParent?.() ?? navigation;
+  (rootNav as { navigate: (name: string, p?: Record<string, unknown>) => void }).navigate(
+    screen,
+    params,
+  );
+}
+
 /**
  * 发布按钮 V2
  * ------------------------------------------------------------------
@@ -27,7 +40,8 @@ import { usePublishListingStore } from "../store/publishListingStore";
  *       · Archive Tab → `SubmitBrand`（上传品牌全屏，对齐 Archive 业务）
  *       · Discover·论坛 → `PublishV2ForumMode`
  *       · Discover·买手店 → `SubmitStore`
- *       · 其它 → `PublishV2Composer`
+ *       · Discover·推荐 / 关注 → `PublishV2Composer`（直接写笔记 / Lookbook）
+ *       · Discover·交易 → 双选 Sheet（发布单品 / 从以往帖子转入）
  *
  * V2 完全独立于 V1 流程，原 `PublishTypeScreen` 等屏仍然保留并可被
  * 别的入口（例如 PostCard 编辑、AI 预览页）继续 navigate 进去。
@@ -38,14 +52,9 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const [sheetVisible, setSheetVisible] = useState(false);
-  // 「交易」Tab 下打开的是双选 Sheet（发布单品 / 从以往帖子转入），
-  // 其它 Tab 仍走 4 选 Sheet。用一个本地状态记录打开瞬间的模式，
-  // 避免用户在 Sheet 展开期间又切 Tab 导致选项闪烁。
-  const [sheetMode, setSheetMode] = useState<"full" | "tradingOnly">("full");
+  const discoverActiveTab = useDiscoverTabStore((s) => s.activeTab);
 
-  // 中央「+」按钮触发：买手店 Tab 是上传新店；Archive Tab 是上传品牌；
-  // 交易 Tab 弹「发布单品 / 从以往帖子转入」双选；
-  // 其它情形（论坛 / 推荐 / 关注）弹 PRD 1.1 完整四选 Action Sheet。
+  // 中央「+」按钮：按当前 Discover 子 Tab 分流到对应发布流程。
   const handlePress = () => {
     const mainTab = useMainBottomTabStore.getState().activeMainTab;
     if (mainTab === "Archive") {
@@ -54,19 +63,44 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
         Alert.alert(t("common.hint"), t("archive.loginToSubmitBrand"));
         return;
       }
-      // @ts-expect-error - navigation types
-      navigation.navigate("SubmitBrand");
+      navigateFromPublishButton(navigation, "SubmitBrand");
       return;
     }
 
-    const { activeTab } = useDiscoverTabStore.getState();
+    const activeTab = discoverActiveTab;
     if (activeTab === "buyer") {
-      // @ts-expect-error - navigation types
-      navigation.navigate("SubmitStore");
+      navigateFromPublishButton(navigation, "SubmitStore");
       return;
     }
-    setSheetMode(activeTab === "trading" ? "tradingOnly" : "full");
-    setSheetVisible(true);
+    if (activeTab === "forum") {
+      const { user } = useAuthStore.getState();
+      if (!user?.userId) {
+        Alert.alert(t("common.hint"), t("publish.loginRequired"));
+        return;
+      }
+      navigateFromPublishButton(navigation, "PublishV2ForumMode");
+      return;
+    }
+    if (activeTab === "recommend" || activeTab === "following") {
+      const { user } = useAuthStore.getState();
+      if (!user?.userId) {
+        Alert.alert(t("common.hint"), t("publish.loginRequired"));
+        return;
+      }
+      navigateFromPublishButton(navigation, "PublishV2Composer");
+      return;
+    }
+    if (activeTab === "trading") {
+      setSheetVisible(true);
+      return;
+    }
+    // 兜底：未知子 Tab 仍走写笔记 Composer
+    const { user } = useAuthStore.getState();
+    if (!user?.userId) {
+      Alert.alert(t("common.hint"), t("publish.loginRequired"));
+      return;
+    }
+    navigateFromPublishButton(navigation, "PublishV2Composer");
   };
 
   const handleSelectListing = () => {
@@ -78,8 +112,7 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
     }
     // 重置 Wizard 状态后跳到 Step 1
     usePublishListingStore.getState().reset({ sellerKind: "individual" });
-    // @ts-expect-error - navigation types
-    navigation.navigate("PublishListingStep1");
+    navigateFromPublishButton(navigation, "PublishListingStep1");
   };
 
   // PDF p.13 设计要点：从以往帖子转入 —— 让卖家把已有论坛帖 / Lookbook 一键转单品
@@ -90,25 +123,7 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
       Alert.alert(t("common.hint"), t("trading.publishSheet.loginRequired"));
       return;
     }
-    // @ts-expect-error - navigation types
-    navigation.navigate("PublishFromPostPicker");
-  };
-
-  const handleSelectPost = () => {
-    setSheetVisible(false);
-    // @ts-expect-error - navigation types
-    navigation.navigate("PublishV2Composer");
-  };
-
-  const handleSelectShow = () => {
-    setSheetVisible(false);
-    const { user } = useAuthStore.getState();
-    if (!user?.userId) {
-      Alert.alert(t("common.hint"), t("archive.loginToSubmitBrand"));
-      return;
-    }
-    // @ts-expect-error - navigation types
-    navigation.navigate("SubmitBrand");
+    navigateFromPublishButton(navigation, "PublishFromPostPicker");
   };
 
   return (
@@ -135,49 +150,18 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
         >
           <Pressable style={styles.sheetContainer} onPress={() => {}}>
             <View style={styles.sheetHandle} />
-            {sheetMode === "tradingOnly" ? (
-              <>
-                <SheetItem
-                  icon="pricetag-outline"
-                  title={t("trading.publishSheetTrading.listingTitle")}
-                  subtitle={t("trading.publishSheetTrading.listingSubtitle")}
-                  onPress={handleSelectListing}
-                />
-                <SheetItem
-                  icon="copy-outline"
-                  title={t("trading.publishSheetTrading.repostTitle")}
-                  subtitle={t("trading.publishSheetTrading.repostSubtitle")}
-                  onPress={handleSelectRepost}
-                />
-              </>
-            ) : (
-              <>
-                <SheetItem
-                  icon="pricetag-outline"
-                  title={t("trading.publishSheet.listingTitle")}
-                  subtitle={t("trading.publishSheet.listingSubtitle")}
-                  onPress={handleSelectListing}
-                />
-                <SheetItem
-                  icon="copy-outline"
-                  title={t("trading.publishSheet.repostTitle")}
-                  subtitle={t("trading.publishSheet.repostSubtitle")}
-                  onPress={handleSelectRepost}
-                />
-                <SheetItem
-                  icon="create-outline"
-                  title={t("trading.publishSheet.noteTitle")}
-                  subtitle={t("trading.publishSheet.noteSubtitle")}
-                  onPress={handleSelectPost}
-                />
-                <SheetItem
-                  icon="albums-outline"
-                  title={t("trading.publishSheet.showTitle")}
-                  subtitle={t("trading.publishSheet.showSubtitle")}
-                  onPress={handleSelectShow}
-                />
-              </>
-            )}
+            <SheetItem
+              icon="pricetag-outline"
+              title={t("trading.publishSheetTrading.listingTitle")}
+              subtitle={t("trading.publishSheetTrading.listingSubtitle")}
+              onPress={handleSelectListing}
+            />
+            <SheetItem
+              icon="copy-outline"
+              title={t("trading.publishSheetTrading.repostTitle")}
+              subtitle={t("trading.publishSheetTrading.repostSubtitle")}
+              onPress={handleSelectRepost}
+            />
             <Pressable
               style={styles.sheetCancel}
               onPress={() => setSheetVisible(false)}

@@ -6,6 +6,7 @@ import { showService, Show } from "../../../services/showService";
 import { brandService, Brand } from "../../../services/brandService";
 import { userInfoService } from "../../../services/userInfoService";
 import { PostDetailRouteParams, PostStatus } from "../types";
+import { resolveAvatarUrlOrEmpty } from "../../../utils/avatarUtils";
 
 /**
  * 将 API 返回的 Post 转换为 UI 使用的 Post 格式
@@ -51,10 +52,10 @@ export const convertApiPostToUiPost = async (
     author: {
       id: String(apiPost.userId),
       name: userInfo?.username || apiPost.username || "User",
-      avatar:
-        userInfo?.avatarUrl ||
-        apiPost.avatarUrl ||
-        `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+      avatar: resolveAvatarUrlOrEmpty(
+        userInfo?.avatarUrl,
+        apiPost.avatarUrl,
+      ),
       title: userInfo?.primaryTitle,
     },
     content: {

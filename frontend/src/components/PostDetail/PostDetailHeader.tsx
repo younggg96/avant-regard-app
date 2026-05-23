@@ -3,9 +3,7 @@ import { View, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-nat
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Text } from "../ui";
-import { OptimizedImage } from "../ui/OptimizedImage";
-import { ImageSize } from "../../utils/imageUtils";
+import { Text, UserAvatar } from "../ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../theme";
 import { Post } from "../PostCard";
 import { PostStatus, formatTimestamp } from "./types";
@@ -146,17 +144,16 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
     <View style={h.container}>
       {/* Back button */}
       <TouchableOpacity onPress={onGoBack} style={h.backBtn} activeOpacity={0.6}>
-        <Ionicons name="arrow-back" size={22} color={theme.colors.black} />
+        <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
       </TouchableOpacity>
 
       {/* Avatar */}
       <TouchableOpacity onPress={onAuthorPress} activeOpacity={0.7}>
-        <OptimizedImage
-          uri={post.author.avatar}
-          size={ImageSize.THUMBNAIL}
+        <UserAvatar
+          uri={post.author.avatar || undefined}
+          name={post.author.name}
+          size={30}
           style={h.avatar}
-          contentFit="cover"
-          lazy={true}
         />
       </TouchableOpacity>
 

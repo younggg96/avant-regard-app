@@ -20,6 +20,7 @@ import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { Alert } from "../utils/Alert";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 
 interface FavoriteItem {
   id: string;
@@ -52,7 +53,7 @@ const FavoritesScreen = () => {
       author: {
         id: String(apiPost.userId),
         name: apiPost.username || t("profile.user"),
-        avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+        avatar: resolveAvatarUrlOrEmpty(apiPost.avatarUrl),
       },
       content: {
         title: apiPost.title || t("chat.noTitle"),

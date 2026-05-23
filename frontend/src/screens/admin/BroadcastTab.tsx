@@ -2,30 +2,68 @@ import React, { useMemo, useState } from "react";
 import {
   StyleSheet,
   Alert,
-  ActivityIndicator,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, BroadcastNotificationResult } from "../../services/adminService";
-import { Box, HStack, VStack, Text, Input, Pressable, ScrollView } from "../../components/ui";
+import { useSharedStyles } from "./adminStyles";
+import {
+  Box,
+  HStack,
+  Text,
+  Input,
+  Pressable,
+  ScrollView,
+  Button,
+  ButtonText,
+} from "../../components/ui";
 
 const BroadcastTab = () => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [title, setTitle] = useState("");
 
-  const PAGE_OPTIONS = useMemo(() => [
-    { value: "", label: t("admin.broadcastSelectPage") },
-    { value: "PostDetail", label: t("admin.broadcastPostDetail"), paramLabel: "postId (postId)" },
-    { value: "UserProfile", label: t("admin.broadcastUserProfile"), paramLabel: "userId (userId)" },
-    { value: "BrandDetail", label: t("admin.broadcastBrandDetail"), paramLabel: "brandId (brandId)" },
-    { value: "CollectionDetail", label: t("admin.broadcastShowDetail"), paramLabel: "id (id)" },
-    { value: "CommunityDetail", label: t("admin.broadcastCommunityDetail"), paramLabel: "communityId (communityId)" },
-    { value: "StoreDetail", label: t("admin.broadcastStoreDetail"), paramLabel: "storeId (storeId)" },
-    { value: "Discover", label: t("admin.broadcastDiscover"), paramLabel: "" },
-    { value: "Profile", label: t("admin.broadcastProfile"), paramLabel: "" },
-  ], [t]);
+  const PAGE_OPTIONS = useMemo(
+    () => [
+      { value: "", label: t("admin.broadcastSelectPage") },
+      {
+        value: "PostDetail",
+        label: t("admin.broadcastPostDetail"),
+        paramLabel: "postId (postId)",
+      },
+      {
+        value: "UserProfile",
+        label: t("admin.broadcastUserProfile"),
+        paramLabel: "userId (userId)",
+      },
+      {
+        value: "BrandDetail",
+        label: t("admin.broadcastBrandDetail"),
+        paramLabel: "brandId (brandId)",
+      },
+      {
+        value: "CollectionDetail",
+        label: t("admin.broadcastShowDetail"),
+        paramLabel: "id (id)",
+      },
+      {
+        value: "CommunityDetail",
+        label: t("admin.broadcastCommunityDetail"),
+        paramLabel: "communityId (communityId)",
+      },
+      {
+        value: "StoreDetail",
+        label: t("admin.broadcastStoreDetail"),
+        paramLabel: "storeId (storeId)",
+      },
+      { value: "Discover", label: t("admin.broadcastDiscover"), paramLabel: "" },
+      { value: "Profile", label: t("admin.broadcastProfile"), paramLabel: "" },
+    ],
+    [t],
+  );
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<BroadcastNotificationResult | null>(null);
@@ -43,7 +81,8 @@ const BroadcastTab = () => {
       if (navigateParam.trim()) {
         const selectedPage = PAGE_OPTIONS.find((p) => p.value === navigateTo);
         if (selectedPage && selectedPage.paramLabel) {
-          const paramKey = selectedPage.paramLabel.match(/\((\w+)\)/)?.[1] || "id";
+          const paramKey =
+            selectedPage.paramLabel.match(/\((\w+)\)/)?.[1] || "id";
           actionData.navigateParams = { [paramKey]: navigateParam.trim() };
         }
       }
@@ -54,7 +93,8 @@ const BroadcastTab = () => {
   const getLinkDescription = () => {
     if (linkType === "URL" && externalUrl.trim()) {
       return `${t("admin.broadcastExternalLink")}: ${externalUrl}`;
-    } else if (linkType === "PAGE" && navigateTo) {
+    }
+    if (linkType === "PAGE" && navigateTo) {
       const selectedPage = PAGE_OPTIONS.find((p) => p.value === navigateTo);
       const pageName = selectedPage?.label || navigateTo;
       return navigateParam.trim() ? `${pageName} (${navigateParam})` : pageName;
@@ -81,489 +121,511 @@ const BroadcastTab = () => {
     }
 
     const linkDesc = getLinkDescription();
-    Alert.alert(t("admin.broadcastConfirmSend"), `${title}\n${message}\n${linkDesc}`, [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("admin.broadcastConfirmSendBtn"),
-        onPress: async () => {
-          try {
-            setLoading(true);
-            setResult(null);
-            const actionData = buildActionData();
-            const res = await adminService.broadcastNotification({
-              title: title.trim(),
-              message: message.trim(),
-              actionData,
-            });
-            setResult(res);
-            Alert.alert(
-              t("admin.broadcastSendDone"),
-              `${t("common.success")}：${res.successCount}\n${t("common.failed")}：${res.failCount}\n${t("admin.broadcastTotalUsers")}：${res.totalUsers}`,
-              [{
-                text: t("common.confirm"),
-                onPress: () => {
-                  setTitle("");
-                  setMessage("");
-                  setLinkType("NONE");
-                  setNavigateTo("");
-                  setNavigateParam("");
-                  setExternalUrl("");
-                },
-              }]
-            );
-          } catch (error) {
-            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.broadcastSendFailed"));
-          } finally {
-            setLoading(false);
-          }
+    Alert.alert(
+      t("admin.broadcastConfirmSend"),
+      `${title}\n${message}\n${linkDesc}`,
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("admin.broadcastConfirmSendBtn"),
+          onPress: async () => {
+            try {
+              setLoading(true);
+              setResult(null);
+              const actionData = buildActionData();
+              const res = await adminService.broadcastNotification({
+                title: title.trim(),
+                message: message.trim(),
+                actionData,
+              });
+              setResult(res);
+              Alert.alert(
+                t("admin.broadcastSendDone"),
+                `${t("common.success")}：${res.successCount}\n${t("common.failed")}：${res.failCount}\n${t("admin.broadcastTotalUsers")}：${res.totalUsers}`,
+                [
+                  {
+                    text: t("common.confirm"),
+                    onPress: () => {
+                      setTitle("");
+                      setMessage("");
+                      setLinkType("NONE");
+                      setNavigateTo("");
+                      setNavigateParam("");
+                      setExternalUrl("");
+                    },
+                  },
+                ],
+              );
+            } catch (error) {
+              Alert.alert(
+                t("admin.error"),
+                error instanceof Error
+                  ? error.message
+                  : t("admin.broadcastSendFailed"),
+              );
+            } finally {
+              setLoading(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
+  const canSend = title.trim().length > 0 && message.trim().length > 0 && !loading;
+
   return (
-    <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-      <Box style={styles.broadcastContainer}>
-        <VStack style={styles.broadcastHeader}>
-          <Ionicons name="megaphone" size={32} color={theme.colors.black} />
-          <Text style={styles.broadcastHeaderTitle}>{t("admin.broadcastTitle")}</Text>
-          <Text style={styles.broadcastHeaderSubtitle}>{t("admin.broadcastSubtitle")}</Text>
-        </VStack>
+    <ScrollView
+      style={sharedStyles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Box style={styles.formCard}>
+        <HStack style={styles.headerRow}>
+          <Box style={styles.headerIconWrap}>
+            <Ionicons name="megaphone-outline" size={20} color={theme.colors.text} />
+          </Box>
+          <Text style={styles.headerTitle}>{t("admin.broadcastTitle")}</Text>
+        </HStack>
+        <Text style={styles.introHint}>{t("admin.broadcastSubtitle")}</Text>
 
-        <VStack style={styles.broadcastForm}>
-          <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>{t("admin.broadcastTitleLabel")}</Text>
-            <Input
-              style={styles.broadcastInput}
-              placeholder={t("admin.broadcastTitlePlaceholder")}
-              placeholderTextColor={theme.colors.gray300}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-              variant="outline"
-              size="md"
-            />
-            <Text style={styles.broadcastCharCount}>{title.length}/100</Text>
-          </VStack>
+        <Text style={styles.fieldLabel}>{t("admin.broadcastTitleLabel")}</Text>
+        <Input
+          placeholder={t("admin.broadcastTitlePlaceholder")}
+          placeholderTextColor={theme.colors.gray300}
+          value={title}
+          onChangeText={setTitle}
+          maxLength={100}
+          variant="outline"
+          size="sm"
+        />
+        <Text style={styles.charCount}>{title.length}/100</Text>
 
-          <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>{t("admin.broadcastContentLabel")}</Text>
-            <Input
-              style={[styles.broadcastInput, styles.broadcastTextarea]}
-              placeholder={t("admin.broadcastContentPlaceholder")}
-              placeholderTextColor={theme.colors.gray300}
-              value={message}
-              onChangeText={setMessage}
-              maxLength={500}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              variant="outline"
-              size="md"
-            />
-            <Text style={styles.broadcastCharCount}>{message.length}/500</Text>
-          </VStack>
+        <Text style={styles.fieldLabel}>{t("admin.broadcastContentLabel")}</Text>
+        <Input
+          style={styles.textarea}
+          placeholder={t("admin.broadcastContentPlaceholder")}
+          placeholderTextColor={theme.colors.gray300}
+          value={message}
+          onChangeText={setMessage}
+          maxLength={500}
+          multiline
+          numberOfLines={5}
+          textAlignVertical="top"
+          variant="outline"
+          size="sm"
+        />
+        <Text style={styles.charCount}>{message.length}/500</Text>
 
-          <VStack style={styles.broadcastInputGroup}>
-            <Text style={styles.broadcastLabel}>{t("admin.broadcastLinkLabel")}</Text>
-            <HStack style={styles.broadcastLinkTypeRow}>
-              {(["NONE", "PAGE", "URL"] as const).map((type) => {
-                const iconMap = { NONE: "close-circle-outline", PAGE: "phone-portrait-outline", URL: "link-outline" } as const;
-                const labelMap = { NONE: t("admin.broadcastNoLink"), PAGE: t("admin.broadcastInAppPage"), URL: t("admin.broadcastExternalLink") };
-                return (
-                  <Pressable
-                    key={type}
-                    style={[styles.broadcastLinkTypeBtn, linkType === type && styles.broadcastLinkTypeBtnActive]}
-                    onPress={() => setLinkType(type)}
+        <Text style={styles.fieldLabel}>{t("admin.broadcastLinkLabel")}</Text>
+        <HStack style={styles.linkTypeRow}>
+          {(["NONE", "PAGE", "URL"] as const).map((type) => {
+            const iconMap = {
+              NONE: "close-circle-outline",
+              PAGE: "phone-portrait-outline",
+              URL: "link-outline",
+            } as const;
+            const labelMap = {
+              NONE: t("admin.broadcastNoLink"),
+              PAGE: t("admin.broadcastInAppPage"),
+              URL: t("admin.broadcastExternalLink"),
+            };
+            const active = linkType === type;
+            return (
+              <Pressable
+                key={type}
+                style={[
+                  styles.linkTypeBtn,
+                  active && styles.linkTypeBtnActive,
+                ]}
+                onPress={() => setLinkType(type)}
+              >
+                <Ionicons
+                  name={iconMap[type]}
+                  size={14}
+                  color={active ? theme.colors.textInverted : theme.colors.gray400}
+                />
+                <Text
+                  style={[
+                    styles.linkTypeBtnText,
+                    active && styles.linkTypeBtnTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {labelMap[type]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </HStack>
+
+        {linkType === "PAGE" && (
+          <Box style={styles.linkSection}>
+            <Text style={styles.linkSubLabel}>{t("admin.broadcastSelectPageLabel")}</Text>
+            <Box style={sharedStyles.linkTypeContainer}>
+              {PAGE_OPTIONS.filter((p) => p.value).map((page) => (
+                <Pressable
+                  key={page.value}
+                  style={[
+                    sharedStyles.linkTypeButton,
+                    navigateTo === page.value && sharedStyles.linkTypeButtonActive,
+                  ]}
+                  onPress={() => {
+                    setNavigateTo(page.value);
+                    setNavigateParam("");
+                  }}
+                >
+                  <Text
+                    style={[
+                      sharedStyles.linkTypeButtonText,
+                      navigateTo === page.value &&
+                        sharedStyles.linkTypeButtonTextActive,
+                    ]}
                   >
-                    <Ionicons name={iconMap[type]} size={18} color={linkType === type ? theme.colors.white : theme.colors.black} />
-                    <Text style={[styles.broadcastLinkTypeBtnText, linkType === type && styles.broadcastLinkTypeBtnTextActive]}>
-                      {labelMap[type]}
+                    {page.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </Box>
+
+            {navigateTo ? (
+              <Box style={{ marginTop: theme.spacing.sm }}>
+                {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel ? (
+                  <>
+                    <Text style={styles.linkSubLabel}>
+                      {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel}
                     </Text>
-                  </Pressable>
-                );
-              })}
-            </HStack>
-
-            {linkType === "PAGE" && (
-              <Box style={styles.broadcastLinkPageContainer}>
-                <Text style={styles.broadcastLinkSubLabel}>{t("admin.broadcastSelectPageLabel")}</Text>
-                <Box style={styles.broadcastPageOptions}>
-                  {PAGE_OPTIONS.filter((p) => p.value).map((page) => (
-                    <Pressable
-                      key={page.value}
-                      style={[styles.broadcastPageOption, navigateTo === page.value && styles.broadcastPageOptionActive]}
-                      onPress={() => {
-                        setNavigateTo(page.value);
-                        setNavigateParam("");
-                      }}
-                    >
-                      <Text style={[styles.broadcastPageOptionText, navigateTo === page.value && styles.broadcastPageOptionTextActive]}>
-                        {page.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </Box>
-
-                {navigateTo && (
-                  <Box style={styles.broadcastLinkParamContainer}>
-                    {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel ? (
-                      <>
-                        <Text style={styles.broadcastLinkSubLabel}>
-                          {PAGE_OPTIONS.find((p) => p.value === navigateTo)?.paramLabel}
-                        </Text>
-                        <Input
-                          style={styles.broadcastInput}
-                          placeholder={t("admin.broadcastParamPlaceholder")}
-                          placeholderTextColor={theme.colors.gray300}
-                          value={navigateParam}
-                          onChangeText={setNavigateParam}
-                          variant="outline"
-                          size="md"
-                        />
-                      </>
-                    ) : (
-                      <Text style={styles.broadcastLinkHint}>{t("admin.broadcastNoParamNeeded")}</Text>
-                    )}
-                  </Box>
+                    <Input
+                      placeholder={t("admin.broadcastParamPlaceholder")}
+                      placeholderTextColor={theme.colors.gray300}
+                      value={navigateParam}
+                      onChangeText={setNavigateParam}
+                      variant="outline"
+                      size="sm"
+                    />
+                  </>
+                ) : (
+                  <Text style={sharedStyles.formHint}>
+                    {t("admin.broadcastNoParamNeeded")}
+                  </Text>
                 )}
               </Box>
-            )}
+            ) : null}
+          </Box>
+        )}
 
-            {linkType === "URL" && (
-              <Box style={styles.broadcastLinkUrlContainer}>
-                <Text style={styles.broadcastLinkSubLabel}>{t("admin.broadcastUrlLabel")}</Text>
-                <Input
-                  style={styles.broadcastInput}
-                  placeholder="https://example.com"
-                  placeholderTextColor={theme.colors.gray300}
-                  value={externalUrl}
-                  onChangeText={setExternalUrl}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  variant="outline"
-                  size="md"
+        {linkType === "URL" && (
+          <Box style={styles.linkSection}>
+            <Text style={styles.linkSubLabel}>{t("admin.broadcastUrlLabel")}</Text>
+            <Input
+              placeholder="https://example.com"
+              placeholderTextColor={theme.colors.gray300}
+              value={externalUrl}
+              onChangeText={setExternalUrl}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+              variant="outline"
+              size="sm"
+            />
+            <Text style={sharedStyles.formHint}>{t("admin.broadcastUrlHint")}</Text>
+          </Box>
+        )}
+
+        {(title || message) ? (
+          <Box style={styles.previewBox}>
+            <Text style={styles.previewLabel}>{t("admin.broadcastPreview")}</Text>
+            <HStack style={styles.previewCard}>
+              <Box style={styles.previewIcon}>
+                <Ionicons
+                  name="notifications-outline"
+                  size={18}
+                  color={theme.colors.textInverted}
                 />
-                <Text style={styles.broadcastLinkHint}>{t("admin.broadcastUrlHint")}</Text>
               </Box>
-            )}
-          </VStack>
+              <Box style={{ flex: 1 }}>
+                <Text style={styles.previewTitle} numberOfLines={1}>
+                  {title || t("admin.broadcastNotifTitle")}
+                </Text>
+                <Text style={styles.previewMessage} numberOfLines={2}>
+                  {message || t("admin.broadcastNotifContent")}
+                </Text>
+                {linkType !== "NONE" ? (
+                  <HStack style={styles.previewLinkRow}>
+                    <Ionicons
+                      name={linkType === "URL" ? "open-outline" : "chevron-forward"}
+                      size={12}
+                      color={theme.colors.accent}
+                    />
+                    <Text style={styles.previewLinkText} numberOfLines={1}>
+                      {getLinkDescription()}
+                    </Text>
+                  </HStack>
+                ) : null}
+              </Box>
+            </HStack>
+          </Box>
+        ) : null}
 
-          {(title || message) && (
-            <Box style={styles.broadcastPreview}>
-              <Text style={styles.broadcastPreviewLabel}>{t("admin.broadcastPreview")}</Text>
-              <HStack style={styles.broadcastPreviewCard}>
-                <Box style={styles.broadcastPreviewIcon}>
-                  <Ionicons name="notifications" size={20} color={theme.colors.white} />
-                </Box>
-                <Box style={styles.broadcastPreviewContent}>
-                  <Text style={styles.broadcastPreviewTitle} numberOfLines={1}>{title || t("admin.broadcastNotifTitle")}</Text>
-                  <Text style={styles.broadcastPreviewMessage} numberOfLines={2}>{message || t("admin.broadcastNotifContent")}</Text>
-                  {linkType !== "NONE" && (
-                    <HStack style={styles.broadcastPreviewLink}>
-                      <Ionicons name={linkType === "URL" ? "open-outline" : "chevron-forward"} size={14} color={theme.colors.accent} />
-                      <Text style={styles.broadcastPreviewLinkText} numberOfLines={1}>{getLinkDescription()}</Text>
-                    </HStack>
-                  )}
-                </Box>
-              </HStack>
-            </Box>
-          )}
-
-          <Pressable
-            style={[styles.broadcastSendButton, (!title.trim() || !message.trim() || loading) && styles.broadcastSendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!title.trim() || !message.trim() || loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.colors.white} />
-            ) : (
-              <>
-                <Ionicons name="send" size={20} color={theme.colors.white} />
-                <Text style={styles.broadcastSendButtonText}>{t("admin.broadcastSendAll")}</Text>
-              </>
-            )}
-          </Pressable>
-
-          {result && (
-            <Box style={styles.broadcastResultCard}>
-              <Text style={styles.broadcastResultTitle}>{t("admin.broadcastLastResult")}</Text>
-              <HStack style={styles.broadcastResultRow}>
-                <Box style={styles.broadcastResultItem}>
-                  <Text style={styles.broadcastResultNumber}>{result.successCount}</Text>
-                  <Text style={styles.broadcastResultLabel}>{t("common.success")}</Text>
-                </Box>
-                <Box style={styles.broadcastResultItem}>
-                  <Text style={[styles.broadcastResultNumber, { color: theme.colors.error }]}>{result.failCount}</Text>
-                  <Text style={styles.broadcastResultLabel}>{t("common.failed")}</Text>
-                </Box>
-                <Box style={styles.broadcastResultItem}>
-                  <Text style={styles.broadcastResultNumber}>{result.totalUsers}</Text>
-                  <Text style={styles.broadcastResultLabel}>{t("admin.broadcastTotalUsers")}</Text>
-                </Box>
-              </HStack>
-            </Box>
-          )}
-
-          <HStack style={styles.broadcastTips}>
-            <Ionicons name="information-circle-outline" size={18} color={theme.colors.gray400} />
-            <Text style={styles.broadcastTipsText}>
-              {t("admin.broadcastTips")}
-            </Text>
-          </HStack>
-        </VStack>
+        <Button
+          size="sm"
+          onPress={handleSend}
+          disabled={!canSend}
+          isLoading={loading}
+          style={styles.sendButton}
+          leftIcon={
+            !loading ? (
+              <Ionicons
+                name="send-outline"
+                size={16}
+                color={theme.colors.textInverted}
+              />
+            ) : undefined
+          }
+        >
+          <ButtonText style={{ fontSize: 13 }}>
+            {t("admin.broadcastSendAll")}
+          </ButtonText>
+        </Button>
       </Box>
+
+      {result ? (
+        <Box style={styles.resultCard}>
+          <Text style={styles.resultTitle}>{t("admin.broadcastLastResult")}</Text>
+          <HStack style={styles.resultRow}>
+            <Box style={styles.resultItem}>
+              <Text style={styles.resultNumber}>{result.successCount}</Text>
+              <Text style={styles.resultLabel}>{t("common.success")}</Text>
+            </Box>
+            <Box style={styles.resultItem}>
+              <Text style={[styles.resultNumber, { color: theme.colors.error }]}>
+                {result.failCount}
+              </Text>
+              <Text style={styles.resultLabel}>{t("common.failed")}</Text>
+            </Box>
+            <Box style={styles.resultItem}>
+              <Text style={styles.resultNumber}>{result.totalUsers}</Text>
+              <Text style={styles.resultLabel}>{t("admin.broadcastTotalUsers")}</Text>
+            </Box>
+          </HStack>
+        </Box>
+      ) : null}
+
+      <HStack style={styles.tipsRow}>
+        <Ionicons
+          name="information-circle-outline"
+          size={16}
+          color={theme.colors.gray400}
+        />
+        <Text style={styles.tipsText}>{t("admin.broadcastTips")}</Text>
+      </HStack>
+
       <Box style={{ height: 40 }} />
     </ScrollView>
   );
 };
 
-const makeStyles = (t: AppTheme) => StyleSheet.create({
-  content: {
-    flex: 1,
-    padding: t.spacing.md,
-  },
-  broadcastContainer: {
-    padding: t.spacing.lg,
-  },
-  broadcastHeader: {
-    alignItems: "center",
-    marginBottom: t.spacing.xl,
-    paddingVertical: t.spacing.lg,
-    backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.lg,
-  },
-  broadcastHeaderTitle: {
-    ...t.typography.h3,
-    color: t.colors.text,
-    marginTop: t.spacing.md,
-  },
-  broadcastHeaderSubtitle: {
-    ...t.typography.bodySmall,
-    color: t.colors.gray400,
-    marginTop: t.spacing.xs,
-    textAlign: "center",
-  },
-  broadcastForm: {
-    gap: t.spacing.lg,
-  },
-  broadcastInputGroup: {
-    gap: t.spacing.xs,
-  },
-  broadcastLabel: {
-    ...t.typography.body,
-    color: t.colors.text,
-    fontWeight: "600",
-  },
-  broadcastInput: {
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-    borderRadius: t.borderRadius.md,
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    ...t.typography.body,
-    color: t.colors.text,
-    backgroundColor: t.colors.card,
-  },
-  broadcastTextarea: {
-    minHeight: 120,
-    textAlignVertical: "top",
-  },
-  broadcastCharCount: {
-    ...t.typography.caption,
-    color: t.colors.gray300,
-    textAlign: "right",
-  },
-  broadcastLinkTypeRow: {
-    gap: t.spacing.sm,
-    marginTop: t.spacing.sm,
-  },
-  broadcastLinkTypeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: t.spacing.sm,
-    paddingHorizontal: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-    backgroundColor: t.colors.card,
-  },
-  broadcastLinkTypeBtnActive: {
-    backgroundColor: t.colors.text,
-    borderColor: t.colors.text,
-  },
-  broadcastLinkTypeBtnText: {
-    ...t.typography.caption,
-    color: t.colors.text,
-    fontWeight: "500",
-  },
-  broadcastLinkTypeBtnTextActive: {
-    color: t.colors.textInverted,
-  },
-  broadcastLinkPageContainer: {
-    marginTop: t.spacing.md,
-    padding: t.spacing.md,
-    backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.md,
-  },
-  broadcastLinkSubLabel: {
-    ...t.typography.caption,
-    color: t.colors.gray500,
-    fontWeight: "600",
-    marginBottom: t.spacing.sm,
-  },
-  broadcastPageOptions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: t.spacing.xs,
-  },
-  broadcastPageOption: {
-    paddingVertical: t.spacing.xs,
-    paddingHorizontal: t.spacing.sm,
-    borderRadius: t.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-    backgroundColor: t.colors.card,
-  },
-  broadcastPageOptionActive: {
-    backgroundColor: t.colors.text,
-    borderColor: t.colors.text,
-  },
-  broadcastPageOptionText: {
-    ...t.typography.caption,
-    color: t.colors.text,
-  },
-  broadcastPageOptionTextActive: {
-    color: t.colors.textInverted,
-  },
-  broadcastLinkParamContainer: {
-    marginTop: t.spacing.md,
-  },
-  broadcastLinkHint: {
-    ...t.typography.caption,
-    color: t.colors.gray300,
-    marginTop: t.spacing.xs,
-    fontStyle: "italic",
-  },
-  broadcastLinkUrlContainer: {
-    marginTop: t.spacing.md,
-    padding: t.spacing.md,
-    backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.md,
-  },
-  broadcastPreview: {
-    marginTop: t.spacing.md,
-  },
-  broadcastPreviewLabel: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-    marginBottom: t.spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  broadcastPreviewCard: {
-    alignItems: "flex-start",
-    backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: t.colors.text,
-  },
-  broadcastPreviewIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: t.colors.text,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: t.spacing.sm,
-  },
-  broadcastPreviewContent: {
-    flex: 1,
-  },
-  broadcastPreviewTitle: {
-    ...t.typography.body,
-    color: t.colors.text,
-    fontWeight: "600",
-  },
-  broadcastPreviewMessage: {
-    ...t.typography.bodySmall,
-    color: t.colors.gray400,
-    marginTop: 2,
-  },
-  broadcastPreviewLink: {
-    alignItems: "center",
-    gap: 4,
-    marginTop: 4,
-  },
-  broadcastPreviewLinkText: {
-    ...t.typography.caption,
-    color: t.colors.accent,
-  },
-  broadcastSendButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: t.colors.text,
-    paddingVertical: t.spacing.md,
-    borderRadius: t.borderRadius.md,
-    gap: t.spacing.sm,
-    marginTop: t.spacing.md,
-  },
-  broadcastSendButtonDisabled: {
-    backgroundColor: t.colors.gray300,
-  },
-  broadcastSendButtonText: {
-    ...t.typography.body,
-    color: t.colors.textInverted,
-    fontWeight: "600",
-  },
-  broadcastResultCard: {
-    backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.md,
-    padding: t.spacing.lg,
-    marginTop: t.spacing.lg,
-  },
-  broadcastResultTitle: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-    textAlign: "center",
-    marginBottom: t.spacing.md,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  broadcastResultRow: {
-    justifyContent: "space-around",
-  },
-  broadcastResultItem: {
-    alignItems: "center",
-  },
-  broadcastResultNumber: {
-    ...t.typography.h2,
-    color: t.colors.text,
-  },
-  broadcastResultLabel: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-  },
-  broadcastTips: {
-    alignItems: "flex-start",
-    gap: t.spacing.sm,
-    backgroundColor: t.colors.gray50,
-    padding: t.spacing.md,
-    borderRadius: t.borderRadius.md,
-    marginTop: t.spacing.lg,
-  },
-  broadcastTipsText: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-    flex: 1,
-    lineHeight: 18,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    formCard: {
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.lg,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 16,
+      marginBottom: t.spacing.sm,
+      ...t.shadows.sm,
+    },
+    headerRow: {
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 8,
+    },
+    headerIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: t.colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
+    introHint: {
+      fontSize: 12,
+      lineHeight: 17,
+      color: t.colors.gray300,
+      marginBottom: 14,
+      paddingBottom: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.border,
+    },
+    fieldLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginTop: 10,
+      marginBottom: 6,
+    },
+    charCount: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      textAlign: "right",
+      marginTop: 4,
+      marginBottom: 2,
+    },
+    textarea: {
+      minHeight: 96,
+      textAlignVertical: "top",
+    },
+    linkTypeRow: {
+      gap: 8,
+      marginBottom: 8,
+    },
+    linkTypeBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      borderRadius: t.borderRadius.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.surface,
+    },
+    linkTypeBtnActive: {
+      backgroundColor: t.colors.text,
+      borderColor: t.colors.text,
+    },
+    linkTypeBtnText: {
+      fontSize: 11,
+      color: t.colors.gray400,
+      fontWeight: "500",
+      flexShrink: 1,
+    },
+    linkTypeBtnTextActive: {
+      color: t.colors.textInverted,
+    },
+    linkSection: {
+      backgroundColor: t.colors.surface,
+      borderRadius: t.borderRadius.md,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      marginBottom: 8,
+    },
+    linkSubLabel: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      fontWeight: "600",
+      marginBottom: t.spacing.xs,
+    },
+    previewBox: {
+      marginTop: 8,
+      marginBottom: 10,
+    },
+    previewLabel: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      fontWeight: "600",
+      marginBottom: t.spacing.xs,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    previewCard: {
+      alignItems: "flex-start",
+      backgroundColor: t.colors.surface,
+      borderRadius: t.borderRadius.md,
+      padding: t.spacing.sm,
+      borderLeftWidth: 3,
+      borderLeftColor: t.colors.text,
+    },
+    previewIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: t.colors.text,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: t.spacing.sm,
+    },
+    previewTitle: {
+      fontSize: 14,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    previewMessage: {
+      fontSize: 12,
+      color: t.colors.gray400,
+      marginTop: 2,
+      lineHeight: 17,
+    },
+    previewLinkRow: {
+      alignItems: "center",
+      gap: 4,
+      marginTop: 4,
+    },
+    previewLinkText: {
+      fontSize: 11,
+      color: t.colors.accent,
+      flex: 1,
+    },
+    sendButton: {
+      alignSelf: "stretch",
+      marginTop: 4,
+    },
+    resultCard: {
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.lg,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      marginBottom: t.spacing.sm,
+      ...t.shadows.sm,
+    },
+    resultTitle: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      textAlign: "center",
+      marginBottom: t.spacing.sm,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    resultRow: {
+      justifyContent: "space-around",
+    },
+    resultItem: {
+      alignItems: "center",
+    },
+    resultNumber: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: t.colors.text,
+    },
+    resultLabel: {
+      fontSize: 11,
+      color: t.colors.gray400,
+      marginTop: 2,
+    },
+    tipsRow: {
+      alignItems: "flex-start",
+      gap: 8,
+      backgroundColor: t.colors.surface,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: t.borderRadius.md,
+      marginTop: 4,
+    },
+    tipsText: {
+      fontSize: 11,
+      color: t.colors.gray400,
+      flex: 1,
+      lineHeight: 16,
+    },
+  });
 
 export default BroadcastTab;

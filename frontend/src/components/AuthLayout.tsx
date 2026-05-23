@@ -45,7 +45,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
               <Ionicons
                 name="arrow-back"
                 size={24}
-                color={theme.colors.black}
+                color={theme.colors.text}
               />
             </TouchableOpacity>
           )}

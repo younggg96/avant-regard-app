@@ -168,6 +168,9 @@ const UsersSubTab = () => {
   const [total, setTotal] = useState(0);
   const pageSize = 20;
 
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
+
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -208,6 +211,11 @@ const UsersSubTab = () => {
 
   const handleSearch = () => loadUsers(1);
   const totalPages = Math.ceil(total / pageSize);
+
+  const openUserDetail = (user: AdminUser) => {
+    setDetailUser(user);
+    setDetailModalVisible(true);
+  };
 
   const handleDelete = (user: AdminUser) => {
     setDeleteTarget(user);
@@ -280,9 +288,8 @@ const UsersSubTab = () => {
     OTHER: "",
   };
 
-  const renderUserCard = (item: AdminUser) => (
-    <Box key={item.id} style={styles.card}>
-      {/* 顶部：头像 + 名称 + 状态 */}
+  const renderUserDetailBody = (item: AdminUser) => (
+    <>
       <HStack style={styles.cardHeader}>
         <HStack style={{ alignItems: "center", flex: 1 }}>
           {item.avatarUrl ? (
@@ -305,21 +312,19 @@ const UsersSubTab = () => {
               {renderLevelChip(item.currentLevel ?? 0, t, styles)}
               {item.merchant && item.merchant.status !== "APPROVED" && (
                 <Box style={styles.kindChipMuted}>
-                  <Text style={styles.kindChipMutedText}>{t("admin.merchantPending")}</Text>
+                  <Text style={styles.kindChipMutedText}>
+                    {t("admin.merchantPending")}
+                  </Text>
                 </Box>
               )}
             </HStack>
-            <Text style={styles.userMeta}>
-              ID: {item.id}
-            </Text>
+            <Text style={styles.userMeta}>ID: {item.id}</Text>
           </Box>
         </HStack>
         <Box
           style={[
             styles.statusBadge,
-            item.status === "ACTIVE"
-              ? styles.statusActive
-              : styles.statusInactive,
+            item.status === "ACTIVE" ? styles.statusActive : styles.statusInactive,
           ]}
         >
           <Text
@@ -335,31 +340,29 @@ const UsersSubTab = () => {
         </Box>
       </HStack>
 
-      {/* 头衔标签 */}
-      {item.titles && item.titles.length > 0 && (
+      {item.titles && item.titles.length > 0 ? (
         <HStack style={styles.titleChipsRow}>
-          {item.titles.map((t) => (
+          {item.titles.map((titleItem) => (
             <Box
-              key={t.id}
+              key={titleItem.id}
               style={[
                 styles.titleChip,
-                t.isPrimary && styles.titleChipPrimary,
+                titleItem.isPrimary && styles.titleChipPrimary,
               ]}
             >
               <Text
                 style={[
                   styles.titleChipText,
-                  t.isPrimary && styles.titleChipTextPrimary,
+                  titleItem.isPrimary && styles.titleChipTextPrimary,
                 ]}
               >
-                {t.title}
+                {titleItem.title}
               </Text>
             </Box>
           ))}
         </HStack>
-      )}
+      ) : null}
 
-      {/* 数据统计 */}
       <HStack style={styles.statsRow}>
         <Box style={styles.statItem}>
           <Text style={styles.statValue}>{item.postCount ?? 0}</Text>
@@ -377,13 +380,8 @@ const UsersSubTab = () => {
         </Box>
       </HStack>
 
-      {/* 详细信息 */}
       <Box style={styles.cardBody}>
-        {item.bio ? (
-          <Text style={styles.bioText} numberOfLines={2}>
-            {item.bio}
-          </Text>
-        ) : null}
+        {item.bio ? <Text style={styles.bioText}>{item.bio}</Text> : null}
         <HStack style={styles.infoGrid}>
           {item.phone ? (
             <HStack style={styles.infoItem}>
@@ -394,7 +392,9 @@ const UsersSubTab = () => {
           {item.email ? (
             <HStack style={styles.infoItem}>
               <Ionicons name="mail-outline" size={12} color={theme.colors.gray300} />
-              <Text style={styles.detailText} numberOfLines={1}>{item.email}</Text>
+              <Text style={styles.detailText} numberOfLines={2}>
+                {item.email}
+              </Text>
             </HStack>
           ) : null}
           {item.location ? (
@@ -407,7 +407,10 @@ const UsersSubTab = () => {
             <HStack style={styles.infoItem}>
               <Text style={styles.detailText}>{GENDER_LABELS[item.gender]}</Text>
               {item.age && item.age > 0 ? (
-                <Text style={styles.detailText}> · {t("admin.ageYears", { age: item.age })}</Text>
+                <Text style={styles.detailText}>
+                  {" "}
+                  · {t("admin.ageYears", { age: item.age })}
+                </Text>
               ) : null}
             </HStack>
           ) : null}
@@ -415,7 +418,7 @@ const UsersSubTab = () => {
             <HStack style={styles.infoItem}>
               <Ionicons name="calendar-outline" size={12} color={theme.colors.gray300} />
               <Text style={styles.detailText}>
-                {new Date(item.createdAt).toLocaleDateString("zh-CN")}
+                {new Date(item.createdAt).toLocaleDateString()}
               </Text>
             </HStack>
           ) : null}
@@ -433,21 +436,81 @@ const UsersSubTab = () => {
       <HStack style={styles.cardActions}>
         <Button
           size="sm"
-          onPress={() => openTitleModal(item)}
-          leftIcon={<Ionicons name="ribbon-outline" size={14} color={theme.colors.white} />}
+          onPress={() => {
+            setDetailModalVisible(false);
+            openTitleModal(item);
+          }}
+          leftIcon={
+            <Ionicons name="ribbon-outline" size={14} color={theme.colors.white} />
+          }
+          style={{ flex: 1 }}
         >
           <ButtonText style={{ fontSize: 12 }}>{t("admin.title_btn")}</ButtonText>
         </Button>
         <Button
           size="sm"
           colorScheme="error"
-          onPress={() => handleDelete(item)}
-          leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
+          onPress={() => {
+            setDetailModalVisible(false);
+            handleDelete(item);
+          }}
+          leftIcon={
+            <Ionicons name="trash-outline" size={14} color={theme.colors.white} />
+          }
+          style={{ flex: 1 }}
         >
           <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
         </Button>
       </HStack>
-    </Box>
+    </>
+  );
+
+  const renderUserCard = (item: AdminUser) => (
+    <Pressable key={item.id} style={styles.compactCard} onPress={() => openUserDetail(item)}>
+      <HStack style={styles.compactCardRow}>
+        {item.avatarUrl ? (
+          <OptimizedImage
+            uri={item.avatarUrl}
+            style={styles.compactAvatar}
+            size={ImageSize.THUMBNAIL}
+          />
+        ) : (
+          <Box style={[styles.compactAvatar, styles.avatarPlaceholder]}>
+            <Ionicons name="person" size={16} color={theme.colors.gray300} />
+          </Box>
+        )}
+
+        <Box style={styles.compactMain}>
+          <HStack style={styles.compactTitleRow}>
+            <Text style={styles.compactName} numberOfLines={1}>
+              {item.username}
+            </Text>
+            {renderKindChip(item, t, styles)}
+          </HStack>
+          <Text style={styles.compactMeta}>ID: {item.id}</Text>
+        </Box>
+
+        <Box
+          style={[
+            styles.compactStatusBadge,
+            item.status === "ACTIVE" ? styles.statusActive : styles.statusInactive,
+          ]}
+        >
+          <Text
+            style={[
+              styles.compactStatusText,
+              item.status === "ACTIVE"
+                ? styles.statusTextActive
+                : styles.statusTextInactive,
+            ]}
+          >
+            {item.status === "ACTIVE" ? t("admin.active") : item.status}
+          </Text>
+        </Box>
+
+        <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+      </HStack>
+    </Pressable>
   );
 
   return (
@@ -526,6 +589,37 @@ const UsersSubTab = () => {
           )}
         </ScrollView>
       )}
+
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={styles.userDetailModalContent}>
+            <HStack style={styles.userDetailHeader}>
+              <Text style={styles.userDetailTitle} numberOfLines={1}>
+                {detailUser?.username ?? t("admin.userDetailTitle")}
+              </Text>
+              <Pressable
+                style={styles.userDetailCloseBtn}
+                onPress={() => setDetailModalVisible(false)}
+              >
+                <Ionicons name="close" size={22} color={theme.colors.text} />
+              </Pressable>
+            </HStack>
+            {detailUser ? (
+              <RNScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.userDetailScroll}
+              >
+                {renderUserDetailBody(detailUser)}
+              </RNScrollView>
+            ) : null}
+          </Box>
+        </Box>
+      </Modal>
 
       <Modal
         visible={deleteModalVisible}
@@ -1170,6 +1264,80 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     padding: t.spacing.md,
     marginBottom: t.spacing.md,
     ...t.shadows.sm,
+  },
+  compactCard: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    ...t.shadows.sm,
+  },
+  compactCardRow: {
+    alignItems: "center",
+    gap: 10,
+  },
+  compactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: t.colors.gray100,
+  },
+  compactMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  compactTitleRow: {
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  compactName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: t.colors.text,
+    flexShrink: 1,
+  },
+  compactMeta: {
+    fontSize: 11,
+    color: t.colors.gray300,
+    marginTop: 2,
+  },
+  compactStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  compactStatusText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  userDetailModalContent: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    height: "88%",
+    width: "92%",
+    padding: t.spacing.md,
+  },
+  userDetailHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: t.spacing.sm,
+    paddingBottom: t.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.colors.border,
+  },
+  userDetailTitle: {
+    ...t.typography.h4,
+    color: t.colors.text,
+    flex: 1,
+    marginRight: t.spacing.sm,
+  },
+  userDetailCloseBtn: {
+    padding: t.spacing.xs,
+  },
+  userDetailScroll: {
+    paddingBottom: t.spacing.lg,
   },
   cardHeader: {
     flexDirection: "row",

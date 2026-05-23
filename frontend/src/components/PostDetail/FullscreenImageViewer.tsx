@@ -68,6 +68,8 @@ export const FullscreenImageViewer: React.FC<FullscreenImageViewerProps> = ({
       transparent={true}
       onRequestClose={onClose}
       animationType="fade"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
     >
       <GestureHandlerRootView style={styles.fullscreenContainer}>
         <StatusBar hidden />

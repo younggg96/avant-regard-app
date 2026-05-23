@@ -331,6 +331,20 @@ class StoreProductService:
         if not db_patch:
             return self._format_product(raw)
 
+        # 改价检测: 在 update 落库前抓住旧价, 落库后向收藏用户广播
+        old_price_cents = int(raw.get("price_cents") or 0)
+        new_price_cents = (
+            int(db_patch["price_cents"])
+            if "price_cents" in db_patch and db_patch["price_cents"] is not None
+            else None
+        )
+        # 只有 active 在售商品才发改价通知 (草稿改价无意义)
+        should_notify_price = (
+            new_price_cents is not None
+            and new_price_cents != old_price_cents
+            and raw.get("status") == "active"
+        )
+
         q = self.db_admin.table("store_products").update(db_patch).eq("id", product_id)
         if kind == "merchant":
             q = q.eq("merchant_id", owner_merchant_id)
@@ -339,6 +353,16 @@ class StoreProductService:
         result = q.execute()
         if not result.data:
             raise ValueError("商品更新失败")
+
+        if should_notify_price:
+            self._notify_interested_users(
+                product_id,
+                kind="price_changed",
+                exclude_user_id=owner_user_id if kind == "individual" else None,
+                old_price_cents=old_price_cents,
+                new_price_cents=new_price_cents,
+            )
+
         return self.get_product(product_id) or self._format_product(result.data[0])
 
     # ========================================================================
@@ -447,6 +471,23 @@ class StoreProductService:
             except Exception as e:
                 print(f"[store_products] write review audit failed: {e}")
 
+        # ====== PRD 模块三 收藏夹通知 (售出 / 下架) ======
+        # active → sold : 通知所有收藏 / 想要的用户 "已售出"
+        # *     → offline (卖家主动下架, 不是被订单冻结) : 通知 "已下架"
+        if target == ProductStatus.SOLD:
+            self._notify_interested_users(
+                product_id,
+                kind="sold",
+                exclude_user_id=actor_user_id if not is_admin else None,
+            )
+        elif target == ProductStatus.OFFLINE and src in ("active", "rejected"):
+            # 只在从 active 或 rejected 主动下架时通知, draft↔offline 是后台过渡
+            self._notify_interested_users(
+                product_id,
+                kind="offline",
+                exclude_user_id=actor_user_id if not is_admin else None,
+            )
+
         return self.get_product(product_id) or self._format_product(result.data[0])
 
     # ========================================================================
@@ -506,6 +547,16 @@ class StoreProductService:
         if not target_ids:
             return 0
         self.db_admin.table("store_products").update({"status": "offline"}).in_("id", target_ids).execute()
+        # 批量下架后逐个通知收藏用户
+        for pid in target_ids:
+            try:
+                self._notify_interested_users(
+                    pid,
+                    kind="offline",
+                    exclude_user_id=actor_user_id,
+                )
+            except Exception as e:
+                print(f"[store_products] batch offline notify pid={pid} failed: {e}")
         return len(target_ids)
 
     def batch_delete_drafts(
@@ -533,6 +584,105 @@ class StoreProductService:
             return 0
         self.db_admin.table("store_products").delete().in_("id", target_ids).execute()
         return len(target_ids)
+
+    def admin_list_all_products(
+        self,
+        *,
+        status: Optional[str] = None,
+        search_query: Optional[str] = None,
+        seller_kind: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Tuple[List[StoreProduct], int]:
+        """管理员后台：列出所有商品（可按状态/关键词/卖家类型筛选）。"""
+        q = self.db.table("store_products").select(_PRODUCT_SELECT, count="exact")
+        if status:
+            q = q.eq("status", status)
+        if seller_kind:
+            q = q.eq("seller_kind", seller_kind)
+        if search_query:
+            kw = search_query.replace("%", "\\%").replace("_", "\\_").strip()
+            if kw:
+                q = q.or_(f"title.ilike.%{kw}%,brand.ilike.%{kw}%")
+        q = q.order("created_at", desc=True)
+        offset = (page - 1) * page_size
+        q = q.range(offset, offset + page_size - 1)
+        result = execute_with_retry(lambda: q.execute(), label="store_products.admin_list_all")
+        rows = result.data or []
+        total = result.count or 0
+        return [self._format_product(r) for r in rows], total
+
+    def admin_update_product(
+        self,
+        product_id: int,
+        data: StoreProductUpdate,
+    ) -> StoreProduct:
+        """管理员更新商品（跳过所有权校验，允许直接修改状态）。"""
+        raw = self._get_product_raw(product_id)
+        if not raw:
+            raise ValueError("商品不存在")
+
+        patch = data.model_dump(exclude_unset=True)
+
+        field_map = {
+            "categoryId": "category_id",
+            "title": "title",
+            "description": "description",
+            "brand": "brand",
+            "images": "images",
+            "priceCents": "price_cents",
+            "currency": "currency",
+            "discountPriceCents": "discount_price_cents",
+            "isNew": "is_new",
+            "tags": "tags",
+            "size": "size",
+            "color": "color",
+            "condition": "condition",
+            "conditionNote": "condition_note",
+            "originalShowId": "original_show_id",
+            "originalAcquiredAt": "original_acquired_at",
+            "acceptOffer": "accept_offer",
+            "photoAngles": "photo_angles",
+            "status": "status",
+        }
+        db_patch: dict = {}
+        for k, v in patch.items():
+            if k not in field_map:
+                continue
+            if hasattr(v, "value"):
+                v = v.value
+            if isinstance(v, PhotoAngles):
+                v = v.model_dump(exclude={"REQUIRED_SLOTS"})
+            db_patch[field_map[k]] = v
+
+        if not db_patch:
+            return self._format_product(raw)
+
+        result = self.db_admin.table("store_products").update(db_patch).eq("id", product_id).execute()
+        if not result.data:
+            raise ValueError("商品更新失败")
+        return self.get_product(product_id) or self._format_product(result.data[0])
+
+    def admin_delete_product(self, product_id: int) -> bool:
+        """管理员删除商品（跳过所有权校验，不限状态）。"""
+        result = (
+            self.db_admin.table("store_products")
+            .delete()
+            .eq("id", product_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def admin_create_product(self, data: StoreProductCreate) -> StoreProduct:
+        """管理员创建商品（跳过所有权校验）。"""
+        seller_kind = data.sellerKind if hasattr(data, "sellerKind") else SellerKind.INDIVIDUAL
+        return self._insert_listing(
+            data,
+            store_id=None,
+            merchant_id=None,
+            seller_kind=seller_kind if isinstance(seller_kind, SellerKind) else SellerKind(seller_kind),
+            seller_user_id=None,
+        )
 
     def list_reviewing(self, *, page: int = 1, page_size: int = 50) -> Tuple[List[StoreProduct], int]:
         """管理员后台：审核队列。"""
@@ -1413,6 +1563,105 @@ class StoreProductService:
     # 用 RPC 维护 favorite_count 与 posts 上的 favorite 行为命名对齐
     # （`increment_post_favorite_count`），便于将来抽公共。
 
+    def _list_interested_user_ids(self, product_id: int) -> List[int]:
+        """返回所有收藏 (favorite) 或想要 (want) 该商品的用户 ID, 去重。
+
+        用于状态变化通知 (售出 / 下架 / 改价)。
+        """
+        ids: set[int] = set()
+        try:
+            r1 = (
+                self.db.table("store_product_favorites")
+                .select("user_id")
+                .eq("product_id", product_id)
+                .execute()
+            )
+            for row in r1.data or []:
+                uid = row.get("user_id")
+                if uid is not None:
+                    ids.add(int(uid))
+        except Exception as e:
+            print(f"[store_products] list favoriters failed id={product_id}: {e}")
+        try:
+            r2 = (
+                self.db.table("store_product_wants")
+                .select("user_id")
+                .eq("product_id", product_id)
+                .execute()
+            )
+            for row in r2.data or []:
+                uid = row.get("user_id")
+                if uid is not None:
+                    ids.add(int(uid))
+        except Exception as e:
+            print(f"[store_products] list wanters failed id={product_id}: {e}")
+        return list(ids)
+
+    def _notify_interested_users(
+        self,
+        product_id: int,
+        kind: str,
+        *,
+        exclude_user_id: Optional[int] = None,
+        old_price_cents: Optional[int] = None,
+        new_price_cents: Optional[int] = None,
+    ) -> None:
+        """统一向收藏 / 想要该商品的用户推送状态变化通知。
+
+        kind: 'sold' | 'offline' | 'price_changed'
+        """
+        try:
+            from app.services.notification_service import notification_service
+        except Exception as e:
+            print(f"[store_products] notification_service import failed: {e}")
+            return
+
+        raw = self._get_product_raw(product_id)
+        if not raw:
+            return
+
+        title = raw.get("title") or "商品"
+        images = raw.get("images") or []
+        first_image = images[0] if images else None
+        currency = raw.get("currency") or "CNY"
+
+        recipients = self._list_interested_user_ids(product_id)
+        if exclude_user_id is not None:
+            recipients = [uid for uid in recipients if uid != exclude_user_id]
+
+        for uid in recipients:
+            try:
+                if kind == "sold":
+                    notification_service.notify_favorited_product_sold(
+                        uid,
+                        product_id=product_id,
+                        product_title=title,
+                        product_image=first_image,
+                    )
+                elif kind == "offline":
+                    notification_service.notify_favorited_product_offline(
+                        uid,
+                        product_id=product_id,
+                        product_title=title,
+                        product_image=first_image,
+                    )
+                elif kind == "price_changed":
+                    if old_price_cents is None or new_price_cents is None:
+                        continue
+                    notification_service.notify_favorited_product_price_changed(
+                        uid,
+                        product_id=product_id,
+                        product_title=title,
+                        old_price_cents=old_price_cents,
+                        new_price_cents=new_price_cents,
+                        currency=currency,
+                        product_image=first_image,
+                    )
+            except Exception as e:
+                print(
+                    f"[store_products] notify {kind} to uid={uid} pid={product_id} failed: {e}"
+                )
+
     def favorite_product(self, product_id: int, user_id: int) -> bool:
         try:
             self.db_admin.table("store_product_favorites").insert(
@@ -1482,15 +1731,30 @@ class StoreProductService:
         return {pid: (pid in favorited_set) for pid in ids}
 
     def list_user_favorited_products(
-        self, user_id: int, *, page: int = 1, page_size: int = 20
+        self,
+        user_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        collection_id: Optional[int] = None,
+        only_default: bool = False,
     ) -> Tuple[List[StoreProduct], int]:
-        """用户收藏的商品分页列表（Profile 「我收藏的商品」会用）。"""
+        """用户收藏的商品分页列表。
+
+        - collection_id 为 None 且 only_default=False : 返回全部收藏 (扁平视图)
+        - collection_id 不为 None                      : 仅返回该收藏夹的商品
+        - only_default=True                            : 仅返回未被分组的"默认收藏" (collection_id IS NULL)
+        """
         q = (
             self.db.table("store_product_favorites")
             .select("product_id, created_at", count="exact")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
         )
+        if collection_id is not None:
+            q = q.eq("collection_id", collection_id)
+        elif only_default:
+            q = q.is_("collection_id", "null")
         offset = (page - 1) * page_size
         q = q.range(offset, offset + page_size - 1)
         res = q.execute()

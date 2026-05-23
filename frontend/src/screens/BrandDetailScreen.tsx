@@ -310,7 +310,7 @@ const BrandDetailScreen = () => {
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
@@ -326,7 +326,7 @@ const BrandDetailScreen = () => {
       <SafeAreaView style={styles.container} edges={["top"]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.loadingContainer}>
@@ -402,7 +402,7 @@ const BrandDetailScreen = () => {
                   <Ionicons
                     name="arrow-back"
                     size={22}
-                    color={theme.colors.white}
+                    color={theme.colors.text}
                   />
                 </View>
               </TouchableOpacity>
@@ -414,7 +414,7 @@ const BrandDetailScreen = () => {
                   <Ionicons
                     name="share-outline"
                     size={20}
-                    color={theme.colors.white}
+                    color={theme.colors.text}
                   />
                 </View>
               </TouchableOpacity>
@@ -633,7 +633,7 @@ const BrandDetailScreen = () => {
                 activeTab === "onsale" && styles.tabTextActive,
               ]}
             >
-              在售
+              {t("brand.onSale")}
             </Text>
             <Text style={styles.tabCount}>{brandListings.length}</Text>
           </TouchableOpacity>
@@ -802,7 +802,7 @@ const BrandDetailScreen = () => {
                   size={48}
                   color={theme.colors.gray200}
                 />
-                <Text style={styles.emptyText}>暂无该品牌的在售单品</Text>
+                <Text style={styles.emptyText}>{t("brand.noOnSaleListings")}</Text>
               </View>
             ) : (
               <View style={styles.postsGrid}>

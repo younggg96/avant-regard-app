@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, TouchableOpacity, View, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, OptimizedImage, HStack, VStack } from "./ui";
+import { Box, Text, OptimizedImage, HStack, VStack, UserAvatar } from "./ui";
 import { ImageSize } from "../utils/imageUtils";
 import { isVideoUrl } from "../services/postService";
 import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -120,12 +120,10 @@ const ForumPostCardInner = ({
             onPress={() => onAuthorPress?.(post.author.id)}
             activeOpacity={0.8}
           >
-            <OptimizedImage
-              uri={post.author.avatar}
-              size={ImageSize.THUMBNAIL}
-              style={styles.avatar}
-              contentFit="cover"
-              lazy={true}
+            <UserAvatar
+              uri={post.author.avatar || undefined}
+              name={post.author.name}
+              size={36}
             />
           </TouchableOpacity>
 

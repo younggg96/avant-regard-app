@@ -282,7 +282,7 @@ const StoreSearchScreen = () => {
         style={{ borderBottomColor: theme.colors.gray100 }}
       >
         <Pressable onPress={() => navigation.goBack()} p="$xs">
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </Pressable>
 
         <Box

@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 
 import { Box, HStack, Text, Pressable } from "../../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
+import { useProfileStyles } from "../styles";
 import {
   listArchive,
   ArchiveItem,
@@ -23,6 +24,7 @@ interface Props {
 
 export const ArchiveEntryCard: React.FC<Props> = ({ isOwnProfile }) => {
   const theme = useAppTheme();
+  const profileStyles = useProfileStyles();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
@@ -49,12 +51,12 @@ export const ArchiveEntryCard: React.FC<Props> = ({ isOwnProfile }) => {
 
   return (
     <Pressable
-      style={styles.card}
+      style={[profileStyles.profileInsetCard, styles.card]}
       onPress={() => navigation.navigate("MyArchive")}
     >
       <HStack justifyContent="between" alignItems="center">
         <HStack space="xs" alignItems="center">
-          <Ionicons name="albums" size={18} color={theme.colors.text} />
+          <Ionicons name="albums" size={13} color={theme.colors.text} />
           <Text style={styles.title}>{t("trading.archiveEntry.title")}</Text>
           {count > 0 ? (
             <Text style={styles.countBadge}>{count}</Text>
@@ -62,7 +64,7 @@ export const ArchiveEntryCard: React.FC<Props> = ({ isOwnProfile }) => {
         </HStack>
         <Ionicons
           name="chevron-forward"
-          size={18}
+          size={12}
           color={theme.colors.gray300}
         />
       </HStack>
@@ -88,7 +90,7 @@ export const ArchiveEntryCard: React.FC<Props> = ({ isOwnProfile }) => {
                 <Box style={[styles.thumb, styles.thumbPlaceholder]}>
                   <Ionicons
                     name="image-outline"
-                    size={20}
+                    size={14}
                     color={theme.colors.gray300}
                   />
                 </Box>
@@ -105,38 +107,37 @@ ArchiveEntryCard.displayName = "ArchiveEntryCard";
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     card: {
-      marginHorizontal: 16,
-      marginTop: 12,
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
+      marginTop: t.spacing.xs,
+      marginBottom: t.spacing.xs,
     },
     title: {
-      fontSize: 14,
-      fontWeight: "700",
+      fontSize: 11,
+      fontWeight: "600",
       color: t.colors.text,
-      letterSpacing: 0.5,
+      letterSpacing: 0.3,
     },
     countBadge: {
-      fontSize: 11,
+      fontSize: 9,
       color: t.colors.textInverted,
       backgroundColor: t.colors.accent,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 8,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: 5,
       overflow: "hidden",
-      marginLeft: 4,
+      marginLeft: 2,
     },
-    emptyHint: { color: t.colors.gray300, fontSize: 12, marginTop: 8 },
-    thumbRow: { gap: 8, paddingVertical: 8 },
+    emptyHint: {
+      color: t.colors.gray300,
+      fontSize: 10,
+      marginTop: t.spacing.xs,
+      lineHeight: 15,
+    },
+    thumbRow: { gap: 5, paddingVertical: 3 },
     thumbWrap: {},
     thumb: {
-      width: 56,
-      height: 56,
-      borderRadius: 6,
+      width: 36,
+      height: 36,
+      borderRadius: 4,
       backgroundColor: t.colors.skeleton,
     },
     thumbPlaceholder: { alignItems: "center", justifyContent: "center" },

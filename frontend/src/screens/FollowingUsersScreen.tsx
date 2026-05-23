@@ -325,7 +325,7 @@ const FollowingUsersScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </Pressable>
         <RNText style={styles.headerTitle}>{t("followingUsers.title")}</RNText>
         <View style={{ width: 40 }} />

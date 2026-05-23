@@ -101,6 +101,46 @@ async def delete_collection(
     raise HTTPException(status_code=404, detail="收藏夹不存在")
 
 
+@collections_router.get("/{collection_id}")
+async def get_collection_meta(
+    collection_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """获取单个收藏夹的元数据 (包含 itemCount)。"""
+    col = provenance_service.get_collection(collection_id, current_user_id)
+    if not col:
+        raise HTTPException(status_code=404, detail="收藏夹不存在")
+    return success(col.model_dump())
+
+
+@collections_router.get("/{collection_id}/items")
+async def list_collection_items(
+    collection_id: int,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user),
+):
+    """列出指定收藏夹内的商品 (分页)。"""
+    col = provenance_service.get_collection(collection_id, current_user_id)
+    if not col:
+        raise HTTPException(status_code=404, detail="收藏夹不存在")
+    products, total = store_product_service.list_user_favorited_products(
+        current_user_id,
+        page=page,
+        page_size=pageSize,
+        collection_id=collection_id,
+    )
+    return success(
+        {
+            "collection": col.model_dump(),
+            "products": [p.model_dump() for p in products],
+            "total": total,
+            "page": page,
+            "pageSize": pageSize,
+        }
+    )
+
+
 @collections_router.post("/{collection_id}/items/{product_id}")
 async def add_to_collection(
     collection_id: int,

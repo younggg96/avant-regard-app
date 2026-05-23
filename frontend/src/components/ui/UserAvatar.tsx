@@ -3,6 +3,7 @@ import { View, Text as RNText, StyleSheet, ViewStyle } from "react-native";
 import { OptimizedImage } from "./OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useThemedStyles, type AppTheme } from "../../theme";
+import { isPlaceholderAvatarUrl } from "../../utils/avatarUtils";
 
 interface UserAvatarProps {
   uri?: string | null;
@@ -38,11 +39,13 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const styles = useThemedStyles(makeStyles);
   const borderRadius = size / 2;
   const fontSize = Math.max(10, Math.round(size * 0.36));
+  const resolvedUri =
+    uri && !isPlaceholderAvatarUrl(uri) ? uri : undefined;
 
-  if (uri) {
+  if (resolvedUri) {
     return (
       <OptimizedImage
-        uri={uri}
+        uri={resolvedUri}
         size={getImageSize(size)}
         style={[{ width: size, height: size, borderRadius }, style]}
         contentFit="cover"

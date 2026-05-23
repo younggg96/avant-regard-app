@@ -93,6 +93,8 @@ import PublishListingStep3Screen from "./src/screens/PublishListing/PublishListi
 import PublishFromPostPickerScreen from "./src/screens/PublishListing/PublishFromPostPickerScreen";
 import SellerListingsScreen from "./src/screens/SellerListingsScreen";
 import MarketplaceScreen from "./src/screens/Marketplace/MarketplaceScreen";
+import MyCollectionsScreen from "./src/screens/MyCollectionsScreen";
+import UserCollectionDetailScreen from "./src/screens/UserCollectionDetailScreen";
 // Trading System (PRD Phase 4) Screens
 import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
 import MyOrdersScreen from "./src/screens/Trading/MyOrdersScreen";
@@ -915,6 +917,17 @@ function AppNavigator({
         <Stack.Screen
           name="Marketplace"
           component={MarketplaceScreen}
+          options={{ headerShown: false }}
+        />
+        {/* PRD 模块三 · 多收藏夹 */}
+        <Stack.Screen
+          name="MyCollections"
+          component={MyCollectionsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UserCollectionDetail"
+          component={UserCollectionDetailScreen}
           options={{ headerShown: false }}
         />
         {/* PRD Phase 4 · 交易引擎 */}

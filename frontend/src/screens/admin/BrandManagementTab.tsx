@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   RefreshControl,
@@ -7,18 +7,21 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView as RNScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, AdminBrand, AdminBrandImage, UpdateBrandParams } from "../../services/adminService";
 import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
-import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
+import { FullscreenImageViewer } from "../../components/PostDetail";
 
 const BrandManagementTab = () => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const sharedStyles = useSharedStyles();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
@@ -39,6 +42,17 @@ const BrandManagementTab = () => {
   const [brandImages, setBrandImages] = useState<AdminBrandImage[]>([]);
   const [brandImagesLoading, setBrandImagesLoading] = useState(false);
   const [brandImageUploading, setBrandImageUploading] = useState(false);
+
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailBrand, setDetailBrand] = useState<AdminBrand | null>(null);
+  const [detailBrandImages, setDetailBrandImages] = useState<AdminBrandImage[]>([]);
+  const [detailImagesLoading, setDetailImagesLoading] = useState(false);
+
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [fullscreenImages, setFullscreenImages] = useState<string[]>([]);
+  const detailModalWasOpenRef = useRef(false);
+  const editModalWasOpenRef = useRef(false);
 
   const fetchBrands = useCallback(async (p: number = 1, kw?: string) => {
     try {
@@ -89,6 +103,62 @@ const BrandManagementTab = () => {
     } finally {
       setBrandImagesLoading(false);
     }
+  };
+
+  const loadDetailBrandImages = async (brandId: number) => {
+    try {
+      setDetailImagesLoading(true);
+      const result = await adminService.getBrandImagesAdmin(brandId);
+      setDetailBrandImages(result.images);
+    } catch {
+      setDetailBrandImages([]);
+    } finally {
+      setDetailImagesLoading(false);
+    }
+  };
+
+  const openBrandDetail = (brand: AdminBrand) => {
+    setDetailBrand(brand);
+    setDetailBrandImages([]);
+    setDetailModalVisible(true);
+    loadDetailBrandImages(brand.id);
+  };
+
+  const openImageFullscreen = (urls: string[], index: number) => {
+    if (!urls.length) return;
+    if (detailModalVisible) {
+      detailModalWasOpenRef.current = true;
+      setDetailModalVisible(false);
+    } else if (editModalVisible) {
+      editModalWasOpenRef.current = true;
+      setEditModalVisible(false);
+    }
+    setFullscreenImages(urls);
+    setFullscreenIndex(index >= 0 ? index : 0);
+    requestAnimationFrame(() => setFullscreenVisible(true));
+  };
+
+  const closeImageFullscreen = () => {
+    setFullscreenVisible(false);
+    const reopenDelay = Platform.OS === "ios" ? 280 : 0;
+    if (detailModalWasOpenRef.current) {
+      detailModalWasOpenRef.current = false;
+      setTimeout(() => setDetailModalVisible(true), reopenDelay);
+    } else if (editModalWasOpenRef.current) {
+      editModalWasOpenRef.current = false;
+      setTimeout(() => setEditModalVisible(true), reopenDelay);
+    }
+  };
+
+  const getBrandGalleryUrls = (brand: AdminBrand, images: AdminBrandImage[]) => {
+    const urls: string[] = [];
+    if (brand.coverImage) urls.push(brand.coverImage);
+    images.forEach((img) => {
+      if (img.imageUrl && !urls.includes(img.imageUrl)) {
+        urls.push(img.imageUrl);
+      }
+    });
+    return urls;
   };
 
   const handleAdminUploadBrandImage = async () => {
@@ -197,6 +267,192 @@ const BrandManagementTab = () => {
   const selectedCount = brandImages.filter((i) => i.status === "APPROVED" && i.isSelected).length;
   const pendingCount = brandImages.filter((i) => i.status === "PENDING").length;
 
+  const renderBrandDetailBody = (brand: AdminBrand) => {
+    const galleryUrls = getBrandGalleryUrls(brand, detailBrandImages);
+
+    return (
+      <>
+        {brand.coverImage ? (
+          <Pressable
+            onPress={() =>
+              openImageFullscreen(
+                galleryUrls,
+                galleryUrls.indexOf(brand.coverImage!),
+              )
+            }
+          >
+            <OptimizedImage
+              uri={brand.coverImage}
+              size={ImageSize.LARGE}
+              style={styles.detailCoverImage}
+              contentFit="cover"
+              lazy={true}
+            />
+          </Pressable>
+        ) : null}
+
+        <Box style={styles.detailMetaCard}>
+          {brand.category ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.category")}</Text>
+              <Text style={styles.detailMetaValue}>{brand.category}</Text>
+            </HStack>
+          ) : null}
+          {brand.founder ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.founder")}</Text>
+              <Text style={styles.detailMetaValue}>{brand.founder}</Text>
+            </HStack>
+          ) : null}
+          {brand.country ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.country")}</Text>
+              <Text style={styles.detailMetaValue}>{brand.country}</Text>
+            </HStack>
+          ) : null}
+          {brand.foundedYear ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.foundedYear")}</Text>
+              <Text style={styles.detailMetaValue}>{brand.foundedYear}</Text>
+            </HStack>
+          ) : null}
+          {brand.website ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.website")}</Text>
+              <Text style={styles.detailMetaValue} numberOfLines={2}>
+                {brand.website}
+              </Text>
+            </HStack>
+          ) : null}
+          <HStack style={styles.detailMetaRow}>
+            <Text style={styles.detailMetaLabel}>ID</Text>
+            <Text style={styles.detailMetaValue}>{brand.id}</Text>
+          </HStack>
+          {brand.createdAt ? (
+            <HStack style={styles.detailMetaRow}>
+              <Text style={styles.detailMetaLabel}>{t("admin.communityCreatedAt")}</Text>
+              <Text style={styles.detailMetaValue}>
+                {new Date(brand.createdAt).toLocaleDateString()}
+              </Text>
+            </HStack>
+          ) : null}
+        </Box>
+
+        <Text style={styles.detailSectionTitle}>{t("admin.brandGallery")}</Text>
+        {detailImagesLoading ? (
+          <ActivityIndicator
+            size="small"
+            color={theme.colors.text}
+            style={{ marginVertical: 12 }}
+          />
+        ) : detailBrandImages.length === 0 && !brand.coverImage ? (
+          <Text style={styles.detailEmptyImages}>{t("admin.noBrandImages")}</Text>
+        ) : (
+          <Box style={styles.detailImagesGrid}>
+            {detailBrandImages.map((img, idx) => {
+              const urlIndex = galleryUrls.indexOf(img.imageUrl);
+              return (
+                <Pressable
+                  key={img.id}
+                  style={styles.detailImageItem}
+                  onPress={() =>
+                    openImageFullscreen(galleryUrls, urlIndex >= 0 ? urlIndex : idx)
+                  }
+                >
+                  <OptimizedImage
+                    uri={img.imageUrl}
+                    size={ImageSize.MEDIUM}
+                    style={styles.detailImageThumb}
+                    contentFit="cover"
+                    lazy={true}
+                  />
+                  {img.status === "PENDING" ? (
+                    <Box style={styles.pendingBadge}>
+                      <Text style={styles.pendingBadgeText}>
+                        {t("admin.pendingReview")}
+                      </Text>
+                    </Box>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </Box>
+        )}
+
+        <HStack style={styles.detailActions}>
+          <Button
+            size="sm"
+            variant="outline"
+            onPress={() => {
+              setDetailModalVisible(false);
+              handleOpenEdit(brand);
+            }}
+            leftIcon={
+              <Ionicons name="create-outline" size={14} color={theme.colors.text} />
+            }
+            style={{ flex: 1, borderColor: theme.colors.border }}
+          >
+            <ButtonText style={{ color: theme.colors.text, fontSize: 12 }}>
+              {t("common.edit")}
+            </ButtonText>
+          </Button>
+          <Button
+            size="sm"
+            colorScheme="error"
+            onPress={() => {
+              setDetailModalVisible(false);
+              handleDelete(brand);
+            }}
+            disabled={actionLoading}
+            leftIcon={
+              <Ionicons name="trash-outline" size={14} color={theme.colors.white} />
+            }
+            style={{ flex: 1 }}
+          >
+            <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
+          </Button>
+        </HStack>
+      </>
+    );
+  };
+
+  const renderCompactBrandCard = (brand: AdminBrand) => (
+    <Pressable
+      key={brand.id}
+      style={styles.compactCard}
+      onPress={() => openBrandDetail(brand)}
+    >
+      <HStack style={styles.compactCardRow}>
+        {brand.coverImage ? (
+          <OptimizedImage
+            uri={brand.coverImage}
+            size={ImageSize.THUMBNAIL}
+            style={styles.compactThumb}
+            contentFit="cover"
+            lazy={true}
+          />
+        ) : (
+          <Box style={[styles.compactThumb, styles.compactThumbPlaceholder]}>
+            <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray300} />
+          </Box>
+        )}
+
+        <Box style={styles.compactMain}>
+          <Text style={styles.compactName} numberOfLines={1}>
+            {brand.name}
+          </Text>
+          <Text style={styles.compactMeta} numberOfLines={1}>
+            {brand.category
+              ? `${brand.category} · ID: ${brand.id}`
+              : `ID: ${brand.id}`}
+          </Text>
+        </Box>
+
+        <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+      </HStack>
+    </Pressable>
+  );
+
   return (
     <Box style={{ flex: 1 }}>
       <ScrollView
@@ -225,7 +481,7 @@ const BrandManagementTab = () => {
 
         {loading ? (
           <Box style={sharedStyles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.black} />
+            <ActivityIndicator size="small" color={theme.colors.text} />
             <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
         ) : brands.length === 0 ? (
@@ -234,52 +490,7 @@ const BrandManagementTab = () => {
             <Text style={sharedStyles.emptyText}>{t("admin.noData")}</Text>
           </Box>
         ) : (
-          brands.map((brand) => (
-            <Box key={brand.id} style={sharedStyles.postCard}>
-              <HStack style={sharedStyles.postHeader}>
-                <Text style={sharedStyles.postTitle} numberOfLines={1}>{brand.name}</Text>
-                <Text style={sharedStyles.postDate}>ID: {brand.id}</Text>
-              </HStack>
-
-              {brand.coverImage && (
-                <OptimizedImage
-                  uri={brand.coverImage}
-                  size={ImageSize.MEDIUM}
-                  style={styles.brandImage}
-                  contentFit="cover"
-                  lazy={true}
-                />
-              )}
-
-              <VStack style={styles.brandMeta}>
-                {brand.category && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.category")}: {brand.category}</Text>}
-                {brand.founder && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.founder")}: {brand.founder}</Text>}
-                {brand.country && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.country")}: {brand.country}</Text>}
-                {brand.foundedYear && <Text style={sharedStyles.postContent} numberOfLines={1}>{t("admin.foundedYear")}: {brand.foundedYear}</Text>}
-              </VStack>
-
-              <HStack style={sharedStyles.actionButtons}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onPress={() => handleOpenEdit(brand)}
-                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.white} />}
-                  style={{ borderColor: theme.colors.gray200, gap: 4 }}
-                >
-                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("common.edit")}</ButtonText>
-                </Button>
-                <Button
-                  size="sm"
-                  colorScheme="error"
-                  onPress={() => handleDelete(brand)}
-                  disabled={actionLoading}
-                  leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
-                >
-                  <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
-                </Button>
-              </HStack>
-            </Box>
-          ))
+          brands.map(renderCompactBrandCard)
         )}
 
         {total > 50 && (
@@ -289,7 +500,7 @@ const BrandManagementTab = () => {
               onPress={() => fetchBrands(page - 1, keyword)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+              <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
             </Pressable>
             <Text style={styles.paginationText}>{t("admin.pagination", { page, total: totalPages })}</Text>
             <Pressable
@@ -297,13 +508,53 @@ const BrandManagementTab = () => {
               onPress={() => fetchBrands(page + 1, keyword)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+              <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
             </Pressable>
           </HStack>
         )}
 
         <Box style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={styles.brandDetailModalContent}>
+            <HStack style={styles.brandDetailHeader}>
+              <Text style={styles.brandDetailTitle} numberOfLines={1}>
+                {detailBrand?.name ?? t("admin.brandDetailTitle")}
+              </Text>
+              <Pressable
+                style={styles.brandDetailCloseBtn}
+                onPress={() => setDetailModalVisible(false)}
+              >
+                <Ionicons name="close" size={22} color={theme.colors.text} />
+              </Pressable>
+            </HStack>
+            {detailBrand ? (
+              <RNScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.brandDetailScroll}
+              >
+                {renderBrandDetailBody(detailBrand)}
+              </RNScrollView>
+            ) : null}
+          </Box>
+        </Box>
+      </Modal>
+
+      <FullscreenImageViewer
+        visible={fullscreenVisible && fullscreenImages.length > 0}
+        images={fullscreenImages}
+        currentIndex={fullscreenIndex}
+        onClose={closeImageFullscreen}
+        onIndexChange={setFullscreenIndex}
+      />
 
       <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
         <KeyboardAvoidingView
@@ -320,7 +571,7 @@ const BrandManagementTab = () => {
               </Text>
               <Text style={styles.imageHint}>{t("admin.brandImagesHint")}</Text>
               {brandImagesLoading ? (
-                <ActivityIndicator size="small" color={theme.colors.black} style={{ marginVertical: 12 }} />
+                <ActivityIndicator size="small" color={theme.colors.text} style={{ marginVertical: 12 }} />
               ) : (
                 <Box style={styles.brandImagesGrid}>
                   {brandImages.map((img) => {
@@ -333,8 +584,11 @@ const BrandManagementTab = () => {
                           isPending && styles.brandImageItemPending,
                           !isPending && img.isSelected && styles.brandImageItemSelected,
                         ]}
-                        onPress={() => handleToggleImageSelected(img)}
-                        onLongPress={() => handleDeleteBrandImage(img.id)}
+                        onPress={() => {
+                          const urls = brandImages.map((i) => i.imageUrl).filter(Boolean);
+                          openImageFullscreen(urls, urls.indexOf(img.imageUrl));
+                        }}
+                        onLongPress={() => handleToggleImageSelected(img)}
                       >
                         <OptimizedImage
                           uri={img.imageUrl}
@@ -486,6 +740,132 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     paddingBottom: 8,
     fontSize: 12,
     color: t.colors.gray400,
+  },
+  compactCard: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    ...t.shadows.sm,
+  },
+  compactCardRow: {
+    alignItems: "center",
+    gap: 10,
+  },
+  compactThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: t.colors.gray100,
+  },
+  compactThumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  compactMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  compactName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: t.colors.text,
+  },
+  compactMeta: {
+    fontSize: 11,
+    color: t.colors.gray300,
+    marginTop: 2,
+  },
+  brandDetailModalContent: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    height: "88%",
+    width: "92%",
+    padding: t.spacing.md,
+  },
+  brandDetailHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: t.spacing.sm,
+    paddingBottom: t.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.colors.border,
+  },
+  brandDetailTitle: {
+    ...t.typography.h4,
+    color: t.colors.text,
+    flex: 1,
+    marginRight: t.spacing.sm,
+  },
+  brandDetailCloseBtn: {
+    padding: t.spacing.xs,
+  },
+  brandDetailScroll: {
+    paddingBottom: t.spacing.lg,
+  },
+  detailCoverImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.md,
+    backgroundColor: t.colors.gray100,
+  },
+  detailMetaCard: {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    gap: t.spacing.sm,
+  },
+  detailMetaRow: {
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: t.spacing.sm,
+  },
+  detailMetaLabel: {
+    fontSize: 12,
+    color: t.colors.gray400,
+    flex: 1,
+  },
+  detailMetaValue: {
+    fontSize: 12,
+    color: t.colors.text,
+    fontWeight: "500",
+    flex: 1.2,
+    textAlign: "right",
+  },
+  detailSectionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: t.colors.gray300,
+    marginBottom: t.spacing.sm,
+  },
+  detailEmptyImages: {
+    fontSize: 12,
+    color: t.colors.gray300,
+    marginBottom: t.spacing.md,
+  },
+  detailImagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: t.spacing.md,
+  },
+  detailImageItem: {
+    width: 88,
+    height: 88,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: t.colors.gray100,
+  },
+  detailImageThumb: {
+    width: "100%",
+    height: "100%",
+  },
+  detailActions: {
+    gap: t.spacing.sm,
+    marginTop: t.spacing.xs,
   },
   brandImage: {
     width: "100%",

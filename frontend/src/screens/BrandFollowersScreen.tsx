@@ -126,7 +126,7 @@ const BrandFollowersScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {brandName ? `${brandName} - ${t("brand.followers")}` : t("brand.followers")}

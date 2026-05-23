@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 
 import {
@@ -39,6 +40,7 @@ export default function AuthenticationScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
   const [packages, setPackages] = useState<AuthenticationPackage[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -119,12 +121,16 @@ export default function AuthenticationScreen() {
         <Pressable onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>正品鉴定</Text>
+        <Text style={styles.headerTitle}>
+          {t("trading.authentication.headerTitle")}
+        </Text>
         <View style={{ width: 26 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionTitle}>选择套餐</Text>
+        <Text style={styles.sectionTitle}>
+          {t("trading.authentication.selectPackage")}
+        </Text>
         <View style={styles.pkgList}>
           {packages.map((p) => {
             const active = selectedCode === p.code;
@@ -145,7 +151,9 @@ export default function AuthenticationScreen() {
           })}
         </View>
 
-        <Text style={styles.sectionTitle}>商品信息</Text>
+        <Text style={styles.sectionTitle}>
+          {t("trading.authentication.productInfo")}
+        </Text>
         <TextInput
           style={styles.input}
           placeholder="品牌（选填）"
@@ -162,7 +170,9 @@ export default function AuthenticationScreen() {
           multiline
         />
 
-        <Text style={styles.sectionTitle}>商品照片</Text>
+        <Text style={styles.sectionTitle}>
+          {t("trading.authentication.productPhotos")}
+        </Text>
         <View style={styles.photoGrid}>
           {photos.map((uri) => (
             <View key={uri} style={styles.photoCell}>
@@ -190,9 +200,11 @@ export default function AuthenticationScreen() {
 
         {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
 
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>我的鉴定</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+          {t("trading.authentication.myOrders")}
+        </Text>
         {orders.length === 0 ? (
-          <Text style={styles.empty}>暂无鉴定订单</Text>
+          <Text style={styles.empty}>{t("trading.authentication.empty")}</Text>
         ) : (
           orders.map((o) => (
             <View key={o.id} style={styles.authOrderCard}>
@@ -222,7 +234,9 @@ export default function AuthenticationScreen() {
           {submitting ? (
             <ActivityIndicator color={theme.colors.textInverted} />
           ) : (
-            <Text style={styles.primaryBtnText}>提交并支付</Text>
+            <Text style={styles.primaryBtnText}>
+              {t("trading.authentication.submitAndPay")}
+            </Text>
           )}
         </Pressable>
       </View>

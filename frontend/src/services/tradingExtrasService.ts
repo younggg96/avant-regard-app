@@ -4,6 +4,7 @@
  * 拆到独立文件，避免 storeProductService.ts 继续膨胀。
  */
 import { request } from "./http";
+import type { StoreProduct } from "./storeProductService";
 
 // ============================================================================
 // Provenance
@@ -161,4 +162,37 @@ export const removeProductFromCollection = async (
     `/api/users/me/collections/${collectionId}/items/${productId}`,
     { method: "DELETE" }
   );
+};
+
+export interface CollectionItemsResponse {
+  collection: UserCollection;
+  products: StoreProduct[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * 拉取指定收藏夹下的商品列表 (分页)。
+ *
+ * 后端: GET /api/users/me/collections/{id}/items
+ */
+export const listCollectionItems = async (
+  collectionId: number,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<CollectionItemsResponse> => {
+  return request<CollectionItemsResponse>(
+    `/api/users/me/collections/${collectionId}/items?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/** 获取收藏夹元数据 (itemCount 等)。 */
+export const getCollection = async (
+  collectionId: number
+): Promise<UserCollection> => {
+  return request<UserCollection>(`/api/users/me/collections/${collectionId}`, {
+    method: "GET",
+  });
 };

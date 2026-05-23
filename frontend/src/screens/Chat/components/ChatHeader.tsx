@@ -83,7 +83,7 @@ export const ChatHeader = ({
             alignItems="center"
             onPress={onBack}
           >
-            <Ionicons name="arrow-back" size={22} color={theme.colors.black} />
+            <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </Pressable>
 
           <Pressable onPress={onProfile} style={chatStyles.headerUserInfo}>

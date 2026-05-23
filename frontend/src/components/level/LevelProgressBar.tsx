@@ -50,7 +50,7 @@ export const LevelProgressBar: React.FC<Props> = ({ task, compact }) => {
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   row: { marginBottom: 14 },
-  rowCompact: { marginBottom: 8 },
+  rowCompact: { marginBottom: 0 },
   labelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -61,15 +61,18 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   label: {
     ...t.typography.bodySmall,
     color: t.colors.gray400,
   },
   labelCompact: {
-    ...t.typography.caption,
+    fontSize: 10,
+    lineHeight: 14,
     color: t.colors.gray400,
+    flex: 1,
+    paddingRight: t.spacing.xs,
   },
   count: {
     ...t.typography.caption,
@@ -78,10 +81,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   countCompact: {
     fontFamily: t.typography.caption.fontFamily,
-    fontSize: 11,
+    fontSize: 10,
     lineHeight: 14,
     color: t.colors.gray300,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   countDone: {
     color: t.colors.text,

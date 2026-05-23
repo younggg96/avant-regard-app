@@ -275,10 +275,14 @@ const makeSharedStyles = (t: AppTheme) =>
       paddingHorizontal: t.spacing.md,
       paddingVertical: t.spacing.sm,
       borderRadius: t.borderRadius.md,
-      backgroundColor: t.colors.gray100,
+      backgroundColor: t.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
     linkTypeButtonActive: {
-      backgroundColor: t.colors.text,
+      backgroundColor: t.colors.cardElevated,
+      borderWidth: 1,
+      borderColor: t.colors.text,
     },
     linkTypeButtonText: {
       ...t.typography.caption,
@@ -286,7 +290,8 @@ const makeSharedStyles = (t: AppTheme) =>
       fontWeight: "500",
     },
     linkTypeButtonTextActive: {
-      color: t.colors.textInverted,
+      color: t.colors.text,
+      fontWeight: "600",
     },
     // Upload
     uploadImageButton: {

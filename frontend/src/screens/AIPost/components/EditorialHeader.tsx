@@ -53,7 +53,7 @@ const EditorialHeader: React.FC<EditorialHeaderProps> = ({
             <Ionicons
               name="chevron-back"
               size={20}
-              color={theme.colors.black}
+              color={theme.colors.text}
             />
           </Pressable>
         ) : null}

@@ -124,7 +124,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                   color={
                     action.style === "primary"
                       ? t.colors.textInverted
-                      : t.colors.gray400
+                      : t.colors.text
                   }
                 />
               )}

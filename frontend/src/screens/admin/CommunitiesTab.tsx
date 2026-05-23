@@ -24,6 +24,7 @@ import { useSharedStyles } from "./adminStyles";
 import { formatDate, pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
+import { FullscreenImageViewer } from "../../components/PostDetail";
 
 const getCategoryNames = (t: (key: string) => string): Record<CommunityCategory, string> => ({
   GENERAL: t("admin.categoryGeneral"),
@@ -69,6 +70,12 @@ const CommunitiesTab = () => {
   const [postsTotalPages, setPostsTotalPages] = useState(0);
   const [postsTotal, setPostsTotal] = useState(0);
   const [postsModalVisible, setPostsModalVisible] = useState(false);
+
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailCommunity, setDetailCommunity] = useState<AdminCommunity | null>(null);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenImages, setFullscreenImages] = useState<string[]>([]);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
 
   const fetchCommunities = useCallback(async () => {
     try {
@@ -246,6 +253,18 @@ const CommunitiesTab = () => {
     }
   };
 
+  const handleOpenCommunityDetail = (community: AdminCommunity) => {
+    setDetailCommunity(community);
+    setDetailModalVisible(true);
+  };
+
+  const openCoverFullscreen = (coverUrl?: string | null) => {
+    if (!coverUrl) return;
+    setFullscreenImages([coverUrl]);
+    setFullscreenIndex(0);
+    setFullscreenVisible(true);
+  };
+
   const handleOpenCommunityPosts = (community: AdminCommunity) => {
     setSelectedCommunityId(community.id);
     setSelectedCommunityName(community.name);
@@ -283,19 +302,21 @@ const CommunitiesTab = () => {
 
   const renderCommunityCard = (community: AdminCommunity) => (
     <Box key={community.id} style={styles.communityCard}>
-      {community.coverUrl ? (
-        <OptimizedImage
-          uri={community.coverUrl}
-          size={ImageSize.MEDIUM}
-          style={styles.communityCoverImage}
-          contentFit="cover"
-          lazy={true}
-        />
-      ) : (
-        <Box style={[styles.communityCoverImage, styles.communityCoverPlaceholder]}>
-          <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
-        </Box>
-      )}
+      <Pressable onPress={() => handleOpenCommunityDetail(community)}>
+        {community.coverUrl ? (
+          <OptimizedImage
+            uri={community.coverUrl}
+            size={ImageSize.MEDIUM}
+            style={styles.communityCoverImage}
+            contentFit="cover"
+            lazy={true}
+          />
+        ) : (
+          <Box style={[styles.communityCoverImage, styles.communityCoverPlaceholder]}>
+            <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+          </Box>
+        )}
+      </Pressable>
 
       <Box style={[styles.communityStatusBadge, community.isActive ? styles.communityStatusActive : styles.communityStatusInactive]}>
         <Text style={styles.communityStatusText}>{community.isActive ? t("admin.communityActiveLabel") : t("admin.communityInactiveLabel")}</Text>
@@ -634,6 +655,216 @@ const CommunitiesTab = () => {
           </Box>
         </Box>
       </Modal>
+
+      {/* Community Detail Modal */}
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={[sharedStyles.modalContent, styles.communityDetailModalContent]}>
+            {detailCommunity ? (
+              <>
+                <HStack style={styles.communityDetailHeader}>
+                  <Text style={styles.communityDetailTitle} numberOfLines={1}>
+                    {detailCommunity.name}
+                  </Text>
+                  <Pressable
+                    style={styles.communityDetailCloseBtn}
+                    onPress={() => setDetailModalVisible(false)}
+                  >
+                    <Ionicons name="close" size={22} color={theme.colors.text} />
+                  </Pressable>
+                </HStack>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.communityDetailScroll}
+                >
+                  {detailCommunity.coverUrl ? (
+                    <Pressable onPress={() => openCoverFullscreen(detailCommunity.coverUrl)}>
+                      <OptimizedImage
+                        uri={detailCommunity.coverUrl}
+                        size={ImageSize.LARGE}
+                        style={styles.communityDetailCover}
+                        contentFit="cover"
+                        lazy={true}
+                      />
+                    </Pressable>
+                  ) : (
+                    <Box
+                      style={[
+                        styles.communityDetailCover,
+                        styles.communityCoverPlaceholder,
+                      ]}
+                    >
+                      <Ionicons name="image-outline" size={40} color={theme.colors.gray300} />
+                    </Box>
+                  )}
+
+                  <HStack style={styles.communityDetailIdentity}>
+                    {detailCommunity.iconUrl ? (
+                      <OptimizedImage
+                        uri={detailCommunity.iconUrl}
+                        size={ImageSize.THUMBNAIL}
+                        style={styles.communityDetailIcon}
+                        contentFit="cover"
+                        lazy={true}
+                      />
+                    ) : (
+                      <Box
+                        style={[
+                          styles.communityDetailIcon,
+                          styles.communityIconPlaceholder,
+                        ]}
+                      >
+                        <Text style={styles.communityIconText}>
+                          {detailCommunity.name[0]}
+                        </Text>
+                      </Box>
+                    )}
+                    <Box style={{ flex: 1 }}>
+                      <Text style={styles.communityTitle}>{detailCommunity.name}</Text>
+                      <Text style={styles.communitySlug}>/{detailCommunity.slug}</Text>
+                    </Box>
+                  </HStack>
+
+                  <HStack style={styles.communityDetailBadges}>
+                    <Box
+                      style={[
+                        styles.communityDetailBadge,
+                        detailCommunity.isActive
+                          ? styles.communityStatusActive
+                          : styles.communityStatusInactive,
+                      ]}
+                    >
+                      <Text style={styles.communityStatusText}>
+                        {detailCommunity.isActive
+                          ? t("admin.communityActiveLabel")
+                          : t("admin.communityInactiveLabel")}
+                      </Text>
+                    </Box>
+                    {detailCommunity.isOfficial ? (
+                      <Box style={[styles.communityDetailBadge, styles.communityOfficialBadge]}>
+                        <Text style={styles.communityOfficialText}>
+                          {t("admin.communityOfficial")}
+                        </Text>
+                      </Box>
+                    ) : null}
+                    <Box style={[styles.communityDetailBadge, styles.communityDetailCategoryBadge]}>
+                      <Text style={styles.communityDetailCategoryText}>
+                        {CATEGORY_NAMES[detailCommunity.category]}
+                      </Text>
+                    </Box>
+                  </HStack>
+
+                  <Text style={styles.communityDetailSectionTitle}>
+                    {t("admin.communityIntro")}
+                  </Text>
+                  <Text style={styles.communityDetailDescription}>
+                    {detailCommunity.description?.trim()
+                      ? detailCommunity.description
+                      : t("admin.communityNoDescription")}
+                  </Text>
+
+                  <Box style={styles.communityDetailMetaCard}>
+                    <HStack style={styles.communityDetailMetaRow}>
+                      <Text style={styles.communityDetailMetaLabel}>
+                        {t("community.members")}
+                      </Text>
+                      <Text style={styles.communityDetailMetaValue}>
+                        {detailCommunity.memberCount}
+                      </Text>
+                    </HStack>
+                    <HStack style={styles.communityDetailMetaRow}>
+                      <Text style={styles.communityDetailMetaLabel}>
+                        {t("community.posts")}
+                      </Text>
+                      <Text style={styles.communityDetailMetaValue}>
+                        {detailCommunity.postCount}
+                      </Text>
+                    </HStack>
+                    <HStack style={styles.communityDetailMetaRow}>
+                      <Text style={styles.communityDetailMetaLabel}>
+                        {t("admin.sortOrder")}
+                      </Text>
+                      <Text style={styles.communityDetailMetaValue}>
+                        {detailCommunity.sortOrder}
+                      </Text>
+                    </HStack>
+                    <HStack style={styles.communityDetailMetaRow}>
+                      <Text style={styles.communityDetailMetaLabel}>
+                        {t("admin.communityIdLabel")}
+                      </Text>
+                      <Text style={styles.communityDetailMetaValue}>
+                        #{detailCommunity.id}
+                      </Text>
+                    </HStack>
+                    {detailCommunity.createdAt ? (
+                      <HStack style={styles.communityDetailMetaRow}>
+                        <Text style={styles.communityDetailMetaLabel}>
+                          {t("admin.communityCreatedAt")}
+                        </Text>
+                        <Text style={styles.communityDetailMetaValue}>
+                          {formatDate(detailCommunity.createdAt)}
+                        </Text>
+                      </HStack>
+                    ) : null}
+                    {detailCommunity.updatedAt ? (
+                      <HStack style={styles.communityDetailMetaRow}>
+                        <Text style={styles.communityDetailMetaLabel}>
+                          {t("admin.communityUpdatedAt")}
+                        </Text>
+                        <Text style={styles.communityDetailMetaValue}>
+                          {formatDate(detailCommunity.updatedAt)}
+                        </Text>
+                      </HStack>
+                    ) : null}
+                  </Box>
+
+                  <HStack style={styles.communityDetailActions}>
+                    <Button
+                      size="sm"
+                      style={{ flex: 1 }}
+                      onPress={() => {
+                        setDetailModalVisible(false);
+                        handleOpenCommunityPosts(detailCommunity);
+                      }}
+                    >
+                      <ButtonText>{t("admin.posts")}</ButtonText>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      style={{ flex: 1 }}
+                      onPress={() => {
+                        setDetailModalVisible(false);
+                        handleOpenEditModal(detailCommunity);
+                      }}
+                    >
+                      <ButtonText style={{ color: theme.colors.text }}>
+                        {t("common.edit")}
+                      </ButtonText>
+                    </Button>
+                  </HStack>
+                </ScrollView>
+              </>
+            ) : null}
+          </Box>
+        </Box>
+      </Modal>
+
+      {fullscreenImages.length > 0 ? (
+        <FullscreenImageViewer
+          visible={fullscreenVisible}
+          images={fullscreenImages}
+          currentIndex={fullscreenIndex}
+          onClose={() => setFullscreenVisible(false)}
+          onIndexChange={setFullscreenIndex}
+        />
+      ) : null}
     </Box>
   );
 };
@@ -907,6 +1138,99 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     backgroundColor: t.colors.error,
     padding: t.spacing.sm,
     borderRadius: t.borderRadius.md,
+  },
+  communityDetailModalContent: {
+    height: "88%",
+    width: "92%",
+    padding: t.spacing.md,
+  },
+  communityDetailHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: t.spacing.sm,
+  },
+  communityDetailTitle: {
+    ...t.typography.h4,
+    color: t.colors.text,
+    flex: 1,
+    marginRight: t.spacing.sm,
+  },
+  communityDetailCloseBtn: {
+    padding: t.spacing.xs,
+  },
+  communityDetailScroll: {
+    paddingBottom: t.spacing.lg,
+  },
+  communityDetailCover: {
+    width: "100%",
+    height: 180,
+    borderRadius: t.borderRadius.md,
+    backgroundColor: t.colors.gray100,
+    marginBottom: t.spacing.md,
+  },
+  communityDetailIdentity: {
+    alignItems: "center",
+    marginBottom: t.spacing.sm,
+  },
+  communityDetailIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: t.colors.gray100,
+    marginRight: t.spacing.sm,
+  },
+  communityDetailBadges: {
+    flexWrap: "wrap",
+    gap: t.spacing.xs,
+    marginBottom: t.spacing.md,
+  },
+  communityDetailBadge: {
+    paddingHorizontal: t.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: t.borderRadius.sm,
+  },
+  communityDetailCategoryBadge: {
+    backgroundColor: t.colors.text,
+  },
+  communityDetailCategoryText: {
+    ...t.typography.caption,
+    color: t.colors.textInverted,
+    fontWeight: "600",
+  },
+  communityDetailSectionTitle: {
+    ...t.typography.bodySmall,
+    color: t.colors.gray300,
+    fontWeight: "600",
+    marginBottom: t.spacing.xs,
+  },
+  communityDetailDescription: {
+    ...t.typography.body,
+    color: t.colors.text,
+    lineHeight: 22,
+    marginBottom: t.spacing.md,
+  },
+  communityDetailMetaCard: {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    gap: t.spacing.sm,
+  },
+  communityDetailMetaRow: {
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  communityDetailMetaLabel: {
+    ...t.typography.bodySmall,
+    color: t.colors.gray400,
+  },
+  communityDetailMetaValue: {
+    ...t.typography.bodySmall,
+    color: t.colors.text,
+    fontWeight: "500",
+  },
+  communityDetailActions: {
+    gap: t.spacing.sm,
   },
 });
 

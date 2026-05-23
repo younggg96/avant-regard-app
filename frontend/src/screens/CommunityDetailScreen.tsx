@@ -47,6 +47,7 @@ import {
 } from "../services/communityService";
 import { userInfoService, UserInfo } from "../services/userInfoService";
 import { useAuthStore } from "../store/authStore";
+import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -113,7 +114,6 @@ const mapApiPostToDisplayPost = (
   userInfoMap: Map<number, UserInfo>
 ): DisplayPost => {
   const userInfo = userInfoMap.get(apiPost.userId);
-  const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`;
 
   return {
     id: String(apiPost.id),
@@ -122,7 +122,7 @@ const mapApiPostToDisplayPost = (
     author: {
       id: String(apiPost.userId),
       name: userInfo?.username || apiPost.username || i18next.t("community.anonymous"),
-      avatar: userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar,
+      avatar: resolveAvatarUrlOrEmpty(userInfo?.avatarUrl, apiPost.avatarUrl),
       isVerified: false,
     },
     content: {

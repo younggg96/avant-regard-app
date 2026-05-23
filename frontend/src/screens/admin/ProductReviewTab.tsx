@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   RefreshControl,
   StyleSheet,
   Switch,
@@ -15,10 +16,12 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
-import { Box, HStack, ScrollView, Text, VStack } from "../../components/ui";
+import { Box, HStack, Pressable, ScrollView, Text, VStack } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
-import { useThemedStyles, type AppTheme } from "../../theme";
+import { FullscreenImageViewer } from "../../components/PostDetail";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import {
   adminListReviewingListings,
@@ -33,7 +36,15 @@ interface FeatureFlagsPayload {
   listingAutoApprove: boolean;
 }
 
+/** iOS Switch 默认偏大，统一缩小以匹配 admin 列表行高 */
+const COMPACT_SWITCH_PROPS = Platform.select({
+  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } as const },
+  default: {},
+});
+
 const ProductReviewTab: React.FC = () => {
+  const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const [items, setItems] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +56,10 @@ const ProductReviewTab: React.FC = () => {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenImages, setFullscreenImages] = useState<string[]>([]);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -55,11 +70,13 @@ const ProductReviewTab: React.FC = () => {
       setItems(list.products || []);
       setAutoApprove(!!flags?.listingAutoApprove);
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "加载失败");
+      Alert.show(
+        e instanceof Error ? e.message : t("admin.operationFailed"),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -77,7 +94,9 @@ const ProductReviewTab: React.FC = () => {
       await adminReviewListing(productId, "approved");
       setItems((prev) => prev.filter((p) => p.id !== productId));
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "操作失败");
+      Alert.show(
+        e instanceof Error ? e.message : t("admin.operationFailed"),
+      );
     } finally {
       setActionLoading(false);
     }
@@ -97,7 +116,9 @@ const ProductReviewTab: React.FC = () => {
       setItems((prev) => prev.filter((p) => p.id !== rejectingId));
       setRejectModalVisible(false);
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "操作失败");
+      Alert.show(
+        e instanceof Error ? e.message : t("admin.operationFailed"),
+      );
     } finally {
       setActionLoading(false);
     }
@@ -106,37 +127,49 @@ const ProductReviewTab: React.FC = () => {
   const toggleAutoApprove = async (next: boolean) => {
     setAutoApprove(next);
     try {
-      // 复用 admin 的 feature-flags 写接口（如果没有，会被忽略）
-      // admin 写接口: 见 backend/app/api/routes/admin.py update_feature_flags
       await request(`/api/admin/feature-flags`, {
         method: "PUT",
         body: JSON.stringify({ listingAutoApprove: next }),
       });
     } catch {
-      // admin feature flag 写接口可能尚未实现；UI 仍允许切换以提示意图
+      // admin feature flag 写接口可能尚未实现
     }
+  };
+
+  const openImage = (images: string[]) => {
+    if (!images.length) return;
+    setFullscreenImages(images);
+    setFullscreenIndex(0);
+    setFullscreenVisible(true);
   };
 
   return (
     <Box style={styles.container}>
-      {/* 自动审核开关 */}
       <Box style={styles.flagRow}>
-        <VStack style={{ flex: 1 }}>
-          <Text style={styles.flagTitle}>自动审核</Text>
+        <VStack style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={styles.flagTitle}>
+            {t("admin.listingAutoApproveTitle")}
+          </Text>
           <Text style={styles.flagDescription}>
-            打开后用户提交审核会立即变为 active；仅建议 dev 环境使用。
+            {t("admin.listingAutoApproveHint")}
           </Text>
         </VStack>
-        <Switch value={autoApprove} onValueChange={toggleAutoApprove} />
+        <Switch
+          {...COMPACT_SWITCH_PROPS}
+          value={autoApprove}
+          onValueChange={toggleAutoApprove}
+          trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+          thumbColor={theme.colors.card}
+        />
       </Box>
 
       {loading ? (
         <Box style={styles.center}>
-          <ActivityIndicator />
+          <ActivityIndicator color={theme.colors.text} />
         </Box>
       ) : items.length === 0 ? (
         <Box style={styles.center}>
-          <Text style={styles.empty}>暂无待审核单品</Text>
+          <Text style={styles.empty}>{t("admin.noPendingListings")}</Text>
         </Box>
       ) : (
         <ScrollView
@@ -148,13 +181,17 @@ const ProductReviewTab: React.FC = () => {
           {items.map((p) => (
             <Box key={p.id} style={styles.card}>
               <HStack space="md">
-                <Box style={styles.thumb}>
+                <Pressable
+                  style={styles.thumb}
+                  onPress={() => openImage(p.images || [])}
+                  disabled={!p.images?.[0]}
+                >
                   {p.images?.[0] ? (
                     <OptimizedImage uri={p.images[0]} style={styles.thumbImg} />
                   ) : (
                     <Box style={[styles.thumbImg, styles.thumbEmpty]} />
                   )}
-                </Box>
+                </Pressable>
                 <VStack style={{ flex: 1 }} space="xs">
                   <Text style={styles.title} numberOfLines={1}>
                     {p.title}
@@ -169,7 +206,9 @@ const ProductReviewTab: React.FC = () => {
                   </Text>
                   {p.conditionNote ? (
                     <Text style={styles.note} numberOfLines={2}>
-                      成色说明：{p.conditionNote}
+                      {t("admin.listingConditionNote", {
+                        note: p.conditionNote,
+                      })}
                     </Text>
                   ) : null}
                 </VStack>
@@ -180,16 +219,26 @@ const ProductReviewTab: React.FC = () => {
                   disabled={actionLoading}
                   onPress={() => openReject(p.id)}
                 >
-                  <Ionicons name="close" size={16} color="#e44" />
-                  <Text style={[styles.btnText, { color: "#e44" }]}>拒绝</Text>
+                  <Ionicons name="close" size={14} color={theme.colors.error} />
+                  <Text style={[styles.btnText, { color: theme.colors.error }]}>
+                    {t("admin.reject")}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.btn, styles.btnApprove]}
                   disabled={actionLoading}
                   onPress={() => handleApprove(p.id)}
                 >
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                  <Text style={[styles.btnText, { color: "#fff" }]}>通过</Text>
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={theme.colors.textInverted}
+                  />
+                  <Text
+                    style={[styles.btnText, { color: theme.colors.textInverted }]}
+                  >
+                    {t("admin.approve")}
+                  </Text>
                 </TouchableOpacity>
               </HStack>
             </Box>
@@ -205,33 +254,49 @@ const ProductReviewTab: React.FC = () => {
       >
         <Box style={styles.modalBackdrop}>
           <Box style={styles.modalCard}>
-            <Text style={styles.modalTitle}>填写拒绝原因</Text>
+            <Text style={styles.modalTitle}>
+              {t("admin.listingRejectTitle")}
+            </Text>
             <TextInput
               style={styles.modalInput}
               multiline
               value={rejectReason}
               onChangeText={setRejectReason}
-              placeholder="例如：图片不清晰 / 与描述不符"
-              placeholderTextColor="#9999"
+              placeholder={t("admin.listingRejectPlaceholder") as string}
+              placeholderTextColor={theme.colors.placeholder}
             />
             <HStack space="sm" style={{ marginTop: 12 }}>
               <TouchableOpacity
                 style={[styles.btn, styles.btnReject, { flex: 1 }]}
                 onPress={() => setRejectModalVisible(false)}
               >
-                <Text style={[styles.btnText, { color: "#e44" }]}>取消</Text>
+                <Text style={[styles.btnText, { color: theme.colors.error }]}>
+                  {t("common.cancel")}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btn, styles.btnApprove, { flex: 1 }]}
                 onPress={confirmReject}
                 disabled={actionLoading}
               >
-                <Text style={[styles.btnText, { color: "#fff" }]}>提交</Text>
+                <Text
+                  style={[styles.btnText, { color: theme.colors.textInverted }]}
+                >
+                  {t("common.submit")}
+                </Text>
               </TouchableOpacity>
             </HStack>
           </Box>
         </Box>
       </Modal>
+
+      <FullscreenImageViewer
+        visible={fullscreenVisible}
+        images={fullscreenImages}
+        currentIndex={fullscreenIndex}
+        onClose={() => setFullscreenVisible(false)}
+        onIndexChange={setFullscreenIndex}
+      />
     </Box>
   );
 };
@@ -242,20 +307,26 @@ const makeStyles = (t: AppTheme) =>
     flagRow: {
       flexDirection: "row",
       alignItems: "center",
-      padding: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
       backgroundColor: t.colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    flagTitle: { fontSize: 15, color: t.colors.text, fontWeight: "600" },
-    flagDescription: { fontSize: 12, color: t.colors.textSecondary, marginTop: 4 },
+    flagTitle: { fontSize: 14, color: t.colors.text, fontWeight: "600" },
+    flagDescription: {
+      fontSize: 11,
+      color: t.colors.textSecondary,
+      marginTop: 2,
+      lineHeight: 15,
+    },
     center: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
       padding: 32,
     },
-    empty: { color: t.colors.textSecondary },
+    empty: { fontSize: 13, color: t.colors.textSecondary },
     card: {
       backgroundColor: t.colors.surface,
       padding: 12,
@@ -263,29 +334,41 @@ const makeStyles = (t: AppTheme) =>
       marginVertical: 6,
       borderRadius: 8,
     },
-    thumb: { width: 84, height: 100, backgroundColor: t.colors.border, borderRadius: 6, overflow: "hidden" },
+    thumb: {
+      width: 72,
+      height: 88,
+      backgroundColor: t.colors.border,
+      borderRadius: 6,
+      overflow: "hidden",
+    },
     thumbImg: { width: "100%", height: "100%" },
     thumbEmpty: {},
-    title: { fontSize: 15, fontWeight: "600", color: t.colors.text },
-    meta: { fontSize: 12, color: t.colors.textSecondary },
-    price: { fontSize: 15, fontWeight: "600", color: t.colors.text },
-    note: { fontSize: 12, color: t.colors.textSecondary },
+    title: { fontSize: 14, fontWeight: "600", color: t.colors.text },
+    meta: { fontSize: 11, color: t.colors.textSecondary },
+    price: { fontSize: 14, fontWeight: "600", color: t.colors.text },
+    note: { fontSize: 11, color: t.colors.textSecondary, lineHeight: 15 },
     actions: { marginTop: 10, justifyContent: "flex-end" },
     btn: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
       borderRadius: 6,
       borderWidth: StyleSheet.hairlineWidth,
     },
-    btnReject: { borderColor: "#e44", backgroundColor: t.colors.surface },
-    btnApprove: { borderColor: t.colors.accent, backgroundColor: t.colors.accent },
-    btnText: { fontSize: 13, fontWeight: "600" },
+    btnReject: {
+      borderColor: t.colors.error,
+      backgroundColor: t.colors.surface,
+    },
+    btnApprove: {
+      borderColor: t.colors.accent,
+      backgroundColor: t.colors.accent,
+    },
+    btnText: { fontSize: 12, fontWeight: "600" },
     modalBackdrop: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.5)",
+      backgroundColor: t.colors.overlay,
       justifyContent: "center",
       padding: 24,
     },
@@ -294,15 +377,21 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: 10,
       padding: 16,
     },
-    modalTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text, marginBottom: 10 },
+    modalTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 10,
+    },
     modalInput: {
-      minHeight: 96,
+      minHeight: 80,
       textAlignVertical: "top",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
       borderRadius: 6,
       padding: 10,
       color: t.colors.text,
+      fontSize: 13,
     },
   });
 

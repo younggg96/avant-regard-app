@@ -364,6 +364,72 @@ async def get_seller_profile_public(
 # ==========================================================================
 
 
+@admin_router.get("")
+async def admin_list_all_products(
+    status: Optional[str] = Query(None, description="按状态过滤"),
+    q: Optional[str] = Query(None, description="搜索关键词（标题/品牌）"),
+    sellerKind: Optional[str] = Query(None, description="merchant / individual"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=200),
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员后台：列出所有商品（支持按状态/搜索/卖家类型过滤）。"""
+    products, total = store_product_service.admin_list_all_products(
+        status=status,
+        search_query=q,
+        seller_kind=sellerKind,
+        page=page,
+        page_size=pageSize,
+    )
+    return success(
+        {
+            "products": [p.model_dump() for p in products],
+            "total": total,
+            "page": page,
+            "pageSize": pageSize,
+        }
+    )
+
+
+@admin_router.post("")
+async def admin_create_product(
+    data: StoreProductCreate,
+    admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员创建商品。"""
+    try:
+        product = store_product_service.admin_create_product(data)
+        return success(product.model_dump(), message="商品已创建")
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@admin_router.put("/{product_id}")
+async def admin_update_product(
+    product_id: int,
+    data: StoreProductUpdate,
+    admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员更新商品（跳过所有权校验）。"""
+    try:
+        product = store_product_service.admin_update_product(product_id, data)
+        return success(product.model_dump(), message="商品已更新")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@admin_router.delete("/{product_id}")
+async def admin_delete_product(
+    product_id: int,
+    admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员删除商品（跳过所有权校验）。"""
+    ok = store_product_service.admin_delete_product(product_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="商品不存在或已删除")
+    return success(None, message="商品已删除")
+
+
 @admin_router.get("/reviewing")
 async def admin_list_reviewing(
     page: int = Query(1, ge=1),

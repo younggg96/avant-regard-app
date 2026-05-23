@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import {
   listMyOffers,
@@ -39,6 +40,7 @@ export default function MyOffersScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("outgoing");
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,17 +67,20 @@ export default function MyOffersScreen() {
   const onAccept = async (id: number) => {
     try {
       const res = await acceptOffer(id);
-      Alert.alert("已接受", "已为买家生成订单", [
+      Alert.alert(t("trading.offers.acceptedTitle"), t("trading.offers.acceptedMessage"), [
         {
-          text: "查看订单",
+          text: t("trading.offers.viewOrder"),
           onPress: () =>
             navigation.navigate("OrderDetail", { orderId: res.order.id }),
         },
-        { text: "确定" },
+        { text: t("common.confirm") },
       ]);
       load();
     } catch (e: any) {
-      Alert.alert("失败", e?.message ?? "操作失败");
+      Alert.alert(
+        t("trading.offers.failedTitle"),
+        e?.message ?? t("trading.offers.actionFailed"),
+      );
     }
   };
 
@@ -84,7 +89,10 @@ export default function MyOffersScreen() {
       await rejectOffer(id);
       load();
     } catch (e: any) {
-      Alert.alert("失败", e?.message ?? "操作失败");
+      Alert.alert(
+        t("trading.offers.failedTitle"),
+        e?.message ?? t("trading.offers.actionFailed"),
+      );
     }
   };
 
@@ -93,7 +101,10 @@ export default function MyOffersScreen() {
       await withdrawOffer(id);
       load();
     } catch (e: any) {
-      Alert.alert("失败", e?.message ?? "操作失败");
+      Alert.alert(
+        t("trading.offers.failedTitle"),
+        e?.message ?? t("trading.offers.actionFailed"),
+      );
     }
   };
 
@@ -103,7 +114,7 @@ export default function MyOffersScreen() {
         <Pressable onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>出价</Text>
+        <Text style={styles.headerTitle}>{t("trading.offers.headerTitle")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -118,7 +129,7 @@ export default function MyOffersScreen() {
               mode === "outgoing" && styles.tabTextActive,
             ]}
           >
-            我的出价
+            {t("trading.offers.tabOutgoing")}
           </Text>
         </Pressable>
         <Pressable
@@ -131,7 +142,7 @@ export default function MyOffersScreen() {
               mode === "incoming" && styles.tabTextActive,
             ]}
           >
-            待我处理
+            {t("trading.offers.tabIncoming")}
           </Text>
         </Pressable>
       </View>
@@ -146,7 +157,9 @@ export default function MyOffersScreen() {
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.title}>单品 #{item.productId}</Text>
+                <Text style={styles.title}>
+                  {t("trading.offers.productLabel", { id: item.productId })}
+                </Text>
                 <Text style={styles.status}>{formatOfferStatus(item.status)}</Text>
               </View>
               <Text style={styles.price}>{formatPrice(item.priceCents)}</Text>
@@ -154,7 +167,9 @@ export default function MyOffersScreen() {
                 <Text style={styles.message}>“{item.message}”</Text>
               ) : null}
               <Text style={styles.meta}>
-                到期 {item.expiresAt?.slice(0, 16)}
+                {t("trading.offers.expiresAt", {
+                  date: item.expiresAt?.slice(0, 16) ?? "",
+                })}
               </Text>
 
               {item.status === "pending" ? (
@@ -165,13 +180,17 @@ export default function MyOffersScreen() {
                         style={styles.ghostBtn}
                         onPress={() => onReject(item.id)}
                       >
-                        <Text style={styles.ghostBtnText}>拒绝</Text>
+                        <Text style={styles.ghostBtnText}>
+                          {t("trading.offers.reject")}
+                        </Text>
                       </Pressable>
                       <Pressable
                         style={styles.primaryBtn}
                         onPress={() => onAccept(item.id)}
                       >
-                        <Text style={styles.primaryBtnText}>接受</Text>
+                        <Text style={styles.primaryBtnText}>
+                          {t("trading.offers.accept")}
+                        </Text>
                       </Pressable>
                     </>
                   ) : (
@@ -179,7 +198,9 @@ export default function MyOffersScreen() {
                       style={styles.ghostBtn}
                       onPress={() => onWithdraw(item.id)}
                     >
-                      <Text style={styles.ghostBtnText}>撤回</Text>
+                      <Text style={styles.ghostBtnText}>
+                        {t("trading.offers.withdraw")}
+                      </Text>
                     </Pressable>
                   )}
                 </View>
@@ -187,7 +208,7 @@ export default function MyOffersScreen() {
             </View>
           )}
           ListEmptyComponent={
-            <Text style={styles.empty}>暂无出价</Text>
+            <Text style={styles.empty}>{t("trading.offers.empty")}</Text>
           }
         />
       )}

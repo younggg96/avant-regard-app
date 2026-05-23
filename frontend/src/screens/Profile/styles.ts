@@ -132,7 +132,7 @@ const makeProfileStyles = (t: AppTheme) =>
       borderBottomColor: t.colors.border,
     },
     profileInfo: {
-      paddingBottom: 16,
+      paddingBottom: 10,
     },
     avatarRow: {
       flexDirection: "row",
@@ -179,7 +179,7 @@ const makeProfileStyles = (t: AppTheme) =>
     },
     userNameSection: {
       paddingHorizontal: 16,
-      marginTop: 12,
+      marginTop: 8,
     },
     userName: {
       fontSize: 20,
@@ -203,9 +203,9 @@ const makeProfileStyles = (t: AppTheme) =>
     tagsContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 8,
+      gap: 6,
       paddingHorizontal: 16,
-      marginTop: 12,
+      marginTop: 8,
     },
     tag: {
       paddingHorizontal: 10,
@@ -221,8 +221,8 @@ const makeProfileStyles = (t: AppTheme) =>
     statsContainer: {
       flexDirection: "row",
       paddingHorizontal: 16,
-      marginTop: 16,
-      gap: 24,
+      marginTop: 10,
+      gap: 18,
     },
     statItem: {
       flexDirection: "row",
@@ -241,14 +241,15 @@ const makeProfileStyles = (t: AppTheme) =>
       fontFamily: PF.regular,
     },
     followedBrandsSection: {
-      paddingBottom: 14,
+      paddingTop: 4,
+      paddingBottom: 8,
       backgroundColor: t.colors.card,
     },
     followedBrandsHeader: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 16,
-      marginBottom: 10,
+      marginBottom: 6,
       gap: 6,
     },
     followedBrandsTitle: {
@@ -262,6 +263,16 @@ const makeProfileStyles = (t: AppTheme) =>
       fontWeight: "600",
       color: t.colors.gray300,
       fontFamily: PF.medium,
+    },
+    /** ArchiveEntryCard / LevelProgressCard 等 profile 内嵌卡片共用 */
+    profileInsetCard: {
+      marginHorizontal: t.spacing.md,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.cardElevated,
     },
     brandChip: {
       flexDirection: "row",
@@ -306,15 +317,15 @@ const makeProfileStyles = (t: AppTheme) =>
       alignItems: "center",
     },
     tabScrollContent: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
     },
     tabItem: {
-      paddingVertical: 12,
-      marginRight: 24,
+      paddingVertical: 8,
+      marginRight: 14,
       position: "relative",
     },
     tabText: {
-      fontSize: 15,
+      fontSize: 14,
       color: t.colors.gray600,
       fontWeight: "500",
       fontFamily: PF.medium,

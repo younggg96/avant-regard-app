@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack } from "../components/ui";
+import { Box, Text, Pressable, HStack, VStack, UserAvatar } from "../components/ui";
 import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
@@ -27,6 +27,7 @@ import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
+import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 
 type SearchType = "posts" | "users" | "brands" | "stores" | "products";
 
@@ -451,7 +452,7 @@ const SearchScreen = () => {
       author: {
         id: userId,
         name: post.username || t("profile.user"),
-        avatar: post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`,
+        avatar: resolveAvatarUrlOrEmpty(post.avatarUrl),
       },
       content: {
         title: post.title || "",
@@ -564,24 +565,11 @@ const SearchScreen = () => {
   const renderUserItem = ({ item }: { item: UserInfo }) => (
     <Pressable onPress={() => handleUserPress(item)} px="$md" py="$md">
       <HStack alignItems="center" space="md">
-        <Box
-          width={56}
-          height={56}
-          rounded="$sm"
-          overflow="hidden"
-          style={{ backgroundColor: theme.colors.gray100 }}
-        >
-          <OptimizedImage
-            uri={
-              item.avatarUrl ||
-              `https://api.dicebear.com/7.x/avataaars/png?seed=${item.userId}`
-            }
-            size={ImageSize.THUMBNAIL}
-            style={{ width: 56, height: 56 }}
-            contentFit="cover"
-            lazy={true}
-          />
-        </Box>
+        <UserAvatar
+          uri={resolveAvatarUrlOrEmpty(item.avatarUrl) || undefined}
+          name={item.username}
+          size={56}
+        />
 
         <VStack flex={1} space="xs">
           <HStack alignItems="center" space="sm">
@@ -1090,7 +1078,7 @@ const SearchScreen = () => {
       >
         {/* Back Button */}
         <Pressable onPress={() => navigation.goBack()} p="$xs">
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </Pressable>
 
         {/* Search Input */}

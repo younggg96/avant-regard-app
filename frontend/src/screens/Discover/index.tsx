@@ -272,6 +272,8 @@ const DiscoverScreen: React.FC = () => {
     (e: PagerViewOnPageSelectedEvent) => {
       const idx = Math.round(Number(e.nativeEvent.position));
       if (idx < 0 || idx >= TAB_PAGES.length) return;
+      const tab = TAB_PAGES[idx];
+      useDiscoverTabStore.getState().setActiveTab(tab);
       setPageIndex(idx);
       setMountedPages(neighborMountSet(idx));
       loadTabData(TAB_PAGES[idx]);
@@ -305,6 +307,7 @@ const DiscoverScreen: React.FC = () => {
       }
 
       const idx = TAB_INDEX_MAP[tab];
+      useDiscoverTabStore.getState().setActiveTab(tab);
       setMountedPages((prev) => {
         const n = new Set(prev);
         neighborMountSet(idx).forEach((i) => n.add(i));

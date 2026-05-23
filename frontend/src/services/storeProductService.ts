@@ -597,13 +597,27 @@ export const checkStoreProductFavorited = async (
   return !!result?.favorited;
 };
 
-/** GET /api/store-merchants/user/favorited-products */
+/** GET /api/store-merchants/user/favorited-products
+ *
+ * 可选参数:
+ *   - collectionId : 仅返回该收藏夹下的商品
+ *   - onlyDefault  : 仅返回未分组的"默认收藏" (与 collectionId 互斥)
+ */
 export const listMyFavoritedStoreProducts = async (
   page: number = 1,
-  pageSize: number = 20
+  pageSize: number = 20,
+  options: { collectionId?: number; onlyDefault?: boolean } = {}
 ): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  qs.set("page", String(page));
+  qs.set("pageSize", String(pageSize));
+  if (options.collectionId != null) {
+    qs.set("collectionId", String(options.collectionId));
+  } else if (options.onlyDefault) {
+    qs.set("onlyDefault", "true");
+  }
   return request<StoreProductListResponse>(
-    `/api/store-merchants/user/favorited-products?page=${page}&pageSize=${pageSize}`,
+    `/api/store-merchants/user/favorited-products?${qs.toString()}`,
     { method: "GET" }
   );
 };
@@ -971,6 +985,56 @@ export const getSellerProfilePublic = async (
 // ============================================================================
 // 管理员审核
 // ============================================================================
+
+export interface AdminProductListParams {
+  status?: ProductStatus | "";
+  q?: string;
+  sellerKind?: SellerKind | "";
+  page?: number;
+  pageSize?: number;
+}
+
+export const adminListAllProducts = async (
+  params: AdminProductListParams = {}
+): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  if (params.status) qs.append("status", params.status);
+  if (params.q) qs.append("q", params.q);
+  if (params.sellerKind) qs.append("sellerKind", params.sellerKind);
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 20));
+  return request<StoreProductListResponse>(
+    `/api/admin/listings?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
+
+export const adminCreateProduct = async (
+  data: StoreProductCreateParams & { sellerKind?: SellerKind }
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/admin/listings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+export const adminUpdateProduct = async (
+  productId: number,
+  data: StoreProductUpdateParams & { status?: ProductStatus }
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/admin/listings/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const adminDeleteProduct = async (
+  productId: number
+): Promise<void> => {
+  await request<null>(`/api/admin/listings/${productId}`, {
+    method: "DELETE",
+  });
+};
 
 export const adminListReviewingListings = async (
   page: number = 1,

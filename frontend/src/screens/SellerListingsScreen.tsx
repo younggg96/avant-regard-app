@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
@@ -36,20 +37,24 @@ import { usePublishListingStore } from "../store/publishListingStore";
 
 type TabValue = "active" | "draft" | "reviewing" | "sold" | "offline" | "rejected";
 
-const TABS: Array<{ value: TabValue; label: string }> = [
-  { value: "active", label: "在售" },
-  { value: "draft", label: "草稿" },
-  { value: "reviewing", label: "审核中" },
-  { value: "sold", label: "已售" },
-  { value: "offline", label: "已下架" },
-  { value: "rejected", label: "已拒" },
-];
-
 const PAGE_SIZE = 20;
 
 const SellerListingsScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+
+  const tabs = useMemo<Array<{ value: TabValue; label: string }>>(
+    () => [
+      { value: "active", label: t("trading.myListings.tabActive") },
+      { value: "draft", label: t("trading.myListings.tabDraft") },
+      { value: "reviewing", label: t("trading.myListings.tabReviewing") },
+      { value: "sold", label: t("trading.myListings.tabSold") },
+      { value: "offline", label: t("trading.myListings.tabOffline") },
+      { value: "rejected", label: t("trading.myListings.tabRejected") },
+    ],
+    [t],
+  );
 
   const [tab, setTab] = useState<TabValue>("active");
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -154,7 +159,7 @@ const SellerListingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title="我的在售"
+        title={t("trading.myListings.title")}
         showBack
         rightActions={
           selectionMode
@@ -183,7 +188,7 @@ const SellerListingsScreen: React.FC = () => {
       {/* Tabs */}
       <Box style={styles.tabsRow}>
         <FlatList
-          data={TABS}
+          data={tabs}
           keyExtractor={(t) => t.value}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -322,22 +327,23 @@ const SellerListingsScreen: React.FC = () => {
 };
 
 const StatusBadge: React.FC<{ status: ProductStatus }> = ({ status }) => {
+  const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const label =
     status === "active"
-      ? "在售"
+      ? t("trading.myListings.tabActive")
       : status === "draft"
-      ? "草稿"
+      ? t("trading.myListings.tabDraft")
       : status === "reviewing"
-      ? "审核中"
+      ? t("trading.myListings.tabReviewing")
       : status === "sold"
-      ? "已售"
+      ? t("trading.myListings.tabSold")
       : status === "offline"
-      ? "已下架"
+      ? t("trading.myListings.tabOffline")
       : status === "rejected"
-      ? "已拒"
+      ? t("trading.myListings.tabRejected")
       : status === "frozen"
-      ? "预订中"
+      ? t("trading.myListings.statusFrozen")
       : String(status);
   return (
     <Box style={styles.badge}>

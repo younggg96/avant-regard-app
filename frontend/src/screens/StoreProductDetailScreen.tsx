@@ -47,7 +47,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, HStack, Image, Pressable, ScrollView, Text, VStack } from "../components/ui";
+import { Box, HStack, Image, Pressable, ScrollView, Text, VStack, UserAvatar } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -86,11 +86,13 @@ import {
 } from "../components/PostDetail";
 import TradingActionBar from "../components/TradingActionBar";
 import OfferModal from "./Trading/OfferModal";
+import { SaveToCollectionSheet } from "../components/SaveToCollectionSheet";
 import {
   clampAspectRatio,
   useMediaAspectRatio,
 } from "../utils/useMediaAspectRatio";
 import { useTranslation } from "react-i18next";
+import { resolveAvatarUrl } from "../utils/avatarUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -113,8 +115,6 @@ type NavigationProp = {
 type RouteProps = RouteProp<Record<string, RouteParams>, string>;
 
 const COMMENT_PAGE_SIZE = 20;
-const DEFAULT_AVATAR_URI =
-  "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=200";
 
 interface ReplyTarget {
   commentId: number;
@@ -153,6 +153,9 @@ const StoreProductDetailScreen: React.FC = () => {
   const [wantCount, setWantCount] = useState(0);
   const [wantPending, setWantPending] = useState(false);
   const [showWantPopup, setShowWantPopup] = useState(false);
+
+  // PRD 模块三 · 收藏夹选择抽屉
+  const [collectionSheetVisible, setCollectionSheetVisible] = useState(false);
 
   // ---------------------- 评论 ---------------------------------------------
   const [comments, setComments] = useState<StoreProductComment[]>([]);
@@ -818,6 +821,14 @@ const StoreProductDetailScreen: React.FC = () => {
               </View>
               <Pressable
                 onPress={handleToggleFavorite}
+                onLongPress={() => {
+                  if (!currentUser) {
+                    Alert.show(t("engagement.pleaseLogin"));
+                    return;
+                  }
+                  setCollectionSheetVisible(true);
+                }}
+                delayLongPress={300}
                 hitSlop={8}
                 style={styles.heartBtn}
                 disabled={favoritePending}
@@ -884,12 +895,11 @@ const StoreProductDetailScreen: React.FC = () => {
           {seller && (
             <View style={styles.sellerCardOuter}>
               <View style={styles.sellerCard}>
-                <OptimizedImage
-                  uri={seller.avatarUrl ?? DEFAULT_AVATAR_URI}
-                  size={ImageSize.THUMBNAIL}
+                <UserAvatar
+                  uri={resolveAvatarUrl(seller.avatarUrl)}
+                  name={seller.username}
+                  size={36}
                   style={styles.sellerAvatar}
-                  contentFit="cover"
-                  placeholderColor={theme.colors.skeleton}
                 />
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <HStack alignItems="center" space="xs">
@@ -1166,12 +1176,11 @@ const StoreProductDetailScreen: React.FC = () => {
               </Text>
               <View style={styles.sellerStatsCard}>
                 <HStack alignItems="center">
-                  <OptimizedImage
-                    uri={seller.avatarUrl ?? DEFAULT_AVATAR_URI}
-                    size={ImageSize.THUMBNAIL}
+                  <UserAvatar
+                    uri={resolveAvatarUrl(seller.avatarUrl)}
+                    name={seller.username}
+                    size={40}
                     style={styles.sellerStatsAvatar}
-                    contentFit="cover"
-                    placeholderColor={theme.colors.skeleton}
                   />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <HStack alignItems="center" space="xs">
@@ -1407,6 +1416,19 @@ const StoreProductDetailScreen: React.FC = () => {
         onClose={handleCloseFullscreen}
         onIndexChange={setActiveImageIndex}
       />
+      <SaveToCollectionSheet
+        visible={collectionSheetVisible}
+        productId={productId}
+        isFavorited={isFavorited}
+        onClose={() => setCollectionSheetVisible(false)}
+        onSaved={() => {
+          if (!isFavorited) setIsFavorited(true);
+        }}
+        onUnsaved={() => {
+          setIsFavorited(false);
+          setFavoriteCount((n) => Math.max(0, n - 1));
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -1502,12 +1524,11 @@ const ReviewRow: React.FC<{
   const styles = useThemedStyles(makeStyles);
   return (
     <HStack space="sm" style={styles.reviewRow}>
-      <OptimizedImage
-        uri={review.reviewerAvatar ?? DEFAULT_AVATAR_URI}
-        size={ImageSize.THUMBNAIL}
+      <UserAvatar
+        uri={resolveAvatarUrl(review.reviewerAvatar)}
+        name={review.reviewerUsername ?? undefined}
+        size={32}
         style={styles.reviewAvatar}
-        contentFit="cover"
-        placeholderColor={theme.colors.skeleton}
       />
       <View style={{ flex: 1 }}>
         <HStack alignItems="center" space="xs">
@@ -1617,18 +1638,15 @@ const CommentItemImpl: React.FC<{
   const timestamp = comment.createdAt
     ? formatTimestamp(comment.createdAt)
     : "";
-  const avatarUri =
-    comment.userAvatar ||
-    "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=200";
+  const avatarUri = resolveAvatarUrl(comment.userAvatar);
 
   return (
     <HStack space="sm" style={{ marginBottom: 12 }}>
-      <OptimizedImage
+      <UserAvatar
         uri={avatarUri}
-        size={ImageSize.THUMBNAIL}
+        name={comment.username || t("store.anonymous")}
+        size={32}
         style={styles.commentAvatar}
-        contentFit="cover"
-        lazy
       />
       <VStack flex={1} space="xs">
         <HStack justifyContent="space-between" alignItems="center">

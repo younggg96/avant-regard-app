@@ -41,6 +41,7 @@ import { unlikeStoreComment } from "../services/buyerStoreService";
 import { unlikeStoreProductComment } from "../services/storeProductService";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
+import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -80,7 +81,7 @@ const MyLikesScreen = () => {
             author: {
                 id: String(apiPost.userId),
                 name: apiPost.username || t('profile.user'),
-                avatar: apiPost.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`,
+                avatar: resolveAvatarUrlOrEmpty(apiPost.avatarUrl),
             },
             content: {
                 title: apiPost.title || t('community.noTitle'),

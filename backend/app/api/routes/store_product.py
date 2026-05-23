@@ -467,10 +467,20 @@ async def check_product_favorited(
 async def list_my_favorited_products(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
+    collectionId: Optional[int] = Query(
+        None, description="筛选指定收藏夹下的商品 (留空 = 全部收藏)"
+    ),
+    onlyDefault: bool = Query(
+        False, description="是否只看未分组的默认收藏 (与 collectionId 互斥)"
+    ),
     current_user_id: int = Depends(get_current_user),
 ):
     products, total = store_product_service.list_user_favorited_products(
-        current_user_id, page=page, page_size=pageSize
+        current_user_id,
+        page=page,
+        page_size=pageSize,
+        collection_id=collectionId,
+        only_default=onlyDefault and collectionId is None,
     )
     return success({
         "products": [p.model_dump() for p in products],

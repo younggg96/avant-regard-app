@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   RefreshControl,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   BuyerStore,
   BuyerStoreCreateParams,
@@ -39,6 +39,7 @@ import {
   OptimizedImage,
 } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
+import { FullscreenImageViewer } from "../../components/PostDetail";
 
 const PAGE_SIZE = 20;
 
@@ -61,6 +62,7 @@ const EMPTY_CREATE_FORM: BuyerStoreCreateParams = {
 
 const StoreManagementTab = () => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const sharedStyles = useSharedStyles();
   const [stores, setStores] = useState<BuyerStore[]>([]);
@@ -86,6 +88,13 @@ const StoreManagementTab = () => {
     ...EMPTY_CREATE_FORM,
   });
   const [imageUploading, setImageUploading] = useState(false);
+
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [detailStore, setDetailStore] = useState<BuyerStore | null>(null);
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [fullscreenImages, setFullscreenImages] = useState<string[]>([]);
+  const detailModalWasOpenRef = useRef(false);
 
   useEffect(() => {
     loadCountries();
@@ -365,6 +374,226 @@ const StoreManagementTab = () => {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const activeFilterCount = (filterCountry ? 1 : 0) + (filterCity ? 1 : 0);
 
+  const openStoreDetail = (store: BuyerStore) => {
+    setDetailStore(store);
+    setDetailModalVisible(true);
+  };
+
+  const openImageFullscreen = (urls: string[], index: number) => {
+    if (!urls.length) return;
+    if (detailModalVisible) {
+      detailModalWasOpenRef.current = true;
+      setDetailModalVisible(false);
+    }
+    setFullscreenImages(urls);
+    setFullscreenIndex(index >= 0 ? index : 0);
+    requestAnimationFrame(() => setFullscreenVisible(true));
+  };
+
+  const closeImageFullscreen = () => {
+    setFullscreenVisible(false);
+    if (detailModalWasOpenRef.current) {
+      detailModalWasOpenRef.current = false;
+      setTimeout(() => setDetailModalVisible(true), Platform.OS === "ios" ? 280 : 0);
+    }
+  };
+
+  const renderDetailMetaRow = (label: string, value?: string | number | null) => {
+    if (value === undefined || value === null || value === "") return null;
+    return (
+      <HStack style={styles.detailMetaRow}>
+        <Text style={styles.detailMetaLabel}>{label}</Text>
+        <Text style={styles.detailMetaValue}>{String(value)}</Text>
+      </HStack>
+    );
+  };
+
+  const renderStoreDetailBody = (store: BuyerStore) => {
+    const images = store.images || [];
+
+    return (
+      <>
+        {images.length > 0 ? (
+          <Pressable onPress={() => openImageFullscreen(images, 0)}>
+            <OptimizedImage
+              uri={images[0]}
+              size={ImageSize.LARGE}
+              style={styles.detailCoverImage}
+              contentFit="cover"
+              lazy={true}
+            />
+          </Pressable>
+        ) : null}
+
+        <Box style={styles.detailMetaCard}>
+          {renderDetailMetaRow(t("admin.address"), store.address)}
+          {renderDetailMetaRow(t("admin.country"), store.country)}
+          {renderDetailMetaRow(t("admin.city"), store.city)}
+          {renderDetailMetaRow("ID", store.id)}
+          {renderDetailMetaRow(
+            t("admin.businessStatus"),
+            store.isOpen ? t("admin.open") : t("admin.closed"),
+          )}
+          {store.rating !== undefined && store.rating > 0
+            ? renderDetailMetaRow(t("admin.rating"), store.rating.toFixed(1))
+            : null}
+          {store.phone && store.phone.length > 0
+            ? renderDetailMetaRow(t("admin.phone"), store.phone.join(", "))
+            : null}
+          {renderDetailMetaRow(t("admin.hours"), store.hours)}
+          {renderDetailMetaRow(t("admin.restDay"), store.rest)}
+          {store.coordinates
+            ? renderDetailMetaRow(
+                t("admin.coordinates"),
+                `${store.coordinates.latitude}, ${store.coordinates.longitude}`,
+              )
+            : null}
+          {store.style && store.style.length > 0
+            ? renderDetailMetaRow(t("admin.styleTags"), store.style.join(", "))
+            : null}
+          {store.favoriteCount !== undefined
+            ? renderDetailMetaRow(t("admin.favoriteCount"), store.favoriteCount)
+            : null}
+        </Box>
+
+        {store.description ? (
+          <>
+            <Text style={styles.detailSectionTitle}>{t("admin.description")}</Text>
+            <Text style={styles.detailDescription}>{store.description}</Text>
+          </>
+        ) : null}
+
+        {store.brands && store.brands.length > 0 ? (
+          <>
+            <Text style={styles.detailSectionTitle}>{t("admin.brands")}</Text>
+            <Text style={styles.detailDescription}>{store.brands.join(", ")}</Text>
+          </>
+        ) : null}
+
+        <Text style={styles.detailSectionTitle}>{t("admin.storeImages")}</Text>
+        {images.length === 0 ? (
+          <Text style={styles.detailEmptyImages}>{t("admin.noStoreImages")}</Text>
+        ) : (
+          <Box style={styles.detailImagesGrid}>
+            {images.map((url, idx) => (
+              <Pressable
+                key={`${store.id}-${idx}`}
+                style={styles.detailImageItem}
+                onPress={() => openImageFullscreen(images, idx)}
+              >
+                <OptimizedImage
+                  uri={url}
+                  size={ImageSize.MEDIUM}
+                  style={styles.detailImageThumb}
+                  contentFit="cover"
+                  lazy={true}
+                />
+              </Pressable>
+            ))}
+          </Box>
+        )}
+
+        <HStack style={styles.detailActions}>
+          <Button
+            size="sm"
+            variant="outline"
+            onPress={() => {
+              setDetailModalVisible(false);
+              handleOpenEdit(store);
+            }}
+            leftIcon={
+              <Ionicons name="create-outline" size={14} color={theme.colors.text} />
+            }
+            style={{ flex: 1, borderColor: theme.colors.border }}
+          >
+            <ButtonText style={{ color: theme.colors.text, fontSize: 12 }}>
+              {t("common.edit")}
+            </ButtonText>
+          </Button>
+          <Button
+            size="sm"
+            colorScheme="error"
+            onPress={() => {
+              setDetailModalVisible(false);
+              handleDelete(store);
+            }}
+            disabled={actionLoading}
+            leftIcon={
+              <Ionicons name="trash-outline" size={14} color={theme.colors.white} />
+            }
+            style={{ flex: 1 }}
+          >
+            <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
+          </Button>
+        </HStack>
+      </>
+    );
+  };
+
+  const renderCompactStoreCard = (store: BuyerStore) => {
+    const cover = store.images?.[0];
+
+    return (
+      <Pressable
+        key={store.id}
+        style={styles.compactCard}
+        onPress={() => openStoreDetail(store)}
+      >
+        <HStack style={styles.compactCardRow}>
+          {cover ? (
+            <OptimizedImage
+              uri={cover}
+              size={ImageSize.THUMBNAIL}
+              style={styles.compactThumb}
+              contentFit="cover"
+              lazy={true}
+            />
+          ) : (
+            <Box style={[styles.compactThumb, styles.compactThumbPlaceholder]}>
+              <Ionicons name="storefront-outline" size={18} color={theme.colors.gray300} />
+            </Box>
+          )}
+
+          <Box style={styles.compactMain}>
+            <Text style={styles.compactName} numberOfLines={1}>
+              {store.name}
+            </Text>
+            <Text style={styles.compactMeta} numberOfLines={1}>
+              {[store.city, store.country].filter(Boolean).join(" · ")}
+            </Text>
+          </Box>
+
+          <HStack style={styles.compactStatus}>
+            <Box
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor: store.isOpen
+                    ? theme.colors.success
+                    : theme.colors.gray300,
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.compactStatusText,
+                {
+                  color: store.isOpen
+                    ? theme.colors.success
+                    : theme.colors.gray300,
+                },
+              ]}
+            >
+              {store.isOpen ? t("admin.open") : t("admin.closed")}
+            </Text>
+          </HStack>
+
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+        </HStack>
+      </Pressable>
+    );
+  };
+
   // ==================== Sub-renderers ====================
 
   const renderImageGrid = (
@@ -471,7 +700,7 @@ const StoreManagementTab = () => {
             <Ionicons
               name="filter"
               size={18}
-              color={activeFilterCount > 0 ? theme.colors.white : theme.colors.black}
+              color={activeFilterCount > 0 ? theme.colors.white : theme.colors.text}
             />
             {activeFilterCount > 0 && (
               <Text style={styles.filterBadge}>{activeFilterCount}</Text>
@@ -552,7 +781,7 @@ const StoreManagementTab = () => {
         {/* Store List */}
         {loading ? (
           <VStack style={sharedStyles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.black} />
+            <ActivityIndicator size="small" color={theme.colors.text} />
             <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </VStack>
         ) : stores.length === 0 ? (
@@ -561,117 +790,7 @@ const StoreManagementTab = () => {
             <Text style={sharedStyles.emptyText}>{t("admin.noStores")}</Text>
           </VStack>
         ) : (
-          stores.map((store) => (
-            <Box key={store.id} style={sharedStyles.postCard}>
-              <HStack justifyContent="between" style={{ marginBottom: theme.spacing.sm }}>
-                <Box style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={sharedStyles.postTitle} numberOfLines={1}>
-                    {store.name}
-                  </Text>
-                </Box>
-                <HStack space="xs">
-                  <Box
-                    style={[
-                      styles.statusDot,
-                      {
-                        backgroundColor: store.isOpen
-                          ? theme.colors.success
-                          : theme.colors.gray300,
-                      },
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {
-                        color: store.isOpen
-                          ? theme.colors.success
-                          : theme.colors.gray300,
-                      },
-                    ]}
-                  >
-                    {store.isOpen ? t("admin.open") : t("admin.closed")}
-                  </Text>
-                </HStack>
-              </HStack>
-
-              {store.images && store.images.length > 0 && (
-                <RNScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.listImagesRow}
-                >
-                  {store.images.slice(0, 5).map((url, idx) => (
-                    <OptimizedImage
-                      key={idx}
-                      uri={url}
-                      size={ImageSize.THUMBNAIL}
-                      style={styles.listImageThumb}
-                      contentFit="cover"
-                      lazy={true}
-                    />
-                  ))}
-                  {store.images.length > 5 && (
-                    <Box style={styles.listImageMore}>
-                      <Text style={styles.listImageMoreText}>
-                        +{store.images.length - 5}
-                      </Text>
-                    </Box>
-                  )}
-                </RNScrollView>
-              )}
-
-              <Text style={sharedStyles.postContent} numberOfLines={1}>
-                <Ionicons name="location-outline" size={12} /> {store.address}
-              </Text>
-
-              <HStack style={styles.storeMeta}>
-                <Text style={styles.metaChip}>{store.country}</Text>
-                <Text style={styles.metaChip}>{store.city}</Text>
-                {store.rating !== undefined && store.rating > 0 && (
-                  <Text style={[styles.metaChip, styles.ratingChip]}>
-                    <Ionicons name="star" size={10} color="#F59E0B" />{" "}
-                    {store.rating.toFixed(1)}
-                  </Text>
-                )}
-              </HStack>
-
-              {store.brands && store.brands.length > 0 && (
-                <Text style={styles.brandsText} numberOfLines={2}>
-                  {t("admin.brands")}: {store.brands.join(", ")}
-                </Text>
-              )}
-
-              <Text style={styles.storeId}>ID: {store.id}</Text>
-
-              <HStack style={sharedStyles.actionButtons}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onPress={() => handleOpenEdit(store)}
-                  leftIcon={
-                    <Ionicons name="create-outline" size={16} color={theme.colors.white} />
-                  }
-                  style={styles.editButton}
-                >
-                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-                    {t("common.edit")}
-                  </ButtonText>
-                </Button>
-                <Button
-                  size="sm"
-                  colorScheme="error"
-                  onPress={() => handleDelete(store)}
-                  disabled={actionLoading}
-                  leftIcon={
-                    <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
-                  }
-                >
-                  <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
-                </Button>
-              </HStack>
-            </Box>
-          ))
+          stores.map(renderCompactStoreCard)
         )}
 
         {/* Pagination */}
@@ -682,7 +801,7 @@ const StoreManagementTab = () => {
               onPress={() => fetchStores(page - 1)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+              <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
             </Pressable>
             <Text style={styles.paginationText}>
               {t("admin.pagination", { page, total: totalPages })}
@@ -692,13 +811,53 @@ const StoreManagementTab = () => {
               onPress={() => fetchStores(page + 1)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+              <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
             </Pressable>
           </HStack>
         )}
 
         <Box style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <Box style={sharedStyles.modalOverlay}>
+          <Box style={styles.storeDetailModalContent}>
+            <HStack style={styles.storeDetailHeader}>
+              <Text style={styles.storeDetailTitle} numberOfLines={1}>
+                {detailStore?.name ?? t("admin.storeDetailTitle")}
+              </Text>
+              <Pressable
+                style={styles.storeDetailCloseBtn}
+                onPress={() => setDetailModalVisible(false)}
+              >
+                <Ionicons name="close" size={22} color={theme.colors.text} />
+              </Pressable>
+            </HStack>
+            {detailStore ? (
+              <RNScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.storeDetailScroll}
+              >
+                {renderStoreDetailBody(detailStore)}
+              </RNScrollView>
+            ) : null}
+          </Box>
+        </Box>
+      </Modal>
+
+      <FullscreenImageViewer
+        visible={fullscreenVisible && fullscreenImages.length > 0}
+        images={fullscreenImages}
+        currentIndex={fullscreenIndex}
+        onClose={closeImageFullscreen}
+        onIndexChange={setFullscreenIndex}
+      />
 
       {/* Create Store Modal */}
       <Modal
@@ -1180,6 +1339,146 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     paddingBottom: 8,
     fontSize: 12,
     color: t.colors.gray400,
+  },
+  compactCard: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+    ...t.shadows.sm,
+  },
+  compactCardRow: {
+    alignItems: "center",
+    gap: 10,
+  },
+  compactThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: t.colors.gray100,
+  },
+  compactThumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  compactMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  compactName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: t.colors.text,
+  },
+  compactMeta: {
+    fontSize: 11,
+    color: t.colors.gray300,
+    marginTop: 2,
+  },
+  compactStatus: {
+    alignItems: "center",
+    gap: 4,
+  },
+  compactStatusText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  storeDetailModalContent: {
+    backgroundColor: t.colors.card,
+    borderRadius: t.borderRadius.lg,
+    height: "88%",
+    width: "92%",
+    padding: t.spacing.md,
+  },
+  storeDetailHeader: {
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: t.spacing.sm,
+    paddingBottom: t.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.colors.border,
+  },
+  storeDetailTitle: {
+    ...t.typography.h4,
+    color: t.colors.text,
+    flex: 1,
+    marginRight: t.spacing.sm,
+  },
+  storeDetailCloseBtn: {
+    padding: t.spacing.xs,
+  },
+  storeDetailScroll: {
+    paddingBottom: t.spacing.lg,
+  },
+  detailCoverImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: t.borderRadius.md,
+    marginBottom: t.spacing.md,
+    backgroundColor: t.colors.gray100,
+  },
+  detailMetaCard: {
+    backgroundColor: t.colors.surface,
+    borderRadius: t.borderRadius.md,
+    padding: t.spacing.md,
+    marginBottom: t.spacing.md,
+    gap: t.spacing.sm,
+  },
+  detailMetaRow: {
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: t.spacing.sm,
+  },
+  detailMetaLabel: {
+    fontSize: 12,
+    color: t.colors.gray400,
+    flex: 1,
+  },
+  detailMetaValue: {
+    fontSize: 12,
+    color: t.colors.text,
+    fontWeight: "500",
+    flex: 1.2,
+    textAlign: "right",
+  },
+  detailSectionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: t.colors.gray300,
+    marginBottom: t.spacing.xs,
+  },
+  detailDescription: {
+    fontSize: 13,
+    color: t.colors.text,
+    lineHeight: 19,
+    marginBottom: t.spacing.md,
+  },
+  detailEmptyImages: {
+    fontSize: 12,
+    color: t.colors.gray300,
+    marginBottom: t.spacing.md,
+  },
+  detailImagesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: t.spacing.md,
+  },
+  detailImageItem: {
+    width: 88,
+    height: 88,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: t.colors.gray100,
+  },
+  detailImageThumb: {
+    width: "100%",
+    height: "100%",
+  },
+  detailActions: {
+    gap: t.spacing.sm,
+    marginTop: t.spacing.xs,
   },
   statusDot: {
     width: 8,

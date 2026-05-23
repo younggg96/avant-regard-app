@@ -169,7 +169,7 @@ export const useAuthStore = create<AuthStore>()(
           username: response.username,
           is_admin: response.is_admin,
           userType: response.userType,
-          avatar: currentUser?.avatar || "https://via.placeholder.com/100x100",
+          avatar: currentUser?.avatar || undefined,
           // 如果是同一用户重新登录，保留之前的 profileCompleted / 主题等本地状态
           profileCompleted: sameUser ? currentUser?.profileCompleted : undefined,
           preferredTheme: sameUser ? currentUser?.preferredTheme : undefined,

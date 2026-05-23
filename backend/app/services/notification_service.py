@@ -514,6 +514,96 @@ class NotificationService:
             action_data=action_data,
         )
 
+    # ======================= 收藏商品状态变化通知 =======================
+    #
+    # 当用户收藏 (favorite) 或想要 (want) 的商品发生以下变化时, 主动推送:
+    #   - sold      已售出
+    #   - offline   被卖家下架
+    #   - price_changed  改价 (降价更值得关注, 涨价也通知)
+    #
+    # 这些通知统一走 NotificationType.SYSTEM (避免在 schema 里再加新枚举,
+    # 且通知中心已有 system 分支), 通过 action_data.navigateTo 让前端跳到商品详情.
+
+    def notify_favorited_product_sold(
+        self,
+        recipient_user_id: int,
+        *,
+        product_id: int,
+        product_title: str,
+        product_image: Optional[str] = None,
+    ) -> None:
+        """收藏 / 想要的单品已售出。"""
+        action_data = {
+            "navigateTo": "StoreProductDetail",
+            "navigateParams": {"productId": product_id},
+            "post_image": product_image,
+        }
+        self.create_notification(
+            user_id=recipient_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title="你收藏的单品已售出",
+            message=(product_title[:50] + ("..." if len(product_title) > 50 else "")),
+            action_data=action_data,
+        )
+
+    def notify_favorited_product_offline(
+        self,
+        recipient_user_id: int,
+        *,
+        product_id: int,
+        product_title: str,
+        product_image: Optional[str] = None,
+    ) -> None:
+        """收藏 / 想要的单品被卖家下架。"""
+        action_data = {
+            "navigateTo": "StoreProductDetail",
+            "navigateParams": {"productId": product_id},
+            "post_image": product_image,
+        }
+        self.create_notification(
+            user_id=recipient_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title="你收藏的单品已下架",
+            message=(product_title[:50] + ("..." if len(product_title) > 50 else "")),
+            action_data=action_data,
+        )
+
+    def notify_favorited_product_price_changed(
+        self,
+        recipient_user_id: int,
+        *,
+        product_id: int,
+        product_title: str,
+        old_price_cents: int,
+        new_price_cents: int,
+        currency: str = "CNY",
+        product_image: Optional[str] = None,
+    ) -> None:
+        """收藏 / 想要的单品价格变动。
+
+        - 降价: 标题"降价提醒"
+        - 涨价: 标题"价格更新"
+        """
+        symbol = "¥" if currency.upper() == "CNY" else currency.upper()
+        old_p = f"{symbol}{old_price_cents / 100:.0f}"
+        new_p = f"{symbol}{new_price_cents / 100:.0f}"
+        is_drop = new_price_cents < old_price_cents
+        title = "你收藏的单品降价了" if is_drop else "你收藏的单品价格更新"
+        message_prefix = "降价" if is_drop else "调价"
+        truncated_title = product_title[:30] + ("..." if len(product_title) > 30 else "")
+        action_data = {
+            "navigateTo": "StoreProductDetail",
+            "navigateParams": {"productId": product_id},
+            "post_image": product_image,
+        }
+        self.create_notification(
+            user_id=recipient_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title=title,
+            message=f"{truncated_title} · {message_prefix} {old_p} → {new_p}",
+            action_data=action_data,
+        )
+
     # ======================= 广播通知 =======================
 
     def broadcast_notification(

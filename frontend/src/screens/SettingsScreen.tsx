@@ -371,56 +371,63 @@ const SettingsScreen = () => {
         {
           // PRD 模块一：个人卖家 / 买手店通用的"我的在售"入口
           id: "sellerListings",
-          label: "我的在售",
+          label: t("settings.myListings"),
           icon: "pricetag-outline",
           onPress: () => (navigation as any).navigate("SellerListings"),
         },
         {
           // PRD 模块二：交易大厅
           id: "marketplace",
-          label: "Marketplace",
+          label: t("settings.marketplace"),
           icon: "cart-outline",
           onPress: () => (navigation as any).navigate("Marketplace"),
         },
         {
+          // PRD 模块三：我的收藏 (默认收藏 + 自建收藏夹)
+          id: "myCollections",
+          label: t("settings.myCollections"),
+          icon: "bookmark-outline",
+          onPress: () => (navigation as any).navigate("MyCollections"),
+        },
+        {
           // PRD 模块四：买家订单
           id: "myOrders",
-          label: "我的订单",
+          label: t("settings.myOrders"),
           icon: "receipt-outline",
           onPress: () => (navigation as any).navigate("MyOrders"),
         },
         {
           // PRD 模块四：卖家销售
           id: "mySales",
-          label: "我的销售",
+          label: t("settings.mySales"),
           icon: "cash-outline",
           onPress: () => (navigation as any).navigate("MySales"),
         },
         {
           // PRD 模块四：出价
           id: "myOffers",
-          label: "出价",
+          label: t("settings.myOffers"),
           icon: "swap-horizontal-outline",
           onPress: () => (navigation as any).navigate("MyOffers"),
         },
         {
           // PRD 模块五：鉴定
           id: "authentication",
-          label: "正品鉴定",
+          label: t("settings.authentication"),
           icon: "shield-checkmark-outline",
           onPress: () => (navigation as any).navigate("Authentication"),
         },
         {
           // PRD 模块六：My Archive
           id: "myArchive",
-          label: "我的藏品",
+          label: t("settings.myArchive"),
           icon: "albums-outline",
           onPress: () => (navigation as any).navigate("MyArchive"),
         },
         {
           // PRD 模块八：Plus 订阅
           id: "plusSubscribe",
-          label: "AVANT REGARD Plus",
+          label: t("settings.plusSubscribe"),
           icon: "star-outline",
           onPress: () => (navigation as any).navigate("PlusSubscribe"),
         },

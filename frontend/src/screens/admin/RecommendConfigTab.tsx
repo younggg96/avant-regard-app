@@ -5,16 +5,23 @@ import {
   ActivityIndicator,
   Switch,
   TextInput,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   RecommendConfig,
   getRecommendConfig,
   updateRecommendConfig,
 } from "../../services/adminService";
 import { Box, HStack, VStack, Text, Pressable, ScrollView } from "../../components/ui";
+
+/** iOS Switch 默认偏大，与 admin 其他页一致 */
+const COMPACT_SWITCH_PROPS = Platform.select({
+  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } as const },
+  default: {},
+});
 
 const ALL_GRADES = ["A", "B", "C", "D"];
 
@@ -28,6 +35,7 @@ const DEFAULT_CONFIG: RecommendConfig = {
 
 const RecommendConfigTab = () => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
 
   const GRADE_DESCRIPTIONS: Record<string, string> = {
@@ -170,7 +178,7 @@ const RecommendConfigTab = () => {
   if (loading) {
     return (
       <Box style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.colors.black} />
+        <ActivityIndicator size="large" color={theme.colors.text} />
         <Text style={styles.loadingText}>{t("admin.loadingRecommend")}</Text>
       </Box>
     );
@@ -186,7 +194,7 @@ const RecommendConfigTab = () => {
       keyboardShouldPersistTaps="handled"
     >
       <VStack style={styles.header}>
-        <Ionicons name="analytics" size={32} color={theme.colors.black} />
+        <Ionicons name="analytics" size={28} color={theme.colors.text} />
         <Text style={styles.headerTitle}>{t("admin.recommendTitle")}</Text>
         <Text style={styles.headerSubtitle}>
           {t("admin.recommendSubtitle")}
@@ -196,7 +204,7 @@ const RecommendConfigTab = () => {
       {/* ===== Pool Ratios ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="pie-chart-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="pie-chart-outline" size={20} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendPoolRatios")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -247,7 +255,7 @@ const RecommendConfigTab = () => {
       {/* ===== Core Pool Grades ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="star-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="star-outline" size={20} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendCoreGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -265,7 +273,10 @@ const RecommendConfigTab = () => {
                 <Text style={[styles.gradeChipText, active && styles.gradeChipTextActive]}>
                   {g}
                 </Text>
-                <Text style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}>
+                <Text
+                  style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}
+                  numberOfLines={2}
+                >
                   {GRADE_DESCRIPTIONS[g]}
                 </Text>
               </Pressable>
@@ -277,7 +288,7 @@ const RecommendConfigTab = () => {
       {/* ===== Discovery Pool Toggle ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="compass-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="compass-outline" size={20} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendDiscoveryPool")}</Text>
         </HStack>
         <HStack style={styles.toggleRow}>
@@ -288,10 +299,11 @@ const RecommendConfigTab = () => {
             </Text>
           </VStack>
           <Switch
+            {...COMPACT_SWITCH_PROPS}
             value={config.discovery_pool.enabled}
             onValueChange={(v) => updateField("discovery_pool", { enabled: v })}
-            trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
-            thumbColor={theme.colors.white}
+            trackColor={{ false: theme.colors.gray200, true: theme.colors.success }}
+            thumbColor={theme.colors.card}
           />
         </HStack>
       </Box>
@@ -299,7 +311,7 @@ const RecommendConfigTab = () => {
       {/* ===== Random Pool Grades ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="shuffle-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="shuffle-outline" size={20} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendRandomGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -317,7 +329,10 @@ const RecommendConfigTab = () => {
                 <Text style={[styles.gradeChipText, active && styles.gradeChipTextActive]}>
                   {g}
                 </Text>
-                <Text style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}>
+                <Text
+                  style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}
+                  numberOfLines={2}
+                >
                   {GRADE_DESCRIPTIONS[g]}
                 </Text>
               </Pressable>
@@ -329,7 +344,7 @@ const RecommendConfigTab = () => {
       {/* ===== Cold Start ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="snow-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="snow-outline" size={20} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendColdStart")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -367,7 +382,10 @@ const RecommendConfigTab = () => {
                 <Text style={[styles.gradeChipText, active && styles.gradeChipTextActive]}>
                   {g}
                 </Text>
-                <Text style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}>
+                <Text
+                  style={[styles.gradeChipDesc, active && styles.gradeChipDescActive]}
+                  numberOfLines={2}
+                >
                   {GRADE_DESCRIPTIONS[g]}
                 </Text>
               </Pressable>
@@ -386,10 +404,10 @@ const RecommendConfigTab = () => {
         disabled={!dirty || saving || !sumValid}
       >
         {saving ? (
-          <ActivityIndicator color={theme.colors.white} />
+          <ActivityIndicator color={theme.colors.textInverted} />
         ) : (
           <>
-            <Ionicons name="save-outline" size={20} color={theme.colors.white} />
+            <Ionicons name="save-outline" size={20} color={theme.colors.textInverted} />
             <Text style={styles.saveButtonText}>
               {dirty ? t("admin.saveConfig") : t("admin.noChanges")}
             </Text>
@@ -433,7 +451,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "center",
     marginBottom: t.spacing.xl,
     paddingVertical: t.spacing.lg,
-    backgroundColor: t.colors.gray50,
+    backgroundColor: t.colors.surface,
     borderRadius: t.borderRadius.lg,
   },
   headerTitle: {
@@ -498,14 +516,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   ratioInput: {
     width: 56,
     height: 40,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.colors.border,
     borderRadius: t.borderRadius.md,
     textAlign: "center",
-    ...t.typography.body,
+    fontSize: 15,
     color: t.colors.text,
     fontWeight: "600",
-    backgroundColor: t.colors.gray50,
+    backgroundColor: t.colors.surface,
   },
   ratioPercent: {
     ...t.typography.body,
@@ -518,10 +536,11 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: t.spacing.md,
     paddingVertical: t.spacing.sm,
     borderRadius: t.borderRadius.md,
-    backgroundColor: t.colors.gray50,
+    backgroundColor: t.colors.surface,
   },
   sumRowError: {
-    backgroundColor: "#FFF0F0",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.colors.error,
   },
   sumText: {
     ...t.typography.body,
@@ -533,37 +552,44 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   gradeRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: t.spacing.sm,
   },
   gradeChip: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "22%",
     alignItems: "center",
+    justifyContent: "center",
     paddingVertical: t.spacing.sm,
-    paddingHorizontal: t.spacing.sm,
+    paddingHorizontal: t.spacing.xs,
     borderRadius: t.borderRadius.md,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-    backgroundColor: t.colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.surface,
+    minHeight: 56,
   },
   gradeChipActive: {
-    backgroundColor: t.colors.text,
+    backgroundColor: t.colors.cardElevated,
     borderColor: t.colors.text,
+    borderWidth: 1,
   },
   gradeChipText: {
-    ...t.typography.body,
+    fontSize: 15,
     color: t.colors.text,
     fontWeight: "700",
   },
   gradeChipTextActive: {
-    color: t.colors.textInverted,
+    color: t.colors.text,
   },
   gradeChipDesc: {
-    ...t.typography.caption,
+    fontSize: 10,
     color: t.colors.gray300,
     marginTop: 2,
+    textAlign: "center",
+    lineHeight: 13,
   },
   gradeChipDescActive: {
-    color: "rgba(255,255,255,0.7)",
+    color: t.colors.textSecondary,
   },
   toggleRow: {
     alignItems: "center",
@@ -606,7 +632,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: t.spacing.md,
   },
   saveButtonDisabled: {
-    backgroundColor: t.colors.gray300,
+    backgroundColor: t.colors.gray200,
+    opacity: 0.7,
   },
   saveButtonText: {
     ...t.typography.body,
@@ -616,7 +643,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   tips: {
     alignItems: "flex-start",
     gap: t.spacing.sm,
-    backgroundColor: t.colors.gray50,
+    backgroundColor: t.colors.surface,
     padding: t.spacing.md,
     borderRadius: t.borderRadius.md,
     marginTop: t.spacing.lg,

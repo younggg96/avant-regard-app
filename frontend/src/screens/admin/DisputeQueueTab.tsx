@@ -6,25 +6,44 @@
  */
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
   FlatList,
-  Pressable,
   ActivityIndicator,
   Alert,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { useSharedStyles } from "./adminStyles";
+import { Box, Text } from "../../components/ui";
 import {
   adminListDisputes,
   adminTakeDispute,
   adminResolveDispute,
   Dispute,
+  DisputeReason,
+  DisputeStatus,
 } from "../../services/aftersalesService";
 
 export default function DisputeQueueTab() {
+  const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
+  const sharedStyles = useSharedStyles();
   const [items, setItems] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const formatStatus = (status: DisputeStatus) =>
+    t(`admin.disputeStatus.${status}`, { defaultValue: status });
+
+  const formatReason = (reason: DisputeReason) =>
+    t(`admin.disputeReason.${reason}`, { defaultValue: reason });
+
+  const formatRole = (role: "buyer" | "seller") =>
+    t(`admin.disputeRole.${role}`, { defaultValue: role });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,12 +61,21 @@ export default function DisputeQueueTab() {
     load();
   }, [load]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
   const onTake = async (id: number) => {
     try {
       await adminTakeDispute(id);
       load();
-    } catch (e: any) {
-      Alert.alert("失败", e?.message ?? "操作失败");
+    } catch (e: unknown) {
+      Alert.alert(
+        t("common.failed"),
+        e instanceof Error ? e.message : t("admin.operationFailed"),
+      );
     }
   };
 
@@ -55,124 +83,164 @@ export default function DisputeQueueTab() {
     id: number,
     decision: "resolved_refund" | "resolved_release",
   ) => {
-    Alert.alert(
-      decision === "resolved_refund" ? "判定退款" : "判定放款",
-      "确定吗？该操作不可逆。",
-      [
-        { text: "取消" },
-        {
-          text: "确认",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await adminResolveDispute(id, { decision });
-              load();
-            } catch (e: any) {
-              Alert.alert("失败", e?.message ?? "操作失败");
-            }
-          },
+    const title =
+      decision === "resolved_refund"
+        ? t("admin.disputeResolveRefundTitle")
+        : t("admin.disputeResolveReleaseTitle");
+
+    Alert.alert(title, t("admin.disputeResolveConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("common.confirm"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await adminResolveDispute(id, { decision });
+            load();
+          } catch (e: unknown) {
+            Alert.alert(
+              t("common.failed"),
+              e instanceof Error ? e.message : t("admin.operationFailed"),
+            );
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   if (loading && items.length === 0) {
-    return <ActivityIndicator style={{ marginTop: 32 }} />;
+    return (
+      <Box style={sharedStyles.loadingContainer}>
+        <ActivityIndicator color={theme.colors.text} size="small" />
+        <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
+      </Box>
+    );
   }
 
   return (
     <FlatList
       data={items}
       keyExtractor={(d) => String(d.id)}
-      contentContainerStyle={{ padding: 12 }}
+      style={sharedStyles.content}
+      contentContainerStyle={
+        items.length === 0 ? sharedStyles.emptyContainer : undefined
+      }
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
       renderItem={({ item }) => (
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.title}>争议 #{item.id}</Text>
-            <Text style={styles.status}>{item.status}</Text>
-          </View>
-          <Text style={styles.row}>订单 #{item.orderId}</Text>
+        <Box style={sharedStyles.postCard}>
+          <Box style={sharedStyles.postHeader}>
+            <Text style={sharedStyles.postTitle}>
+              {t("admin.disputeTitle", { id: item.id })}
+            </Text>
+            <Text style={styles.status}>{formatStatus(item.status)}</Text>
+          </Box>
+
           <Text style={styles.row}>
-            发起人 #{item.openerUserId} ({item.openerRole}) · 原因 {item.reason}
+            {t("admin.disputeOrder", { orderId: item.orderId })}
           </Text>
+          <Text style={styles.row}>
+            {t("admin.disputeOpener", {
+              userId: item.openerUserId,
+              role: formatRole(item.openerRole),
+              reason: formatReason(item.reason),
+            })}
+          </Text>
+
           {item.description ? (
             <Text style={styles.desc}>{item.description}</Text>
           ) : null}
-          <View style={styles.actions}>
+
+          <Box style={styles.actions}>
             {item.status === "open" ? (
-              <Pressable
-                style={styles.ghostBtn}
+              <TouchableOpacity
+                style={[styles.compactBtn, styles.ghostBtn]}
                 onPress={() => onTake(item.id)}
               >
-                <Text style={styles.ghostBtnText}>受理</Text>
-              </Pressable>
+                <Text style={styles.ghostBtnText}>{t("admin.disputeTake")}</Text>
+              </TouchableOpacity>
             ) : null}
-            <Pressable
-              style={styles.refundBtn}
+            <TouchableOpacity
+              style={[styles.compactBtn, styles.refundBtn]}
               onPress={() => onResolve(item.id, "resolved_refund")}
             >
-              <Text style={styles.btnText}>判退款</Text>
-            </Pressable>
-            <Pressable
-              style={styles.releaseBtn}
+              <Text style={styles.btnText}>
+                {t("admin.disputeResolveRefund")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.compactBtn, styles.releaseBtn]}
               onPress={() => onResolve(item.id, "resolved_release")}
             >
-              <Text style={styles.btnText}>判放款</Text>
-            </Pressable>
-          </View>
-        </View>
+              <Text style={styles.btnText}>
+                {t("admin.disputeResolveRelease")}
+              </Text>
+            </TouchableOpacity>
+          </Box>
+        </Box>
       )}
       ListEmptyComponent={
-        <Text style={styles.empty}>暂无待处理争议</Text>
+        <Text style={sharedStyles.emptyText}>
+          {t("admin.noPendingDisputes")}
+        </Text>
       }
     />
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  title: { fontWeight: "600", color: "#111" },
-  status: { color: "#888", fontSize: 12 },
-  row: { fontSize: 13, color: "#333", marginBottom: 4 },
-  desc: {
-    fontSize: 13,
-    color: "#555",
-    backgroundColor: "#F5F5F4",
-    padding: 8,
-    borderRadius: 6,
-    marginVertical: 8,
-  },
-  actions: { flexDirection: "row", gap: 8, marginTop: 8 },
-  ghostBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#888",
-  },
-  ghostBtnText: { color: "#444" },
-  refundBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: "#D14343",
-  },
-  releaseBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: "#1FB271",
-  },
-  btnText: { color: "#fff", fontWeight: "600" },
-  empty: { textAlign: "center", color: "#888", marginTop: 32 },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    status: {
+      fontSize: 11,
+      color: t.colors.gray300,
+    },
+    row: {
+      fontSize: 13,
+      color: t.colors.gray400,
+      marginBottom: 4,
+    },
+    desc: {
+      fontSize: 13,
+      color: t.colors.text,
+      backgroundColor: t.colors.surface,
+      padding: 8,
+      borderRadius: 6,
+      marginVertical: 8,
+    },
+    actions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 8,
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    compactBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 6,
+    },
+    ghostBtn: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.gray300,
+      backgroundColor: t.colors.surface,
+    },
+    ghostBtnText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
+    refundBtn: {
+      backgroundColor: t.colors.error,
+    },
+    releaseBtn: {
+      backgroundColor: t.colors.success,
+    },
+    btnText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+  });

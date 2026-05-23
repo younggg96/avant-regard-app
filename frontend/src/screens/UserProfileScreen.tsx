@@ -73,6 +73,7 @@ import {
 import ForumPostCard from "../components/ForumPostCard";
 import PostCard, { Post as DisplayPost } from "../components/PostCard";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
+import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 import { ImageCropper } from "../components/ImageCropper";
 import { AvatarPreviewModal } from "../components/AvatarPreviewModal";
 import { showService, Show } from "../services/showService";
@@ -354,10 +355,10 @@ const UserProfileScreen = () => {
       updateTabState(targetTab, { isLoading: true });
       try {
         const authorName = userInfo?.username || username || t("profile.user");
-        const authorAvatar =
-          userInfo?.avatarUrl ||
-          avatar ||
-          `https://api.dicebear.com/7.x/avataaars/png?seed=${userId}`;
+        const authorAvatar = resolveAvatarUrlOrEmpty(
+          userInfo?.avatarUrl,
+          avatar,
+        );
 
         let newPosts: DisplayPost[] = [];
 
@@ -388,7 +389,7 @@ const UserProfileScreen = () => {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         } else if (targetTab === "liked") {
@@ -405,7 +406,7 @@ const UserProfileScreen = () => {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         } else if (targetTab === "wishlist") {
@@ -422,7 +423,7 @@ const UserProfileScreen = () => {
           newPosts = apiPosts.map((p) =>
             convertToDisplayPost(p, {
               name: p.username || t("profile.user"),
-              avatar: p.avatarUrl || `https://api.dicebear.com/7.x/avataaars/png?seed=${p.userId}`,
+              avatar: resolveAvatarUrlOrEmpty(p.avatarUrl, authorAvatar),
             })
           );
         }
@@ -1116,7 +1117,7 @@ const UserProfileScreen = () => {
                   style={styles.headerButton}
                   onPress={() => setShowShareToChat(true)}
                 >
-                  <Ionicons name="share-outline" size={20} color={theme.colors.black} />
+                  <Ionicons name="share-outline" size={20} color={appTheme.colors.text} />
                 </Pressable>
               </>
             )}
@@ -1201,11 +1202,11 @@ const UserProfileScreen = () => {
           {/* 透明 Header 时的顶部按钮 (只在这里使用渐隐动画) */}
           <Animated.View style={[styles.topActions, { top: insets.top + 8 }, topActionsAnimatedStyle]}>
             <Pressable style={styles.actionButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="chevron-back" size={24} color="white" />
+              <Ionicons name="chevron-back" size={24} color={appTheme.colors.text} />
             </Pressable>
             {!isCurrentUser && (
               <Pressable style={styles.actionButton} onPress={() => setShowShareToChat(true)}>
-                <Ionicons name="share-outline" size={20} color="white" />
+                <Ionicons name="share-outline" size={20} color={appTheme.colors.text} />
               </Pressable>
             )}
           </Animated.View>

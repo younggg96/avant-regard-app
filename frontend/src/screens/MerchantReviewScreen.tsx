@@ -49,6 +49,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type TabType = "pending" | "approved" | "all";
 
+/** iOS Switch 默认偏大，统一缩小以匹配 admin 列表行高 */
+const COMPACT_SWITCH_PROPS = Platform.select({
+  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } as const },
+  default: {},
+});
+
 const MerchantReviewScreen = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -351,7 +357,7 @@ const MerchantReviewScreen = () => {
       >
         <HStack justifyContent="between" alignItems="start" mb="$sm">
           <VStack flex={1}>
-            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} numberOfLines={1}>
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.text }} numberOfLines={1}>
               {item.storeName || item.storeId}
             </Text>
             {item.storeCity && (
@@ -446,7 +452,7 @@ const MerchantReviewScreen = () => {
           size={64}
           color={theme.colors.gray200}
         />
-        <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.black }} mt="$md">
+        <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.text }} mt="$md">
           {msg.title}
         </Text>
         <Text style={{ color: theme.colors.gray300 }} mt="$sm">
@@ -474,7 +480,7 @@ const MerchantReviewScreen = () => {
           onBackPress={() => navigation.goBack()}
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
-          <ActivityIndicator  color={theme.colors.black} />
+          <ActivityIndicator  color={theme.colors.text} />
           <Text style={{ color: theme.colors.gray300 }} mt="$md">
             {t("common.loading")}
           </Text>
@@ -534,7 +540,7 @@ const MerchantReviewScreen = () => {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={handleRefresh}
-            tintColor={theme.colors.black}
+            tintColor={theme.colors.text}
           />
         }
         ListEmptyComponent={renderEmpty}
@@ -543,7 +549,7 @@ const MerchantReviewScreen = () => {
         ListFooterComponent={
           isLoadingMore ? (
             <Box py="$md" alignItems="center">
-              <ActivityIndicator  color={theme.colors.black} />
+              <ActivityIndicator  color={theme.colors.text} />
             </Box>
           ) : null
         }
@@ -566,7 +572,7 @@ const MerchantReviewScreen = () => {
             {selectedMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$xs">
+                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$xs">
                   {selectedMerchant.storeName || selectedMerchant.storeId}
                 </Text>
                 {selectedMerchant.storeAddress && (
@@ -601,7 +607,7 @@ const MerchantReviewScreen = () => {
                   {selectedMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
                       <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                         {selectedMerchant.contactName}
                       </Text>
                     </HStack>
@@ -615,7 +621,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                           {selectedMerchant.contactPhone}
                         </Text>
                         <Ionicons
@@ -636,7 +642,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                           {selectedMerchant.contactEmail}
                         </Text>
                         <Ionicons
@@ -673,7 +679,7 @@ const MerchantReviewScreen = () => {
                   </Text>
                   <HStack gap="$sm">
                     <Box style={{ backgroundColor: theme.colors.gray100 }} px="$md" py="$sm" rounded="$sm">
-                      <Text fontSize="$sm" style={{ color: theme.colors.black }}>
+                      <Text fontSize="$sm" style={{ color: theme.colors.text }}>
                         {selectedMerchant.merchantLevel === "BASIC"
                           ? "基础商家"
                           : selectedMerchant.merchantLevel === "PREMIUM"
@@ -725,7 +731,7 @@ const MerchantReviewScreen = () => {
                 <HStack gap="$sm" mt="$md" mb="$lg">
                   <Pressable
                     flex={1}
-                    py="$md"
+                    py="$sm"
                     rounded="$sm"
                     borderWidth={1}
                     style={{ borderColor: theme.colors.error }}
@@ -739,17 +745,17 @@ const MerchantReviewScreen = () => {
                   </Pressable>
                   <Pressable
                     flex={1}
-                    py="$md"
+                    py="$sm"
                     rounded="$sm"
-                    style={{ backgroundColor: theme.colors.black }}
+                    style={{ backgroundColor: theme.colors.text }}
                     alignItems="center"
                     onPress={() => handleApprove(selectedMerchant)}
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator  color={theme.colors.white} />
+                      <ActivityIndicator color={theme.colors.textInverted} />
                     ) : (
-                      <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
+                      <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.textInverted }}>
                         {t("merchant.approved")}
                       </Text>
                     )}
@@ -789,7 +795,7 @@ const MerchantReviewScreen = () => {
               },
             ]}
           >
-            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$md">
+            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$md">
               {t("merchant.rejectReason")}
             </Text>
             <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
@@ -814,7 +820,7 @@ const MerchantReviewScreen = () => {
                 alignItems="center"
                 onPress={closeRejectModal}
               >
-                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
+                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }}>
                   {t("common.cancel")}
                 </Text>
               </Pressable>
@@ -858,7 +864,7 @@ const MerchantReviewScreen = () => {
             {manageMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$xs">
+                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$xs">
                   {manageMerchant.storeName || manageMerchant.storeId}
                 </Text>
                 {manageMerchant.storeAddress && (
@@ -897,7 +903,7 @@ const MerchantReviewScreen = () => {
                   {manageMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
                       <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                         {manageMerchant.contactName}
                       </Text>
                     </HStack>
@@ -911,7 +917,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                           {manageMerchant.contactPhone}
                         </Text>
                       </HStack>
@@ -926,7 +932,7 @@ const MerchantReviewScreen = () => {
                     >
                       <HStack alignItems="center" mb="$xs">
                         <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">
+                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
                           {manageMerchant.contactEmail}
                         </Text>
                       </HStack>
@@ -943,13 +949,14 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.bannerPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.bannerPublish")}</Text>
                     </HStack>
                     <Switch
+                      {...COMPACT_SWITCH_PROPS}
                       value={manageMerchant.canPostBanner}
                       onValueChange={(v) => handleUpdateMerchantPermission("canPostBanner", v)}
-                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
-                      thumbColor={theme.colors.white}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+                      thumbColor={theme.colors.card}
                       disabled={isSubmitting}
                     />
                   </View>
@@ -957,13 +964,14 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="megaphone-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.announcementPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.announcementPublish")}</Text>
                     </HStack>
                     <Switch
+                      {...COMPACT_SWITCH_PROPS}
                       value={manageMerchant.canPostAnnouncement}
                       onValueChange={(v) => handleUpdateMerchantPermission("canPostAnnouncement", v)}
-                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
-                      thumbColor={theme.colors.white}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+                      thumbColor={theme.colors.card}
                       disabled={isSubmitting}
                     />
                   </View>
@@ -971,13 +979,14 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.activityPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.activityPublish")}</Text>
                     </HStack>
                     <Switch
+                      {...COMPACT_SWITCH_PROPS}
                       value={manageMerchant.canPostActivity}
                       onValueChange={(v) => handleUpdateMerchantPermission("canPostActivity", v)}
-                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
-                      thumbColor={theme.colors.white}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+                      thumbColor={theme.colors.card}
                       disabled={isSubmitting}
                     />
                   </View>
@@ -985,13 +994,14 @@ const MerchantReviewScreen = () => {
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
                       <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.black }} ml="$sm">{t("merchant.discountPublish")}</Text>
+                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.discountPublish")}</Text>
                     </HStack>
                     <Switch
+                      {...COMPACT_SWITCH_PROPS}
                       value={manageMerchant.canPostDiscount}
                       onValueChange={(v) => handleUpdateMerchantPermission("canPostDiscount", v)}
-                      trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
-                      thumbColor={theme.colors.white}
+                      trackColor={{ false: theme.colors.gray200, true: theme.colors.accent }}
+                      thumbColor={theme.colors.card}
                       disabled={isSubmitting}
                     />
                   </View>
@@ -1002,7 +1012,7 @@ const MerchantReviewScreen = () => {
                   {manageMerchant.status === "APPROVED" ? (
                     <Pressable
                       flex={1}
-                      py="$md"
+                      py="$sm"
                       rounded="$sm"
                       bg="#FFEBEE"
                       alignItems="center"
@@ -1019,7 +1029,7 @@ const MerchantReviewScreen = () => {
                   ) : manageMerchant.status === "SUSPENDED" ? (
                     <Pressable
                       flex={1}
-                      py="$md"
+                      py="$sm"
                       rounded="$sm"
                       bg="#E8F5E9"
                       alignItems="center"
@@ -1143,7 +1153,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
   },

@@ -6,6 +6,7 @@
  *   /api/offers/*   出价
  */
 import { request } from "./http";
+import i18n from "../i18n";
 
 export type OrderStatus =
   | "pending_payment"
@@ -251,47 +252,13 @@ export async function adminRunScheduler(): Promise<{
 // ---------------- Helpers ----------------
 
 export function formatOrderStatus(status: OrderStatus): string {
-  switch (status) {
-    case "pending_payment":
-      return "待支付";
-    case "paid":
-      return "待发货";
-    case "shipped":
-      return "已发货";
-    case "delivered":
-      return "已签收";
-    case "completed":
-      return "已完成";
-    case "settled":
-      return "已结算";
-    case "refunded_auto":
-      return "已自动退款";
-    case "refunded":
-      return "已退款";
-    case "disputed":
-      return "争议中";
-    case "resolved":
-      return "争议已处理";
-    default:
-      return status;
-  }
+  const key = `trading.orderStatus.${status}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : status;
 }
 
 export function formatOfferStatus(status: OfferStatus): string {
-  switch (status) {
-    case "pending":
-      return "待回应";
-    case "accepted":
-      return "已接受";
-    case "rejected":
-      return "已拒绝";
-    case "countered":
-      return "已还价";
-    case "expired":
-      return "已过期";
-    case "withdrawn":
-      return "已撤回";
-    default:
-      return status;
-  }
+  const key = `trading.offerStatus.${status}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : status;
 }

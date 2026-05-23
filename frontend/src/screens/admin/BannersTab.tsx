@@ -25,6 +25,7 @@ import { useSharedStyles } from "./adminStyles";
 import { getLinkTypeName, pickAndUploadImage } from "./adminUtils";
 import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
+import { FullscreenImageViewer } from "../../components/PostDetail";
 
 const BannersTab = () => {
   const { t } = useTranslation();
@@ -49,6 +50,27 @@ const BannersTab = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchResults, setSearchResults] = useState<(Post | Show)[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [fullscreenImages, setFullscreenImages] = useState<string[]>([]);
+
+  const openBannerImageFullscreen = useCallback(
+    (imageUrl: string, scope: "list" | "form" = "list") => {
+      if (!imageUrl) return;
+      if (scope === "list") {
+        const urls = banners.map((b) => b.imageUrl).filter(Boolean);
+        const index = urls.indexOf(imageUrl);
+        setFullscreenImages(urls);
+        setFullscreenIndex(index >= 0 ? index : 0);
+      } else {
+        setFullscreenImages([imageUrl]);
+        setFullscreenIndex(0);
+      }
+      setFullscreenVisible(true);
+    },
+    [banners],
+  );
 
   const handleSearch = useCallback(async (keyword: string, linkType: string) => {
     if (!keyword.trim()) {
@@ -215,13 +237,15 @@ const BannersTab = () => {
 
   const renderBannerCard = (banner: Banner) => (
     <Box key={banner.id} style={styles.bannerCard}>
-      <OptimizedImage
-        uri={banner.imageUrl}
-        size={ImageSize.LARGE}
-        style={styles.bannerPreviewImage}
-        contentFit="cover"
-        lazy={true}
-      />
+      <Pressable onPress={() => openBannerImageFullscreen(banner.imageUrl)}>
+        <OptimizedImage
+          uri={banner.imageUrl}
+          size={ImageSize.LARGE}
+          style={styles.bannerPreviewImage}
+          contentFit="cover"
+          lazy={true}
+        />
+      </Pressable>
       <Box style={[styles.bannerStatusBadge, banner.isActive ? styles.bannerStatusActive : styles.bannerStatusInactive]}>
         <Text style={styles.bannerStatusText}>{banner.isActive ? t("admin.communityActiveLabel") : t("admin.communityInactiveLabel")}</Text>
       </Box>
@@ -297,13 +321,15 @@ const BannersTab = () => {
               </Text>
 
               {form.image_url ? (
-                <OptimizedImage
-                  uri={form.image_url}
-                  size={ImageSize.MEDIUM}
-                  style={styles.bannerFormPreview}
-                  contentFit="cover"
-                  lazy={true}
-                />
+                <Pressable onPress={() => openBannerImageFullscreen(form.image_url, "form")}>
+                  <OptimizedImage
+                    uri={form.image_url}
+                    size={ImageSize.MEDIUM}
+                    style={styles.bannerFormPreview}
+                    contentFit="cover"
+                    lazy={true}
+                  />
+                </Pressable>
               ) : (
                 <Box style={styles.bannerFormPlaceholder}>
                   <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
@@ -491,6 +517,16 @@ const BannersTab = () => {
         </Box>
         </KeyboardAvoidingView>
       </Modal>
+
+      {fullscreenImages.length > 0 ? (
+        <FullscreenImageViewer
+          visible={fullscreenVisible}
+          images={fullscreenImages}
+          currentIndex={fullscreenIndex}
+          onClose={() => setFullscreenVisible(false)}
+          onIndexChange={setFullscreenIndex}
+        />
+      ) : null}
     </Box>
   );
 };

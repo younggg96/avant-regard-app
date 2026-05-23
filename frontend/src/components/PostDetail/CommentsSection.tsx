@@ -2,8 +2,7 @@ import React from "react";
 import { ActivityIndicator, Image as RNImage } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack, OptimizedImage } from "../ui";
-import { ImageSize } from "../../utils/imageUtils";
+import { Box, Text, Pressable, HStack, VStack, UserAvatar } from "../ui";
 import { theme, useAppTheme } from "../../theme";
 import { useProfileLoadingGif } from "../../utils/loadingGifs";
 import { Comment, CommentReply, PostStatus, ReplyTarget } from "./types";
@@ -47,12 +46,11 @@ const ReplyItem: React.FC<{
     <Pressable
       onPress={() => onUserPress(reply.userId, reply.userName, reply.userAvatar)}
     >
-      <OptimizedImage
-        uri={reply.userAvatar}
-        size={ImageSize.THUMBNAIL}
+      <UserAvatar
+        uri={reply.userAvatar || undefined}
+        name={reply.userName}
+        size={32}
         style={styles.headerAvatar}
-        contentFit="cover"
-        lazy={true}
       />
     </Pressable>
     <VStack flex={1} space="xs">
@@ -172,12 +170,11 @@ const CommentItem: React.FC<{
             onUserPress(comment.userId, comment.userName, comment.userAvatar)
           }
         >
-          <OptimizedImage
-            uri={comment.userAvatar}
-            size={ImageSize.THUMBNAIL}
+          <UserAvatar
+            uri={comment.userAvatar || undefined}
+            name={comment.userName}
+            size={36}
             style={styles.commentAvatar}
-            contentFit="cover"
-            lazy={true}
           />
         </Pressable>
         <VStack flex={1} space="xs">

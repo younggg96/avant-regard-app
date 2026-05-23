@@ -288,7 +288,7 @@ const AllCommentsScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.black} />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t("post.comments")} ({comments.length})</Text>
         <View style={styles.headerRight} />

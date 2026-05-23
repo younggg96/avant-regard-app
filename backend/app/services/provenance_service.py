@@ -415,5 +415,34 @@ class ProvenanceService:
             {"collection_id": collection_id}
         ).eq("user_id", user_id).eq("product_id", product_id).execute()
 
+    def get_collection(
+        self, collection_id: int, user_id: int
+    ) -> Optional[UserCollection]:
+        """获取收藏夹元数据（含 itemCount）；不存在或非本人所有返回 None。"""
+        res = (
+            self.db.table("user_collections")
+            .select("*")
+            .eq("id", collection_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return None
+        try:
+            cnt = (
+                self.db.table("store_product_favorites")
+                .select("id", count="exact")
+                .eq("user_id", user_id)
+                .eq("collection_id", collection_id)
+                .limit(0)
+                .execute()
+            )
+            count = cnt.count or 0
+        except Exception:
+            count = 0
+        return self._format_collection(rows[0], item_count=count)
+
 
 provenance_service = ProvenanceService()

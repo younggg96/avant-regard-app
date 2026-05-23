@@ -2,6 +2,7 @@ import { Post as ApiPost } from "../../services/postService";
 import { UserInfo } from "../../services/userInfoService";
 import i18n from "../../i18n";
 import { DisplayPost } from "./types";
+import { resolveAvatarUrlOrEmpty } from "../../utils/avatarUtils";
 
 /**
  * 计算相对时间
@@ -37,20 +38,14 @@ export const mapApiPostToDisplayPost = (
   // 获取用户信息
   const userInfo = userInfoMap.get(apiPost.userId);
 
-  // 生成默认头像（如果没有用户信息或没有头像）
-  const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/png?seed=${apiPost.userId}`;
-
   // Avatar resolution priority:
   //   1. cached user_info.avatarUrl  — freshest profile data
-  //   2. apiPost.avatarUrl           — batched from backend on feed response,
-  //                                    available immediately on first launch
-  //                                    before the user_info backfill completes
-  //   3. dicebear default            — final fallback for users without avatars
-  // Without step 2 the first render of the recommend tab on cold start shows
-  // the dicebear default until `backfillUserInfosForFeed` resolves, which the
-  // user perceives as "avatars disappear on first launch".
-  const resolvedAvatar =
-    userInfo?.avatarUrl || apiPost.avatarUrl || defaultAvatar;
+  //   2. apiPost.avatarUrl           — batched from backend on feed response
+  //   3. empty string              — UI falls back to initials via UserAvatar
+  const resolvedAvatar = resolveAvatarUrlOrEmpty(
+    userInfo?.avatarUrl,
+    apiPost.avatarUrl,
+  );
   const resolvedName =
     userInfo?.username || apiPost.username || i18n.t("user.anonymous");
 

@@ -6,7 +6,7 @@
  *   - shipped/delivered：查看物流
  *   - completed/settled：查看结算金额
  */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import {
   listMySales,
@@ -31,19 +32,24 @@ import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type TabKey = "all" | OrderStatus;
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "all", label: "全部" },
-  { key: "paid", label: "待发货" },
-  { key: "shipped", label: "已发货" },
-  { key: "delivered", label: "待确认" },
-  { key: "completed", label: "待结算" },
-  { key: "settled", label: "已结算" },
-];
-
 export default function MySalesScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
+
+  const TABS = useMemo(
+    (): { key: TabKey; label: string }[] => [
+      { key: "all", label: t("trading.sales.tabAll") },
+      { key: "paid", label: t("trading.sales.tabPaid") },
+      { key: "shipped", label: t("trading.sales.tabShipped") },
+      { key: "delivered", label: t("trading.sales.tabDelivered") },
+      { key: "completed", label: t("trading.sales.tabCompleted") },
+      { key: "settled", label: t("trading.sales.tabSettled") },
+    ],
+    [t],
+  );
+
   const [tab, setTab] = useState<TabKey>("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,7 +87,7 @@ export default function MySalesScreen() {
         <Pressable onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>我的销售</Text>
+        <Text style={styles.headerTitle}>{t("trading.sales.headerTitle")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -89,7 +95,7 @@ export default function MySalesScreen() {
         <FlatList
           horizontal
           data={TABS}
-          keyExtractor={(t) => t.key}
+          keyExtractor={(item) => item.key}
           renderItem={({ item }) => (
             <Pressable
               style={[styles.tab, tab === item.key && styles.tabActive]}
@@ -132,16 +138,24 @@ export default function MySalesScreen() {
               </View>
               <View style={styles.cardBody}>
                 <View style={styles.coverPlaceholder}>
-                  <Text style={{ color: theme.colors.gray300 }}>图</Text>
+                  <Text style={{ color: theme.colors.gray300 }}>
+                    {t("trading.sales.imagePlaceholder")}
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.title}>单品 #{item.productId}</Text>
+                  <Text style={styles.title}>
+                    {t("trading.sales.productLabel", { id: item.productId })}
+                  </Text>
                   <Text style={styles.price}>
-                    成交 {formatPrice(item.paidPriceCents)}
+                    {t("trading.sales.paidLabel", {
+                      price: formatPrice(item.paidPriceCents),
+                    })}
                   </Text>
                   <Text style={styles.meta}>
-                    预计到账 {formatPrice(item.sellerPayoutCents)} ·{" "}
-                    {item.createdAt?.slice(0, 16)}
+                    {t("trading.sales.payoutLabel", {
+                      price: formatPrice(item.sellerPayoutCents),
+                    })}{" "}
+                    · {item.createdAt?.slice(0, 16)}
                   </Text>
                 </View>
               </View>
@@ -151,7 +165,7 @@ export default function MySalesScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>暂无销售订单</Text>
+            <Text style={styles.empty}>{t("trading.sales.empty")}</Text>
           }
         />
       )}

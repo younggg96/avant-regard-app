@@ -4,7 +4,7 @@
  * Tab 切换：全部 / 待发货 / 已发货 / 已完成 / 售后。
  * 点订单 → 进 OrderDetailScreen。
  */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import {
   listMyOrders,
@@ -29,19 +30,24 @@ import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type TabKey = "all" | OrderStatus;
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "all", label: "全部" },
-  { key: "paid", label: "待发货" },
-  { key: "shipped", label: "已发货" },
-  { key: "delivered", label: "待确认" },
-  { key: "completed", label: "已完成" },
-  { key: "refunded_auto", label: "已退款" },
-];
-
 export default function MyOrdersScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
+
+  const TABS = useMemo(
+    (): { key: TabKey; label: string }[] => [
+      { key: "all", label: t("trading.orders.tabAll") },
+      { key: "paid", label: t("trading.orders.tabPaid") },
+      { key: "shipped", label: t("trading.orders.tabShipped") },
+      { key: "delivered", label: t("trading.orders.tabDelivered") },
+      { key: "completed", label: t("trading.orders.tabCompleted") },
+      { key: "refunded_auto", label: t("trading.orders.tabRefunded") },
+    ],
+    [t],
+  );
+
   const [tab, setTab] = useState<TabKey>("all");
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,7 +85,7 @@ export default function MyOrdersScreen() {
         <Pressable onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>我的订单</Text>
+        <Text style={styles.headerTitle}>{t("trading.orders.headerTitle")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -87,7 +93,7 @@ export default function MyOrdersScreen() {
         <FlatList
           horizontal
           data={TABS}
-          keyExtractor={(t) => t.key}
+          keyExtractor={(item) => item.key}
           renderItem={({ item }) => (
             <Pressable
               style={[styles.tab, tab === item.key && styles.tabActive]}
@@ -127,7 +133,7 @@ export default function MyOrdersScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>暂无订单</Text>
+            <Text style={styles.empty}>{t("trading.orders.empty")}</Text>
           }
         />
       )}
@@ -144,6 +150,7 @@ function OrderListCard({
 }) {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.cardHeader}>
@@ -152,10 +159,14 @@ function OrderListCard({
       </View>
       <View style={styles.cardBody}>
         <View style={styles.coverPlaceholder}>
-          <Text style={{ color: theme.colors.gray300 }}>图</Text>
+          <Text style={{ color: theme.colors.gray300 }}>
+            {t("trading.orders.imagePlaceholder")}
+          </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>单品 #{order.productId}</Text>
+          <Text style={styles.title}>
+            {t("trading.orders.productLabel", { id: order.productId })}
+          </Text>
           <Text style={styles.price}>{formatPrice(order.paidPriceCents)}</Text>
           <Text style={styles.meta}>{order.createdAt?.slice(0, 16)}</Text>
         </View>

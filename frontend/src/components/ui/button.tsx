@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { styled } from '@gluestack-style/react';
 import { Pressable, Text as RNText, ActivityIndicator } from 'react-native';
+import { useAppTheme } from '../../theme';
 
+/**
+ * 结构与尺寸仍走 gluestack `styled`，颜色全部从 `useAppTheme()` 注入。
+ * 避免 `$white` / `$black` 等 token 在 RN 上与 ThemeProvider 不同步
+ * （dark mode 下 outline 按钮会变成白底白字）。
+ */
 const StyledPressable = styled(Pressable, {
   flexDirection: 'row',
   alignItems: 'center',
@@ -10,7 +16,6 @@ const StyledPressable = styled(Pressable, {
   paddingHorizontal: '$lg',
   paddingVertical: '$md',
   borderRadius: '$md',
-  backgroundColor: '$black',
 
   ':active': {
     opacity: 0.8,
@@ -22,17 +27,9 @@ const StyledPressable = styled(Pressable, {
 
   variants: {
     variant: {
-      solid: {
-        backgroundColor: '$black',
-      },
-      outline: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: '$black',
-      },
-      ghost: {
-        backgroundColor: 'transparent',
-      },
+      solid: {},
+      outline: {},
+      ghost: {},
     },
     size: {
       xs: {
@@ -53,18 +50,10 @@ const StyledPressable = styled(Pressable, {
       },
     },
     colorScheme: {
-      primary: {
-        backgroundColor: '$black',
-      },
-      secondary: {
-        backgroundColor: '$gray400',
-      },
-      error: {
-        backgroundColor: '$error',
-      },
-      success: {
-        backgroundColor: '$success',
-      },
+      primary: {},
+      secondary: {},
+      error: {},
+      success: {},
     },
   },
 
@@ -76,36 +65,87 @@ const StyledPressable = styled(Pressable, {
 });
 
 const StyledText = styled(RNText, {
-  color: '$white',
   fontWeight: '$medium',
   fontSize: '$md',
-
-  variants: {
-    variant: {
-      solid: {
-        color: '$white',
-      },
-      outline: {
-        color: '$black',
-      },
-      ghost: {
-        color: '$black',
-      },
-    },
-  },
 });
+
+type ButtonVariant = 'solid' | 'outline' | 'ghost';
+type ButtonColorScheme = 'primary' | 'secondary' | 'error' | 'success';
+
+const ButtonTextColorContext = createContext<string | undefined>(undefined);
+
+function resolveButtonColors(
+  t: ReturnType<typeof useAppTheme>,
+  variant: ButtonVariant,
+  colorScheme: ButtonColorScheme,
+) {
+  const scheme = {
+    primary: {
+      solidBg: t.colors.text,
+      solidFg: t.colors.textInverted,
+      outlineBorder: t.colors.border,
+      outlineFg: t.colors.text,
+    },
+    secondary: {
+      solidBg: t.colors.gray400,
+      solidFg: t.colors.textInverted,
+      outlineBorder: t.colors.gray300,
+      outlineFg: t.colors.text,
+    },
+    error: {
+      solidBg: t.colors.error,
+      solidFg: t.colors.white,
+      outlineBorder: t.colors.error,
+      outlineFg: t.colors.error,
+    },
+    success: {
+      solidBg: t.colors.success,
+      solidFg: t.colors.white,
+      outlineBorder: t.colors.success,
+      outlineFg: t.colors.success,
+    },
+  }[colorScheme];
+
+  if (variant === 'outline') {
+    return {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: scheme.outlineBorder,
+      textColor: scheme.outlineFg,
+      spinnerColor: scheme.outlineFg,
+    };
+  }
+
+  if (variant === 'ghost') {
+    return {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      textColor: scheme.outlineFg,
+      spinnerColor: scheme.outlineFg,
+    };
+  }
+
+  return {
+    backgroundColor: scheme.solidBg,
+    borderWidth: 0,
+    textColor: scheme.solidFg,
+    spinnerColor: scheme.solidFg,
+  };
+}
 
 export interface ButtonProps {
   children?: React.ReactNode;
   onPress?: () => void;
-  variant?: 'solid' | 'outline' | 'ghost';
+  variant?: ButtonVariant;
   size?: 'xs' | 'sm' | 'md' | 'lg';
-  colorScheme?: 'primary' | 'secondary' | 'error' | 'success';
+  colorScheme?: ButtonColorScheme;
   disabled?: boolean;
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  [key: string]: any;
+  sx?: Record<string, unknown>;
+  style?: object;
+  [key: string]: unknown;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -118,33 +158,73 @@ export const Button: React.FC<ButtonProps> = ({
   isLoading = false,
   leftIcon,
   rightIcon,
+  sx: sxProp,
+  style,
   ...props
 }) => {
+  const t = useAppTheme();
+
+  const themeSx = useMemo(
+    () => resolveButtonColors(t, variant, colorScheme),
+    [t, variant, colorScheme],
+  );
+
+  const mergedSx = useMemo(
+    () => ({
+      backgroundColor: themeSx.backgroundColor,
+      borderWidth: themeSx.borderWidth,
+      borderColor: themeSx.borderColor,
+      ...(sxProp as object),
+    }),
+    [themeSx, sxProp],
+  );
+
   return (
-    <StyledPressable
-      onPress={onPress}
-      disabled={disabled || isLoading}
-      variant={variant}
-      size={size}
-      colorScheme={colorScheme}
-      {...props}
-    >
-      {isLoading ? (
-        <ActivityIndicator size="small" color={variant === 'solid' ? 'white' : 'black'} />
-      ) : (
-        <>
-          {leftIcon}
-          {typeof children === 'string' ? (
-            <StyledText variant={variant}>{children}</StyledText>
-          ) : (
-            children
-          )}
-          {rightIcon}
-        </>
-      )}
-    </StyledPressable>
+    <ButtonTextColorContext.Provider value={themeSx.textColor}>
+      <StyledPressable
+        onPress={onPress}
+        disabled={disabled || isLoading}
+        variant={variant}
+        size={size}
+        colorScheme={colorScheme}
+        sx={mergedSx}
+        style={style}
+        {...props}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="small" color={themeSx.spinnerColor} />
+        ) : (
+          <>
+            {leftIcon}
+            {typeof children === 'string' ? (
+              <StyledText sx={{ color: themeSx.textColor }}>{children}</StyledText>
+            ) : (
+              children
+            )}
+            {rightIcon}
+          </>
+        )}
+      </StyledPressable>
+    </ButtonTextColorContext.Provider>
   );
 };
 
-export const ButtonText = StyledText;
+export interface ButtonTextProps {
+  children?: React.ReactNode;
+  style?: object;
+  sx?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
+/** 与 Button 搭配使用；在 Button 内自动继承文字色 */
+export const ButtonText: React.FC<ButtonTextProps> = ({ children, style, sx, ...props }) => {
+  const inheritedColor = useContext(ButtonTextColorContext);
+  const t = useAppTheme();
+  const color = inheritedColor ?? t.colors.text;
+
+  return (
+    <StyledText sx={{ color, ...(sx as object) }} style={style} {...props}>
+      {children}
+    </StyledText>
+  );
+};

@@ -4,17 +4,27 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { adminService, AdminBrandImage } from "../../services/adminService";
 import { useSharedStyles } from "./adminStyles";
-import { Box, HStack, Text, Button, ButtonText, ScrollView, OptimizedImage } from "../../components/ui";
+import {
+  Box,
+  HStack,
+  Text,
+  ScrollView,
+  OptimizedImage,
+  Pressable,
+} from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
+import { FullscreenImageViewer } from "../../components/PostDetail";
 
 const BrandImageReviewTab = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const sharedStyles = useSharedStyles();
   const [images, setImages] = useState<AdminBrandImage[]>([]);
@@ -22,18 +32,27 @@ const BrandImageReviewTab = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [fullscreenUri, setFullscreenUri] = useState<string | null>(null);
+
   const fetchPendingImages = useCallback(async () => {
     try {
       setLoading(true);
       const result = await adminService.getPendingBrandImages();
       setImages(result.images);
     } catch (error) {
-      console.error("获取待审核图片失败:", error);
-      Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.fetchPendingImagesFailed"));
+      console.error("fetch pending brand images failed:", error);
+      Alert.alert(
+        t("admin.error"),
+        error instanceof Error
+          ? error.message
+          : t("admin.fetchPendingImagesFailed"),
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchPendingImages();
@@ -57,7 +76,12 @@ const BrandImageReviewTab = () => {
             Alert.alert(t("common.success"), t("admin.imageApproved"));
             setImages((prev) => prev.filter((img) => img.id !== id));
           } catch (error) {
-            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
+            Alert.alert(
+              t("admin.error"),
+              error instanceof Error
+                ? error.message
+                : t("admin.operationFailed"),
+            );
           } finally {
             setActionLoading(false);
           }
@@ -79,7 +103,12 @@ const BrandImageReviewTab = () => {
             Alert.alert(t("admin.rejected"), t("admin.imageRejected"));
             setImages((prev) => prev.filter((img) => img.id !== id));
           } catch (error) {
-            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
+            Alert.alert(
+              t("admin.error"),
+              error instanceof Error
+                ? error.message
+                : t("admin.operationFailed"),
+            );
           } finally {
             setActionLoading(false);
           }
@@ -101,7 +130,12 @@ const BrandImageReviewTab = () => {
             Alert.alert(t("admin.deleted"), t("admin.imageDeleted"));
             setImages((prev) => prev.filter((img) => img.id !== id));
           } catch (error) {
-            Alert.alert(t("admin.error"), error instanceof Error ? error.message : t("admin.operationFailed"));
+            Alert.alert(
+              t("admin.error"),
+              error instanceof Error
+                ? error.message
+                : t("admin.operationFailed"),
+            );
           } finally {
             setActionLoading(false);
           }
@@ -110,87 +144,167 @@ const BrandImageReviewTab = () => {
     ]);
   };
 
+  const openFullscreen = (uri: string) => {
+    setFullscreenUri(uri);
+    setFullscreenIndex(0);
+    setFullscreenVisible(true);
+  };
+
+  const locale = i18n.language?.startsWith("zh") ? "zh-CN" : "en-US";
+
   return (
-    <ScrollView
-      style={sharedStyles.content}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-    >
-      {loading ? (
-        <Box style={sharedStyles.loadingContainer}>
-          <ActivityIndicator color={theme.colors.black} size="small" />
-          <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
-        </Box>
-      ) : images.length === 0 ? (
-        <Box style={sharedStyles.emptyContainer}>
-          <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
-          <Text style={sharedStyles.emptyText}>{t("admin.noPendingBrandImages")}</Text>
-        </Box>
-      ) : (
-        images.map((img) => (
-          <Box key={img.id} style={sharedStyles.postCard}>
-            <HStack style={sharedStyles.postHeader}>
-              <Text style={sharedStyles.postTitle} numberOfLines={1}>
-                {img.brandName || `${t("admin.brand")} #${img.brandId}`}
-              </Text>
-              <Text style={sharedStyles.postDate}>
-                {img.createdAt ? new Date(img.createdAt).toLocaleDateString("zh-CN") : ""}
-              </Text>
-            </HStack>
-
-            <OptimizedImage
-              uri={img.imageUrl}
-              size={ImageSize.MEDIUM}
-              style={styles.previewImage}
-              contentFit="cover"
-              lazy={true}
-            />
-
-            <HStack style={sharedStyles.actionButtons}>
-              <Button
-                size="sm"
-                colorScheme="success"
-                onPress={() => handleApprove(img.id)}
-                disabled={actionLoading}
-                leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
-              >
-                <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
-              </Button>
-              <Button
-                size="sm"
-                colorScheme="error"
-                onPress={() => handleReject(img.id)}
-                disabled={actionLoading}
-                leftIcon={<Ionicons name="close-circle-outline" size={16} color={theme.colors.white} />}
-              >
-                <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
-              </Button>
-              <Button
-                size="sm"
-                colorScheme="error"
-                onPress={() => handleDelete(img.id)}
-                disabled={actionLoading}
-                leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
-              >
-                <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
-              </Button>
-            </HStack>
+    <>
+      <ScrollView
+        style={sharedStyles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {loading ? (
+          <Box style={sharedStyles.loadingContainer}>
+            <ActivityIndicator color={theme.colors.text} size="small" />
+            <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
           </Box>
-        ))
-      )}
-      <Box style={{ height: 40 }} />
-    </ScrollView>
+        ) : images.length === 0 ? (
+          <Box style={sharedStyles.emptyContainer}>
+            <Ionicons
+              name="checkmark-done-outline"
+              size={40}
+              color={theme.colors.gray200}
+            />
+            <Text style={sharedStyles.emptyText}>
+              {t("admin.noPendingBrandImages")}
+            </Text>
+          </Box>
+        ) : (
+          images.map((img) => (
+            <Box key={img.id} style={sharedStyles.postCard}>
+              <HStack style={sharedStyles.postHeader}>
+                <Text style={sharedStyles.postTitle} numberOfLines={1}>
+                  {img.brandName || `${t("admin.brand")} #${img.brandId}`}
+                </Text>
+                <Text style={sharedStyles.postDate}>
+                  {img.createdAt
+                    ? new Date(img.createdAt).toLocaleDateString(locale)
+                    : ""}
+                </Text>
+              </HStack>
+
+              <Pressable onPress={() => openFullscreen(img.imageUrl)}>
+                <OptimizedImage
+                  uri={img.imageUrl}
+                  size={ImageSize.MEDIUM}
+                  style={styles.previewImage}
+                  contentFit="cover"
+                  lazy
+                />
+              </Pressable>
+
+              <HStack style={styles.compactActions}>
+                <TouchableOpacity
+                  style={[styles.compactBtn, styles.approveBtn]}
+                  onPress={() => handleApprove(img.id)}
+                  disabled={actionLoading}
+                >
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={theme.colors.textInverted}
+                  />
+                  <Text style={styles.approveBtnText}>{t("admin.approve")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.compactBtn, styles.rejectBtn]}
+                  onPress={() => handleReject(img.id)}
+                  disabled={actionLoading}
+                >
+                  <Ionicons name="close" size={14} color={theme.colors.error} />
+                  <Text style={styles.rejectBtnText}>{t("admin.reject")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.compactBtn, styles.deleteBtn]}
+                  onPress={() => handleDelete(img.id)}
+                  disabled={actionLoading}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={14}
+                    color={theme.colors.error}
+                  />
+                  <Text style={styles.rejectBtnText}>
+                    {t("common.delete")}
+                  </Text>
+                </TouchableOpacity>
+              </HStack>
+            </Box>
+          ))
+        )}
+        <Box style={{ height: 40 }} />
+      </ScrollView>
+
+      {fullscreenUri ? (
+        <FullscreenImageViewer
+          visible={fullscreenVisible}
+          images={[fullscreenUri]}
+          currentIndex={fullscreenIndex}
+          onClose={() => setFullscreenVisible(false)}
+          onIndexChange={setFullscreenIndex}
+        />
+      ) : null}
+    </>
   );
 };
 
-const makeStyles = (t: AppTheme) => StyleSheet.create({
-  previewImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: t.colors.gray100,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    previewImage: {
+      width: "100%",
+      height: 200,
+      borderRadius: 8,
+      marginBottom: 8,
+      backgroundColor: t.colors.gray100,
+    },
+    compactActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 8,
+      marginTop: 4,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    compactBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 6,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+    approveBtn: {
+      backgroundColor: t.colors.accent,
+      borderColor: t.colors.accent,
+    },
+    approveBtnText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.textInverted,
+    },
+    rejectBtn: {
+      borderColor: t.colors.error,
+      backgroundColor: t.colors.surface,
+    },
+    deleteBtn: {
+      borderColor: t.colors.error,
+      backgroundColor: t.colors.surface,
+    },
+    rejectBtnText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.error,
+    },
+  });
 
 export default BrandImageReviewTab;

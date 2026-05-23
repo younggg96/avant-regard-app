@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { View, Text as RNText, Pressable, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { OptimizedImage } from "./ui";
+import { OptimizedImage, UserAvatar } from "./ui";
 import { PostCoverMedia } from "./PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
 import { playfairFonts, theme, useThemedStyles, type AppTheme } from "../theme";
@@ -253,12 +253,10 @@ const PostCardInner = ({
       <View style={styles.footer}>
         <Pressable onPress={handlePressAuthor} style={styles.authorPressable}>
           <View style={styles.authorRow}>
-            <OptimizedImage
-              uri={post.author.avatar}
-              size={ImageSize.THUMBNAIL}
-              style={styles.avatar}
-              contentFit="cover"
-              lazy={true}
+            <UserAvatar
+              uri={post.author.avatar || undefined}
+              name={post.author.name}
+              size={20}
             />
             <RNText style={styles.authorName} numberOfLines={1}>
               {post.author.name}

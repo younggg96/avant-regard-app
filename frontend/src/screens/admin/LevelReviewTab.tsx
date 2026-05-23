@@ -38,7 +38,7 @@ import {
   Text,
 } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
-import { getLevelOptions } from "../../components/level/levelTitles";
+import { formatLevelLabel } from "../../components/level/levelTitles";
 
 const LevelReviewTab: React.FC = () => {
   const { t } = useTranslation();
@@ -251,7 +251,7 @@ const LevelReviewTab: React.FC = () => {
         }
       >
         {/* ====== 模块 1: 待审批工单 ====== */}
-        <Text style={styles.sectionTitle}>{t("admin.levelPendingTitle")}</Text>
+        <Text style={styles.blockTitle}>{t("admin.levelPendingTitle")}</Text>
         <Text style={styles.sectionHint}>
           {t("admin.levelPendingHint")}
         </Text>
@@ -336,7 +336,7 @@ const LevelReviewTab: React.FC = () => {
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.sectionTitle}>{t("admin.grantLevelTitle")}</Text>
+            <Text style={styles.blockTitle}>{t("admin.grantLevelTitle")}</Text>
           </HStack>
           <Text style={styles.sectionHint}>
             {t("admin.grantLevelHint")}
@@ -345,7 +345,7 @@ const LevelReviewTab: React.FC = () => {
           <Text style={sharedStyles.formLabel}>{t("admin.userId")}</Text>
           <Input
             variant="outline"
-            size="md"
+            size="sm"
             placeholder={t("admin.userIdPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={grantUserId}
@@ -355,12 +355,12 @@ const LevelReviewTab: React.FC = () => {
 
           <Text style={sharedStyles.formLabel}>{t("admin.targetLevel")}</Text>
           <Box style={styles.levelRow}>
-            {getLevelOptions(t).map((opt) => {
-              const active = grantLevel === opt.value;
+            {[1, 2, 3, 4, 5].map((v) => {
+              const active = grantLevel === v;
               return (
                 <Pressable
-                  key={opt.value}
-                  onPress={() => setGrantLevel(opt.value)}
+                  key={v}
+                  onPress={() => setGrantLevel(v)}
                   style={[
                     styles.levelChip,
                     active && styles.levelChipActive,
@@ -372,17 +372,20 @@ const LevelReviewTab: React.FC = () => {
                       active && styles.levelChipTextActive,
                     ]}
                   >
-                    {opt.label}
+                    {formatLevelLabel(v, t)}
                   </Text>
                 </Pressable>
               );
             })}
           </Box>
+          {grantLevel === 5 ? (
+            <Text style={styles.lv5Hint}>{t("level.lv5Channel")}</Text>
+          ) : null}
 
           <Text style={sharedStyles.formLabel}>{t("admin.remarkOptional")}</Text>
           <Input
             variant="outline"
-            size="md"
+            size="sm"
             placeholder={t("admin.remarkPlaceholder")}
             placeholderTextColor={theme.colors.gray300}
             value={grantRemark}
@@ -390,13 +393,13 @@ const LevelReviewTab: React.FC = () => {
           />
 
           <Button
-            size="md"
+            size="sm"
             onPress={handleGrant}
             disabled={actionLoading}
             isLoading={actionLoading}
-            style={{ marginTop: theme.spacing.md }}
+            style={styles.compactPrimaryBtn}
           >
-            <ButtonText>{t("admin.confirmGrant")}</ButtonText>
+            <ButtonText style={{ fontSize: 13 }}>{t("admin.confirmGrant")}</ButtonText>
           </Button>
         </Box>
 
@@ -409,7 +412,7 @@ const LevelReviewTab: React.FC = () => {
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.sectionTitle}>{t("admin.backfillTitle")}</Text>
+            <Text style={styles.blockTitle}>{t("admin.backfillTitle")}</Text>
           </HStack>
           <Text style={styles.sectionHint}>
             {t("admin.backfillHint")}
@@ -424,7 +427,9 @@ const LevelReviewTab: React.FC = () => {
               isLoading={backfillLoading}
               style={{ flex: 1 }}
             >
-              <ButtonText style={{ fontSize: 12 }}>Dry Run</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>
+                {t("admin.backfillDryRun")}
+              </ButtonText>
             </Button>
             <Button
               size="sm"
@@ -523,7 +528,7 @@ const LevelReviewTab: React.FC = () => {
             </Text>
             <Input
               variant="outline"
-              size="md"
+              size="sm"
               placeholder={t("admin.rejectReasonPlaceholder")}
               placeholderTextColor={theme.colors.gray300}
               value={rejectRemark}
@@ -560,16 +565,22 @@ const LevelReviewTab: React.FC = () => {
 };
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
+  blockTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: t.colors.text,
+  },
   sectionTitle: {
-    ...t.typography.h4,
+    fontSize: 14,
+    fontWeight: "600",
     color: t.colors.text,
   },
   sectionHint: {
-    ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
     marginTop: 2,
-    marginBottom: t.spacing.md,
-    lineHeight: 18,
+    marginBottom: t.spacing.sm,
+    lineHeight: 15,
   },
   targetRow: {
     flexDirection: "row",
@@ -598,8 +609,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: 4,
   },
   levelChip: {
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
@@ -609,12 +620,23 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderColor: t.colors.text,
   },
   levelChipText: {
-    ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray400,
   },
   levelChipTextActive: {
     color: t.colors.textInverted,
     fontWeight: "600",
+  },
+  lv5Hint: {
+    fontSize: 11,
+    color: t.colors.gray300,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  compactPrimaryBtn: {
+    alignSelf: "flex-start",
+    marginTop: t.spacing.sm,
+    paddingHorizontal: 16,
   },
   backfillResultBox: {
     marginTop: t.spacing.md,
