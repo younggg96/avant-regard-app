@@ -28,6 +28,8 @@ export interface NotificationData {
   userId?: number;
   commentId?: number;
   collectionId?: number;
+  navigateTo?: string;
+  navigateParams?: Record<string, unknown>;
 }
 
 // 配置通知处理行为

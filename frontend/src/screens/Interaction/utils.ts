@@ -2,6 +2,7 @@ import i18next from "i18next";
 import { Notification } from "../../services/notificationService";
 import { Conversation } from "../../services/chatService";
 import { CS_USER_ID } from "./constants";
+import { formatLastMessage as formatChatPreview } from "../../utils/chatMessagePreview";
 
 export function formatTime(iso: string | null): string {
   if (!iso) return "";
@@ -19,25 +20,7 @@ export function formatTime(iso: string | null): string {
 }
 
 export function formatLastMessage(text: string | null): string {
-  if (!text) return i18next.t("interaction.noMessages");
-  const trimmed = text.trimStart();
-  if (trimmed.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === "object") {
-        if (typeof parsed.postId === "string") return i18next.t("chat.sharePost");
-        if (typeof parsed.storeId === "string") return i18next.t("chat.shareStore");
-        if (typeof parsed.brandId === "number") return i18next.t("chat.shareBrand");
-        if (typeof parsed.showId === "string") return i18next.t("chat.shareShow");
-        if (typeof parsed.userId === "number" && typeof parsed.username === "string") {
-          return i18next.t("chat.shareUser");
-        }
-      }
-    } catch {
-      // Not valid JSON; fall through to raw text.
-    }
-  }
-  return text;
+  return formatChatPreview(text, "interaction.noMessages");
 }
 
 export const isChatNotification = (n: Notification) =>

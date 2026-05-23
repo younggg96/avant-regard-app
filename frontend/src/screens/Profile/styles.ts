@@ -62,12 +62,14 @@ const makeProfileStyles = (t: AppTheme) =>
       zIndex: 10,
     },
     actionButton: {
+      position: "relative",
       width: 36,
       height: 36,
       borderRadius: t.borderRadius.sm,
       backgroundColor: "rgba(0,0,0,0.3)",
       justifyContent: "center",
       alignItems: "center",
+      overflow: "visible",
     },
     collapsedHeader: {
       position: "absolute",
@@ -89,11 +91,13 @@ const makeProfileStyles = (t: AppTheme) =>
       paddingHorizontal: 12,
     },
     headerButton: {
+      position: "relative",
       width: 36,
       height: 36,
       borderRadius: 18,
       justifyContent: "center",
       alignItems: "center",
+      overflow: "visible",
     },
     headerLeftSpacer: {
       width: 80,

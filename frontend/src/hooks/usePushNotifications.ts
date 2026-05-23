@@ -8,6 +8,8 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useNavigation, NavigationProp } from "@react-navigation/native";
 import { useAuthStore } from "../store/authStore";
+import { useNotificationStore } from "../store/notificationStore";
+import { useChatStore } from "../store/chatStore";
 import {
   registerForPushNotificationsAsync,
   sendPushTokenToServer,
@@ -57,6 +59,12 @@ export function usePushNotifications() {
           }
           break;
         default:
+          if (data.navigateTo) {
+            (navigation.navigate as any)(
+              data.navigateTo,
+              data.navigateParams || {}
+            );
+          }
           break;
       }
     },
@@ -83,6 +91,12 @@ export function usePushNotifications() {
       (notification) => {
         console.log("Notification received:", notification);
         setNotification(notification);
+        // 前台收到推送后立即刷新角标, 避免等 30s 轮询.
+        useNotificationStore.getState().refreshUnreadCount();
+        const data = notification.request.content.data as NotificationData | undefined;
+        if (data?.type === "system" || data?.navigateTo === "Chat") {
+          useChatStore.getState().refreshUnreadCount();
+        }
       }
     );
 

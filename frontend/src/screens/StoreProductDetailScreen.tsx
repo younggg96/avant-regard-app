@@ -1344,8 +1344,10 @@ const StoreProductDetailScreen: React.FC = () => {
               navigation.navigate("Checkout", {
                 productId: product.id,
                 title: product.title,
+                brand: product.brand,
                 priceCents: product.priceCents,
-                coverImage: productImages[0],
+                currency: product.currency ?? "CNY",
+                coverImage: productImages[0] ?? null,
               })
             }
             onEdit={() => navigation.navigate("PublishListingStep1")}

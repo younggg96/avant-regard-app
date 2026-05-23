@@ -1,12 +1,7 @@
 /**
  * OrderDetailScreen —— PRD 模块四单订单详情与状态推进。
- *
- * 角色判断：
- *   - 当前用户 = buyer  → 可：确认收货 / 提交验货
- *   - 当前用户 = seller → 可：发货
- *   - admin              → 可：标记签收（mock，实际靠快递回调）
  */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,25 +12,93 @@ import {
   TextInput,
   Modal,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import * as Clipboard from "expo-clipboard";
 
 import {
   getOrder,
   confirmOrder,
   shipOrder,
   Order,
+  OrderStatus,
   formatOrderStatus,
 } from "../../services/orderService";
-import { formatPrice } from "../../services/storeProductService";
+import {
+  formatPrice,
+  getStoreProductDetail,
+  StoreProduct,
+} from "../../services/storeProductService";
+import { OptimizedImage } from "../../components/ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
 import { contactSupportForOrder } from "../../services/aftersalesService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { OrderDetail: { orderId: number } };
+
+function formatOrderDate(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = iso.replace("T", " ").slice(0, 16);
+  return d;
+}
+
+function statusVisual(
+  status: OrderStatus,
+  t: AppTheme,
+): { icon: keyof typeof Ionicons.glyphMap; bg: string; fg: string } {
+  switch (status) {
+    case "pending_payment":
+      return {
+        icon: "wallet-outline",
+        bg: t.mode === "dark" ? "#2A2410" : "#FFF8E6",
+        fg: t.colors.plusGold,
+      };
+    case "paid":
+      return {
+        icon: "cube-outline",
+        bg: t.mode === "dark" ? "#1A1A1A" : "#F5F5F5",
+        fg: t.colors.text,
+      };
+    case "shipped":
+      return {
+        icon: "airplane-outline",
+        bg: t.mode === "dark" ? "#101A24" : "#EEF4FF",
+        fg: t.mode === "dark" ? "#7EB8FF" : "#2563EB",
+      };
+    case "delivered":
+      return {
+        icon: "checkmark-circle-outline",
+        bg: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
+        fg: t.colors.success,
+      };
+    case "completed":
+    case "settled":
+      return {
+        icon: "ribbon-outline",
+        bg: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
+        fg: t.colors.success,
+      };
+    case "refunded":
+    case "refunded_auto":
+      return {
+        icon: "return-down-back-outline",
+        bg: t.mode === "dark" ? "#2A1414" : "#FFF5F5",
+        fg: t.colors.error,
+      };
+    default:
+      return {
+        icon: "document-text-outline",
+        bg: t.colors.cardElevated,
+        fg: t.colors.text,
+      };
+  }
+}
 
 export default function OrderDetailScreen() {
   const navigation = useNavigation<any>();
@@ -47,6 +110,7 @@ export default function OrderDetailScreen() {
   const styles = useThemedStyles(makeStyles);
 
   const [order, setOrder] = useState<Order | null>(null);
+  const [product, setProduct] = useState<StoreProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
@@ -56,6 +120,14 @@ export default function OrderDetailScreen() {
     try {
       const o = await getOrder(orderId);
       setOrder(o);
+      try {
+        const p = await getStoreProductDetail(o.productId);
+        setProduct(p);
+      } catch {
+        setProduct(null);
+      }
+    } catch {
+      setOrder(null);
     } finally {
       setLoading(false);
     }
@@ -67,7 +139,80 @@ export default function OrderDetailScreen() {
 
   const isBuyer = me?.id === order?.buyerUserId;
   const isSeller = me?.id === order?.sellerUserId;
-  // 注意：买手店卖家身份判断由后端兜底（GET /orders/{id} 403）；这里乐观假定
+
+  const statusHint = useMemo(() => {
+    if (!order) return "";
+    if (order.status === "paid" && order.shippingDueAt) {
+      return t("trading.orderDetail.hintShipBy", {
+        date: formatOrderDate(order.shippingDueAt),
+      });
+    }
+    if (order.status === "delivered" && order.autoConfirmDueAt) {
+      return t("trading.orderDetail.hintAutoConfirm", {
+        date: formatOrderDate(order.autoConfirmDueAt),
+      });
+    }
+    if (order.status === "completed" && order.settlementDueAt) {
+      return t("trading.orderDetail.hintSettlement", {
+        date: formatOrderDate(order.settlementDueAt),
+      });
+    }
+    if (order.status === "pending_payment") {
+      return t("trading.orderDetail.hintPendingPayment");
+    }
+    return "";
+  }, [order, t]);
+
+  const timeline = useMemo(() => {
+    if (!order) return [];
+    const items: { key: string; label: string; time?: string | null; done: boolean }[] = [
+      {
+        key: "created",
+        label: t("trading.orderDetail.timelineCreated"),
+        time: order.createdAt,
+        done: true,
+      },
+      {
+        key: "paid",
+        label: t("trading.orderDetail.timelinePaid"),
+        time: order.paidAt,
+        done: !!order.paidAt,
+      },
+      {
+        key: "shipped",
+        label: t("trading.orderDetail.timelineShipped"),
+        time: order.shippedAt,
+        done: !!order.shippedAt,
+      },
+      {
+        key: "delivered",
+        label: t("trading.orderDetail.timelineDelivered"),
+        time: order.deliveredAt,
+        done: !!order.deliveredAt,
+      },
+      {
+        key: "completed",
+        label: t("trading.orderDetail.timelineCompleted"),
+        time: order.completedAt,
+        done: !!order.completedAt,
+      },
+    ];
+    if (order.settledAt) {
+      items.push({
+        key: "settled",
+        label: t("trading.orderDetail.timelineSettled"),
+        time: order.settledAt,
+        done: true,
+      });
+    }
+    return items;
+  }, [order, t]);
+
+  const copyOrderNo = async () => {
+    if (!order) return;
+    await Clipboard.setStringAsync(order.orderNo);
+    Alert.alert(t("trading.orderDetail.copiedTitle"), t("trading.orderDetail.copiedMessage"));
+  };
 
   const doConfirm = async () => {
     if (!order) return;
@@ -75,7 +220,6 @@ export default function OrderDetailScreen() {
     try {
       const updated = await confirmOrder(order.id);
       setOrder(updated);
-      // PDF p.9 设计要点：确认收货 → 3 步评分 → MY ARCHIVE 召唤页
       navigation.navigate("TradeReview", {
         orderId: order.id,
         productId: order.productId,
@@ -88,101 +232,208 @@ export default function OrderDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ActivityIndicator style={{ marginTop: 32 }} />
+        <ActivityIndicator style={{ marginTop: 48 }} color={theme.colors.gray300} />
       </SafeAreaView>
     );
   }
+
   if (!order) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.empty}>订单不存在</Text>
+        <Text style={styles.empty}>{t("trading.orderDetail.notFound")}</Text>
       </SafeAreaView>
     );
   }
+
+  const visual = statusVisual(order.status as OrderStatus, theme);
+  const coverImage = product?.images?.[0];
+  const currency = order.currency ?? product?.currency ?? "CNY";
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>订单详情</Text>
+        <Text style={styles.headerTitle}>
+          {t("trading.orderDetail.headerTitle")}
+        </Text>
         <View style={{ width: 26 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.statusCard}>
-          <Text style={styles.statusBig}>
-            {formatOrderStatus(order.status)}
-          </Text>
-          <Text style={styles.statusHint}>
-            {order.status === "paid" && order.shippingDueAt
-              ? `卖家需在 ${order.shippingDueAt.slice(0, 16)} 前发货`
-              : order.status === "delivered" && order.autoConfirmDueAt
-              ? `${order.autoConfirmDueAt.slice(0, 16)} 自动确认收货`
-              : order.status === "completed" && order.settlementDueAt
-              ? `${order.settlementDueAt.slice(0, 16)} 进入卖家可提现余额`
-              : ""}
-          </Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.statusHero, { backgroundColor: visual.bg }]}>
+          <View style={[styles.statusIconWrap, { backgroundColor: visual.fg + "18" }]}>
+            <Ionicons name={visual.icon} size={28} color={visual.fg} />
+          </View>
+          <View style={styles.statusTextWrap}>
+            <Text style={[styles.statusBig, { color: visual.fg }]}>
+              {formatOrderStatus(order.status as OrderStatus)}
+            </Text>
+            {statusHint ? (
+              <Text style={styles.statusHint}>{statusHint}</Text>
+            ) : null}
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>商品</Text>
-          <Text style={styles.row}>单品 #{order.productId}</Text>
-          <Text style={styles.row}>
-            成交价 <Text style={styles.bold}>{formatPrice(order.paidPriceCents)}</Text>
-          </Text>
-          <Text style={styles.row}>
-            原挂牌价 {formatPrice(order.listingPriceCents)}
-          </Text>
-        </View>
+        <SectionCard title={t("trading.orderDetail.productSection")}>
+          <Pressable
+            style={styles.productRow}
+            onPress={() =>
+              navigation.navigate("StoreProductDetail", {
+                productId: order.productId,
+              })
+            }
+          >
+            {coverImage ? (
+              <OptimizedImage
+                uri={coverImage}
+                size={ImageSize.THUMBNAIL}
+                style={styles.productThumb}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={[styles.productThumb, styles.productThumbPlaceholder]}>
+                <Ionicons
+                  name="image-outline"
+                  size={24}
+                  color={theme.colors.gray300}
+                />
+              </View>
+            )}
+            <View style={styles.productInfo}>
+              {product?.brand ? (
+                <Text style={styles.productBrand} numberOfLines={1}>
+                  {product.brand}
+                </Text>
+              ) : null}
+              <Text style={styles.productTitle} numberOfLines={2}>
+                {product?.title ??
+                  t("trading.orders.productLabel", { id: order.productId })}
+              </Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.productPrice}>
+                  {formatPrice(order.paidPriceCents, currency)}
+                </Text>
+                {order.listingPriceCents !== order.paidPriceCents ? (
+                  <Text style={styles.listingPrice}>
+                    {t("trading.orderDetail.listingPrice")}{" "}
+                    {formatPrice(order.listingPriceCents, currency)}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.colors.gray300}
+            />
+          </Pressable>
+        </SectionCard>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>金额明细</Text>
-          <Text style={styles.row}>
-            买家实付 {formatPrice(order.paidPriceCents)}
-          </Text>
-          <Text style={styles.row}>
-            平台佣金 {formatPrice(order.commissionCents)} ({(order.commissionRateBps / 100).toFixed(1)}%)
-          </Text>
-          <Text style={styles.row}>
-            卖家应收 <Text style={styles.bold}>{formatPrice(order.sellerPayoutCents)}</Text>
-          </Text>
-        </View>
+        <SectionCard title={t("trading.orderDetail.amountSection")}>
+          <InfoRow
+            label={t("trading.orderDetail.buyerPaid")}
+            value={formatPrice(order.paidPriceCents, currency)}
+          />
+          <InfoRow
+            label={t("trading.orderDetail.commission", {
+              rate: (order.commissionRateBps / 100).toFixed(1),
+            })}
+            value={formatPrice(order.commissionCents, currency)}
+            muted
+          />
+          <View style={styles.divider} />
+          <InfoRow
+            label={t("trading.orderDetail.sellerPayout")}
+            value={formatPrice(order.sellerPayoutCents, currency)}
+            bold
+          />
+        </SectionCard>
 
         {order.shippingAddress ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>收货信息</Text>
-            <Text style={styles.row}>
-              {(order.shippingAddress as any).receiverName} ·{" "}
-              {(order.shippingAddress as any).phone}
-            </Text>
-            <Text style={styles.row}>
-              {(order.shippingAddress as any).address}
-            </Text>
-          </View>
+          <SectionCard title={t("trading.orderDetail.shippingSection")}>
+            <View style={styles.shippingRow}>
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color={theme.colors.gray300}
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shippingName}>
+                  {(order.shippingAddress as any).receiverName}{" "}
+                  <Text style={styles.shippingPhone}>
+                    {(order.shippingAddress as any).phone}
+                  </Text>
+                </Text>
+                <Text style={styles.shippingAddress}>
+                  {(order.shippingAddress as any).address}
+                </Text>
+              </View>
+            </View>
+          </SectionCard>
         ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>订单信息</Text>
-          <Text style={styles.row}>订单号 {order.orderNo}</Text>
-          <Text style={styles.row}>创建 {order.createdAt?.slice(0, 16)}</Text>
-          {order.paidAt ? (
-            <Text style={styles.row}>支付 {order.paidAt.slice(0, 16)}</Text>
-          ) : null}
-          {order.shippedAt ? (
-            <Text style={styles.row}>发货 {order.shippedAt.slice(0, 16)}</Text>
-          ) : null}
-          {order.deliveredAt ? (
-            <Text style={styles.row}>签收 {order.deliveredAt.slice(0, 16)}</Text>
-          ) : null}
-          {order.completedAt ? (
-            <Text style={styles.row}>完成 {order.completedAt.slice(0, 16)}</Text>
-          ) : null}
-          {order.settledAt ? (
-            <Text style={styles.row}>结算 {order.settledAt.slice(0, 16)}</Text>
-          ) : null}
-        </View>
+        <SectionCard title={t("trading.orderDetail.orderInfoSection")}>
+          <Pressable style={styles.orderNoRow} onPress={copyOrderNo}>
+            <Text style={styles.orderNoLabel}>
+              {t("trading.orderDetail.orderNo")}
+            </Text>
+            <View style={styles.orderNoValueWrap}>
+              <Text style={styles.orderNoValue} numberOfLines={1}>
+                {order.orderNo}
+              </Text>
+              <Ionicons
+                name="copy-outline"
+                size={16}
+                color={theme.colors.gray300}
+              />
+            </View>
+          </Pressable>
+          <View style={styles.timeline}>
+            {timeline.map((item, idx) => (
+              <View key={item.key} style={styles.timelineItem}>
+                <View style={styles.timelineLeft}>
+                  <View
+                    style={[
+                      styles.timelineDot,
+                      item.done && styles.timelineDotDone,
+                    ]}
+                  />
+                  {idx < timeline.length - 1 ? (
+                    <View
+                      style={[
+                        styles.timelineLine,
+                        item.done && timeline[idx + 1]?.done
+                          ? styles.timelineLineDone
+                          : null,
+                      ]}
+                    />
+                  ) : null}
+                </View>
+                <View style={styles.timelineContent}>
+                  <Text
+                    style={[
+                      styles.timelineLabel,
+                      !item.done && styles.timelineLabelPending,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                  {item.time ? (
+                    <Text style={styles.timelineTime}>
+                      {formatOrderDate(item.time)}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
+        </SectionCard>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -203,7 +454,15 @@ export default function OrderDetailScreen() {
             style={styles.primaryBtn}
             onPress={() => setShowShipModal(true)}
           >
-            <Text style={styles.primaryBtnText}>去发货</Text>
+            <Ionicons
+              name="airplane-outline"
+              size={18}
+              color={theme.colors.textInverted}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.primaryBtnText}>
+              {t("trading.orderDetail.shipNow")}
+            </Text>
           </Pressable>
         ) : null}
         {isBuyer && order.status === "delivered" ? (
@@ -215,17 +474,18 @@ export default function OrderDetailScreen() {
             {actionLoading ? (
               <ActivityIndicator color={theme.colors.textInverted} />
             ) : (
-              <Text style={styles.primaryBtnText}>确认收货</Text>
+              <Text style={styles.primaryBtnText}>
+                {t("trading.orderDetail.confirmReceipt")}
+              </Text>
             )}
           </Pressable>
         ) : null}
-        {/* PDF p.10 设计要点：售后改成直接「联系客服」IM 入口，不再走程序化退款表单 */}
         {(isBuyer || isSeller) &&
         order.status !== "pending_payment" &&
         order.status !== "refunded_auto" &&
         order.status !== "refunded" ? (
           <Pressable
-            style={styles.linkBtn}
+            style={styles.secondaryBtn}
             onPress={async () => {
               try {
                 setActionLoading(true);
@@ -244,7 +504,13 @@ export default function OrderDetailScreen() {
               }
             }}
           >
-            <Text style={styles.linkBtnText}>
+            <Ionicons
+              name="headset-outline"
+              size={16}
+              color={theme.colors.text}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.secondaryBtnText}>
               {t("trading.support.contactSupportOnOrder")}
             </Text>
           </Pressable>
@@ -277,6 +543,52 @@ export default function OrderDetailScreen() {
   );
 }
 
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  bold,
+  muted,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  muted?: boolean;
+}) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.infoRow}>
+      <Text style={[styles.infoLabel, muted && styles.infoLabelMuted]}>
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.infoValue,
+          bold && styles.infoValueBold,
+          muted && styles.infoValueMuted,
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 function ShipModal({
   visible,
   orderId,
@@ -290,6 +602,7 @@ function ShipModal({
 }) {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
   const [carrier, setCarrier] = useState("");
   const [trackingNo, setTrackingNo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -297,7 +610,7 @@ function ShipModal({
 
   const submit = async () => {
     if (!carrier.trim() || !trackingNo.trim()) {
-      setErrorMsg("请填写承运商和单号");
+      setErrorMsg(t("trading.orderDetail.shipFillRequired"));
       return;
     }
     setLoading(true);
@@ -309,27 +622,34 @@ function ShipModal({
       });
       onDone(updated);
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "发货失败");
+      setErrorMsg(e?.message ?? t("trading.orderDetail.shipFailed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modal}>
-          <Text style={styles.modalTitle}>填写物流信息</Text>
+    <Modal visible={visible} transparent animationType="slide">
+      <KeyboardAvoidingView
+        style={styles.modalBackdrop}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>
+            {t("trading.orderDetail.shipModalTitle")}
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="承运商，如 顺丰、京东"
+            placeholder={t("trading.orderDetail.carrierPlaceholder")}
             placeholderTextColor={theme.colors.placeholder}
             value={carrier}
             onChangeText={setCarrier}
           />
           <TextInput
             style={styles.input}
-            placeholder="物流单号"
+            placeholder={t("trading.orderDetail.trackingPlaceholder")}
             placeholderTextColor={theme.colors.placeholder}
             value={trackingNo}
             onChangeText={setTrackingNo}
@@ -337,7 +657,9 @@ function ShipModal({
           {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
           <View style={styles.modalActions}>
             <Pressable style={styles.modalBtnGhost} onPress={onClose}>
-              <Text style={styles.modalBtnGhostText}>取消</Text>
+              <Text style={styles.modalBtnGhostText}>
+                {t("common.cancel")}
+              </Text>
             </Pressable>
             <Pressable
               style={[styles.modalBtnPrimary, loading && { opacity: 0.5 }]}
@@ -347,12 +669,14 @@ function ShipModal({
               {loading ? (
                 <ActivityIndicator color={theme.colors.textInverted} />
               ) : (
-                <Text style={styles.modalBtnPrimaryText}>确认发货</Text>
+                <Text style={styles.modalBtnPrimaryText}>
+                  {t("trading.orderDetail.shipConfirm")}
+                </Text>
               )}
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -371,84 +695,213 @@ const makeStyles = (t: AppTheme) =>
       borderBottomColor: t.colors.border,
     },
     headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 12, paddingBottom: 100 },
-    statusCard: {
-      backgroundColor: t.colors.accent,
-      padding: 20,
+    scroll: { padding: 16, paddingBottom: 140 },
+    statusHero: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 16,
       borderRadius: 12,
       marginBottom: 16,
+      gap: 14,
     },
-    statusBig: {
-      color: t.colors.textInverted,
-      fontSize: 20,
-      fontWeight: "700",
+    statusIconWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      alignItems: "center",
+      justifyContent: "center",
     },
+    statusTextWrap: { flex: 1 },
+    statusBig: { fontSize: 18, fontWeight: "700" },
     statusHint: {
-      color: t.colors.textInverted,
-      opacity: 0.7,
       fontSize: 12,
-      marginTop: 8,
+      color: t.colors.gray300,
+      marginTop: 4,
+      lineHeight: 18,
     },
     section: {
       backgroundColor: t.colors.cardElevated,
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
     sectionTitle: {
       fontSize: 13,
       fontWeight: "600",
       color: t.colors.text,
-      marginBottom: 8,
+      marginBottom: 12,
     },
-    row: { fontSize: 13, color: t.colors.gray400, marginVertical: 4 },
-    bold: { fontWeight: "700", color: t.colors.text },
-    empty: { textAlign: "center", marginTop: 32, color: t.colors.gray300 },
+    productRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    productThumb: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+    },
+    productThumbPlaceholder: {
+      backgroundColor: t.colors.skeleton,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    productInfo: { flex: 1 },
+    productBrand: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      marginBottom: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    productTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: t.colors.text,
+      lineHeight: 20,
+      marginBottom: 6,
+    },
+    priceRow: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
+    productPrice: { fontSize: 16, fontWeight: "700", color: t.colors.text },
+    listingPrice: {
+      fontSize: 12,
+      color: t.colors.gray300,
+      textDecorationLine: "line-through",
+    },
+    infoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: 6,
+    },
+    infoLabel: { fontSize: 13, color: t.colors.text, flex: 1 },
+    infoLabelMuted: { color: t.colors.gray300 },
+    infoValue: { fontSize: 13, color: t.colors.text },
+    infoValueBold: { fontWeight: "700", fontSize: 15 },
+    infoValueMuted: { color: t.colors.gray300 },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: t.colors.border,
+      marginVertical: 8,
+    },
+    shippingRow: { flexDirection: "row", gap: 10 },
+    shippingName: { fontSize: 14, fontWeight: "600", color: t.colors.text },
+    shippingPhone: { fontWeight: "400", color: t.colors.gray400 },
+    shippingAddress: {
+      fontSize: 13,
+      color: t.colors.gray400,
+      marginTop: 6,
+      lineHeight: 20,
+    },
+    orderNoRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: 12,
+      marginBottom: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.border,
+    },
+    orderNoLabel: { fontSize: 13, color: t.colors.gray300 },
+    orderNoValueWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      maxWidth: "65%",
+    },
+    orderNoValue: { fontSize: 12, color: t.colors.text, fontWeight: "500" },
+    timeline: { marginTop: 8 },
+    timelineItem: { flexDirection: "row", minHeight: 44 },
+    timelineLeft: { width: 24, alignItems: "center" },
+    timelineDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      borderWidth: 2,
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.background,
+      marginTop: 4,
+    },
+    timelineDotDone: {
+      borderColor: t.colors.text,
+      backgroundColor: t.colors.text,
+    },
+    timelineLine: {
+      flex: 1,
+      width: 2,
+      backgroundColor: t.colors.gray200,
+      marginVertical: 2,
+    },
+    timelineLineDone: { backgroundColor: t.colors.text },
+    timelineContent: { flex: 1, paddingBottom: 12, paddingLeft: 8 },
+    timelineLabel: { fontSize: 13, color: t.colors.text, fontWeight: "500" },
+    timelineLabelPending: { color: t.colors.gray300, fontWeight: "400" },
+    timelineTime: { fontSize: 11, color: t.colors.gray300, marginTop: 2 },
+    empty: { textAlign: "center", marginTop: 48, color: t.colors.gray300 },
     footer: {
       position: "absolute",
       bottom: 0,
       left: 0,
       right: 0,
       paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingTop: 10,
       paddingBottom: 24,
       backgroundColor: t.colors.card,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
+      gap: 8,
     },
     primaryBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 24,
+      borderRadius: 4,
       alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "center",
     },
     primaryBtnText: {
       color: t.colors.textInverted,
       fontSize: 15,
       fontWeight: "600",
     },
-    linkBtn: {
-      paddingVertical: 8,
+    secondaryBtn: {
+      flexDirection: "row",
       alignItems: "center",
-      marginTop: 8,
+      justifyContent: "center",
+      paddingVertical: 12,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: t.colors.border,
     },
+    secondaryBtnText: { color: t.colors.text, fontSize: 14, fontWeight: "500" },
+    linkBtn: { paddingVertical: 8, alignItems: "center" },
     linkBtnText: { color: t.colors.gray300, fontSize: 13 },
     modalBackdrop: {
       flex: 1,
-      backgroundColor: t.colors.scrim,
+      backgroundColor: t.colors.overlay,
       justifyContent: "flex-end",
     },
-    modal: {
+    modalSheet: {
       backgroundColor: t.colors.card,
       borderTopLeftRadius: 16,
       borderTopRightRadius: 16,
-      padding: 16,
+      padding: 20,
       paddingBottom: 32,
+    },
+    modalHandle: {
+      alignSelf: "center",
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.colors.border,
+      marginBottom: 16,
     },
     modalTitle: {
       fontSize: 16,
       fontWeight: "600",
-      marginBottom: 12,
+      marginBottom: 16,
       color: t.colors.text,
     },
     input: {
@@ -461,15 +914,22 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
     },
-    error: { color: t.colors.error, marginBottom: 12 },
-    modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 12 },
-    modalBtnGhost: { paddingVertical: 12, paddingHorizontal: 20 },
-    modalBtnGhostText: { color: t.colors.gray300 },
+    error: { color: t.colors.error, marginBottom: 12, fontSize: 13 },
+    modalActions: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: 12,
+      marginTop: 4,
+    },
+    modalBtnGhost: { paddingVertical: 12, paddingHorizontal: 16 },
+    modalBtnGhostText: { color: t.colors.gray300, fontSize: 14 },
     modalBtnPrimary: {
       backgroundColor: t.colors.accent,
       paddingVertical: 12,
       paddingHorizontal: 24,
-      borderRadius: 20,
+      borderRadius: 4,
+      minWidth: 120,
+      alignItems: "center",
     },
     modalBtnPrimaryText: { color: t.colors.textInverted, fontWeight: "600" },
   });

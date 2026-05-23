@@ -231,12 +231,16 @@ class LevelService:
         with _lock_for(user_id):
             # 1) 累加 counters
             counters = self._get_counters(user_id)
+            old_counters = dict(counters)
             counters[action] = int(counters.get(action, 0)) + delta
             self.db.table("user_level_progress").upsert(
                 {"user_id": user_id, "counters": counters,
                  "updated_at": datetime.utcnow().isoformat()},
                 on_conflict="user_id",
             ).execute()
+
+            # 1.5) 单项任务刚达标 → 站内信 + Push (升级通知仍由 _apply_upgrade 负责)
+            self._notify_newly_completed_tasks(user_id, action, old_counters, counters)
 
             # 2) 评估下一级 (位于锁内, 保证 _apply_upgrade / _ensure_pending_request
             #    不会与另一条行为同时触发相同升级路径)
@@ -867,6 +871,57 @@ class LevelService:
         }
 
     # ---- 3.7 通知 ------------------------------------------------------
+
+    def _notify_newly_completed_tasks(
+        self,
+        user_id: int,
+        action: str,
+        old_counters: Dict[str, int],
+        new_counters: Dict[str, int],
+    ) -> None:
+        """当前等级下一级的任务, 计数首次跨过 target 时发通知."""
+        row = self._get_row(user_id)
+        current_level = int(row.get("current_level") or 0)
+        if current_level >= 5:
+            return
+
+        next_level = current_level + 1
+        spec = _spec_by_level(next_level)
+        if not spec:
+            return
+
+        old_val = int(old_counters.get(action, 0))
+        new_val = int(new_counters.get(action, 0))
+        for task in spec.tasks:
+            if task.action != action:
+                continue
+            if old_val < task.target <= new_val:
+                self._notify_task_completed(user_id, task, next_level, spec.title)
+
+    def _notify_task_completed(
+        self,
+        user_id: int,
+        task: LevelTaskSpec,
+        target_level: int,
+        level_title: str,
+    ) -> None:
+        try:
+            from app.services.notification_service import notification_service
+            notification_service.create_notification(
+                user_id=user_id,
+                notification_type=NotificationType.SYSTEM,
+                title="等级任务完成",
+                message=f"已完成：{task.label}",
+                action_data={
+                    "navigateTo": "MyLevel",
+                    "navigateParams": {},
+                    "taskAction": task.action,
+                    "targetLevel": target_level,
+                    "levelTitle": level_title,
+                },
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("notify_task_completed failed: %s", e)
 
     def _notify_level_up(self, user_id: int, level: int) -> None:
         """升级成功后发站内信; 前端会监听这些通知触发全屏动画."""

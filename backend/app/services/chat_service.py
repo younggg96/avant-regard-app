@@ -31,6 +31,10 @@ _CARD_TYPE_LABELS: Dict[str, str] = {
     "brand_card": "[品牌分享]",
     "show_card": "[秀场分享]",
     "user_card": "[名片分享]",
+    "product_listing": "[商品]",
+    "offer": "[出价]",
+    "order_status": "[订单]",
+    "dispute": "[售后]",
     "image": "[图片]",
 }
 
@@ -59,10 +63,15 @@ def _extract_card_title(content: str) -> Optional[str]:
         return None
     if not isinstance(parsed, dict):
         return None
-    for key in ("title", "name", "brandName", "username"):
+    for key in ("title", "name", "brandName", "username", "orderNo", "reason"):
         value = parsed.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
+    product = parsed.get("product")
+    if isinstance(product, dict):
+        title = product.get("title")
+        if isinstance(title, str) and title.strip():
+            return title.strip()
     return None
 
 

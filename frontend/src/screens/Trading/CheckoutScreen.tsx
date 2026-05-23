@@ -2,9 +2,6 @@
  * CheckoutScreen —— PRD 模块四「立即购买」结算页（填地址 + 复核）。
  *
  * 进入路径：详情页 → 立即购买 → 这里 → 提交订单 → PaymentScreen 选支付方式。
- * 后端发生：
- *   1. POST /api/orders/buy-now 创建库存锁（30 分钟）+ 订单（pending_payment）+ 默认 payment intent
- *   2. 自动 navigate.replace("Payment", { orderId }) 让用户选 微信 / 支付宝 / Stripe
  */
 import React, { useState } from "react";
 import {
@@ -19,16 +16,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { buyNow } from "../../services/orderService";
 import { formatPrice } from "../../services/storeProductService";
+import { OptimizedImage } from "../../components/ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = {
   Checkout: {
     productId: number;
     title?: string;
+    brand?: string | null;
     priceCents: number;
+    currency?: string;
     coverImage?: string | null;
   };
 };
@@ -36,7 +38,15 @@ type RouteParams = {
 export default function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "Checkout">>();
-  const { productId, title, priceCents, coverImage } = route.params;
+  const {
+    productId,
+    title,
+    brand,
+    priceCents,
+    currency = "CNY",
+    coverImage,
+  } = route.params;
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -48,7 +58,7 @@ export default function CheckoutScreen() {
 
   const submit = async () => {
     if (!receiverName.trim() || !phone.trim() || !address.trim()) {
-      setErrorMsg("请完整填写收货信息");
+      setErrorMsg(t("trading.checkout.fillAllFields"));
       return;
     }
     setErrorMsg(null);
@@ -59,10 +69,9 @@ export default function CheckoutScreen() {
         phone: phone.trim(),
         address: address.trim(),
       });
-      // 创建好订单 + payment intent 后跳到 PaymentScreen 选支付方式
       navigation.replace("Payment", { orderId: order.id });
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "提交订单失败");
+      setErrorMsg(e?.message ?? t("trading.checkout.submitFailed"));
       setStep("form");
     }
   };
@@ -70,38 +79,65 @@ export default function CheckoutScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>结算</Text>
+        <Text style={styles.headerTitle}>{t("trading.checkout.headerTitle")}</Text>
         <View style={{ width: 26 }} />
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.productCard}>
-          <View style={styles.coverBox}>
-            <Text style={styles.coverPlaceholder}>图</Text>
-          </View>
-          <View style={{ flex: 1 }}>
+          {coverImage ? (
+            <OptimizedImage
+              uri={coverImage}
+              size={ImageSize.THUMBNAIL}
+              style={styles.coverImage}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={[styles.coverImage, styles.coverPlaceholder]}>
+              <Ionicons
+                name="image-outline"
+                size={28}
+                color={theme.colors.gray300}
+              />
+            </View>
+          )}
+          <View style={styles.productInfo}>
+            {brand ? (
+              <Text style={styles.brand} numberOfLines={1}>
+                {brand}
+              </Text>
+            ) : null}
             <Text style={styles.productTitle} numberOfLines={2}>
-              {title ?? `单品 #${productId}`}
+              {title ?? t("trading.orders.productLabel", { id: productId })}
             </Text>
-            <Text style={styles.productPrice}>{formatPrice(priceCents)}</Text>
+            <Text style={styles.productPrice}>
+              {formatPrice(priceCents, currency)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>收货信息</Text>
+          <Text style={styles.sectionTitle}>
+            {t("trading.checkout.shippingSection")}
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="收货人姓名"
+            placeholder={t("trading.checkout.receiverName")}
             placeholderTextColor={theme.colors.placeholder}
             value={receiverName}
             onChangeText={setReceiverName}
+            autoCapitalize="words"
           />
           <TextInput
             style={styles.input}
-            placeholder="联系电话"
+            placeholder={t("trading.checkout.phone")}
             placeholderTextColor={theme.colors.placeholder}
             value={phone}
             onChangeText={setPhone}
@@ -109,27 +145,23 @@ export default function CheckoutScreen() {
           />
           <TextInput
             style={[styles.input, styles.inputMultiline]}
-            placeholder="详细地址"
+            placeholder={t("trading.checkout.address")}
             placeholderTextColor={theme.colors.placeholder}
             value={address}
             onChangeText={setAddress}
             multiline
+            textAlignVertical="top"
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>支付方式</Text>
-          <View style={styles.payRow}>
-            <Ionicons name="card-outline" size={20} color={theme.colors.text} />
-            <Text style={styles.payText}>Mock 支付（开发通道）</Text>
-            <Ionicons
-              name="checkmark-circle"
-              size={20}
-              color={theme.colors.success}
-            />
-          </View>
-          <Text style={styles.hint}>
-            上线后会切换成 Stripe / 支付宝 / 微信，下单流程不变。
+        <View style={styles.notice}>
+          <Ionicons
+            name="information-circle-outline"
+            size={16}
+            color={theme.colors.gray300}
+          />
+          <Text style={styles.noticeText}>
+            {t("trading.checkout.paymentNextStepHint")}
           </Text>
         </View>
 
@@ -137,19 +169,25 @@ export default function CheckoutScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <View>
-          <Text style={styles.footerLabel}>实付</Text>
-          <Text style={styles.footerPrice}>{formatPrice(priceCents)}</Text>
+        <View style={styles.footerLeft}>
+          <Text style={styles.footerLabel}>
+            {t("trading.payment.payNowLabel")}
+          </Text>
+          <Text style={styles.footerPrice}>
+            {formatPrice(priceCents, currency)}
+          </Text>
         </View>
         <Pressable
-          style={[styles.primaryBtn, step === "submitting" && { opacity: 0.5 }]}
+          style={[styles.primaryBtn, step === "submitting" && styles.primaryBtnDisabled]}
           onPress={submit}
           disabled={step === "submitting"}
         >
           {step === "submitting" ? (
             <ActivityIndicator color={theme.colors.textInverted} />
           ) : (
-            <Text style={styles.primaryBtnText}>提交订单</Text>
+            <Text style={styles.primaryBtnText}>
+              {t("trading.checkout.submitOrder")}
+            </Text>
           )}
         </Pressable>
       </View>
@@ -178,66 +216,80 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: 12,
       padding: 12,
       marginBottom: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
-    coverBox: {
+    coverImage: {
       width: 80,
       height: 80,
       borderRadius: 8,
-      overflow: "hidden",
-      backgroundColor: t.colors.skeleton,
       marginRight: 12,
+    },
+    coverPlaceholder: {
+      backgroundColor: t.colors.skeleton,
       alignItems: "center",
       justifyContent: "center",
     },
-    coverPlaceholder: { color: t.colors.gray300 },
-    productTitle: { fontSize: 14, color: t.colors.text, marginBottom: 8 },
+    productInfo: { flex: 1, justifyContent: "center" },
+    brand: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      marginBottom: 4,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    productTitle: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 6,
+      lineHeight: 20,
+    },
     productPrice: { fontSize: 18, fontWeight: "700", color: t.colors.text },
     section: {
       backgroundColor: t.colors.cardElevated,
       borderRadius: 12,
       padding: 16,
-      marginBottom: 16,
+      marginBottom: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
     sectionTitle: {
       fontSize: 13,
       fontWeight: "600",
-      marginBottom: 8,
+      marginBottom: 4,
       color: t.colors.text,
     },
     input: {
       borderWidth: 1,
       borderColor: t.colors.inputBorder,
       borderRadius: 8,
-      padding: 12,
-      marginTop: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      marginTop: 10,
       fontSize: 14,
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
     },
-    inputMultiline: { minHeight: 80, textAlignVertical: "top" },
-    payRow: {
+    inputMultiline: { minHeight: 88 },
+    notice: {
       flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 8,
-      gap: 12,
+      alignItems: "flex-start",
+      gap: 8,
+      paddingHorizontal: 4,
+      marginTop: 4,
     },
-    payText: { flex: 1, fontSize: 14, color: t.colors.text },
-    hint: { fontSize: 12, color: t.colors.gray300, marginTop: 4 },
-    error: { color: t.colors.error, marginBottom: 12 },
-    successBox: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 24,
-      alignItems: "center",
-      marginBottom: 16,
+    noticeText: {
+      flex: 1,
+      fontSize: 12,
+      color: t.colors.gray300,
+      lineHeight: 18,
     },
-    successTitle: {
-      fontSize: 18,
-      fontWeight: "700",
+    error: {
+      color: t.colors.error,
       marginTop: 12,
-      color: t.colors.text,
+      fontSize: 13,
     },
-    successHint: { color: t.colors.gray300, marginVertical: 8 },
     footer: {
       position: "absolute",
       bottom: 0,
@@ -253,15 +305,18 @@ const makeStyles = (t: AppTheme) =>
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
     },
-    footerLabel: { fontSize: 12, color: t.colors.gray300 },
+    footerLeft: { flex: 1, marginRight: 12 },
+    footerLabel: { fontSize: 11, color: t.colors.gray300 },
     footerPrice: { fontSize: 20, fontWeight: "700", color: t.colors.text },
     primaryBtn: {
       backgroundColor: t.colors.accent,
-      paddingHorizontal: 32,
+      paddingHorizontal: 28,
       paddingVertical: 12,
-      borderRadius: 24,
-      marginTop: 12,
+      borderRadius: 4,
+      minWidth: 132,
+      alignItems: "center",
     },
+    primaryBtnDisabled: { opacity: 0.5 },
     primaryBtnText: {
       color: t.colors.textInverted,
       fontSize: 15,

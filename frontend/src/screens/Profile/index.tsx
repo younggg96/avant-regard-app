@@ -65,6 +65,8 @@ const ProfileScreen = () => {
   const refreshLevel = useLevelStore((s) => s.refresh);
   const totalChatUnread = useChatStore((s) => s.totalUnread);
   const totalNotificationUnread = useNotificationStore((s) => s.unreadCount);
+  const refreshChatUnread = useChatStore((s) => s.refreshUnreadCount);
+  const refreshNotificationUnread = useNotificationStore((s) => s.refreshUnreadCount);
   const totalInteractionUnread = totalChatUnread + totalNotificationUnread;
 
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;
@@ -162,6 +164,9 @@ const ProfileScreen = () => {
       // 与「我的等级」页对齐：每次回到本页都同步最新等级 + 任务进度，
       // 避免发帖/点赞/收藏后回到主页看到滞后的进度条。
       refreshLevel();
+      // 同步互动页铃铛角标 (聊天 + 系统通知未读).
+      refreshNotificationUnread();
+      refreshChatUnread();
       if (activeTab === "archive") {
         loadContributions();
       } else if (activeTab === "storeActivity") {
@@ -169,7 +174,13 @@ const ProfileScreen = () => {
       } else {
         fetchTabData(activeTab, true);
       }
-    }, [activeTab, user?.userId])
+    }, [
+      activeTab,
+      user?.userId,
+      refreshLevel,
+      refreshNotificationUnread,
+      refreshChatUnread,
+    ])
   );
 
   const onRefresh = async () => {
@@ -184,6 +195,8 @@ const ProfileScreen = () => {
       loadPostStats(),
       // 下拉刷新越过 levelStore 节流窗口, 让用户拿到真正最新的等级 / 任务进度.
       refreshLevel({ force: true }),
+      refreshNotificationUnread(),
+      refreshChatUnread(),
     ];
     if (activeTab === "archive") {
       tasks.push(loadContributions());

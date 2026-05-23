@@ -1,11 +1,10 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
 import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
-import { OptimizedImage } from "../../../components/ui/OptimizedImage";
-import { ImageSize } from "../../../utils/imageUtils";
+import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 
 const headerLogoDark = require("../../../../assets/gif/header-logo-dark.gif");
@@ -26,6 +25,7 @@ const DiscoverLogo: React.FC = () => {
 
 interface DiscoverHeaderProps {
     avatar?: string;
+    username?: string | null;
     totalInteractionUnread?: number;
     onAvatarPress: () => void;
     onSearchPress: () => void;
@@ -34,6 +34,7 @@ interface DiscoverHeaderProps {
 
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     avatar,
+    username,
     totalInteractionUnread = 0,
     onAvatarPress,
     onSearchPress,
@@ -62,19 +63,12 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
                             onPress={onAvatarPress}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            {avatar ? (
-                                <OptimizedImage
-                                    uri={avatar}
-                                    size={ImageSize.THUMBNAIL}
-                                    style={styles.avatar}
-                                    contentFit="cover"
-                                    lazy={true}
-                                />
-                            ) : (
-                                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                                    <Ionicons name="person" size={18} color={theme.colors.textInverted} />
-                                </View>
-                            )}
+                            <UserAvatar
+                                uri={avatar}
+                                name={username}
+                                size={32}
+                                style={styles.avatar}
+                            />
                         </Pressable>
                     </HStack>
                 </HStack>
@@ -103,16 +97,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
         height: 36,
     },
     avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
         borderWidth: 1,
         borderColor: t.colors.border,
-    },
-    avatarPlaceholder: {
-        backgroundColor: t.colors.gray300,
-        justifyContent: "center",
-        alignItems: "center",
     },
     searchContainer: {
         height: 40,

@@ -602,6 +602,7 @@ const DiscoverScreen: React.FC = () => {
   }
 
   const userAvatarUrl = currentUserInfo?.avatarUrl || user?.avatar;
+  const username = currentUserInfo?.username || user?.username;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -609,6 +610,7 @@ const DiscoverScreen: React.FC = () => {
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
         <DiscoverHeader
           avatar={userAvatarUrl}
+          username={username}
           totalInteractionUnread={totalInteractionUnread}
           onAvatarPress={handleAvatarPress}
           onSearchPress={handleSearchPress}

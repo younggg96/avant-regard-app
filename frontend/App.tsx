@@ -270,7 +270,13 @@ function TabNavigator() {
   // tab 角标会立刻更新，不用等 30 秒 polling。polling 仍保留作为兜底，覆盖
   // 后台推送在 App 处于前台但还没被任何页面消费的场景。
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
-  const refreshUnreadCount = useNotificationStore((s) => s.refreshUnreadCount);
+  const refreshNotificationUnread = useNotificationStore((s) => s.refreshUnreadCount);
+  const refreshChatUnread = useChatStore((s) => s.refreshUnreadCount);
+
+  const refreshInteractionUnread = useCallback(() => {
+    refreshNotificationUnread();
+    refreshChatUnread();
+  }, [refreshNotificationUnread, refreshChatUnread]);
 
   // Delay the initial `loadNotifications` call by 2s so its HTTP round-trip
   // + `setState` for unread badges doesn't land inside the Discover tab's
@@ -280,13 +286,14 @@ function TabNavigator() {
   useEffect(() => {
     const kickoff = setTimeout(() => {
       loadNotifications();
+      refreshChatUnread();
     }, 2000);
-    const timer = setInterval(refreshUnreadCount, 30_000);
+    const timer = setInterval(refreshInteractionUnread, 30_000);
     return () => {
       clearTimeout(kickoff);
       clearInterval(timer);
     };
-  }, [loadNotifications, refreshUnreadCount]);
+  }, [loadNotifications, refreshChatUnread, refreshInteractionUnread]);
 
   return (
     <Tab.Navigator
