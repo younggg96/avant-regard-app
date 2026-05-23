@@ -32,11 +32,11 @@ admin_auth_router = APIRouter(prefix="/admin/authentication", tags=["交易系�
 
 
 @disputes_router.post("")
-async def open_dispute(body: DisputeCreate, user=Depends(get_current_user)):
+async def open_dispute(body: DisputeCreate, user_id: int = Depends(get_current_user)):
     try:
         d = dispute_service.open_dispute(
             order_id=body.orderId,
-            opener_user_id=user["id"],
+            opener_user_id=user_id,
             reason=body.reason.value,
             description=body.description,
             evidence_photos=body.evidencePhotos,
@@ -49,9 +49,9 @@ async def open_dispute(body: DisputeCreate, user=Depends(get_current_user)):
 
 
 @disputes_router.post("/{dispute_id}/withdraw")
-async def withdraw_dispute(dispute_id: int, user=Depends(get_current_user)):
+async def withdraw_dispute(dispute_id: int, user_id: int = Depends(get_current_user)):
     try:
-        d = dispute_service.withdraw(dispute_id, user["id"])
+        d = dispute_service.withdraw(dispute_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -73,9 +73,9 @@ async def admin_dispute_queue(
 
 
 @admin_disputes_router.post("/{dispute_id}/take")
-async def admin_take_dispute(dispute_id: int, admin=Depends(get_current_admin_user)):
+async def admin_take_dispute(dispute_id: int, admin_id: int = Depends(get_current_admin_user)):
     try:
-        d = dispute_service.take(dispute_id, admin["id"])
+        d = dispute_service.take(dispute_id, admin_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(d.dict())
@@ -83,12 +83,12 @@ async def admin_take_dispute(dispute_id: int, admin=Depends(get_current_admin_us
 
 @admin_disputes_router.post("/{dispute_id}/resolve")
 async def admin_resolve_dispute(
-    dispute_id: int, body: DisputeResolve, admin=Depends(get_current_admin_user)
+    dispute_id: int, body: DisputeResolve, admin_id: int = Depends(get_current_admin_user)
 ):
     try:
         d = dispute_service.resolve(
             dispute_id,
-            admin["id"],
+            admin_id,
             decision=body.decision.value if hasattr(body.decision, "value") else body.decision,
             note=body.note,
         )
@@ -110,11 +110,11 @@ async def list_packages():
 
 @authentication_router.post("/orders")
 async def create_auth_order(
-    body: AuthenticationOrderCreate, user=Depends(get_current_user)
+    body: AuthenticationOrderCreate, user_id: int = Depends(get_current_user)
 ):
     try:
         o = authentication_service.create_order(
-            user_id=user["id"],
+            user_id=user_id,
             package_code=body.packageCode,
             product_id=body.productId,
             brand_name=body.brandName,
@@ -127,9 +127,9 @@ async def create_auth_order(
 
 
 @authentication_router.post("/orders/{order_id}/pay-mock")
-async def pay_auth_order_mock(order_id: int, user=Depends(get_current_user)):
+async def pay_auth_order_mock(order_id: int, user_id: int = Depends(get_current_user)):
     try:
-        o = authentication_service.pay_mock(order_id, user["id"])
+        o = authentication_service.pay_mock(order_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -139,10 +139,10 @@ async def pay_auth_order_mock(order_id: int, user=Depends(get_current_user)):
 
 @authentication_router.get("/orders/me")
 async def list_my_auth_orders(
-    page: int = 1, pageSize: int = 20, user=Depends(get_current_user)
+    page: int = 1, pageSize: int = 20, user_id: int = Depends(get_current_user)
 ):
     items, total = authentication_service.list_for_user(
-        user["id"], page=page, page_size=pageSize
+        user_id, page=page, page_size=pageSize
     )
     return success({"items": [o.dict() for o in items], "total": total})
 
@@ -162,12 +162,12 @@ async def admin_list_auth_orders(
 
 @admin_auth_router.post("/orders/{order_id}/decision")
 async def admin_submit_auth_decision(
-    order_id: int, body: AuthenticationDecision, admin=Depends(get_current_admin_user)
+    order_id: int, body: AuthenticationDecision, admin_id: int = Depends(get_current_admin_user)
 ):
     try:
         o = authentication_service.submit_decision(
             order_id,
-            expert_user_id=admin["id"],
+            expert_user_id=admin_id,
             result=body.result,
             expert_report=body.expertReport,
             certificate_url=body.certificateUrl,
@@ -183,11 +183,11 @@ async def admin_submit_auth_decision(
 
 
 @reviews_router.post("")
-async def submit_review(body: TradeReviewCreate, user=Depends(get_current_user)):
+async def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_current_user)):
     try:
         r = trade_review_service.submit(
             order_id=body.orderId,
-            reviewer_user_id=user["id"],
+            reviewer_user_id=user_id,
             rating=body.rating,
             payload=body.payload,
             comment=body.comment,
@@ -210,6 +210,6 @@ async def list_user_reviews(
 
 
 @reviews_router.get("/orders/{order_id}")
-async def list_order_reviews(order_id: int, user=Depends(get_current_user)):
-    items = trade_review_service.list_for_order(order_id, viewer_user_id=user["id"])
+async def list_order_reviews(order_id: int, user_id: int = Depends(get_current_user)):
+    items = trade_review_service.list_for_order(order_id, viewer_user_id=user_id)
     return success([r.dict() for r in items])

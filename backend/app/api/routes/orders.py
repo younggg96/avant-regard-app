@@ -47,11 +47,11 @@ admin_orders_router = APIRouter(prefix="/admin/orders", tags=["交易系统 / �
 
 
 @orders_router.post("/buy-now")
-async def buy_now(body: BuyNowRequest, user=Depends(get_current_user)):
+async def buy_now(body: BuyNowRequest, user_id: int = Depends(get_current_user)):
     try:
         order, hold = order_service.create_order_from_listing(
             product_id=body.productId,
-            buyer_user_id=user["id"],
+            buyer_user_id=user_id,
             shipping_address=body.shippingAddress,
         )
     except ValueError as e:
@@ -60,17 +60,17 @@ async def buy_now(body: BuyNowRequest, user=Depends(get_current_user)):
 
 
 @orders_router.post("/{order_id}/pay-mock")
-async def pay_mock(order_id: int, user=Depends(get_current_user)):
+async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
     """开发用：mock provider 直接置为 paid。
     上线后此入口应改成真实 webhook，由支付通道回调。"""
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
-    if order.buyerUserId != user["id"]:
+    if order.buyerUserId != user_id:
         raise HTTPException(status_code=403, detail="无权操作")
     try:
         updated = order_service.transition_status(
-            order_id, OrderStatus.PAID, actor_user_id=user["id"]
+            order_id, OrderStatus.PAID, actor_user_id=user_id
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -79,12 +79,12 @@ async def pay_mock(order_id: int, user=Depends(get_current_user)):
 
 @orders_router.post("/{order_id}/ship")
 async def ship_order(
-    order_id: int, body: ShipmentCreate, user=Depends(get_current_user)
+    order_id: int, body: ShipmentCreate, user_id: int = Depends(get_current_user)
 ):
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
-    _assert_seller_perm(order, user["id"])
+    _assert_seller_perm(order, user_id)
     order_service.add_shipment(
         order_id,
         carrier=body.carrier,
@@ -93,7 +93,7 @@ async def ship_order(
     )
     try:
         updated = order_service.transition_status(
-            order_id, OrderStatus.SHIPPED, actor_user_id=user["id"]
+            order_id, OrderStatus.SHIPPED, actor_user_id=user_id
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -113,15 +113,15 @@ async def mark_delivered(order_id: int, _admin=Depends(get_current_admin_user)):
 
 
 @orders_router.post("/{order_id}/confirm")
-async def buyer_confirm(order_id: int, user=Depends(get_current_user)):
+async def buyer_confirm(order_id: int, user_id: int = Depends(get_current_user)):
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
-    if order.buyerUserId != user["id"]:
+    if order.buyerUserId != user_id:
         raise HTTPException(status_code=403, detail="仅买家可确认")
     try:
         updated = order_service.transition_status(
-            order_id, OrderStatus.COMPLETED, actor_user_id=user["id"]
+            order_id, OrderStatus.COMPLETED, actor_user_id=user_id
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -130,12 +130,12 @@ async def buyer_confirm(order_id: int, user=Depends(get_current_user)):
 
 @orders_router.post("/{order_id}/inspection")
 async def submit_inspection(
-    order_id: int, body: InspectionSubmit, user=Depends(get_current_user)
+    order_id: int, body: InspectionSubmit, user_id: int = Depends(get_current_user)
 ):
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
-    if order.buyerUserId != user["id"]:
+    if order.buyerUserId != user_id:
         raise HTTPException(status_code=403, detail="仅买家可提交验货")
     order_service.db.table("order_inspections").insert(
         {
@@ -143,7 +143,7 @@ async def submit_inspection(
             "checked_items": body.checkedItems,
             "photos": body.photos,
             "note": body.note,
-            "submitted_by": user["id"],
+            "submitted_by": user_id,
         }
     ).execute()
     return success({"ok": True})
@@ -154,10 +154,10 @@ async def list_my_orders(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
-    user=Depends(get_current_user),
+    user_id: int = Depends(get_current_user),
 ):
     orders, total = order_service.list_orders(
-        buyer_user_id=user["id"], status=status, page=page, page_size=pageSize
+        buyer_user_id=user_id, status=status, page=page, page_size=pageSize
     )
     return success({"items": [o.dict() for o in orders], "total": total, "page": page, "pageSize": pageSize})
 
@@ -167,12 +167,12 @@ async def list_my_sales(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
-    user=Depends(get_current_user),
+    user_id: int = Depends(get_current_user),
 ):
     user_orders, user_total = order_service.list_orders(
-        seller_user_id=user["id"], status=status, page=page, page_size=pageSize
+        seller_user_id=user_id, status=status, page=page, page_size=pageSize
     )
-    merchant = store_merchant_service.get_merchant_by_user(user["id"])
+    merchant = store_merchant_service.get_merchant_by_user(user_id)
     merch_orders, merch_total = (
         order_service.list_orders(
             seller_merchant_id=merchant.id, status=status, page=page, page_size=pageSize
@@ -193,15 +193,14 @@ async def list_my_sales(
 
 
 @orders_router.get("/{order_id}")
-async def get_order_detail(order_id: int, user=Depends(get_current_user)):
+async def get_order_detail(order_id: int, user_id: int = Depends(get_current_user)):
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
-    if order.buyerUserId != user["id"] and order.sellerUserId != user["id"]:
-        # 检查 merchant 卖家
+    if order.buyerUserId != user_id and order.sellerUserId != user_id:
         if order.sellerMerchantId:
             merchant = store_merchant_service.get_merchant_by_id(order.sellerMerchantId)
-            if not merchant or getattr(merchant, "userId", None) != user["id"]:
+            if not merchant or getattr(merchant, "userId", None) != user_id:
                 raise HTTPException(status_code=403, detail="无权查看")
         else:
             raise HTTPException(status_code=403, detail="无权查看")
@@ -212,11 +211,11 @@ async def get_order_detail(order_id: int, user=Depends(get_current_user)):
 
 
 @offers_router.post("")
-async def create_offer(body: OfferCreate, user=Depends(get_current_user)):
+async def create_offer(body: OfferCreate, user_id: int = Depends(get_current_user)):
     try:
         offer = offer_service.create(
             product_id=body.productId,
-            buyer_user_id=user["id"],
+            buyer_user_id=user_id,
             price_cents=body.priceCents,
             message=body.message,
         )
@@ -226,9 +225,9 @@ async def create_offer(body: OfferCreate, user=Depends(get_current_user)):
 
 
 @offers_router.post("/{offer_id}/accept")
-async def accept_offer(offer_id: int, user=Depends(get_current_user)):
+async def accept_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
-        order, hold, offer = offer_service.accept(offer_id, user["id"])
+        order, hold, offer = offer_service.accept(offer_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -237,9 +236,9 @@ async def accept_offer(offer_id: int, user=Depends(get_current_user)):
 
 
 @offers_router.post("/{offer_id}/reject")
-async def reject_offer(offer_id: int, user=Depends(get_current_user)):
+async def reject_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
-        offer = offer_service.reject(offer_id, user["id"])
+        offer = offer_service.reject(offer_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -249,12 +248,12 @@ async def reject_offer(offer_id: int, user=Depends(get_current_user)):
 
 @offers_router.post("/{offer_id}/counter")
 async def counter_offer(
-    offer_id: int, body: OfferCounter, user=Depends(get_current_user)
+    offer_id: int, body: OfferCounter, user_id: int = Depends(get_current_user)
 ):
     try:
         offer = offer_service.counter(
             offer_id,
-            user["id"],
+            user_id,
             price_cents=body.priceCents,
             message=body.message,
         )
@@ -266,9 +265,9 @@ async def counter_offer(
 
 
 @offers_router.post("/{offer_id}/withdraw")
-async def withdraw_offer(offer_id: int, user=Depends(get_current_user)):
+async def withdraw_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
-        offer = offer_service.withdraw(offer_id, user["id"])
+        offer = offer_service.withdraw(offer_id, user_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -281,10 +280,10 @@ async def list_my_offers(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
-    user=Depends(get_current_user),
+    user_id: int = Depends(get_current_user),
 ):
     offers, total = offer_service.list_for_user(
-        user["id"], role="buyer", status=status, page=page, page_size=pageSize
+        user_id, role="buyer", status=status, page=page, page_size=pageSize
     )
     return success({"items": [o.dict() for o in offers], "total": total})
 
@@ -294,10 +293,10 @@ async def list_incoming_offers(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
-    user=Depends(get_current_user),
+    user_id: int = Depends(get_current_user),
 ):
     offers, total = offer_service.list_for_user(
-        user["id"], role="seller", status=status, page=page, page_size=pageSize
+        user_id, role="seller", status=status, page=page, page_size=pageSize
     )
     return success({"items": [o.dict() for o in offers], "total": total})
 

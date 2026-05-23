@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Switch, StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -66,10 +66,12 @@ const SettingsScreen = () => {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const currentLang = (i18n.language?.startsWith("zh") ? "zh" : "en") as SupportedLanguage;
+  const localLangChangeRef = useRef(false);
 
   const handleLanguageChange = async (lang: SupportedLanguage) => {
-    await setStoredLanguage(lang);
+    localLangChangeRef.current = true;
     setShowLanguageModal(false);
+    await setStoredLanguage(lang);
     if (user?.userId) {
       userInfoService.updateLanguagePreference(user.userId, lang).catch((err) =>
         console.error("Error saving language preference:", err)
@@ -105,10 +107,14 @@ const SettingsScreen = () => {
 
   const syncLanguageFromServer = useCallback(async () => {
     if (!user?.userId) return;
+    if (localLangChangeRef.current) {
+      localLangChangeRef.current = false;
+      return;
+    }
     const revAtStart = useAuthStore.getState().themePreferenceRevision;
     try {
       const info = await userInfoService.getUserInfo(user.userId);
-      if (info.preferredLanguage && info.preferredLanguage !== currentLang) {
+      if (info.preferredLanguage && info.preferredLanguage !== i18n.language) {
         await setStoredLanguage(info.preferredLanguage as SupportedLanguage);
       }
       if (
@@ -124,7 +130,7 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error("Error syncing language preference:", error);
     }
-  }, [user?.userId, currentLang, updateUser]);
+  }, [user?.userId, updateUser]);
 
   useEffect(() => {
     loadPrivacySettings();

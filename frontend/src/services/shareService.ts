@@ -57,7 +57,7 @@ export interface ShareContent {
   type: "text" | "image" | "webPage";
 }
 
-export type ShareContentType = "post" | "store" | "brand" | "show" | "user";
+export type ShareContentType = "post" | "store" | "brand" | "show" | "user" | "product";
 
 const SHARE_CONFIG = {
   APP_SCHEME: "avantregard",
@@ -73,6 +73,7 @@ const CONTENT_TYPE_PATH: Record<ShareContentType, string> = {
   brand: "/archive/brands",
   show: "/archive/shows",
   user: "/users",
+  product: "/products",
 };
 
 // 微信 SDK 是否已成功注册，避免重复注册并在未注册时给出更清晰的错误

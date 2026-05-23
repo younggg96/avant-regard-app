@@ -5,7 +5,7 @@
  *
  * 内容分层（从上到下）：
  *   1. 图片轮播 + "1/N" 计数指示器
- *   2. 标题 + 收藏 heart（右上）
+ *   2. 标题
  *   3. 价格
  *   4. 快速信息行：成色 | 尺码 | 颜色（| 年份 | 渠道）
  *   5. 服务徽章：平台鉴定 / 不支持退换 / 包邮
@@ -87,6 +87,7 @@ import {
 import TradingActionBar from "../components/TradingActionBar";
 import OfferModal from "./Trading/OfferModal";
 import { SaveToCollectionSheet } from "../components/SaveToCollectionSheet";
+import { ShareToChatModal } from "../components/ShareToChatModal";
 import {
   clampAspectRatio,
   useMediaAspectRatio,
@@ -156,6 +157,9 @@ const StoreProductDetailScreen: React.FC = () => {
 
   // PRD 模块三 · 收藏夹选择抽屉
   const [collectionSheetVisible, setCollectionSheetVisible] = useState(false);
+
+  // 分享（与帖子详情 ShareToChatModal 一致）
+  const [showShareToChat, setShowShareToChat] = useState(false);
 
   // ---------------------- 评论 ---------------------------------------------
   const [comments, setComments] = useState<StoreProductComment[]>([]);
@@ -307,6 +311,19 @@ const StoreProductDetailScreen: React.FC = () => {
   }, [product?.id]);
 
   // ---------------------- 交互 --------------------------------------------
+  const handleShare = useCallback(() => {
+    setShowShareToChat(true);
+  }, []);
+
+  const handleOpenSellerProfile = useCallback(
+    (userId?: number | null) => {
+      const targetUserId = userId ?? richDetail?.seller?.userId ?? product?.sellerUserId;
+      if (!targetUserId) return;
+      navigation.navigate("UserProfile", { userId: targetUserId });
+    },
+    [navigation, richDetail?.seller?.userId, product?.sellerUserId]
+  );
+
   const handleToggleLike = useCallback(async () => {
     if (likePending) return;
     if (!currentUser) {
@@ -701,7 +718,7 @@ const StoreProductDetailScreen: React.FC = () => {
   if (isLoading && !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header onBack={navigation.goBack} />
+        <Header onBack={navigation.goBack} onShare={handleShare} />
         <Box style={styles.center}>
           <Image
             source={profileLoadingGif}
@@ -716,7 +733,7 @@ const StoreProductDetailScreen: React.FC = () => {
   if (error || !product) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <Header onBack={navigation.goBack} />
+        <Header onBack={navigation.goBack} onShare={handleShare} />
         <Box style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.gray300} />
           <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }} mt="$sm">
@@ -749,7 +766,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
-      <Header onBack={navigation.goBack} />
+      <Header onBack={navigation.goBack} onShare={handleShare} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -813,33 +830,9 @@ const StoreProductDetailScreen: React.FC = () => {
 
           {/* ============ 2. 标题 / 价格 / 快速信息行 =============== */}
           <View style={styles.titleSection}>
-            <HStack alignItems="flex-start" justifyContent="space-between" space="sm">
-              <View style={{ flex: 1 }}>
-                <Text style={styles.title} numberOfLines={3}>
-                  {product.title}
-                </Text>
-              </View>
-              <Pressable
-                onPress={handleToggleFavorite}
-                onLongPress={() => {
-                  if (!currentUser) {
-                    Alert.show(t("engagement.pleaseLogin"));
-                    return;
-                  }
-                  setCollectionSheetVisible(true);
-                }}
-                delayLongPress={300}
-                hitSlop={8}
-                style={styles.heartBtn}
-                disabled={favoritePending}
-              >
-                <Ionicons
-                  name={isFavorited ? "heart" : "heart-outline"}
-                  size={26}
-                  color={isFavorited ? "#FF3040" : theme.colors.text}
-                />
-              </Pressable>
-            </HStack>
+            <Text style={styles.title} numberOfLines={3}>
+              {product.title}
+            </Text>
 
             <HStack alignItems="baseline" space="sm" style={{ marginTop: 8 }}>
               <Text style={[styles.price, hasDiscount && { color: theme.colors.error }]}>
@@ -895,12 +888,14 @@ const StoreProductDetailScreen: React.FC = () => {
           {seller && (
             <View style={styles.sellerCardOuter}>
               <View style={styles.sellerCard}>
-                <UserAvatar
-                  uri={resolveAvatarUrl(seller.avatarUrl)}
-                  name={seller.username}
-                  size={36}
-                  style={styles.sellerAvatar}
-                />
+                <Pressable onPress={() => handleOpenSellerProfile(seller.userId)}>
+                  <UserAvatar
+                    uri={resolveAvatarUrl(seller.avatarUrl)}
+                    name={seller.username}
+                    size={36}
+                    style={styles.sellerAvatar}
+                  />
+                </Pressable>
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <HStack alignItems="center" space="xs">
                     <Text style={styles.sellerName} numberOfLines={1}>
@@ -922,7 +917,10 @@ const StoreProductDetailScreen: React.FC = () => {
                     )}
                   </HStack>
                 </View>
-                <Pressable style={styles.followBtn} onPress={() => {}}>
+                <Pressable
+                  style={styles.followBtn}
+                  onPress={() => handleOpenSellerProfile(seller.userId)}
+                >
                   <Text style={styles.followBtnText}>
                     {t("store.productDetailV2.follow")}
                   </Text>
@@ -1008,7 +1006,6 @@ const StoreProductDetailScreen: React.FC = () => {
                     <Text style={styles.brandName} numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <Text style={styles.brandCount}>{item.listingCount}</Text>
                   </Pressable>
                 )}
                 ListFooterComponent={
@@ -1174,7 +1171,10 @@ const StoreProductDetailScreen: React.FC = () => {
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.sellerInfo")}
               </Text>
-              <View style={styles.sellerStatsCard}>
+              <Pressable
+                style={styles.sellerStatsCard}
+                onPress={() => handleOpenSellerProfile(seller.userId)}
+              >
                 <HStack alignItems="center">
                   <UserAvatar
                     uri={resolveAvatarUrl(seller.avatarUrl)}
@@ -1227,7 +1227,7 @@ const StoreProductDetailScreen: React.FC = () => {
                     theme={theme}
                   />
                 </HStack>
-              </View>
+              </Pressable>
             </View>
           )}
 
@@ -1429,21 +1429,23 @@ const StoreProductDetailScreen: React.FC = () => {
           setFavoriteCount((n) => Math.max(0, n - 1));
         }}
       />
+
+      <ShareToChatModal
+        visible={showShareToChat}
+        product={product}
+        onClose={() => setShowShareToChat(false)}
+      />
     </SafeAreaView>
   );
 };
 
 // ============================================================================
-// Header —— 设计图样式：仅左侧返回 + 右侧 share / more，无中间标题。
-// 用半透明白底悬浮在轮播图上方，避免遮挡商品图。
-// ============================================================================
-
+// Header —— 设计图样式：仅左侧返回 + 右侧 share，无中间标题。
 const Header: React.FC<{
   onBack: () => void;
   onShare?: () => void;
-  onMore?: () => void;
   floating?: boolean;
-}> = ({ onBack, onShare, onMore, floating = false }) => {
+}> = ({ onBack, onShare, floating = false }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   return (
@@ -1457,14 +1459,13 @@ const Header: React.FC<{
       <Pressable onPress={onBack} hitSlop={8} style={styles.headerIconBtn}>
         <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
       </Pressable>
-      <HStack space="md" alignItems="center">
+      {onShare ? (
         <Pressable onPress={onShare} hitSlop={8} style={styles.headerIconBtn}>
           <Ionicons name="share-outline" size={22} color={theme.colors.text} />
         </Pressable>
-        <Pressable onPress={onMore} hitSlop={8} style={styles.headerIconBtn}>
-          <Ionicons name="ellipsis-horizontal" size={22} color={theme.colors.text} />
-        </Pressable>
-      </HStack>
+      ) : (
+        <View style={styles.headerIconBtn} />
+      )}
     </HStack>
   );
 };
@@ -1897,9 +1898,6 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       lineHeight: 28,
     },
-    heartBtn: {
-      padding: 4,
-    },
     price: {
       fontSize: 24,
       fontWeight: "700",
@@ -1977,7 +1975,7 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.text,
       paddingHorizontal: 18,
       paddingVertical: 7,
-      borderRadius: 16,
+      borderRadius: 4,
     },
     followBtnText: {
       color: t.colors.background,
@@ -2083,11 +2081,6 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       textAlign: "center",
       width: "100%",
-    },
-    brandCount: {
-      fontSize: 10,
-      color: t.colors.textSecondary,
-      marginTop: 2,
     },
 
     showCard: {

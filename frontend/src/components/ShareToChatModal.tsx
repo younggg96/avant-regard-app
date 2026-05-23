@@ -33,6 +33,10 @@ import { BuyerStore, BuyerStoreDetail } from "../services/buyerStoreService";
 import { Brand } from "../services/brandService";
 import { UserInfo } from "../services/userInfoService";
 import {
+  formatPrice,
+  StoreProduct,
+} from "../services/storeProductService";
+import {
   ShareContentType,
   generateShareUrl,
   copyShareUrl,
@@ -90,6 +94,14 @@ export interface UserSharePayload {
   primaryTitle?: string;
 }
 
+export interface ProductSharePayload {
+  productId: number;
+  title: string;
+  priceCents: number;
+  coverImage?: string;
+  brand?: string;
+}
+
 type ShareableUser =
   | UserInfo
   | {
@@ -137,6 +149,7 @@ interface ShareToChatModalProps {
   brand?: Brand | null;
   show?: ShareableShow | null;
   user?: ShareableUser | null;
+  product?: StoreProduct | null;
   onClose: () => void;
   onShareComplete?: () => void;
 }
@@ -208,11 +221,27 @@ export function buildShowSharePayload(show: ShareableShow): ShowSharePayload {
   };
 }
 
+export function buildProductSharePayload(product: StoreProduct): ProductSharePayload {
+  return {
+    productId: product.id,
+    title: product.title,
+    priceCents: product.priceCents,
+    brand: product.brand || undefined,
+    coverImage: product.images?.[0],
+  };
+}
+
 interface SharePreview {
   imageUrl?: string;
   title: string;
   subtitle: string;
-  messageType: "post_card" | "store_card" | "brand_card" | "show_card" | "user_card";
+  messageType:
+    | "post_card"
+    | "store_card"
+    | "brand_card"
+    | "show_card"
+    | "user_card"
+    | "product_listing";
   payload: string;
   placeholderIcon?: keyof typeof Ionicons.glyphMap;
   contentType: ShareContentType;
@@ -226,6 +255,7 @@ function resolvePreview(
   brand?: Brand | null,
   show?: ShareableShow | null,
   user?: ShareableUser | null,
+  product?: StoreProduct | null,
 ): SharePreview | null {
   if (post) {
     const p = buildPostSharePayload(post);
@@ -294,6 +324,20 @@ function resolvePreview(
       contentId: p.userId,
     };
   }
+  if (product) {
+    const p = buildProductSharePayload(product);
+    const parts = [p.brand, formatPrice(p.priceCents, product.currency)].filter(Boolean);
+    return {
+      imageUrl: p.coverImage,
+      title: p.title,
+      subtitle: parts.length ? parts.join(" · ") : t("shareToChat.productLabel"),
+      messageType: "product_listing",
+      payload: JSON.stringify(p),
+      placeholderIcon: "bag-outline",
+      contentType: "product",
+      contentId: p.productId,
+    };
+  }
   return null;
 }
 
@@ -304,6 +348,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   brand,
   show,
   user,
+  product,
   onClose,
   onShareComplete,
 }) => {
@@ -362,7 +407,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
-  const preview = resolvePreview(t, post, store, brand, show, user);
+  const preview = resolvePreview(t, post, store, brand, show, user, product);
 
   const shareUrl = preview
     ? generateShareUrl(preview.contentType, preview.contentId)
