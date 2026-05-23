@@ -22,6 +22,22 @@ from app.services.order_service import order_service
 OFFER_TTL_HOURS = 24
 
 
+def _extract_avatar(user_row: dict) -> Optional[str]:
+    """从 `users` join `user_info(avatar_url)` 的结果里掏出 avatar.
+
+    PostgREST 嵌套关系既可能返回 dict (一对一) 也可能返回 list[dict] (一对多 / 多结果),
+    follow_service / buyer_store_community_service 里也都得这样兼容，
+    在这里集中处理一次。
+    """
+    info = user_row.get("user_info") if user_row else None
+    if isinstance(info, list):
+        info = info[0] if info else None
+    if isinstance(info, dict):
+        url = info.get("avatar_url")
+        return url or None
+    return None
+
+
 class OfferService:
     def __init__(self) -> None:
         self.db = get_supabase_admin()
@@ -78,7 +94,7 @@ class OfferService:
         try:
             res = (
                 self.db.table("users")
-                .select("id, username, avatar_url")
+                .select("id, username, user_info(avatar_url)")
                 .eq("id", user_id)
                 .limit(1)
                 .execute()
@@ -88,7 +104,7 @@ class OfferService:
                 return {
                     "userId": row["id"],
                     "username": row.get("username"),
-                    "avatarUrl": row.get("avatar_url"),
+                    "avatarUrl": _extract_avatar(row),
                 }
         except Exception:
             pass
@@ -391,7 +407,28 @@ class OfferService:
         if role == "buyer":
             q = q.eq("buyer_user_id", user_id)
         elif role == "seller":
-            q = q.eq("seller_user_id", user_id)
+            # 卖家身份既可能是 C2C (seller_user_id) 也可能是买手店 owner (seller_merchant_id).
+            # 用 PostgREST 的 or= 表达式把这两种来源合并查询，
+            # 避免买手店收到的出价漏在「待我处理」里。
+            merchant_ids: List[int] = []
+            try:
+                from app.services.store_merchant_service import store_merchant_service
+                merchant = store_merchant_service.get_merchant_by_user(user_id)
+                if merchant and getattr(merchant, "id", None):
+                    merchant_ids.append(int(merchant.id))
+            except Exception:
+                pass
+
+            if merchant_ids:
+                # PostgREST 不接受 IN 在 or 内的列表写法，单值时直接 eq，多值时拼 in.
+                merchant_clause = (
+                    f"seller_merchant_id.eq.{merchant_ids[0]}"
+                    if len(merchant_ids) == 1
+                    else f"seller_merchant_id.in.({','.join(str(m) for m in merchant_ids)})"
+                )
+                q = q.or_(f"seller_user_id.eq.{user_id},{merchant_clause}")
+            else:
+                q = q.eq("seller_user_id", user_id)
         if status:
             q = q.eq("status", status)
         q = q.order("created_at", desc=True)
@@ -445,7 +482,7 @@ class OfferService:
         if user_ids:
             res = (
                 self.db.table("users")
-                .select("id, username, avatar_url")
+                .select("id, username, user_info(avatar_url)")
                 .in_("id", list(user_ids))
                 .execute()
             )
@@ -453,7 +490,7 @@ class OfferService:
                 user_map[row["id"]] = {
                     "userId": row["id"],
                     "username": row.get("username"),
-                    "avatarUrl": row.get("avatar_url"),
+                    "avatarUrl": _extract_avatar(row),
                 }
 
         # 拿到所有 offer 的原始行，用来算 chain depth

@@ -9,7 +9,7 @@
  *
  * 双向议价：根据后端返回的 `allowedActions` 显示按钮（accept/reject/counter/withdraw）。
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -78,6 +78,7 @@ export default function MyOffersScreen() {
             : await listIncomingOffers({ pageSize: 50 });
         setOffers(res.items);
       } catch (e) {
+        console.warn("[MyOffers] load failed:", e);
         setOffers([]);
       } finally {
         if (!silent) setLoading(false);
@@ -87,9 +88,14 @@ export default function MyOffersScreen() {
     [mode],
   );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // 每次进入页面都刷新一次。
+  // useEffect 只在 mount 时跑，但 `navigation.navigate("MyOffers")` 在已存在栈实例时
+  // 会 pop 回去而不会重挂载 —— 之前出价完成跳回时看不到新出价就是这个原因。
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const filtered = useMemo(() => {
     if (statusFilter === "all") return offers;
