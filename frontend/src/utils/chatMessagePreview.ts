@@ -108,6 +108,14 @@ function extractDetail(
   }
 }
 
+function orderStatusLabel(parsed: Record<string, unknown>): string | null {
+  const status = parsed.status;
+  if (typeof status !== "string" || !status) return null;
+  const key = `trading.orderStatus.${status}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : null;
+}
+
 function formatCardPreview(cardType: CardType, parsed: Record<string, unknown>): string {
   const detail = extractDetail(cardType, parsed);
 
@@ -120,6 +128,14 @@ function formatCardPreview(cardType: CardType, parsed: Record<string, unknown>):
       : i18n.t("chat.previewOffer");
   }
   if (cardType === "order_status" && detail) {
+    const statusLabel = orderStatusLabel(parsed);
+    if (statusLabel) {
+      return i18n.t("chat.previewOrderWithStatus", {
+        orderNo: detail,
+        status: statusLabel,
+        defaultValue: `${i18n.t("chat.previewOrder", { orderNo: detail })} · ${statusLabel}`,
+      });
+    }
     return i18n.t("chat.previewOrder", { orderNo: detail });
   }
   if (cardType === "dispute" && detail) {

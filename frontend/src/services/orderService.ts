@@ -177,6 +177,27 @@ export async function shipOrder(
   });
 }
 
+export interface Shipment {
+  id: number;
+  orderId: number;
+  carrier?: string | null;
+  trackingNo?: string | null;
+  images: string[];
+  signedAt?: string | null;
+  createdAt?: string | null;
+}
+
+export async function getOrderShipment(
+  orderId: number,
+): Promise<Shipment | null> {
+  return request<Shipment | null>(`/api/orders/${orderId}/shipment`);
+}
+
+/** 买家主动确认签收 (shipped → delivered). */
+export async function signOrderReceipt(orderId: number): Promise<Order> {
+  return request<Order>(`/api/orders/${orderId}/sign`, { method: "POST" });
+}
+
 export async function confirmOrder(orderId: number): Promise<Order> {
   return request<Order>(`/api/orders/${orderId}/confirm`, { method: "POST" });
 }

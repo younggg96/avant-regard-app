@@ -4,7 +4,9 @@ PRD 模块四 · 订单 / 出价 / 库存锁 路由。
   - POST   /orders/buy-now                立即购买（创建 hold + order + payment_intent）
   - POST   /orders/{id}/pay-mock          dev 用：直接将订单标记为 paid（mock 通道）
   - POST   /orders/{id}/ship              卖家发货
-  - POST   /orders/{id}/deliver           物流签收（外部回调）
+  - GET    /orders/{id}/shipment          查询物流凭证（买卖双方都可读）
+  - POST   /orders/{id}/sign              买家主动确认签收 → delivered
+  - POST   /orders/{id}/deliver           物流签收（外部回调 / admin）
   - POST   /orders/{id}/confirm           买家确认收货 → completed
   - POST   /orders/{id}/inspection        提交验货 Checklist
   - GET    /orders/me                     我作为买家
@@ -164,6 +166,41 @@ async def ship_order(
         updated = order_service.transition_status(
             order_id, OrderStatus.SHIPPED, actor_user_id=user_id
         )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(updated.dict())
+
+
+@orders_router.get("/{order_id}/shipment")
+async def get_order_shipment(
+    order_id: int, user_id: int = Depends(get_current_user)
+):
+    """查询订单的物流凭证（买卖双方都可读）。无凭证时返回 null。"""
+    order = order_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    if order.buyerUserId != user_id and order.sellerUserId != user_id:
+        if order.sellerMerchantId:
+            merchant = store_merchant_service.get_merchant_by_id(order.sellerMerchantId)
+            if not merchant or getattr(merchant, "userId", None) != user_id:
+                raise HTTPException(status_code=403, detail="无权查看")
+        else:
+            raise HTTPException(status_code=403, detail="无权查看")
+    shipment = order_service.get_shipment(order_id)
+    return success(shipment.dict() if shipment else None)
+
+
+@orders_router.post("/{order_id}/sign")
+async def buyer_sign(order_id: int, user_id: int = Depends(get_current_user)):
+    """买家主动确认签收 (shipped → delivered)。
+
+    上线对接快递回调后此入口仍保留作为兜底，
+    比如代收 / 自提等快递扫不到「派送签收」事件的场景。
+    """
+    try:
+        updated = order_service.buyer_sign_for(order_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(updated.dict())

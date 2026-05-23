@@ -143,3 +143,14 @@ class PaymentIntentResponse(BaseModel):
     currency: str
     status: str
     metadata: Optional[Dict[str, Any]] = None
+
+
+class Shipment(BaseModel):
+    """订单物流凭证（卖家填写运单 → 买家可查询并据此签收）。"""
+    id: int
+    orderId: int
+    carrier: Optional[str] = None
+    trackingNo: Optional[str] = None
+    images: List[str] = Field(default_factory=list)
+    signedAt: Optional[str] = None
+    createdAt: Optional[str] = None

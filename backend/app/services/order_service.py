@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import json
 
 from app.db.supabase import get_supabase_admin, execute_with_retry
-from app.schemas.orders import Order, Offer, StockHold, OrderStatus
+from app.schemas.orders import Order, Offer, StockHold, OrderStatus, Shipment
 from app.services.payment import (
     get_payment_provider,
     get_payment_provider_by_name,
@@ -113,6 +113,21 @@ class OrderService:
         except Exception:
             return {}
 
+    def _latest_shipment_row(self, order_id: int) -> Optional[Dict[str, Any]]:
+        """取订单最新一条物流凭证（卡片 payload + 详情查询都会用到）。"""
+        try:
+            res = (
+                self.db.table("order_shipments")
+                .select("*")
+                .eq("order_id", order_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+
     def _send_order_status_card(
         self,
         order: Order,
@@ -139,6 +154,16 @@ class OrderService:
                 payload["shippingDueAt"] = order.shippingDueAt
             if order.autoConfirmDueAt:
                 payload["autoConfirmDueAt"] = order.autoConfirmDueAt
+            # shipped / delivered 状态：把物流单号塞进卡片，
+            # 聊天里点开即可看到承运商 + 单号，无需跳订单详情。
+            if order.status in {"shipped", "delivered", "completed", "settled"}:
+                ship_row = self._latest_shipment_row(order.id)
+                if ship_row:
+                    payload["shipment"] = {
+                        "carrier": ship_row.get("carrier"),
+                        "trackingNo": ship_row.get("tracking_no"),
+                        "signedAt": ship_row.get("signed_at"),
+                    }
             if note:
                 payload["note"] = note
             chat.send_message(
@@ -173,14 +198,28 @@ class OrderService:
         *,
         actor_user_id: Optional[int] = None,
     ) -> None:
-        """订单状态变化时给买家 + 卖家各发一张卡片。
+        """订单状态变化时给相关方发卡片。
 
-        actor_user_id 决定卡片的 sender_id 倾向：买家自己触发的 paid，
-        把买家作为 sender、卖家作为 recipient；反之亦然。
+        - PAID（买家支付完成）         → 发给卖家
+        - SHIPPED（卖家发货）           → 发给买家
+        - DELIVERED（签收）             → 同时发给买家 + 卖家（双方都需要知道已签收）
+        - COMPLETED / REFUNDED 系列     → 发给对手方
         """
         buyer_id = order.buyerUserId
         seller_id = self._resolve_seller_user_id(order_row)
         if not seller_id:
+            return
+
+        # 签收是最关键的一个状态，买卖双方都得到一份卡片。
+        if order.status == OrderStatus.DELIVERED.value:
+            # 系统签收：以买家身份发给卖家、再以卖家身份发给买家；
+            # 这样会话列表中的最近一条都是「订单签收」卡片。
+            self._send_order_status_card(
+                order, sender_user_id=buyer_id, recipient_user_id=seller_id
+            )
+            self._send_order_status_card(
+                order, sender_user_id=seller_id, recipient_user_id=buyer_id
+            )
             return
 
         if actor_user_id == seller_id:
@@ -581,6 +620,9 @@ class OrderService:
         elif target == OrderStatus.DELIVERED:
             update["delivered_at"] = now.isoformat()
             update["auto_confirm_due_at"] = (now + timedelta(days=AUTO_CONFIRM_DAYS)).isoformat()
+            # 同步把最新一条 order_shipments.signed_at 写上，
+            # 让后台报表 / 售后查证一致。
+            self._mark_shipment_signed(order_id)
         elif target == OrderStatus.COMPLETED:
             update["completed_at"] = now.isoformat()
             update["settlement_due_at"] = (now + timedelta(days=SETTLEMENT_DAYS)).isoformat()
@@ -715,6 +757,49 @@ class OrderService:
                 "images": images,
             }
         ).execute()
+
+    def get_shipment(self, order_id: int) -> Optional[Shipment]:
+        """订单详情 / 聊天卡片中的物流块都通过此方法读取。"""
+        row = self._latest_shipment_row(order_id)
+        if not row:
+            return None
+        return Shipment(
+            id=row["id"],
+            orderId=row["order_id"],
+            carrier=row.get("carrier"),
+            trackingNo=row.get("tracking_no"),
+            images=row.get("images") or [],
+            signedAt=row.get("signed_at"),
+            createdAt=row.get("created_at"),
+        )
+
+    def _mark_shipment_signed(self, order_id: int) -> None:
+        """物流签收时同步把 order_shipments.signed_at 写上，便于后台导出 / 售后查证。"""
+        try:
+            self.db.table("order_shipments").update(
+                {"signed_at": datetime.utcnow().isoformat()}
+            ).eq("order_id", order_id).is_("signed_at", "null").execute()
+        except Exception as e:
+            print(f"[orders] mark shipment signed failed: {e}")
+
+    def buyer_sign_for(self, order_id: int, buyer_user_id: int) -> Order:
+        """买家主动确认签收：shipped → delivered（自动卡片走 _notify_both_parties）。
+
+        正式上线对接快递回调后，这条入口仍保留作为「卡车未扫到、但人已拿到」的兜底。
+        """
+        res = (
+            self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        )
+        if not res.data:
+            raise ValueError("订单不存在")
+        order_row = res.data[0]
+        if order_row["buyer_user_id"] != buyer_user_id:
+            raise PermissionError("仅买家可确认签收")
+        if order_row["status"] != "shipped":
+            raise ValueError("订单不在已发货状态")
+        return self.transition_status(
+            order_id, OrderStatus.DELIVERED, actor_user_id=buyer_user_id
+        )
 
     # ------------------------------------------------------------------
     # Settlement

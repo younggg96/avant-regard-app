@@ -18,6 +18,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 
 import { formatPrice } from "../../../services/storeProductService";
 import {
@@ -73,6 +74,11 @@ export interface OrderStatusCard {
     brand?: string | null;
     priceCents?: number | null;
     coverImage?: string | null;
+  } | null;
+  shipment?: {
+    carrier?: string | null;
+    trackingNo?: string | null;
+    signedAt?: string | null;
   } | null;
 }
 
@@ -140,6 +146,7 @@ export function ProductListingCardView({
   isMine: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   return (
@@ -164,7 +171,7 @@ export function ProductListingCardView({
           </View>
         )}
         <View style={styles.col}>
-          <Text style={styles.label}>商品</Text>
+          <Text style={styles.label}>{t("trading.cards.productLabel")}</Text>
           <Text style={styles.title} numberOfLines={2}>
             {data.title}
           </Text>
@@ -187,6 +194,7 @@ export function OfferCardView({
   isMine: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const isCounter = (data.parentOfferId ?? null) !== null;
@@ -206,7 +214,12 @@ export function OfferCardView({
           color={theme.colors.text}
         />
         <Text style={styles.headerLabel}>
-          {isCounter ? "还价" : "出价"} #{data.offerId}
+          {t(
+            isCounter
+              ? "trading.cards.counterHeader"
+              : "trading.cards.offerHeader",
+            { id: data.offerId },
+          )}
         </Text>
         <Text style={styles.statusPill}>{formatOfferStatus(data.status)}</Text>
       </View>
@@ -234,7 +247,9 @@ export function OfferCardView({
       <Text style={styles.bigPrice}>{formatPrice(data.priceCents)}</Text>
       {data.expiresAt ? (
         <Text style={styles.muted}>
-          到期 {data.expiresAt.slice(0, 16)}
+          {t("trading.cards.expiresAt", {
+            date: data.expiresAt.slice(0, 16),
+          })}
         </Text>
       ) : null}
     </TouchableOpacity>
@@ -252,9 +267,12 @@ export function OrderStatusCardView({
   onPress: () => void;
   onPay?: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const pending = data.status === "pending_payment";
+  const hasShipment =
+    !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
   return (
     <TouchableOpacity
       style={[
@@ -271,7 +289,9 @@ export function OrderStatusCardView({
           size={18}
           color={theme.colors.text}
         />
-        <Text style={styles.headerLabel}>订单 #{data.orderNo}</Text>
+        <Text style={styles.headerLabel}>
+          {t("trading.cards.orderHeader", { no: data.orderNo })}
+        </Text>
         <Text style={styles.statusPill}>{formatOrderStatus(data.status)}</Text>
       </View>
       {data.product ? (
@@ -298,6 +318,29 @@ export function OrderStatusCardView({
       <Text style={styles.bigPrice}>
         {formatPrice(data.paidPriceCents, data.currency)}
       </Text>
+      {hasShipment ? (
+        <View style={styles.shipmentBlock}>
+          <View style={styles.shipmentRow}>
+            <Ionicons
+              name="cube-outline"
+              size={14}
+              color={theme.colors.gray300}
+            />
+            <Text style={styles.shipmentText} numberOfLines={1}>
+              {[data.shipment?.carrier, data.shipment?.trackingNo]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
+          </View>
+          {data.shipment?.signedAt ? (
+            <Text style={styles.shipmentSigned}>
+              {t("trading.cards.signedAt", {
+                date: data.shipment.signedAt.slice(0, 16),
+              })}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       {pending && onPay ? (
         <TouchableOpacity
           style={styles.payInlineBtn}
@@ -307,10 +350,12 @@ export function OrderStatusCardView({
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.payInlineBtnText}>去支付</Text>
+          <Text style={styles.payInlineBtnText}>
+            {t("trading.payment.payNow")}
+          </Text>
         </TouchableOpacity>
       ) : (
-        <Text style={styles.muted}>点击查看订单详情</Text>
+        <Text style={styles.muted}>{t("trading.cards.tapToViewOrder")}</Text>
       )}
     </TouchableOpacity>
   );
@@ -325,6 +370,7 @@ export function DisputeCardView({
   isMine: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   return (
@@ -344,14 +390,18 @@ export function DisputeCardView({
           color={theme.colors.error}
         />
         <Text style={[styles.headerLabel, { color: theme.colors.error }]}>
-          争议 #{data.disputeId}
+          {t("trading.cards.disputeHeader", { id: data.disputeId })}
         </Text>
         <Text style={[styles.statusPill, { color: theme.colors.error }]}>
           {data.status}
         </Text>
       </View>
-      <Text style={styles.title}>原因：{data.reason}</Text>
-      <Text style={styles.muted}>订单 #{data.orderId}</Text>
+      <Text style={styles.title}>
+        {t("trading.cards.disputeReason", { reason: data.reason })}
+      </Text>
+      <Text style={styles.muted}>
+        {t("trading.cards.disputeOrderRef", { id: data.orderId })}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -434,5 +484,26 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.textInverted,
       fontSize: 13,
       fontWeight: "600",
+    },
+    shipmentBlock: {
+      marginTop: 6,
+      paddingTop: 6,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    shipmentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    shipmentText: {
+      flex: 1,
+      fontSize: 12,
+      color: t.colors.gray400,
+    },
+    shipmentSigned: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      marginTop: 2,
     },
   });

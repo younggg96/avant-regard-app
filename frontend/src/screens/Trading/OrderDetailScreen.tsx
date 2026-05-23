@@ -25,8 +25,11 @@ import {
   getOrder,
   confirmOrder,
   shipOrder,
+  getOrderShipment,
+  signOrderReceipt,
   Order,
   OrderStatus,
+  Shipment,
   formatOrderStatus,
 } from "../../services/orderService";
 import {
@@ -111,27 +114,46 @@ export default function OrderDetailScreen() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [product, setProduct] = useState<StoreProduct | null>(null);
+  const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
+
+  /** shipped 及之后的状态都需要拉取物流凭证. */
+  const fetchShipmentIfNeeded = useCallback(async (o: Order) => {
+    const needs = ["shipped", "delivered", "completed", "settled"].includes(
+      o.status,
+    );
+    if (!needs) {
+      setShipment(null);
+      return;
+    }
+    try {
+      const s = await getOrderShipment(o.id);
+      setShipment(s);
+    } catch {
+      setShipment(null);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const o = await getOrder(orderId);
       setOrder(o);
-      try {
-        const p = await getStoreProductDetail(o.productId);
-        setProduct(p);
-      } catch {
-        setProduct(null);
-      }
+      const tasks: Promise<unknown>[] = [
+        getStoreProductDetail(o.productId)
+          .then(setProduct)
+          .catch(() => setProduct(null)),
+        fetchShipmentIfNeeded(o),
+      ];
+      await Promise.all(tasks);
     } catch {
       setOrder(null);
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, fetchShipmentIfNeeded]);
 
   useEffect(() => {
     load();
@@ -146,6 +168,9 @@ export default function OrderDetailScreen() {
       return t("trading.orderDetail.hintShipBy", {
         date: formatOrderDate(order.shippingDueAt),
       });
+    }
+    if (order.status === "shipped") {
+      return t("trading.orderDetail.hintShipped");
     }
     if (order.status === "delivered" && order.autoConfirmDueAt) {
       return t("trading.orderDetail.hintAutoConfirm", {
@@ -227,6 +252,32 @@ export default function OrderDetailScreen() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const doSignReceipt = async () => {
+    if (!order) return;
+    setActionLoading(true);
+    try {
+      const updated = await signOrderReceipt(order.id);
+      setOrder(updated);
+      await fetchShipmentIfNeeded(updated);
+    } catch (e: any) {
+      Alert.alert(
+        t("common.failed"),
+        e?.message ?? t("trading.orderDetail.signFailed"),
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const copyTrackingNo = async () => {
+    if (!shipment?.trackingNo) return;
+    await Clipboard.setStringAsync(shipment.trackingNo);
+    Alert.alert(
+      t("trading.orderDetail.copiedTitle"),
+      t("trading.orderDetail.trackingCopied"),
+    );
   };
 
   if (loading) {
@@ -378,6 +429,60 @@ export default function OrderDetailScreen() {
           </SectionCard>
         ) : null}
 
+        {shipment && (shipment.carrier || shipment.trackingNo) ? (
+          <SectionCard title={t("trading.orderDetail.shipmentSection")}>
+            <View style={styles.shipmentHeader}>
+              <View style={styles.shipmentIconWrap}>
+                <Ionicons
+                  name="cube-outline"
+                  size={18}
+                  color={theme.colors.text}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.shipmentCarrier}>
+                  {shipment.carrier ||
+                    t("trading.orderDetail.carrierUnknown")}
+                </Text>
+                {shipment.signedAt ? (
+                  <Text style={styles.shipmentSubMuted}>
+                    {t("trading.orderDetail.signedAt", {
+                      date: formatOrderDate(shipment.signedAt),
+                    })}
+                  </Text>
+                ) : order.shippedAt ? (
+                  <Text style={styles.shipmentSubMuted}>
+                    {t("trading.orderDetail.shippedAtLabel", {
+                      date: formatOrderDate(order.shippedAt),
+                    })}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            {shipment.trackingNo ? (
+              <Pressable
+                style={styles.trackingRow}
+                onPress={copyTrackingNo}
+                hitSlop={8}
+              >
+                <Text style={styles.trackingLabel}>
+                  {t("trading.orderDetail.trackingNoLabel")}
+                </Text>
+                <View style={styles.trackingValueWrap}>
+                  <Text style={styles.trackingValue} numberOfLines={1}>
+                    {shipment.trackingNo}
+                  </Text>
+                  <Ionicons
+                    name="copy-outline"
+                    size={16}
+                    color={theme.colors.gray300}
+                  />
+                </View>
+              </Pressable>
+            ) : null}
+          </SectionCard>
+        ) : null}
+
         <SectionCard title={t("trading.orderDetail.orderInfoSection")}>
           <Pressable style={styles.orderNoRow} onPress={copyOrderNo}>
             <Text style={styles.orderNoLabel}>
@@ -465,6 +570,29 @@ export default function OrderDetailScreen() {
             </Text>
           </Pressable>
         ) : null}
+        {isBuyer && order.status === "shipped" ? (
+          <Pressable
+            style={[styles.primaryBtn, actionLoading && { opacity: 0.5 }]}
+            onPress={doSignReceipt}
+            disabled={actionLoading}
+          >
+            {actionLoading ? (
+              <ActivityIndicator color={theme.colors.textInverted} />
+            ) : (
+              <>
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={18}
+                  color={theme.colors.textInverted}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.primaryBtnText}>
+                  {t("trading.orderDetail.signReceipt")}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
         {isBuyer && order.status === "delivered" ? (
           <Pressable
             style={[styles.primaryBtn, actionLoading && { opacity: 0.5 }]}
@@ -537,6 +665,7 @@ export default function OrderDetailScreen() {
         onDone={(updated) => {
           setOrder(updated);
           setShowShipModal(false);
+          fetchShipmentIfNeeded(updated);
         }}
       />
     </SafeAreaView>
@@ -795,6 +924,42 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 6,
       lineHeight: 20,
     },
+    shipmentHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 12,
+    },
+    shipmentIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: t.colors.skeleton,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    shipmentCarrier: { fontSize: 14, fontWeight: "600", color: t.colors.text },
+    shipmentSubMuted: {
+      fontSize: 12,
+      color: t.colors.gray300,
+      marginTop: 2,
+    },
+    trackingRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    trackingLabel: { fontSize: 13, color: t.colors.gray300 },
+    trackingValueWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      maxWidth: "65%",
+    },
+    trackingValue: { fontSize: 13, color: t.colors.text, fontWeight: "500" },
     orderNoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
