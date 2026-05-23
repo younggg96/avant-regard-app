@@ -15,6 +15,7 @@ import { ImageSize } from "../../../utils/imageUtils";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
 import type { ActionSheetAction } from "../../../components/ui/ActionSheet";
 import { Message } from "../../../services/chatService";
+import { useAuthStore } from "../../../store/authStore";
 import { PostSharePayload, StoreSharePayload, BrandSharePayload, ShowSharePayload, UserSharePayload } from "../../../components/ShareToChatModal";
 import { formatMessageTime } from "../utils";
 import { DateSeparator } from "./DateSeparator";
@@ -99,6 +100,9 @@ export const MessageBubble = ({
   const brandCardStyles = useThemedStyles(makeBrandCardStyles);
   const showCardStyles = useThemedStyles(makeShowCardStyles);
   const userCardStyles = useThemedStyles(makeUserCardStyles);
+  // 客服身份判定：仅当前登录账号为 admin 时，订单卡片才会显示「退款」操作。
+  // 用户身份变化时整棵会话栈会重挂载，这里直接读 store 即可，不需要 memo。
+  const isCustomerService = useAuthStore((s) => !!s.user?.is_admin);
 
   const canReport = !isMine && (onReportMessage || onReportUser);
 
@@ -218,6 +222,7 @@ export const MessageBubble = ({
         <OrderStatusCardView
           data={orderStatusCard}
           isMine={isMine}
+          isCustomerService={isCustomerService}
           onPress={() =>
             (navigation.navigate as any)("OrderDetail", {
               orderId: orderStatusCard.orderId,

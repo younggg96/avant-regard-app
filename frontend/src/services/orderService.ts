@@ -185,6 +185,11 @@ export interface Shipment {
   images: string[];
   signedAt?: string | null;
   createdAt?: string | null;
+  latestStatusCode?: string | null;
+  latestDescription?: string | null;
+  latestLocation?: string | null;
+  latestEventAt?: string | null;
+  providerSource?: string | null;
 }
 
 export async function getOrderShipment(
@@ -198,8 +203,86 @@ export async function signOrderReceipt(orderId: number): Promise<Order> {
   return request<Order>(`/api/orders/${orderId}/sign`, { method: "POST" });
 }
 
-export async function confirmOrder(orderId: number): Promise<Order> {
-  return request<Order>(`/api/orders/${orderId}/confirm`, { method: "POST" });
+// ---------------- 物流轨迹 ----------------
+
+export type TrackingStatusCode =
+  | "picked_up"
+  | "in_transit"
+  | "out_for_delivery"
+  | "delivered"
+  | "exception"
+  | "returned";
+
+export interface TrackingEvent {
+  id: number;
+  shipmentId: number;
+  orderId: number;
+  occurredAt: string;
+  statusCode: TrackingStatusCode | string;
+  description?: string | null;
+  location?: string | null;
+  source?: string;
+  createdAt?: string | null;
+}
+
+export interface TrackingFeed {
+  items: TrackingEvent[];
+  latestStatusCode?: string | null;
+  latestDescription?: string | null;
+  latestLocation?: string | null;
+  latestEventAt?: string | null;
+  providerSource?: string | null;
+}
+
+export async function getOrderTrackingEvents(
+  orderId: number,
+): Promise<TrackingFeed> {
+  return request<TrackingFeed>(`/api/orders/${orderId}/tracking-events`);
+}
+
+/** Admin / Mock provider 手动注入事件（dev 联调用）. */
+export async function adminInjectTrackingEvent(
+  orderId: number,
+  body: {
+    occurredAt: string;
+    statusCode: TrackingStatusCode;
+    description?: string;
+    location?: string;
+    source?: string;
+  },
+): Promise<TrackingEvent | { deduped: true }> {
+  return request<TrackingEvent | { deduped: true }>(
+    `/api/admin/orders/${orderId}/tracking-events`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export interface ConfirmReceiptSettlement {
+  orderId: number;
+  orderNo: string;
+  grossAmountCents: number;
+  commissionCents: number;
+  commissionRateBps: number;
+  sellerPayoutCents: number;
+  currency: string;
+  releaseAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface ConfirmReceiptResult {
+  order: Order;
+  settlement: ConfirmReceiptSettlement;
+}
+
+/** 买家确认收货：delivered → completed。
+ * 与单纯的状态机推进相比，本接口额外返回结算明细，前端用于跳「确认成功」页。 */
+export async function confirmOrder(orderId: number): Promise<ConfirmReceiptResult> {
+  return request<ConfirmReceiptResult>(`/api/orders/${orderId}/confirm`, {
+    method: "POST",
+  });
 }
 
 export async function submitInspection(
@@ -314,6 +397,22 @@ export async function listIncomingOffers(params: {
   return request<{ items: OfferWithDetail[]; total: number }>(
     `/api/offers/me/incoming?${q.toString()}`,
   );
+}
+
+// ---------------- Admin / 售后 ----------------
+
+/**
+ * 客服在聊天里点 `order_status` 卡片上的「退款」按钮时调用。
+ * 仅 admin / CS 账号可调；后端会自动把 pending_payouts 反向冲账。
+ */
+export async function adminRefundOrder(
+  orderId: number,
+  reason?: string,
+): Promise<Order> {
+  return request<Order>(`/api/admin/orders/${orderId}/refund`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
 }
 
 // ---------------- Admin / Scheduler ----------------

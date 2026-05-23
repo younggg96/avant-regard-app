@@ -9,13 +9,15 @@
  *
  * content 字段统一约定为 JSON 字符串；解析失败时返回 null，由 MessageBubble 回退到文本渲染。
  */
-import React from "react";
+import React, { useState } from "react";
 import {
   TouchableOpacity,
   View,
   Text,
   Image,
   StyleSheet,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -24,6 +26,7 @@ import { formatPrice } from "../../../services/storeProductService";
 import {
   formatOrderStatus,
   formatOfferStatus,
+  adminRefundOrder,
   OrderStatus,
   OfferStatus,
 } from "../../../services/orderService";
@@ -256,16 +259,30 @@ export function OfferCardView({
   );
 }
 
+/** 客服 IM 售后 v1：仅在 admin 视角且订单处于可退款状态下展示退款按钮。 */
+const REFUNDABLE_STATUSES: Set<string> = new Set([
+  "paid",
+  "shipped",
+  "delivered",
+  "completed",
+]);
+
 export function OrderStatusCardView({
   data,
   isMine,
+  isCustomerService = false,
   onPress,
   onPay,
+  onRefunded,
 }: {
   data: OrderStatusCard;
   isMine: boolean;
+  /** 当前会话当事人为官方客服（admin）时才允许显示退款按钮。 */
+  isCustomerService?: boolean;
   onPress: () => void;
   onPay?: () => void;
+  /** 退款成功后回调，便于上层就地隐藏按钮 / 触发刷新。 */
+  onRefunded?: (updatedStatus: OrderStatus) => void;
 }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -273,6 +290,43 @@ export function OrderStatusCardView({
   const pending = data.status === "pending_payment";
   const hasShipment =
     !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
+  // 本地状态：成功后立刻替换 pill + 隐藏按钮，等后端推的新卡片到达后再覆盖一次。
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [localStatus, setLocalStatus] = useState<OrderStatus | null>(null);
+  const effectiveStatus = (localStatus ?? data.status) as OrderStatus;
+  const canRefund =
+    isCustomerService && REFUNDABLE_STATUSES.has(effectiveStatus);
+
+  const requestRefund = () => {
+    Alert.alert(
+      t("trading.aftersales.cs.refundConfirmTitle"),
+      t("trading.aftersales.cs.refundConfirmMessage", { orderNo: data.orderNo }),
+      [
+        { text: t("trading.aftersales.cs.refundCancel"), style: "cancel" },
+        {
+          text: t("trading.aftersales.cs.refundSubmit"),
+          style: "destructive",
+          onPress: async () => {
+            setRefundLoading(true);
+            try {
+              const updated = await adminRefundOrder(data.orderId);
+              setLocalStatus(updated.status as OrderStatus);
+              onRefunded?.(updated.status as OrderStatus);
+              Alert.alert(t("trading.aftersales.cs.refundSuccess"));
+            } catch (e: any) {
+              Alert.alert(
+                t("trading.aftersales.cs.refundFailed"),
+                e?.message ?? "",
+              );
+            } finally {
+              setRefundLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -292,7 +346,7 @@ export function OrderStatusCardView({
         <Text style={styles.headerLabel}>
           {t("trading.cards.orderHeader", { no: data.orderNo })}
         </Text>
-        <Text style={styles.statusPill}>{formatOrderStatus(data.status)}</Text>
+        <Text style={styles.statusPill}>{formatOrderStatus(effectiveStatus)}</Text>
       </View>
       {data.product ? (
         <View style={styles.productLine}>
@@ -353,6 +407,32 @@ export function OrderStatusCardView({
           <Text style={styles.payInlineBtnText}>
             {t("trading.payment.payNow")}
           </Text>
+        </TouchableOpacity>
+      ) : canRefund ? (
+        <TouchableOpacity
+          style={[styles.refundBtn, refundLoading && { opacity: 0.5 }]}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            if (!refundLoading) requestRefund();
+          }}
+          activeOpacity={0.7}
+          disabled={refundLoading}
+        >
+          {refundLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.error} />
+          ) : (
+            <>
+              <Ionicons
+                name="return-down-back-outline"
+                size={14}
+                color={theme.colors.error}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={styles.refundBtnText}>
+                {t("trading.aftersales.cs.refundButton")}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       ) : (
         <Text style={styles.muted}>{t("trading.cards.tapToViewOrder")}</Text>
@@ -482,6 +562,22 @@ const makeStyles = (t: AppTheme) =>
     },
     payInlineBtnText: {
       color: t.colors.textInverted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    refundBtn: {
+      flexDirection: "row",
+      marginTop: 8,
+      paddingVertical: 8,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: t.colors.error,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "transparent",
+    },
+    refundBtnText: {
+      color: t.colors.error,
       fontSize: 13,
       fontWeight: "600",
     },

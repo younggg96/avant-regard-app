@@ -23,13 +23,14 @@ import * as Clipboard from "expo-clipboard";
 
 import {
   getOrder,
-  confirmOrder,
   shipOrder,
   getOrderShipment,
   signOrderReceipt,
+  getOrderTrackingEvents,
   Order,
   OrderStatus,
   Shipment,
+  TrackingEvent,
   formatOrderStatus,
 } from "../../services/orderService";
 import {
@@ -40,7 +41,12 @@ import {
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
-import { contactSupportForOrder } from "../../services/aftersalesService";
+import {
+  contactSupportForOrder,
+  contactSupportForOrderWithIssue,
+  AftersalesIssue,
+} from "../../services/aftersalesService";
+import { ActionSheet, ActionSheetAction } from "../../components/ui/ActionSheet";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { OrderDetail: { orderId: number } };
@@ -49,6 +55,26 @@ function formatOrderDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = iso.replace("T", " ").slice(0, 16);
   return d;
+}
+
+function trackingIcon(
+  statusCode: string,
+): { icon: keyof typeof Ionicons.glyphMap; tone: "success" | "warn" | "muted" | "info" } {
+  switch (statusCode) {
+    case "delivered":
+      return { icon: "checkmark-circle", tone: "success" };
+    case "out_for_delivery":
+      return { icon: "bicycle-outline", tone: "info" };
+    case "in_transit":
+      return { icon: "airplane-outline", tone: "info" };
+    case "picked_up":
+      return { icon: "archive-outline", tone: "muted" };
+    case "exception":
+    case "returned":
+      return { icon: "alert-circle-outline", tone: "warn" };
+    default:
+      return { icon: "ellipse-outline", tone: "muted" };
+  }
 }
 
 function statusVisual(
@@ -115,17 +141,21 @@ export default function OrderDetailScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [product, setProduct] = useState<StoreProduct | null>(null);
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [trackingEvents, setTrackingEvents] = useState<TrackingEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
+  const [showAftersalesSheet, setShowAftersalesSheet] = useState(false);
 
-  /** shipped 及之后的状态都需要拉取物流凭证. */
+  /** shipped 及之后的状态都需要拉取物流凭证 + 轨迹时间轴. */
   const fetchShipmentIfNeeded = useCallback(async (o: Order) => {
     const needs = ["shipped", "delivered", "completed", "settled"].includes(
       o.status,
     );
     if (!needs) {
       setShipment(null);
+      setTrackingEvents([]);
       return;
     }
     try {
@@ -134,7 +164,29 @@ export default function OrderDetailScreen() {
     } catch {
       setShipment(null);
     }
+    try {
+      setTrackingLoading(true);
+      const feed = await getOrderTrackingEvents(o.id);
+      setTrackingEvents(feed.items || []);
+    } catch {
+      setTrackingEvents([]);
+    } finally {
+      setTrackingLoading(false);
+    }
   }, []);
+
+  const refreshTracking = useCallback(async () => {
+    if (!order) return;
+    try {
+      setTrackingLoading(true);
+      const feed = await getOrderTrackingEvents(order.id);
+      setTrackingEvents(feed.items || []);
+    } catch {
+      // 静默：刷新按钮失败不打扰用户
+    } finally {
+      setTrackingLoading(false);
+    }
+  }, [order]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -239,19 +291,11 @@ export default function OrderDetailScreen() {
     Alert.alert(t("trading.orderDetail.copiedTitle"), t("trading.orderDetail.copiedMessage"));
   };
 
-  const doConfirm = async () => {
+  const doConfirm = () => {
     if (!order) return;
-    setActionLoading(true);
-    try {
-      const updated = await confirmOrder(order.id);
-      setOrder(updated);
-      navigation.navigate("TradeReview", {
-        orderId: order.id,
-        productId: order.productId,
-      });
-    } finally {
-      setActionLoading(false);
-    }
+    // 跳转到「确认收货」核对页：用户在那里看到 1% 手续费明细 + 3 天解冻提示
+    // 后再二次确认，并由该页负责调用 confirmOrder + 跳结算回执 + 评价。
+    navigation.navigate("ConfirmReceipt", { orderId: order.id });
   };
 
   const doSignReceipt = async () => {
@@ -279,6 +323,104 @@ export default function OrderDetailScreen() {
       t("trading.orderDetail.trackingCopied"),
     );
   };
+
+  /**
+   * 售后入口的统一跳转：建立/复用客服会话 → 跳到 Chat。
+   * - 传入 `issue` 时调用 `/contact-order/{id}/aftersales`，会自动追加问题模板文本。
+   * - 不传时退化为既有的「联系客服」入口，仅推一张订单卡片。
+   */
+  const handleAftersalesIssue = useCallback(
+    async (issue?: AftersalesIssue) => {
+      if (!order) return;
+      try {
+        setActionLoading(true);
+        const res = issue
+          ? await contactSupportForOrderWithIssue(order.id, issue)
+          : await contactSupportForOrder(order.id);
+        navigation.navigate("Chat", {
+          conversationId: res.conversationId,
+          otherUserId: res.csUserId,
+        });
+      } catch (e: any) {
+        Alert.alert(
+          t("common.failed"),
+          e?.message ?? t("trading.aftersales.openFailed"),
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    },
+    [order, navigation, t],
+  );
+
+  const aftersalesActions = useMemo<ActionSheetAction[]>(() => {
+    return [
+      {
+        label: t("trading.aftersales.issueNoLogistics"),
+        icon: (
+          <Ionicons
+            name="time-outline"
+            size={20}
+            color={theme.colors.text}
+          />
+        ),
+        onPress: () => handleAftersalesIssue("no_logistics_update"),
+      },
+      {
+        label: t("trading.aftersales.issueDeliveredNotReceived"),
+        icon: (
+          <Ionicons
+            name="alert-circle-outline"
+            size={20}
+            color={theme.colors.text}
+          />
+        ),
+        onPress: () => handleAftersalesIssue("delivered_not_received"),
+      },
+      {
+        label: t("trading.aftersales.issueQuality"),
+        icon: (
+          <Ionicons
+            name="cube-outline"
+            size={20}
+            color={theme.colors.text}
+          />
+        ),
+        onPress: () => handleAftersalesIssue("quality_issue"),
+      },
+      {
+        label: t("trading.aftersales.issueListingDelisted"),
+        icon: (
+          <Ionicons
+            name="storefront-outline"
+            size={20}
+            color={theme.colors.text}
+          />
+        ),
+        onPress: () => handleAftersalesIssue("listing_delisted"),
+      },
+      {
+        label: t("trading.aftersales.issueOther"),
+        icon: (
+          <Ionicons
+            name="chatbubbles-outline"
+            size={20}
+            color={theme.colors.text}
+          />
+        ),
+        onPress: () => handleAftersalesIssue(undefined),
+      },
+    ];
+  }, [t, theme, handleAftersalesIssue]);
+
+  // 售后入口仅在「有真实交易上下文」的状态下可用：
+  //   - pending_payment / refunded* 没有可申诉的内容
+  //   - settled 已结算（>3 天），按规则也不再走 v1 退款流，但可以联系客服
+  const canRequestAftersales =
+    !!order &&
+    order.status !== "pending_payment" &&
+    order.status !== "refunded" &&
+    order.status !== "refunded_auto";
 
   if (loading) {
     return (
@@ -483,6 +625,121 @@ export default function OrderDetailScreen() {
           </SectionCard>
         ) : null}
 
+        {shipment && (shipment.carrier || shipment.trackingNo) ? (
+          <View style={styles.section}>
+            <View style={styles.trackingHeaderRow}>
+              <Text style={styles.sectionTitle}>
+                {t("trading.tracking.title")}
+              </Text>
+              <Pressable
+                onPress={refreshTracking}
+                hitSlop={8}
+                disabled={trackingLoading}
+              >
+                {trackingLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.gray300}
+                  />
+                ) : (
+                  <Ionicons
+                    name="refresh"
+                    size={16}
+                    color={theme.colors.gray300}
+                  />
+                )}
+              </Pressable>
+            </View>
+
+            {trackingEvents.length === 0 ? (
+              <Text style={styles.trackingEmpty}>
+                {t("trading.tracking.empty")}
+              </Text>
+            ) : (
+              <View style={styles.timeline}>
+                {trackingEvents.map((ev, idx) => {
+                  const meta = trackingIcon(ev.statusCode);
+                  const tint =
+                    meta.tone === "success"
+                      ? theme.colors.success
+                      : meta.tone === "warn"
+                      ? theme.colors.error
+                      : meta.tone === "info"
+                      ? theme.colors.text
+                      : theme.colors.gray300;
+                  const localizedStatus = t(
+                    `trading.tracking.status.${ev.statusCode}`,
+                    { defaultValue: "" },
+                  );
+                  return (
+                    <View key={ev.id} style={styles.timelineItem}>
+                      <View style={styles.timelineLeft}>
+                        <View
+                          style={[
+                            styles.trackingIconWrap,
+                            { backgroundColor: tint + "1A" },
+                          ]}
+                        >
+                          <Ionicons
+                            name={meta.icon}
+                            size={12}
+                            color={tint}
+                          />
+                        </View>
+                        {idx < trackingEvents.length - 1 ? (
+                          <View
+                            style={[
+                              styles.timelineLine,
+                              idx === 0 ? styles.timelineLineDone : null,
+                            ]}
+                          />
+                        ) : null}
+                      </View>
+                      <View style={styles.timelineContent}>
+                        <View style={styles.trackingEventTopRow}>
+                          {localizedStatus ? (
+                            <Text
+                              style={[
+                                styles.trackingStatusTag,
+                                { color: tint, borderColor: tint + "55" },
+                              ]}
+                            >
+                              {localizedStatus}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.timelineTime}>
+                            {formatOrderDate(ev.occurredAt)}
+                          </Text>
+                        </View>
+                        {ev.description ? (
+                          <Text
+                            style={[
+                              styles.timelineLabel,
+                              idx > 0 && styles.timelineLabelPending,
+                            ]}
+                          >
+                            {ev.description}
+                          </Text>
+                        ) : null}
+                        {ev.location ? (
+                          <Text style={styles.trackingLocation}>
+                            <Ionicons
+                              name="location-outline"
+                              size={10}
+                              color={theme.colors.gray300}
+                            />{" "}
+                            {ev.location}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        ) : null}
+
         <SectionCard title={t("trading.orderDetail.orderInfoSection")}>
           <Pressable style={styles.orderNoRow} onPress={copyOrderNo}>
             <Text style={styles.orderNoLabel}>
@@ -608,38 +865,20 @@ export default function OrderDetailScreen() {
             )}
           </Pressable>
         ) : null}
-        {(isBuyer || isSeller) &&
-        order.status !== "pending_payment" &&
-        order.status !== "refunded_auto" &&
-        order.status !== "refunded" ? (
+        {(isBuyer || isSeller) && canRequestAftersales ? (
           <Pressable
             style={styles.secondaryBtn}
-            onPress={async () => {
-              try {
-                setActionLoading(true);
-                const res = await contactSupportForOrder(order.id);
-                navigation.navigate("Chat", {
-                  conversationId: res.conversationId,
-                  otherUserId: res.csUserId,
-                });
-              } catch (e: any) {
-                Alert.alert(
-                  t("common.failed"),
-                  e?.message ?? t("trading.support.contactFailed"),
-                );
-              } finally {
-                setActionLoading(false);
-              }
-            }}
+            onPress={() => setShowAftersalesSheet(true)}
+            disabled={actionLoading}
           >
             <Ionicons
-              name="headset-outline"
+              name="help-buoy-outline"
               size={16}
               color={theme.colors.text}
               style={{ marginRight: 6 }}
             />
             <Text style={styles.secondaryBtnText}>
-              {t("trading.support.contactSupportOnOrder")}
+              {t("trading.aftersales.entryButton")}
             </Text>
           </Pressable>
         ) : null}
@@ -667,6 +906,13 @@ export default function OrderDetailScreen() {
           setShowShipModal(false);
           fetchShipmentIfNeeded(updated);
         }}
+      />
+
+      <ActionSheet
+        visible={showAftersalesSheet}
+        onClose={() => setShowAftersalesSheet(false)}
+        title={t("trading.aftersales.sheetTitle")}
+        actions={aftersalesActions}
       />
     </SafeAreaView>
   );
@@ -960,6 +1206,45 @@ const makeStyles = (t: AppTheme) =>
       maxWidth: "65%",
     },
     trackingValue: { fontSize: 13, color: t.colors.text, fontWeight: "500" },
+    trackingHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    trackingEmpty: {
+      fontSize: 13,
+      color: t.colors.gray300,
+      paddingVertical: 12,
+      textAlign: "center",
+    },
+    trackingIconWrap: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+    },
+    trackingEventTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 2,
+    },
+    trackingStatusTag: {
+      fontSize: 11,
+      fontWeight: "600",
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      borderWidth: 1,
+    },
+    trackingLocation: {
+      fontSize: 11,
+      color: t.colors.gray300,
+      marginTop: 4,
+    },
     orderNoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -979,7 +1264,7 @@ const makeStyles = (t: AppTheme) =>
     orderNoValue: { fontSize: 12, color: t.colors.text, fontWeight: "500" },
     timeline: { marginTop: 8 },
     timelineItem: { flexDirection: "row", minHeight: 44 },
-    timelineLeft: { width: 24, alignItems: "center" },
+    timelineLeft: { width: 26, alignItems: "center" },
     timelineDot: {
       width: 10,
       height: 10,

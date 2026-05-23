@@ -62,6 +62,12 @@ import {
   FollowingUser,
   getFollowingUsers,
 } from "../../../services/followService";
+import {
+  Order,
+  listMyOrders,
+  formatOrderStatus,
+} from "../../../services/orderService";
+import { formatPrice } from "../../../services/storeProductService";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_HEIGHT = Math.round(SCREEN_HEIGHT * 0.6);
@@ -75,12 +81,26 @@ const POST_TAB_KEYS: { key: PostTab; labelKey: string }[] = [
   { key: "liked", labelKey: "chat.myLiked" },
 ];
 
+/**
+ * `order_status` 卡片由订单选择器构造，与 backend `_send_order_status_card`
+ * 的 payload schema 一致（见 `TradingCards.tsx#OrderStatusCard`），客户端只填
+ * 必要字段，富信息（product brief / shipment）由列表项里的现成 fallback 补足。
+ */
+export interface OrderStatusSharePayload {
+  orderId: number;
+  orderNo: string;
+  status: string;
+  paidPriceCents: number;
+  currency?: string;
+}
+
 export type SharePayload =
   | { messageType: "post_card"; payload: PostSharePayload }
   | { messageType: "store_card"; payload: StoreSharePayload }
   | { messageType: "brand_card"; payload: BrandSharePayload }
   | { messageType: "show_card"; payload: ShowSharePayload }
-  | { messageType: "user_card"; payload: UserSharePayload };
+  | { messageType: "user_card"; payload: UserSharePayload }
+  | { messageType: "order_status"; payload: OrderStatusSharePayload };
 
 interface ShareContentPickerModalProps {
   visible: boolean;
@@ -95,6 +115,7 @@ const CATEGORY_TITLE_KEY: Record<ShareCategory, string> = {
   brand: "chat.selectBrand",
   show: "chat.selectShow",
   user: "chat.selectUser",
+  aftersales: "trading.aftersales.sheetTitle",
 };
 
 const CATEGORY_SEARCH_KEY: Record<ShareCategory, string> = {
@@ -103,6 +124,7 @@ const CATEGORY_SEARCH_KEY: Record<ShareCategory, string> = {
   brand: "chat.searchBrand",
   show: "chat.searchShow",
   user: "chat.searchUser",
+  aftersales: "chat.searchOrder",
 };
 
 export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = ({
@@ -125,6 +147,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   const [brands, setBrands] = useState<Brand[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [users, setUsers] = useState<(UserInfo | FollowingUser)[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -216,6 +239,22 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
           list = await getFollowingUsers(currentUserId);
         }
         if (reqId === reqIdRef.current) setUsers(list);
+      } else if (category === "aftersales") {
+        // 售后入口只列「我作为买家」的订单：客服需要的是协助买家维权，
+        // 给客服看自己卖的订单意义不大（卖家自己的售后渠道是「我的销售」）。
+        // 客户端不做关键词搜索；后端 list 接口也没有 fulltext，所以这里
+        // 仅展示前 30 单按时间倒序，覆盖售后高发的近期窗口。
+        const result = await listMyOrders({ page: 1, pageSize: 30 });
+        const filtered = (result.items || []).filter((o) => {
+          if (trimmed) {
+            return (
+              o.orderNo.toLowerCase().includes(trimmed.toLowerCase()) ||
+              String(o.productId).includes(trimmed)
+            );
+          }
+          return true;
+        });
+        if (reqId === reqIdRef.current) setOrders(filtered);
       }
     } catch (err) {
       console.error("ShareContentPickerModal load error:", err);
@@ -284,6 +323,22 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
       onSelect({
         messageType: "user_card",
         payload: buildUserSharePayload(user as any),
+      });
+    },
+    [onSelect]
+  );
+
+  const handleSelectOrder = useCallback(
+    (order: Order) => {
+      onSelect({
+        messageType: "order_status",
+        payload: {
+          orderId: order.id,
+          orderNo: order.orderNo,
+          status: order.status,
+          paidPriceCents: order.paidPriceCents,
+          currency: order.currency,
+        },
       });
     },
     [onSelect]
@@ -473,6 +528,36 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     [handleSelectUser]
   );
 
+  const renderOrderItem = useCallback(
+    ({ item }: { item: Order }) => {
+      return (
+        <TouchableOpacity
+          style={styles.row}
+          activeOpacity={0.6}
+          onPress={() => handleSelectOrder(item)}
+        >
+          <View style={[styles.thumb, styles.thumbPlaceholder]}>
+            <Ionicons
+              name="receipt-outline"
+              size={20}
+              color={theme.colors.gray300}
+            />
+          </View>
+          <View style={styles.rowInfo}>
+            <Text style={styles.rowTitle} numberOfLines={1}>
+              {item.orderNo}
+            </Text>
+            <Text style={styles.rowSubtitle} numberOfLines={1}>
+              {formatPrice(item.paidPriceCents, item.currency)} ·{" "}
+              {formatOrderStatus(item.status)}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [handleSelectOrder]
+  );
+
   const renderEmpty = useCallback(
     (keywordValue: string, noResultsText: string, emptyText: string) => (
       <View style={styles.center}>
@@ -555,6 +640,17 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
         />
       );
     }
+    if (category === "aftersales") {
+      if (!orders.length) return renderEmpty(keyword, t("search.noResults"), t("trading.orders.empty"));
+      return (
+        <FlatList
+          data={orders}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderOrderItem}
+          keyboardShouldPersistTaps="handled"
+        />
+      );
+    }
     return null;
   }, [
     category,
@@ -565,11 +661,13 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
     brands,
     shows,
     users,
+    orders,
     renderPostItem,
     renderStoreItem,
     renderBrandItem,
     renderShowItem,
     renderUserItem,
+    renderOrderItem,
     renderEmpty,
     styles,
     t,

@@ -1,11 +1,14 @@
 """
 PRD 模块 5 · 「联系客服」入口路由 (PDF p.10 设计要点)。
 
-  - POST /api/trading-support/contact-order/{orderId}      订单售后入口
-  - POST /api/trading-support/contact-listing/{productId}  单品咨询入口
-  - POST /api/trading-support/contact                      一般咨询（Settings）
-  - PUT  /api/admin/trading-support/cs-user                配置客服 user_id
+  - POST /api/trading-support/contact-order/{orderId}            订单售后入口
+  - POST /api/trading-support/contact-order/{orderId}/aftersales 订单售后入口（带常见问题）
+  - POST /api/trading-support/contact-listing/{productId}        单品咨询入口
+  - POST /api/trading-support/contact                            一般咨询（Settings）
+  - PUT  /api/admin/trading-support/cs-user                      配置客服 user_id
 """
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -25,6 +28,35 @@ admin_support_router = APIRouter(
 async def contact_for_order(order_id: int, user_id: int = Depends(get_current_user)):
     try:
         res = trading_support_service.contact_for_order(user_id, order_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return success(res)
+
+
+class AftersalesRequest(BaseModel):
+    issue: Optional[str] = None
+    """常见售后问题 key。允许：no_logistics_update / delivered_not_received /
+    quality_issue / listing_delisted。空值时退化为普通联系客服。"""
+
+
+@support_router.post("/contact-order/{order_id}/aftersales")
+async def contact_for_order_aftersales(
+    order_id: int,
+    body: AftersalesRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """订单详情底部「售后」入口：把订单卡片 + 常见问题模板一并推送给客服。"""
+    issue = body.issue
+    if issue and issue not in trading_support_service.AFTERSALES_ISSUE_TEMPLATES:
+        raise HTTPException(status_code=400, detail="无效的售后问题类型")
+    try:
+        res = trading_support_service.contact_for_order(
+            user_id, order_id, issue=issue
+        )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

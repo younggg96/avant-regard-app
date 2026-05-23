@@ -56,6 +56,12 @@ from app.api.routes.archive_plus import (
     archive_router as archive_router,
     plus_router as plus_router,
 )
+from app.api.routes.wallet import (
+    wallet_router as wallet_router,
+    kyc_router as kyc_router,
+    admin_wallet_router as admin_wallet_router,
+    admin_kyc_router as admin_kyc_router,
+)
 from app.api.routes.trading_support import (
     support_router as trading_support_router,
     admin_support_router as admin_trading_support_router,
@@ -303,6 +309,10 @@ app.include_router(admin_disputes_router, prefix="/api")
 app.include_router(admin_auth_router, prefix="/api")
 app.include_router(archive_router, prefix="/api")
 app.include_router(plus_router, prefix="/api")
+app.include_router(wallet_router, prefix="/api")
+app.include_router(kyc_router, prefix="/api")
+app.include_router(admin_wallet_router, prefix="/api")
+app.include_router(admin_kyc_router, prefix="/api")
 app.include_router(trading_support_router, prefix="/api")
 app.include_router(admin_trading_support_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")

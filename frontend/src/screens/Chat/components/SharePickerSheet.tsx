@@ -9,12 +9,15 @@ export type ShareCategory =
   | "store"
   | "brand"
   | "show"
-  | "user";
+  | "user"
+  | "aftersales";
 
 interface CategoryConfig {
   key: ShareCategory;
   labelKey: string;
   icon: keyof typeof Ionicons.glyphMap;
+  /** 仅在与客服会话时显示 (other party `is_admin`)。 */
+  csOnly?: boolean;
 }
 
 const CATEGORIES: CategoryConfig[] = [
@@ -23,15 +26,20 @@ const CATEGORIES: CategoryConfig[] = [
   { key: "brand", labelKey: "chat.brandLabel", icon: "pricetag-outline" },
   { key: "show",  labelKey: "chat.showLabel",  icon: "sparkles-outline" },
   { key: "user",  labelKey: "chat.userLabel",  icon: "person-outline" },
+  // 售后入口：只在和客服对话时出现。点击 → 打开订单选择器 → 把订单卡片发给客服。
+  { key: "aftersales", labelKey: "chat.aftersalesLabel", icon: "help-buoy-outline", csOnly: true },
 ];
 
 interface SharePickerSheetProps {
   visible: boolean;
+  /** 对方是否为官方客服（admin）。决定是否展示「售后」入口。 */
+  otherIsAdmin?: boolean;
   onSelect: (category: ShareCategory) => void;
 }
 
 export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
   visible,
+  otherIsAdmin = false,
   onSelect,
 }) => {
   const { t } = useTranslation();
@@ -39,10 +47,12 @@ export const SharePickerSheet: React.FC<SharePickerSheetProps> = ({
 
   if (!visible) return null;
 
+  const items = CATEGORIES.filter((c) => !c.csOnly || otherIsAdmin);
+
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        {CATEGORIES.map((cat) => (
+        {items.map((cat) => (
           <TouchableOpacity
             key={cat.key}
             style={styles.button}

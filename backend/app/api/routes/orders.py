@@ -5,9 +5,11 @@ PRD 模块四 · 订单 / 出价 / 库存锁 路由。
   - POST   /orders/{id}/pay-mock          dev 用：直接将订单标记为 paid（mock 通道）
   - POST   /orders/{id}/ship              卖家发货
   - GET    /orders/{id}/shipment          查询物流凭证（买卖双方都可读）
+  - GET    /orders/{id}/tracking-events   查询物流轨迹时间轴
+  - POST   /admin/orders/{id}/tracking-events  Admin / Mock 手动注入轨迹事件
   - POST   /orders/{id}/sign              买家主动确认签收 → delivered
   - POST   /orders/{id}/deliver           物流签收（外部回调 / admin）
-  - POST   /orders/{id}/confirm           买家确认收货 → completed
+  - POST   /orders/{id}/confirm           买家确认收货 → completed (扣 1% 抽佣 + 卖家钱包 pending 锁 3 天 + 卖家结算通知)
   - POST   /orders/{id}/inspection        提交验货 Checklist
   - GET    /orders/me                     我作为买家
   - GET    /orders/me/sales               我作为卖家
@@ -23,6 +25,7 @@ PRD 模块四 · 订单 / 出价 / 库存锁 路由。
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app.core.response import success
 from app.api.deps import get_current_user, get_current_admin_user
@@ -39,6 +42,8 @@ from app.schemas.orders import (
     InspectionSubmit,
     OrderStatus,
 )
+from app.schemas.tracking import TrackingEventCreate
+from app.services.logistics import tracking_service
 
 
 orders_router = APIRouter(prefix="/orders", tags=["交易系统 / 订单"])
@@ -190,6 +195,25 @@ async def get_order_shipment(
     return success(shipment.dict() if shipment else None)
 
 
+@orders_router.get("/{order_id}/tracking-events")
+async def list_tracking_events(
+    order_id: int, user_id: int = Depends(get_current_user)
+):
+    """订单详情时间轴拉数据。仅买卖双方可读。"""
+    order = order_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    if order.buyerUserId != user_id and order.sellerUserId != user_id:
+        if order.sellerMerchantId:
+            merchant = store_merchant_service.get_merchant_by_id(order.sellerMerchantId)
+            if not merchant or getattr(merchant, "userId", None) != user_id:
+                raise HTTPException(status_code=403, detail="无权查看")
+        else:
+            raise HTTPException(status_code=403, detail="无权查看")
+    feed = tracking_service.list_events(order_id)
+    return success(feed.dict())
+
+
 @orders_router.post("/{order_id}/sign")
 async def buyer_sign(order_id: int, user_id: int = Depends(get_current_user)):
     """买家主动确认签收 (shipped → delivered)。
@@ -220,18 +244,33 @@ async def mark_delivered(order_id: int, _admin=Depends(get_current_admin_user)):
 
 @orders_router.post("/{order_id}/confirm")
 async def buyer_confirm(order_id: int, user_id: int = Depends(get_current_user)):
-    order = order_service.get_order(order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="订单不存在")
-    if order.buyerUserId != user_id:
-        raise HTTPException(status_code=403, detail="仅买家可确认")
+    """买家确认收货 → completed。
+
+    与单纯的状态机推进相比，本接口额外返回结算明细
+    （成交金额 / 1% 手续费 / 卖家实收 / 解冻时间），方便前端跳「确认收货成功」页。
+    """
     try:
-        updated = order_service.transition_status(
-            order_id, OrderStatus.COMPLETED, actor_user_id=user_id
-        )
+        updated, pending = order_service.buyer_confirm_receipt(order_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return success(updated.dict())
+    return success(
+        {
+            "order": updated.dict(),
+            "settlement": {
+                "orderId": updated.id,
+                "orderNo": updated.orderNo,
+                "grossAmountCents": updated.paidPriceCents,
+                "commissionCents": updated.commissionCents,
+                "commissionRateBps": updated.commissionRateBps,
+                "sellerPayoutCents": updated.sellerPayoutCents,
+                "currency": updated.currency,
+                "releaseAt": (pending or {}).get("release_at"),
+                "completedAt": updated.completedAt,
+            },
+        }
+    )
 
 
 @orders_router.post("/{order_id}/inspection")
@@ -413,15 +452,78 @@ async def list_incoming_offers(
 @admin_orders_router.post("/scheduler/run")
 async def run_scheduler(_admin=Depends(get_current_admin_user)):
     """单次执行所有 cron 任务。生产环境应改成由 APScheduler / Cloud Cron 触发。"""
+    from app.services.wallet_service import wallet_service
     return success(
         {
             "holdsExpired": order_service.expire_holds_due(),
             "offersExpired": offer_service.expire_overdue(),
             "ordersRefunded": order_service.expire_overdue_shipments(),
             "ordersAutoConfirmed": order_service.auto_confirm_delivered(),
+            "pendingPayoutsReleased": wallet_service.release_due_pending(),
             "ordersSettled": order_service.settle_completed(),
+            "trackingPulled": tracking_service.pull_pending_shipments(),
         }
     )
+
+
+class AdminRefundRequest(BaseModel):
+    reason: Optional[str] = Field(
+        None,
+        max_length=200,
+        description="退款原因 / 客服备注，会写入 orders.cancel_reason 与 settlement_ledger.metadata",
+    )
+
+
+@admin_orders_router.post("/{order_id}/refund")
+async def admin_refund_order(
+    order_id: int,
+    body: AdminRefundRequest,
+    admin_user_id: int = Depends(get_current_admin_user),
+):
+    """客服 IM 售后 v1：唯一动作 = 退款。
+
+    入口：客服在聊天里点 order_status 卡片上的「退款」按钮。
+    成功后：
+      - 订单状态置为 REFUNDED（允许从 paid / shipped / delivered / completed 进入）
+      - 若已 credit 到卖家钱包 pending_payouts，则反向冲账，保持账本守恒
+      - 自动把刷新后的 order_status 卡片推送给买卖双方
+    """
+    order = order_service.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    try:
+        updated = order_service.transition_status(
+            order_id,
+            OrderStatus.REFUNDED,
+            actor_user_id=admin_user_id,
+            is_admin=True,
+            reason=body.reason or "客服仲裁退款",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(updated.dict())
+
+
+@admin_orders_router.post("/{order_id}/tracking-events")
+async def admin_inject_tracking_event(
+    order_id: int,
+    payload: TrackingEventCreate,
+    _admin=Depends(get_current_admin_user),
+):
+    """Admin / Mock provider 手动注入轨迹事件。
+
+    用于：
+      1. dev 联调阶段验证时间轴 UI + 推送
+      2. 真物流方失联时的人工兜底
+    """
+    try:
+        ev = tracking_service.admin_inject_event(order_id=order_id, payload=payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not ev:
+        # 重复事件被去重；不当成错误
+        return success({"deduped": True})
+    return success(ev.dict())
 
 
 def _assert_seller_perm(order, user_id: int) -> None:

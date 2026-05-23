@@ -146,7 +146,11 @@ class PaymentIntentResponse(BaseModel):
 
 
 class Shipment(BaseModel):
-    """订单物流凭证（卖家填写运单 → 买家可查询并据此签收）。"""
+    """订单物流凭证（卖家填写运单 → 买家可查询并据此签收）。
+
+    `latest*` 字段由 tracking_service 维护（见 migration 070），是 tracking_events
+    最新一条事件的缓存。详情页 / 列表 / 卡片可以直接读，不必每次都拉时间轴。
+    """
     id: int
     orderId: int
     carrier: Optional[str] = None
@@ -154,3 +158,9 @@ class Shipment(BaseModel):
     images: List[str] = Field(default_factory=list)
     signedAt: Optional[str] = None
     createdAt: Optional[str] = None
+
+    latestStatusCode:  Optional[str] = None
+    latestDescription: Optional[str] = None
+    latestLocation:    Optional[str] = None
+    latestEventAt:     Optional[str] = None
+    providerSource:    Optional[str] = None

@@ -77,8 +77,41 @@ class TradingSupportService:
     # Open conversation with seeded context card
     # ------------------------------------------------------------------
 
-    def contact_for_order(self, user_id: int, order_id: int) -> dict:
-        """打开「联系客服」会话，并自动推送一张订单上下文卡片。"""
+    # 售后常见问题模板（PRD 售后入口 v1）。
+    # 前端从订单详情底部点「售后」 → 弹常见问题 sheet，选中后传 issue key 给后端，
+    # 后端把对应模板作为文本消息追加到订单上下文卡片后面，避免客服反复追问。
+    AFTERSALES_ISSUE_TEMPLATES: dict = {
+        "no_logistics_update": (
+            "【售后申请】包裹长期无物流更新\n"
+            "我的订单已发货很久但物流轨迹长时间没有更新，麻烦帮我催一下卖家或查一下物流状态。"
+        ),
+        "delivered_not_received": (
+            "【售后申请】显示已签收但买家未收到\n"
+            "订单的物流显示「已签收」，但是我并没有收到包裹。请帮我核查派送情况并协调处理。"
+        ),
+        "quality_issue": (
+            "【售后申请】商品质量 / 成色问题\n"
+            "我收到的实物与描述 / 图片明显不符（成色 / 瑕疵 / 做工等问题）。请帮我介入售后。"
+        ),
+        "listing_delisted": (
+            "【售后申请】卖家下架商品导致已付款订单问题\n"
+            "我下单付款后，卖家把商品下架了，订单进度受影响。请帮我处理已付款但无法发货的情况。"
+        ),
+    }
+
+    def contact_for_order(
+        self,
+        user_id: int,
+        order_id: int,
+        *,
+        issue: Optional[str] = None,
+    ) -> dict:
+        """打开「联系客服」会话，并自动推送一张订单上下文卡片。
+
+        当传入 `issue` 时（订单详情底部售后入口选了某个常见问题），
+        会在卡片之后再补发一条文本消息，把诉求一并交底给客服，
+        减少来回沟通。
+        """
         cs_user_id = self.resolve_cs_user_id(user_id)
         if not cs_user_id:
             raise RuntimeError("尚未配置官方客服账号，请稍后再试")
@@ -109,7 +142,20 @@ class TradingSupportService:
         except Exception as e:
             print(f"[trading_support] seed order card failed: {e}")
 
-        return {"conversationId": conv_id, "csUserId": cs_user_id}
+        if issue:
+            template = self.AFTERSALES_ISSUE_TEMPLATES.get(issue)
+            if template:
+                try:
+                    self.chat.send_message(
+                        conversation_id=conv_id,
+                        sender_id=user_id,
+                        content=template,
+                        message_type="text",
+                    )
+                except Exception as e:
+                    print(f"[trading_support] send aftersales template failed: {e}")
+
+        return {"conversationId": conv_id, "csUserId": cs_user_id, "issue": issue}
 
     def contact_for_listing(self, user_id: int, product_id: int) -> dict:
         """详情页 / 鉴定 / 一般咨询的入口：仅推送 product_listing 卡片。"""

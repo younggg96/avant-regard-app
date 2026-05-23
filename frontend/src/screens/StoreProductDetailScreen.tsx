@@ -181,7 +181,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
   // ---------------------- 章节锚点导航（sticky tab bar） -------------------
   // tab bar 上的每个 tab 对应页面下方的一个 section：
-  //   关联品牌 / 关联秀场 / 商品信息 / 商品描述 / 细节描述 / 卖家信息 / 评论 / 相关推荐
+  //   关联秀场 / 商品信息 / 商品描述 / 细节描述 / 卖家信息 / 关联品牌 / 评论 / 相关推荐
   // 点击 tab 平滑滚到 section；页面滚动时根据 contentOffset 自动高亮当前 section。
   type SectionKey =
     | "brands"
@@ -589,13 +589,10 @@ const StoreProductDetailScreen: React.FC = () => {
 
   /**
    * 当前可见的 section 列表 —— 仅渲染数据存在的 section 对应的 tab。
-   * 顺序与 JSX 中渲染顺序一致：brands → show → info → description → photos → seller → reviews → related
+   * 顺序与 JSX 中渲染顺序一致：show → info → description → photos → seller → brands → reviews → related
    */
   const sections = useMemo<Array<{ key: SectionKey; label: string }>>(() => {
     const list: Array<{ key: SectionKey; label: string }> = [];
-    if ((richDetail?.relatedBrands?.length ?? 0) > 0) {
-      list.push({ key: "brands", label: t("store.productDetailV2.tabBrands") });
-    }
     if (richDetail?.show) {
       list.push({ key: "show", label: t("store.productDetailV2.tabShow") });
     }
@@ -612,6 +609,9 @@ const StoreProductDetailScreen: React.FC = () => {
     }
     if (richDetail?.seller) {
       list.push({ key: "seller", label: t("store.productDetailV2.tabSeller") });
+    }
+    if ((richDetail?.relatedBrands?.length ?? 0) > 0) {
+      list.push({ key: "brands", label: t("store.productDetailV2.tabBrands") });
     }
     list.push({
       key: "reviews",
@@ -967,71 +967,7 @@ const StoreProductDetailScreen: React.FC = () => {
             </RNScrollView>
           </View>
 
-          {/* ============ S1. 关联品牌 =============== */}
-          {relatedBrands.length > 0 && (
-            <View
-              style={styles.section}
-              onLayout={handleSectionLayout("brands")}
-            >
-              <Text style={styles.sectionTitle}>
-                {t("store.productDetailV2.relatedBrandsTitle")}
-              </Text>
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={relatedBrands}
-                keyExtractor={(b) => `brand-${b.name}`}
-                contentContainerStyle={styles.brandsRow}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={styles.brandItem}
-                    onPress={() =>
-                      navigation.navigate("BrandDetail", { name: item.name })
-                    }
-                  >
-                    <View style={styles.brandAvatarWrap}>
-                      {item.imageUrl ? (
-                        <OptimizedImage
-                          uri={item.imageUrl}
-                          size={ImageSize.THUMBNAIL}
-                          style={styles.brandAvatar}
-                          contentFit="cover"
-                        />
-                      ) : (
-                        <Text style={styles.brandAvatarLetter}>
-                          {item.name.charAt(0).toUpperCase()}
-                        </Text>
-                      )}
-                    </View>
-                    <Text style={styles.brandName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                  </Pressable>
-                )}
-                ListFooterComponent={
-                  <Pressable
-                    style={styles.brandItem}
-                    onPress={() =>
-                      navigation.navigate("Main", { screen: "Archive" })
-                    }
-                  >
-                    <View style={[styles.brandAvatarWrap, styles.brandAvatarMore]}>
-                      <Ionicons
-                        name="chevron-down"
-                        size={20}
-                        color={theme.colors.text}
-                      />
-                    </View>
-                    <Text style={styles.brandName} numberOfLines={1}>
-                      {t("store.productDetailV2.moreBrands")}
-                    </Text>
-                  </Pressable>
-                }
-              />
-            </View>
-          )}
-
-          {/* ============ S2. 关联秀场 =============== */}
+          {/* ============ S1. 关联秀场 =============== */}
           {show && (
             <View
               style={styles.section}
@@ -1085,7 +1021,7 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ S3. 商品信息（detailRows 表格） =============== */}
+          {/* ============ S2. 商品信息（detailRows 表格） =============== */}
           <View style={styles.section} onLayout={handleSectionLayout("info")}>
             <Text style={styles.sectionTitle}>
               {t("store.productDetailV2.fieldsHeader")}
@@ -1102,7 +1038,7 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* ============ S4. 商品描述 =============== */}
+          {/* ============ S3. 商品描述 =============== */}
           {!!product.description && (
             <View
               style={styles.section}
@@ -1115,7 +1051,7 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ S5. 细节描述（photoAngles.extras 网格） =============== */}
+          {/* ============ S4. 细节描述（photoAngles.extras 网格） =============== */}
           {detailImages.length > 0 && (
             <View
               style={styles.section}
@@ -1162,7 +1098,7 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ S6. 卖家信息 + stats =============== */}
+          {/* ============ S5. 卖家信息 + stats =============== */}
           {seller && (
             <View
               style={styles.section}
@@ -1228,6 +1164,70 @@ const StoreProductDetailScreen: React.FC = () => {
                   />
                 </HStack>
               </Pressable>
+            </View>
+          )}
+
+          {/* ============ S6. 关联品牌 =============== */}
+          {relatedBrands.length > 0 && (
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("brands")}
+            >
+              <Text style={styles.sectionTitle}>
+                {t("store.productDetailV2.relatedBrandsTitle")}
+              </Text>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={relatedBrands}
+                keyExtractor={(b) => `brand-${b.name}`}
+                contentContainerStyle={styles.brandsRow}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={styles.brandItem}
+                    onPress={() =>
+                      navigation.navigate("BrandDetail", { name: item.name })
+                    }
+                  >
+                    <View style={styles.brandAvatarWrap}>
+                      {item.imageUrl ? (
+                        <OptimizedImage
+                          uri={item.imageUrl}
+                          size={ImageSize.THUMBNAIL}
+                          style={styles.brandAvatar}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <Text style={styles.brandAvatarLetter}>
+                          {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.brandName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                  </Pressable>
+                )}
+                ListFooterComponent={
+                  <Pressable
+                    style={styles.brandItem}
+                    onPress={() =>
+                      navigation.navigate("Main", { screen: "Archive" })
+                    }
+                  >
+                    <View style={[styles.brandAvatarWrap, styles.brandAvatarMore]}>
+                      <Ionicons
+                        name="chevron-down"
+                        size={20}
+                        color={theme.colors.text}
+                      />
+                    </View>
+                    <Text style={styles.brandName} numberOfLines={1}>
+                      {t("store.productDetailV2.moreBrands")}
+                    </Text>
+                  </Pressable>
+                }
+              />
             </View>
           )}
 

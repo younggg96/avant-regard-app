@@ -19,6 +19,31 @@ export async function contactSupportForOrder(
   );
 }
 
+/** 常见售后问题 key，与后端 `AFTERSALES_ISSUE_TEMPLATES` 保持一一对应。 */
+export type AftersalesIssue =
+  | "no_logistics_update"
+  | "delivered_not_received"
+  | "quality_issue"
+  | "listing_delisted";
+
+/**
+ * 订单详情底部「售后」入口：选了一个常见问题后调用此 API。
+ * 后端会在订单卡片之后再推一条文本，把诉求一并交给客服，避免多次问答。
+ */
+export async function contactSupportForOrderWithIssue(
+  orderId: number,
+  issue: AftersalesIssue,
+): Promise<{ conversationId: number; csUserId: number; issue?: AftersalesIssue }> {
+  return request<{
+    conversationId: number;
+    csUserId: number;
+    issue?: AftersalesIssue;
+  }>(`/api/trading-support/contact-order/${orderId}/aftersales`, {
+    method: "POST",
+    body: JSON.stringify({ issue }),
+  });
+}
+
 export async function contactSupportForListing(
   productId: number,
 ): Promise<{ conversationId: number; csUserId: number }> {

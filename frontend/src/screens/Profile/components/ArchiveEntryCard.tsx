@@ -56,7 +56,7 @@ export const ArchiveEntryCard: React.FC<Props> = ({ isOwnProfile }) => {
     >
       <HStack justifyContent="between" alignItems="center">
         <HStack space="xs" alignItems="center">
-          <Ionicons name="albums" size={13} color={theme.colors.text} />
+          <Ionicons name="albums-outline" size={13} color={theme.colors.text} />
           <Text style={styles.title}>{t("trading.archiveEntry.title")}</Text>
           {count > 0 ? (
             <Box style={styles.countBadge}>
@@ -119,8 +119,8 @@ const makeStyles = (t: AppTheme) =>
       letterSpacing: 0.3,
     },
     countBadge: {
-      minWidth: 16,
-      height: 16,
+      minWidth: 12,
+      height: 12,
       paddingHorizontal: 4,
       borderRadius: 8,
       backgroundColor: t.colors.accent,
@@ -130,7 +130,7 @@ const makeStyles = (t: AppTheme) =>
       marginLeft: 4,
     },
     countBadgeText: {
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: "700",
       color: t.colors.textInverted,
       lineHeight: 12,

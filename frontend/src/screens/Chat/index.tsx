@@ -343,6 +343,7 @@ const ChatScreen = () => {
 
         <SharePickerSheet
           visible={sharePickerOpen && !sendRestricted}
+          otherIsAdmin={otherIsAdmin}
           onSelect={handleSelectShareCategory}
         />
       </KeyboardAvoidingView>

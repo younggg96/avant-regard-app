@@ -417,6 +417,13 @@ const SettingsScreen = () => {
           onPress: () => (navigation as any).navigate("MyOffers"),
         },
         {
+          // PRD 补充：卖家钱包（销售款 / 提现 / 实名）
+          id: "myWallet",
+          label: t("trading.profile.walletEntry"),
+          icon: "wallet-outline",
+          onPress: () => (navigation as any).navigate("MyWallet"),
+        },
+        {
           // PRD 模块五：鉴定
           id: "authentication",
           label: t("settings.authentication"),

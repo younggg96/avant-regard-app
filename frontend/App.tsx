@@ -102,6 +102,15 @@ import MyOrdersScreen from "./src/screens/Trading/MyOrdersScreen";
 import MySalesScreen from "./src/screens/Trading/MySalesScreen";
 import OrderDetailScreen from "./src/screens/Trading/OrderDetailScreen";
 import MyOffersScreen from "./src/screens/Trading/MyOffersScreen";
+// 确认收货 / 结算 / 钱包 (PRD 补充)
+import ConfirmReceiptScreen from "./src/screens/Trading/ConfirmReceiptScreen";
+import SettlementResultScreen from "./src/screens/Trading/SettlementResultScreen";
+import MyWalletScreen from "./src/screens/Trading/MyWalletScreen";
+import WithdrawRequestScreen from "./src/screens/Trading/WithdrawRequestScreen";
+import WalletLedgerScreen from "./src/screens/Trading/WalletLedgerScreen";
+import WithdrawalHistoryScreen from "./src/screens/Trading/WithdrawalHistoryScreen";
+import KycVerificationScreen from "./src/screens/Trading/KycVerificationScreen";
+import PayoutAccountsScreen from "./src/screens/Trading/PayoutAccountsScreen";
 // Aftersales (PRD Phase 5) Screens
 import DisputeOpenScreen from "./src/screens/Trading/DisputeOpenScreen";
 import AuthenticationScreen from "./src/screens/Trading/AuthenticationScreen";
@@ -967,6 +976,47 @@ function AppNavigator({
         <Stack.Screen
           name="MyOffers"
           component={MyOffersScreen}
+          options={{ headerShown: false }}
+        />
+        {/* 确认收货 / 结算 / 钱包 */}
+        <Stack.Screen
+          name="ConfirmReceipt"
+          component={ConfirmReceiptScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SettlementResult"
+          component={SettlementResultScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MyWallet"
+          component={MyWalletScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="WithdrawRequest"
+          component={WithdrawRequestScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="WalletLedger"
+          component={WalletLedgerScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="WithdrawalHistory"
+          component={WithdrawalHistoryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="KycVerification"
+          component={KycVerificationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PayoutAccounts"
+          component={PayoutAccountsScreen}
           options={{ headerShown: false }}
         />
         {/* PRD Phase 5 · 售后 / 鉴定 / 双盲互评 */}
