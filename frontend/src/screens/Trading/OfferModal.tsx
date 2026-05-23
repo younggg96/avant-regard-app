@@ -22,21 +22,29 @@ import {
   Pressable,
 } from "../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
-import { createOffer } from "../../services/orderService";
+import { createOffer, counterOffer } from "../../services/orderService";
 import { formatPrice } from "../../services/storeProductService";
+
+type Mode = "create" | "counter";
 
 interface Props {
   visible: boolean;
+  mode?: Mode;
   productId: number;
   listingPriceCents: number;
+  offerId?: number;
+  referencePriceCents?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 const OfferModal: React.FC<Props> = ({
   visible,
+  mode = "create",
   productId,
   listingPriceCents,
+  offerId,
+  referencePriceCents,
   onClose,
   onSuccess,
 }) => {
@@ -56,18 +64,26 @@ const OfferModal: React.FC<Props> = ({
       return;
     }
     const cents = Math.round(yuan * 100);
-    if (cents >= listingPriceCents) {
+    if (mode === "create" && cents >= listingPriceCents) {
       setErrorMsg(t("trading.offer.aboveListing"));
       return;
     }
     setErrorMsg(null);
     setLoading(true);
     try {
-      await createOffer({
-        productId,
-        priceCents: cents,
-        message: message.trim() || undefined,
-      });
+      if (mode === "counter") {
+        if (!offerId) throw new Error("offerId required");
+        await counterOffer(offerId, {
+          priceCents: cents,
+          message: message.trim() || undefined,
+        });
+      } else {
+        await createOffer({
+          productId,
+          priceCents: cents,
+          message: message.trim() || undefined,
+        });
+      }
       setPriceText("");
       setMessage("");
       onSuccess();
@@ -78,6 +94,21 @@ const OfferModal: React.FC<Props> = ({
     }
   };
 
+  const title =
+    mode === "counter"
+      ? t("trading.offer.counterTitle")
+      : t("trading.offer.title");
+  const subtitle =
+    mode === "counter"
+      ? t("trading.offer.counterSubtitle", {
+          price: formatPrice(referencePriceCents ?? listingPriceCents),
+        })
+      : t("trading.offer.subtitle", { price: formatPrice(listingPriceCents) });
+  const submitLabel =
+    mode === "counter"
+      ? t("trading.offer.submitCounter")
+      : t("trading.offer.submit");
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <KeyboardAvoidingView
@@ -87,12 +118,8 @@ const OfferModal: React.FC<Props> = ({
         <Pressable style={styles.backdropPress} onPress={onClose} />
         <Box style={styles.sheet}>
           <Box style={styles.handle} />
-          <Text style={styles.title}>{t("trading.offer.title")}</Text>
-          <Text style={styles.subtitle}>
-            {t("trading.offer.subtitle", {
-              price: formatPrice(listingPriceCents),
-            })}
-          </Text>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
 
           <HStack style={styles.inputRow} alignItems="center">
             <Text style={styles.currency}>¥</Text>
@@ -131,9 +158,7 @@ const OfferModal: React.FC<Props> = ({
               {loading ? (
                 <ActivityIndicator color={theme.colors.textInverted} />
               ) : (
-                <Text style={styles.primaryBtnText}>
-                  {t("trading.offer.submit")}
-                </Text>
+                <Text style={styles.primaryBtnText}>{submitLabel}</Text>
               )}
             </Pressable>
           </HStack>

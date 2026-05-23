@@ -87,6 +87,32 @@ export interface Offer {
   createdAt?: string | null;
 }
 
+export interface OfferProductBrief {
+  productId: number;
+  title?: string | null;
+  brand?: string | null;
+  priceCents?: number | null;
+  currency?: string | null;
+  coverImage?: string | null;
+}
+
+export interface OfferUserBrief {
+  userId: number;
+  username?: string | null;
+  avatarUrl?: string | null;
+}
+
+export type OfferAction = "accept" | "reject" | "counter" | "withdraw";
+
+export interface OfferWithDetail extends Offer {
+  product?: OfferProductBrief | null;
+  buyer?: OfferUserBrief | null;
+  seller?: OfferUserBrief | null;
+  initiatorRole?: "buyer" | "seller";
+  responderRole?: "buyer" | "seller";
+  allowedActions?: OfferAction[];
+}
+
 // ---------------- Orders ----------------
 
 export async function buyNow(
@@ -207,12 +233,12 @@ export async function listMyOffers(params: {
   status?: OfferStatus;
   page?: number;
   pageSize?: number;
-}): Promise<{ items: Offer[]; total: number }> {
+}): Promise<{ items: OfferWithDetail[]; total: number }> {
   const q = new URLSearchParams();
   if (params.status) q.append("status", params.status);
   if (params.page) q.append("page", String(params.page));
   if (params.pageSize) q.append("pageSize", String(params.pageSize));
-  return request<{ items: Offer[]; total: number }>(
+  return request<{ items: OfferWithDetail[]; total: number }>(
     `/api/offers/me?${q.toString()}`,
   );
 }
@@ -221,12 +247,12 @@ export async function listIncomingOffers(params: {
   status?: OfferStatus;
   page?: number;
   pageSize?: number;
-}): Promise<{ items: Offer[]; total: number }> {
+}): Promise<{ items: OfferWithDetail[]; total: number }> {
   const q = new URLSearchParams();
   if (params.status) q.append("status", params.status);
   if (params.page) q.append("page", String(params.page));
   if (params.pageSize) q.append("pageSize", String(params.pageSize));
-  return request<{ items: Offer[]; total: number }>(
+  return request<{ items: OfferWithDetail[]; total: number }>(
     `/api/offers/me/incoming?${q.toString()}`,
   );
 }

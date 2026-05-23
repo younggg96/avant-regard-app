@@ -2895,10 +2895,13 @@
     "offer": {
       "title": "Make An Offer",
       "subtitle": "Listing {{price}} · expires in 24h if the seller doesn't reply",
+      "counterTitle": "Counter Offer",
+      "counterSubtitle": "Last offer {{price}} · expires in 24h if not answered",
       "inputPlaceholder": "Enter offer",
       "messagePlaceholder": "Message (optional)",
       "cancel": "Cancel",
       "submit": "Send Offer",
+      "submitCounter": "Send Counter",
       "invalidAmount": "Please enter a valid amount",
       "aboveListing": "Offers must be below list price — use Buy now to pay full price.",
       "failed": "Offer failed"
@@ -3052,14 +3055,23 @@
       "empty": "No offers yet",
       "reject": "Decline",
       "accept": "Accept",
+      "counter": "Counter",
       "withdraw": "Withdraw",
       "productLabel": "Item #{{id}}",
+      "listingPriceLabel": "Listing",
+      "offerPriceLabel": "Current offer",
+      "counterBadge": "Countered",
       "actionFailed": "Operation failed",
       "expiresAt": "Expires {{date}}",
       "acceptedTitle": "Accepted",
       "acceptedMessage": "An order has been created for the buyer",
       "viewOrder": "View order",
-      "failedTitle": "Failed"
+      "failedTitle": "Failed",
+      "filter": {
+        "all": "All",
+        "pending": "Pending",
+        "processed": "Processed"
+      }
     },
     "authentication": {
       "headerTitle": "Authentication",

@@ -2895,10 +2895,13 @@
     "offer": {
       "title": "向卖家出价",
       "subtitle": "挂牌价 {{price}} · 24 小时内卖家未回应自动过期",
+      "counterTitle": "还价",
+      "counterSubtitle": "上次出价 {{price}} · 24 小时内对方未回应自动过期",
       "inputPlaceholder": "输入出价",
       "messagePlaceholder": "留言（可选）",
       "cancel": "取消",
       "submit": "发送出价",
+      "submitCounter": "发送还价",
       "invalidAmount": "请输入有效金额",
       "aboveListing": "出价应低于挂牌价，否则请直接立即购买",
       "failed": "出价失败"
@@ -3052,14 +3055,23 @@
       "empty": "暂无出价",
       "reject": "拒绝",
       "accept": "接受",
+      "counter": "还价",
       "withdraw": "撤回",
       "productLabel": "单品 #{{id}}",
+      "listingPriceLabel": "挂牌价",
+      "offerPriceLabel": "当前出价",
+      "counterBadge": "还价中",
       "actionFailed": "操作失败",
       "expiresAt": "到期 {{date}}",
       "acceptedTitle": "已接受",
       "acceptedMessage": "已为买家生成订单",
       "viewOrder": "查看订单",
-      "failedTitle": "失败"
+      "failedTitle": "失败",
+      "filter": {
+        "all": "全部",
+        "pending": "待响应",
+        "processed": "已处理"
+      }
     },
     "authentication": {
       "headerTitle": "正品鉴定",

@@ -48,6 +48,14 @@ export interface OfferCard {
   priceCents: number;
   status: OfferStatus;
   expiresAt?: string;
+  parentOfferId?: number | null;
+  product?: {
+    productId: number;
+    title?: string | null;
+    brand?: string | null;
+    priceCents?: number | null;
+    coverImage?: string | null;
+  } | null;
 }
 
 export interface OrderStatusCard {
@@ -170,6 +178,7 @@ export function OfferCardView({
 }) {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  const isCounter = (data.parentOfferId ?? null) !== null;
   return (
     <TouchableOpacity
       style={[
@@ -185,9 +194,32 @@ export function OfferCardView({
           size={18}
           color={theme.colors.text}
         />
-        <Text style={styles.headerLabel}>出价 #{data.offerId}</Text>
+        <Text style={styles.headerLabel}>
+          {isCounter ? "还价" : "出价"} #{data.offerId}
+        </Text>
         <Text style={styles.statusPill}>{formatOfferStatus(data.status)}</Text>
       </View>
+      {data.product ? (
+        <View style={styles.productLine}>
+          {data.product.coverImage ? (
+            <Image
+              source={{ uri: data.product.coverImage }}
+              style={styles.miniThumb}
+            />
+          ) : (
+            <View style={[styles.miniThumb, styles.thumbPlaceholder]}>
+              <Ionicons
+                name="image-outline"
+                size={14}
+                color={theme.colors.gray300}
+              />
+            </View>
+          )}
+          <Text style={styles.miniTitle} numberOfLines={1}>
+            {data.product.title ?? `#${data.productId}`}
+          </Text>
+        </View>
+      ) : null}
       <Text style={styles.bigPrice}>{formatPrice(data.priceCents)}</Text>
       {data.expiresAt ? (
         <Text style={styles.muted}>
@@ -325,4 +357,15 @@ const makeStyles = (t: AppTheme) =>
       fontWeight: "600",
     },
     statusPill: { fontSize: 11, color: t.colors.gray300 },
+    productLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 6,
+      paddingTop: 6,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    miniThumb: { width: 24, height: 24, borderRadius: 4 },
+    miniTitle: { flex: 1, fontSize: 12, color: t.colors.gray400 },
   });

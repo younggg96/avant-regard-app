@@ -282,10 +282,10 @@ async def list_my_offers(
     pageSize: int = 20,
     user_id: int = Depends(get_current_user),
 ):
-    offers, total = offer_service.list_for_user(
+    items, total = offer_service.list_for_user_enriched(
         user_id, role="buyer", status=status, page=page, page_size=pageSize
     )
-    return success({"items": [o.dict() for o in offers], "total": total})
+    return success({"items": items, "total": total})
 
 
 @offers_router.get("/me/incoming")
@@ -295,10 +295,10 @@ async def list_incoming_offers(
     pageSize: int = 20,
     user_id: int = Depends(get_current_user),
 ):
-    offers, total = offer_service.list_for_user(
+    items, total = offer_service.list_for_user_enriched(
         user_id, role="seller", status=status, page=page, page_size=pageSize
     )
-    return success({"items": [o.dict() for o in offers], "total": total})
+    return success({"items": items, "total": total})
 
 
 # --------------- Admin / 调度器 ---------------
