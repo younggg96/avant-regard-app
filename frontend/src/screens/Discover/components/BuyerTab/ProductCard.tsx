@@ -1,18 +1,16 @@
 /**
  * 单品卡片：图片 + 角标 + 标题 + 店铺名 + 价格 + 心形收藏按钮。
  *
- * 设计稿价格有 `¥ 5,890`、`¥ 3,290` 等，这里用 `Intl.NumberFormat` 统一千分位，
- * 避免手写字符串拼出错。角标颜色按 BADGE 区分：
+ * 价格展示走 `useFormatPrice()`：
+ *   - 源币种来自后端 `store_products.currency`（默认 CNY，少量 USD 商品）；
+ *   - 展示币种由 `useCurrencyStore` 决定（用户在 Settings 里选过 → 用选择值；
+ *     未选过 → 按 locale，zh* → CNY，其它 → USD），切换后整页自动 rerender；
+ *   - 整数元金额走千分位（"¥ 5,890"），带小数固定 2 位（"$ 58.90"）。
+ *
+ * 角标颜色按 BADGE 区分：
  *   - NEW   → 白底黑字（简洁）
  *   - SALE  → 黑底白字（促销）
  *   - EVENT → 深米色（活动感）
- *
- * Phase 4 接入真实后端商品后：
- *   - 金额单位改为"分"（`priceCents` / `discountPriceCents`），和
- *     `store_products.price_cents` 一致；
- *   - 折扣商品：折扣价加粗醒目，原价以 strike-through 小字展示；
- *   - 整数元金额用千分位（"¥ 5,890"）；带小数时固定 2 位（"¥ 58.90"）
- *     —— 两种格式切换对消费者信任感更好。
  */
 import React, { useMemo } from "react";
 import { StyleSheet } from "react-native";
@@ -21,6 +19,7 @@ import { Box, HStack, Pressable, Text } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../../theme";
+import { useFormatPrice } from "../../../../utils/currency";
 import { BuyerStoreProduct, ProductBadge } from "./types";
 import { PLAYFAIR } from "./playfair";
 
@@ -32,21 +31,6 @@ interface ProductCardProps {
   onFavoriteToggle: (productId: string) => void;
 }
 
-const PRICE_FORMATTER = new Intl.NumberFormat("zh-CN");
-
-/**
- * 把"分"金额格式化成展示字符串：
- *   - 整数元：千分位（`¥ 5,890`）
- *   - 含小数：固定 2 位（`¥ 58.90`）
- */
-const formatPriceCents = (cents: number): string => {
-  if (cents == null || Number.isNaN(cents)) return "";
-  if (cents % 100 === 0) {
-    return `¥ ${PRICE_FORMATTER.format(Math.round(cents / 100))}`;
-  }
-  return `¥ ${(cents / 100).toFixed(2)}`;
-};
-
 const ProductCardImpl: React.FC<ProductCardProps> = ({
   product,
   storeName,
@@ -56,6 +40,10 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+  // 注意：BuyerStoreProduct 当前还没有透传后端的 currency 字段，先按 CNY 兜底；
+  // 后续把 currency 串到 view model 后改成 product.currency 即可，无需改组件逻辑。
+  const formatPrice = useFormatPrice();
+  const formatPriceCents = (cents: number) => formatPrice(cents, "CNY");
   // BADGE_STYLE must be recomputed per render so the badge colors stay
   // theme-reactive (the legacy module-scope object captured frozen colors at
   // load time). `theme.colors.white` and `theme.colors.black` auto-invert

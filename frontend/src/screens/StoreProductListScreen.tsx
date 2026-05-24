@@ -58,8 +58,8 @@ import {
   getStoreProductCategories,
   StoreProduct,
   StoreProductCategory,
-  formatPrice,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 import { SCREEN_WIDTH } from "./Discover/constants";
 import { useTranslation } from "react-i18next";
 
@@ -121,6 +121,8 @@ const StoreProductListScreen: React.FC = () => {
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
+  // 价格根据用户偏好币种展示；切换时整列表自动 rerender。
+  const formatPrice = useFormatPrice();
   const {
     storeId,
     storeName,

@@ -12,6 +12,7 @@ from app.schemas.user import (
     UpdatePrivacySettingsRequest,
     UpdateLanguageRequest,
     UpdateThemeRequest,
+    UpdateCurrencyRequest,
 )
 from app.services.user_service import user_service
 from app.services.file_service import file_service
@@ -250,6 +251,22 @@ async def update_theme_preference(
         raise HTTPException(status_code=403, detail="无权修改其他用户设置")
 
     result = user_service.update_theme_preference(user_id, request.theme.value)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result.model_dump())
+
+
+@router.put("/{user_id}/currency")
+async def update_currency_preference(
+    user_id: int,
+    request: UpdateCurrencyRequest,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """更新用户展示币种偏好（CNY / USD）"""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="无权修改其他用户设置")
+
+    result = user_service.update_currency_preference(user_id, request.currency.value)
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(result.model_dump())

@@ -88,6 +88,7 @@ class UserService:
             primaryTitle=primary_title,
             preferredLanguage=info.get("preferred_language"),
             preferredTheme=info.get("preferred_theme", "system"),
+            preferredCurrency=info.get("preferred_currency"),
         )
 
     def update_user_info(self, user_id: int, **kwargs) -> Optional[UserInfo]:
@@ -348,6 +349,7 @@ class UserService:
                 primaryTitle=self._get_primary_title(user_id),
                 preferredLanguage=info.get("preferred_language"),
                 preferredTheme=info.get("preferred_theme", "system"),
+                preferredCurrency=info.get("preferred_currency"),
             )
         else:
             return UserInfo(
@@ -450,6 +452,26 @@ class UserService:
         if not info_result.data:
             return None
         self.db.table("user_info").update({"preferred_theme": theme}).eq("user_id", user_id).execute()
+        return self.get_user_info(user_id)
+
+    def update_currency_preference(
+        self, user_id: int, currency: str
+    ) -> Optional[UserInfo]:
+        """更新用户展示币种偏好。
+
+        和 update_theme_preference 对称：仅在 user_info 行存在时才更新；
+        若数据库 CHECK 约束尚未应用（旧环境），这里也做一次入参校验兜底。
+        """
+        if currency not in ("CNY", "USD"):
+            return None
+        info_result = (
+            self.db.table("user_info").select("id").eq("user_id", user_id).execute()
+        )
+        if not info_result.data:
+            return None
+        self.db.table("user_info").update(
+            {"preferred_currency": currency}
+        ).eq("user_id", user_id).execute()
         return self.get_user_info(user_id)
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:

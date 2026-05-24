@@ -23,6 +23,11 @@ import { request } from "./http";
  *
  * 单位符号映射参考 `backend/app/schemas/store_product.py` 中 `currency` 字段，
  * 目前支持 CNY / USD。
+ *
+ * ⚠️ 这个函数按"源币种"原样展示，不会做汇率换算。如果想跟着用户
+ * `preferred_currency` 偏好走（在 Settings → 币种 中切换），请改用
+ * `useFormatPrice()`（src/utils/currency.ts）。新代码请优先用 hook 版本；
+ * 这里保留是为了不一次性改掉 30+ 调用点。
  */
 export const formatPrice = (
   priceCents: number | null | undefined,

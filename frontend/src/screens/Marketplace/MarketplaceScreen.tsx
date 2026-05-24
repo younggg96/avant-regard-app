@@ -26,11 +26,11 @@ import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import ScreenHeader from "../../components/ScreenHeader";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import {
-  formatPrice,
   searchMarketplace,
   type MarketplaceFilter,
   type StoreProduct,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import MarketplaceFilterSheet from "./MarketplaceFilterSheet";
 
 const SCREEN_W = Dimensions.get("window").width;
@@ -45,6 +45,8 @@ const MarketplaceScreen: React.FC = () => {
   const [keyword, setKeyword] = useState("");
   const [filter, setFilter] = useState<MarketplaceFilter>({ sort: "newest" });
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
+  // 价格按用户在 Settings → 币种 中选择的偏好展示；切换后整页自动 rerender。
+  const formatPrice = useFormatPrice();
 
   const [items, setItems] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(false);

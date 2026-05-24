@@ -29,6 +29,8 @@ export interface UserInfo {
   primaryTitle?: string;
   preferredLanguage?: string;
   preferredTheme?: "system" | "light" | "dark";
+  /** 用户展示币种偏好；后端 NULL 表示未显式选过，前端会按 locale 自动决定默认值。 */
+  preferredCurrency?: "CNY" | "USD" | null;
 }
 
 // 用户完整资料类型（包含性别、年龄、偏好等）
@@ -446,6 +448,20 @@ export async function updateThemePreference(
 }
 
 /**
+ * 更新用户展示币种偏好
+ * PUT /api/user-info/{userId}/currency
+ */
+export async function updateCurrencyPreference(
+  userId: number,
+  currency: "CNY" | "USD"
+): Promise<UserInfo> {
+  return request<UserInfo>(`/api/user-info/${userId}/currency`, {
+    method: "PUT",
+    body: JSON.stringify({ currency }),
+  });
+}
+
+/**
  * Self-service account deletion (Apple Guideline 5.1.1(v))
  * DELETE /api/user-info/{userId}/account
  */
@@ -516,6 +532,7 @@ export const userInfoService = {
   setPrimaryTitle,
   clearPrimaryTitle,
   updateThemePreference,
+  updateCurrencyPreference,
 };
 
 export default userInfoService;

@@ -31,6 +31,8 @@ import { OptimizedImage } from "./ui/OptimizedImage";
 import { useThemedStyles, useAppTheme, type AppTheme } from "../theme";
 import { searchBrands, type Brand } from "../services/brandService";
 import { getSupportContact, type SupportContactInfo } from "../services/storeProductService";
+import { contactSupportGeneral } from "../services/aftersalesService";
+import { sendMessageREST } from "../services/chatService";
 import { getCustomerServiceChatParams } from "../utils/chatNavigationUtils";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -83,7 +85,7 @@ const BrandSearchSheet: React.FC<BrandSearchSheetProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="fade"
       transparent
       onRequestClose={onClose}
     >
@@ -286,13 +288,9 @@ export const ContactSupportInline: React.FC<ContactSupportInlineProps> = ({
     if (!finalText || submitting) return;
     setSubmitting(true);
     try {
-      const { contactSupportGeneral } = await import(
-        "../services/aftersalesService"
-      );
       const res = await contactSupportGeneral();
 
       try {
-        const { sendMessageREST } = await import("../services/chatService");
         await sendMessageREST(res.conversationId, finalText, "text");
       } catch (sendErr) {
         console.warn("[brand-sheet] seed intro message failed", sendErr);

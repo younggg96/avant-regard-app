@@ -53,13 +53,13 @@ import { ImageSize } from "../utils/imageUtils";
 import { useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { Alert } from "../utils/Alert";
+import { useFormatPrice } from "../utils/currency";
 import {
   checkStoreProductFavorited,
   checkStoreProductLiked,
   checkStoreProductWanted,
   createStoreProductComment,
   deleteStoreProductComment,
-  formatPrice,
   getStoreProductComments,
   getStoreProductRichDetail,
   likeStoreProduct,
@@ -131,6 +131,8 @@ const StoreProductDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const { productId } = route.params ?? ({} as RouteParams);
   const currentUser = useAuthStore((s) => s.user);
+  // 价格走用户偏好币种（preferred_currency）；切换时整页 rerender。
+  const formatPrice = useFormatPrice();
 
   // ---------------------- 商品主体 + 富数据 -------------------------------
   const [richDetail, setRichDetail] = useState<StoreProductRichDetail | null>(
@@ -1661,6 +1663,7 @@ const RelatedProductCard: React.FC<{
   const styles = useThemedStyles(makeStyles);
   const conditionLabel = product.condition ? conditionToLabelKey(product.condition) : null;
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   return (
     <TouchableOpacity
       style={[styles.relatedCard, { width: RELATED_CARD_W }]}

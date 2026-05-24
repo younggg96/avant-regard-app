@@ -37,9 +37,11 @@ CREATE TABLE IF NOT EXISTS user_info (
     preference TEXT DEFAULT '',
     preferred_language VARCHAR(10) DEFAULT NULL,
     preferred_theme VARCHAR(10) DEFAULT 'system',
+    preferred_currency VARCHAR(8) DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark'))
+    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark')),
+    CONSTRAINT user_info_preferred_currency_check CHECK (preferred_currency IS NULL OR preferred_currency IN ('CNY', 'USD'))
 );
 
 -- 注意：短信验证码和令牌由 Supabase Auth 管理，不需要单独的表

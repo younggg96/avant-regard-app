@@ -18,6 +18,18 @@ class ThemePreference(str, Enum):
     DARK = "dark"
 
 
+class CurrencyPreference(str, Enum):
+    """用户展示币种偏好。
+
+    后端只透传字符串值；具体符号 / 千分位 / 是否走汇率换算由前端决定。
+    数据库 NULL 表示「未显式选择」—— 前端会按 locale 自动决定默认值
+    （zh* → CNY，其余 → USD）。
+    """
+
+    CNY = "CNY"
+    USD = "USD"
+
+
 class UserInfo(BaseModel):
     """用户信息"""
     userId: int
@@ -30,6 +42,7 @@ class UserInfo(BaseModel):
     primaryTitle: Optional[str] = None
     preferredLanguage: Optional[str] = None
     preferredTheme: ThemePreference = ThemePreference.SYSTEM
+    preferredCurrency: Optional[CurrencyPreference] = None
 
 
 class UserProfileInfo(BaseModel):
@@ -99,3 +112,8 @@ class UpdateLanguageRequest(BaseModel):
 class UpdateThemeRequest(BaseModel):
     """更新主题偏好请求"""
     theme: ThemePreference
+
+
+class UpdateCurrencyRequest(BaseModel):
+    """更新展示币种偏好请求"""
+    currency: CurrencyPreference

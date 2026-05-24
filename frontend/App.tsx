@@ -178,6 +178,7 @@ import {
 
 // Store
 import { useAuthStore } from "./src/store/authStore";
+import { useCurrencyStore } from "./src/store/currencyStore";
 
 // Providers
 import { ToastProvider } from "./src/components/ToastProvider";
@@ -426,6 +427,9 @@ function AppNavigator({
     } else {
       resetChat();
       resetNotifications();
+      // 共用设备场景下，把币种偏好回退到 locale 默认；下个登录用户的服务器值
+      // 才能正常 hydrate 过来（hydrateFromServer 仅在本地为 null 时回填）。
+      useCurrencyStore.getState().reset();
     }
     return () => disconnectWebSocket();
   }, [isAuthenticated]);
@@ -1294,6 +1298,11 @@ export default function App() {
         ) {
           updateUser({ preferredTheme: info.preferredTheme });
         }
+        // 顺便同步服务器存的展示币种偏好；仅在本地"未显式选过"时回填，
+        // 避免用户刚在前台切完币种就被服务器旧值覆盖。
+        useCurrencyStore
+          .getState()
+          .hydrateFromServer(info.preferredCurrency ?? null);
       })
       .catch((error) => {
         console.log("Failed to sync theme preference:", error);

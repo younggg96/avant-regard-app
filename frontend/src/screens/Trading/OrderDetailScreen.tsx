@@ -1010,7 +1010,7 @@ function ShipModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal visible={visible} transparent animationType="fade">
       <KeyboardAvoidingView
         style={styles.modalBackdrop}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

@@ -27,6 +27,11 @@ import {
 } from "./Auth/components";
 import { setStoredLanguage, type SupportedLanguage } from "../i18n";
 import {
+  useCurrency,
+  useCurrencyStore,
+  type CurrencyPreference,
+} from "../store/currencyStore";
+import {
   Box,
   Text,
   ScrollView,
@@ -68,8 +73,12 @@ const SettingsScreen = () => {
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const currentLang = (i18n.language?.startsWith("zh") ? "zh" : "en") as SupportedLanguage;
   const localLangChangeRef = useRef(false);
+  // 当前生效币种（preference 优先；为空时回落到 locale 默认）；setter 写入 zustand。
+  const { currency: currentCurrency, setPreference: setCurrencyPreference } =
+    useCurrency();
 
   const handleLanguageChange = async (lang: SupportedLanguage) => {
     localLangChangeRef.current = true;
@@ -112,6 +121,10 @@ const SettingsScreen = () => {
         setThemePreference(info.preferredTheme);
         updateUser({ preferredTheme: info.preferredTheme });
       }
+      // 顺手把服务器存的币种偏好兜底回填到本地（仅在本地从未显式选过时）。
+      if (info.preferredCurrency === "CNY" || info.preferredCurrency === "USD") {
+        useCurrencyStore.getState().hydrateFromServer(info.preferredCurrency);
+      }
     } catch (error) {
       console.error("Error syncing language preference:", error);
     }
@@ -147,6 +160,25 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error("Error saving theme preference:", error);
       Alert.show(t("settings.themeSaveFailed"));
+    }
+  };
+
+  const getCurrencyOptionLabel = (cur: CurrencyPreference) =>
+    cur === "CNY"
+      ? t("settings.currencyCnyLabel")
+      : t("settings.currencyUsdLabel");
+
+  const handleCurrencyChange = async (nextCurrency: CurrencyPreference) => {
+    // 本地切换是即时的——zustand 一更新所有 useCurrency() 订阅者都会 rerender，
+    // 离线 / 未登录场景下也能立即生效。
+    setCurrencyPreference(nextCurrency);
+    setShowCurrencyModal(false);
+    if (!user?.userId) return;
+    try {
+      await userInfoService.updateCurrencyPreference(user.userId, nextCurrency);
+    } catch (error) {
+      console.error("Error saving currency preference:", error);
+      Alert.show(t("settings.currencySaveFailed"));
     }
   };
 
@@ -270,6 +302,13 @@ const SettingsScreen = () => {
       id: "shopping",
       title: t("settings.shopping"),
       items: [
+        {
+          id: "currency",
+          label: t("settings.currency"),
+          icon: "cash-outline",
+          onPress: () => setShowCurrencyModal(true),
+          rightText: currentCurrency === "CNY" ? "¥ CNY" : "$ USD",
+        },
         {
           id: "myOrders",
           label: t("settings.myOrders"),
@@ -630,6 +669,59 @@ const SettingsScreen = () => {
               </Text>
               {themePreference === option && (
                 <Ionicons name="checkmark" size={20} color={activeTheme.colors.accent} />
+              )}
+            </Pressable>
+          ))}
+        </VStack>
+      </ActionSheet>
+
+      {/* Currency selector */}
+      <ActionSheet
+        visible={showCurrencyModal}
+        onClose={() => setShowCurrencyModal(false)}
+      >
+        <VStack style={{ padding: 24 }} space="sm">
+          <Text
+            style={[
+              styles.dialogTitle,
+              { marginBottom: 4, color: activeTheme.colors.text },
+            ]}
+          >
+            {t("settings.selectCurrency")}
+          </Text>
+          {(["CNY", "USD"] as CurrencyPreference[]).map((option) => (
+            <Pressable
+              key={option}
+              onPress={() => handleCurrencyChange(option)}
+              style={[
+                styles.languageOption,
+                {
+                  borderColor:
+                    currentCurrency === option
+                      ? activeTheme.colors.accent
+                      : activeTheme.colors.gray200,
+                  backgroundColor:
+                    currentCurrency === option
+                      ? activeTheme.colors.gray100
+                      : activeTheme.colors.card,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: activeTheme.colors.text,
+                  fontWeight: currentCurrency === option ? "600" : "400",
+                }}
+              >
+                {getCurrencyOptionLabel(option)}
+              </Text>
+              {currentCurrency === option && (
+                <Ionicons
+                  name="checkmark"
+                  size={20}
+                  color={activeTheme.colors.accent}
+                />
               )}
             </Pressable>
           ))}

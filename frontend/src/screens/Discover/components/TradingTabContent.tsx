@@ -65,6 +65,7 @@ import MarketplaceChipSheet, {
 } from "../../Marketplace/MarketplaceChipSheet";
 import MarketplaceAllBrandsSheet from "../../Marketplace/MarketplaceAllBrandsSheet";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
+import { useFormatPrice } from "../../../utils/currency";
 
 // ====== 卡片尺寸 ======
 // 设计稿（PDF p.4 + 用户反馈 2026-05）参考点：
@@ -102,6 +103,14 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
+  // 用户偏好币种格式化器（整数 → 千分位无小数；带小数 → 固定 2 位）。
+  // 沿用本组件原本的"紧凑格式"语义，所以 trimZeroFraction: true。
+  const formatPrice = useFormatPrice();
+  const formatMarketplacePrice = useCallback(
+    (cents: number | null | undefined, currency?: string | null) =>
+      formatPrice(cents, currency, { trimZeroFraction: true }),
+    [formatPrice]
+  );
 
   // ====== State ======
   const [filter, setFilter] = useState<MarketplaceFilter>({ sort: "featured" });
@@ -330,6 +339,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
                 label={item.label}
                 isActive={isActiveChip}
                 borderless
+                size="md"
                 onPress={() => handleChipPress(item.id)}
                 count={
                   isFilter && activeFilterCount > 0 ? activeFilterCount : undefined
@@ -660,34 +670,6 @@ function formatRelativeTime(
   return t("trading.marketplace.timeAgoDay", { count: day });
 }
 
-// ---------------------------------------------------------------------------
-// 辅助：marketplace 用的紧凑价格格式（设计稿样式 "¥ 9,800"）
-// ---------------------------------------------------------------------------
-//   - 整数时不显示 .00；小数时保留 2 位
-//   - 带千分位
-//   - 与全局 formatPrice 区别：那个会一直追加 ".00"，对单品橱窗显示过于冗长
-function formatMarketplacePrice(
-  cents: number | null | undefined,
-  currency: string = "CNY",
-): string {
-  if (cents == null || Number.isNaN(cents)) return "";
-  const amount = cents / 100;
-  const isWhole = Math.abs(amount - Math.round(amount)) < 1e-9;
-  const formatted = isWhole
-    ? amount.toLocaleString("zh-CN")
-    : amount.toLocaleString("zh-CN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-  switch (currency) {
-    case "USD":
-      return `$ ${formatted}`;
-    case "JPY":
-      return `¥ ${Math.round(amount).toLocaleString()}`;
-    default:
-      return `¥ ${formatted}`;
-  }
-}
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({

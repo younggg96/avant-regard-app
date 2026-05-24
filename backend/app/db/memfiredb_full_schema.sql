@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS user_info (
     preference TEXT DEFAULT '',
     preferred_language VARCHAR(10) DEFAULT NULL,
     preferred_theme VARCHAR(10) DEFAULT 'system',
+    -- 用户级展示币种（071_add_preferred_currency）；NULL 让前端按 locale 自动决定。
+    preferred_currency VARCHAR(8) DEFAULT NULL,
     -- 隐私设置（016_user_privacy_settings）
     hide_following BOOLEAN DEFAULT FALSE,
     hide_followers BOOLEAN DEFAULT FALSE,
@@ -64,7 +66,8 @@ CREATE TABLE IF NOT EXISTS user_info (
     profile_completed BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark'))
+    CONSTRAINT user_info_preferred_theme_check CHECK (preferred_theme IN ('system', 'light', 'dark')),
+    CONSTRAINT user_info_preferred_currency_check CHECK (preferred_currency IS NULL OR preferred_currency IN ('CNY', 'USD'))
 );
 
 -- 用户推送 Token 表
