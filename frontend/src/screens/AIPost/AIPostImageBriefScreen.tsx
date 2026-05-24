@@ -29,9 +29,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 import {
+  AnimatedChip,
   Box,
   Button,
   ButtonText,
+  chipRowStyle,
   HStack,
   OptimizedImage,
   Pressable,
@@ -212,30 +214,16 @@ const AIPostImageBriefScreen: React.FC = () => {
             <Text fontSize="$xs" style={{ color: theme.colors.gray400 }} mb="$xs">
               {t("aiPost.imageBrief.chipLabel")}
             </Text>
-            <HStack flexWrap="wrap" gap="$xs">
-              {CHIPS.map((c) => {
-                const selected = c === chip;
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => setChip(c)}
-                    style={[{ backgroundColor: selected ? theme.colors.black : theme.colors.white }, { borderColor: selected ? theme.colors.black : theme.colors.gray100 }]}
-                    borderWidth={1}
-
-                    px="$sm"
-                    py={6}
-                    rounded={16}
-                  >
-                    <Text
-                      fontSize="$xs"
-                      style={{ color: selected ? theme.colors.white : theme.colors.gray500 }}
-                    >
-                      {t(`aiPost.imageBrief.chip.${c}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </HStack>
+            <View style={chipRowStyle}>
+              {CHIPS.map((c) => (
+                <AnimatedChip
+                  key={c}
+                  label={t(`aiPost.imageBrief.chip.${c}`)}
+                  isActive={c === chip}
+                  onPress={() => setChip(c)}
+                />
+              ))}
+            </View>
           </Box>
 
           {/* note */}

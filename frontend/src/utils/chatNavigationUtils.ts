@@ -11,6 +11,7 @@ export function getConversationChatParams(c: Conversation, t: TFunction) {
     otherUserName: isCs
       ? t("interaction.csDisplayName")
       : (c.otherUser?.username || t("chat.title")),
+    otherUserAvatar: c.otherUser?.avatarUrl ?? undefined,
     otherUserId,
   };
 }

@@ -40,7 +40,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
+import {
+  AnimatedChip,
+  Box,
+  chipRowStyle,
+  HStack,
+  Pressable,
+  Text,
+  VStack,
+} from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -373,20 +381,20 @@ const StoreProductListScreen: React.FC = () => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryBar}
+          contentContainerStyle={[chipRowStyle, styles.categoryBar]}
         >
-          <CategoryChip
+          <AnimatedChip
             label={t("common.all")}
-            active={activeCategoryId === ALL_CATEGORIES_SENTINEL}
+            isActive={activeCategoryId === ALL_CATEGORIES_SENTINEL}
             onPress={() => handleCategoryChange(ALL_CATEGORIES_SENTINEL)}
           />
           {categories.map((c) => (
-            <CategoryChip
+            <AnimatedChip
               key={c.id}
-              label={
-                c.productCount != null ? `${c.name} · ${c.productCount}` : c.name
-              }
-              active={activeCategoryId === c.id}
+              label={c.name}
+              count={c.productCount ?? undefined}
+              showZeroCount
+              isActive={activeCategoryId === c.id}
               onPress={() => handleCategoryChange(c.id)}
             />
           ))}
@@ -447,34 +455,6 @@ const StoreProductListScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-// ============================================================================
-// 分类 Chip
-// ============================================================================
-
-const CategoryChip: React.FC<{
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}> = React.memo(({ label, active, onPress }) => {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.categoryChip, active && styles.categoryChipActive]}
-    >
-      <Text
-        fontSize={12}
-        fontWeight={active ? "$semibold" : "$normal"}
-        style={[{ fontFamily: active ? playfairFonts.medium : playfairFonts.regular }, { color: active ? theme.colors.white : theme.colors.gray700 }]}
-
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-});
-CategoryChip.displayName = "CategoryChip";
 
 // ============================================================================
 // 单品卡片
@@ -606,17 +586,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   categoryBar: {
     paddingHorizontal: GRID_HORIZONTAL_PADDING,
     paddingBottom: 8,
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: t.colors.gray50,
-    marginRight: 8,
-  },
-  categoryChipActive: {
-    backgroundColor: t.colors.text,
+    flexWrap: "nowrap",
   },
   listContent: {
     paddingHorizontal: GRID_HORIZONTAL_PADDING,

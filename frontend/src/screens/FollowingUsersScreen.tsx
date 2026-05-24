@@ -19,6 +19,8 @@ import {
   VStack,
   HStack,
   OptimizedImage,
+  AnimatedChip,
+  chipRowStyle,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
@@ -333,23 +335,18 @@ const FollowingUsersScreen = () => {
 
       {/* Sub-tabs */}
       <View style={styles.tabRow}>
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <Pressable
+        <View style={chipRowStyle}>
+          {tabs.map((tab) => (
+            <AnimatedChip
               key={tab.id}
-              style={[styles.tabChip, isActive && styles.tabChipActive]}
+              label={tab.label}
+              count={tab.count}
+              showZeroCount
+              isActive={activeTab === tab.id}
               onPress={() => setActiveTab(tab.id)}
-            >
-              <RNText style={[styles.tabChipText, isActive && styles.tabChipTextActive]}>
-                {tab.label}
-              </RNText>
-              <RNText style={[styles.tabChipCount, isActive && styles.tabChipCountActive]}>
-                {tab.count}
-              </RNText>
-            </Pressable>
-          );
-        })}
+            />
+          ))}
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -453,43 +450,10 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
     },
     tabRow: {
-      flexDirection: "row",
       paddingHorizontal: 16,
       paddingVertical: 10,
-      gap: 8,
       borderBottomWidth: 1,
       borderBottomColor: t.colors.border,
-    },
-    tabChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 14,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: t.colors.card,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    tabChipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    tabChipText: {
-      fontSize: 13,
-      fontWeight: "500",
-      color: t.colors.gray600,
-    },
-    tabChipTextActive: {
-      color: t.colors.textInverted,
-    },
-    tabChipCount: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: t.colors.gray400,
-    },
-    tabChipCountActive: {
-      color: "rgba(255,255,255,0.7)",
     },
     searchContainer: {
       paddingHorizontal: 16,

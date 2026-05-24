@@ -10,7 +10,8 @@ const makeActivityStyles = (t: AppTheme) =>
     filterBar: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
-      gap: 8,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.sm,
     },
     row: {
       paddingHorizontal: t.spacing.md,
@@ -52,15 +53,6 @@ const makeActivityStyles = (t: AppTheme) =>
       position: "absolute",
       top: 16,
       right: t.spacing.md,
-    },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 4,
-      backgroundColor: t.colors.gray100,
-    },
-    chipActive: {
-      backgroundColor: t.colors.text,
     },
   });
 

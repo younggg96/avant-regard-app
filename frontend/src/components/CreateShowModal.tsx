@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
   Modal,
   Alert,
   ActivityIndicator,
@@ -14,12 +13,13 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import { showService, CreateShowParams } from "../services/showService";
-import { sharedStyles } from "../screens/admin/adminStyles";
+import { useSharedStyles } from "../screens/admin/adminStyles";
 import { pickAndUploadImage } from "../screens/admin/adminUtils";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { AnimatedChip, chipRowStyle, Input } from "./ui";
 
 const SEASONS = [
   "Spring/Summer", "Fall/Winter", "Autumn/Winter",
@@ -41,6 +41,9 @@ interface Props {
 
 const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
   const { t } = useTranslation();
+  const theme = useAppTheme();
+  const sharedStyles = useSharedStyles();
+  const styles = useThemedStyles(makeStyles);
   const [title, setTitle] = useState("");
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [season, setSeason] = useState("");
@@ -50,7 +53,6 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
   const [coverImage, setCoverImage] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const styles = useThemedStyles(makeStyles);
 
   const resetForm = () => {
     setTitle("");
@@ -133,11 +135,14 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={[sharedStyles.modalContent, styles.modalSize]}>
-          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+          >
             <Text style={sharedStyles.modalTitle}>{t("brand.uploadShow")}</Text>
             <Text style={styles.brandLabel}>{brandName}</Text>
 
-            {/* Cover Image */}
             <Text style={sharedStyles.formLabel}>{t("admin.coverImage")}</Text>
             {coverImage ? (
               <OptimizedImage
@@ -149,113 +154,113 @@ const CreateShowModal = ({ visible, brandName, onClose, onSuccess }: Props) => {
               />
             ) : (
               <View style={[styles.coverPreview, styles.coverPlaceholder]}>
-                <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+                <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
               </View>
             )}
-            <TouchableOpacity style={sharedStyles.uploadImageButton} onPress={handleUploadCover} disabled={imageUploading}>
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={handleUploadCover}
+              disabled={imageUploading}
+              activeOpacity={0.8}
+            >
               {imageUploading ? (
-                <ActivityIndicator color={theme.colors.white} size="small" />
+                <ActivityIndicator color={theme.colors.textInverted} size="small" />
               ) : (
                 <>
-                  <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
-                  <Text style={sharedStyles.uploadImageButtonText}>
+                  <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.textInverted} />
+                  <Text style={styles.uploadButtonText}>
                     {coverImage ? t("admin.changeCover") : t("admin.uploadCover")}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
 
-            {/* Title */}
             <Text style={sharedStyles.formLabel}>{t("admin.showTitleRequired")}</Text>
-            <TextInput
-              style={sharedStyles.modalInput}
-              placeholder="例如: Spring 2025 Ready-to-Wear"
-              placeholderTextColor={theme.colors.gray300}
+            <Input
+              size="sm"
+              placeholder={t("admin.showTitlePlaceholder")}
+              placeholderTextColor={theme.colors.placeholder}
               value={title}
               onChangeText={setTitle}
+              sx={styles.input}
             />
 
-            {/* Year */}
             <Text style={sharedStyles.formLabel}>{t("admin.yearRequired")}</Text>
-            <TextInput
-              style={sharedStyles.modalInput}
-              placeholder="例如: 2025"
-              placeholderTextColor={theme.colors.gray300}
+            <Input
+              size="sm"
+              placeholder={t("admin.yearPlaceholder")}
+              placeholderTextColor={theme.colors.placeholder}
               value={year}
               onChangeText={setYear}
               keyboardType="number-pad"
               maxLength={4}
+              sx={styles.input}
             />
 
-            {/* Season */}
             <Text style={sharedStyles.formLabel}>{t("admin.seasonRequired")}</Text>
-            <View style={sharedStyles.linkTypeContainer}>
+            <View style={[chipRowStyle, styles.chipSection]}>
               {SEASONS.map((s) => (
-                <TouchableOpacity
+                <AnimatedChip
                   key={s}
-                  style={[sharedStyles.linkTypeButton, season === s && sharedStyles.linkTypeButtonActive]}
+                  label={s}
+                  isActive={season === s}
                   onPress={() => setSeason(s)}
-                >
-                  <Text style={[sharedStyles.linkTypeButtonText, season === s && sharedStyles.linkTypeButtonTextActive]}>
-                    {s}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
-            {/* Category */}
             <Text style={sharedStyles.formLabel}>{t("admin.category")}</Text>
-            <View style={sharedStyles.linkTypeContainer}>
+            <View style={[chipRowStyle, styles.chipSection]}>
               {CATEGORIES.map((c) => (
-                <TouchableOpacity
+                <AnimatedChip
                   key={c}
-                  style={[sharedStyles.linkTypeButton, category === c && sharedStyles.linkTypeButtonActive]}
+                  label={c}
+                  isActive={category === c}
                   onPress={() => setCategory(category === c ? "" : c)}
-                >
-                  <Text style={[sharedStyles.linkTypeButtonText, category === c && sharedStyles.linkTypeButtonTextActive]}>
-                    {c}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
-            {/* Designer */}
             <Text style={sharedStyles.formLabel}>{t("admin.chiefDesigner")}</Text>
-            <TextInput
-              style={sharedStyles.modalInput}
+            <Input
+              size="sm"
               placeholder={t("common.optional")}
-              placeholderTextColor={theme.colors.gray300}
+              placeholderTextColor={theme.colors.placeholder}
               value={designer}
               onChangeText={setDesigner}
+              sx={styles.input}
             />
 
-            {/* Description */}
             <Text style={sharedStyles.formLabel}>{t("admin.showDescription")}</Text>
-            <TextInput
-              style={[sharedStyles.modalInput, { minHeight: 80 }]}
+            <Input
+              size="sm"
               placeholder={t("createShow.descriptionPlaceholder")}
-              placeholderTextColor={theme.colors.gray300}
+              placeholderTextColor={theme.colors.placeholder}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
-              textAlignVertical="top"
+              sx={{ ...styles.input, ...styles.textArea }}
             />
 
-            {/* Buttons */}
-            <View style={sharedStyles.modalButtons}>
-              <TouchableOpacity style={[sharedStyles.modalButton, sharedStyles.modalCancelButton]} onPress={handleClose}>
-                <Text style={sharedStyles.modalCancelText}>{t("common.cancel")}</Text>
+            <View style={styles.footerButtons}>
+              <TouchableOpacity
+                style={[styles.footerButton, styles.cancelButton]}
+                onPress={handleClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>{t("common.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[sharedStyles.modalButton, sharedStyles.modalConfirmButton, { backgroundColor: theme.colors.black }]}
+                style={[styles.footerButton, styles.submitButton]}
                 onPress={handleSubmit}
                 disabled={submitting}
+                activeOpacity={0.8}
               >
                 {submitting ? (
-                  <ActivityIndicator color={theme.colors.white} size="small" />
+                  <ActivityIndicator color={theme.colors.textInverted} size="small" />
                 ) : (
-                  <Text style={sharedStyles.modalConfirmText}>{t("storeSubmit.submit")}</Text>
+                  <Text style={styles.submitButtonText}>{t("storeSubmit.submit")}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -271,17 +276,18 @@ const makeStyles = (t: AppTheme) =>
     modalSize: {
       height: "85%",
       width: "92%",
+      maxWidth: 420,
       padding: t.spacing.lg,
     },
     brandLabel: {
       ...t.typography.caption,
-      color: t.colors.gray300,
+      color: t.colors.gray400,
       marginBottom: t.spacing.sm,
       marginTop: -t.spacing.sm,
     },
     coverPreview: {
       width: "100%",
-      height: 160,
+      height: 140,
       borderRadius: t.borderRadius.md,
       backgroundColor: t.colors.gray100,
       marginBottom: t.spacing.sm,
@@ -289,6 +295,62 @@ const makeStyles = (t: AppTheme) =>
     coverPlaceholder: {
       alignItems: "center",
       justifyContent: "center",
+    },
+    uploadButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.text,
+      paddingVertical: t.spacing.sm,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.borderRadius.sm,
+      marginBottom: t.spacing.md,
+      gap: t.spacing.xs,
+    },
+    uploadButtonText: {
+      ...t.typography.bodySmall,
+      color: t.colors.textInverted,
+      fontWeight: "600",
+    },
+    input: {
+      marginBottom: t.spacing.sm,
+    },
+    textArea: {
+      minHeight: 80,
+      textAlignVertical: "top",
+    },
+    chipSection: {
+      marginBottom: t.spacing.sm,
+    },
+    footerButtons: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      gap: t.spacing.sm,
+      marginTop: t.spacing.lg,
+    },
+    footerButton: {
+      paddingHorizontal: t.spacing.lg,
+      paddingVertical: t.spacing.sm,
+      borderRadius: t.borderRadius.sm,
+      minWidth: 80,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cancelButton: {
+      backgroundColor: t.colors.gray100,
+    },
+    cancelButtonText: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray400,
+      fontWeight: "500",
+    },
+    submitButton: {
+      backgroundColor: t.colors.text,
+    },
+    submitButtonText: {
+      ...t.typography.bodySmall,
+      color: t.colors.textInverted,
+      fontWeight: "600",
     },
   });
 

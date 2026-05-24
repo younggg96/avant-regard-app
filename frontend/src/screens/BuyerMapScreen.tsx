@@ -25,6 +25,8 @@ import {
   HStack,
   VStack,
   ScrollView,
+  AnimatedChip,
+  chipRowStyle,
 } from "../components/ui";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { useMapLoadingGif } from "../utils/loadingGifs";
@@ -1605,37 +1607,24 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                   {t("map.country")}
                 </Text>
-                <HStack flexWrap="wrap" gap="$xs">
+                <View style={chipRowStyle}>
                   {sortedCountries.map((country) => (
-                    <Pressable
+                    <AnimatedChip
                       key={country}
-                      px="$md"
-                      py="$sm"
-                      rounded="$sm"
-                      borderWidth={1}
-                      style={[{ borderColor: filters.country === country ? theme.colors.black : theme.colors.gray100 }, { backgroundColor: filters.country === country ? theme.colors.black : theme.colors.white }]}
-
-                      mb="$xs"
+                      label={getCountryDisplayName(country)}
+                      count={countryStoreCounts[country]}
+                      showZeroCount
+                      isActive={filters.country === country}
                       onPress={() =>
                         setFilters((prev) => ({
                           ...prev,
                           country: prev.country === country ? "" : country,
-                          city: prev.country === country ? prev.city : "", // 切换国家时清空城市
+                          city: prev.country === country ? prev.city : "",
                         }))
                       }
-                    >
-                      <Text
-                        fontSize="$sm"
-                        style={{ color: filters.country === country ? theme.colors.white : theme.colors.black }}
-                      >
-                        {getCountryDisplayName(country)}{" "}
-                        <Text fontSize="$xs" style={{ opacity: 0.7 }}>
-                          {countryStoreCounts[country]}
-                        </Text>
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
-                </HStack>
+                </View>
               </VStack>
 
               {/* 城市筛选（按数量排序） */}
@@ -1644,36 +1633,23 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                     {t("map.city")} {filters.country && <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>({filters.country})</Text>}
                   </Text>
-                  <HStack flexWrap="wrap" gap="$xs">
+                  <View style={chipRowStyle}>
                     {sortedCities.map((city) => (
-                      <Pressable
+                      <AnimatedChip
                         key={city}
-                        px="$md"
-                        py="$sm"
-                        rounded="$sm"
-                        borderWidth={1}
-                        style={[{ borderColor: filters.city === city ? theme.colors.black : theme.colors.gray100 }, { backgroundColor: filters.city === city ? theme.colors.black : theme.colors.white }]}
-
-                        mb="$xs"
+                        label={getCityDisplayName(city)}
+                        count={cityStoreCounts[city]}
+                        showZeroCount
+                        isActive={filters.city === city}
                         onPress={() =>
                           setFilters((prev) => ({
                             ...prev,
                             city: prev.city === city ? "" : city,
                           }))
                         }
-                      >
-                        <Text
-                          fontSize="$sm"
-                          style={{ color: filters.city === city ? theme.colors.white : theme.colors.black }}
-                        >
-                          {getCityDisplayName(city)}{" "}
-                          <Text fontSize="$xs" style={{ opacity: 0.7 }}>
-                            {cityStoreCounts[city]}
-                          </Text>
-                        </Text>
-                      </Pressable>
+                      />
                     ))}
-                  </HStack>
+                  </View>
                 </VStack>
               )}
 
@@ -1682,33 +1658,21 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                   {t("map.popularBrands")}
                 </Text>
-                <HStack flexWrap="wrap" gap="$xs">
+                <View style={chipRowStyle}>
                   {POPULAR_BRANDS.map((brand) => (
-                    <Pressable
+                    <AnimatedChip
                       key={brand}
-                      px="$md"
-                      py="$sm"
-                      rounded="$sm"
-                      borderWidth={1}
-                      style={[{ borderColor: filters.brand === brand ? theme.colors.black : theme.colors.gray100 }, { backgroundColor: filters.brand === brand ? theme.colors.black : theme.colors.white }]}
-
-                      mb="$xs"
+                      label={brand}
+                      isActive={filters.brand === brand}
                       onPress={() =>
                         setFilters((prev) => ({
                           ...prev,
                           brand: prev.brand === brand ? "" : brand,
                         }))
                       }
-                    >
-                      <Text
-                        fontSize="$sm"
-                        style={{ color: filters.brand === brand ? theme.colors.white : theme.colors.black }}
-                      >
-                        {brand}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
-                </HStack>
+                </View>
               </VStack>
 
               {/* 风格分类筛选 */}
@@ -1717,34 +1681,22 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
                     {t(category.key)}
                   </Text>
-                  <HStack flexWrap="wrap" gap="$xs">
+                  <View style={chipRowStyle}>
                     {category.styles.map((styleItem) => (
-                      <Pressable
+                      <AnimatedChip
                         key={styleItem}
-                        px="$md"
-                        py="$sm"
-                        rounded="$sm"
-                        borderWidth={1}
-                        style={[{ borderColor: filters.styles.includes(styleItem) ? theme.colors.black : theme.colors.gray100 }, { backgroundColor: filters.styles.includes(styleItem) ? theme.colors.black : theme.colors.white }]}
-
-                        mb="$xs"
+                        label={styleItem}
+                        isActive={filters.styles.includes(styleItem)}
                         onPress={() => toggleStyleFilter(styleItem)}
-                      >
-                        <Text
-                          fontSize="$sm"
-                          style={{ color: filters.styles.includes(styleItem) ? theme.colors.white : theme.colors.black }}
-                        >
-                          {styleItem}
-                        </Text>
-                      </Pressable>
+                      />
                     ))}
-                  </HStack>
+                  </View>
                 </VStack>
               ))}
 
               {/* 其他条件 */}
               <VStack mt="$lg" mb="$2xl">
-                <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }} mb="$sm">
+                <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }} mb="$sm">
                   {t("map.moreOptions")}
                 </Text>
                 <HStack gap="$lg">
@@ -1757,12 +1709,12 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   >
                     <Ionicons
                       name={filters.openOnly ? "checkbox" : "square-outline"}
-                      size={20}
+                      size={18}
                       color={filters.openOnly ? theme.colors.black : theme.colors.gray200}
                     />
                     <Text
                       ml="$sm"
-                      fontSize="$md"
+                      fontSize="$sm"
                       style={{ color: filters.openOnly ? theme.colors.black : theme.colors.gray300 }}
                       fontWeight={filters.openOnly ? "$medium" : "$normal"}
                     >
@@ -1779,12 +1731,12 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                   >
                     <Ionicons
                       name={filters.hasPhone ? "checkbox" : "square-outline"}
-                      size={20}
+                      size={18}
                       color={filters.hasPhone ? theme.colors.black : theme.colors.gray200}
                     />
                     <Text
                       ml="$sm"
-                      fontSize="$md"
+                      fontSize="$sm"
                       style={{ color: filters.hasPhone ? theme.colors.black : theme.colors.gray300 }}
                       fontWeight={filters.hasPhone ? "$medium" : "$normal"}
                     >
@@ -1804,7 +1756,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
             >
               <Pressable
                 flex={1}
-                py="$md"
+                py="$sm"
                 rounded="$sm"
                 borderWidth={1}
                 style={{ borderColor: theme.colors.gray100 }}
@@ -1812,20 +1764,20 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 justifyContent="center"
                 onPress={resetFilters}
               >
-                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
+                <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.black }}>
                   {t("map.reset")}
                 </Text>
               </Pressable>
               <Pressable
                 flex={2}
-                py="$md"
+                py="$sm"
                 rounded="$sm"
                 style={{ backgroundColor: theme.colors.black }}
                 alignItems="center"
                 justifyContent="center"
                 onPress={closeFilters}
               >
-                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
+                <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.white }}>
                   {t("map.viewStores", { count: filteredStores.length })}
                 </Text>
               </Pressable>

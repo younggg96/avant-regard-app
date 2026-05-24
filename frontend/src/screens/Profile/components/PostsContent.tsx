@@ -20,6 +20,8 @@ import {
   VStack,
   HStack,
   Image,
+  AnimatedChip,
+  chipRowStyle,
 } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
@@ -48,7 +50,6 @@ import {
   formatPrice,
 } from "../../../services/storeProductService";
 import {
-  useContribStyles,
   useStoreActivityStyles,
   useProfileStyles,
   PF,
@@ -99,7 +100,6 @@ const ContributionContent = ({
   onStoreCardPress,
 }: Pick<PostsContentProps, 'contribSubTab' | 'setContribSubTab' | 'contribLoading' | 'myShows' | 'myBrands' | 'myStores' | 'user' | 'onShowPress' | 'onBrandSubmissionPress' | 'onStoreCardPress'>) => {
   const { t } = useTranslation();
-  const contribStyles = useContribStyles();
   const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
     { id: "show", label: t("profileContrib.show"), count: myShows.length },
     { id: "brand", label: t("profileContrib.brand"), count: myBrands.length },
@@ -162,25 +162,25 @@ const ContributionContent = ({
 
   return (
     <VStack>
-      <HStack px="$md" py="$sm" style={{ gap: 8 }}>
-        {subTabs.map((st) => {
-          const isActive = contribSubTab === st.id;
-          return (
-            <Pressable
+      <View
+        style={{
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.sm,
+        }}
+      >
+        <View style={chipRowStyle}>
+          {subTabs.map((st) => (
+            <AnimatedChip
               key={st.id}
-              style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+              label={st.label}
+              count={st.count}
+              showZeroCount
+              isActive={contribSubTab === st.id}
               onPress={() => setContribSubTab(st.id)}
-            >
-              <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
-                {st.label}
-              </RNText>
-              <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
-                {st.count}
-              </RNText>
-            </Pressable>
-          );
-        })}
-      </HStack>
+            />
+          ))}
+        </View>
+      </View>
 
       {contribLoading ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
@@ -278,7 +278,6 @@ const StoreActivityContent = ({
   onProductPress: (productId: number) => void;
 }) => {
   const { t } = useTranslation();
-  const contribStyles = useContribStyles();
   const storeActivityStyles = useStoreActivityStyles();
   const styles = useProfileStyles();
   const profileLoadingGif = useProfileLoadingGif();
@@ -377,25 +376,25 @@ const StoreActivityContent = ({
 
   return (
     <VStack>
-      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
-        {subTabs.map((st) => {
-          const isActive = storeActivitySubTab === st.id;
-          return (
-            <Pressable
+      <View
+        style={{
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.sm,
+        }}
+      >
+        <View style={chipRowStyle}>
+          {subTabs.map((st) => (
+            <AnimatedChip
               key={st.id}
-              style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+              label={st.label}
+              count={st.count}
+              showZeroCount
+              isActive={storeActivitySubTab === st.id}
               onPress={() => setStoreActivitySubTab(st.id)}
-            >
-              <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
-                {st.label}
-              </RNText>
-              <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
-                {st.count}
-              </RNText>
-            </Pressable>
-          );
-        })}
-      </HStack>
+            />
+          ))}
+        </View>
+      </View>
 
       {storeActivitySubTab === "products" ? (
         <ProductActivityContent
@@ -449,7 +448,6 @@ const ProductActivityContent = ({
   onProductPress: (productId: number) => void;
 }) => {
   const { t } = useTranslation();
-  const contribStyles = useContribStyles();
   const productGridStyles = useThemedStyles(makeProductGridStyles);
   const subSubTabs: { id: ProductActivitySubTab; label: string; count: number }[] = [
     { id: "likes", label: t("profileProductActivity.likes"), count: productLikes.total },
@@ -480,25 +478,26 @@ const ProductActivityContent = ({
   return (
     <VStack>
       {/* 内层 chip 行 —— 视觉上比外层稍轻，背景灰条暗示嵌套关系 */}
-      <HStack px="$md" py="$sm" style={{ gap: 8, backgroundColor: theme.colors.gray50 }}>
-        {subSubTabs.map((st) => {
-          const isActive = productActivitySubTab === st.id;
-          return (
-            <Pressable
+      <View
+        style={{
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.sm,
+          backgroundColor: theme.colors.gray50,
+        }}
+      >
+        <View style={chipRowStyle}>
+          {subSubTabs.map((st) => (
+            <AnimatedChip
               key={st.id}
-              style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
+              label={st.label}
+              count={st.count}
+              showZeroCount
+              isActive={productActivitySubTab === st.id}
               onPress={() => setProductActivitySubTab(st.id)}
-            >
-              <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
-                {st.label}
-              </RNText>
-              <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
-                {st.count}
-              </RNText>
-            </Pressable>
-          );
-        })}
-      </HStack>
+            />
+          ))}
+        </View>
+      </View>
 
       {current.isLoading && !current.hasLoaded ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>

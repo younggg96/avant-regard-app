@@ -14,6 +14,6 @@ export { NotificationBadge } from "./NotificationBadge";
 export { ActionSheet } from "./ActionSheet";
 export type { ActionSheetAction } from "./ActionSheet";
 export { AnimatedChip, chipRowStyle } from "./AnimatedChip";
-export type { AnimatedChipProps } from "./AnimatedChip";
+export type { AnimatedChipProps, AnimatedChipSize } from "./AnimatedChip";
 export { TopTabBar } from "./TopTabBar";
 export type { TopTabItem, TopTabBarProps } from "./TopTabBar";

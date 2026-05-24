@@ -281,37 +281,37 @@ const makeProfileStyles = (t: AppTheme) =>
     brandChip: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      paddingRight: 14,
-      borderRadius: 20,
+      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingRight: 8,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.gray100,
-      gap: 8,
+      gap: 6,
     },
     brandChipImage: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 22,
+      height: 22,
+      borderRadius: t.borderRadius.sm,
     },
     brandChipImagePlaceholder: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 22,
+      height: 22,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.text,
       justifyContent: "center",
       alignItems: "center",
     },
     brandChipInitial: {
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: "700",
       color: t.colors.textInverted,
       fontFamily: PF.bold,
     },
     brandChipName: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "500",
       color: t.colors.text,
-      maxWidth: 100,
+      maxWidth: 80,
       fontFamily: PF.medium,
     },
     // tabBarContainer 是一级 TopTabBar (`components/ui`) 的外层容器,
@@ -335,45 +335,6 @@ const makeProfileStyles = (t: AppTheme) =>
       height: "50%",
       // height: "100%",
       backgroundColor: t.colors.background,
-    },
-  });
-
-const makeContribStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    filterChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 12,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: t.colors.card,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    filterChipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    filterChipText: {
-      fontSize: 13,
-      color: t.colors.text,
-      fontWeight: "500",
-      fontFamily: PF.medium,
-    },
-    filterChipTextActive: {
-      color: t.colors.textInverted,
-    },
-    filterChipCount: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: t.colors.textSecondary,
-      fontFamily: PF.bold,
-    },
-    filterChipCountActive: {
-      // 跟随 textInverted, 避免 dark 模式下选中 chip 白底 + 白字看不见。
-      color: t.colors.textInverted,
-      opacity: 0.75,
     },
   });
 
@@ -447,7 +408,6 @@ const makeStoreActivityStyles = (t: AppTheme) =>
   });
 
 export const useProfileStyles = () => useThemedStyles(makeProfileStyles);
-export const useContribStyles = () => useThemedStyles(makeContribStyles);
 export const useStoreActivityStyles = () => useThemedStyles(makeStoreActivityStyles);
 
 /**
@@ -455,5 +415,4 @@ export const useStoreActivityStyles = () => useThemedStyles(makeStoreActivitySty
  * matching hooks above for full dark-mode support.
  */
 export const styles = makeProfileStyles(lightTheme);
-export const contribStyles = makeContribStyles(lightTheme);
 export const storeActivityStyles = makeStoreActivityStyles(lightTheme);

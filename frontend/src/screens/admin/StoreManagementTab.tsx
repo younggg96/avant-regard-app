@@ -9,6 +9,7 @@ import {
   ScrollView as RNScrollView,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -27,7 +28,9 @@ import {
 import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import {
+  AnimatedChip,
   Box,
+  chipRowStyle,
   HStack,
   VStack,
   Text,
@@ -722,25 +725,21 @@ const StoreManagementTab = () => {
                 showsHorizontalScrollIndicator={false}
                 style={styles.filterChips}
               >
-                <Pressable
-                  style={[styles.filterChip, !filterCountry && styles.filterChipActive]}
-                  onPress={() => setFilterCountry("")}
-                >
-                  <Text style={[styles.filterChipText, !filterCountry && styles.filterChipTextActive]}>
-                    {t("common.all")}
-                  </Text>
-                </Pressable>
-                {countries.map((c) => (
-                  <Pressable
-                    key={c}
-                    style={[styles.filterChip, filterCountry === c && styles.filterChipActive]}
-                    onPress={() => setFilterCountry(filterCountry === c ? "" : c)}
-                  >
-                    <Text style={[styles.filterChipText, filterCountry === c && styles.filterChipTextActive]}>
-                      {c}
-                    </Text>
-                  </Pressable>
-                ))}
+                <View style={chipRowStyle}>
+                  <AnimatedChip
+                    label={t("common.all")}
+                    isActive={!filterCountry}
+                    onPress={() => setFilterCountry("")}
+                  />
+                  {countries.map((c) => (
+                    <AnimatedChip
+                      key={c}
+                      label={c}
+                      isActive={filterCountry === c}
+                      onPress={() => setFilterCountry(filterCountry === c ? "" : c)}
+                    />
+                  ))}
+                </View>
               </RNScrollView>
             </Box>
             {filterCountry && cities.length > 0 && (
@@ -751,25 +750,21 @@ const StoreManagementTab = () => {
                   showsHorizontalScrollIndicator={false}
                   style={styles.filterChips}
                 >
-                  <Pressable
-                    style={[styles.filterChip, !filterCity && styles.filterChipActive]}
-                    onPress={() => setFilterCity("")}
-                  >
-                    <Text style={[styles.filterChipText, !filterCity && styles.filterChipTextActive]}>
-                      {t("common.all")}
-                    </Text>
-                  </Pressable>
-                  {cities.map((c) => (
-                    <Pressable
-                      key={c}
-                      style={[styles.filterChip, filterCity === c && styles.filterChipActive]}
-                      onPress={() => setFilterCity(filterCity === c ? "" : c)}
-                    >
-                      <Text style={[styles.filterChipText, filterCity === c && styles.filterChipTextActive]}>
-                        {c}
-                      </Text>
-                    </Pressable>
-                  ))}
+                  <View style={chipRowStyle}>
+                    <AnimatedChip
+                      label={t("common.all")}
+                      isActive={!filterCity}
+                      onPress={() => setFilterCity("")}
+                    />
+                    {cities.map((c) => (
+                      <AnimatedChip
+                        key={c}
+                        label={c}
+                        isActive={filterCity === c}
+                        onPress={() => setFilterCity(filterCity === c ? "" : c)}
+                      />
+                    ))}
+                  </View>
                 </RNScrollView>
               </Box>
             )}
@@ -1314,26 +1309,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   filterChips: {
     flexDirection: "row",
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.colors.card,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-  },
-  filterChipActive: {
-    backgroundColor: t.colors.text,
-    borderColor: t.colors.text,
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: t.colors.gray400,
-  },
-  filterChipTextActive: {
-    color: t.colors.textInverted,
   },
   totalText: {
     paddingBottom: 8,

@@ -83,33 +83,6 @@ export const makePublishListingFormStyles = (t: AppTheme) =>
     placeholderText: {
       color: t.colors.placeholder,
     },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: t.borderRadius.sm,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-      backgroundColor: t.colors.gray100,
-    },
-    chipActive: {
-      borderColor: t.colors.black,
-      backgroundColor: t.colors.black,
-    },
-    chipText: {
-      fontSize: 14,
-      color: t.colors.black,
-    },
-    chipTextActive: {
-      color: t.colors.white,
-    },
-    smallChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: t.borderRadius.sm,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-      backgroundColor: t.colors.gray100,
-    },
     optionRow: {
       flexDirection: "row",
       alignItems: "center",

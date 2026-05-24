@@ -38,6 +38,7 @@ import {
 } from "../../services/orderService";
 import { formatPrice } from "../../services/storeProductService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { AnimatedChip, chipRowStyle } from "../../components/ui";
 import { UserAvatar } from "../../components/ui/UserAvatar";
 import OfferModal from "./OfferModal";
 
@@ -341,25 +342,16 @@ export default function MyOffersScreen() {
       </View>
 
       <View style={styles.filterBar}>
-        {(["all", "pending", "processed"] as StatusFilter[]).map((s) => (
-          <Pressable
-            key={s}
-            style={[
-              styles.filterChip,
-              statusFilter === s && styles.filterChipActive,
-            ]}
-            onPress={() => setStatusFilter(s)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                statusFilter === s && styles.filterChipTextActive,
-              ]}
-            >
-              {t(`trading.offers.filter.${s}`)}
-            </Text>
-          </Pressable>
-        ))}
+        <View style={chipRowStyle}>
+          {(["all", "pending", "processed"] as StatusFilter[]).map((s) => (
+            <AnimatedChip
+              key={s}
+              label={t(`trading.offers.filter.${s}`)}
+              isActive={statusFilter === s}
+              onPress={() => setStatusFilter(s)}
+            />
+          ))}
+        </View>
       </View>
 
       {loading && offers.length === 0 ? (
@@ -441,26 +433,10 @@ const makeStyles = (t: AppTheme) =>
     tabText: { fontSize: 13, color: t.colors.gray300 },
     tabTextActive: { color: t.colors.textInverted, fontWeight: "600" },
     filterBar: {
-      flexDirection: "row",
       paddingHorizontal: 12,
       paddingVertical: 10,
-      gap: 8,
       backgroundColor: t.colors.background,
     },
-    filterChip: {
-      paddingVertical: 6,
-      paddingHorizontal: 14,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-    },
-    filterChipActive: {
-      borderColor: t.colors.text,
-      backgroundColor: t.colors.text,
-    },
-    filterChipText: { fontSize: 12, color: t.colors.gray400 },
-    filterChipTextActive: { color: t.colors.textInverted, fontWeight: "600" },
     card: {
       backgroundColor: t.colors.cardElevated,
       borderRadius: 12,

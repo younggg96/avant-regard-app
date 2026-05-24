@@ -3,14 +3,13 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
-  TouchableOpacity,
+  View,
   Alert,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, HStack, ScrollView } from "../../../components/ui";
+import { Box, Text, ScrollView, AnimatedChip, chipRowStyle } from "../../../components/ui";
 import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import {
   showService,
@@ -231,37 +230,28 @@ const MyContributionTab: React.FC = () => {
   return (
     <Box flex={1}>
       {/* Sub-tab chips */}
-      <HStack style={styles.subFilterRow}>
-        {subTabs.map((tab) => {
-          const count =
-            tab.id === "show"
-              ? myShows.length
-              : tab.id === "brand"
-                ? myBrands.length
-                : myStores.length;
-          const isActive = subTab === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.chip, isActive && styles.chipActive]}
-              onPress={() => setSubTab(tab.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                {tab.label}
-              </Text>
-              <Text
-                style={[
-                  styles.chipCount,
-                  isActive && styles.chipCountActive,
-                ]}
-              >
-                {count}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </HStack>
+      <View style={styles.subFilterRow}>
+        <View style={chipRowStyle}>
+          {subTabs.map((tab) => {
+            const count =
+              tab.id === "show"
+                ? myShows.length
+                : tab.id === "brand"
+                  ? myBrands.length
+                  : myStores.length;
+            return (
+              <AnimatedChip
+                key={tab.id}
+                label={tab.label}
+                count={count}
+                showZeroCount
+                isActive={subTab === tab.id}
+                onPress={() => setSubTab(tab.id)}
+              />
+            );
+          })}
+        </View>
+      </View>
 
       {/* Content */}
       <ScrollView
@@ -298,42 +288,9 @@ const MyContributionTab: React.FC = () => {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     subFilterRow: {
-      flexDirection: "row",
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 4,
-      gap: 8,
-    },
-    chip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 12,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: t.colors.card,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    chipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    chipText: {
-      fontSize: 13,
-      fontWeight: "500",
-      color: t.colors.gray600,
-    },
-    chipTextActive: {
-      color: t.colors.textInverted,
-    },
-    chipCount: {
-      fontSize: 11,
-      fontWeight: "600",
-      color: t.colors.gray400,
-    },
-    chipCountActive: {
-      color: "rgba(255,255,255,0.7)",
     },
     scrollContainer: {
       paddingBottom: 32,

@@ -38,7 +38,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Box, HStack, ScrollView, Text, VStack } from "../../components/ui";
+import {
+  AnimatedChip,
+  Box,
+  HStack,
+  ScrollView,
+  Text,
+  VStack,
+  chipRowStyle,
+} from "../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import {
   searchMarketplace,
@@ -562,14 +570,16 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             </View>
 
             {/* 候选 chip 列表 */}
-            <HStack style={styles.brandGrid}>
+            <View style={[chipRowStyle, { marginTop: 12 }]}>
               {brandList
                 .filter((b) => !selectedBrands.includes(b.name))
                 .slice(0, 30)
                 .map((b) => (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={`opt_${b.id}_${b.name}`}
-                    style={styles.brandChip}
+                    label={b.name}
+                    isActive={false}
                     onPress={() =>
                       setFilter((prev) => {
                         const cur = prev.brands ?? (prev.brand ? [prev.brand] : []);
@@ -581,16 +591,12 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                         };
                       })
                     }
-                  >
-                    <Text style={styles.brandChipText} numberOfLines={1}>
-                      {b.name}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               {brandList.length === 0 && !brandLoading ? (
                 <Text style={styles.emptyHint}>{t("trading.filter.brandEmpty")}</Text>
               ) : null}
-            </HStack>
+            </View>
           </Section>
 
           {/* 2. 分类（PRD 6 大类，多选） */}
@@ -601,12 +607,15 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             expanded={expanded.category}
             onToggle={() => toggleSection("category")}
           >
-            <HStack style={styles.chipGrid}>
+            <View style={chipRowStyle}>
               {CATEGORY_KINDS.map((c) => {
                 const active = selectedKinds.includes(c.value);
                 return (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={c.value}
+                    label={t(c.labelKey)}
+                    isActive={active}
                     onPress={() =>
                       setFilter((prev) => ({
                         ...prev,
@@ -616,21 +625,10 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                         ),
                       }))
                     }
-                    style={[
-                      styles.chip,
-                      styles.categoryChip,
-                      active && styles.chipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {t(c.labelKey)}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
-            </HStack>
+            </View>
           </Section>
 
           {/* 3. 尺码（按分类动态展示） */}
@@ -647,12 +645,15 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             {sizeSets.map((set) => (
               <VStack key={set.titleKey} style={styles.sizeSet}>
                 <Text style={styles.sizeSetTitle}>{t(set.titleKey)}</Text>
-                <HStack style={styles.chipGrid}>
+                <View style={chipRowStyle}>
                   {set.sizes.map((s) => {
                     const active = selectedSizes.includes(s);
                     return (
-                      <Pressable
+                      <AnimatedChip
+                        size="md"
                         key={`${set.titleKey}_${s}`}
+                        label={s}
+                        isActive={active}
                         onPress={() =>
                           setFilter((prev) => ({
                             ...prev,
@@ -663,24 +664,10 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                             ),
                           }))
                         }
-                        style={[
-                          styles.chip,
-                          styles.sizeChip,
-                          active && styles.chipActive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            active && styles.chipTextActive,
-                          ]}
-                        >
-                          {s}
-                        </Text>
-                      </Pressable>
+                      />
                     );
                   })}
-                </HStack>
+                </View>
               </VStack>
             ))}
           </Section>
@@ -718,33 +705,25 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                 />
               </View>
             </HStack>
-            <HStack style={[styles.chipGrid, { marginTop: 12 }]}>
+            <View style={[chipRowStyle, { marginTop: 12 }]}>
               {PRICE_PRESETS.map((p) => {
                 const minStr = p.minCents != null ? String(p.minCents / 100) : "";
                 const maxStr = p.maxCents != null ? String(p.maxCents / 100) : "";
                 const active = priceMin === minStr && priceMax === maxStr;
                 return (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={p.labelKey}
+                    label={t(p.labelKey)}
+                    isActive={active}
                     onPress={() => {
                       setPriceMin(active ? "" : minStr);
                       setPriceMax(active ? "" : maxStr);
                     }}
-                    style={[
-                      styles.chip,
-                      styles.pricePresetChip,
-                      active && styles.chipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {t(p.labelKey)}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
-            </HStack>
+            </View>
           </Section>
 
           {/* 5. 成色（多选） */}
@@ -755,12 +734,15 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             expanded={expanded.condition}
             onToggle={() => toggleSection("condition")}
           >
-            <HStack style={styles.chipGrid}>
+            <View style={chipRowStyle}>
               {CONDITION_OPTIONS.map((c) => {
                 const active = selectedConditions.includes(c.value);
                 return (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={c.value}
+                    label={t(c.labelKey)}
+                    isActive={active}
                     onPress={() =>
                       setFilter((prev) => ({
                         ...prev,
@@ -772,21 +754,10 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                         ),
                       }))
                     }
-                    style={[
-                      styles.chip,
-                      styles.conditionChip,
-                      active && styles.chipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {t(c.labelKey)}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
-            </HStack>
+            </View>
           </Section>
 
           {/* 6. 颜色（色块多选） */}
@@ -848,12 +819,15 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             expanded={expanded.shipFrom}
             onToggle={() => toggleSection("shipFrom")}
           >
-            <HStack style={styles.chipGrid}>
+            <View style={chipRowStyle}>
               {SHIP_FROM_OPTIONS.map((opt) => {
                 const active = shipFromValues.includes(opt.value);
                 return (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={opt.value}
+                    label={t(opt.labelKey)}
+                    isActive={active}
                     onPress={() =>
                       setShipFromValues((prev) =>
                         prev.includes(opt.value)
@@ -861,21 +835,10 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                           : [...prev, opt.value],
                       )
                     }
-                    style={[
-                      styles.chip,
-                      styles.conditionChip,
-                      active && styles.chipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {t(opt.labelKey)}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
-            </HStack>
+            </View>
             <HStack style={styles.toggleRow} alignItems="center">
               <Text style={styles.toggleLabel}>
                 {t("trading.filter.directShippingOnly")}
@@ -904,14 +867,17 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
             expanded={expanded.seller}
             onToggle={() => toggleSection("seller")}
           >
-            <HStack style={styles.chipGrid}>
+            <View style={chipRowStyle}>
               {SELLER_OPTIONS.map((s) => {
                 const active =
                   (s.value === "" && !filter.sellerKind) ||
                   filter.sellerKind === s.value;
                 return (
-                  <Pressable
+                  <AnimatedChip
+                    size="md"
                     key={s.value || "all"}
+                    label={t(s.labelKey)}
+                    isActive={active}
                     onPress={() =>
                       setFilter((prev) => ({
                         ...prev,
@@ -919,21 +885,10 @@ const MarketplaceFilterSheet: React.FC<Props> = ({
                           s.value === "" ? undefined : (s.value as SellerKind),
                       }))
                     }
-                    style={[
-                      styles.chip,
-                      styles.conditionChip,
-                      active && styles.chipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[styles.chipText, active && styles.chipTextActive]}
-                    >
-                      {t(s.labelKey)}
-                    </Text>
-                  </Pressable>
+                  />
                 );
               })}
-            </HStack>
+            </View>
           </Section>
         </ScrollView>
 
@@ -1088,37 +1043,6 @@ const makeStyles = (t: AppTheme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.divider,
     },
-    // ---- 通用 chip ----
-    chipGrid: { flexWrap: "wrap", gap: 8 } as any,
-    chip: {
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      borderRadius: 8,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    chipText: { fontSize: 13, color: t.colors.text },
-    chipTextActive: { color: t.colors.textInverted, fontWeight: "600" },
-    chipActive: {
-      backgroundColor: t.colors.accent,
-      borderColor: t.colors.accent,
-    },
-    categoryChip: {
-      minWidth: 76,
-    },
-    sizeChip: {
-      minWidth: 52,
-      paddingVertical: 12,
-    },
-    conditionChip: {
-      minWidth: 72,
-    },
-    pricePresetChip: {
-      paddingHorizontal: 12,
-    },
     sizeSet: { marginBottom: 12 },
     sizeSetTitle: {
       fontSize: 12,
@@ -1162,24 +1086,6 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 8,
       fontSize: 14,
       color: t.colors.text,
-    },
-    brandGrid: {
-      flexWrap: "wrap",
-      gap: 6,
-      marginTop: 12,
-    } as any,
-    brandChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 16,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.surface,
-    },
-    brandChipText: {
-      fontSize: 12,
-      color: t.colors.text,
-      maxWidth: 160,
     },
     emptyHint: {
       fontSize: 12,

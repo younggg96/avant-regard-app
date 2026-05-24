@@ -313,16 +313,6 @@ const SettingsScreen = () => {
           onPress: () => (navigation as any).navigate("SellerListings"),
         },
         {
-          id: "mySales",
-          label: t("settings.mySales"),
-          icon: "cash-outline",
-          onPress: () =>
-            (navigation as any).navigate("Main", {
-              screen: "Profile",
-              params: { initialTopTab: "selling" },
-            }),
-        },
-        {
           id: "myArchive",
           label: t("settings.myArchive"),
           icon: "albums-outline",

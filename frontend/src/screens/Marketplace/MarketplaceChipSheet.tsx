@@ -23,7 +23,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, Text } from "../../components/ui";
+import { AnimatedChip, Box, HStack, Text, chipRowStyle } from "../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import type {
   MarketplaceFilter,
@@ -421,72 +421,54 @@ const MarketplaceChipSheet: React.FC<Props> = ({
             ) : null}
 
             {chipKey === "category" ? (
-              <HStack style={styles.chipGrid}>
+              <View style={chipRowStyle}>
                 {CATEGORY_KINDS.map((c) => {
                   const active = categoryKinds.includes(c.value);
                   return (
-                    <Pressable
+                    <AnimatedChip
+                      size="md"
                       key={c.value}
+                      label={t(c.labelKey)}
+                      isActive={active}
                       onPress={() => setCategoryKinds(toggle(categoryKinds, c.value))}
-                      style={[styles.chip, styles.categoryChip, active && styles.chipActive]}
-                    >
-                      <Text
-                        style={[styles.chipText, active && styles.chipTextActive]}
-                      >
-                        {t(c.labelKey)}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
-              </HStack>
+              </View>
             ) : null}
 
             {chipKey === "size" ? (
-              <HStack style={styles.chipGrid}>
+              <View style={chipRowStyle}>
                 {SIZE_PRESETS.map((s) => {
                   const active = sizes.includes(s);
                   return (
-                    <Pressable
+                    <AnimatedChip
+                      size="md"
                       key={s}
+                      label={s}
+                      isActive={active}
                       onPress={() => setSizes(toggle(sizes, s))}
-                      style={[styles.chip, active && styles.chipActive]}
-                    >
-                      <Text
-                        style={[styles.chipText, active && styles.chipTextActive]}
-                      >
-                        {s}
-                      </Text>
-                    </Pressable>
+                    />
                   );
                 })}
-              </HStack>
+              </View>
             ) : null}
 
             {chipKey === "condition" ? (
-              <HStack style={styles.chipGrid}>
+              <View style={chipRowStyle}>
                 {CONDITION_OPTIONS.map((c) => {
                   const active = conditions.includes(c.value);
                   return (
-                    <Pressable
+                    <AnimatedChip
+                      size="md"
                       key={c.value}
-                      onPress={() =>
-                        setConditions(toggle(conditions, c.value))
-                      }
-                      style={[
-                        styles.chip,
-                        styles.conditionChip,
-                        active && styles.chipActive,
-                      ]}
-                    >
-                      <Text
-                        style={[styles.chipText, active && styles.chipTextActive]}
-                      >
-                        {t(c.labelKey)}
-                      </Text>
-                    </Pressable>
+                      label={t(c.labelKey)}
+                      isActive={active}
+                      onPress={() => setConditions(toggle(conditions, c.value))}
+                    />
                   );
                 })}
-              </HStack>
+              </View>
             ) : null}
 
             {chipKey === "price" ? (
@@ -651,31 +633,6 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       color: t.colors.textSecondary,
     },
-    chipGrid: { flexWrap: "wrap", gap: 10 } as any,
-    chip: {
-      minWidth: 56,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      borderRadius: 8,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.surface,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    categoryChip: {
-      minWidth: 76,
-      paddingHorizontal: 14,
-    },
-    conditionChip: {
-      paddingHorizontal: 16,
-    },
-    chipActive: {
-      backgroundColor: t.colors.accent,
-      borderColor: t.colors.accent,
-    },
-    chipText: { fontSize: 13, color: t.colors.text },
-    chipTextActive: { color: t.colors.textInverted, fontWeight: "600" },
     priceRow: { gap: 12 } as any,
     priceField: {
       flex: 1,

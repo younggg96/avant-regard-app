@@ -16,6 +16,10 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  AnimatedChip,
+  chipRowStyle,
+} from "../../../components/ui";
+import {
   theme,
   useThemedStyles,
   type AppTheme,
@@ -206,30 +210,17 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
               </Text>
 
               <Text style={styles.sectionLabel}>{t('auth.issueType')}</Text>
-              <View style={styles.optionGroup}>
-                {ISSUE_OPTION_KEYS.map((option) => {
-                  const active = option.value === issueType;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.optionChip,
-                        active && styles.optionChipActive,
-                      ]}
-                      onPress={() => setIssueType(option.value)}
-                      disabled={submitting}
-                    >
-                      <Text
-                        style={[
-                          styles.optionChipText,
-                          active && styles.optionChipTextActive,
-                        ]}
-                      >
-                        {t(option.labelKey)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              <View style={[chipRowStyle, { marginBottom: 22 }]}>
+                {ISSUE_OPTION_KEYS.map((option) => (
+                  <AnimatedChip
+                    key={option.value}
+                    label={t(option.labelKey)}
+                    isActive={option.value === issueType}
+                    onPress={() => {
+                      if (!submitting) setIssueType(option.value);
+                    }}
+                  />
+                ))}
               </View>
 
               <Text style={styles.sectionLabel}>
@@ -404,32 +395,6 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.gray200,
       textTransform: "none",
       letterSpacing: 0,
-    },
-    optionGroup: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      marginBottom: 22,
-    },
-    optionChip: {
-      paddingHorizontal: 16,
-      paddingVertical: 9,
-      borderRadius: 22,
-      backgroundColor: "transparent",
-      borderWidth: 1,
-      borderColor: t.colors.divider,
-    },
-    optionChipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    optionChipText: {
-      fontSize: 13,
-      fontFamily: "PlayfairDisplay-Medium",
-      color: t.colors.gray400,
-    },
-    optionChipTextActive: {
-      color: t.colors.textInverted,
     },
     input: {
       backgroundColor: t.colors.gray100,

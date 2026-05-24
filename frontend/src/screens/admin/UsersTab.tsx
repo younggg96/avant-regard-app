@@ -7,6 +7,7 @@ import {
   Platform,
   RefreshControl,
   ScrollView as RNScrollView,
+  View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +24,7 @@ import {
   sendMessageREST,
 } from "../../services/chatService";
 import { useSharedStyles } from "./adminStyles";
-import { Box, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VStack } from "../../components/ui";
+import { AnimatedChip, Box, chipRowStyle, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VStack } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -986,27 +987,20 @@ const ReportsSubTab = () => {
         style={styles.filterBar}
         contentContainerStyle={{ paddingHorizontal: theme.spacing.md }}
       >
-        {(["ALL", "PENDING", "RESOLVED", "DISMISSED"] as ReportFilter[]).map(
-          (f) => (
-            <Pressable
-              key={f}
-              style={[
-                styles.filterChip,
-                filter === f && styles.filterChipActive,
-              ]}
-              onPress={() => setFilter(f)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  filter === f && styles.filterChipTextActive,
-                ]}
-              >
-                {f === "ALL" ? t("common.all") : t(`admin.reportStatus_${f}`) || f}
-              </Text>
-            </Pressable>
-          )
-        )}
+        <View style={chipRowStyle}>
+          {(["ALL", "PENDING", "RESOLVED", "DISMISSED"] as ReportFilter[]).map(
+            (f) => (
+              <AnimatedChip
+                key={f}
+                label={
+                  f === "ALL" ? t("common.all") : t(`admin.reportStatus_${f}`) || f
+                }
+                isActive={filter === f}
+                onPress={() => setFilter(f)}
+              />
+            ),
+          )}
+        </View>
       </RNScrollView>
 
       {loading && !refreshing ? (
@@ -1582,24 +1576,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     paddingVertical: t.spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.colors.gray100,
-    marginRight: t.spacing.sm,
-  },
-  filterChipActive: {
-    backgroundColor: t.colors.text,
-  },
-  filterChipText: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-    fontWeight: "500",
-  },
-  filterChipTextActive: {
-    color: t.colors.textInverted,
   },
   // Block card
   blockRow: {

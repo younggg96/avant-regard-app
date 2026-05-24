@@ -10,12 +10,13 @@ import {
   Alert,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, Pressable, HStack, VStack, UserAvatar } from "../components/ui";
+import { Box, Text, Pressable, HStack, VStack, UserAvatar, AnimatedChip, chipRowStyle } from "../components/ui";
 import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
@@ -95,19 +96,19 @@ const SearchScreen = () => {
     setSearchHistory([]);
   }, []);
 
-  // 输入即拉取建议；防抖 280ms 避免每个字符都打一次接口。
-  // 一旦用户回车 / 点搜索按钮（isSearching=true），下拉收起，结果区接管。
+  // 输入即拉取建议（仅品牌/商品）；用户/帖子/店铺需点击搜索按钮后才查询。
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (suggestDebounceRef.current) {
       clearTimeout(suggestDebounceRef.current);
       suggestDebounceRef.current = null;
     }
-    if (!trimmed || isSearching) {
+    if (!trimmed || isSearching || searchType !== "brands" && searchType !== "products") {
       setSuggestions([]);
       setLoadingSuggestions(false);
       return;
     }
+
     setLoadingSuggestions(true);
     const requestId = ++suggestRequestIdRef.current;
     suggestDebounceRef.current = setTimeout(async () => {
@@ -127,7 +128,7 @@ const SearchScreen = () => {
     return () => {
       if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
     };
-  }, [searchQuery, isSearching]);
+  }, [searchQuery, isSearching, searchType]);
 
   const STORE_PAGE_SIZE = 20;
   const PRODUCT_PAGE_SIZE = 20;
@@ -306,6 +307,7 @@ const SearchScreen = () => {
   // 清除搜索
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
+    setSuggestions([]);
     setPostResults([]);
     setUserResults([]);
     setBrandResults([]);
@@ -691,7 +693,7 @@ const SearchScreen = () => {
     }
   };
 
-  // 输入态下拉建议列表
+  // 输入态下拉建议列表（品牌 / 商品）
   const renderSuggestionList = () => {
     if (loadingSuggestions && suggestions.length === 0) {
       return (
@@ -934,24 +936,16 @@ const SearchScreen = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContainer}
         >
-          {visibleTabs.map((tab) => (
-            <Pressable
-              key={tab.type}
-              onPress={() => handleSearchTypeChange(tab.type)}
-              style={[
-                styles.tabPill,
-                searchType === tab.type ? styles.tabPillActive : styles.tabPillInactive,
-              ]}
-            >
-              <Text
-                fontSize="$sm"
-                fontWeight="$medium"
-                style={{ color: searchType === tab.type ? theme.colors.white : theme.colors.gray600 }}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={chipRowStyle}>
+            {visibleTabs.map((tab) => (
+              <AnimatedChip
+                key={tab.type}
+                label={tab.label}
+                isActive={searchType === tab.type}
+                onPress={() => handleSearchTypeChange(tab.type)}
+              />
+            ))}
+          </View>
         </ScrollView>
       </Box>
     );
@@ -1394,8 +1388,9 @@ const SearchScreen = () => {
       {renderSearchTypeTabs()}
 
       {/* Content Area */}
-      {!isSearching && searchQuery.trim().length > 0 ? (
-        // 输入中：展示下拉建议（品牌 / 系列 / 秀场 / 单品标题）
+      {!isSearching && searchQuery.trim().length > 0 &&
+      (searchType === "brands" || searchType === "products") ? (
+        // 输入中：品牌 / 商品 展示下拉建议
         <VStack flex={1}>
           {renderSuggestionList()}
         </VStack>
@@ -1531,18 +1526,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     alignItems: "center",
-  },
-  tabPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: t.borderRadius.sm,
-    marginRight: 8,
-  },
-  tabPillActive: {
-    backgroundColor: t.colors.text,
-  },
-  tabPillInactive: {
-    backgroundColor: t.colors.gray100,
   },
   suggestionThumb: {
     width: 36,

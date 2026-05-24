@@ -79,6 +79,7 @@ const LeaderboardItem: React.FC<{
 
 export const ArchiveLeaderboard: React.FC = () => {
   const theme = useAppTheme();
+  const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [leaderboard, setLeaderboard] = useState<ContributionUser[]>([]);
@@ -111,18 +112,28 @@ export const ArchiveLeaderboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Box py="$md" px="$md" style={{ backgroundColor: theme.colors.white }}>
+      <Box style={styles.loadingState}>
         <ActivityIndicator size="small" color={theme.colors.accent} />
       </Box>
     );
   }
 
   if (leaderboard.length === 0) {
-    return null;
+    return (
+      <Box style={styles.emptyState}>
+        <Ionicons
+          name="trophy-outline"
+          size={48}
+          color={theme.colors.gray200}
+        />
+        <Text style={styles.emptyTitle}>{t("archive.noLeaderboard")}</Text>
+        <Text style={styles.emptyText}>{t("archive.noLeaderboardHint")}</Text>
+      </Box>
+    );
   }
 
   return (
-    <Box py="$md" style={{ backgroundColor: theme.colors.white }}>
+    <Box py="$md" style={{ backgroundColor: theme.colors.background }}>
       <HStack
         justifyContent="space-between"
         alignItems="center"
@@ -130,8 +141,8 @@ export const ArchiveLeaderboard: React.FC = () => {
         px="$md"
       >
         <HStack alignItems="center" space="xs">
-          <Ionicons name="trophy-outline" size={18} color={theme.colors.black} />
-          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }}>
+          <Ionicons name="trophy-outline" size={18} color={theme.colors.text} />
+          <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }}>
             {t("archive.contributionBoard")}
           </Text>
         </HStack>
@@ -150,6 +161,32 @@ export const ArchiveLeaderboard: React.FC = () => {
 };
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
+  loadingState: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+    backgroundColor: t.colors.background,
+  },
+  emptyState: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 32,
+    backgroundColor: t.colors.background,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: t.colors.text,
+    marginTop: t.spacing.md,
+    marginBottom: t.spacing.sm,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: t.colors.gray400,
+    textAlign: "center",
+    lineHeight: 20,
+  },
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",

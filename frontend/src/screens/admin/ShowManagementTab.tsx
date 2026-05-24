@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -20,7 +21,7 @@ import {
 } from "../../services/showService";
 import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
-import { Box, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
+import { AnimatedChip, Box, chipRowStyle, HStack, VStack, Text, Input, Button, ButtonText, Pressable, ScrollView, OptimizedImage } from "../../components/ui";
 import { ImageSize } from "../../utils/imageUtils";
 
 const SEASONS = [
@@ -450,25 +451,16 @@ const ShowManagementTab = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.statusFilterContainer}
           >
-            {STATUS_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.key}
-                style={[
-                  styles.filterChip,
-                  statusFilter === opt.key && styles.filterChipActive,
-                ]}
-                onPress={() => handleStatusFilter(opt.key)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    statusFilter === opt.key && styles.filterChipTextActive,
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-              </Pressable>
-            ))}
+            <View style={chipRowStyle}>
+              {STATUS_OPTIONS.map((opt) => (
+                <AnimatedChip
+                  key={opt.key}
+                  label={opt.label}
+                  isActive={statusFilter === opt.key}
+                  onPress={() => handleStatusFilter(opt.key)}
+                />
+              ))}
+            </View>
           </RNScrollView>
           <Pressable style={styles.createButton} onPress={handleOpenCreate}>
             <Ionicons name="add" size={20} color={theme.colors.white} />
@@ -733,23 +725,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   statusFilterContainer: {
     flexDirection: "row",
     gap: 6,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.colors.gray100,
-  },
-  filterChipActive: {
-    backgroundColor: t.colors.text,
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: t.colors.gray400,
-    fontWeight: "500",
-  },
-  filterChipTextActive: {
-    color: t.colors.textInverted,
   },
   createButton: {
     backgroundColor: t.colors.text,

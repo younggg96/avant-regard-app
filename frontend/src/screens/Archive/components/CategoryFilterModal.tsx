@@ -3,9 +3,10 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Box, Text, Pressable, HStack } from "../../../components/ui";
+import { Box, Text, Pressable, AnimatedChip, chipRowStyle } from "../../../components/ui";
 import { useThemedStyles, type AppTheme } from "../../../theme";
 
 interface CategoryFilter {
@@ -44,31 +45,19 @@ const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
           <Box style={styles.handle} />
           <Text style={styles.title}>{t("archive.filterCategory")}</Text>
 
-          <HStack style={styles.grid}>
+          <View style={chipRowStyle}>
             {filters.map((filter) => (
-              <TouchableOpacity
+              <AnimatedChip
                 key={filter.value}
-                style={[
-                  styles.chip,
-                  selectedValue === filter.value && styles.chipActive,
-                ]}
+                label={filter.label}
+                isActive={selectedValue === filter.value}
                 onPress={() => {
                   onSelect(filter.value);
                   onClose();
                 }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    selectedValue === filter.value && styles.chipTextActive,
-                  ]}
-                >
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
+              />
             ))}
-          </HStack>
+          </View>
 
           {hasActive && (
             <TouchableOpacity
@@ -117,31 +106,6 @@ const makeStyles = (t: AppTheme) =>
       fontWeight: "600",
       color: t.colors.text,
       marginBottom: 16,
-    },
-    grid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 10,
-    },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 20,
-      backgroundColor: t.colors.gray50,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    chipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    chipText: {
-      fontSize: 14,
-      color: t.colors.gray600,
-    },
-    chipTextActive: {
-      color: t.colors.textInverted,
-      fontWeight: "600",
     },
     resetButton: {
       marginTop: 20,

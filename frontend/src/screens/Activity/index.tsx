@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { FlatList, RefreshControl, Linking, ActivityIndicator } from "react-native";
+import { FlatList, RefreshControl, Linking, ActivityIndicator, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
-import { Box, Text, HStack } from "../../components/ui";
+import { Box, Text, chipRowStyle } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { theme, useAppTheme } from "../../theme";
 import { Notification } from "../../services/notificationService";
@@ -147,7 +147,7 @@ const ActivityScreen = () => {
       />
 
       {!systemOnly && (
-        <HStack px="$md" py="$sm" style={styles.filterBar}>
+        <View style={[styles.filterBar, chipRowStyle]}>
           {FILTER_TABS.map((tab) => (
             <FilterChip
               key={tab.id}
@@ -156,7 +156,7 @@ const ActivityScreen = () => {
               onPress={() => setFilter(tab.id)}
             />
           ))}
-        </HStack>
+        </View>
       )}
 
       <FlatList

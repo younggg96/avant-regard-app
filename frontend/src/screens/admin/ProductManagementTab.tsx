@@ -7,6 +7,7 @@ import {
   ScrollView as RNScrollView,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -28,7 +29,9 @@ import {
 import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import {
+  AnimatedChip,
   Box,
+  chipRowStyle,
   HStack,
   VStack,
   Text,
@@ -459,27 +462,16 @@ const ProductManagementTab = () => {
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0 }}
       >
-        <HStack style={{ gap: 6 }}>
+        <View style={chipRowStyle}>
           {EDITABLE_STATUS_VALUES.map((value) => (
-            <Pressable
+            <AnimatedChip
               key={value}
-              style={[
-                styles.statusChip,
-                currentStatus === value && styles.statusChipActive,
-              ]}
+              label={getStatusLabel(value)}
+              isActive={currentStatus === value}
               onPress={() => onChange(value as ProductStatus)}
-            >
-              <Text
-                style={[
-                  styles.statusChipText,
-                  currentStatus === value && styles.statusChipTextActive,
-                ]}
-              >
-                {getStatusLabel(value)}
-              </Text>
-            </Pressable>
+            />
           ))}
-        </HStack>
+        </View>
       </RNScrollView>
     </VStack>
   );
@@ -670,25 +662,16 @@ const ProductManagementTab = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.filterRow}
         >
-          {STATUS_VALUES.map((value) => (
-            <Pressable
-              key={value || "all"}
-              style={[
-                styles.filterChip,
-                filterStatus === value && styles.filterChipActive,
-              ]}
-              onPress={() => setFilterStatus(value)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  filterStatus === value && styles.filterChipTextActive,
-                ]}
-              >
-                {getStatusLabel(value)}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={chipRowStyle}>
+            {STATUS_VALUES.map((value) => (
+              <AnimatedChip
+                key={value || "all"}
+                label={getStatusLabel(value)}
+                isActive={filterStatus === value}
+                onPress={() => setFilterStatus(value)}
+              />
+            ))}
+          </View>
         </RNScrollView>
 
         <Text style={styles.totalText}>
@@ -1010,26 +993,6 @@ const makeStyles = (t: AppTheme) =>
       flexShrink: 0,
       marginBottom: 8,
     },
-    filterChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      backgroundColor: t.colors.card,
-      marginRight: 8,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    filterChipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    filterChipText: {
-      fontSize: 12,
-      color: t.colors.gray400,
-    },
-    filterChipTextActive: {
-      color: t.colors.textInverted,
-    },
     totalText: {
       paddingBottom: 8,
       fontSize: 12,
@@ -1098,25 +1061,6 @@ const makeStyles = (t: AppTheme) =>
       height: "85%",
       width: "92%",
       padding: t.spacing.lg,
-    },
-    statusChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      backgroundColor: t.colors.gray100,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
-    },
-    statusChipActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
-    },
-    statusChipText: {
-      fontSize: 12,
-      color: t.colors.gray400,
-    },
-    statusChipTextActive: {
-      color: t.colors.textInverted,
     },
     imagesGrid: {
       flexWrap: "wrap",

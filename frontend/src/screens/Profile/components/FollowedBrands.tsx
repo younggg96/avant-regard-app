@@ -27,7 +27,7 @@ export const FollowedBrands = ({ brands, onBrandPress }: FollowedBrandsProps) =>
         data={brands}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}
         keyExtractor={(item) => String(item.brandId)}
         renderItem={({ item }) => (
           <Pressable

@@ -1299,7 +1299,9 @@
     "noMatchingBrands": "没有匹配 \"{{query}}\" 的品牌",
     "brandsUpdating": "品牌列表正在更新中",
     "allBrandsLoaded": "已加载全部 {{total}} 个品牌",
-    "loginToSubmitBrand": "请先登录后再提交品牌"
+    "loginToSubmitBrand": "请先登录后再提交品牌",
+    "noLeaderboard": "暂无贡献排行",
+    "noLeaderboardHint": "有用户提交并通过审核后，排行将在此显示"
   },
   "brand": {
     "detail": "品牌详情",
@@ -3114,7 +3116,15 @@
         "notFoundTitle": "找不到想要的品牌？",
         "notFoundSubtitle": "联系小客服，我们会尽快补录到品牌库。",
         "csHours": "客服工作时间 · 工作日 {{weekday}} · 周末 {{weekend}}",
-        "contactCs": "联系客服"
+        "contactCs": "联系客服",
+        "csIntroBrand": "你好，我想申请补录一个品牌，可以帮忙吗？",
+        "csIntroBrandWithQuery": "你好，我在品牌库找不到「{{query}}」，可以帮忙补录吗？",
+        "csIntroShow": "你好，我想申请补录一个秀场，可以帮忙吗？",
+        "csIntroShowWithQuery": "你好，我在秀场库找不到「{{query}}」，可以帮忙补录吗？",
+        "draftTitle": "发送给客服",
+        "draftHint": "可以修改后再发送 ↓",
+        "draftPlaceholder": "想跟客服说点什么？",
+        "draftSend": "发送并联系客服"
       }
     },
     "actionBar": {
@@ -3277,7 +3287,8 @@
     "support": {
       "contactSupport": "联系客服",
       "contactSupportOnOrder": "遇到问题？联系客服",
-      "contactFailed": "暂时联系不到客服"
+      "contactFailed": "暂时联系不到客服",
+      "openFailed": "无法连接客服，请稍后再试。"
     },
     "aftersales": {
       "entryButton": "申请售后",

@@ -35,6 +35,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableWithoutFeedback,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -42,7 +43,15 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, Pressable, Text, VStack } from "../components/ui";
+import {
+  AnimatedChip,
+  Box,
+  HStack,
+  Pressable,
+  Text,
+  VStack,
+  chipRowStyle,
+} from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import ScreenHeader from "../components/ScreenHeader";
@@ -600,26 +609,15 @@ const MerchantProductsScreen: React.FC = () => {
             { value: "SOLD_OUT", label: t("merchant.statusSoldOut") },
           ] as { value: StatusFilter; label: string }[]
         ).map((opt) => (
-          <Pressable
+          <AnimatedChip
             key={opt.value}
+            label={opt.label}
+            isActive={statusFilter === opt.value}
             onPress={() => {
               setStatusFilter(opt.value);
               setPage(1);
             }}
-            style={[
-              styles.chip,
-              statusFilter === opt.value && styles.chipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                statusFilter === opt.value && styles.chipTextActive,
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
+          />
         ))}
       </ScrollView>
 
@@ -629,51 +627,30 @@ const MerchantProductsScreen: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.chipRow}
       >
-        <Pressable
+        <AnimatedChip
+          label={t("common.all")}
+          isActive={categoryFilter === "ALL"}
           onPress={() => {
             setCategoryFilter("ALL");
             setPage(1);
           }}
-          style={[
-            styles.chip,
-            categoryFilter === "ALL" && styles.chipActive,
-          ]}
-        >
-          <Text
-            style={[
-              styles.chipText,
-              categoryFilter === "ALL" && styles.chipTextActive,
-            ]}
-          >
-            {t("common.all")}
-          </Text>
-        </Pressable>
+        />
         {categories.map((c) => (
-          <Pressable
+          <AnimatedChip
             key={c.id}
+            label={c.name}
+            count={c.productCount ?? undefined}
+            showZeroCount
+            isActive={categoryFilter === c.id}
             onPress={() => {
               setCategoryFilter(c.id);
               setPage(1);
             }}
-            style={[
-              styles.chip,
-              categoryFilter === c.id && styles.chipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                categoryFilter === c.id && styles.chipTextActive,
-              ]}
-            >
-              {c.name}
-              {c.productCount != null ? ` (${c.productCount})` : ""}
-            </Text>
-          </Pressable>
+          />
         ))}
         <Pressable
           onPress={() => setCategoryModalVisible(true)}
-          style={[styles.chip, styles.chipDashed]}
+          style={[styles.chipDashed, { alignSelf: "flex-start" }]}
         >
           <HStack alignItems="center" gap="$xs">
             <Ionicons
@@ -681,7 +658,10 @@ const MerchantProductsScreen: React.FC = () => {
               size={12}
               color={theme.colors.gray400}
             />
-            <Text style={[styles.chipText, { color: theme.colors.gray400 }]}>
+            <Text
+              fontSize="$xs"
+              style={{ color: theme.colors.gray400, fontFamily: FONT_REGULAR }}
+            >
               {t("merchant.manageCategories")}
             </Text>
           </HStack>
@@ -1193,45 +1173,18 @@ const MerchantProductsScreen: React.FC = () => {
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.chipRow}
                     >
-                      <Pressable
-                        onPress={() =>
-                          setForm({ ...form, categoryId: null })
-                        }
-                        style={[
-                          styles.chip,
-                          form.categoryId == null && styles.chipActive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            form.categoryId == null && styles.chipTextActive,
-                          ]}
-                        >
-                          {t("merchant.uncategorized")}
-                        </Text>
-                      </Pressable>
+                      <AnimatedChip
+                        label={t("merchant.uncategorized")}
+                        isActive={form.categoryId == null}
+                        onPress={() => setForm({ ...form, categoryId: null })}
+                      />
                       {categories.map((c) => (
-                        <Pressable
+                        <AnimatedChip
                           key={c.id}
-                          onPress={() =>
-                            setForm({ ...form, categoryId: c.id })
-                          }
-                          style={[
-                            styles.chip,
-                            form.categoryId === c.id && styles.chipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.chipText,
-                              form.categoryId === c.id &&
-                                styles.chipTextActive,
-                            ]}
-                          >
-                            {c.name}
-                          </Text>
-                        </Pressable>
+                          label={c.name}
+                          isActive={form.categoryId === c.id}
+                          onPress={() => setForm({ ...form, categoryId: c.id })}
+                        />
                       ))}
                     </ScrollView>
                   </VStack>
@@ -1423,7 +1376,7 @@ const MerchantProductsScreen: React.FC = () => {
                     <Text style={styles.formLabel}>
                       {t("merchant.listingStatus")}
                     </Text>
-                    <HStack flexWrap="wrap" gap="$sm">
+                    <View style={chipRowStyle}>
                       {(
                         [
                           "PUBLISHED",
@@ -1432,25 +1385,14 @@ const MerchantProductsScreen: React.FC = () => {
                           "SOLD_OUT",
                         ] as ProductStatus[]
                       ).map((s) => (
-                        <Pressable
+                        <AnimatedChip
                           key={s}
+                          label={labelOfStatus(s, t)}
+                          isActive={form.status === s}
                           onPress={() => setForm({ ...form, status: s })}
-                          style={[
-                            styles.chip,
-                            form.status === s && styles.chipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.chipText,
-                              form.status === s && styles.chipTextActive,
-                            ]}
-                          >
-                            {labelOfStatus(s, t)}
-                          </Text>
-                        </Pressable>
+                        />
                       ))}
-                    </HStack>
+                    </View>
                   </VStack>
                   <Box h={32} />
                 </VStack>
@@ -1647,30 +1589,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   chipRow: {
     paddingVertical: 4,
     gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: t.colors.border,
-    backgroundColor: t.colors.card,
-  },
-  chipActive: {
-    backgroundColor: t.colors.text,
-    borderColor: t.colors.text,
+    flexDirection: "row",
+    alignItems: "center",
   },
   chipDashed: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
     borderStyle: "dashed",
     borderColor: t.colors.gray200,
-  },
-  chipText: {
-    fontSize: 12,
-    color: t.colors.gray400,
-    fontFamily: FONT_REGULAR,
-  },
-  chipTextActive: {
-    color: t.colors.textInverted,
   },
   productCover: {
     width: 96,

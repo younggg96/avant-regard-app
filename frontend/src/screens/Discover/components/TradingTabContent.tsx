@@ -35,6 +35,7 @@ import {
   NativeSyntheticEvent,
   RefreshControl,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -42,7 +43,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, Pressable, Text, VStack } from "../../../components/ui";
+import { Box, HStack, Pressable, Text, VStack, AnimatedChip, chipRowStyle } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import {
   useAppTheme,
@@ -291,81 +292,71 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
 
   // ====== 渲染：filter chips ======
   const renderChipBar = () => (
-    <HStack style={styles.chipBar} alignItems="center">
-      {chips.map((item) => {
-        const isFilter = item.id === "filter";
-        // 多选数组态 → 任意一个选中即视为激活
-        const chipIsActive = (id: typeof item.id): boolean => {
-          if (id === "brand") {
-            return (filter.brands?.length ?? 0) > 0 || !!filter.brand;
-          }
-          if (id === "priceMinCents") {
-            return filter.priceMinCents != null || filter.priceMaxCents != null;
-          }
-          if (id === "categoryId") {
+    <View style={styles.chipBar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipBarContent}
+      >
+        <View style={chipRowStyle}>
+          {chips.map((item) => {
+            const isFilter = item.id === "filter";
+            const chipIsActive = (id: typeof item.id): boolean => {
+              if (id === "brand") {
+                return (filter.brands?.length ?? 0) > 0 || !!filter.brand;
+              }
+              if (id === "priceMinCents") {
+                return filter.priceMinCents != null || filter.priceMaxCents != null;
+              }
+              if (id === "categoryId") {
+                return (
+                  (filter.categoryKinds?.length ?? 0) > 0 ||
+                  (filter.categoryIds?.length ?? 0) > 0 ||
+                  filter.categoryId != null
+                );
+              }
+              if (id === "size") {
+                return (filter.sizes?.length ?? 0) > 0 || !!filter.size;
+              }
+              if (id === "condition") {
+                return (filter.conditions?.length ?? 0) > 0 || !!filter.condition;
+              }
+              return !isFilter && (filter as any)[id] != null;
+            };
+            const isActiveChip = chipIsActive(item.id);
             return (
-              (filter.categoryKinds?.length ?? 0) > 0 ||
-              (filter.categoryIds?.length ?? 0) > 0 ||
-              filter.categoryId != null
+              <AnimatedChip
+                key={item.id}
+                label={item.label}
+                isActive={isActiveChip}
+                borderless
+                onPress={() => handleChipPress(item.id)}
+                count={
+                  isFilter && activeFilterCount > 0 ? activeFilterCount : undefined
+                }
+                accessory={
+                  item.caret ? (
+                    <Ionicons
+                      name="chevron-down"
+                      size={8}
+                      color={
+                        isActiveChip ? theme.colors.text : theme.colors.gray300
+                      }
+                    />
+                  ) : isFilter ? (
+                    <Ionicons
+                      name="options-outline"
+                      size={10}
+                      color={theme.colors.gray300}
+                    />
+                  ) : undefined
+                }
+              />
             );
-          }
-          if (id === "size") {
-            return (filter.sizes?.length ?? 0) > 0 || !!filter.size;
-          }
-          if (id === "condition") {
-            return (filter.conditions?.length ?? 0) > 0 || !!filter.condition;
-          }
-          return !isFilter && (filter as any)[id] != null;
-        };
-        const isActiveChip = chipIsActive(item.id);
-        return (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.chip}
-            onPress={() => handleChipPress(item.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.chipContent}>
-              <Text
-                style={[
-                  styles.chipText,
-                  isActiveChip && styles.chipTextActive,
-                ]}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              {item.caret ? (
-                <Ionicons
-                  name="chevron-down"
-                  size={8}
-                  color={
-                    isActiveChip ? theme.colors.text : theme.colors.gray300
-                  }
-                  style={{ marginLeft: 1 }}
-                />
-              ) : null}
-              {isFilter ? (
-                <Ionicons
-                  name="options-outline"
-                  size={10}
-                  color={theme.colors.gray300}
-                  style={{ marginLeft: 1 }}
-                />
-              ) : null}
-              {isFilter && activeFilterCount > 0 ? (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>
-                    {activeFilterCount > 99 ? "99+" : activeFilterCount}
-                  </Text>
-                </View>
-              ) : null}
-              {isActiveChip ? <View style={styles.chipUnderline} /> : null}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </HStack>
+          })}
+        </View>
+      </ScrollView>
+    </View>
   );
 
   // ====== 渲染：热门品牌 ======
@@ -702,58 +693,13 @@ const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     // ====== Chip bar ======
     chipBar: {
-      flexGrow: 0,
-      width: SCREEN_WIDTH,
-      paddingVertical: 4,
       backgroundColor: t.colors.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    chip: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 2,
-    },
-    chipContent: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-      paddingBottom: 4,
-    },
-    chipText: {
-      fontSize: 11,
-      color: t.colors.gray300,
-      letterSpacing: 0.1,
-      flexShrink: 1,
-    },
-    chipTextActive: { color: t.colors.text, fontWeight: "700" },
-    chipUnderline: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: 1.5,
-      borderRadius: CARD_RADIUS,
-      backgroundColor: t.colors.accent,
-    },
-    filterBadge: {
-      position: "absolute",
-      top: -6,
-      right: -8,
-      minWidth: 12,
-      height: 12,
-      paddingHorizontal: 2,
-      backgroundColor: t.colors.error,
-      borderRadius: CARD_RADIUS,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    filterBadgeText: {
-      color: t.colors.textInverted,
-      fontSize: 10,
-      lineHeight: 12,
+    chipBarContent: {
+      paddingHorizontal: PAGE_PADDING,
+      paddingVertical: 8,
     },
     // ====== Sections shared ======
     section: { paddingTop: 8 },

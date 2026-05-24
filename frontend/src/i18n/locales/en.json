@@ -1299,7 +1299,9 @@
     "noMatchingBrands": "No brands matching \"{{query}}\"",
     "brandsUpdating": "Brand list is being updated",
     "allBrandsLoaded": "All {{total}} brands loaded",
-    "loginToSubmitBrand": "Please log in before submitting a brand"
+    "loginToSubmitBrand": "Please log in before submitting a brand",
+    "noLeaderboard": "No rankings yet",
+    "noLeaderboardHint": "Rankings will appear here once submissions are approved"
   },
   "brand": {
     "detail": "Brand Detail",
@@ -3114,7 +3116,15 @@
         "notFoundTitle": "Can't find the brand you want?",
         "notFoundSubtitle": "Ping support and we'll add it to the library shortly.",
         "csHours": "Support hours · Weekdays {{weekday}} · Weekends {{weekend}}",
-        "contactCs": "Contact support"
+        "contactCs": "Contact support",
+        "csIntroBrand": "Hi, I'd like to request a new brand to be added — could you help?",
+        "csIntroBrandWithQuery": "Hi, I couldn't find the brand \"{{query}}\" in the library — could you help add it?",
+        "csIntroShow": "Hi, I'd like to request a new show to be added — could you help?",
+        "csIntroShowWithQuery": "Hi, I couldn't find the show \"{{query}}\" in the library — could you help add it?",
+        "draftTitle": "Send to support",
+        "draftHint": "You can edit before sending ↓",
+        "draftPlaceholder": "What would you like to tell support?",
+        "draftSend": "Send & open chat"
       }
     },
     "actionBar": {
@@ -3277,7 +3287,8 @@
     "support": {
       "contactSupport": "Contact support",
       "contactSupportOnOrder": "Need help? Contact support",
-      "contactFailed": "Could not reach support right now"
+      "contactFailed": "Could not reach support right now",
+      "openFailed": "Could not open support chat. Please try again later."
     },
     "aftersales": {
       "entryButton": "Request after-sales",

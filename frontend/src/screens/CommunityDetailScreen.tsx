@@ -506,15 +506,16 @@ const CommunityDetailScreen = () => {
               </VStack>
               <Pressable
                 onPress={handleFollowPress}
-                px="$md"
-                py="$sm"
-                rounded="$sm"
-                style={{ backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black }}
+                style={[
+                  styles.followButton,
+                  { backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black },
+                ]}
               >
                 <Text
-                  fontSize="$sm"
-                  style={{ color: community.isFollowing ? theme.colors.black : theme.colors.white }}
-                  fontWeight="$medium"
+                  style={[
+                    styles.followButtonText,
+                    { color: community.isFollowing ? theme.colors.black : theme.colors.white },
+                  ]}
                 >
                   {community.isFollowing ? t("community.joined") : t("community.join")}
                 </Text>
@@ -734,6 +735,15 @@ const makeStyles = (t: AppTheme) =>
     descModalText: {
       ...t.typography.bodySmall,
       color: t.colors.gray500,
+    },
+    followButton: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+    },
+    followButtonText: {
+      ...t.typography.caption,
+      fontWeight: "500",
     },
   });
 

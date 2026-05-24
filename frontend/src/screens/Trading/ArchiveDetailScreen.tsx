@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -24,7 +25,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import {
+  AnimatedChip,
   Box,
+  chipRowStyle,
   HStack,
   VStack,
   Text,
@@ -269,32 +272,18 @@ const ArchiveDetailScreen: React.FC = () => {
             <Text style={styles.holdingAddLabel}>
               {t("trading.archiveDetail.addHoldingTitle")}
             </Text>
-            <HStack
-              space="xs"
-              style={{ flexWrap: "wrap", marginBottom: 8 }}
-            >
+            <View style={chipRowStyle}>
               {(
                 ["owned", "lent", "transferred", "resold", "returned"] as const
-              ).map((s) => {
-                const active = holdingStatus === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => setHoldingStatus(s)}
-                    style={[styles.statusChip, active && styles.statusChipActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.statusChipText,
-                        active && styles.statusChipTextActive,
-                      ]}
-                    >
-                      {HOLDING_STATUS_LABELS[s]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </HStack>
+              ).map((s) => (
+                <AnimatedChip
+                  key={s}
+                  label={HOLDING_STATUS_LABELS[s]}
+                  isActive={holdingStatus === s}
+                  onPress={() => setHoldingStatus(s)}
+                />
+              ))}
+            </View>
             <TextInput
               style={[styles.input, styles.textarea]}
               placeholder={t("trading.archiveDetail.holdingNotePlaceholder")}
@@ -449,21 +438,6 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.gray300,
       marginBottom: 8,
     },
-    statusChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 14,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.card,
-      marginBottom: 4,
-    },
-    statusChipActive: {
-      borderColor: t.colors.accent,
-      backgroundColor: t.colors.accent,
-    },
-    statusChipText: { fontSize: 12, color: t.colors.text },
-    statusChipTextActive: { color: t.colors.textInverted },
     smallDarkBtn: {
       alignSelf: "flex-start",
       paddingHorizontal: 14,

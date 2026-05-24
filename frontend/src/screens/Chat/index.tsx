@@ -32,6 +32,7 @@ import {
   SharePayload,
 } from "./components/ShareContentPickerModal";
 import { isCustomerServiceUser } from "../../constants/customerService";
+import { useChatStyles } from "./styles";
 
 type ReportTarget =
   | { type: "MESSAGE"; messageId: number; senderId: number }
@@ -64,6 +65,7 @@ const ChatScreen = () => {
     markConversationRead,
     connectWebSocket,
     refreshBlockedUsers,
+    conversations,
   } = useChatStore();
 
   const markChatNotificationsRead = useNotificationStore(
@@ -82,6 +84,16 @@ const ChatScreen = () => {
   const currentUser = useAuthStore((s) => s.user);
 
   const conversationMessages = messages[conversationId] || [];
+
+  const resolvedOtherUserAvatar = useMemo(() => {
+    if (otherUserAvatar) return otherUserAvatar;
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (conv?.otherUser?.avatarUrl) return conv.otherUser.avatarUrl;
+    const peerMessage = conversationMessages.find(
+      (m) => !m.isMine && m.senderAvatar,
+    );
+    return peerMessage?.senderAvatar ?? undefined;
+  }, [otherUserAvatar, conversations, conversationId, conversationMessages]);
 
   const reversedMessages = useMemo(
     () => [...conversationMessages].reverse(),
@@ -247,7 +259,7 @@ const ChatScreen = () => {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ChatHeader
         name={otherUserName}
-        avatar={otherUserAvatar}
+        avatar={resolvedOtherUserAvatar}
         otherUserId={otherUserId}
         onBack={handleBack}
         onProfile={navigateToProfile}

@@ -140,7 +140,6 @@ const UserProfileScreen = () => {
   const { user: currentUser } = useAuthStore();
   const appTheme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
-  const contribStyles = useThemedStyles(makeContribStyles);
   const profileLoadingGif = useProfileLoadingGif();
 
   // 1. 动态计算 Header 总高度 (刘海 + 44px)
@@ -1573,7 +1572,7 @@ const UserProfileScreen = () => {
               data={followedBrands}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 6 }}
               keyExtractor={(item) => String(item.brandId)}
               renderItem={({ item }) => (
                 <Pressable
@@ -2025,37 +2024,37 @@ const makeStyles = (t: AppTheme) =>
   brandChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    paddingRight: 14,
-    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingRight: 8,
+    borderRadius: t.borderRadius.sm,
     backgroundColor: t.colors.gray100,
-    gap: 8,
+    gap: 6,
   },
   brandChipImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: t.borderRadius.sm,
   },
   brandChipImagePlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: t.borderRadius.sm,
     backgroundColor: t.colors.text,
     justifyContent: "center",
     alignItems: "center",
   },
   brandChipInitial: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "700",
     color: t.colors.textInverted,
     fontFamily: playfairFonts.bold,
   },
   brandChipName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
     color: t.colors.text,
-    maxWidth: 100,
+    maxWidth: 80,
     fontFamily: playfairFonts.medium,
   },
   tabBarContainer: {
@@ -2137,43 +2136,6 @@ const makeStyles = (t: AppTheme) =>
   sellingImagePlaceholder: {
     justifyContent: "center",
     alignItems: "center",
-  },
-});
-
-const makeContribStyles = (t: AppTheme) =>
-  StyleSheet.create({
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.colors.card,
-    borderWidth: 1,
-    borderColor: t.colors.gray200,
-  },
-  filterChipActive: {
-    backgroundColor: t.colors.text,
-    borderColor: t.colors.text,
-  },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: t.colors.gray600,
-    fontFamily: playfairFonts.medium,
-  },
-  filterChipTextActive: {
-    color: t.colors.textInverted,
-  },
-  filterChipCount: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: t.colors.gray400,
-    fontFamily: playfairFonts.bold,
-  },
-  filterChipCountActive: {
-    color: "rgba(255,255,255,0.7)",
   },
 });
 

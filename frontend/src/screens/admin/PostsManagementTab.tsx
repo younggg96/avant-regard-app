@@ -5,6 +5,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView as RNScrollView,
+  View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
@@ -20,7 +21,9 @@ import { Post } from "../../services/postService";
 import { useSharedStyles } from "./adminStyles";
 import { formatDate, getPostTypeName } from "./adminUtils";
 import {
+  AnimatedChip,
   Box,
+  chipRowStyle,
   HStack,
   Text,
   Input,
@@ -598,25 +601,16 @@ const AllPostsSubTab = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {STATUS_KEYS.map((key) => (
-            <Pressable
-              key={key}
-              style={[
-                styles.filterChip,
-                statusFilter === key && styles.filterChipActive,
-              ]}
-              onPress={() => setStatusFilter(key)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  statusFilter === key && styles.filterChipTextActive,
-                ]}
-              >
-                {t(`admin.status_${key}`)}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={chipRowStyle}>
+            {STATUS_KEYS.map((key) => (
+              <AnimatedChip
+                key={key}
+                label={t(`admin.status_${key}`)}
+                isActive={statusFilter === key}
+                onPress={() => setStatusFilter(key)}
+              />
+            ))}
+          </View>
         </RNScrollView>
 
         <Text style={styles.filterLabel}>{t("admin.audit")}</Text>
@@ -625,25 +619,16 @@ const AllPostsSubTab = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {AUDIT_KEYS.map((key) => (
-            <Pressable
-              key={key}
-              style={[
-                styles.filterChip,
-                auditFilter === key && styles.filterChipActive,
-              ]}
-              onPress={() => setAuditFilter(key)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  auditFilter === key && styles.filterChipTextActive,
-                ]}
-              >
-                {t(`admin.audit_${key}`)}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={chipRowStyle}>
+            {AUDIT_KEYS.map((key) => (
+              <AnimatedChip
+                key={key}
+                label={t(`admin.audit_${key}`)}
+                isActive={auditFilter === key}
+                onPress={() => setAuditFilter(key)}
+              />
+            ))}
+          </View>
         </RNScrollView>
 
         <Text style={styles.filterLabel}>{t("admin.grade")}</Text>
@@ -652,25 +637,16 @@ const AllPostsSubTab = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.filterScroll}
         >
-          {GRADE_FILTER_KEYS.map((key) => (
-            <Pressable
-              key={key}
-              style={[
-                styles.filterChip,
-                gradeFilter === key && styles.filterChipActive,
-              ]}
-              onPress={() => setGradeFilter(key)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  gradeFilter === key && styles.filterChipTextActive,
-                ]}
-              >
-                {t(`admin.grade_${key}`)}
-              </Text>
-            </Pressable>
-          ))}
+          <View style={chipRowStyle}>
+            {GRADE_FILTER_KEYS.map((key) => (
+              <AnimatedChip
+                key={key}
+                label={t(`admin.grade_${key}`)}
+                isActive={gradeFilter === key}
+                onPress={() => setGradeFilter(key)}
+              />
+            ))}
+          </View>
         </RNScrollView>
       </Box>
 
@@ -1168,23 +1144,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   filterScroll: {
     marginBottom: t.spacing.xs,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: t.colors.gray100,
-    marginRight: t.spacing.xs,
-  },
-  filterChipActive: {
-    backgroundColor: t.colors.text,
-  },
-  filterChipText: {
-    ...t.typography.caption,
-    color: t.colors.gray400,
-  },
-  filterChipTextActive: {
-    color: t.colors.textInverted,
   },
   batchRow: {
     justifyContent: "space-between",

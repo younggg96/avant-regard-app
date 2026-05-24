@@ -9,27 +9,29 @@
  * 当 PRD 1.2 同样需要在「秀场」搜索面板加这个 CTA 时，可复用本组件的
  * `ContactSupportInline` 子组件。
  */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Modal,
   StyleSheet,
   FlatList,
   Dimensions,
-  Linking,
   ActivityIndicator,
   TouchableWithoutFeedback,
   View,
   TextInput,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useNavigation } from "@react-navigation/native";
 
 import { Box, HStack, VStack, Text, Pressable } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { useThemedStyles, useAppTheme, type AppTheme } from "../theme";
 import { searchBrands, type Brand } from "../services/brandService";
 import { getSupportContact, type SupportContactInfo } from "../services/storeProductService";
+import { getCustomerServiceChatParams } from "../utils/chatNavigationUtils";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -186,7 +188,13 @@ const BrandSearchSheet: React.FC<BrandSearchSheetProps> = ({
                       )}
                     </Box>
                   }
-                  ListFooterComponent={<ContactSupportInline />}
+                  ListFooterComponent={
+                    <ContactSupportInline
+                      onBeforeNavigate={onClose}
+                      searchQuery={query}
+                      contextKind="brand"
+                    />
+                  }
                 />
               </SafeAreaView>
             </View>
@@ -200,11 +208,33 @@ const BrandSearchSheet: React.FC<BrandSearchSheetProps> = ({
 /**
  * 「找不到品牌？联系小客服」CTA，可在 BrandSearchSheet 和未来 ShowSearchSheet 复用。
  */
-export const ContactSupportInline: React.FC = () => {
+interface ContactSupportInlineProps {
+  /** 点击 CTA 前的回调（一般用来关掉外层 Sheet，避免 Chat 屏被 Modal 盖住）。 */
+  onBeforeNavigate?: () => void;
+  /**
+   * 当前搜索关键词，会自动作为一条文本消息发到客服会话里，
+   * 让客服直接看到「用户想补录哪个品牌」。空字符串表示无上下文。
+   */
+  searchQuery?: string;
+  /**
+   * 上下文类型：用于挑选预填消息模板。默认 'brand'，可选 'show' 以复用到秀场搜索。
+   */
+  contextKind?: "brand" | "show";
+}
+
+export const ContactSupportInline: React.FC<ContactSupportInlineProps> = ({
+  onBeforeNavigate,
+  searchQuery,
+  contextKind = "brand",
+}) => {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const theme = useAppTheme();
+  const navigation = useNavigation<any>();
   const [info, setInfo] = useState<SupportContactInfo | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [draftVisible, setDraftVisible] = useState(false);
+  const [draftText, setDraftText] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -220,53 +250,241 @@ export const ContactSupportInline: React.FC = () => {
     };
   }, []);
 
-  const handleContact = async () => {
-    if (info?.email) {
-      const ok = await Linking.canOpenURL(`mailto:${info.email}`);
-      if (ok) {
-        Linking.openURL(
-          `mailto:${info.email}?subject=${encodeURIComponent(
-            "[Avant Regard] 品牌 / 秀场补录申请"
-          )}`
-        );
-        return;
+  /** 根据当前 searchQuery / contextKind 生成默认草稿。 */
+  const buildDefaultDraft = useCallback((): string => {
+    const trimmedQuery = (searchQuery ?? "").trim();
+    const messageKey =
+      contextKind === "show"
+        ? trimmedQuery
+          ? "trading.publishListing.brand.csIntroShowWithQuery"
+          : "trading.publishListing.brand.csIntroShow"
+        : trimmedQuery
+          ? "trading.publishListing.brand.csIntroBrandWithQuery"
+          : "trading.publishListing.brand.csIntroBrand";
+    return t(messageKey, {
+      query: trimmedQuery,
+      defaultValue: trimmedQuery
+        ? `你好，我想补录${
+            contextKind === "show" ? "秀场" : "品牌"
+          }「${trimmedQuery}」，可以帮忙吗？`
+        : `你好，我想补录${
+            contextKind === "show" ? "秀场" : "品牌"
+          }，可以帮忙吗？`,
+    });
+  }, [contextKind, searchQuery, t]);
+
+  /** 点击主按钮 → 弹出可编辑的预览框。 */
+  const handleOpenDraft = () => {
+    if (submitting) return;
+    setDraftText(buildDefaultDraft());
+    setDraftVisible(true);
+  };
+
+  /** 发送 → 真正落地：创建 / 复用客服会话 → 发用户编辑后的文本 → 跳 Chat。 */
+  const handleSendDraft = async () => {
+    const finalText = draftText.trim();
+    if (!finalText || submitting) return;
+    setSubmitting(true);
+    try {
+      const { contactSupportGeneral } = await import(
+        "../services/aftersalesService"
+      );
+      const res = await contactSupportGeneral();
+
+      try {
+        const { sendMessageREST } = await import("../services/chatService");
+        await sendMessageREST(res.conversationId, finalText, "text");
+      } catch (sendErr) {
+        console.warn("[brand-sheet] seed intro message failed", sendErr);
       }
+
+      setDraftVisible(false);
+      onBeforeNavigate?.();
+      navigation.navigate(
+        "Chat",
+        getCustomerServiceChatParams(res.conversationId, res.csUserId, t),
+      );
+    } catch (e) {
+      console.warn("[brand-sheet] contact support failed", e);
+      Alert.alert(
+        t("trading.support.contactSupport"),
+        t("trading.support.openFailed", {
+          defaultValue: "无法连接客服，请稍后再试。",
+        }),
+      );
+    } finally {
+      setSubmitting(false);
     }
-    // 兜底：复制邮箱 / 微信号
   };
 
   return (
-    <Box style={styles.supportCard}>
-      <VStack space="xs">
-        <HStack alignItems="center" space="sm">
-          <Ionicons
-            name="information-circle-outline"
-            size={18}
-            color={theme.colors.textSecondary}
-          />
-          <Text style={styles.supportTitle}>
-            {t("trading.publishListing.brand.notFoundTitle")}
+    <>
+      <Box style={styles.supportCard}>
+        <VStack space="xs">
+          <HStack alignItems="center" space="sm">
+            <Ionicons
+              name="information-circle-outline"
+              size={18}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.supportTitle}>
+              {t("trading.publishListing.brand.notFoundTitle")}
+            </Text>
+          </HStack>
+          <Text style={styles.supportSub}>
+            {t("trading.publishListing.brand.notFoundSubtitle")}
           </Text>
-        </HStack>
-        <Text style={styles.supportSub}>
-          {t("trading.publishListing.brand.notFoundSubtitle")}
-        </Text>
-        {info && (
-          <Text style={styles.supportHours}>
-            {t("trading.publishListing.brand.csHours", {
-              weekday: info.weekdayHours,
-              weekend: info.weekendHours,
-            })}
-          </Text>
-        )}
-        <Pressable style={styles.supportBtn} onPress={handleContact}>
-          <Ionicons name="chatbubbles-outline" size={16} color="#fff" />
-          <Text style={styles.supportBtnText}>
-            {t("trading.publishListing.brand.contactCs")}
-          </Text>
-        </Pressable>
-      </VStack>
-    </Box>
+          {info && (
+            <Text style={styles.supportHours}>
+              {t("trading.publishListing.brand.csHours", {
+                weekday: info.weekdayHours,
+                weekend: info.weekendHours,
+              })}
+            </Text>
+          )}
+          <Pressable
+            style={[styles.supportBtn, submitting && styles.supportBtnDisabled]}
+            onPress={handleOpenDraft}
+            disabled={submitting}
+          >
+            <Ionicons
+              name="chatbubbles-outline"
+              size={16}
+              color={theme.colors.textInverted}
+            />
+            <Text style={styles.supportBtnText}>
+              {t("trading.publishListing.brand.contactCs")}
+            </Text>
+          </Pressable>
+        </VStack>
+      </Box>
+
+      <DraftReviewModal
+        visible={draftVisible}
+        value={draftText}
+        onChange={setDraftText}
+        onCancel={() => {
+          if (!submitting) setDraftVisible(false);
+        }}
+        onSend={handleSendDraft}
+        submitting={submitting}
+      />
+    </>
+  );
+};
+
+/**
+ * 编辑预填客服文案的轻量 Modal。
+ * 跟 BrandSearchSheet 共用 theme 色板，自动适配 Dark / Light。
+ */
+interface DraftReviewModalProps {
+  visible: boolean;
+  value: string;
+  onChange: (v: string) => void;
+  onCancel: () => void;
+  onSend: () => void;
+  submitting: boolean;
+}
+
+const DraftReviewModal: React.FC<DraftReviewModalProps> = ({
+  visible,
+  value,
+  onChange,
+  onCancel,
+  onSend,
+  submitting,
+}) => {
+  const { t } = useTranslation();
+  const styles = useThemedStyles(makeStyles);
+  const theme = useAppTheme();
+  const trimmed = value.trim();
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+    >
+      <TouchableWithoutFeedback onPress={onCancel}>
+        <View style={styles.draftOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={styles.draftCard}>
+              <Text style={styles.draftTitle}>
+                {t("trading.publishListing.brand.draftTitle", {
+                  defaultValue: "发送给客服",
+                })}
+              </Text>
+              <Text style={styles.draftHint}>
+                {t("trading.publishListing.brand.draftHint", {
+                  defaultValue: "可以修改后再发送 ↓",
+                })}
+              </Text>
+              <TextInput
+                value={value}
+                onChangeText={onChange}
+                style={styles.draftInput}
+                multiline
+                autoFocus
+                placeholder={t(
+                  "trading.publishListing.brand.draftPlaceholder",
+                  { defaultValue: "想跟客服说点什么？" },
+                )}
+                placeholderTextColor={theme.colors.placeholder}
+                editable={!submitting}
+              />
+              <HStack
+                justifyContent="flex-end"
+                alignItems="center"
+                space="sm"
+                style={styles.draftActions}
+              >
+                <Pressable
+                  style={[
+                    styles.draftBtn,
+                    styles.draftBtnGhost,
+                    submitting && styles.supportBtnDisabled,
+                  ]}
+                  onPress={onCancel}
+                  disabled={submitting}
+                >
+                  <Text style={styles.draftBtnGhostText}>
+                    {t("common.cancel", { defaultValue: "取消" })}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.draftBtn,
+                    styles.draftBtnPrimary,
+                    (!trimmed || submitting) && styles.supportBtnDisabled,
+                  ]}
+                  onPress={onSend}
+                  disabled={!trimmed || submitting}
+                >
+                  {submitting ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.textInverted}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="send"
+                      size={14}
+                      color={theme.colors.textInverted}
+                    />
+                  )}
+                  <Text style={styles.draftBtnPrimaryText}>
+                    {t("trading.publishListing.brand.draftSend", {
+                      defaultValue: "发送并联系客服",
+                    })}
+                  </Text>
+                </Pressable>
+              </HStack>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
 };
 
@@ -394,7 +612,77 @@ const makeStyles = (t: AppTheme) =>
       justifyContent: "center",
       gap: 6,
     },
+    supportBtnDisabled: {
+      opacity: 0.6,
+    },
     supportBtnText: {
+      color: t.colors.textInverted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    draftOverlay: {
+      flex: 1,
+      backgroundColor: t.colors.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+    },
+    draftCard: {
+      width: "100%",
+      maxWidth: 420,
+      backgroundColor: t.colors.cardElevated,
+      borderRadius: t.borderRadius.sm,
+      padding: 16,
+      gap: 8,
+    },
+    draftTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: t.colors.text,
+    },
+    draftHint: {
+      fontSize: 12,
+      color: t.colors.textSecondary,
+      marginBottom: 4,
+    },
+    draftInput: {
+      minHeight: 96,
+      maxHeight: 200,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      borderRadius: t.borderRadius.sm,
+      padding: 10,
+      fontSize: 14,
+      color: t.colors.text,
+      backgroundColor: t.colors.surface,
+      textAlignVertical: "top",
+    },
+    draftActions: {
+      marginTop: 12,
+    },
+    draftBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: t.borderRadius.sm,
+      gap: 6,
+    },
+    draftBtnGhost: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: t.colors.border,
+    },
+    draftBtnGhostText: {
+      color: t.colors.text,
+      fontSize: 13,
+      fontWeight: "500",
+    },
+    draftBtnPrimary: {
+      backgroundColor: t.colors.accent,
+    },
+    draftBtnPrimaryText: {
       color: t.colors.textInverted,
       fontSize: 13,
       fontWeight: "600",

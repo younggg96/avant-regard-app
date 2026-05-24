@@ -18,7 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import {
+  AnimatedChip,
   Box,
+  chipRowStyle,
   Text,
   Pressable,
   HStack,
@@ -327,41 +329,16 @@ const SubmitStoreScreen = () => {
                   {t("storeSubmit.country")}
                   <Text style={{ color: theme.colors.error }}> *</Text>
                 </Text>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {COUNTRY_OPTIONS.map((c) => {
-                    const active = country === c;
-                    return (
-                      <Pressable
-                        key={c}
-                        px="$md"
-                        py="$sm"
-                        rounded="$sm"
-                        style={[
-                          styles.chip,
-                          {
-                            backgroundColor: active
-                              ? theme.colors.black
-                              : theme.colors.gray100,
-                            borderColor: active
-                              ? theme.colors.black
-                              : theme.colors.gray200,
-                          },
-                        ]}
-                        onPress={() => setCountry(c)}
-                      >
-                        <Text
-                          fontSize="$sm"
-                          style={{
-                            color: active ? theme.colors.white : theme.colors.black,
-                          }}
-                          fontWeight={active ? "$medium" : "$normal"}
-                        >
-                          {c}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </HStack>
+                <View style={chipRowStyle}>
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <AnimatedChip
+                      key={c}
+                      label={c}
+                      isActive={country === c}
+                      onPress={() => setCountry(c)}
+                    />
+                  ))}
+                </View>
               </Box>
 
               {/* 城市 */}
@@ -446,41 +423,16 @@ const SubmitStoreScreen = () => {
                 <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$sm">
                   {t("storeSubmit.styleLabel")}
                 </Text>
-                <HStack flexWrap="wrap" gap="$xs">
-                  {STYLE_OPTIONS.map((style) => {
-                    const active = selectedStyles.includes(style);
-                    return (
-                      <Pressable
-                        key={style}
-                        px="$md"
-                        py="$sm"
-                        rounded="$sm"
-                        style={[
-                          styles.chip,
-                          {
-                            backgroundColor: active
-                              ? theme.colors.black
-                              : theme.colors.gray100,
-                            borderColor: active
-                              ? theme.colors.black
-                              : theme.colors.gray200,
-                          },
-                        ]}
-                        onPress={() => toggleStyle(style)}
-                      >
-                        <Text
-                          fontSize="$sm"
-                          style={{
-                            color: active ? theme.colors.white : theme.colors.black,
-                          }}
-                          fontWeight={active ? "$medium" : "$normal"}
-                        >
-                          {style}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </HStack>
+                <View style={chipRowStyle}>
+                  {STYLE_OPTIONS.map((style) => (
+                    <AnimatedChip
+                      key={style}
+                      label={style}
+                      isActive={selectedStyles.includes(style)}
+                      onPress={() => toggleStyle(style)}
+                    />
+                  ))}
+                </View>
               </Box>
 
               {/* 销售品牌 */}
@@ -696,9 +648,6 @@ const makeStyles = (t: AppTheme) =>
       borderBottomColor: t.colors.inputBorder,
       backgroundColor: t.colors.inputBackground,
       paddingVertical: 8,
-    },
-    chip: {
-      borderWidth: 1,
     },
   });
 

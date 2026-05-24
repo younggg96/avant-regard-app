@@ -214,15 +214,16 @@ const AllCommunitiesScreen = () => {
             e.stopPropagation();
             handleFollowPress(community);
           }}
-          px="$md"
-          py="$sm"
-          rounded="$sm"
-          style={{ backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black }}
+          style={[
+            styles.followButton,
+            { backgroundColor: community.isFollowing ? theme.colors.gray100 : theme.colors.black },
+          ]}
         >
           <Text
-            fontSize="$sm"
-            style={{ color: community.isFollowing ? theme.colors.black : theme.colors.white }}
-            fontWeight="$medium"
+            style={[
+              styles.followButtonText,
+              { color: community.isFollowing ? theme.colors.black : theme.colors.white },
+            ]}
           >
             {community.isFollowing ? t("community.joined") : t("community.join")}
           </Text>
@@ -354,14 +355,10 @@ const AllCommunitiesScreen = () => {
             </Text>
             {activeTab === "following" && !searchQuery && (
               <Pressable
-                mt="$md"
-                px="$lg"
-                py="$sm"
-                style={{ backgroundColor: theme.colors.black }}
-                rounded="$sm"
+                style={styles.browseAllButton}
                 onPress={() => setActiveTab("all")}
               >
-                <Text style={{ color: theme.colors.white }} fontWeight="$medium">
+                <Text style={styles.browseAllButtonText}>
                   {t("community.browseAll")}
                 </Text>
               </Pressable>
@@ -403,6 +400,27 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 14,
       color: t.colors.text,
       padding: 0,
+    },
+    followButton: {
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+    },
+    followButtonText: {
+      ...t.typography.caption,
+      fontWeight: "500",
+    },
+    browseAllButton: {
+      marginTop: t.spacing.md,
+      paddingHorizontal: t.spacing.lg,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.text,
+    },
+    browseAllButtonText: {
+      ...t.typography.caption,
+      fontWeight: "500",
+      color: t.colors.textInverted,
     },
   });
 

@@ -19,13 +19,22 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Box, HStack, Text, VStack, Pressable, Input } from "../../components/ui";
+import {
+  AnimatedChip,
+  Box,
+  chipRowStyle,
+  Text,
+  VStack,
+  Pressable,
+  Input,
+} from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import WizardStepper from "../../components/WizardStepper";
 import BrandSearchSheet from "../../components/BrandSearchSheet";
@@ -113,24 +122,20 @@ const PublishListingStep1Screen: React.FC = () => {
         >
           <VStack gap="$lg">
             <PublishListingFieldRow label={t("trading.publishListing.fields.sellerKind")}>
-              <HStack space="sm">
-                {(["individual", "merchant"] as SellerKind[]).map((k) => {
-                  const active = form.sellerKind === k;
-                  return (
-                    <Pressable
-                      key={k}
-                      onPress={() => patch({ sellerKind: k })}
-                      style={[styles.chip, active && styles.chipActive]}
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                        {k === "individual"
-                          ? t("trading.publishListing.fields.sellerIndividual")
-                          : t("trading.publishListing.fields.sellerMerchant")}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </HStack>
+              <View style={chipRowStyle}>
+                {(["individual", "merchant"] as SellerKind[]).map((k) => (
+                  <AnimatedChip
+                    key={k}
+                    label={
+                      k === "individual"
+                        ? t("trading.publishListing.fields.sellerIndividual")
+                        : t("trading.publishListing.fields.sellerMerchant")
+                    }
+                    isActive={form.sellerKind === k}
+                    onPress={() => patch({ sellerKind: k })}
+                  />
+                ))}
+              </View>
             </PublishListingFieldRow>
 
             <PublishListingFieldRow
@@ -238,22 +243,16 @@ const PublishListingStep1Screen: React.FC = () => {
               label={t("trading.publishListing.fields.yearDecade")}
               required
             >
-              <HStack flexWrap="wrap" style={{ gap: 8 } as any}>
-                {YEAR_DECADE_OPTIONS.map((d) => {
-                  const active = form.yearDecade === d;
-                  return (
-                    <Pressable
-                      key={d}
-                      onPress={() => patch({ yearDecade: d as YearDecade })}
-                      style={[styles.smallChip, active && styles.chipActive]}
-                    >
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                        {d}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </HStack>
+              <View style={chipRowStyle}>
+                {YEAR_DECADE_OPTIONS.map((d) => (
+                  <AnimatedChip
+                    key={d}
+                    label={d}
+                    isActive={form.yearDecade === d}
+                    onPress={() => patch({ yearDecade: d as YearDecade })}
+                  />
+                ))}
+              </View>
             </PublishListingFieldRow>
 
             <PublishListingFieldRow

@@ -304,7 +304,13 @@ const BrandListTab: React.FC<BrandListTabProps> = ({
             <Ionicons
               name="options-outline"
               size={18}
-              color={hasActiveFilter ? "#FFF" : theme.colors.gray600}
+              color={
+                hasActiveFilter
+                  ? theme.mode === "dark"
+                    ? theme.colors.text
+                    : theme.colors.textInverted
+                  : theme.colors.gray400
+              }
             />
             {hasActiveFilter && <Box style={styles.filterDot} />}
           </TouchableOpacity>
@@ -495,8 +501,8 @@ const makeStyles = (t: AppTheme) =>
       borderColor: t.colors.gray100,
     },
     filterButtonActive: {
-      backgroundColor: t.colors.text,
-      borderColor: t.colors.text,
+      backgroundColor: t.mode === "dark" ? t.colors.gray100 : t.colors.text,
+      borderColor: t.mode === "dark" ? t.colors.gray200 : t.colors.text,
     },
     filterDot: {
       position: "absolute",
@@ -515,7 +521,7 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 8,
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.gray50,
       borderWidth: 1,
       borderColor: t.colors.gray200,
